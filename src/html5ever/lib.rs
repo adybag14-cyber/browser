@@ -604,7 +604,9 @@ pub struct Memory {
 #[cfg(feature = "memstats")]
 #[no_mangle]
 pub extern "C" fn html5ever_get_memory_usage() -> Memory {
-    use tikv_jemalloc_ctl::{epoch, stats};
+    #[cfg(all(debug_assertions, not(windows)))]
+    {
+        use tikv_jemalloc_ctl::{epoch, stats};
 
     // many statistics are cached and only updated when the epoch is advanced.
     let _ = epoch::advance();

@@ -79,11 +79,13 @@ pub const CurlAllocator = struct {
 
 pub const CurlGlobalFlags = packed struct(u8) {
     ssl: bool = false,
-    _reserved: u7 = 0,
+    win32: bool = false,
+    _reserved: u6 = 0,
 
     pub fn to_c(self: @This()) c_long {
         var flags: c_long = 0;
         if (self.ssl) flags |= c.CURL_GLOBAL_SSL;
+        if (self.win32) flags |= c.CURL_GLOBAL_WIN32;
         return flags;
     }
 };
@@ -615,6 +617,7 @@ pub fn curl_easy_setopt(easy: *Curl, comptime option: CurlOption, value: anytype
 
         .url,
         .proxy,
+        .no_proxy,
         .accept_encoding,
         .custom_request,
         .cookie,

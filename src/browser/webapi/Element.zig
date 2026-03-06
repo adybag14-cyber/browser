@@ -1125,6 +1125,8 @@ pub fn focus(self: *Element, frame: *Frame) !void {
         try frame._event_manager.dispatch(old_target, focusout_event.asEvent());
     }
 
+    initializeTextControlCaretOnFocus(self);
+
     const old_related: ?*EventTarget = if (old_active) |old| old.asEventTarget() else null;
 
     // Dispatch focus on new element (no bubble, composed)
@@ -2564,6 +2566,13 @@ pub const Build = struct {
 };
 
 const testing = @import("../../testing.zig");
+test "inlineStyleDeclarationValue parses width and height from inline style" {
+    const style = "display:block; width: 220px; height: 40px; background: #1a55d6;";
+    try std.testing.expectEqualStrings("220px", inlineStyleAttributeValue(style, "width").?);
+    try std.testing.expectEqualStrings("40px", inlineStyleAttributeValue(style, "height").?);
+    try std.testing.expect(inlineStyleAttributeValue(style, "color") == null);
+}
+
 test "WebApi: Element" {
     try testing.htmlRunner("element", .{});
 }

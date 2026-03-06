@@ -95,6 +95,8 @@ fn run(allocator: Allocator, main_arena: Allocator, proc_args: std.process.Args)
     sighandler.* = .{ .arena = main_arena };
     try sighandler.install();
 
+    const requested_browser_mode = args.browserMode();
+
     // _app is global to handle graceful shutdown.
     var app = try App.init(allocator, &args);
     defer app.deinit();
@@ -134,6 +136,20 @@ fn run(allocator: Allocator, main_arena: Allocator, proc_args: std.process.Args)
             try sighandler.on(lp.Server.shutdown, .{server});
 
             app.network.run();
+        },
+        .browse => |opts| {
+            const url = opts.url;
+            log.debug(.app, "startup", .{
+                .mode = "browse",
+                .browser_mode = @tagName(browser_mode),
+                .url = url,
+                .snapshot = app.snapshot.fromEmbedded(),
+            });
+
+            lp.browse(app, url, .{}) catch |err| {
+                log.fatal(.app, "browse error", .{ .err = err, .url = url });
+                return err;
+            };
         },
         .fetch => |opts| {
             const urls = opts.url.items;

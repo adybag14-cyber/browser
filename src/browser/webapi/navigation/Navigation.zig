@@ -309,6 +309,12 @@ pub fn navigateInner(
 ) !NavigationReturn {
     const arena = frame._session.arena;
     const url = _url orelse return error.MissingURL;
+    var ls: js.Local.Scope = undefined;
+    const local = page.js.local orelse blk: {
+        page.js.localScope(&ls);
+        break :blk &ls.local;
+    };
+    defer if (page.js.local == null) ls.deinit();
 
     // https://github.com/WICG/navigation-api/issues/95
     //

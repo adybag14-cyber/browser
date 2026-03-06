@@ -41,8 +41,10 @@ fn dispatchKeyEvent(cmd: *CDP.Command) !void {
     const params = (try cmd.params(struct {
         type: Type,
         key: []const u8 = "",
+        text: []const u8 = "",
         code: ?[]const u8 = null,
         modifiers: u4 = 0,
+        autoRepeat: bool = false,
         // Many optional parameters are not implemented yet, see documentation url.
 
         const Type = enum {
@@ -131,6 +133,16 @@ fn dispatchMouseEvent(cmd: *CDP.Command) !void {
         .mouseWheel => try Frame.user_input.triggerMouseWheel(frame, params.x, params.y, params.deltaX, params.deltaY),
     }
     // result already sent
+}
+
+fn parseMouseButton(button: ?[]const u8) Page.MouseButton {
+    const raw = button orelse return .main;
+    if (std.mem.eql(u8, raw, "left")) return .main;
+    if (std.mem.eql(u8, raw, "right")) return .secondary;
+    if (std.mem.eql(u8, raw, "middle")) return .auxiliary;
+    if (std.mem.eql(u8, raw, "back")) return .fourth;
+    if (std.mem.eql(u8, raw, "forward")) return .fifth;
+    return .main;
 }
 
 // https://chromedevtools.github.io/devtools-protocol/tot/Input/#method-insertText

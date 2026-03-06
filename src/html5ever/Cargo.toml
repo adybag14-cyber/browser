@@ -19,6 +19,10 @@ encoding_rs = "0.8"
 idna = "1.1.0"
 url = "2.5.8"
 
+[target.'cfg(not(windows))'.dependencies]
+tikv-jemallocator = { version = "0.6.0", features = ["stats"] }
+tikv-jemalloc-ctl = { version = "0.6.0", features = ["stats"] }
+
 [profile.release]
 lto = true
 codegen-units = 1

@@ -33,6 +33,31 @@ pub const Proto = EventTarget;
 
 _proto: *EventTarget,
 _orientation: ?*Orientation = null,
+_width: u32 = 1920,
+_height: u32 = 1080,
+_avail_height: u32 = 1040,
+
+pub fn setDimensions(self: *Screen, width: u32, height: u32) void {
+    self._width = if (width == 0) 1 else width;
+    self._height = if (height == 0) 1 else height;
+    self._avail_height = if (self._height > 40) self._height - 40 else self._height;
+}
+
+pub fn getWidth(self: *const Screen) u32 {
+    return self._width;
+}
+
+pub fn getHeight(self: *const Screen) u32 {
+    return self._height;
+}
+
+pub fn getAvailWidth(self: *const Screen) u32 {
+    return self._width;
+}
+
+pub fn getAvailHeight(self: *const Screen) u32 {
+    return self._avail_height;
+}
 
 pub fn asEventTarget(self: *Screen) *EventTarget {
     return self._proto;

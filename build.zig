@@ -24,13 +24,15 @@ const min_zig_version = std.SemanticVersion.parse(@import("build.zig.zon").minim
 
 const Build = blk: {
     if (builtin.zig_version.order(min_zig_version) == .lt) {
-        @compileError(std.fmt.comptimePrint(
+        const message = std.fmt.comptimePrint(
             \\Zig version is too old:
             \\  current Zig version: {f}
             \\  minimum Zig version: {f}
-        , .{ builtin.zig_version, min_zig_version }));
+        , .{ builtin.zig_version, min_zig_version });
+        @compileError(message);
+    } else {
+        break :blk std.Build;
     }
-    break :blk std.Build;
 };
 
 pub fn build(b: *Build) !void {
@@ -93,31 +95,39 @@ pub fn build(b: *Build) !void {
     opts.addOption(?[]const u8, "snapshot_path", snapshot_path);
     opts.addOption(bool, "wpt_extensions", wpt_extensions);
 
-    const lightpanda_module = b.addModule("lightpanda", .{
-        .root_source_file = b.path("src/lightpanda.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-        .link_libcpp = true,
-        .sanitize_c = enable_csan,
-        .sanitize_thread = enable_tsan,
-    });
-    lightpanda_module.addImport("lightpanda", lightpanda_module); // allow circular "lightpanda" import
-    lightpanda_module.addImport("build_config", opts.createModule());
+    const lightpanda_module = blk: {
+        const mod = b.addModule("lightpanda", .{
+            .root_source_file = b.path("src/lightpanda.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .link_libcpp = target.result.abi != .msvc,
+            .sanitize_c = enable_csan,
+            .sanitize_thread = enable_tsan,
+        });
+        mod.addImport("lightpanda", mod); // allow circular "lightpanda" import
+        mod.addImport("build_config", opts.createModule());
 
-    const fmt_step = b.step("fmt", "Check code formatting");
-    const fmt = b.addFmt(.{
-        .paths = &.{ "src", "build.zig", "build.zig.zon" },
-        .check = true,
-    });
-    fmt_step.dependOn(&fmt.step);
-    b.default_step.dependOn(fmt_step);
+        // Format check
+        const fmt_step = b.step("fmt", "Check code formatting");
+        const fmt = b.addFmt(.{
+            .paths = &.{ "src", "build.zig", "build.zig.zon" },
+            .check = true,
+        });
+        fmt_step.dependOn(&fmt.step);
 
-    linkV8(b, lightpanda_module, enable_asan, enable_tsan, prebuilt_v8_path, shared_v8);
-    linkCurl(b, lightpanda_module, enable_tsan);
-    linkHtml5Ever(b, lightpanda_module);
-    linkZenai(b, lightpanda_module);
-    linkIsocline(b, lightpanda_module);
+        // Set default behavior
+        b.default_step.dependOn(fmt_step);
+
+        try linkV8(b, mod, enable_asan, enable_tsan, prebuilt_v8_path, shared_v8);
+        try linkCurl(b, mod, enable_tsan);
+        try linkHtml5Ever(b, mod);
+        linkZenai(b, mod);
+        linkIsocline(b, mod);
+
+        break :blk mod;
+    };
+
     linkSqlite(b, lightpanda_module, enable_csan, enable_tsan);
 
     // Check compilation
@@ -134,20 +144,29 @@ pub fn build(b: *Build) !void {
     // with `zig build extras`.
     const extras_step = b.step("extras", "Build snapshot_creator");
 
-    const exe_config: ExeConfig = .{
-        .check = check,
-        .lightpanda_module = lightpanda_module,
-        .target = target,
-        .optimize = optimize,
-        .use_llvm = use_llvm,
-        .sanitize_c = enable_csan,
-        .sanitize_thread = enable_tsan,
-    };
-
     {
         // browser
-        const exe = addExe(b, exe_config, "lightpanda", "lightpanda_exe_check", "src/main.zig");
-        b.installArtifact(exe);
+        const exe = b.addExecutable(.{
+            .name = "lightpanda",
+            .use_llvm = use_llvm,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main.zig"),
+                .target = target,
+                .optimize = optimize,
+                .sanitize_c = enable_csan,
+                .sanitize_thread = enable_tsan,
+                .imports = &.{
+                    .{ .name = "lightpanda", .module = lightpanda_module },
+                },
+            }),
+        });
+        installArtifactCompat(b, exe, is_msvc);
+
+        const exe_check = b.addLibrary(.{
+            .name = "lightpanda_exe_check",
+            .root_module = exe.root_module,
+        });
+        check.dependOn(&exe_check.step);
 
         const run_cmd = b.addRunArtifact(exe);
         if (b.args) |args| {
@@ -164,8 +183,25 @@ pub fn build(b: *Build) !void {
 
     {
         // snapshot creator
-        const exe = addExe(b, exe_config, "lightpanda-snapshot-creator", "snapshot_creator_check", "src/main_snapshot_creator.zig");
+        const exe = b.addExecutable(.{
+            .name = "lightpanda-snapshot-creator",
+            .use_llvm = use_llvm,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main_snapshot_creator.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "lightpanda", .module = lightpanda_module },
+                },
+            }),
+        });
         extras_step.dependOn(&b.addInstallArtifact(exe, .{}).step);
+
+        const exe_check = b.addLibrary(.{
+            .name = "snapshot_creator_check",
+            .root_module = exe.root_module,
+        });
+        check.dependOn(&exe_check.step);
 
         const run_cmd = b.addRunArtifact(exe);
         if (b.args) |args| {
@@ -177,7 +213,24 @@ pub fn build(b: *Build) !void {
 
     {
         // skills generator
-        const exe = addExe(b, exe_config, "lightpanda-skills", "skills_check", "src/main_skills.zig");
+        const exe = b.addExecutable(.{
+            .name = "lightpanda-skills",
+            .use_llvm = use_llvm,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main_skills.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "lightpanda", .module = lightpanda_module },
+                },
+            }),
+        });
+
+        const exe_check = b.addLibrary(.{
+            .name = "skills_check",
+            .root_module = exe.root_module,
+        });
+        check.dependOn(&exe_check.step);
 
         const run_cmd = b.addRunArtifact(exe);
         const out_dir = run_cmd.addOutputDirectoryArg("skills");
@@ -203,41 +256,6 @@ pub fn build(b: *Build) !void {
     }
 }
 
-const ExeConfig = struct {
-    check: *Build.Step,
-    lightpanda_module: *Build.Module,
-    target: Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    use_llvm: bool,
-    sanitize_c: ?std.zig.SanitizeC,
-    sanitize_thread: bool,
-};
-
-fn addExe(b: *Build, config: ExeConfig, name: []const u8, check_name: []const u8, root_source_file: []const u8) *Build.Step.Compile {
-    const exe = b.addExecutable(.{
-        .name = name,
-        .use_llvm = config.use_llvm,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(root_source_file),
-            .target = config.target,
-            .optimize = config.optimize,
-            .sanitize_c = config.sanitize_c,
-            .sanitize_thread = config.sanitize_thread,
-            .imports = &.{
-                .{ .name = "lightpanda", .module = config.lightpanda_module },
-            },
-        }),
-    });
-
-    const exe_check = b.addLibrary(.{
-        .name = check_name,
-        .root_module = exe.root_module,
-    });
-    config.check.dependOn(&exe_check.step);
-
-    return exe;
-}
-
 /// Looks for the prebuilt V8 that `make download-v8` caches. The cache
 /// path is keyed on the zig-v8 release tag, read from the install action so
 /// it cannot drift from CI (the Makefile reads the same source of truth).
@@ -255,29 +273,32 @@ fn findPrebuiltV8(b: *Build, target: Build.ResolvedTarget, dev_fast: bool) ?[]co
         return null;
     }
 
-    const cache_dir = b.pathFromRoot(".lp-cache");
     // The .so must keep the name the exe's DT_NEEDED records; the archive
     // name encodes V8 version, os and arch.
     const path = if (dev_fast)
-        b.pathJoin(&.{ cache_dir, "prebuilt-v8", tag, "libc_v8.so" })
+        b.fmt("{s}/prebuilt-v8/{s}/libc_v8.so", .{ b.pathFromRoot(".lp-cache"), tag })
     else blk: {
         const version = actionDefault(action, "v8:") orelse return null;
-        break :blk b.pathJoin(&.{ cache_dir, "prebuilt-v8", tag, b.fmt("libc_v8_{s}_{s}_{s}.a", .{
+        break :blk b.fmt("{s}/prebuilt-v8/{s}/libc_v8_{s}_{s}_{s}.a", .{
+            b.pathFromRoot(".lp-cache"),
+            tag,
             version,
             @tagName(target.result.os.tag),
             @tagName(target.result.cpu.arch),
-        }) });
+        });
     };
     std.Io.Dir.cwd().access(io, path, .{}) catch {
-        std.debug.print("No prebuilt V8 at {s}; using the V8 source-build path. `make download-v8` fetches the prebuilt.\n", .{path});
+        if (dev_fast) {
+            std.debug.print("No cached libc_v8.so; building V8 from source. `make download-v8` skips this.\n", .{});
+        }
         return null;
     };
     std.debug.print("Using prebuilt V8: {s}\n", .{path});
     return path;
 }
 
-/// Returns the quoted `default:` value of a top-level `key` in the install
-/// action's yaml.
+// Returns the quoted `default:` value of a top-level `key` in the install
+// action's yaml.
 fn actionDefault(action: []const u8, key: []const u8) ?[]const u8 {
     var in_key = false;
     var lines = std.mem.splitScalar(u8, action, '\n');
@@ -291,12 +312,20 @@ fn actionDefault(action: []const u8, key: []const u8) ?[]const u8 {
         if (std.mem.startsWith(u8, trimmed, "default:")) {
             var it = std.mem.splitScalar(u8, trimmed, '\'');
             _ = it.next();
-            if (it.next()) |value| return value;
-            break;
+            return it.next();
         }
     }
-    std.debug.print("Can't parse the `{s} default:` value from .github/actions/install/action.yml; prebuilt V8 discovery skipped.\n", .{key});
     return null;
+}
+
+fn installArtifactCompat(b: *Build, artifact: *Build.Step.Compile, is_msvc: bool) void {
+    if (is_msvc) {
+        b.getInstallStep().dependOn(&b.addInstallArtifact(artifact, .{
+            .pdb_dir = .disabled,
+        }).step);
+        return;
+    }
+    b.installArtifact(artifact);
 }
 
 fn linkV8(
@@ -306,7 +335,7 @@ fn linkV8(
     is_tsan: bool,
     prebuilt_v8_path: ?[]const u8,
     shared_v8: bool,
-) void {
+) !void {
     const target = mod.resolved_target.?;
 
     const dep = b.dependency("v8", .{
@@ -316,15 +345,17 @@ fn linkV8(
         .is_tsan = is_tsan,
         .inspector_subtype = false,
         .v8_enable_sandbox = is_tsan,
-        .cache_root = b.pathFromRoot(".lp-cache"),
+        .cache_root = b.pathFromRoot(if (target.result.os.tag == .windows) ".lp-cache-win" else ".lp-cache"),
         .prebuilt_v8_path = prebuilt_v8_path,
         .shared_v8 = shared_v8,
     });
     mod.addImport("v8", dep.module("v8"));
 }
 
-fn linkHtml5Ever(b: *Build, mod: *Build.Module) void {
-    const is_debug = mod.optimize.? == .Debug;
+fn linkHtml5Ever(b: *Build, mod: *Build.Module) !void {
+    const is_debug = if (mod.optimize.? == .Debug) true else false;
+    const html5ever_lib_name = if (mod.resolved_target.?.result.os.tag == .windows) "litefetch_html5ever.lib" else "liblitefetch_html5ever.a";
+    const is_windows_msvc = mod.resolved_target.?.result.os.tag == .windows and mod.resolved_target.?.result.abi == .msvc;
 
     const exec_cargo = b.addSystemCommand(&.{
         "cargo",           "build",
@@ -353,7 +384,23 @@ fn linkHtml5Ever(b: *Build, mod: *Build.Module) void {
     const html5ever_step = b.step("html5ever", "Install html5ever dependency (requires cargo)");
     html5ever_step.dependOn(&exec_cargo.step);
 
-    const obj = out_dir.path(b, if (is_debug) "debug" else "release").path(b, "liblitefetch_html5ever.a");
+    const obj = out_dir.path(b, if (is_debug) "debug" else "release").path(b, html5ever_lib_name);
+    if (is_windows_msvc) {
+        const strip_cmd = b.addSystemCommand(&.{
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "& { param([string]$src, [string]$dst) Copy-Item -Force $src $dst; $libExe='C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\lib.exe'; if(-not (Test-Path $libExe)){ throw 'lib.exe not found at expected VS path' }; $members=& $libExe /nologo /list $dst; $remove=$members | Where-Object { $_ -match 'compiler_builtins' }; if($remove.Count -eq 0){ exit 0 }; $tmpA=\"$dst.tmpA.lib\"; $tmpB=\"$dst.tmpB.lib\"; Copy-Item -Force $dst $tmpA; foreach($m in $remove){ & $libExe /nologo \"/remove:$m\" \"/out:$tmpB\" $tmpA | Out-Null; Move-Item -Force $tmpB $tmpA }; Move-Item -Force $tmpA $dst }",
+        });
+        strip_cmd.addFileArg(obj);
+        const stripped_obj = strip_cmd.addOutputFileArg("litefetch_html5ever_stripped.lib");
+        strip_cmd.step.dependOn(&exec_cargo.step);
+        html5ever_step.dependOn(&strip_cmd.step);
+        mod.addObjectFile(stripped_obj);
+        return;
+    }
     mod.addObjectFile(obj);
 }
 
@@ -415,7 +462,7 @@ fn linkSqlite(b: *Build, mod: *Build.Module, enable_csan: ?std.zig.SanitizeC, is
     mod.addImport("sqlite3", translate_c.createModule());
 }
 
-fn linkCurl(b: *Build, mod: *Build.Module, is_tsan: bool) void {
+fn linkCurl(b: *Build, mod: *Build.Module, is_tsan: bool) !void {
     const target = mod.resolved_target.?;
 
     const curl = buildCurl(b, target, mod.optimize.?, is_tsan);
@@ -442,37 +489,46 @@ fn linkCurl(b: *Build, mod: *Build.Module, is_tsan: bool) void {
     const boringssl = buildBoringSsl(b, target, mod.optimize.?);
     for (boringssl) |lib| curl.root_module.linkLibrary(lib);
 
-    if (target.result.os.tag == .macos) {
-        // needed for proxying on mac
-        mod.addSystemFrameworkPath(.{ .cwd_relative = "/System/Library/Frameworks" });
-        mod.linkFramework("CoreFoundation", .{});
-        mod.linkFramework("SystemConfiguration", .{});
+    switch (target.result.os.tag) {
+        .macos => {
+            // needed for proxying on mac
+            mod.addSystemFrameworkPath(.{ .cwd_relative = "/System/Library/Frameworks" });
+            mod.linkFramework("CoreFoundation", .{});
+            mod.linkFramework("SystemConfiguration", .{});
+        },
+        else => {},
     }
 }
 
-fn cLibModule(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, is_tsan: bool) *Build.Module {
-    return b.createModule(.{
+fn buildZlib(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, is_tsan: bool) *Build.Step.Compile {
+    const dep = b.dependency("zlib", .{});
+    const is_windows = target.result.os.tag == .windows;
+    const is_msvc = target.result.abi == .msvc;
+
+    const mod = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
         .sanitize_thread = is_tsan,
     });
-}
 
-fn buildZlib(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, is_tsan: bool) *Build.Step.Compile {
-    const dep = b.dependency("zlib", .{});
-
-    const mod = cLibModule(b, target, optimize, is_tsan);
     const lib = b.addLibrary(.{ .name = "z", .root_module = mod });
     lib.installHeadersDirectory(dep.path(""), "", .{});
     mod.addCSourceFiles(.{
         .root = dep.path(""),
-        .flags = &.{
-            "-DHAVE_SYS_TYPES_H",
-            "-DHAVE_STDINT_H",
-            "-DHAVE_STDDEF_H",
-            "-DHAVE_UNISTD_H",
-        },
+        .flags = if (is_windows and is_msvc)
+            &.{
+                "-DHAVE_SYS_TYPES_H",
+                "-DHAVE_STDINT_H",
+                "-DHAVE_STDDEF_H",
+            }
+        else
+            &.{
+                "-DHAVE_SYS_TYPES_H",
+                "-DHAVE_STDINT_H",
+                "-DHAVE_STDDEF_H",
+                "-DHAVE_UNISTD_H",
+            },
         .files = &.{
             "adler32.c", "compress.c", "crc32.c",
             "deflate.c", "gzclose.c",  "gzlib.c",
@@ -488,7 +544,12 @@ fn buildZlib(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.Opti
 fn buildBrotli(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, is_tsan: bool) [3]*Build.Step.Compile {
     const dep = b.dependency("brotli", .{});
 
-    const mod = cLibModule(b, target, optimize, is_tsan);
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .sanitize_thread = is_tsan,
+    });
     mod.addIncludePath(dep.path("c/include"));
 
     const brotlicmn = b.addLibrary(.{ .name = "brotlicommon", .root_module = mod });
@@ -545,8 +606,15 @@ fn buildBoringSsl(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin
 
 fn buildNghttp2(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, is_tsan: bool) *Build.Step.Compile {
     const dep = b.dependency("nghttp2", .{});
+    const is_windows = target.result.os.tag == .windows;
+    const is_msvc = target.result.abi == .msvc;
 
-    const mod = cLibModule(b, target, optimize, is_tsan);
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .sanitize_thread = is_tsan,
+    });
     mod.addIncludePath(dep.path("lib/includes"));
 
     const config = b.addConfigHeader(.{
@@ -564,12 +632,26 @@ fn buildNghttp2(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.O
     lib.installHeadersDirectory(dep.path("lib/includes/nghttp2"), "nghttp2", .{});
     mod.addCSourceFiles(.{
         .root = dep.path("lib"),
-        .flags = &.{
-            "-DNGHTTP2_STATICLIB",
-            "-DHAVE_TIME_H",
-            "-DHAVE_ARPA_INET_H",
-            "-DHAVE_NETINET_IN_H",
-        },
+        .flags = if (is_windows and is_msvc)
+            &.{
+                "-DNGHTTP2_STATICLIB",
+                "-DHAVE_TIME_H",
+                "-DWIN32",
+                "-Dssize_t=ptrdiff_t",
+            }
+        else if (is_windows)
+            &.{
+                "-DNGHTTP2_STATICLIB",
+                "-DHAVE_TIME_H",
+                "-DWIN32",
+            }
+        else
+            &.{
+                "-DNGHTTP2_STATICLIB",
+                "-DHAVE_TIME_H",
+                "-DHAVE_ARPA_INET_H",
+                "-DHAVE_NETINET_IN_H",
+            },
         .files = &.{
             "sfparse.c",                 "nghttp2_alpn.c",   "nghttp2_buf.c",
             "nghttp2_callbacks.c",       "nghttp2_debug.c",  "nghttp2_extpri.c",
@@ -582,6 +664,9 @@ fn buildNghttp2(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.O
             "nghttp2_ratelim.c",         "nghttp2_time.c",
         },
     });
+    if (is_windows) {
+        lib.root_module.linkSystemLibrary("ws2_32", .{ .use_pkg_config = .no });
+    }
 
     return lib;
 }
@@ -594,7 +679,12 @@ fn buildCurl(
 ) *Build.Step.Compile {
     const dep = b.dependency("curl", .{});
 
-    const mod = cLibModule(b, target, optimize, is_tsan);
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .sanitize_thread = is_tsan,
+    });
     mod.addIncludePath(dep.path("lib"));
     mod.addIncludePath(dep.path("include"));
 
@@ -602,6 +692,7 @@ fn buildCurl(
     const abi = target.result.abi;
 
     const is_gnu = abi.isGnu();
+    const is_msvc = abi == .msvc;
     const is_ios = os == .ios;
     const is_android = abi.isAndroid();
     const is_linux = os == .linux;
@@ -613,7 +704,8 @@ fn buildCurl(
 
     const byte_size = struct {
         fn it(b2: *std.Build, target2: Build.ResolvedTarget, name: []const u8, comptime ctype: std.Target.CType) []const u8 {
-            return b2.fmt("#define SIZEOF_{s} {d}", .{ name, target2.result.cTypeByteSize(ctype) });
+            const size = target2.result.cTypeByteSize(ctype);
+            return std.fmt.allocPrint(b2.allocator, "#define SIZEOF_{s} {d}", .{ name, size }) catch @panic("OOM");
         }
     }.it;
 
@@ -653,7 +745,7 @@ fn buildCurl(
         .CURL_DISABLE_TFTP = true,
         .CURL_DISABLE_WEBSOCKETS = false, // Enable WebSocket support
 
-        .ssize_t = null,
+        .ssize_t = if (is_windows and is_msvc) "ptrdiff_t" else null,
         ._FILE_OFFSET_BITS = 64,
 
         .USE_IPV6 = true,
@@ -664,27 +756,35 @@ fn buildCurl(
         .HAVE_IDN2_H = false,
         .CURL_OS = switch (os) {
             .linux => if (is_android) "\"android\"" else "\"linux\"",
-            else => b.fmt("\"{s}\"", .{@tagName(os)}),
+            else => std.fmt.allocPrint(b.allocator, "\"{s}\"", .{@tagName(os)}) catch @panic("OOM"),
         },
 
+        // Adjusts the sizes of variables
         .SIZEOF_INT_CODE = byte_size(b, target, "INT", .int),
         .SIZEOF_LONG_CODE = byte_size(b, target, "LONG", .long),
         .SIZEOF_LONG_LONG_CODE = byte_size(b, target, "LONG_LONG", .longlong),
 
         .SIZEOF_OFF_T_CODE = byte_size(b, target, "OFF_T", .longlong),
         .SIZEOF_CURL_OFF_T_CODE = byte_size(b, target, "CURL_OFF_T", .longlong),
-        .SIZEOF_CURL_SOCKET_T_CODE = byte_size(b, target, "CURL_SOCKET_T", .int),
+        .SIZEOF_CURL_SOCKET_T_CODE = if (is_windows)
+            std.fmt.allocPrint(
+                b.allocator,
+                "#define SIZEOF_CURL_SOCKET_T {d}",
+                .{target.result.ptrBitWidth() / 8},
+            ) catch @panic("OOM")
+        else
+            byte_size(b, target, "CURL_SOCKET_T", .int),
 
         .SIZEOF_SIZE_T_CODE = byte_size(b, target, "SIZE_T", .longlong),
         .SIZEOF_TIME_T_CODE = byte_size(b, target, "TIME_T", .longlong),
 
         // headers availability
         .HAVE_ARPA_INET_H = !is_windows,
-        .HAVE_DIRENT_H = true,
+        .HAVE_DIRENT_H = !is_windows,
         .HAVE_FCNTL_H = true,
         .HAVE_IFADDRS_H = !is_windows,
         .HAVE_IO_H = is_windows,
-        .HAVE_LIBGEN_H = true,
+        .HAVE_LIBGEN_H = !is_windows,
         .HAVE_LINUX_TCP_H = is_linux and is_gnu,
         .HAVE_LOCALE_H = true,
         .HAVE_NETDB_H = !is_windows,
@@ -699,12 +799,12 @@ fn buildCurl(
         .HAVE_STDBOOL_H = true,
         .HAVE_STDDEF_H = true,
         .HAVE_STDINT_H = true,
-        .HAVE_STRINGS_H = true,
+        .HAVE_STRINGS_H = !is_windows,
         .HAVE_STROPTS_H = false,
         .HAVE_SYS_EVENTFD_H = is_linux or is_freebsd or is_netbsd,
         .HAVE_SYS_FILIO_H = !is_linux and !is_windows,
         .HAVE_SYS_IOCTL_H = !is_windows,
-        .HAVE_SYS_PARAM_H = true,
+        .HAVE_SYS_PARAM_H = !is_windows,
         .HAVE_SYS_POLL_H = !is_windows,
         .HAVE_SYS_RESOURCE_H = !is_windows,
         .HAVE_SYS_SELECT_H = !is_windows,
@@ -714,7 +814,7 @@ fn buildCurl(
         .HAVE_SYS_UTIME_H = is_windows,
         .HAVE_TERMIOS_H = !is_windows,
         .HAVE_TERMIO_H = is_linux,
-        .HAVE_UNISTD_H = true,
+        .HAVE_UNISTD_H = !is_windows,
         .HAVE_UTIME_H = true,
         .STDC_HEADERS = true,
 
@@ -780,7 +880,7 @@ fn buildCurl(
         .HAVE_FSETXATTR_6 = is_darwin,
         .HAVE_FTRUNCATE = true,
         .HAVE_GETADDRINFO = true,
-        .HAVE_GETADDRINFO_THREADSAFE = is_linux or is_freebsd or is_netbsd,
+        .HAVE_GETADDRINFO_THREADSAFE = is_windows or is_linux or is_freebsd or is_netbsd,
         .HAVE_GETHOSTBYNAME_R = is_linux or is_freebsd,
         .HAVE_GETHOSTBYNAME_R_3 = false,
         .HAVE_GETHOSTBYNAME_R_3_REENTRANT = false,
@@ -842,12 +942,22 @@ fn buildCurl(
     lib.installHeadersDirectory(dep.path("include/curl"), "curl", .{});
     mod.addCSourceFiles(.{
         .root = dep.path("lib"),
-        .flags = &.{
-            "-D_GNU_SOURCE",
-            "-DHAVE_CONFIG_H",
-            "-DCURL_STATICLIB",
-            "-DBUILDING_LIBCURL",
-        },
+        .flags = if (is_windows and is_msvc)
+            &.{
+                "-DHAVE_CONFIG_H",
+                "-DCURL_STATICLIB",
+                "-DNGHTTP2_STATICLIB",
+                "-DBUILDING_LIBCURL",
+                "-Dssize_t=ptrdiff_t",
+            }
+        else
+            &.{
+                "-D_GNU_SOURCE",
+                "-DHAVE_CONFIG_H",
+                "-DCURL_STATICLIB",
+                "-DNGHTTP2_STATICLIB",
+                "-DBUILDING_LIBCURL",
+            },
         .files = &.{
             // You can include all files from lib, libcurl uses #ifdef-guards to exclude code for disabled functions
             "cf-dns.c",            "dnscache.c",            "protocol.c",          "curlx/strdup.c",
@@ -946,8 +1056,10 @@ fn resolveVersion(b: *std.Build) std.SemanticVersion {
     else
         lightpanda_version;
 
+    // Only enrich versions that have a pre-release field and no explicit build metadata.
     if (version.pre == null or version.build != null) return version;
 
+    // For dev/nightly versions, calculate the commit count and hash
     const git_hash_raw = runGit(b, &.{ "rev-parse", "--short", "HEAD" }) catch return version;
     const commit_hash = std.mem.trim(u8, git_hash_raw, " \n\r");
 
@@ -963,11 +1075,13 @@ fn resolveVersion(b: *std.Build) std.SemanticVersion {
     };
 }
 
+/// Helper function to run git commands and return stdout
 fn runGit(b: *std.Build, args: []const []const u8) ![]const u8 {
     var code: u8 = undefined;
-    const command = try std.mem.concat(b.allocator, []const u8, &.{
-        &.{ "git", "-C", b.pathFromRoot(".") },
-        args,
-    });
-    return b.runAllowFail(command, &code, .ignore);
+    const dir = b.pathFromRoot(".");
+    var command: std.ArrayList([]const u8) = .empty;
+    defer command.deinit(b.allocator);
+    try command.appendSlice(b.allocator, &.{ "git", "-C", dir });
+    try command.appendSlice(b.allocator, args);
+    return b.runAllowFail(command.items, &code, .ignore);
 }

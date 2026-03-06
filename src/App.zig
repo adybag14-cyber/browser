@@ -22,6 +22,7 @@ const lp = @import("lightpanda");
 const Config = @import("Config.zig");
 const Snapshot = @import("browser/js/Snapshot.zig");
 const Platform = @import("browser/js/Platform.zig");
+const Display = @import("display/Display.zig");
 const Telemetry = @import("telemetry/telemetry.zig").Telemetry;
 
 const Network = @import("network/Network.zig");
@@ -36,6 +37,7 @@ const App = @This();
 network: Network,
 config: *const Config,
 platform: Platform,
+display: Display,
 snapshot: Snapshot,
 telemetry: Telemetry,
 watchdog: Watchdog,
@@ -97,6 +99,7 @@ pub fn deinit(self: *App) void {
     self.telemetry.deinit(allocator);
     self.network.deinit();
     self.snapshot.deinit();
+    self.display.deinit();
     self.platform.deinit();
     self.arena_pool.deinit();
 

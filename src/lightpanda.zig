@@ -571,3 +571,47 @@ test "fetch: resolveWaitUntil" {
 test {
     std.testing.refAllDecls(@This());
 }
+
+test "normalizeBrowseUrl keeps explicit schemes" {
+    const allocator = std.testing.allocator;
+
+    const explicit = try normalizeBrowseUrl(allocator, "http://example.com");
+    defer allocator.free(explicit.?);
+    try std.testing.expectEqualStrings("http://example.com", explicit.?);
+
+    const about = try normalizeBrowseUrl(allocator, "about:blank");
+    defer allocator.free(about.?);
+    try std.testing.expectEqualStrings("about:blank", about.?);
+}
+
+test "normalizeBrowseUrl defaults bare hosts to https" {
+    const allocator = std.testing.allocator;
+
+    const normalized = try normalizeBrowseUrl(allocator, "example.com/path?q=1");
+    defer allocator.free(normalized.?);
+    try std.testing.expectEqualStrings("https://example.com/path?q=1", normalized.?);
+}
+
+test "normalizeBrowseUrl keeps loopback targets on http" {
+    const allocator = std.testing.allocator;
+
+    const localhost = try normalizeBrowseUrl(allocator, "localhost:8123/status");
+    defer allocator.free(localhost.?);
+    try std.testing.expectEqualStrings("http://localhost:8123/status", localhost.?);
+
+    const ipv4 = try normalizeBrowseUrl(allocator, "127.0.0.1:9222/json/version");
+    defer allocator.free(ipv4.?);
+    try std.testing.expectEqualStrings("http://127.0.0.1:9222/json/version", ipv4.?);
+
+    const ipv6 = try normalizeBrowseUrl(allocator, "[::1]:8080/");
+    defer allocator.free(ipv6.?);
+    try std.testing.expectEqualStrings("http://[::1]:8080/", ipv6.?);
+}
+
+test "normalizeBrowseUrl rejects blank input" {
+    try std.testing.expect((try normalizeBrowseUrl(std.testing.allocator, "   ")) == null);
+}
+
+test "normalizeBrowseUrl rejects search-like input without a scheme" {
+    try std.testing.expectError(error.InvalidUrl, normalizeBrowseUrl(std.testing.allocator, "two words"));
+}

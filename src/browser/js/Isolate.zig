@@ -18,6 +18,7 @@
 
 const js = @import("js.zig");
 const v8 = js.v8;
+const V8MemoryPressureLevel = @typeInfo(@TypeOf(v8.v8__Isolate__MemoryPressureNotification)).@"fn".params[1].type.?;
 
 const Isolate = @This();
 
@@ -48,7 +49,8 @@ pub const MemoryPressureLevel = enum(u32) {
 };
 
 pub fn memoryPressureNotification(self: Isolate, level: MemoryPressureLevel) void {
-    v8.v8__Isolate__MemoryPressureNotification(self.handle, @intFromEnum(level));
+    const v8_level: V8MemoryPressureLevel = @as(V8MemoryPressureLevel, @intCast(@intFromEnum(level)));
+    v8.v8__Isolate__MemoryPressureNotification(self.handle, v8_level);
 }
 
 // Tells V8 how much native memory is hanging off objects in this isolate, so
