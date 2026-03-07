@@ -57,6 +57,24 @@ pub const PendingDownload = struct {
     }
 };
 
+pub const PendingTabOpen = struct {
+    url: [:0]u8,
+    opts: Page.NavigateOpts,
+    activate: bool = true,
+    zoom_percent: i32 = 100,
+
+    pub fn deinit(self: *PendingTabOpen, allocator: Allocator) void {
+        allocator.free(self.url);
+        if (self.opts.body) |body| {
+            allocator.free(body);
+        }
+        if (self.opts.header) |header| {
+            allocator.free(header);
+        }
+        self.* = undefined;
+    }
+};
+
 browser: *Browser,
 arena: *lp.Arena,
 history: History,
@@ -208,6 +226,11 @@ pub fn deinit(self: *Session) void {
         self.pending_downloads.items[self.pending_downloads.items.len].deinit(self.browser.app.allocator);
     }
     self.pending_downloads.deinit(self.browser.app.allocator);
+    while (self.pending_tab_opens.items.len > 0) {
+        self.pending_tab_opens.items.len -= 1;
+        self.pending_tab_opens.items[self.pending_tab_opens.items.len].deinit(self.browser.app.allocator);
+    }
+    self.pending_tab_opens.deinit(self.browser.app.allocator);
 
     self.browser.env.memoryPressureNotification(.critical);
 
