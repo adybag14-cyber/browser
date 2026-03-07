@@ -616,6 +616,38 @@ test "applyZoomCommand clamps and resets zoom" {
     try std.testing.expectEqual(@as(i32, 30), applyZoomCommand(30, .zoom_out));
 }
 
+test "parseSavedBrowseSession restores active index and zoom" {
+    var session = try parseSavedBrowseSession(
+        std.testing.allocator,
+        "lightpanda-browse-session-v1\nactive\t1\ntab\t125\thttp://one.test/\ntab\t90\thttp://two.test/\n",
+    );
+    defer session.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(@as(usize, 1), session.active_index);
+    try std.testing.expectEqual(@as(usize, 2), session.tabs.items.len);
+    try std.testing.expectEqualStrings("http://one.test/", session.tabs.items[0].url);
+    try std.testing.expectEqual(@as(i32, 125), session.tabs.items[0].zoom_percent);
+    try std.testing.expectEqualStrings("http://two.test/", session.tabs.items[1].url);
+    try std.testing.expectEqual(@as(i32, 90), session.tabs.items[1].zoom_percent);
+}
+
+test "shouldAppendStartupUrl skips restored duplicates" {
+    var saved = SavedBrowseSession{};
+    defer saved.deinit(std.testing.allocator);
+
+    try saved.tabs.append(std.testing.allocator, .{
+        .url = try std.testing.allocator.dupe(u8, "http://one.test/"),
+        .zoom_percent = 100,
+    });
+    try saved.tabs.append(std.testing.allocator, .{
+        .url = try std.testing.allocator.dupe(u8, "http://two.test/"),
+        .zoom_percent = 110,
+    });
+
+    try std.testing.expect(!shouldAppendStartupUrl(saved.tabs.items, "http://two.test/"));
+    try std.testing.expect(shouldAppendStartupUrl(saved.tabs.items, "http://three.test/"));
+}
+
 test "normalizeBrowseUrl rejects blank input" {
     try std.testing.expect((try normalizeBrowseUrl(std.testing.allocator, "   ")) == null);
 }
