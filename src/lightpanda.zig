@@ -608,6 +608,14 @@ test "normalizeBrowseUrl keeps loopback targets on http" {
     try std.testing.expectEqualStrings("http://[::1]:8080/", ipv6.?);
 }
 
+test "applyZoomCommand clamps and resets zoom" {
+    try std.testing.expectEqual(@as(i32, 110), applyZoomCommand(100, .zoom_in));
+    try std.testing.expectEqual(@as(i32, 90), applyZoomCommand(100, .zoom_out));
+    try std.testing.expectEqual(@as(i32, 100), applyZoomCommand(180, .zoom_reset));
+    try std.testing.expectEqual(@as(i32, 300), applyZoomCommand(300, .zoom_in));
+    try std.testing.expectEqual(@as(i32, 30), applyZoomCommand(30, .zoom_out));
+}
+
 test "normalizeBrowseUrl rejects blank input" {
     try std.testing.expect((try normalizeBrowseUrl(std.testing.allocator, "   ")) == null);
 }
