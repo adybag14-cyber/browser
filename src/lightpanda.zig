@@ -609,11 +609,31 @@ test "normalizeBrowseUrl keeps loopback targets on http" {
 }
 
 test "applyZoomCommand clamps and resets zoom" {
-    try std.testing.expectEqual(@as(i32, 110), applyZoomCommand(100, .zoom_in));
-    try std.testing.expectEqual(@as(i32, 90), applyZoomCommand(100, .zoom_out));
-    try std.testing.expectEqual(@as(i32, 100), applyZoomCommand(180, .zoom_reset));
-    try std.testing.expectEqual(@as(i32, 300), applyZoomCommand(300, .zoom_in));
-    try std.testing.expectEqual(@as(i32, 30), applyZoomCommand(30, .zoom_out));
+    try std.testing.expectEqual(@as(i32, 110), applyZoomCommand(100, 100, .zoom_in));
+    try std.testing.expectEqual(@as(i32, 90), applyZoomCommand(100, 100, .zoom_out));
+    try std.testing.expectEqual(@as(i32, 120), applyZoomCommand(180, 120, .zoom_reset));
+    try std.testing.expectEqual(@as(i32, 300), applyZoomCommand(300, 100, .zoom_in));
+    try std.testing.expectEqual(@as(i32, 30), applyZoomCommand(30, 100, .zoom_out));
+}
+
+test "parseBrowseSettings restores session, zoom, and homepage" {
+    var settings = try parseBrowseSettings(
+        std.testing.allocator,
+        "lightpanda-browse-settings-v1\nrestore_previous_session\t0\ndefault_zoom_percent\t130\nhomepage_url\thttp://home.test/\n",
+    );
+    defer settings.deinit(std.testing.allocator);
+
+    try std.testing.expect(!settings.restore_previous_session);
+    try std.testing.expectEqual(@as(i32, 130), settings.default_zoom_percent);
+    try std.testing.expectEqualStrings("http://home.test/", settings.homepage_url);
+}
+
+test "applyDefaultZoomCommand clamps and resets default zoom" {
+    try std.testing.expectEqual(@as(i32, 110), applyDefaultZoomCommand(100, .settings_default_zoom_in));
+    try std.testing.expectEqual(@as(i32, 90), applyDefaultZoomCommand(100, .settings_default_zoom_out));
+    try std.testing.expectEqual(@as(i32, 100), applyDefaultZoomCommand(180, .settings_default_zoom_reset));
+    try std.testing.expectEqual(@as(i32, 300), applyDefaultZoomCommand(300, .settings_default_zoom_in));
+    try std.testing.expectEqual(@as(i32, 30), applyDefaultZoomCommand(30, .settings_default_zoom_out));
 }
 
 test "parseSavedBrowseSession restores active index and zoom" {
