@@ -59,12 +59,14 @@ pub const PendingDownload = struct {
 
 pub const PendingTabOpen = struct {
     url: [:0]u8,
+    target_name: []u8,
     opts: Page.NavigateOpts,
     activate: bool = true,
     zoom_percent: i32 = 100,
 
     pub fn deinit(self: *PendingTabOpen, allocator: Allocator) void {
         allocator.free(self.url);
+        allocator.free(self.target_name);
         if (self.opts.body) |body| {
             allocator.free(body);
         }
