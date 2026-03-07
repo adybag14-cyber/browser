@@ -46,6 +46,17 @@ const ArenaPool = App.ArenaPool;
 
 const Session = @This();
 
+pub const PendingDownload = struct {
+    url: []u8,
+    suggested_filename: []u8,
+
+    pub fn deinit(self: *PendingDownload, allocator: Allocator) void {
+        allocator.free(self.url);
+        allocator.free(self.suggested_filename);
+        self.* = undefined;
+    }
+};
+
 browser: *Browser,
 arena: *lp.Arena,
 history: History,
@@ -192,6 +203,11 @@ pub fn deinit(self: *Session) void {
     self.closeAllPages();
 
     self.cookie_jar.deinit();
+    while (self.pending_downloads.items.len > 0) {
+        self.pending_downloads.items.len -= 1;
+        self.pending_downloads.items[self.pending_downloads.items.len].deinit(self.browser.app.allocator);
+    }
+    self.pending_downloads.deinit(self.browser.app.allocator);
 
     self.browser.env.memoryPressureNotification(.critical);
 

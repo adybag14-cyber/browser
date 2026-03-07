@@ -648,6 +648,27 @@ test "shouldAppendStartupUrl skips restored duplicates" {
     try std.testing.expect(shouldAppendStartupUrl(saved.tabs.items, "http://three.test/"));
 }
 
+test "sanitizeDownloadFileName replaces invalid windows characters" {
+    const sanitized = try sanitizeDownloadFileName(std.testing.allocator, "report<>:\\/|?*.txt");
+    defer std.testing.allocator.free(sanitized);
+
+    try std.testing.expectEqualStrings("report________.txt", sanitized);
+}
+
+test "parseSavedDownloadEntry restores interrupted active downloads" {
+    var entry = try parseSavedDownloadEntry(
+        std.testing.allocator,
+        "1\t12\t20\t1\texample.txt\tC:\\tmp\\example.txt\thttp://example.test/file.txt\tDownloading",
+    );
+    defer entry.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(BrowseDownloadStatus.interrupted, entry.status);
+    try std.testing.expectEqual(@as(usize, 12), entry.bytes_received);
+    try std.testing.expectEqual(@as(usize, 20), entry.total_bytes);
+    try std.testing.expect(entry.has_total_bytes);
+    try std.testing.expectEqualStrings("example.txt", entry.filename);
+}
+
 test "normalizeBrowseUrl rejects blank input" {
     try std.testing.expect((try normalizeBrowseUrl(std.testing.allocator, "   ")) == null);
 }
