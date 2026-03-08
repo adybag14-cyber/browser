@@ -955,6 +955,14 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         parseInternalBrowseRoute("browser://bookmarks/open-new-tab/2").?,
     );
     try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .bookmark_move_up = 2 } },
+        parseInternalBrowseRoute("browser://bookmarks/move-up/2").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .bookmark_move_down = 1 } },
+        parseInternalBrowseRoute("browser://bookmarks/move-down/1").?,
+    );
+    try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .bookmark_remove = 1 } },
         parseInternalBrowseRoute("browser://bookmarks/remove/1").?,
     );
@@ -969,6 +977,10 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .download_source_new_tab = 1 } },
         parseInternalBrowseRoute("browser://downloads/source-new-tab/1").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .download_retry = 1 } },
+        parseInternalBrowseRoute("browser://downloads/retry/1").?,
     );
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .download_remove = 0 } },
@@ -1392,6 +1404,7 @@ test "writeInternalBookmarksPage applies filter state and renders quick links" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/sort/alphabetical") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/filter/127.0.0.1%3A8190") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/open-new-tab/1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/move-up/1") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "http://127.0.0.1:8190/page-two.html") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "http://other.test/hidden.html") == null);
 }
@@ -1436,6 +1449,7 @@ test "writeInternalDownloadsPage applies filter state and renders quick links" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/sort/newest-first") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/filter/failed") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/source-new-tab/0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/retry/0") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "report.txt") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "seed.txt") == null);
 }
@@ -1521,6 +1535,8 @@ test "writeInternalBookmarksPage applies alphabetical sort ordering" {
     const html = buf.written();
     try std.testing.expect(std.mem.indexOf(u8, html, "Browser Bookmarks (2, alphabetical)") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/sort/saved-order") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/move-up/") == null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/move-down/") == null);
     const alpha_index = std.mem.indexOf(u8, html, "http://alpha.test/one") orelse return error.TestUnexpectedResult;
     const zeta_index = std.mem.indexOf(u8, html, "http://zeta.test/two") orelse return error.TestUnexpectedResult;
     try std.testing.expect(alpha_index < zeta_index);
@@ -1563,6 +1579,7 @@ test "writeInternalDownloadsPage applies newest-first sort ordering" {
     const html = buf.written();
     try std.testing.expect(std.mem.indexOf(u8, html, "Browser Downloads (2, newest first)") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/sort/saved-order") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/retry/") == null);
     const newer_index = std.mem.indexOf(u8, html, "newer.txt") orelse return error.TestUnexpectedResult;
     const older_index = std.mem.indexOf(u8, html, "older.txt") orelse return error.TestUnexpectedResult;
     try std.testing.expect(newer_index < older_index);
@@ -1914,11 +1931,14 @@ test "internalBrowseCommandHostPage maps stateful internal actions" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, .history), internalBrowseCommandHostPage(.history_filter_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.bookmark_add_current));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.{ .bookmark_open_new_tab = 0 }));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.{ .bookmark_move_up = 0 }));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.{ .bookmark_move_down = 0 }));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.{ .bookmark_sort_set = .alphabetical }));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.{ .bookmark_filter_set = "one" }));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.bookmark_filter_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.{ .download_source_new_tab = 0 }));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.{ .download_retry = 0 }));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.{ .download_sort_set = .newest_first }));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.{ .download_filter_set = "one" }));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_filter_clear));
@@ -1935,10 +1955,13 @@ test "internalBrowseCommandUsesBrowseLoopHandler includes indexed closed tab reo
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .history_filter_set = "one" }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.history_filter_clear));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .bookmark_open_new_tab = 0 }));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .bookmark_move_up = 0 }));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .bookmark_move_down = 0 }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .bookmark_sort_set = .alphabetical }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .bookmark_filter_set = "one" }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.bookmark_filter_clear));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_source_new_tab = 0 }));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_retry = 0 }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_sort_set = .newest_first }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_filter_set = "one" }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.download_filter_clear));
@@ -1949,8 +1972,11 @@ test "internalBrowseCommandKeepsCurrentPage includes internal open in new tab ac
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .history_open_new_tab = 0 }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .history_sort_set = .newest_first }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .bookmark_open_new_tab = 0 }));
+    try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .bookmark_move_up = 0 }));
+    try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .bookmark_move_down = 0 }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .bookmark_sort_set = .alphabetical }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .download_source_new_tab = 0 }));
+    try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .download_retry = 0 }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .download_sort_set = .newest_first }));
     try std.testing.expect(!internalBrowseCommandKeepsCurrentPage(.{ .download_source = 0 }));
 }
@@ -1979,6 +2005,79 @@ test "removePersistedBookmarkAtIndex rewrites bookmark file" {
     defer deinitOwnedStrings(std.testing.allocator, &bookmarks);
     try std.testing.expectEqual(@as(usize, 1), bookmarks.items.len);
     try std.testing.expectEqualStrings("http://two.test/", bookmarks.items[0]);
+}
+
+test "movePersistedBookmarkUpAtIndex rewrites bookmark file" {
+    const rel_dir = ".zig-cache/tmp/internal-bookmark-move-up-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    savePersistedBookmarks(std.testing.allocator, abs_dir, &.{
+        "http://one.test/",
+        "http://two.test/",
+        "http://three.test/",
+    });
+    try std.testing.expect(movePersistedBookmarkUpAtIndex(std.testing.allocator, abs_dir, 2));
+
+    var bookmarks = loadPersistedBookmarks(std.testing.allocator, abs_dir);
+    defer deinitOwnedStrings(std.testing.allocator, &bookmarks);
+    try std.testing.expectEqualStrings("http://one.test/", bookmarks.items[0]);
+    try std.testing.expectEqualStrings("http://three.test/", bookmarks.items[1]);
+    try std.testing.expectEqualStrings("http://two.test/", bookmarks.items[2]);
+}
+
+test "movePersistedBookmarkDownAtIndex rewrites bookmark file" {
+    const rel_dir = ".zig-cache/tmp/internal-bookmark-move-down-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    savePersistedBookmarks(std.testing.allocator, abs_dir, &.{
+        "http://one.test/",
+        "http://two.test/",
+        "http://three.test/",
+    });
+    try std.testing.expect(movePersistedBookmarkDownAtIndex(std.testing.allocator, abs_dir, 0));
+
+    var bookmarks = loadPersistedBookmarks(std.testing.allocator, abs_dir);
+    defer deinitOwnedStrings(std.testing.allocator, &bookmarks);
+    try std.testing.expectEqualStrings("http://two.test/", bookmarks.items[0]);
+    try std.testing.expectEqualStrings("http://one.test/", bookmarks.items[1]);
+    try std.testing.expectEqualStrings("http://three.test/", bookmarks.items[2]);
+}
+
+test "downloadEntryCanRetry only allows inactive failed and interrupted entries" {
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "failed.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/failed.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://failed.test/"),
+        .status = .failed,
+    });
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "interrupted.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/interrupted.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://interrupted.test/"),
+        .status = .interrupted,
+    });
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "done.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/done.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://done.test/"),
+        .status = .completed,
+    });
+
+    try std.testing.expect(downloadEntryCanRetry(&downloads, 0));
+    try std.testing.expect(downloadEntryCanRetry(&downloads, 1));
+    try std.testing.expect(!downloadEntryCanRetry(&downloads, 2));
 }
 
 test "buildJsStringLiteral escapes control characters" {
