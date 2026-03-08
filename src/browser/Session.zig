@@ -57,6 +57,11 @@ pub const PendingDownload = struct {
     }
 };
 
+pub const RootAttachmentDownloadHandler = struct {
+    ctx: *anyopaque,
+    promote: *const fn (ctx: *anyopaque, page: *Page, transfer: *HttpClient.Transfer, suggested_filename: []const u8) anyerror!void,
+};
+
 pub const PendingBrowserNavigate = struct {
     url: []u8,
 

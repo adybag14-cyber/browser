@@ -700,9 +700,11 @@ test "findBrowseTabIndexByTargetName ignores blank and matches named targets" {
 test "openOrReuseTargetedBrowseTab reuses existing named tab" {
     var tabs: std.ArrayListUnmanaged(*BrowseTab) = .{};
     defer deinitBrowseTabs(testing.test_app.allocator, &tabs);
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
 
     var active_tab_index: usize = 0;
-    const source = try createBrowseTab(testing.test_app, null, 100, true);
+    const source = try createBrowseTab(testing.test_app, null, 100, true, null);
     try appendBrowseTab(testing.test_app.allocator, &tabs, source, &active_tab_index, true);
 
     const first_url = "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html";
@@ -717,6 +719,7 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
         &tabs,
         &active_tab_index,
         true,
+        &downloads,
         100,
         first_url,
         opts,
@@ -736,6 +739,7 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
         &tabs,
         &active_tab_index,
         true,
+        &downloads,
         100,
         second_url,
         opts,
@@ -756,9 +760,11 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
 test "openOrReuseTargetedBrowseTab resets live named script popup tab before reuse" {
     var tabs: std.ArrayListUnmanaged(*BrowseTab) = .{};
     defer deinitBrowseTabs(testing.test_app.allocator, &tabs);
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
 
     var active_tab_index: usize = 0;
-    const source = try createBrowseTab(testing.test_app, null, 100, true);
+    const source = try createBrowseTab(testing.test_app, null, 100, true, null);
     try appendBrowseTab(testing.test_app.allocator, &tabs, source, &active_tab_index, true);
 
     const first_url = "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=script-one";
@@ -773,6 +779,7 @@ test "openOrReuseTargetedBrowseTab resets live named script popup tab before reu
         &tabs,
         &active_tab_index,
         true,
+        &downloads,
         100,
         first_url,
         opts,
@@ -791,6 +798,7 @@ test "openOrReuseTargetedBrowseTab resets live named script popup tab before reu
         &tabs,
         &active_tab_index,
         true,
+        &downloads,
         100,
         second_url,
         opts,
