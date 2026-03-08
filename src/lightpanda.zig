@@ -835,6 +835,7 @@ test "normalizeBrowseUrl rejects search-like input without a scheme" {
 }
 
 test "parseInternalBrowsePage recognizes browser aliases" {
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .start), parseInternalBrowsePage("browser://start"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .history), parseInternalBrowsePage("browser://history"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), parseInternalBrowsePage("browser://bookmarks/"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), parseInternalBrowsePage("browser://downloads?recent=1"));
@@ -843,6 +844,10 @@ test "parseInternalBrowsePage recognizes browser aliases" {
 }
 
 test "parseInternalBrowseRoute recognizes interactive browser page actions" {
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .page = .start },
+        parseInternalBrowseRoute("browser://start").?,
+    );
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .history_traverse = 2 } },
         parseInternalBrowseRoute("browser://history/traverse/2").?,
@@ -871,6 +876,20 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         InternalBrowseRoute{ .command = .settings_set_homepage_to_current },
         parseInternalBrowseRoute("browser://settings/homepage/set-current").?,
     );
+}
+
+test "writeInternalShellNav marks current section and links other shell pages" {
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+
+    try writeInternalShellNav(&buf.writer, .downloads);
+
+    const html = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, html, "<strong>Downloads</strong>") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://start") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://history") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings") != null);
 }
 
 test "removePersistedBookmarkAtIndex rewrites bookmark file" {
