@@ -907,9 +907,33 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         parseInternalBrowseRoute("browser://history/clear-session").?,
     );
     try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .history_filter_clear },
+        parseInternalBrowseRoute("browser://history/filter-clear").?,
+    );
+    const history_filter_route = parseInternalBrowseRoute("browser://history/filter/127.0.0.1").?;
+    switch (history_filter_route) {
+        .command => |command| switch (command) {
+            .history_filter_set => |value| try std.testing.expectEqualStrings("127.0.0.1", value),
+            else => return error.TestUnexpectedResult,
+        },
+        else => return error.TestUnexpectedResult,
+    }
+    try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .bookmark_add_current },
         parseInternalBrowseRoute("browser://bookmarks/add-current").?,
     );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .bookmark_filter_clear },
+        parseInternalBrowseRoute("browser://bookmarks/filter-clear").?,
+    );
+    const bookmark_filter_route = parseInternalBrowseRoute("browser://bookmarks/filter/browser%3A%2F%2F").?;
+    switch (bookmark_filter_route) {
+        .command => |command| switch (command) {
+            .bookmark_filter_set => |value| try std.testing.expectEqualStrings("browser%3A%2F%2F", value),
+            else => return error.TestUnexpectedResult,
+        },
+        else => return error.TestUnexpectedResult,
+    }
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .bookmark_open = 3 } },
         parseInternalBrowseRoute("browser://bookmarks/open/3").?,
@@ -930,6 +954,18 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         InternalBrowseRoute{ .command = .download_clear },
         parseInternalBrowseRoute("browser://downloads/clear").?,
     );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .download_filter_clear },
+        parseInternalBrowseRoute("browser://downloads/filter-clear").?,
+    );
+    const download_filter_route = parseInternalBrowseRoute("browser://downloads/filter/failed").?;
+    switch (download_filter_route) {
+        .command => |command| switch (command) {
+            .download_filter_set => |value| try std.testing.expectEqualStrings("failed", value),
+            else => return error.TestUnexpectedResult,
+        },
+        else => return error.TestUnexpectedResult,
+    }
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .settings_toggle_script_popups },
         parseInternalBrowseRoute("browser://settings/toggle-script-popups").?,
@@ -965,12 +1001,14 @@ test "hashInternalTabsPageState changes when active tab changes" {
     tab_one.session = &session_one;
     tab_one.committed_surface = .{};
     tab_one.error_state = .{};
+    tab_one.internal_filters = .{};
     tab_one.target_name = &.{};
     tab_one.popup_source = .none;
     tab_one.zoom_percent = 100;
     tab_two.session = &session_two;
     tab_two.committed_surface = .{};
     tab_two.error_state = .{};
+    tab_two.internal_filters = .{};
     tab_two.target_name = &.{};
     tab_two.popup_source = .none;
     tab_two.zoom_percent = 125;
@@ -1008,6 +1046,7 @@ test "hashInternalTabsPageState changes when closed tab content changes" {
     tab.session = &session;
     tab.committed_surface = .{};
     tab.error_state = .{};
+    tab.internal_filters = .{};
     tab.target_name = &.{};
     tab.popup_source = .none;
     tab.zoom_percent = 100;
@@ -1048,12 +1087,14 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
     tab_one.session = &session_one;
     tab_one.committed_surface = .{};
     tab_one.error_state = .{};
+    tab_one.internal_filters = .{};
     tab_one.zoom_percent = 100;
     tab_one.target_name = @constCast("report");
     tab_one.popup_source = .script;
     tab_two.session = &session_two;
     tab_two.committed_surface = .{};
     tab_two.error_state = .{};
+    tab_two.internal_filters = .{};
     try tab_two.error_state.replace(std.testing.allocator, .navigation_failed, "http://failed.test/", "http://failed.test/", "CouldntConnect");
     defer tab_two.error_state.deinit(std.testing.allocator);
     tab_two.zoom_percent = 125;
@@ -1169,6 +1210,7 @@ test "writeInternalStartPage includes preview sections and quick actions" {
     tab.session = &session;
     tab.committed_surface = .{ .url = @constCast("http://current.test/") };
     tab.error_state = .{};
+    tab.internal_filters = .{};
     try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://failed.test/", "http://failed.test/", "CouldntConnect");
     defer tab.error_state.deinit(std.testing.allocator);
     tab.zoom_percent = 100;
@@ -1240,6 +1282,134 @@ test "writeInternalStartPage includes preview sections and quick actions" {
     try std.testing.expect(std.mem.indexOf(u8, html, "CouldntConnect") != null);
 }
 
+test "writeInternalHistoryPage applies filter state and renders quick links" {
+    const NavigationHistoryEntry = @import("browser/webapi/navigation/NavigationHistoryEntry.zig");
+    var session: Session = undefined;
+    session.page = null;
+    session.navigation = .{ ._proto = undefined };
+    const first = try std.testing.allocator.create(NavigationHistoryEntry);
+    errdefer std.testing.allocator.destroy(first);
+    first.* = .{
+        ._id = "history-a",
+        ._key = "history-a",
+        ._url = "http://127.0.0.1:8190/page-two.html",
+        ._state = .{ .source = .history, .value = null },
+    };
+    const second = try std.testing.allocator.create(NavigationHistoryEntry);
+    errdefer std.testing.allocator.destroy(second);
+    second.* = .{
+        ._id = "history-b",
+        ._key = "history-b",
+        ._url = "http://other.test/hidden.html",
+        ._state = .{ .source = .history, .value = null },
+    };
+    try session.navigation._entries.append(std.testing.allocator, first);
+    try session.navigation._entries.append(std.testing.allocator, second);
+    defer {
+        session.navigation._entries.deinit(std.testing.allocator);
+        std.testing.allocator.destroy(first);
+        std.testing.allocator.destroy(second);
+    }
+    session.navigation._index = 0;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.error_state = .{};
+    tab.internal_filters = .{};
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+    try replaceInternalBrowseFilter(std.testing.allocator, &tab.internal_filters.history, "127.0.0.1");
+    defer tab.internal_filters.deinit(std.testing.allocator);
+
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+    try writeInternalHistoryPage(std.testing.allocator, &buf.writer, &tab);
+    const html = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, html, "Browser History (1/2)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://history/filter-clear") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://history/filter/127.0.0.1%3A8190") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "http://127.0.0.1:8190/page-two.html") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "http://other.test/hidden.html") == null);
+}
+
+test "writeInternalBookmarksPage applies filter state and renders quick links" {
+    const rel_dir = ".zig-cache/tmp/internal-bookmark-filter-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+    savePersistedBookmarks(std.testing.allocator, abs_dir, &.{ "http://other.test/hidden.html", "http://127.0.0.1:8190/page-two.html" });
+
+    var session: Session = undefined;
+    session.page = null;
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.error_state = .{};
+    tab.internal_filters = .{};
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+    try replaceInternalBrowseFilter(std.testing.allocator, &tab.internal_filters.bookmarks, "127.0.0.1");
+    defer tab.internal_filters.deinit(std.testing.allocator);
+
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+    try writeInternalBookmarksPage(std.testing.allocator, &buf.writer, abs_dir, &tab);
+    const html = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, html, "Browser Bookmarks (1/2)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/filter-clear") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/filter/127.0.0.1%3A8190") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "http://127.0.0.1:8190/page-two.html") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "http://other.test/hidden.html") == null);
+}
+
+test "writeInternalDownloadsPage applies filter state and renders quick links" {
+    var session: Session = undefined;
+    session.page = null;
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.error_state = .{};
+    tab.internal_filters = .{};
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+    try replaceInternalBrowseFilter(std.testing.allocator, &tab.internal_filters.downloads, "failed");
+    defer tab.internal_filters.deinit(std.testing.allocator);
+
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "report.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/report.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://127.0.0.1:8190/report.txt"),
+        .detail = try std.testing.allocator.dupe(u8, "Failed: CouldntConnect"),
+        .status = .failed,
+    });
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "seed.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/seed.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://127.0.0.1:8190/seed.txt"),
+        .detail = try std.testing.allocator.dupe(u8, ""),
+        .status = .completed,
+    });
+
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+    try writeInternalDownloadsPage(std.testing.allocator, &buf.writer, &downloads, &tab);
+    const html = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, html, "Browser Downloads (1/2)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/filter-clear") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/filter/failed") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "report.txt") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "seed.txt") == null);
+}
+
 test "addPersistedBookmark appends unique bookmark once" {
     const rel_dir = ".zig-cache/tmp/internal-bookmark-add-test";
     std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
@@ -1303,6 +1473,8 @@ test "makeInternalBrowsePageDisplayTitle reflects live counts" {
     var tab: BrowseTab = undefined;
     tab.session = &session;
     tab.error_state = .{};
+    tab.internal_filters = .{};
+    defer tab.internal_filters.deinit(std.testing.allocator);
     try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://failed.test/", "http://failed.test/", "CouldntConnect");
     defer tab.error_state.deinit(std.testing.allocator);
     tab.zoom_percent = 100;
@@ -1329,9 +1501,19 @@ test "makeInternalBrowsePageDisplayTitle reflects live counts" {
     defer std.testing.allocator.free(bookmarks_title);
     try std.testing.expectEqualStrings("Browser Bookmarks (2)", bookmarks_title);
 
+    try replaceInternalBrowseFilter(std.testing.allocator, &tab.internal_filters.bookmarks, "two.test");
+    const filtered_bookmarks_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .bookmarks);
+    defer std.testing.allocator.free(filtered_bookmarks_title);
+    try std.testing.expectEqualStrings("Browser Bookmarks (1/2)", filtered_bookmarks_title);
+
     const downloads_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .downloads);
     defer std.testing.allocator.free(downloads_title);
     try std.testing.expectEqualStrings("Browser Downloads (1)", downloads_title);
+
+    try replaceInternalBrowseFilter(std.testing.allocator, &tab.internal_filters.downloads, "failed");
+    const filtered_downloads_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .downloads);
+    defer std.testing.allocator.free(filtered_downloads_title);
+    try std.testing.expectEqualStrings("Browser Downloads (0/1)", filtered_downloads_title);
 
     const error_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .error_page);
     defer std.testing.allocator.free(error_title);
@@ -1354,6 +1536,8 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
     var tab: BrowseTab = undefined;
     tab.session = &session;
     tab.error_state = .{};
+    tab.internal_filters = .{};
+    defer tab.internal_filters.deinit(std.testing.allocator);
     tab.zoom_percent = 100;
     tab.target_name = &.{};
     tab.popup_source = .none;
@@ -1389,6 +1573,11 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
     const second_bookmarks_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .bookmarks);
     try std.testing.expect(first_bookmarks_hash != second_bookmarks_hash);
 
+    const third_bookmarks_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .bookmarks);
+    try replaceInternalBrowseFilter(std.testing.allocator, &tab.internal_filters.bookmarks, "two.test");
+    const fourth_bookmarks_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .bookmarks);
+    try std.testing.expect(third_bookmarks_hash != fourth_bookmarks_hash);
+
     const first_downloads_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .downloads);
     try std.testing.expect(downloads.clearInactiveEntries(abs_dir));
     const second_downloads_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .downloads);
@@ -1404,6 +1593,7 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
 test "writeInternalErrorPage includes retry home and start actions" {
     var tab: BrowseTab = undefined;
     tab.error_state = .{};
+    tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
     try tab.error_state.replace(std.testing.allocator, .invalid_address, "two words", "two words", "Enter a full URL, for example https://example.com");
     var settings = BrowseSettings{};
@@ -1428,6 +1618,7 @@ test "browseTabPersistentUrl prefers retry target for error page" {
     var tab: BrowseTab = undefined;
     tab.session = &session;
     tab.error_state = .{};
+    tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
     try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://retry.test/", "http://retry.test/", "CouldntConnect");
     try std.testing.expectEqualStrings("http://retry.test/", browseTabPersistentUrl(&tab));
@@ -1444,6 +1635,7 @@ test "captureBrowseTabRuntimeError preserves error state on internal pages" {
     var tab: BrowseTab = undefined;
     tab.session = &session;
     tab.error_state = .{};
+    tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
     try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://retry.test/", "http://retry.test/", "CouldntConnect");
 
@@ -1462,6 +1654,7 @@ test "captureBrowseTabRuntimeError clears error state on successful external pag
     var tab: BrowseTab = undefined;
     tab.session = &session;
     tab.error_state = .{};
+    tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
     try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://retry.test/", "http://retry.test/", "CouldntConnect");
 
@@ -1471,8 +1664,14 @@ test "captureBrowseTabRuntimeError clears error state on successful external pag
 
 test "internalBrowseCommandHostPage maps stateful internal actions" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, .history), internalBrowseCommandHostPage(.history_clear_session));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .history), internalBrowseCommandHostPage(.{ .history_filter_set = "one" }));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .history), internalBrowseCommandHostPage(.history_filter_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.bookmark_add_current));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.{ .bookmark_filter_set = "one" }));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.bookmark_filter_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_clear));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.{ .download_filter_set = "one" }));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_filter_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_set_homepage_to_current));
     try std.testing.expectEqual(@as(?InternalBrowsePage, null), internalBrowseCommandHostPage(.reload));
 }
@@ -1481,6 +1680,12 @@ test "internalBrowseCommandUsesBrowseLoopHandler includes indexed closed tab reo
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.tab_new));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.tab_reopen_closed));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .tab_reopen_closed_index = 1 }));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .history_filter_set = "one" }));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.history_filter_clear));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .bookmark_filter_set = "one" }));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.bookmark_filter_clear));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_filter_set = "one" }));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.download_filter_clear));
     try std.testing.expect(!internalBrowseCommandUsesBrowseLoopHandler(.download_clear));
 }
 
