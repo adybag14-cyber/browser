@@ -836,6 +836,7 @@ test "normalizeBrowseUrl rejects search-like input without a scheme" {
 
 test "parseInternalBrowsePage recognizes browser aliases" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, .start), parseInternalBrowsePage("browser://start"));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .tabs), parseInternalBrowsePage("browser://tabs"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .history), parseInternalBrowsePage("browser://history"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), parseInternalBrowsePage("browser://bookmarks/"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), parseInternalBrowsePage("browser://downloads?recent=1"));
@@ -847,6 +848,34 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .page = .start },
         parseInternalBrowseRoute("browser://start").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .page = .tabs },
+        parseInternalBrowseRoute("browser://tabs").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .tab_new },
+        parseInternalBrowseRoute("browser://tabs/new").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .tab_reopen_closed },
+        parseInternalBrowseRoute("browser://tabs/reopen-closed").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .tab_activate = 2 } },
+        parseInternalBrowseRoute("browser://tabs/activate/2").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .tab_duplicate_index = 1 } },
+        parseInternalBrowseRoute("browser://tabs/duplicate/1").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .tab_reload_index = 0 } },
+        parseInternalBrowseRoute("browser://tabs/reload/0").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .tab_close = 3 } },
+        parseInternalBrowseRoute("browser://tabs/close/3").?,
     );
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .history_traverse = 2 } },
@@ -887,9 +916,101 @@ test "writeInternalShellNav marks current section and links other shell pages" {
     const html = buf.written();
     try std.testing.expect(std.mem.indexOf(u8, html, "<strong>Downloads</strong>") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://start") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://history") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings") != null);
+}
+
+test "hashInternalTabsPageState changes when active tab changes" {
+    var session_one: Session = undefined;
+    session_one.page = null;
+    var session_two: Session = undefined;
+    session_two.page = null;
+    var tab_one: BrowseTab = undefined;
+    var tab_two: BrowseTab = undefined;
+    tab_one.session = &session_one;
+    tab_one.target_name = &.{};
+    tab_one.popup_source = .none;
+    tab_one.zoom_percent = 100;
+    tab_two.session = &session_two;
+    tab_two.target_name = &.{};
+    tab_two.popup_source = .none;
+    tab_two.zoom_percent = 125;
+
+    var tab_items = [_]*BrowseTab{ &tab_one, &tab_two };
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_item = [_]ClosedBrowseTab{.{
+        .url = @constCast("about:blank"),
+        .zoom_percent = 100,
+    }};
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){
+        .items = closed_item[0..],
+        .capacity = closed_item.len,
+    };
+    var active_index: usize = 0;
+    var shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+
+    const first_hash = hashInternalTabsPageState(&shell);
+    active_index = 1;
+    const second_hash = hashInternalTabsPageState(&shell);
+    try std.testing.expect(first_hash != second_hash);
+}
+
+test "writeInternalTabsPage includes indexed actions and popup metadata" {
+    var session_one: Session = undefined;
+    session_one.page = null;
+    var session_two: Session = undefined;
+    session_two.page = null;
+    var tab_one: BrowseTab = undefined;
+    var tab_two: BrowseTab = undefined;
+    tab_one.session = &session_one;
+    tab_one.zoom_percent = 100;
+    tab_one.target_name = @constCast("report");
+    tab_one.popup_source = .script;
+    tab_two.session = &session_two;
+    tab_two.zoom_percent = 125;
+    tab_two.target_name = &.{};
+    tab_two.popup_source = .none;
+
+    var tab_items = [_]*BrowseTab{ &tab_one, &tab_two };
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_item = [_]ClosedBrowseTab{.{
+        .url = @constCast("http://closed.test/"),
+        .zoom_percent = 100,
+    }};
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){
+        .items = closed_item[0..],
+        .capacity = closed_item.len,
+    };
+    var active_index: usize = 0;
+    const shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+    try writeInternalTabsPage(std.testing.allocator, &buf.writer, &shell);
+
+    const html = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, html, "Browser Tabs (2)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/new") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/duplicate/1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "target=report") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "popup=script") != null);
 }
 
 test "removePersistedBookmarkAtIndex rewrites bookmark file" {
