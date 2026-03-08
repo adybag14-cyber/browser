@@ -1385,3 +1385,43 @@ test "WebApi: Window scroll" {
 test "WebApi: Window.onerror" {
     try testing.htmlRunner("event/report_error.html", .{});
 }
+
+test "Window open _blank respects blocked script popup policy" {
+    var page = try testing.pageTest("page/popup_target.html");
+    defer page._session.removePage();
+    page._session.allow_script_popups = false;
+
+    const action = try openInner(
+        page.window,
+        "/src/browser/tests/page/popup-target-result.html?from=blocked-blank-window-open",
+        "_blank",
+        page,
+    );
+
+    try std.testing.expectEqual(WindowOpenAction.blocked, action);
+    try std.testing.expect(page._queued_navigation == null);
+
+    var pending = page._session.takePendingTabOpens();
+    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
+    try testing.expectEqual(@as(usize, 0), pending.items.len);
+}
+
+test "Window open named target respects blocked script popup policy" {
+    var page = try testing.pageTest("page/popup_target.html");
+    defer page._session.removePage();
+    page._session.allow_script_popups = false;
+
+    const action = try openInner(
+        page.window,
+        "/src/browser/tests/page/popup-target-result.html?from=blocked-named-window-open",
+        "report",
+        page,
+    );
+
+    try std.testing.expectEqual(WindowOpenAction.blocked, action);
+    try std.testing.expect(page._queued_navigation == null);
+
+    var pending = page._session.takePendingTabOpens();
+    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
+    try testing.expectEqual(@as(usize, 0), pending.items.len);
+}

@@ -616,14 +616,15 @@ test "applyZoomCommand clamps and resets zoom" {
     try std.testing.expectEqual(@as(i32, 30), applyZoomCommand(30, 100, .zoom_out));
 }
 
-test "parseBrowseSettings restores session, zoom, and homepage" {
+test "parseBrowseSettings restores session, popup policy, zoom, and homepage" {
     var settings = try parseBrowseSettings(
         std.testing.allocator,
-        "lightpanda-browse-settings-v1\nrestore_previous_session\t0\ndefault_zoom_percent\t130\nhomepage_url\thttp://home.test/\n",
+        "lightpanda-browse-settings-v1\nrestore_previous_session\t0\nallow_script_popups\t0\ndefault_zoom_percent\t130\nhomepage_url\thttp://home.test/\n",
     );
     defer settings.deinit(std.testing.allocator);
 
     try std.testing.expect(!settings.restore_previous_session);
+    try std.testing.expect(!settings.allow_script_popups);
     try std.testing.expectEqual(@as(i32, 130), settings.default_zoom_percent);
     try std.testing.expectEqualStrings("http://home.test/", settings.homepage_url);
 }
@@ -701,7 +702,7 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
     defer deinitBrowseTabs(testing.test_app.allocator, &tabs);
 
     var active_tab_index: usize = 0;
-    const source = try createBrowseTab(testing.test_app, null, 100);
+    const source = try createBrowseTab(testing.test_app, null, 100, true);
     try appendBrowseTab(testing.test_app.allocator, &tabs, source, &active_tab_index, true);
 
     const first_url = "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html";
@@ -715,6 +716,7 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
         testing.test_app,
         &tabs,
         &active_tab_index,
+        true,
         100,
         first_url,
         opts,
@@ -733,6 +735,7 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
         testing.test_app,
         &tabs,
         &active_tab_index,
+        true,
         100,
         second_url,
         opts,
@@ -755,7 +758,7 @@ test "openOrReuseTargetedBrowseTab resets live named script popup tab before reu
     defer deinitBrowseTabs(testing.test_app.allocator, &tabs);
 
     var active_tab_index: usize = 0;
-    const source = try createBrowseTab(testing.test_app, null, 100);
+    const source = try createBrowseTab(testing.test_app, null, 100, true);
     try appendBrowseTab(testing.test_app.allocator, &tabs, source, &active_tab_index, true);
 
     const first_url = "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=script-one";
@@ -769,6 +772,7 @@ test "openOrReuseTargetedBrowseTab resets live named script popup tab before reu
         testing.test_app,
         &tabs,
         &active_tab_index,
+        true,
         100,
         first_url,
         opts,
@@ -786,6 +790,7 @@ test "openOrReuseTargetedBrowseTab resets live named script popup tab before reu
         testing.test_app,
         &tabs,
         &active_tab_index,
+        true,
         100,
         second_url,
         opts,
