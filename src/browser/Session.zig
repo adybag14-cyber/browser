@@ -57,6 +57,15 @@ pub const PendingDownload = struct {
     }
 };
 
+pub const PendingBrowserNavigate = struct {
+    url: []u8,
+
+    pub fn deinit(self: *PendingBrowserNavigate, allocator: Allocator) void {
+        allocator.free(self.url);
+        self.* = undefined;
+    }
+};
+
 pub const PendingTabOpen = struct {
     url: [:0]u8,
     target_name: []u8,
@@ -224,6 +233,12 @@ pub fn deinit(self: *Session) void {
     self.closeAllPages();
 
     self.cookie_jar.deinit();
+    while (self.pending_browser_navigations.items.len > 0) {
+        var pending_browser_navigation = self.pending_browser_navigations.items[self.pending_browser_navigations.items.len - 1];
+        self.pending_browser_navigations.items.len -= 1;
+        pending_browser_navigation.deinit(self.browser.app.allocator);
+    }
+    self.pending_browser_navigations.deinit(self.browser.app.allocator);
     while (self.pending_downloads.items.len > 0) {
         var pending = self.pending_downloads.items[self.pending_downloads.items.len - 1];
         self.pending_downloads.items.len -= 1;

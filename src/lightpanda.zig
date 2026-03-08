@@ -842,6 +842,63 @@ test "parseInternalBrowsePage recognizes browser aliases" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, null), parseInternalBrowsePage("https://example.com"));
 }
 
+test "parseInternalBrowseRoute recognizes interactive browser page actions" {
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .history_traverse = 2 } },
+        parseInternalBrowseRoute("browser://history/traverse/2").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .bookmark_open = 3 } },
+        parseInternalBrowseRoute("browser://bookmarks/open/3").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .bookmark_remove = 1 } },
+        parseInternalBrowseRoute("browser://bookmarks/remove/1").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .download_source = 4 } },
+        parseInternalBrowseRoute("browser://downloads/source/4").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .download_remove = 0 } },
+        parseInternalBrowseRoute("browser://downloads/remove/0").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .settings_toggle_script_popups },
+        parseInternalBrowseRoute("browser://settings/toggle-script-popups").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .settings_set_homepage_to_current },
+        parseInternalBrowseRoute("browser://settings/homepage/set-current").?,
+    );
+}
+
+test "removePersistedBookmarkAtIndex rewrites bookmark file" {
+    const rel_dir = ".zig-cache/tmp/internal-bookmark-remove-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    var dir = try std.fs.openDirAbsolute(abs_dir, .{});
+    defer dir.close();
+    dir.writeFile(.{ .sub_path = BROWSE_BOOKMARKS_FILE, .data = 
+        \\http://one.test/
+        \\http://two.test/
+    }) catch |err| switch (err) {
+        else => return err,
+    };
+
+    try std.testing.expect(removePersistedBookmarkAtIndex(std.testing.allocator, abs_dir, 0));
+
+    var bookmarks = loadPersistedBookmarks(std.testing.allocator, abs_dir);
+    defer deinitOwnedStrings(std.testing.allocator, &bookmarks);
+    try std.testing.expectEqual(@as(usize, 1), bookmarks.items.len);
+    try std.testing.expectEqualStrings("http://two.test/", bookmarks.items[0]);
+}
+
 test "buildJsStringLiteral escapes control characters" {
     const literal = try buildJsStringLiteral(std.testing.allocator, "<title>'Browser'\\Settings\n</title>");
     defer std.testing.allocator.free(literal);
