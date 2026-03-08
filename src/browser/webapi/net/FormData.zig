@@ -693,6 +693,21 @@ pub fn toKeyValueList(self: *const FormData, arena: Allocator) !KeyValueList {
     return list;
 }
 
+pub fn contentTypeHeader(self: *const FormData, encoding_: ?[]const u8) ![:0]const u8 {
+    const encoding = encoding_ orelse "application/x-www-form-urlencoded";
+    if (std.ascii.eqlIgnoreCase(encoding, "application/x-www-form-urlencoded")) {
+        return "Content-Type: application/x-www-form-urlencoded";
+    }
+    if (isMultipartFormEncoding(encoding)) {
+        const header = try std.fmt.allocPrint(self._arena, "Content-Type: multipart/form-data; boundary={s}", .{self._multipart_boundary});
+        return try self._arena.dupeZ(u8, header);
+    }
+    log.warn(.not_implemented, "FormData.encoding", .{
+        .encoding = encoding,
+    });
+    return "Content-Type: application/x-www-form-urlencoded";
+}
+
 pub const Iterator = struct {
     index: u32 = 0,
     fd: *FormData,
@@ -766,6 +781,16 @@ fn collectForm(arena: Allocator, form_: ?*Form, submitter_: ?*Element, frame: *F
         const value = blk: {
             if (element.is(Form.Input)) |input| {
                 const input_type = input._input_type;
+                if (input_type == .file) {
+                    const selected = input.getSelectedFile() orelse continue;
+                    try file_entries.append(arena, .{
+                        .name = try arena.dupe(u8, name),
+                        .path = try arena.dupe(u8, selected.path),
+                        .filename = try arena.dupe(u8, selected.name),
+                        .content_type = try arena.dupe(u8, selected.content_type),
+                    });
+                    continue;
+                }
                 if (input_type == .checkbox or input_type == .radio) {
                     if (!input.getChecked()) {
                         continue;
