@@ -833,3 +833,22 @@ test "normalizeBrowseUrl rejects blank input" {
 test "normalizeBrowseUrl rejects search-like input without a scheme" {
     try std.testing.expectError(error.InvalidUrl, normalizeBrowseUrl(std.testing.allocator, "two words"));
 }
+
+test "parseInternalBrowsePage recognizes browser aliases" {
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .history), parseInternalBrowsePage("browser://history"));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), parseInternalBrowsePage("browser://bookmarks/"));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), parseInternalBrowsePage("browser://downloads?recent=1"));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), parseInternalBrowsePage("browser://settings#shell"));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, null), parseInternalBrowsePage("https://example.com"));
+}
+
+test "buildJsStringLiteral escapes control characters" {
+    const literal = try buildJsStringLiteral(std.testing.allocator, "<title>'Browser'\\Settings\n</title>");
+    defer std.testing.allocator.free(literal);
+
+    try std.testing.expect(std.mem.startsWith(u8, literal, "'"));
+    try std.testing.expect(std.mem.endsWith(u8, literal, "'"));
+    try std.testing.expect(std.mem.indexOf(u8, literal, "\\'Browser\\'") != null);
+    try std.testing.expect(std.mem.indexOf(u8, literal, "\\\\Settings") != null);
+    try std.testing.expect(std.mem.indexOf(u8, literal, "\\n") != null);
+}
