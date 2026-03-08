@@ -862,6 +862,10 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         parseInternalBrowseRoute("browser://tabs/reopen-closed").?,
     );
     try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .{ .tab_reopen_closed_index = 1 } },
+        parseInternalBrowseRoute("browser://tabs/reopen-closed/1").?,
+    );
+    try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .tab_activate = 2 } },
         parseInternalBrowseRoute("browser://tabs/activate/2").?,
     );
@@ -978,6 +982,42 @@ test "hashInternalTabsPageState changes when active tab changes" {
     try std.testing.expect(first_hash != second_hash);
 }
 
+test "hashInternalTabsPageState changes when closed tab content changes" {
+    var session: Session = undefined;
+    session.page = null;
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+
+    var tab_items = [_]*BrowseTab{&tab};
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_items = [_]ClosedBrowseTab{
+        .{ .url = @constCast("http://closed-one.test/"), .zoom_percent = 100 },
+        .{ .url = @constCast("http://closed-two.test/"), .zoom_percent = 110 },
+    };
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){
+        .items = closed_items[0..],
+        .capacity = closed_items.len,
+    };
+    var active_index: usize = 0;
+    const shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+
+    const first_hash = hashInternalTabsPageState(&shell);
+    closed_tabs.items[1].url = @constCast("http://closed-three.test/");
+    const second_hash = hashInternalTabsPageState(&shell);
+    try std.testing.expect(first_hash != second_hash);
+}
+
 test "writeInternalTabsPage includes indexed actions and popup metadata" {
     var session_one: Session = undefined;
     session_one.page = null;
@@ -1001,10 +1041,16 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
         .items = tab_items[0..],
         .capacity = tab_items.len,
     };
-    var closed_item = [_]ClosedBrowseTab{.{
-        .url = @constCast("http://closed.test/"),
-        .zoom_percent = 100,
-    }};
+    var closed_item = [_]ClosedBrowseTab{
+        .{
+            .url = @constCast("http://closed-a.test/"),
+            .zoom_percent = 100,
+        },
+        .{
+            .url = @constCast("http://closed-b.test/"),
+            .zoom_percent = 125,
+        },
+    };
     var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){
         .items = closed_item[0..],
         .capacity = closed_item.len,
@@ -1027,8 +1073,138 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/new") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/duplicate/1") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed/0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed/1") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "target=report") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "popup=script") != null);
+}
+
+test "makeClosedBrowseTabDisplayEntries returns newest first ui ordering" {
+    const closed_tabs = [_]ClosedBrowseTab{
+        .{ .url = @constCast("http://first.test/"), .zoom_percent = 100 },
+        .{ .url = @constCast("http://second.test/"), .zoom_percent = 110 },
+        .{ .url = @constCast("http://third.test/"), .zoom_percent = 120 },
+    };
+
+    var entries = try makeClosedBrowseTabDisplayEntries(std.testing.allocator, closed_tabs[0..], 3);
+    defer entries.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(@as(usize, 3), entries.items.len);
+    try std.testing.expectEqual(@as(usize, 0), entries.items[0].ui_index);
+    try std.testing.expectEqualStrings("http://third.test/", entries.items[0].url);
+    try std.testing.expectEqual(@as(i32, 120), entries.items[0].zoom_percent);
+    try std.testing.expectEqual(@as(usize, 1), entries.items[1].ui_index);
+    try std.testing.expectEqualStrings("http://second.test/", entries.items[1].url);
+    try std.testing.expectEqual(@as(usize, 2), entries.items[2].ui_index);
+    try std.testing.expectEqualStrings("http://first.test/", entries.items[2].url);
+}
+
+test "writeInternalStartPage includes preview sections and quick actions" {
+    const NavigationHistoryEntry = @import("browser/webapi/navigation/NavigationHistoryEntry.zig");
+    const rel_dir = ".zig-cache/tmp/internal-start-page-preview-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+    savePersistedBookmarks(std.testing.allocator, abs_dir, &.{ "http://bookmark-one.test/", "http://bookmark-two.test/" });
+
+    var session: Session = undefined;
+    session.page = null;
+    session.navigation = .{ ._proto = undefined };
+    const history_one = try std.testing.allocator.create(NavigationHistoryEntry);
+    errdefer std.testing.allocator.destroy(history_one);
+    history_one.* = .{
+        ._id = "history-one",
+        ._key = "history-one",
+        ._url = "http://history-one.test/",
+        ._state = .{ .source = .history, .value = null },
+    };
+    const history_two = try std.testing.allocator.create(NavigationHistoryEntry);
+    errdefer std.testing.allocator.destroy(history_two);
+    history_two.* = .{
+        ._id = "history-two",
+        ._key = "history-two",
+        ._url = "http://history-two.test/",
+        ._state = .{ .source = .history, .value = null },
+    };
+    try session.navigation._entries.append(std.testing.allocator, history_one);
+    try session.navigation._entries.append(std.testing.allocator, history_two);
+    defer {
+        session.navigation._entries.deinit(std.testing.allocator);
+        std.testing.allocator.destroy(history_one);
+        std.testing.allocator.destroy(history_two);
+    }
+    session.navigation._index = 1;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{ .url = @constCast("http://current.test/") };
+    tab.zoom_percent = 100;
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+
+    var tab_items = [_]*BrowseTab{&tab};
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_items = [_]ClosedBrowseTab{
+        .{ .url = @constCast("http://closed-one.test/"), .zoom_percent = 100 },
+        .{ .url = @constCast("http://closed-two.test/"), .zoom_percent = 125 },
+    };
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){
+        .items = closed_items[0..],
+        .capacity = closed_items.len,
+    };
+    var active_index: usize = 0;
+    const shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+    var settings = BrowseSettings{
+        .restore_previous_session = true,
+        .allow_script_popups = false,
+        .default_zoom_percent = 120,
+        .homepage_url = try std.testing.allocator.dupe(u8, "http://home.test/"),
+    };
+    defer settings.deinit(std.testing.allocator);
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "seed.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/seed.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://download.test/seed.txt"),
+        .detail = try std.testing.allocator.dupe(u8, ""),
+        .status = .completed,
+    });
+
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+    try writeInternalStartPage(std.testing.allocator, &buf.writer, abs_dir, &shell, 0, &settings, &downloads);
+    const html = buf.written();
+
+    try std.testing.expect(std.mem.indexOf(u8, html, "Quick Actions") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/new") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/add-current") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/clear") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Open Tabs") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/activate/0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Recently Closed") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed/0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Recent History") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://history/traverse/1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Recent Bookmarks") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/open/1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Recent Downloads") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/source/0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Settings Snapshot") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/toggle-script-popups") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/default-zoom/reset") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/homepage/clear") != null);
 }
 
 test "addPersistedBookmark appends unique bookmark once" {
@@ -1184,6 +1360,13 @@ test "internalBrowseCommandHostPage maps stateful internal actions" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_set_homepage_to_current));
     try std.testing.expectEqual(@as(?InternalBrowsePage, null), internalBrowseCommandHostPage(.reload));
+}
+
+test "internalBrowseCommandUsesBrowseLoopHandler includes indexed closed tab reopen" {
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.tab_new));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.tab_reopen_closed));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .tab_reopen_closed_index = 1 }));
+    try std.testing.expect(!internalBrowseCommandUsesBrowseLoopHandler(.download_clear));
 }
 
 test "removePersistedBookmarkAtIndex rewrites bookmark file" {
