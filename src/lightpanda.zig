@@ -882,6 +882,14 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         parseInternalBrowseRoute("browser://history/traverse/2").?,
     );
     try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .history_clear_session },
+        parseInternalBrowseRoute("browser://history/clear-session").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .bookmark_add_current },
+        parseInternalBrowseRoute("browser://bookmarks/add-current").?,
+    );
+    try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .bookmark_open = 3 } },
         parseInternalBrowseRoute("browser://bookmarks/open/3").?,
     );
@@ -896,6 +904,10 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .{ .download_remove = 0 } },
         parseInternalBrowseRoute("browser://downloads/remove/0").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .download_clear },
+        parseInternalBrowseRoute("browser://downloads/clear").?,
     );
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .settings_toggle_script_popups },
@@ -930,10 +942,12 @@ test "hashInternalTabsPageState changes when active tab changes" {
     var tab_one: BrowseTab = undefined;
     var tab_two: BrowseTab = undefined;
     tab_one.session = &session_one;
+    tab_one.committed_surface = .{};
     tab_one.target_name = &.{};
     tab_one.popup_source = .none;
     tab_one.zoom_percent = 100;
     tab_two.session = &session_two;
+    tab_two.committed_surface = .{};
     tab_two.target_name = &.{};
     tab_two.popup_source = .none;
     tab_two.zoom_percent = 125;
@@ -972,10 +986,12 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
     var tab_one: BrowseTab = undefined;
     var tab_two: BrowseTab = undefined;
     tab_one.session = &session_one;
+    tab_one.committed_surface = .{};
     tab_one.zoom_percent = 100;
     tab_one.target_name = @constCast("report");
     tab_one.popup_source = .script;
     tab_two.session = &session_two;
+    tab_two.committed_surface = .{};
     tab_two.zoom_percent = 125;
     tab_two.target_name = &.{};
     tab_two.popup_source = .none;
@@ -1002,7 +1018,9 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
 
     var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
     defer buf.deinit();
-    try writeInternalTabsPage(std.testing.allocator, &buf.writer, &shell);
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+    try writeInternalTabsPage(std.testing.allocator, &buf.writer, null, &shell, &downloads);
 
     const html = buf.written();
     try std.testing.expect(std.mem.indexOf(u8, html, "Browser Tabs (2)") != null);
@@ -1011,6 +1029,161 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "target=report") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "popup=script") != null);
+}
+
+test "addPersistedBookmark appends unique bookmark once" {
+    const rel_dir = ".zig-cache/tmp/internal-bookmark-add-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    try std.testing.expect(addPersistedBookmark(std.testing.allocator, abs_dir, "http://one.test/"));
+    try std.testing.expect(!addPersistedBookmark(std.testing.allocator, abs_dir, "http://one.test/"));
+
+    var bookmarks = loadPersistedBookmarks(std.testing.allocator, abs_dir);
+    defer deinitOwnedStrings(std.testing.allocator, &bookmarks);
+    try std.testing.expectEqual(@as(usize, 1), bookmarks.items.len);
+    try std.testing.expectEqualStrings("http://one.test/", bookmarks.items[0]);
+}
+
+test "clearInactiveEntries removes completed download files and metadata" {
+    const rel_dir = ".zig-cache/tmp/internal-download-clear-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+    const file_path = try std.fs.path.join(std.testing.allocator, &.{ abs_dir, "gone.txt" });
+    defer std.testing.allocator.free(file_path);
+    var dir = try std.fs.openDirAbsolute(abs_dir, .{});
+    defer dir.close();
+    try dir.writeFile(.{ .sub_path = "gone.txt", .data = "gone" });
+
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "gone.txt"),
+        .path = try std.testing.allocator.dupe(u8, file_path),
+        .url = try std.testing.allocator.dupe(u8, "http://one.test/gone.txt"),
+        .detail = try std.testing.allocator.dupe(u8, ""),
+        .bytes_received = 4,
+        .status = .completed,
+    });
+
+    try std.testing.expect(downloads.clearInactiveEntries(abs_dir));
+    try std.testing.expectEqual(@as(usize, 0), downloads.entries.items.len);
+    try std.testing.expectError(error.FileNotFound, std.fs.accessAbsolute(file_path, .{}));
+}
+
+test "makeInternalBrowsePageDisplayTitle reflects live counts" {
+    const rel_dir = ".zig-cache/tmp/internal-title-count-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+    savePersistedBookmarks(std.testing.allocator, abs_dir, &.{ "http://one.test/", "http://two.test/" });
+
+    var session: Session = undefined;
+    session.page = null;
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.zoom_percent = 100;
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+
+    const tabs = [_]*BrowseTab{&tab};
+
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "file.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/file.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://one.test/file.txt"),
+        .detail = try std.testing.allocator.dupe(u8, ""),
+        .status = .completed,
+    });
+
+    const tabs_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .tabs);
+    defer std.testing.allocator.free(tabs_title);
+    try std.testing.expectEqualStrings("Browser Tabs (1)", tabs_title);
+
+    const bookmarks_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .bookmarks);
+    defer std.testing.allocator.free(bookmarks_title);
+    try std.testing.expectEqualStrings("Browser Bookmarks (2)", bookmarks_title);
+
+    const downloads_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .downloads);
+    defer std.testing.allocator.free(downloads_title);
+    try std.testing.expectEqualStrings("Browser Downloads (1)", downloads_title);
+}
+
+test "hashInternalBrowsePageState changes after bookmark and download mutations" {
+    const rel_dir = ".zig-cache/tmp/internal-page-hash-mutation-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    savePersistedBookmarks(std.testing.allocator, abs_dir, &.{"http://one.test/"});
+
+    var session: Session = undefined;
+    session.page = null;
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.zoom_percent = 100;
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+
+    var tab_items = [_]*BrowseTab{&tab};
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    defer closed_tabs.deinit(std.testing.allocator);
+    var active_index: usize = 0;
+    const shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+    var settings = BrowseSettings{};
+    defer settings.deinit(std.testing.allocator);
+
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+    try downloads.entries.append(std.testing.allocator, .{
+        .filename = try std.testing.allocator.dupe(u8, "file.txt"),
+        .path = try std.testing.allocator.dupe(u8, "C:/tmp/file.txt"),
+        .url = try std.testing.allocator.dupe(u8, "http://one.test/file.txt"),
+        .detail = try std.testing.allocator.dupe(u8, ""),
+        .status = .completed,
+    });
+
+    const first_bookmarks_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .bookmarks);
+    try std.testing.expect(addPersistedBookmark(std.testing.allocator, abs_dir, "http://two.test/"));
+    const second_bookmarks_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .bookmarks);
+    try std.testing.expect(first_bookmarks_hash != second_bookmarks_hash);
+
+    const first_downloads_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .downloads);
+    try std.testing.expect(downloads.clearInactiveEntries(abs_dir));
+    const second_downloads_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .downloads);
+    try std.testing.expect(first_downloads_hash != second_downloads_hash);
+}
+
+test "internalBrowseCommandHostPage maps stateful internal actions" {
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .history), internalBrowseCommandHostPage(.history_clear_session));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), internalBrowseCommandHostPage(.bookmark_add_current));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_clear));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_set_homepage_to_current));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, null), internalBrowseCommandHostPage(.reload));
 }
 
 test "removePersistedBookmarkAtIndex rewrites bookmark file" {
