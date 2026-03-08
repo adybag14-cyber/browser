@@ -720,10 +720,12 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
         opts,
         "report",
         true,
+        .script,
     );
     try std.testing.expectEqual(@as(usize, 2), tabs.items.len);
     try std.testing.expectEqual(@as(usize, 1), active_tab_index);
     try std.testing.expectEqualStrings("report", tabs.items[1].target_name);
+    try std.testing.expectEqual(PopupSource.script, tabs.items[1].popup_source);
     _ = tabs.items[1].session.wait(2000);
 
     active_tab_index = 0;
@@ -736,14 +738,66 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
         opts,
         "report",
         true,
+        .form,
     );
     try std.testing.expectEqual(@as(usize, 2), tabs.items.len);
     try std.testing.expectEqual(@as(usize, 1), active_tab_index);
     try std.testing.expectEqualStrings("report", tabs.items[1].target_name);
+    try std.testing.expectEqual(PopupSource.form, tabs.items[1].popup_source);
     _ = tabs.items[1].session.wait(2000);
 
     const target_page = tabs.items[1].session.currentPage() orelse return error.TestPageMissing;
     try std.testing.expectEqualStrings(second_url, target_page.url);
+}
+
+test "openOrReuseTargetedBrowseTab resets live named script popup tab before reuse" {
+    var tabs: std.ArrayListUnmanaged(*BrowseTab) = .{};
+    defer deinitBrowseTabs(testing.test_app.allocator, &tabs);
+
+    var active_tab_index: usize = 0;
+    const source = try createBrowseTab(testing.test_app, null, 100);
+    try appendBrowseTab(testing.test_app.allocator, &tabs, source, &active_tab_index, true);
+
+    const first_url = "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=script-one";
+    const second_url = "http://127.0.0.1:9582/src/browser/tests/page/popup-target-post.html?from=script-two";
+    const opts: Page.NavigateOpts = .{
+        .reason = .address_bar,
+        .kind = .{ .push = null },
+    };
+
+    try openOrReuseTargetedBrowseTab(
+        testing.test_app,
+        &tabs,
+        &active_tab_index,
+        100,
+        first_url,
+        opts,
+        "report",
+        true,
+        .script,
+    );
+    _ = tabs.items[1].session.wait(2000);
+
+    const first_page = tabs.items[1].session.currentPage() orelse return error.TestPageMissing;
+    try std.testing.expectEqualStrings(first_url, first_page.url);
+
+    active_tab_index = 0;
+    try openOrReuseTargetedBrowseTab(
+        testing.test_app,
+        &tabs,
+        &active_tab_index,
+        100,
+        second_url,
+        opts,
+        "report",
+        true,
+        .script,
+    );
+    _ = tabs.items[1].session.wait(2000);
+
+    const second_page = tabs.items[1].session.currentPage() orelse return error.TestPageMissing;
+    try std.testing.expect(first_page != second_page);
+    try std.testing.expectEqualStrings(second_url, second_page.url);
 }
 
 test "sanitizeDownloadFileName replaces invalid windows characters" {

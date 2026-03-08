@@ -1205,6 +1205,7 @@ pub const JsApi = struct {
     pub const onunhandledrejection = bridge.accessor(Window.getOnUnhandledRejection, Window.setOnUnhandledRejection, .{});
     pub const event = bridge.accessor(Window.getEvent, Window.setEvent, .{ .null_as_undefined = true });
     pub const fetch = bridge.function(Window.fetch, .{});
+    pub const open = bridge.function(Window.open, .{});
     pub const queueMicrotask = bridge.function(Window.queueMicrotask, .{});
     pub const setTimeout = bridge.function(Window.setTimeout, .{});
     pub const clearTimeout = bridge.function(Window.clearTimeout, .{});

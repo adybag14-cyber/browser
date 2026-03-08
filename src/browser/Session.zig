@@ -60,6 +60,7 @@ pub const PendingDownload = struct {
 pub const PendingTabOpen = struct {
     url: [:0]u8,
     target_name: []u8,
+    popup_source: PopupSource = .none,
     opts: Page.NavigateOpts,
     activate: bool = true,
     zoom_percent: i32 = 100,

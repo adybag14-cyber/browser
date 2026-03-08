@@ -292,6 +292,7 @@ pub fn addIdentity(self: *Context, ptr: usize) !IdentityResult {
 // Any operation on the context have to be made from a local.
 pub fn localScope(self: *Context, ls: *js.Local.Scope) void {
     const isolate = self.isolate;
+    isolate.enter();
     js.HandleScope.init(&ls.handle_scope, isolate);
 
     const local_v8_context: *const v8.Context = @ptrCast(v8.v8__Global__Get(&self.handle, isolate.handle));
@@ -1031,6 +1032,7 @@ fn resolveDynamicModule(self: *Context, state: *DynamicModuleResolveState, modul
 //    defer entered.exit();
 pub fn enter(self: *Context, hs: *js.HandleScope) Entered {
     const isolate = self.isolate;
+    isolate.enter();
     js.HandleScope.init(hs, isolate);
 
     const original = self.global.getJs();
@@ -1049,6 +1051,7 @@ const Entered = struct {
     handle: *const v8.Context,
 
     handle_scope: *js.HandleScope,
+    isolate: js.Isolate,
 
     global: GlobalScope,
 
@@ -1056,6 +1059,7 @@ const Entered = struct {
         self.global.setJs(self.original);
         v8.v8__Context__Exit(self.handle);
         self.handle_scope.deinit();
+        self.isolate.exit();
     }
 };
 
