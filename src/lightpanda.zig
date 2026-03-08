@@ -836,6 +836,7 @@ test "normalizeBrowseUrl rejects search-like input without a scheme" {
 
 test "parseInternalBrowsePage recognizes browser aliases" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, .start), parseInternalBrowsePage("browser://start"));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .error_page), parseInternalBrowsePage("browser://error"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .tabs), parseInternalBrowsePage("browser://tabs"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .history), parseInternalBrowsePage("browser://history"));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .bookmarks), parseInternalBrowsePage("browser://bookmarks/"));
@@ -848,6 +849,22 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .page = .start },
         parseInternalBrowseRoute("browser://start").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .page = .error_page },
+        parseInternalBrowseRoute("browser://error").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .error_retry },
+        parseInternalBrowseRoute("browser://error/retry").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .home },
+        parseInternalBrowseRoute("browser://error/home").?,
+    );
+    try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .page_start },
+        parseInternalBrowseRoute("browser://error/start").?,
     );
     try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .page = .tabs },
@@ -947,11 +964,13 @@ test "hashInternalTabsPageState changes when active tab changes" {
     var tab_two: BrowseTab = undefined;
     tab_one.session = &session_one;
     tab_one.committed_surface = .{};
+    tab_one.error_state = .{};
     tab_one.target_name = &.{};
     tab_one.popup_source = .none;
     tab_one.zoom_percent = 100;
     tab_two.session = &session_two;
     tab_two.committed_surface = .{};
+    tab_two.error_state = .{};
     tab_two.target_name = &.{};
     tab_two.popup_source = .none;
     tab_two.zoom_percent = 125;
@@ -969,7 +988,7 @@ test "hashInternalTabsPageState changes when active tab changes" {
         .items = closed_item[0..],
         .capacity = closed_item.len,
     };
-    var active_index: usize = 0;
+    var active_index: usize = 1;
     var shell: BrowseShell = .{
         .tabs = &tabs,
         .closed_tabs = &closed_tabs,
@@ -988,6 +1007,7 @@ test "hashInternalTabsPageState changes when closed tab content changes" {
     var tab: BrowseTab = undefined;
     tab.session = &session;
     tab.committed_surface = .{};
+    tab.error_state = .{};
     tab.target_name = &.{};
     tab.popup_source = .none;
     tab.zoom_percent = 100;
@@ -1005,7 +1025,7 @@ test "hashInternalTabsPageState changes when closed tab content changes" {
         .items = closed_items[0..],
         .capacity = closed_items.len,
     };
-    var active_index: usize = 0;
+    var active_index: usize = 1;
     const shell: BrowseShell = .{
         .tabs = &tabs,
         .closed_tabs = &closed_tabs,
@@ -1027,11 +1047,15 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
     var tab_two: BrowseTab = undefined;
     tab_one.session = &session_one;
     tab_one.committed_surface = .{};
+    tab_one.error_state = .{};
     tab_one.zoom_percent = 100;
     tab_one.target_name = @constCast("report");
     tab_one.popup_source = .script;
     tab_two.session = &session_two;
     tab_two.committed_surface = .{};
+    tab_two.error_state = .{};
+    try tab_two.error_state.replace(std.testing.allocator, .navigation_failed, "http://failed.test/", "http://failed.test/", "CouldntConnect");
+    defer tab_two.error_state.deinit(std.testing.allocator);
     tab_two.zoom_percent = 125;
     tab_two.target_name = &.{};
     tab_two.popup_source = .none;
@@ -1055,7 +1079,7 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
         .items = closed_item[0..],
         .capacity = closed_item.len,
     };
-    var active_index: usize = 0;
+    var active_index: usize = 1;
     const shell: BrowseShell = .{
         .tabs = &tabs,
         .closed_tabs = &closed_tabs,
@@ -1077,6 +1101,9 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed/1") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "target=report") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "popup=script") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "(Error)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Reason: CouldntConnect") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://error") != null);
 }
 
 test "makeClosedBrowseTabDisplayEntries returns newest first ui ordering" {
@@ -1141,6 +1168,9 @@ test "writeInternalStartPage includes preview sections and quick actions" {
     var tab: BrowseTab = undefined;
     tab.session = &session;
     tab.committed_surface = .{ .url = @constCast("http://current.test/") };
+    tab.error_state = .{};
+    try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://failed.test/", "http://failed.test/", "CouldntConnect");
+    defer tab.error_state.deinit(std.testing.allocator);
     tab.zoom_percent = 100;
     tab.target_name = &.{};
     tab.popup_source = .none;
@@ -1188,6 +1218,7 @@ test "writeInternalStartPage includes preview sections and quick actions" {
 
     try std.testing.expect(std.mem.indexOf(u8, html, "Quick Actions") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/new") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://error") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://tabs/reopen-closed") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://bookmarks/add-current") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://downloads/clear") != null);
@@ -1205,6 +1236,8 @@ test "writeInternalStartPage includes preview sections and quick actions" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/toggle-script-popups") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/default-zoom/reset") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/homepage/clear") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Current Tab Status") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "CouldntConnect") != null);
 }
 
 test "addPersistedBookmark appends unique bookmark once" {
@@ -1269,6 +1302,9 @@ test "makeInternalBrowsePageDisplayTitle reflects live counts" {
     session.page = null;
     var tab: BrowseTab = undefined;
     tab.session = &session;
+    tab.error_state = .{};
+    try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://failed.test/", "http://failed.test/", "CouldntConnect");
+    defer tab.error_state.deinit(std.testing.allocator);
     tab.zoom_percent = 100;
     tab.target_name = &.{};
     tab.popup_source = .none;
@@ -1296,6 +1332,10 @@ test "makeInternalBrowsePageDisplayTitle reflects live counts" {
     const downloads_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .downloads);
     defer std.testing.allocator.free(downloads_title);
     try std.testing.expectEqualStrings("Browser Downloads (1)", downloads_title);
+
+    const error_title = try makeInternalBrowsePageDisplayTitle(std.testing.allocator, abs_dir, tabs[0..], 0, &downloads, .error_page);
+    defer std.testing.allocator.free(error_title);
+    try std.testing.expectEqualStrings("Navigation Error", error_title);
 }
 
 test "hashInternalBrowsePageState changes after bookmark and download mutations" {
@@ -1313,6 +1353,7 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
     session.page = null;
     var tab: BrowseTab = undefined;
     tab.session = &session;
+    tab.error_state = .{};
     tab.zoom_percent = 100;
     tab.target_name = &.{};
     tab.popup_source = .none;
@@ -1352,6 +1393,80 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
     try std.testing.expect(downloads.clearInactiveEntries(abs_dir));
     const second_downloads_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .downloads);
     try std.testing.expect(first_downloads_hash != second_downloads_hash);
+
+    const first_error_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .error_page);
+    try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://failed.test/", "http://failed.test/", "CouldntConnect");
+    defer tab.error_state.deinit(std.testing.allocator);
+    const second_error_hash = hashInternalBrowsePageState(std.testing.allocator, abs_dir, &shell, 0, &settings, &downloads, .error_page);
+    try std.testing.expect(first_error_hash != second_error_hash);
+}
+
+test "writeInternalErrorPage includes retry home and start actions" {
+    var tab: BrowseTab = undefined;
+    tab.error_state = .{};
+    defer tab.error_state.deinit(std.testing.allocator);
+    try tab.error_state.replace(std.testing.allocator, .invalid_address, "two words", "two words", "Enter a full URL, for example https://example.com");
+    var settings = BrowseSettings{};
+    defer settings.deinit(std.testing.allocator);
+
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+    try writeInternalErrorPage(&buf.writer, &tab, &settings);
+    const html = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://error/retry") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://error/home") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://error/start") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "two words") != null);
+}
+
+test "browseTabPersistentUrl prefers retry target for error page" {
+    var session: Session = undefined;
+    session.page = null;
+    var page: Page = undefined;
+    page.url = @constCast("browser://error");
+    session.page = &page;
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.error_state = .{};
+    defer tab.error_state.deinit(std.testing.allocator);
+    try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://retry.test/", "http://retry.test/", "CouldntConnect");
+    try std.testing.expectEqualStrings("http://retry.test/", browseTabPersistentUrl(&tab));
+}
+
+test "captureBrowseTabRuntimeError preserves error state on internal pages" {
+    var session: Session = undefined;
+    var page: Page = undefined;
+    page.url = @constCast("browser://start");
+    page._queued_navigation = null;
+    page._parse_state = .{ .complete = {} };
+    session.page = &page;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.error_state = .{};
+    defer tab.error_state.deinit(std.testing.allocator);
+    try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://retry.test/", "http://retry.test/", "CouldntConnect");
+
+    try std.testing.expect(!(try captureBrowseTabRuntimeError(std.testing.allocator, &tab)));
+    try std.testing.expect(tab.error_state.hasValue());
+}
+
+test "captureBrowseTabRuntimeError clears error state on successful external pages" {
+    var session: Session = undefined;
+    var page: Page = undefined;
+    page.url = @constCast("http://ok.test/");
+    page._queued_navigation = null;
+    page._parse_state = .{ .complete = {} };
+    session.page = &page;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.error_state = .{};
+    defer tab.error_state.deinit(std.testing.allocator);
+    try tab.error_state.replace(std.testing.allocator, .navigation_failed, "http://retry.test/", "http://retry.test/", "CouldntConnect");
+
+    try std.testing.expect(!(try captureBrowseTabRuntimeError(std.testing.allocator, &tab)));
+    try std.testing.expect(!tab.error_state.hasValue());
 }
 
 test "internalBrowseCommandHostPage maps stateful internal actions" {
