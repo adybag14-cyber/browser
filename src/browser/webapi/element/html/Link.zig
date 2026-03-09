@@ -27,6 +27,8 @@ const Element = @import("../../Element.zig");
 const DOMTokenList = @import("../../collections.zig").DOMTokenList;
 
 const HtmlElement = @import("../Html.zig");
+const CSSStyleSheet = @import("../../css/CSSStyleSheet.zig");
+const STYLESHEET_ACCEPT_HEADER: [:0]const u8 = "Accept: text/css,*/*;q=0.1";
 
 const Link = @This();
 
@@ -185,6 +187,31 @@ pub const Build = struct {
         return self.linkAddedCallback(frame);
     }
 };
+
+fn stylesheetHeaderCallback(transfer: *Http.Transfer) !bool {
+    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(transfer.ctx));
+    const response_header = transfer.response_header orelse return true;
+    ctx.status = response_header.status;
+    if (response_header.status >= 400) {
+        ctx.failed = error.BadStatusCode;
+    }
+    return true;
+}
+
+fn stylesheetDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
+    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(transfer.ctx));
+    try ctx.buffer.appendSlice(ctx.allocator, data);
+}
+
+fn stylesheetDoneCallback(ctx_ptr: *anyopaque) !void {
+    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(ctx_ptr));
+    ctx.finished = true;
+}
+
+fn stylesheetErrorCallback(ctx_ptr: *anyopaque, err: anyerror) void {
+    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(ctx_ptr));
+    ctx.failed = err;
+}
 
 const testing = @import("../../../../testing.zig");
 test "WebApi: HTML.Link" {
