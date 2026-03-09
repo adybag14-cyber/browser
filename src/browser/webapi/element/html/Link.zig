@@ -205,6 +205,7 @@ fn stylesheetDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
 
 fn stylesheetDoneCallback(ctx_ptr: *anyopaque) !void {
     const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(ctx_ptr));
+    try ctx.sheet.replaceSync(ctx.buffer.items, ctx.page);
     ctx.finished = true;
 }
 

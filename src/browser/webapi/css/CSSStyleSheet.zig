@@ -29,6 +29,13 @@ _disabled: bool = false,
 _css_rules: ?*CSSRuleList = null,
 _owner_rule: ?*CSSRule = null,
 _owner_node: ?*Element = null,
+_rules: []ParsedRule = &.{},
+
+const ParsedRule = struct {
+    selector_text: []const u8,
+    declarations_text: []const u8,
+    rule: *CSSRule,
+};
 
 pub fn init(frame: *Frame) !*CSSStyleSheet {
     return frame._factory.create(CSSStyleSheet{});
