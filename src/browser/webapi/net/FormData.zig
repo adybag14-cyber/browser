@@ -782,13 +782,18 @@ fn collectForm(arena: Allocator, form_: ?*Form, submitter_: ?*Element, frame: *F
             if (element.is(Form.Input)) |input| {
                 const input_type = input._input_type;
                 if (input_type == .file) {
-                    const selected = input.getSelectedFile() orelse continue;
-                    try file_entries.append(arena, .{
-                        .name = try arena.dupe(u8, name),
-                        .path = try arena.dupe(u8, selected.path),
-                        .filename = try arena.dupe(u8, selected.name),
-                        .content_type = try arena.dupe(u8, selected.content_type),
-                    });
+                    const selected_files = input.getSelectedFiles();
+                    if (selected_files.len == 0) {
+                        continue;
+                    }
+                    for (selected_files) |selected| {
+                        try file_entries.append(arena, .{
+                            .name = try arena.dupe(u8, name),
+                            .path = try arena.dupe(u8, selected.path),
+                            .filename = try arena.dupe(u8, selected.name),
+                            .content_type = try arena.dupe(u8, selected.content_type),
+                        });
+                    }
                     continue;
                 }
                 if (input_type == .checkbox or input_type == .radio) {
