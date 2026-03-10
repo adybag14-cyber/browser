@@ -58,6 +58,30 @@ pub fn setSrc(self: *Script, src: []const u8, frame: *Frame) !void {
     try self.asElement().setAttributeSafe(comptime .wrap("src"), .wrap(src), frame);
 }
 
+pub fn getType(self: *const Script) []const u8 {
+    return self.asConstElement().getAttributeSafe(comptime .wrap("type")) orelse "";
+}
+
+pub fn setType(self: *Script, value: []const u8, frame: *Frame) !void {
+    return self.asElement().setAttributeSafe(comptime .wrap("type"), .wrap(value), frame);
+}
+
+pub fn getNonce(self: *const Script) []const u8 {
+    return self.asConstElement().getAttributeSafe(comptime .wrap("nonce")) orelse "";
+}
+
+pub fn setNonce(self: *Script, value: []const u8, frame: *Frame) !void {
+    return self.asElement().setAttributeSafe(comptime .wrap("nonce"), .wrap(value), frame);
+}
+
+pub fn getCharset(self: *const Script) []const u8 {
+    return self.asConstElement().getAttributeSafe(comptime .wrap("charset")) orelse "";
+}
+
+pub fn setCharset(self: *Script, value: []const u8, frame: *Frame) !void {
+    return self.asElement().setAttributeSafe(comptime .wrap("charset"), .wrap(value), frame);
+}
+
 pub fn getAsync(self: *const Script) bool {
     return self._force_async or self.asConstElement().getAttributeSafe(comptime .wrap("async")) != null;
 }
