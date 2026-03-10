@@ -149,6 +149,38 @@ pub fn linkAddedCallback(self: *Link, frame: *Frame) !void {
     }
 }
 
+fn stylesheetRequestIncludesCredentials(self: *const Link) bool {
+    return stylesheetRequestAttributeIncludesCredentials(self.getCrossOrigin());
+}
+
+fn stylesheetRequestAttributeIncludesCredentials(cross_origin: ?[]const u8) bool {
+    const value = cross_origin orelse return true;
+    return std.ascii.eqlIgnoreCase(std.mem.trim(u8, value, " \t\r\n"), "use-credentials");
+}
+
+fn stylesheetRequestUrlForFetch(
+    allocator: std.mem.Allocator,
+    url: [:0]const u8,
+    include_credentials: bool,
+) ![:0]const u8 {
+    if (include_credentials) {
+        return try allocator.dupeZ(u8, url);
+    }
+
+    if (RawURL.getUsername(url).len == 0) {
+        return try allocator.dupeZ(u8, url);
+    }
+
+    return try RawURL.buildUrl(
+        allocator,
+        RawURL.getProtocol(url),
+        RawURL.getHost(url),
+        RawURL.getPathname(url),
+        RawURL.getSearch(url),
+        RawURL.getHash(url),
+    );
+}
+
 pub const JsApi = struct {
     pub const bridge = js.Bridge(Link);
 
@@ -215,6 +247,25 @@ fn stylesheetErrorCallback(ctx_ptr: *anyopaque, err: anyerror) void {
 }
 
 const testing = @import("../../../../testing.zig");
+test "stylesheetRequestAttributeIncludesCredentials requires use-credentials when crossorigin is present" {
+    try std.testing.expect(stylesheetRequestAttributeIncludesCredentials(null));
+    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials(""));
+    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials("anonymous"));
+    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials(" nope "));
+    try std.testing.expect(stylesheetRequestAttributeIncludesCredentials("use-credentials"));
+}
+
+test "stylesheetRequestUrlForFetch strips userinfo when credentials are disabled" {
+    const stripped = try stylesheetRequestUrlForFetch(
+        std.testing.allocator,
+        "http://css%20user:p%40ss@127.0.0.1:9582/private.css?x=1#frag",
+        false,
+    );
+    defer std.testing.allocator.free(stripped);
+
+    try std.testing.expectEqualStrings("http://127.0.0.1:9582/private.css?x=1#frag", stripped);
+}
+
 test "WebApi: HTML.Link" {
     try testing.htmlRunner("element/html/link.html", .{});
 }
