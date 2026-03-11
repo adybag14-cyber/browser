@@ -247,6 +247,22 @@ test "parseFirstUrlFromSrcDeclaration extracts first font source" {
     );
 }
 
+test "detectFontFaceFormat recognizes supported font extensions" {
+    try std.testing.expectEqual(FontFaceEntry.Format.truetype, detectFontFaceFormat("https://font.test/private_font_test.ttf"));
+    try std.testing.expectEqual(FontFaceEntry.Format.opentype, detectFontFaceFormat("https://font.test/private_font_test.otf?x=1"));
+    try std.testing.expectEqual(FontFaceEntry.Format.woff, detectFontFaceFormat("https://font.test/font.woff#frag"));
+    try std.testing.expectEqual(FontFaceEntry.Format.woff2, detectFontFaceFormat("https://font.test/font.woff2"));
+    try std.testing.expectEqual(FontFaceEntry.Format.unknown, detectFontFaceFormat("https://font.test/font.bin"));
+}
+
+test "formatSupportsEmbeddedBytes only retains ttf and otf bytes" {
+    try std.testing.expect(formatSupportsEmbeddedBytes(.truetype));
+    try std.testing.expect(formatSupportsEmbeddedBytes(.opentype));
+    try std.testing.expect(!formatSupportsEmbeddedBytes(.woff));
+    try std.testing.expect(!formatSupportsEmbeddedBytes(.woff2));
+    try std.testing.expect(!formatSupportsEmbeddedBytes(.unknown));
+}
+
 const testing = @import("../../../testing.zig");
 test "WebApi: CSSStyleSheet" {
     testing.silenceLog(&.{.js});
