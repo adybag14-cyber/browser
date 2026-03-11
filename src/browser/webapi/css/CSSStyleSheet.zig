@@ -15,6 +15,7 @@ const log = lp.log;
 
 const CSSStyleSheet = @This();
 const STYLESHEET_ACCEPT_HEADER: [:0]const u8 = "Accept: text/css,*/*;q=0.1";
+const FONT_ACCEPT_HEADER: [:0]const u8 = "Accept: font/woff2,font/woff,font/ttf,font/otf,*/*;q=0.1";
 
 pub const CSSError = error{
     OutOfMemory,
@@ -31,6 +32,7 @@ _css_rules: ?*CSSRuleList = null,
 _owner_rule: ?*CSSRule = null,
 _owner_node: ?*Element = null,
 _rules: []ParsedRule = &.{},
+_font_faces: []ParsedFontFace = &.{},
 _request_base_url: ?[:0]const u8 = null,
 _request_referer_url: ?[:0]const u8 = null,
 _request_include_credentials: bool = true,
@@ -224,6 +226,26 @@ pub const JsApi = struct {
     pub const replace = bridge.function(CSSStyleSheet.replace, .{});
     pub const replaceSync = bridge.function(CSSStyleSheet.replaceSync, .{});
 };
+
+test "parseDeclarationValue extracts font-face declarations" {
+    const declarations =
+        \\font-family: "Runner Font";
+        \\src: url("font_face_test.woff2") format("woff2");
+    ;
+    try std.testing.expectEqualStrings("\"Runner Font\"", parseDeclarationValue(declarations, "font-family").?);
+    try std.testing.expectEqualStrings("url(\"font_face_test.woff2\") format(\"woff2\")", parseDeclarationValue(declarations, "src").?);
+}
+
+test "parseFirstUrlFromSrcDeclaration extracts first font source" {
+    try std.testing.expectEqualStrings(
+        "font_face_test.woff2",
+        parseFirstUrlFromSrcDeclaration("local(\"Runner\"), url(\"font_face_test.woff2\") format(\"woff2\")").?,
+    );
+    try std.testing.expectEqualStrings(
+        "font_face_test.woff2",
+        parseFirstUrlFromSrcDeclaration("url('font_face_test.woff2')").?,
+    );
+}
 
 const testing = @import("../../../testing.zig");
 test "WebApi: CSSStyleSheet" {
