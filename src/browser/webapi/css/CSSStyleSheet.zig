@@ -236,15 +236,52 @@ test "parseDeclarationValue extracts font-face declarations" {
     try std.testing.expectEqualStrings("url(\"font_face_test.woff2\") format(\"woff2\")", parseDeclarationValue(declarations, "src").?);
 }
 
-test "parseFirstUrlFromSrcDeclaration extracts first font source" {
-    try std.testing.expectEqualStrings(
-        "font_face_test.woff2",
-        parseFirstUrlFromSrcDeclaration("local(\"Runner\"), url(\"font_face_test.woff2\") format(\"woff2\")").?,
+test "parseFontFaceSources extracts multiple font sources and format hints" {
+    const allocator = std.testing.allocator;
+    const sources = try parseFontFaceSources(
+        allocator,
+        "local(\"Runner\"), url(\"font_face_test.woff2\") format(\"woff2\"), url('private_font_test.ttf') format('truetype')",
     );
-    try std.testing.expectEqualStrings(
-        "font_face_test.woff2",
-        parseFirstUrlFromSrcDeclaration("url('font_face_test.woff2')").?,
-    );
+    defer {
+        for (sources) |source| {
+            allocator.free(source.url_specifier);
+        }
+        allocator.free(sources);
+    }
+
+    try std.testing.expectEqual(@as(usize, 2), sources.len);
+    try std.testing.expectEqualStrings("font_face_test.woff2", sources[0].url_specifier);
+    try std.testing.expectEqual(FontFaceEntry.Format.woff2, sources[0].format_hint);
+    try std.testing.expectEqualStrings("private_font_test.ttf", sources[1].url_specifier);
+    try std.testing.expectEqual(FontFaceEntry.Format.truetype, sources[1].format_hint);
+}
+
+test "choosePreferredFontFaceSource prefers renderable ttf or otf fallback" {
+    const sources = [_]ParsedFontSource{
+        .{ .url_specifier = "font_face_test.woff2", .format_hint = .woff2 },
+        .{ .url_specifier = "private_font_test.ttf", .format_hint = .truetype },
+    };
+    const selected = choosePreferredFontFaceSource(sources[0..]).?;
+    try std.testing.expectEqualStrings("private_font_test.ttf", selected.url_specifier);
+    try std.testing.expectEqual(FontFaceEntry.Format.truetype, selected.format_hint);
+}
+
+test "choosePreferredFontFaceSource falls back to first source when only non-renderable formats exist" {
+    const sources = [_]ParsedFontSource{
+        .{ .url_specifier = "font_face_test.woff2", .format_hint = .woff2 },
+        .{ .url_specifier = "font_face_test.woff", .format_hint = .woff },
+    };
+    const selected = choosePreferredFontFaceSource(sources[0..]).?;
+    try std.testing.expectEqualStrings("font_face_test.woff2", selected.url_specifier);
+    try std.testing.expectEqual(FontFaceEntry.Format.woff2, selected.format_hint);
+}
+
+test "parseFirstFontFaceFormatHint recognizes common hints" {
+    try std.testing.expectEqual(FontFaceEntry.Format.truetype, parseFirstFontFaceFormatHint(" format('truetype'), local('Runner')"));
+    try std.testing.expectEqual(FontFaceEntry.Format.opentype, parseFirstFontFaceFormatHint(" format(\"opentype\") "));
+    try std.testing.expectEqual(FontFaceEntry.Format.woff, parseFirstFontFaceFormatHint(" format('woff') "));
+    try std.testing.expectEqual(FontFaceEntry.Format.woff2, parseFirstFontFaceFormatHint(" format('woff2') "));
+    try std.testing.expectEqual(FontFaceEntry.Format.unknown, parseFirstFontFaceFormatHint(" local('Runner') "));
 }
 
 test "detectFontFaceFormat recognizes supported font extensions" {
