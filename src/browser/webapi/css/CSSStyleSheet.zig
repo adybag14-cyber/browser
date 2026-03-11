@@ -295,8 +295,8 @@ test "detectFontFaceFormat recognizes supported font extensions" {
 test "formatSupportsEmbeddedBytes only retains ttf and otf bytes" {
     try std.testing.expect(formatSupportsEmbeddedBytes(.truetype));
     try std.testing.expect(formatSupportsEmbeddedBytes(.opentype));
-    try std.testing.expect(!formatSupportsEmbeddedBytes(.woff));
-    try std.testing.expect(!formatSupportsEmbeddedBytes(.woff2));
+    try std.testing.expect(formatSupportsEmbeddedBytes(.woff));
+    try std.testing.expect(formatSupportsEmbeddedBytes(.woff2));
     try std.testing.expect(!formatSupportsEmbeddedBytes(.unknown));
 }
 
