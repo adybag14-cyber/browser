@@ -14,6 +14,7 @@ const CSSStyleRule = @import("CSSStyleRule.zig");
 const log = lp.log;
 
 const CSSStyleSheet = @This();
+const STYLESHEET_ACCEPT_HEADER: [:0]const u8 = "Accept: text/css,*/*;q=0.1";
 
 pub const CSSError = error{
     OutOfMemory,
@@ -30,6 +31,9 @@ _css_rules: ?*CSSRuleList = null,
 _owner_rule: ?*CSSRule = null,
 _owner_node: ?*Element = null,
 _rules: []ParsedRule = &.{},
+_request_base_url: ?[:0]const u8 = null,
+_request_referer_url: ?[:0]const u8 = null,
+_request_include_credentials: bool = true,
 
 const ParsedRule = struct {
     selector_text: []const u8,

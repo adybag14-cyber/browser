@@ -147,6 +147,7 @@ pub fn linkAddedCallback(self: *Link, frame: *Frame) !void {
         // synthetic load, fires next tick
         return frame.queueLoad(Factory.protoOf(self));
     }
+
 }
 
 fn stylesheetRequestIncludesCredentials(self: *const Link) bool {
