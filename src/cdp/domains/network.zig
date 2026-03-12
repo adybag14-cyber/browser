@@ -194,7 +194,7 @@ fn deleteCookies(cmd: *CDP.Command) !void {
     }
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    const cookies = &bc.session.cookie_jar.cookies;
+    var cookies = &bc.session.cookie_jar.cookies;
 
     var index = cookies.items.len;
     while (index > 0) {
@@ -245,7 +245,7 @@ fn setCookie(cmd: *CDP.Command) !void {
     )) orelse return error.InvalidParams;
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    try CdpStorage.setCdpCookie(&bc.session.cookie_jar, params);
+    try CdpStorage.setCdpCookie(bc.session.cookie_jar, params);
 
     try cmd.sendResult(.{ .success = true }, .{});
 }
@@ -257,7 +257,7 @@ fn setCookies(cmd: *CDP.Command) !void {
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
     for (params.cookies) |param| {
-        try CdpStorage.setCdpCookie(&bc.session.cookie_jar, param);
+        try CdpStorage.setCdpCookie(bc.session.cookie_jar, param);
     }
 
     try cmd.sendResult(null, .{});
@@ -279,7 +279,7 @@ fn getCookies(cmd: *CDP.Command) !void {
         urls.appendAssumeCapacity(CdpStorage.PreparedUri.init(url));
     }
 
-    var jar = &bc.session.cookie_jar;
+    var jar = bc.session.cookie_jar;
     jar.removeExpired(null);
     const writer = CdpStorage.CookieWriter{ .cookies = jar.cookies.items, .urls = urls.items };
     try cmd.sendResult(.{ .cookies = writer }, .{});

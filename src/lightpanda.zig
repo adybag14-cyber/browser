@@ -1043,6 +1043,10 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         parseInternalBrowseRoute("browser://settings/toggle-script-popups").?,
     );
     try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .settings_clear_cookies },
+        parseInternalBrowseRoute("browser://settings/clear-cookies").?,
+    );
+    try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .settings_set_homepage_to_current },
         parseInternalBrowseRoute("browser://settings/homepage/set-current").?,
     );
@@ -1352,6 +1356,194 @@ test "writeInternalStartPage includes preview sections and quick actions" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/homepage/clear") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "Current Tab Status") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "CouldntConnect") != null);
+}
+
+test "writeInternalSettingsPage renders cookie count and clear action" {
+    var cookie_jar = CookieJar.init(std.testing.allocator);
+    defer cookie_jar.deinit();
+    try cookie_jar.add(
+        try initOwnedBrowseCookie(
+            std.testing.allocator,
+            "lpone",
+            "one",
+            "127.0.0.1",
+            "/",
+            null,
+            false,
+            false,
+            .lax,
+        ),
+        std.time.timestamp(),
+    );
+    try cookie_jar.add(
+        try initOwnedBrowseCookie(
+            std.testing.allocator,
+            "lptwo",
+            "two",
+            "127.0.0.1",
+            "/",
+            @floatFromInt(std.time.timestamp() + 3600),
+            true,
+            false,
+            .none,
+        ),
+        std.time.timestamp(),
+    );
+
+    var session: Session = undefined;
+    session.page = null;
+    session.navigation = .{ ._proto = undefined };
+    session.cookie_jar = &cookie_jar;
+    session.owned_cookie_jar = null;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.error_state = .{};
+    tab.internal_filters = .{};
+    defer tab.internal_filters.deinit(std.testing.allocator);
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+
+    var settings = BrowseSettings{};
+    defer settings.deinit(std.testing.allocator);
+
+    var buf = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer buf.deinit();
+    try writeInternalSettingsPage(&buf.writer, &tab, &settings);
+    const html = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, html, "Cookies: <strong>2</strong>") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/clear-cookies") != null);
+}
+
+test "saveBrowseCookiesForPath round trips persisted cookie jar" {
+    const rel_dir = ".zig-cache/tmp/internal-cookie-roundtrip-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    var source = CookieJar.init(std.testing.allocator);
+    defer source.deinit();
+    try source.add(
+        try initOwnedBrowseCookie(
+            std.testing.allocator,
+            "lppersist",
+            "ok",
+            "127.0.0.1",
+            "/",
+            @floatFromInt(std.time.timestamp() + 7200),
+            false,
+            false,
+            .lax,
+        ),
+        std.time.timestamp(),
+    );
+    try source.add(
+        try initOwnedBrowseCookie(
+            std.testing.allocator,
+            "lpsession",
+            "ok",
+            "127.0.0.1",
+            "/",
+            null,
+            true,
+            true,
+            .none,
+        ),
+        std.time.timestamp(),
+    );
+
+    try saveBrowseCookiesForPath(std.testing.allocator, abs_dir, &source);
+
+    var loaded = loadBrowseCookies(std.testing.allocator, abs_dir);
+    defer loaded.deinit();
+    try std.testing.expectEqual(@as(usize, 2), loaded.cookies.items.len);
+    try std.testing.expectEqualStrings("lppersist", loaded.cookies.items[0].name);
+    try std.testing.expectEqualStrings("ok", loaded.cookies.items[0].value);
+    try std.testing.expectEqual(CookieStore.SameSite.lax, loaded.cookies.items[0].same_site);
+    try std.testing.expectEqualStrings("lpsession", loaded.cookies.items[1].name);
+    try std.testing.expectEqual(true, loaded.cookies.items[1].secure);
+    try std.testing.expectEqual(true, loaded.cookies.items[1].http_only);
+    try std.testing.expectEqual(CookieStore.SameSite.none, loaded.cookies.items[1].same_site);
+}
+
+test "hashInternalBrowsePageState settings changes after cookie mutation" {
+    var cookie_jar = CookieJar.init(std.testing.allocator);
+    defer cookie_jar.deinit();
+
+    var session: Session = undefined;
+    session.page = null;
+    session.navigation = .{ ._proto = undefined };
+    session.cookie_jar = &cookie_jar;
+    session.owned_cookie_jar = null;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.error_state = .{};
+    tab.internal_filters = .{};
+    defer tab.internal_filters.deinit(std.testing.allocator);
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+
+    var tab_items = [_]*BrowseTab{&tab};
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    defer closed_tabs.deinit(std.testing.allocator);
+    var active_index: usize = 0;
+    const shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+    var settings = BrowseSettings{};
+    defer settings.deinit(std.testing.allocator);
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+
+    const before_hash = hashInternalBrowsePageState(
+        std.testing.allocator,
+        null,
+        &shell,
+        0,
+        &settings,
+        &downloads,
+        .settings,
+    );
+
+    try cookie_jar.add(
+        try initOwnedBrowseCookie(
+            std.testing.allocator,
+            "lpsettings",
+            "ok",
+            "127.0.0.1",
+            "/",
+            null,
+            false,
+            false,
+            .lax,
+        ),
+        std.time.timestamp(),
+    );
+
+    const after_hash = hashInternalBrowsePageState(
+        std.testing.allocator,
+        null,
+        &shell,
+        0,
+        &settings,
+        &downloads,
+        .settings,
+    );
+    try std.testing.expect(before_hash != after_hash);
 }
 
 test "writeInternalHistoryPage applies filter state and renders quick links" {
@@ -2178,6 +2370,7 @@ test "internalBrowseCommandHostPage maps stateful internal actions" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.{ .download_filter_set = "one" }));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_filter_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_set_homepage_to_current));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_clear_cookies));
     try std.testing.expectEqual(@as(?InternalBrowsePage, null), internalBrowseCommandHostPage(.reload));
 }
 
@@ -2207,6 +2400,7 @@ test "internalBrowseCommandUsesBrowseLoopHandler includes indexed closed tab reo
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_sort_set = .newest_first }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_filter_set = "one" }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.download_filter_clear));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.settings_clear_cookies));
     try std.testing.expect(!internalBrowseCommandUsesBrowseLoopHandler(.download_clear));
 }
 
@@ -2227,6 +2421,7 @@ test "internalBrowseCommandKeepsCurrentPage includes internal open in new tab ac
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.download_open_folder));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .download_retry = 0 }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .download_sort_set = .newest_first }));
+    try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.settings_clear_cookies));
     try std.testing.expect(!internalBrowseCommandKeepsCurrentPage(.{ .download_source = 0 }));
 }
 
