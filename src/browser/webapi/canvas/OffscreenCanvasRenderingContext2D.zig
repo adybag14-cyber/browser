@@ -23,6 +23,8 @@ const color = @import("../../color.zig");
 
 const ImageData = @import("../ImageData.zig");
 const CanvasSurface = @import("CanvasSurface.zig");
+const Canvas = @import("../element/html/Canvas.zig");
+const OffscreenCanvas = @import("OffscreenCanvas.zig");
 
 const Execution = js.Execution;
 
@@ -63,6 +65,11 @@ pub fn setStrokeStyle(self: *OffscreenCanvasRenderingContext2D, value: []const u
 const WidthOrImageData = union(enum) {
     width: u32,
     image_data: *ImageData,
+};
+
+const DrawImageSource = union(enum) {
+    canvas: *Canvas,
+    offscreen_canvas: *OffscreenCanvas,
 };
 
 pub fn createImageData(
@@ -132,6 +139,33 @@ pub fn stroke(_: *OffscreenCanvasRenderingContext2D) void {}
 pub fn clip(_: *OffscreenCanvasRenderingContext2D) void {}
 pub fn fillText(_: *OffscreenCanvasRenderingContext2D, _: []const u8, _: f64, _: f64, _: ?f64) void {}
 pub fn strokeText(_: *OffscreenCanvasRenderingContext2D, _: []const u8, _: f64, _: f64, _: ?f64) void {}
+
+const SourceSurface = struct {
+    surface: *const CanvasSurface,
+    width: u32,
+    height: u32,
+};
+
+fn sourceSurface(source: DrawImageSource) ?SourceSurface {
+    return switch (source) {
+        .canvas => |canvas| blk: {
+            const surface = canvas.getSurface() orelse break :blk null;
+            break :blk .{
+                .surface = surface,
+                .width = canvas.getWidth(),
+                .height = canvas.getHeight(),
+            };
+        },
+        .offscreen_canvas => |canvas| blk: {
+            const surface = canvas.getSurface() orelse break :blk null;
+            break :blk .{
+                .surface = surface,
+                .width = canvas.getWidth(),
+                .height = canvas.getHeight(),
+            };
+        },
+    };
+}
 
 pub const JsApi = struct {
     pub const bridge = js.Bridge(OffscreenCanvasRenderingContext2D);
