@@ -5,8 +5,10 @@
 {
   const element = document.createElement("canvas");
   const ctx = element.getContext("2d");
+  const ctx2 = element.getContext("2d");
   testing.expectEqual(true, ctx instanceof CanvasRenderingContext2D);
-  // We can't really test this but let's try to call it at least.
+  testing.expectEqual(true, ctx === ctx2);
+  testing.expectEqual(null, element.getContext("webgl"));
   ctx.fillRect(0, 0, 0, 0);
 }
 </script>

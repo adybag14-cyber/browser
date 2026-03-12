@@ -26,6 +26,7 @@ const Element = @import("../../Element.zig");
 const HtmlElement = @import("../Html.zig");
 
 const CanvasRenderingContext2D = @import("../../canvas/CanvasRenderingContext2D.zig");
+const CanvasSurface = @import("../../canvas/CanvasSurface.zig");
 const WebGLRenderingContext = @import("../../canvas/WebGLRenderingContext.zig");
 const OffscreenCanvas = @import("../../canvas/OffscreenCanvas.zig");
 

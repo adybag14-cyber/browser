@@ -24,6 +24,7 @@ const color = @import("../../color.zig");
 
 const Canvas = @import("../element/html/Canvas.zig");
 const ImageData = @import("../ImageData.zig");
+const CanvasSurface = @import("CanvasSurface.zig");
 
 const Execution = js.Execution;
 
@@ -37,6 +38,8 @@ _canvas: *Canvas,
 /// Fill color.
 /// TODO: Add support for `CanvasGradient` and `CanvasPattern`.
 _fill_style: color.RGBA = color.RGBA.Named.black,
+_stroke_style: color.RGBA = color.RGBA.Named.black,
+_surface: *CanvasSurface,
 
 pub fn getCanvas(self: *const CanvasRenderingContext2D) *Canvas {
     return self._canvas;
@@ -54,6 +57,16 @@ pub fn setFillStyle(
 ) !void {
     // Prefer the same fill_style if fails.
     self._fill_style = color.RGBA.parse(value) catch self._fill_style;
+}
+
+pub fn getStrokeStyle(self: *const CanvasRenderingContext2D, page: *Page) ![]const u8 {
+    var w = std.Io.Writer.Allocating.init(page.call_arena);
+    try self._stroke_style.format(&w.writer);
+    return w.written();
+}
+
+pub fn setStrokeStyle(self: *CanvasRenderingContext2D, value: []const u8) void {
+    self._stroke_style = color.RGBA.parse(value) catch self._stroke_style;
 }
 
 const WidthOrImageData = union(enum) {
@@ -109,10 +122,15 @@ pub fn translate(_: *CanvasRenderingContext2D, _: f64, _: f64) void {}
 pub fn transform(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64) void {}
 pub fn setTransform(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64) void {}
 pub fn resetTransform(_: *CanvasRenderingContext2D) void {}
-pub fn setStrokeStyle(_: *CanvasRenderingContext2D, _: []const u8) void {}
-pub fn clearRect(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64) void {}
-pub fn fillRect(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64) void {}
-pub fn strokeRect(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64) void {}
+pub fn clearRect(self: *CanvasRenderingContext2D, x: f64, y: f64, width: f64, height: f64) void {
+    self._surface.clearRect(x, y, width, height);
+}
+pub fn fillRect(self: *CanvasRenderingContext2D, x: f64, y: f64, width: f64, height: f64) void {
+    self._surface.fillRect(self._fill_style, x, y, width, height);
+}
+pub fn strokeRect(self: *CanvasRenderingContext2D, x: f64, y: f64, width: f64, height: f64) void {
+    self._surface.strokeRect(self._stroke_style, x, y, width, height);
+}
 pub fn beginPath(_: *CanvasRenderingContext2D) void {}
 pub fn closePath(_: *CanvasRenderingContext2D) void {}
 pub fn moveTo(_: *CanvasRenderingContext2D, _: f64, _: f64) void {}
@@ -142,7 +160,7 @@ pub const JsApi = struct {
     pub const font = bridge.property("10px sans-serif", .{ .template = false, .readonly = false });
     pub const globalAlpha = bridge.property(1.0, .{ .template = false, .readonly = false });
     pub const globalCompositeOperation = bridge.property("source-over", .{ .template = false, .readonly = false });
-    pub const strokeStyle = bridge.property("#000000", .{ .template = false, .readonly = false });
+    pub const strokeStyle = bridge.accessor(CanvasRenderingContext2D.getStrokeStyle, CanvasRenderingContext2D.setStrokeStyle, .{});
     pub const lineWidth = bridge.property(1.0, .{ .template = false, .readonly = false });
     pub const lineCap = bridge.property("butt", .{ .template = false, .readonly = false });
     pub const lineJoin = bridge.property("miter", .{ .template = false, .readonly = false });
@@ -164,9 +182,9 @@ pub const JsApi = struct {
     pub const transform = bridge.function(CanvasRenderingContext2D.transform, .{ .noop = true });
     pub const setTransform = bridge.function(CanvasRenderingContext2D.setTransform, .{ .noop = true });
     pub const resetTransform = bridge.function(CanvasRenderingContext2D.resetTransform, .{ .noop = true });
-    pub const clearRect = bridge.function(CanvasRenderingContext2D.clearRect, .{ .noop = true });
-    pub const fillRect = bridge.function(CanvasRenderingContext2D.fillRect, .{ .noop = true });
-    pub const strokeRect = bridge.function(CanvasRenderingContext2D.strokeRect, .{ .noop = true });
+    pub const clearRect = bridge.function(CanvasRenderingContext2D.clearRect, .{});
+    pub const fillRect = bridge.function(CanvasRenderingContext2D.fillRect, .{});
+    pub const strokeRect = bridge.function(CanvasRenderingContext2D.strokeRect, .{});
     pub const beginPath = bridge.function(CanvasRenderingContext2D.beginPath, .{ .noop = true });
     pub const closePath = bridge.function(CanvasRenderingContext2D.closePath, .{ .noop = true });
     pub const moveTo = bridge.function(CanvasRenderingContext2D.moveTo, .{ .noop = true });
