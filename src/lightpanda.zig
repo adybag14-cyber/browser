@@ -1047,6 +1047,10 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         parseInternalBrowseRoute("browser://settings/clear-cookies").?,
     );
     try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .settings_clear_local_storage },
+        parseInternalBrowseRoute("browser://settings/clear-local-storage").?,
+    );
+    try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .settings_set_homepage_to_current },
         parseInternalBrowseRoute("browser://settings/homepage/set-current").?,
     );
@@ -1358,43 +1362,22 @@ test "writeInternalStartPage includes preview sections and quick actions" {
     try std.testing.expect(std.mem.indexOf(u8, html, "CouldntConnect") != null);
 }
 
-test "writeInternalSettingsPage renders cookie count and clear action" {
+test "writeInternalSettingsPage renders storage and cookie controls" {
     var cookie_jar = CookieJar.init(std.testing.allocator);
     defer cookie_jar.deinit();
-    try cookie_jar.add(
-        try initOwnedBrowseCookie(
-            std.testing.allocator,
-            "lpone",
-            "one",
-            "127.0.0.1",
-            "/",
-            null,
-            false,
-            false,
-            .lax,
-        ),
-        std.time.timestamp(),
-    );
-    try cookie_jar.add(
-        try initOwnedBrowseCookie(
-            std.testing.allocator,
-            "lptwo",
-            "two",
-            "127.0.0.1",
-            "/",
-            @floatFromInt(std.time.timestamp() + 3600),
-            true,
-            false,
-            .none,
-        ),
-        std.time.timestamp(),
-    );
 
     var session: Session = undefined;
     session.page = null;
     session.navigation = .{ ._proto = undefined };
     session.cookie_jar = &cookie_jar;
     session.owned_cookie_jar = null;
+    var storage_shed: storage.Shed = .{};
+    defer storage_shed.deinit(std.testing.allocator);
+    const local_bucket = try storage_shed.getOrPut(std.testing.allocator, "http://127.0.0.1:8150");
+    try local_bucket.local.setOwnedItem(std.testing.allocator, "lp_local_one", "one");
+    try local_bucket.local.setOwnedItem(std.testing.allocator, "lp_local_two", "two");
+    session.storage_shed = &storage_shed;
+    session.owned_storage_shed = null;
 
     var tab: BrowseTab = undefined;
     tab.session = &session;
@@ -1413,8 +1396,10 @@ test "writeInternalSettingsPage renders cookie count and clear action" {
     defer buf.deinit();
     try writeInternalSettingsPage(&buf.writer, &tab, &settings);
     const html = buf.written();
-    try std.testing.expect(std.mem.indexOf(u8, html, "Cookies: <strong>2</strong>") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Cookies: <strong>0</strong>") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/clear-cookies") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "Local storage: <strong>1 origins / 2 items</strong>") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/clear-local-storage") != null);
 }
 
 test "saveBrowseCookiesForPath round trips persisted cookie jar" {
@@ -1471,15 +1456,51 @@ test "saveBrowseCookiesForPath round trips persisted cookie jar" {
     try std.testing.expectEqual(CookieStore.SameSite.none, loaded.cookies.items[1].same_site);
 }
 
+test "saveBrowseLocalStorageForPath round trips persisted local storage" {
+    const rel_dir = ".zig-cache/tmp/internal-local-storage-roundtrip-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    var source: storage.Shed = .{};
+    defer source.deinit(std.testing.allocator);
+
+    const bucket = try source.getOrPut(std.testing.allocator, "http://127.0.0.1:8150");
+    try bucket.local.setOwnedItem(std.testing.allocator, "lp_local_one", "one");
+    try bucket.local.setOwnedItem(std.testing.allocator, "lp_local_two", "two");
+    const other_bucket = try source.getOrPut(std.testing.allocator, "http://127.0.0.1:8151");
+    try other_bucket.local.setOwnedItem(std.testing.allocator, "lp_other", "ok");
+
+    try saveBrowseLocalStorageForPath(std.testing.allocator, abs_dir, &source);
+
+    var loaded = loadBrowseLocalStorage(std.testing.allocator, abs_dir);
+    defer loaded.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(@as(usize, 2), loaded.localOriginCount());
+    try std.testing.expectEqual(@as(usize, 3), loaded.localItemCount());
+    const loaded_bucket = loaded._origins.get("http://127.0.0.1:8150") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("one", loaded_bucket.local.getItem("lp_local_one") orelse return error.TestUnexpectedResult);
+    try std.testing.expectEqualStrings("two", loaded_bucket.local.getItem("lp_local_two") orelse return error.TestUnexpectedResult);
+    const loaded_other_bucket = loaded._origins.get("http://127.0.0.1:8151") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("ok", loaded_other_bucket.local.getItem("lp_other") orelse return error.TestUnexpectedResult);
+}
+
 test "hashInternalBrowsePageState settings changes after cookie mutation" {
     var cookie_jar = CookieJar.init(std.testing.allocator);
     defer cookie_jar.deinit();
+    var storage_shed: storage.Shed = .{};
+    defer storage_shed.deinit(std.testing.allocator);
 
     var session: Session = undefined;
     session.page = null;
     session.navigation = .{ ._proto = undefined };
     session.cookie_jar = &cookie_jar;
     session.owned_cookie_jar = null;
+    session.storage_shed = &storage_shed;
+    session.owned_storage_shed = null;
 
     var tab: BrowseTab = undefined;
     tab.session = &session;
@@ -1533,6 +1554,73 @@ test "hashInternalBrowsePageState settings changes after cookie mutation" {
         ),
         std.time.timestamp(),
     );
+
+    const after_hash = hashInternalBrowsePageState(
+        std.testing.allocator,
+        null,
+        &shell,
+        0,
+        &settings,
+        &downloads,
+        .settings,
+    );
+    try std.testing.expect(before_hash != after_hash);
+}
+
+test "hashInternalBrowsePageState settings changes after local storage mutation" {
+    var cookie_jar = CookieJar.init(std.testing.allocator);
+    defer cookie_jar.deinit();
+    var storage_shed: storage.Shed = .{};
+    defer storage_shed.deinit(std.testing.allocator);
+
+    var session: Session = undefined;
+    session.page = null;
+    session.navigation = .{ ._proto = undefined };
+    session.cookie_jar = &cookie_jar;
+    session.owned_cookie_jar = null;
+    session.storage_shed = &storage_shed;
+    session.owned_storage_shed = null;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.error_state = .{};
+    tab.internal_filters = .{};
+    defer tab.internal_filters.deinit(std.testing.allocator);
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+
+    var tab_items = [_]*BrowseTab{&tab};
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    defer closed_tabs.deinit(std.testing.allocator);
+    var active_index: usize = 0;
+    const shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+    var settings = BrowseSettings{};
+    defer settings.deinit(std.testing.allocator);
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+
+    const before_hash = hashInternalBrowsePageState(
+        std.testing.allocator,
+        null,
+        &shell,
+        0,
+        &settings,
+        &downloads,
+        .settings,
+    );
+
+    const bucket = try storage_shed.getOrPut(std.testing.allocator, "http://127.0.0.1:8150");
+    try bucket.local.setOwnedItem(std.testing.allocator, "lp_local_one", "one");
 
     const after_hash = hashInternalBrowsePageState(
         std.testing.allocator,

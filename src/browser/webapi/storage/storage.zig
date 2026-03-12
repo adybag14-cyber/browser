@@ -53,6 +53,33 @@ pub const Shed = struct {
         gop.value_ptr.* = bucket;
         return bucket;
     }
+
+    pub fn clearLocal(self: *Shed) void {
+        var it = self._origins.valueIterator();
+        while (it.next()) |bucket| {
+            bucket.*.local.clear();
+        }
+    }
+
+    pub fn localOriginCount(self: *const Shed) usize {
+        var count: usize = 0;
+        var it = self._origins.valueIterator();
+        while (it.next()) |bucket| {
+            if (bucket.*.local.getLength() > 0) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+    pub fn localItemCount(self: *const Shed) usize {
+        var count: usize = 0;
+        var it = self._origins.valueIterator();
+        while (it.next()) |bucket| {
+            count += bucket.*.local.getLength();
+        }
+        return count;
+    }
 };
 
 pub const Bucket = struct {
