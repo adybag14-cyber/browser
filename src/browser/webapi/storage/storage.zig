@@ -57,7 +57,7 @@ pub const Shed = struct {
     pub fn clearLocal(self: *Shed) void {
         var it = self._origins.valueIterator();
         while (it.next()) |bucket| {
-            bucket.*.local.clear();
+            bucket.*.local.clearWithoutMutationNotification();
         }
     }
 
