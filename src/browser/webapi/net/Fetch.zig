@@ -83,6 +83,9 @@ pub fn init(input: Input, options: ?InitOpts, exec: *const Execution) !js.Promis
         ._signal = request._signal,
         ._manual_redirect = request._redirect == .manual,
     };
+    if (request._signal) |signal| {
+        fetch._signal_listener_id = try signal.registerNativeAbortListener(page, fetch, nativeAbortCallback);
+    }
 
     const session = exec.session;
 
@@ -288,6 +291,21 @@ fn httpShutdownCallback(ctx: *anyopaque) void {
         response.deinit(self._exec.page);
         // Do not access `self` after this point: the Fetch struct was
         // allocated from response._arena which has been released.
+    }
+}
+
+fn unregisterAbortSignal(self: *Fetch) void {
+    const signal = self._signal orelse return;
+    const listener_id = self._signal_listener_id orelse return;
+    signal.unregisterNativeAbortListener(listener_id);
+    self._signal_listener_id = null;
+}
+
+fn nativeAbortCallback(ctx: *anyopaque, _: *Page) void {
+    const self: *Fetch = @ptrCast(@alignCast(ctx));
+    self._abort_requested = true;
+    if (self._response._transfer) |transfer| {
+        transfer.abort(error.Abort);
     }
 }
 
