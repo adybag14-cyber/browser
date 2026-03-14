@@ -1051,6 +1051,10 @@ test "parseInternalBrowseRoute recognizes interactive browser page actions" {
         parseInternalBrowseRoute("browser://settings/clear-local-storage").?,
     );
     try std.testing.expectEqualDeep(
+        InternalBrowseRoute{ .command = .settings_clear_indexed_db },
+        parseInternalBrowseRoute("browser://settings/clear-indexed-db").?,
+    );
+    try std.testing.expectEqualDeep(
         InternalBrowseRoute{ .command = .settings_set_homepage_to_current },
         parseInternalBrowseRoute("browser://settings/homepage/set-current").?,
     );
@@ -1365,6 +1369,8 @@ test "writeInternalStartPage includes preview sections and quick actions" {
 test "writeInternalSettingsPage renders storage and cookie controls" {
     var cookie_jar = CookieJar.init(std.testing.allocator);
     defer cookie_jar.deinit();
+    var indexed_db_shed: indexed_db.Shed = .{};
+    defer indexed_db_shed.deinit(std.testing.allocator);
 
     var session: Session = undefined;
     session.page = null;
@@ -1378,6 +1384,13 @@ test "writeInternalSettingsPage renders storage and cookie controls" {
     try local_bucket.local.setOwnedItem(std.testing.allocator, "lp_local_two", "two");
     session.storage_shed = &storage_shed;
     session.owned_storage_shed = null;
+    const indexed_db_bucket = try indexed_db_shed.getOrPutOrigin(std.testing.allocator, "http://127.0.0.1:8150");
+    const indexed_db_database = try indexed_db_bucket.getOrPutDatabase(std.testing.allocator, "lp-db");
+    indexed_db_database.version = 2;
+    const indexed_db_store = try indexed_db_database.getOrPutStore(std.testing.allocator, "items");
+    try indexed_db_store.putJson(std.testing.allocator, "alpha", "{\"hello\":\"world\"}");
+    session.indexed_db_shed = &indexed_db_shed;
+    session.owned_indexed_db_shed = null;
 
     var tab: BrowseTab = undefined;
     tab.session = &session;
@@ -1400,6 +1413,8 @@ test "writeInternalSettingsPage renders storage and cookie controls" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/clear-cookies") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "Local storage: <strong>1 origins / 2 items</strong>") != null);
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/clear-local-storage") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "IndexedDB: <strong>1 origins / 1 databases / 1 stores / 1 items</strong>") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings/clear-indexed-db") != null);
 }
 
 test "saveBrowseCookiesForPath round trips persisted cookie jar" {
@@ -1488,11 +1503,62 @@ test "saveBrowseLocalStorageForPath round trips persisted local storage" {
     try std.testing.expectEqualStrings("ok", loaded_other_bucket.local.getItem("lp_other") orelse return error.TestUnexpectedResult);
 }
 
+test "saveBrowseIndexedDbForPath round trips persisted indexed db" {
+    const rel_dir = ".zig-cache/tmp/internal-indexed-db-roundtrip-test";
+    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    defer std.testing.allocator.free(abs_dir);
+
+    var source: indexed_db.Shed = .{};
+    defer source.deinit(std.testing.allocator);
+
+    const first_bucket = try source.getOrPutOrigin(std.testing.allocator, "http://127.0.0.1:8150");
+    const first_db = try first_bucket.getOrPutDatabase(std.testing.allocator, "lp-db");
+    first_db.version = 2;
+    const first_store = try first_db.getOrPutStore(std.testing.allocator, "items");
+    try first_store.putJson(std.testing.allocator, "alpha", "{\"value\":1}");
+    try first_store.putJson(std.testing.allocator, "beta", "{\"value\":2}");
+
+    const second_bucket = try source.getOrPutOrigin(std.testing.allocator, "http://127.0.0.1:8151");
+    const second_db = try second_bucket.getOrPutDatabase(std.testing.allocator, "other-db");
+    second_db.version = 1;
+    const second_store = try second_db.getOrPutStore(std.testing.allocator, "entries");
+    try second_store.putJson(std.testing.allocator, "gamma", "{\"ok\":true}");
+
+    try saveBrowseIndexedDbForPath(std.testing.allocator, abs_dir, &source);
+
+    var loaded = loadBrowseIndexedDb(std.testing.allocator, abs_dir);
+    defer loaded.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(@as(usize, 2), loaded.originCount());
+    try std.testing.expectEqual(@as(usize, 2), loaded.databaseCount());
+    try std.testing.expectEqual(@as(usize, 2), loaded.storeCount());
+    try std.testing.expectEqual(@as(usize, 3), loaded.itemCount());
+
+    const loaded_first_bucket = loaded._origins.get("http://127.0.0.1:8150") orelse return error.TestUnexpectedResult;
+    const loaded_first_db = loaded_first_bucket.getDatabase("lp-db") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 2), loaded_first_db.version);
+    const loaded_first_store = loaded_first_db.getStore("items") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("{\"value\":1}", loaded_first_store.getJson("alpha") orelse return error.TestUnexpectedResult);
+    try std.testing.expectEqualStrings("{\"value\":2}", loaded_first_store.getJson("beta") orelse return error.TestUnexpectedResult);
+
+    const loaded_second_bucket = loaded._origins.get("http://127.0.0.1:8151") orelse return error.TestUnexpectedResult;
+    const loaded_second_db = loaded_second_bucket.getDatabase("other-db") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 1), loaded_second_db.version);
+    const loaded_second_store = loaded_second_db.getStore("entries") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("{\"ok\":true}", loaded_second_store.getJson("gamma") orelse return error.TestUnexpectedResult);
+}
+
 test "hashInternalBrowsePageState settings changes after cookie mutation" {
     var cookie_jar = CookieJar.init(std.testing.allocator);
     defer cookie_jar.deinit();
     var storage_shed: storage.Shed = .{};
     defer storage_shed.deinit(std.testing.allocator);
+    var indexed_db_shed: indexed_db.Shed = .{};
+    defer indexed_db_shed.deinit(std.testing.allocator);
 
     var session: Session = undefined;
     session.page = null;
@@ -1501,6 +1567,8 @@ test "hashInternalBrowsePageState settings changes after cookie mutation" {
     session.owned_cookie_jar = null;
     session.storage_shed = &storage_shed;
     session.owned_storage_shed = null;
+    session.indexed_db_shed = &indexed_db_shed;
+    session.owned_indexed_db_shed = null;
 
     var tab: BrowseTab = undefined;
     tab.session = &session;
@@ -1572,6 +1640,8 @@ test "hashInternalBrowsePageState settings changes after local storage mutation"
     defer cookie_jar.deinit();
     var storage_shed: storage.Shed = .{};
     defer storage_shed.deinit(std.testing.allocator);
+    var indexed_db_shed: indexed_db.Shed = .{};
+    defer indexed_db_shed.deinit(std.testing.allocator);
 
     var session: Session = undefined;
     session.page = null;
@@ -1580,6 +1650,8 @@ test "hashInternalBrowsePageState settings changes after local storage mutation"
     session.owned_cookie_jar = null;
     session.storage_shed = &storage_shed;
     session.owned_storage_shed = null;
+    session.indexed_db_shed = &indexed_db_shed;
+    session.owned_indexed_db_shed = null;
 
     var tab: BrowseTab = undefined;
     tab.session = &session;
@@ -1621,6 +1693,80 @@ test "hashInternalBrowsePageState settings changes after local storage mutation"
 
     const bucket = try storage_shed.getOrPut(std.testing.allocator, "http://127.0.0.1:8150");
     try bucket.local.setOwnedItem(std.testing.allocator, "lp_local_one", "one");
+
+    const after_hash = hashInternalBrowsePageState(
+        std.testing.allocator,
+        null,
+        &shell,
+        0,
+        &settings,
+        &downloads,
+        .settings,
+    );
+    try std.testing.expect(before_hash != after_hash);
+}
+
+test "hashInternalBrowsePageState settings changes after indexed db mutation" {
+    var cookie_jar = CookieJar.init(std.testing.allocator);
+    defer cookie_jar.deinit();
+    var storage_shed: storage.Shed = .{};
+    defer storage_shed.deinit(std.testing.allocator);
+    var indexed_db_shed: indexed_db.Shed = .{};
+    defer indexed_db_shed.deinit(std.testing.allocator);
+
+    var session: Session = undefined;
+    session.page = null;
+    session.navigation = .{ ._proto = undefined };
+    session.cookie_jar = &cookie_jar;
+    session.owned_cookie_jar = null;
+    session.storage_shed = &storage_shed;
+    session.owned_storage_shed = null;
+    session.indexed_db_shed = &indexed_db_shed;
+    session.owned_indexed_db_shed = null;
+
+    var tab: BrowseTab = undefined;
+    tab.session = &session;
+    tab.committed_surface = .{};
+    tab.error_state = .{};
+    tab.internal_filters = .{};
+    defer tab.internal_filters.deinit(std.testing.allocator);
+    tab.target_name = &.{};
+    tab.popup_source = .none;
+    tab.zoom_percent = 100;
+
+    var tab_items = [_]*BrowseTab{&tab};
+    var tabs = std.ArrayListUnmanaged(*BrowseTab){
+        .items = tab_items[0..],
+        .capacity = tab_items.len,
+    };
+    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    defer closed_tabs.deinit(std.testing.allocator);
+    var active_index: usize = 0;
+    const shell: BrowseShell = .{
+        .tabs = &tabs,
+        .closed_tabs = &closed_tabs,
+        .active_tab_index = &active_index,
+    };
+    var settings = BrowseSettings{};
+    defer settings.deinit(std.testing.allocator);
+    var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
+    defer downloads.deinit(null);
+
+    const before_hash = hashInternalBrowsePageState(
+        std.testing.allocator,
+        null,
+        &shell,
+        0,
+        &settings,
+        &downloads,
+        .settings,
+    );
+
+    const bucket = try indexed_db_shed.getOrPutOrigin(std.testing.allocator, "http://127.0.0.1:8150");
+    const database = try bucket.getOrPutDatabase(std.testing.allocator, "lp-db");
+    database.version = 1;
+    const store = try database.getOrPutStore(std.testing.allocator, "items");
+    try store.putJson(std.testing.allocator, "alpha", "{\"value\":1}");
 
     const after_hash = hashInternalBrowsePageState(
         std.testing.allocator,
@@ -2459,6 +2605,8 @@ test "internalBrowseCommandHostPage maps stateful internal actions" {
     try std.testing.expectEqual(@as(?InternalBrowsePage, .downloads), internalBrowseCommandHostPage(.download_filter_clear));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_set_homepage_to_current));
     try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_clear_cookies));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_clear_local_storage));
+    try std.testing.expectEqual(@as(?InternalBrowsePage, .settings), internalBrowseCommandHostPage(.settings_clear_indexed_db));
     try std.testing.expectEqual(@as(?InternalBrowsePage, null), internalBrowseCommandHostPage(.reload));
 }
 
@@ -2489,6 +2637,8 @@ test "internalBrowseCommandUsesBrowseLoopHandler includes indexed closed tab reo
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.{ .download_filter_set = "one" }));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.download_filter_clear));
     try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.settings_clear_cookies));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.settings_clear_local_storage));
+    try std.testing.expect(internalBrowseCommandUsesBrowseLoopHandler(.settings_clear_indexed_db));
     try std.testing.expect(!internalBrowseCommandUsesBrowseLoopHandler(.download_clear));
 }
 
@@ -2510,6 +2660,8 @@ test "internalBrowseCommandKeepsCurrentPage includes internal open in new tab ac
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .download_retry = 0 }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.{ .download_sort_set = .newest_first }));
     try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.settings_clear_cookies));
+    try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.settings_clear_local_storage));
+    try std.testing.expect(internalBrowseCommandKeepsCurrentPage(.settings_clear_indexed_db));
     try std.testing.expect(!internalBrowseCommandKeepsCurrentPage(.{ .download_source = 0 }));
 }
 
