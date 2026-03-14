@@ -1519,14 +1519,18 @@ test "saveBrowseIndexedDbForPath round trips persisted indexed db" {
     const first_db = try first_bucket.getOrPutDatabase(std.testing.allocator, "lp-db");
     first_db.version = 2;
     const first_store = try first_db.getOrPutStore(std.testing.allocator, "items");
+    _ = try first_store.createIndex(std.testing.allocator, "by_value", "value");
     try first_store.putJson(std.testing.allocator, "alpha", "{\"value\":1}");
     try first_store.putJson(std.testing.allocator, "beta", "{\"value\":2}");
+    try first_store.rebuildIndexes(std.testing.allocator, std.testing.allocator);
 
     const second_bucket = try source.getOrPutOrigin(std.testing.allocator, "http://127.0.0.1:8151");
     const second_db = try second_bucket.getOrPutDatabase(std.testing.allocator, "other-db");
     second_db.version = 1;
     const second_store = try second_db.getOrPutStore(std.testing.allocator, "entries");
+    _ = try second_store.createIndex(std.testing.allocator, "by_ok", "ok");
     try second_store.putJson(std.testing.allocator, "gamma", "{\"ok\":true}");
+    try second_store.rebuildIndexes(std.testing.allocator, std.testing.allocator);
 
     try saveBrowseIndexedDbForPath(std.testing.allocator, abs_dir, &source);
 
@@ -1541,15 +1545,24 @@ test "saveBrowseIndexedDbForPath round trips persisted indexed db" {
     const loaded_first_bucket = loaded._origins.get("http://127.0.0.1:8150") orelse return error.TestUnexpectedResult;
     const loaded_first_db = loaded_first_bucket.getDatabase("lp-db") orelse return error.TestUnexpectedResult;
     try std.testing.expectEqual(@as(u32, 2), loaded_first_db.version);
+    try std.testing.expectEqual(@as(usize, 1), loaded_first_db.indexCount());
     const loaded_first_store = loaded_first_db.getStore("items") orelse return error.TestUnexpectedResult;
     try std.testing.expectEqualStrings("{\"value\":1}", loaded_first_store.getJson("alpha") orelse return error.TestUnexpectedResult);
     try std.testing.expectEqualStrings("{\"value\":2}", loaded_first_store.getJson("beta") orelse return error.TestUnexpectedResult);
+    const loaded_first_index = loaded_first_store.getIndex("by_value") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("value", loaded_first_index.key_path);
+    try std.testing.expectEqualStrings("alpha", loaded_first_index.getPrimaryKey("1") orelse return error.TestUnexpectedResult);
+    try std.testing.expectEqualStrings("beta", loaded_first_index.getPrimaryKey("2") orelse return error.TestUnexpectedResult);
 
     const loaded_second_bucket = loaded._origins.get("http://127.0.0.1:8151") orelse return error.TestUnexpectedResult;
     const loaded_second_db = loaded_second_bucket.getDatabase("other-db") orelse return error.TestUnexpectedResult;
     try std.testing.expectEqual(@as(u32, 1), loaded_second_db.version);
+    try std.testing.expectEqual(@as(usize, 1), loaded_second_db.indexCount());
     const loaded_second_store = loaded_second_db.getStore("entries") orelse return error.TestUnexpectedResult;
     try std.testing.expectEqualStrings("{\"ok\":true}", loaded_second_store.getJson("gamma") orelse return error.TestUnexpectedResult);
+    const loaded_second_index = loaded_second_store.getIndex("by_ok") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("ok", loaded_second_index.key_path);
+    try std.testing.expectEqualStrings("gamma", loaded_second_index.getPrimaryKey("true") orelse return error.TestUnexpectedResult);
 }
 
 test "hashInternalBrowsePageState settings changes after cookie mutation" {

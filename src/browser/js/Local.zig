@@ -1072,6 +1072,12 @@ fn probeJsValueToZig(self: *const Local, comptime T: type, js_val: js.Value) !Pr
                         i32 => if (js_val.isInt32Array()) {
                             return .{ .ok = {} };
                         },
+                        f32 => if (js_val.isFloat32Array()) {
+                            return .{ .ok = {} };
+                        },
+                        f64 => if (js_val.isFloat64Array()) {
+                            return .{ .ok = {} };
+                        },
                         u64 => if (js_val.isBigUint64Array()) {
                             return .{ .ok = {} };
                         },
