@@ -114,6 +114,30 @@ fn windowInlineHandler(window: *Window, typ: lp.String) ?js.Function.Global {
 // set both the property and add a listener, they both execute.
 pub const DispatchDirectOptions = EventManagerBase.DispatchDirectOptions;
 
+fn isRecoverableDispatchError(err: anyerror) bool {
+    const DOMException = @import("webapi/DOMException.zig");
+    if (DOMException.fromError(err) != null) {
+        return true;
+    }
+
+    return switch (err) {
+        error.JSExecCallback,
+        error.CompilationError,
+        error.ExecutionError,
+        error.JsException,
+        => true,
+        else => false,
+    };
+}
+
+fn swallowDispatchError(comptime context: []const u8, err: anyerror) void {
+    if (!isRecoverableDispatchError(err)) {
+        log.warn(.event, context, .{ .err = err });
+        return;
+    }
+    log.warn(.event, context, .{ .err = err });
+}
+
 // Direct dispatch for non-DOM targets (Window, XHR, AbortSignal) or DOM nodes with
 // property handlers. No propagation - just calls the handler and registered listeners.
 // Handler can be: null, ?js.Function.Global or js.Function
@@ -846,3 +870,23 @@ const ActivationState = struct {
         try frame._event_manager.dispatch(target, event);
     }
 };
+
+test "dispatch contains selector syntax errors inside load listeners" {
+    var page = try testing.pageTest("page/selector_error_containment.html");
+    defer page._session.removePage();
+
+    _ = page._session.wait(250);
+
+    const title = (try page.getTitle()) orelse return error.MissingTitle;
+    try std.testing.expectEqualStrings("Selector Error Survived", title);
+}
+
+test "dispatch contains selector syntax errors inside promise microtasks" {
+    var page = try testing.pageTest("page/selector_error_microtask_containment.html");
+    defer page._session.removePage();
+
+    _ = page._session.wait(250);
+
+    const title = (try page.getTitle()) orelse return error.MissingTitle;
+    try std.testing.expectEqualStrings("Selector Microtask Survived", title);
+}
