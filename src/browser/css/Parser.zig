@@ -251,7 +251,7 @@ fn isColon(token: Tokenizer.Token) bool {
 
 fn isBlockStart(token: Tokenizer.Token) bool {
     return switch (token) {
-        .curly_bracket_block, .square_bracket_block, .parenthesis_block, .function => true,
+        .curly_bracket_block, .square_bracket_block, .parenthesis_block => true,
         else => false,
     };
 }

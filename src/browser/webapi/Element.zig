@@ -1362,6 +1362,22 @@ pub fn getElementDimensions(self: *Element, frame: *Frame) Dimensions {
                     dims.explicit_height = true;
                 } else |_| {}
             }
+            if (tag == .img) {
+                if (self.is(Element.Html.Image)) |image| {
+                    const natural_width = @as(f64, @floatFromInt(image.getNaturalWidth(page)));
+                    const natural_height = @as(f64, @floatFromInt(image.getNaturalHeight(page)));
+                    if (natural_width > 0 and natural_height > 0) {
+                        if (width == 5.0 and height == 5.0) {
+                            width = natural_width;
+                            height = natural_height;
+                        } else if (width != 5.0 and height == 5.0) {
+                            height = width * natural_height / natural_width;
+                        } else if (height != 5.0 and width == 5.0) {
+                            width = height * natural_width / natural_height;
+                        }
+                    }
+                }
+            }
         }
     }
 
