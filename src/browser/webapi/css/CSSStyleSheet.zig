@@ -300,6 +300,15 @@ test "formatSupportsEmbeddedBytes only retains ttf and otf bytes" {
     try std.testing.expect(!formatSupportsEmbeddedBytes(.unknown));
 }
 
+test "applyMatchingRules keeps valid selector-list branches when one branch is unsupported" {
+    var page = try testing.pageTest("page/selector_forgiving_stylesheet.html");
+    defer page._session.removePage();
+
+    const duplicate = (try page.window._document.querySelector(.wrap(".dup"), page)).?;
+    const duplicate_style = try page.window.getComputedStyle(duplicate, null, page);
+    try std.testing.expectEqualStrings("none", duplicate_style.asCSSStyleDeclaration().getPropertyValue("display", page));
+}
+
 const testing = @import("../../../testing.zig");
 test "WebApi: CSSStyleSheet" {
     testing.silenceLog(&.{.js});
