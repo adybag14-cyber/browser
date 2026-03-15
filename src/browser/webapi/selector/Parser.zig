@@ -89,6 +89,7 @@ pub fn parseList(arena: Allocator, input: []const u8) ParseError![]const Selecto
 
         var comma_pos: usize = trimmed.len;
         var depth: usize = 0;
+        var bracket_depth: usize = 0;
         var in_quote: u8 = 0; // 0 = not in quotes, '"' or '\'' = in that quote type
         var i: usize = 0;
         while (i < trimmed.len) {
@@ -126,8 +127,16 @@ pub fn parseList(arena: Allocator, input: []const u8) ParseError![]const Selecto
                     if (depth > 0) depth -= 1;
                     i += 1;
                 },
+                '[' => {
+                    bracket_depth += 1;
+                    i += 1;
+                },
+                ']' => {
+                    if (bracket_depth > 0) bracket_depth -= 1;
+                    i += 1;
+                },
                 ',' => {
-                    if (depth == 0) {
+                    if (depth == 0 and bracket_depth == 0) {
                         comma_pos = i;
                         break;
                     }
@@ -374,20 +383,66 @@ fn peek(self: *const Parser) u8 {
 fn consumeUntilCommaOrParen(self: *Parser) []const u8 {
     const input = self.input;
     var depth: usize = 0;
+    var bracket_depth: usize = 0;
+    var in_quote: u8 = 0;
     var i: usize = 0;
 
-    while (i < input.len) : (i += 1) {
+    while (i < input.len) {
         const c = input[i];
+        if (in_quote != 0) {
+            if (c == '\\') {
+                i += 1;
+                if (i < input.len) i += 1;
+                continue;
+            }
+            if (c == in_quote) {
+                in_quote = 0;
+            }
+            i += 1;
+            continue;
+        }
+
         switch (c) {
-            '(' => depth += 1,
+            '\\' => {
+                i += 1;
+                if (i < input.len) i += 1;
+                continue;
+            },
+            '"', '\'' => {
+                in_quote = c;
+                i += 1;
+                continue;
+            },
+            '[' => {
+                bracket_depth += 1;
+                i += 1;
+                continue;
+            },
+            ']' => {
+                if (bracket_depth > 0) bracket_depth -= 1;
+                i += 1;
+                continue;
+            },
+            '(' => {
+                depth += 1;
+                i += 1;
+                continue;
+            },
             ')' => {
-                if (depth == 0) break;
-                depth -= 1;
+                if (depth == 0 and bracket_depth == 0) break;
+                if (depth > 0) depth -= 1;
+                i += 1;
+                continue;
             },
             ',' => {
-                if (depth == 0) break;
+                if (depth == 0 and bracket_depth == 0) break;
+                i += 1;
+                continue;
             },
-            else => {},
+            else => {
+                i += 1;
+                continue;
+            },
         }
     }
 
@@ -1901,4 +1956,23 @@ test "Selector: Parser.has" {
     {
         try testing.expectError(error.InvalidPseudoClass, parse(arena, "div:has()"));
     }
+}
+
+test "Selector: Parser.pseudoClass parses has relative selectors and quoted commas" {
+    var page = try testing.pageTest("page/selector_has_relative.html");
+    defer page._session.removePage();
+    const arena = page.call_arena;
+
+    var parser = Parser{ .input = ":has(> .direct, + li.selected, ~ [data-note='alpha,beta'])" };
+    const pseudo = try parser.pseudoClass(arena, page);
+    switch (pseudo) {
+        .has => |selectors| {
+            try std.testing.expectEqual(@as(usize, 3), selectors.len);
+            try std.testing.expectEqual(Selector.Combinator.child, selectors[0].relative_combinator.?);
+            try std.testing.expectEqual(Selector.Combinator.next_sibling, selectors[1].relative_combinator.?);
+            try std.testing.expectEqual(Selector.Combinator.subsequent_sibling, selectors[2].relative_combinator.?);
+        },
+        else => return error.UnexpectedPseudoClass,
+    }
+    try testing.expectEqual("", parser.input);
 }
