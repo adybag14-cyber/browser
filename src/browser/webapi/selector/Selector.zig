@@ -234,6 +234,11 @@ pub const AttributeMatcher = union(enum) {
     substring: []const u8,
 };
 
+pub const Direction = enum {
+    ltr,
+    rtl,
+};
+
 pub const PseudoClass = union(enum) {
     // State pseudo-classes
     modal,
@@ -254,6 +259,7 @@ pub const PseudoClass = union(enum) {
     read_only,
     read_write,
     default,
+    open,
 
     // User interaction
     hover,
@@ -287,6 +293,7 @@ pub const PseudoClass = union(enum) {
     defined,
 
     // Functional
+    dir: Direction,
     lang: []const u8,
     not: []const Selector, // :not() - CSS Level 4: supports full selectors and comma-separated lists
     is: []const Selector, // :is() - matches any of the selectors

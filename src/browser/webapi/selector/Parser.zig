@@ -600,13 +600,40 @@ fn pseudoClass(self: *Parser, arena: Allocator) !Selector.PseudoClass {
             return .{ .lang = lang };
         }
 
+        if (std.mem.eql(u8, name, "dir")) {
+            _ = self.skipSpaces();
+            const dir_start = self.input;
+            var dir_i: usize = 0;
+            while (dir_i < dir_start.len and dir_start[dir_i] != ')') : (dir_i += 1) {}
+            if (dir_i == 0 or self.peek() == 0) return error.InvalidPseudoClass;
+
+            const dir_value = std.mem.trim(u8, dir_start[0..dir_i], &std.ascii.whitespace);
+            self.input = dir_start[dir_i..];
+
+            if (self.peek() != ')') return error.InvalidPseudoClass;
+            self.input = self.input[1..];
+
+            if (std.ascii.eqlIgnoreCase(dir_value, "ltr")) {
+                return .{ .dir = .ltr };
+            }
+            if (std.ascii.eqlIgnoreCase(dir_value, "rtl")) {
+                return .{ .dir = .rtl };
+            }
+            return error.InvalidPseudoClass;
+        }
+
         return error.UnknownPseudoClass;
+    }
+
+    if (std.ascii.eqlIgnoreCase(name, "-webkit-any-link") or std.ascii.eqlIgnoreCase(name, "-moz-any-link")) {
+        return .any_link;
     }
 
     switch (name.len) {
         4 => {
             if (fastEql(name, "root")) return .root;
             if (fastEql(name, "link")) return .link;
+            if (fastEql(name, "open")) return .open;
         },
         5 => {
             if (fastEql(name, "modal")) return .modal;

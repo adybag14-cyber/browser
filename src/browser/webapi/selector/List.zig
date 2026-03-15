@@ -599,6 +599,7 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
             return el.getAttributeSafe(comptime .wrap("readonly")) == null;
         },
         .default => return false,
+        .open => return el.getAttributeSafe(comptime .wrap("open")) != null,
 
         // User interaction
         .hover => return false,
