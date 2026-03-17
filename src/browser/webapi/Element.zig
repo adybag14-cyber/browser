@@ -91,6 +91,14 @@ pub const ScrollPosition = struct {
 };
 pub const ScrollPositionLookup = std.AutoHashMapUnmanaged(*Element, ScrollPosition);
 
+pub const ScrollMetrics = struct {
+    client_width: u32 = 0,
+    client_height: u32 = 0,
+    scroll_width: u32 = 0,
+    scroll_height: u32 = 0,
+};
+pub const ScrollMetricsLookup = std.AutoHashMapUnmanaged(*Element, ScrollMetrics);
+
 pub const Namespace = enum(u8) {
     html,
     svg,
@@ -1692,6 +1700,13 @@ fn positionStyle(self: *Element, frame: *Frame) []const u8 {
 pub fn getClientTop(_: *Element) f64 {
     // Border width - in our dummy layout, we don't apply borders to layout
     return 0.0;
+}
+
+fn maxScrollOffset(scroll_size: u32, client_size: u32) u32 {
+    if (scroll_size <= client_size) {
+        return 0;
+    }
+    return scroll_size - client_size;
 }
 
 pub fn getClientLeft(_: *Element) f64 {

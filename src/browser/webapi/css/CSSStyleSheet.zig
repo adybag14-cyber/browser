@@ -40,6 +40,8 @@ _request_include_credentials: bool = true,
 const ParsedRule = struct {
     selector_text: []const u8,
     declarations_text: []const u8,
+    selectors: []const ParsedSelector,
+    source_order: usize,
     rule: *CSSRule,
 };
 
