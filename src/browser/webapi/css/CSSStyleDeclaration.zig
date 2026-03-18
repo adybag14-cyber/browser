@@ -707,6 +707,15 @@ fn normalizePropertyValue(arena: Allocator, property_name: []const u8, raw_value
     if (std.mem.eql(u8, normalized_name, "box-sizing")) {
         return "border-box";
     }
+    if (std.mem.eql(u8, normalized_name, "object-fit")) {
+        return "fill";
+    }
+    if (std.mem.eql(u8, normalized_name, "object-position")) {
+        return "50% 50%";
+    }
+    if (std.mem.eql(u8, normalized_name, "aspect-ratio")) {
+        return "auto";
+    }
 
     // "first baseline" serializes canonically as "baseline" (first is the default)
     if (std.ascii.startsWithIgnoreCase(value, "first baseline")) {
