@@ -689,6 +689,9 @@ fn normalizePropertyValue(arena: Allocator, property_name: []const u8, raw_value
     if (std.mem.eql(u8, value, "0") and isLengthProperty(property_name)) {
         return "0px";
     }
+    if (std.mem.eql(u8, normalized_name, "box-shadow")) {
+        return "none";
+    }
     if (std.mem.eql(u8, normalized_name, "line-height")) {
         return "normal";
     }
