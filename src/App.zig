@@ -20,6 +20,7 @@ const std = @import("std");
 const lp = @import("lightpanda");
 
 const Config = @import("Config.zig");
+const HostPaths = @import("HostPaths.zig");
 const Snapshot = @import("browser/js/Snapshot.zig");
 const Platform = @import("browser/js/Platform.zig");
 const Display = @import("display/Display.zig");
@@ -72,7 +73,7 @@ pub fn init(allocator: Allocator, config: *const Config) !*App {
     app.network = try Network.init(allocator, app, config);
     errdefer app.network.deinit();
 
-    app.app_dir_path = getAndMakeAppDir(allocator);
+    app.app_dir_path = HostPaths.resolveProfileDir(allocator, config.profileDir());
     app.display.setAppDataPath(app.app_dir_path);
 
     app.telemetry = try Telemetry.init(app, config.command, config.interactive());
