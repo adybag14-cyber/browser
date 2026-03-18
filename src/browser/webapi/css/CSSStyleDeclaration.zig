@@ -704,6 +704,9 @@ fn normalizePropertyValue(arena: Allocator, property_name: []const u8, raw_value
     if (std.mem.eql(u8, normalized_name, "transform")) {
         return "none";
     }
+    if (std.mem.eql(u8, normalized_name, "box-sizing")) {
+        return "border-box";
+    }
 
     // "first baseline" serializes canonically as "baseline" (first is the default)
     if (std.ascii.startsWithIgnoreCase(value, "first baseline")) {
