@@ -1466,6 +1466,13 @@ pub fn boundingClientRectValuesForVisible(self: *Element, frame: *Frame) DOMRect
         }
     }
 
+    var transform_node: ?*Element = self;
+    while (transform_node) |current| : (transform_node = current.parentElement()) {
+        const delta = resolveTranslateTransform(current, page);
+        x += delta.x;
+        y += delta.y;
+    }
+
     return .{
         .x = x,
         .y = y,
