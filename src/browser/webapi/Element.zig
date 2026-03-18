@@ -1456,7 +1456,15 @@ pub fn boundingClientRectValuesForVisible(self: *Element, frame: *Frame) DOMRect
     const dims = self.getElementDimensions(frame);
 
     // Use sibling position for x coordinate to ensure siblings have different x values
-    const x = calculateSiblingPosition(self.asNode());
+    var x = calculateSiblingPosition(self.asNode());
+
+    var ancestor = self.asNode().parentElement();
+    while (ancestor) |current| : (ancestor = current.parentElement()) {
+        if (page._element_scroll_positions.get(current)) |scroll_position| {
+            x -= @as(f64, @floatFromInt(scroll_position.x));
+            y -= @as(f64, @floatFromInt(scroll_position.y));
+        }
+    }
 
     return .{
         .x = x,
