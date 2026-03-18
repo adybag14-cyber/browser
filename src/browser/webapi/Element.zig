@@ -99,6 +99,14 @@ pub const ScrollMetrics = struct {
 };
 pub const ScrollMetricsLookup = std.AutoHashMapUnmanaged(*Element, ScrollMetrics);
 
+pub const LayoutBox = struct {
+    x: i32 = 0,
+    y: i32 = 0,
+    width: i32 = 0,
+    height: i32 = 0,
+};
+pub const LayoutBoxLookup = std.AutoHashMapUnmanaged(*Element, LayoutBox);
+
 pub const Namespace = enum(u8) {
     html,
     svg,
@@ -1456,7 +1464,10 @@ pub fn boundingClientRectValuesForVisible(self: *Element, frame: *Frame) DOMRect
     const dims = self.getElementDimensions(frame);
 
     // Use sibling position for x coordinate to ensure siblings have different x values
-    var x = calculateSiblingPosition(self.asNode());
+    if (page._element_layout_boxes.get(self)) |layout_box| {
+        x = @floatFromInt(layout_box.x);
+        y = @floatFromInt(layout_box.y);
+    }
 
     var ancestor = self.asNode().parentElement();
     while (ancestor) |current| : (ancestor = current.parentElement()) {
