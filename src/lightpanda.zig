@@ -57,6 +57,8 @@ pub const Schema = @import("script/Schema.zig");
 pub const skill = @import("script/skill.zig");
 pub const cookies = @import("cookies.zig");
 pub const build_config = @import("build_config");
+pub const sys = @import("sys/host.zig");
+pub const mock_host = @import("sys/mock_host.zig");
 pub const crash_handler = @import("crash_handler.zig");
 pub const core_dump = @import("core_dump.zig");
 
