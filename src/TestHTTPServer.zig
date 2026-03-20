@@ -18,11 +18,12 @@
 
 const std = @import("std");
 const URL = @import("browser/URL.zig");
+const compat_posix = @import("compat_posix.zig");
 
 const TestHTTPServer = @This();
 
 shutdown: std.atomic.Value(bool),
-listener: ?std.net.Server,
+listener: ?std.Io.net.Server,
 handler: Handler,
 
 const Handler = *const fn (req: *std.http.Server.Request) anyerror!void;
@@ -43,27 +44,24 @@ pub fn stop(self: *TestHTTPServer) void {
     self.shutdown.store(true, .release);
     if (self.listener) |*listener| {
         switch (@import("builtin").target.os.tag) {
-            .linux => std.posix.shutdown(listener.stream.handle, .recv) catch {},
-            else => std.posix.close(listener.stream.handle),
+            .linux => compat_posix.shutdown(listener.socket.handle, .recv) catch {},
+            else => compat_posix.close(listener.socket.handle),
         }
     }
 }
 
-pub fn run(self: *TestHTTPServer, wg: *std.Thread.WaitGroup) !void {
-    const address = try std.net.Address.parseIp("127.0.0.1", 9582);
+pub fn run(self: *TestHTTPServer, wg: *@import("lightpanda").compat_sync.WaitGroup) !void {
+    const address = try std.Io.net.IpAddress.parse("127.0.0.1", 9582);
 
-    self.listener = try address.listen(.{ .reuse_address = true });
+    self.listener = try address.listen(std.Options.debug_io, .{ .reuse_address = true });
     var listener = &self.listener.?;
     self.shutdown.store(false, .release);
 
     wg.finish();
 
     while (true) {
-        const conn = listener.accept() catch |err| {
-            if ((@import("builtin").target.os.tag == .windows and err == error.Unexpected) or
-                self.shutdown.load(.acquire) or
-                err == error.SocketNotListening)
-            {
+        const conn = listener.accept(std.Options.debug_io) catch |err| {
+            if (self.shutdown.load(.acquire) or err == error.SocketNotListening) {
                 return;
             }
             return err;
@@ -73,39 +71,44 @@ pub fn run(self: *TestHTTPServer, wg: *std.Thread.WaitGroup) !void {
     }
 }
 
-fn handleConnection(self: *TestHTTPServer, conn: std.net.Server.Connection) !void {
-    defer conn.stream.close();
+fn handleConnection(self: *TestHTTPServer, conn: std.Io.net.Stream) !void {
+    defer conn.close(std.Options.debug_io);
 
     var req_buf: [2048]u8 = undefined;
-    var conn_reader = conn.stream.reader(&req_buf);
-    var conn_writer = conn.stream.writer(&req_buf);
+    var conn_reader = conn.reader(std.Options.debug_io, &req_buf);
+    var conn_writer = conn.writer(std.Options.debug_io, &req_buf);
 
     var http_server = std.http.Server.init(conn_reader.interface(), &conn_writer.interface);
-    var req = http_server.receiveHead() catch |err| switch (err) {
-        error.ReadFailed, error.HttpConnectionClosing => return,
-        else => {
-            std.debug.print("Test HTTP Server error: {}\n", .{err});
-            return err;
-        },
-    };
 
-    self.handler(&req) catch |err| {
-        std.debug.print("test http error '{s}': {}\n", .{ req.head.target, err });
-        try req.respond("server error", .{ .status = .internal_server_error });
-    };
+    while (true) {
+        var req = http_server.receiveHead() catch |err| switch (err) {
+            error.ReadFailed => continue,
+            error.HttpConnectionClosing => continue,
+            else => {
+                std.debug.print("Test HTTP Server error: {}\n", .{err});
+                return err;
+            },
+        };
+
+        self.handler(&req) catch |err| {
+            std.debug.print("test http error '{s}': {}\n", .{ req.head.target, err });
+            try req.respond("server error", .{ .status = .internal_server_error });
+            return;
+        };
+    }
 }
 
 pub fn sendFile(req: *std.http.Server.Request, file_path: []const u8) !void {
     var url_buf: [1024]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&url_buf);
     const unescaped_file_path = try URL.unescape(fba.allocator(), file_path);
-    var file = std.fs.cwd().openFile(unescaped_file_path, .{}) catch |err| switch (err) {
+    var file = std.Io.Dir.cwd().openFile(std.Options.debug_io, unescaped_file_path, .{}) catch |err| switch (err) {
         error.FileNotFound => return req.respond("server error", .{ .status = .not_found }),
         else => return err,
     };
-    defer file.close();
+    defer file.close(std.Options.debug_io);
 
-    const stat = try file.stat();
+    const stat = try file.stat(std.Options.debug_io);
     var send_buffer: [4096]u8 = undefined;
 
     var res = try req.respondStreaming(&send_buffer, .{
@@ -118,7 +121,7 @@ pub fn sendFile(req: *std.http.Server.Request, file_path: []const u8) !void {
     });
 
     var read_buffer: [4096]u8 = undefined;
-    var reader = file.reader(&read_buffer);
+    var reader = file.reader(std.Options.debug_io, &read_buffer);
     _ = try res.writer.sendFileAll(&reader, .unlimited);
     try res.writer.flush();
     try res.end();
@@ -127,46 +130,6 @@ pub fn sendFile(req: *std.http.Server.Request, file_path: []const u8) !void {
 fn getContentType(file_path: []const u8) []const u8 {
     if (std.mem.endsWith(u8, file_path, ".js")) {
         return "application/json";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".css")) {
-        return "text/css";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".png")) {
-        return "image/png";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".jpg") or std.mem.endsWith(u8, file_path, ".jpeg")) {
-        return "image/jpeg";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".gif")) {
-        return "image/gif";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".webp")) {
-        return "image/webp";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".svg")) {
-        return "image/svg+xml";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".woff2")) {
-        return "font/woff2";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".woff")) {
-        return "font/woff";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".ttf")) {
-        return "font/ttf";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".otf")) {
-        return "font/otf";
     }
 
     if (std.mem.endsWith(u8, file_path, ".html")) {

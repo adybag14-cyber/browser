@@ -21,7 +21,6 @@ const builtin = @import("builtin");
 
 const log = @import("../log.zig");
 const String = @import("../string.zig").String;
-const testing = @import("../testing.zig");
 
 const js = @import("js/js.zig");
 const Page = @import("Page.zig");
@@ -61,9 +60,9 @@ arena: Allocator,
 // 'load' listeners in the document, we can skip dispatching the per-resource
 // 'load' event (e.g. amazon product page has no listener and ~350 resources)
 has_dom_load_listener: bool,
-listener_pool: std.heap.MemoryPool(Listener),
+listener_pool: std.heap.memory_pool.Managed(Listener),
 ignore_list: std.ArrayList(*Listener),
-list_pool: std.heap.MemoryPool(std.DoublyLinkedList),
+list_pool: std.heap.memory_pool.Managed(std.DoublyLinkedList),
 lookup: std.HashMapUnmanaged(
     EventKey,
     *std.DoublyLinkedList,
@@ -78,11 +77,11 @@ pub fn init(arena: Allocator, page: *Page) EventManager {
         .page = page,
         .lookup = .{},
         .arena = arena,
-        .ignore_list = .{},
+        .ignore_list = .empty,
         .list_pool = .init(arena),
         .listener_pool = .init(arena),
         .dispatch_depth = 0,
-        .deferred_removals = .{},
+        .deferred_removals = .empty,
         .has_dom_load_listener = false,
     };
 }
@@ -206,7 +205,7 @@ pub fn dispatch(self: *EventManager, target: *EventTarget, event: *Event) Dispat
 
 pub fn dispatchOpts(self: *EventManager, target: *EventTarget, event: *Event, comptime opts: DispatchOpts) DispatchError!void {
     event.acquireRef();
-    defer event.deinit(false, self.page);
+    defer event.deinit(false, self.page._session);
 
     if (comptime IS_DEBUG) {
         log.debug(.event, "eventManager.dispatch", .{ .type = event._type_string.str(), .bubbles = event._bubbles });
@@ -228,38 +227,20 @@ const DispatchDirectOptions = struct {
     inject_target: bool = true,
 };
 
-fn isRecoverableDispatchError(err: anyerror) bool {
-    const DOMException = @import("webapi/DOMException.zig");
-    if (DOMException.fromError(err) != null) {
-        return true;
-    }
-
-    return switch (err) {
-        error.JSExecCallback,
-        error.CompilationError,
-        error.ExecutionError,
-        error.JsException,
-        => true,
-        else => false,
-    };
-}
-
-fn swallowDispatchError(comptime context: []const u8, err: anyerror) void {
-    if (!isRecoverableDispatchError(err)) {
-        log.warn(.event, context, .{ .err = err });
-        return;
-    }
-    log.warn(.event, context, .{ .err = err });
-}
-
 // Direct dispatch for non-DOM targets (Window, XHR, AbortSignal) or DOM nodes with
 // property handlers. No propagation - just calls the handler and registered listeners.
 // Handler can be: null, ?js.Function.Global, ?js.Function.Temp, or js.Function
 pub fn dispatchDirect(self: *EventManager, target: *EventTarget, event: *Event, handler: anytype, comptime opts: DispatchDirectOptions) !void {
     const page = self.page;
 
+    // Set window.event to the currently dispatching event (WHATWG spec)
+    const window = page.window;
+    const prev_event = window._current_event;
+    window._current_event = event;
+    defer window._current_event = prev_event;
+
     event.acquireRef();
-    defer event.deinit(false, page);
+    defer event.deinit(false, page._session);
 
     if (comptime IS_DEBUG) {
         log.debug(.event, "dispatchDirect", .{ .type = event._type_string, .context = opts.context });
@@ -284,7 +265,8 @@ pub fn dispatchDirect(self: *EventManager, target: *EventTarget, event: *Event, 
         if (func.callWithThis(void, target, .{event})) {
             was_dispatched = true;
         } else |err| {
-            swallowDispatchError(opts.context, err);
+            // a non-JS error
+            log.warn(.event, opts.context, .{ .err = err });
         }
     }
 
@@ -352,21 +334,15 @@ pub fn dispatchDirect(self: *EventManager, target: *EventTarget, event: *Event, 
         event._current_target = target;
 
         switch (listener.function) {
-            .value => |value| ls.toLocal(value).callWithThis(void, target, .{event}) catch |err| {
-                swallowDispatchError(opts.context, err);
-            },
+            .value => |value| try ls.toLocal(value).callWithThis(void, target, .{event}),
             .string => |string| {
                 const str = try page.call_arena.dupeZ(u8, string.str());
-                ls.local.eval(str, null) catch |err| {
-                    swallowDispatchError(opts.context, err);
-                };
+                try ls.local.eval(str, null);
             },
             .object => |obj_global| {
                 const obj = ls.toLocal(obj_global);
                 if (try obj.getFunction("handleEvent")) |handleEvent| {
-                    handleEvent.callWithThis(void, obj, .{event}) catch |err| {
-                        swallowDispatchError(opts.context, err);
-                    };
+                    try handleEvent.callWithThis(void, obj, .{event});
                 }
             },
         }
@@ -395,6 +371,29 @@ fn getFunction(handler: anytype, local: *const js.Local) ?js.Function {
     };
 }
 
+/// Check if there are any listeners for a direct dispatch (non-DOM target).
+/// Use this to avoid creating an event when there are no listeners.
+pub fn hasDirectListeners(self: *EventManager, target: *EventTarget, typ: []const u8, handler: anytype) bool {
+    if (hasHandler(handler)) {
+        return true;
+    }
+    return self.lookup.get(.{
+        .event_target = @intFromPtr(target),
+        .type_string = .wrap(typ),
+    }) != null;
+}
+
+fn hasHandler(handler: anytype) bool {
+    const ti = @typeInfo(@TypeOf(handler));
+    if (ti == .null) {
+        return false;
+    }
+    if (ti == .optional) {
+        return handler != null;
+    }
+    return true;
+}
+
 fn dispatchNode(self: *EventManager, target: *Node, event: *Event, comptime opts: DispatchOpts) !void {
     const ShadowRoot = @import("webapi/ShadowRoot.zig");
 
@@ -405,6 +404,13 @@ fn dispatchNode(self: *EventManager, target: *Node, event: *Event, comptime opts
     }
 
     const page = self.page;
+
+    // Set window.event to the currently dispatching event (WHATWG spec)
+    const window = page.window;
+    const prev_event = window._current_event;
+    window._current_event = event;
+    defer window._current_event = prev_event;
+
     var was_handled = false;
 
     // Create a single scope for all event handlers in this dispatch.
@@ -511,9 +517,7 @@ fn dispatchNode(self: *EventManager, target: *Node, event: *Event, comptime opts
             was_handled = true;
             event._current_target = target_et;
 
-            ls.toLocal(inline_handler).callWithThis(void, target_et, .{event}) catch |err| {
-                swallowDispatchError("dispatch.inline", err);
-            };
+            try ls.toLocal(inline_handler).callWithThis(void, target_et, .{event});
 
             if (event._stop_propagation) {
                 return;
@@ -641,21 +645,15 @@ fn dispatchPhase(self: *EventManager, list: *std.DoublyLinkedList, current_targe
         }
 
         switch (listener.function) {
-            .value => |value| local.toLocal(value).callWithThis(void, current_target, .{event}) catch |err| {
-                swallowDispatchError("dispatchPhase", err);
-            },
+            .value => |value| try local.toLocal(value).callWithThis(void, current_target, .{event}),
             .string => |string| {
                 const str = try page.call_arena.dupeZ(u8, string.str());
-                local.eval(str, null) catch |err| {
-                    swallowDispatchError("dispatchPhase", err);
-                };
+                try local.eval(str, null);
             },
             .object => |obj_global| {
                 const obj = local.toLocal(obj_global);
                 if (try obj.getFunction("handleEvent")) |handleEvent| {
-                    handleEvent.callWithThis(void, obj, .{event}) catch |err| {
-                        swallowDispatchError("dispatchPhase", err);
-                    };
+                    try handleEvent.callWithThis(void, obj, .{event});
                 }
             },
         }
@@ -943,23 +941,3 @@ const ActivationState = struct {
         try page._event_manager.dispatch(target, event);
     }
 };
-
-test "dispatch contains selector syntax errors inside load listeners" {
-    var page = try testing.pageTest("page/selector_error_containment.html");
-    defer page._session.removePage();
-
-    _ = page._session.wait(250);
-
-    const title = (try page.getTitle()) orelse return error.MissingTitle;
-    try std.testing.expectEqualStrings("Selector Error Survived", title);
-}
-
-test "dispatch contains selector syntax errors inside promise microtasks" {
-    var page = try testing.pageTest("page/selector_error_microtask_containment.html");
-    defer page._session.removePage();
-
-    _ = page._session.wait(250);
-
-    const title = (try page.getTitle()) orelse return error.MissingTitle;
-    try std.testing.expectEqualStrings("Selector Microtask Survived", title);
-}

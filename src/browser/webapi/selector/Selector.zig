@@ -156,11 +156,6 @@ pub const AttributeMatcher = union(enum) {
     substring: []const u8,
 };
 
-pub const Direction = enum {
-    ltr,
-    rtl,
-};
-
 pub const PseudoClass = union(enum) {
     // State pseudo-classes
     modal,
@@ -180,7 +175,6 @@ pub const PseudoClass = union(enum) {
     read_only,
     read_write,
     default,
-    open,
 
     // User interaction
     hover,
@@ -214,7 +208,6 @@ pub const PseudoClass = union(enum) {
     defined,
 
     // Functional
-    dir: Direction,
     lang: []const u8,
     not: []const Selector, // :not() - CSS Level 4: supports full selectors and comma-separated lists
     is: []const Selector, // :is() - matches any of the selectors
@@ -291,17 +284,8 @@ pub const Segment = struct {
 pub const Selector = struct {
     first: Compound,
     segments: []const Segment,
-    relative_combinator: ?Combinator = null,
 
     pub fn format(self: Selector, writer: *std.Io.Writer) !void {
-        if (self.relative_combinator) |relative| {
-            switch (relative) {
-                .descendant => {},
-                .child => try writer.writeAll("> "),
-                .next_sibling => try writer.writeAll("+ "),
-                .subsequent_sibling => try writer.writeAll("~ "),
-            }
-        }
         try self.first.format(writer);
         for (self.segments) |segment| {
             try segment.format(writer);

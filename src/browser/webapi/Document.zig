@@ -63,6 +63,11 @@ _script_created_parser: ?Parser.Streaming = null,
 _adopted_style_sheets: ?js.Object.Global = null,
 _selection: Selection = .init,
 
+// https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#throw-on-dynamic-markup-insertion-counter
+// Incremented during custom element reactions when parsing. When > 0,
+// document.open/close/write/writeln must throw InvalidStateError.
+_throw_on_dynamic_markup_insertion_counter: u32 = 0,
+
 _on_selectionchange: ?js.Function.Global = null,
 
 pub fn getOnSelectionChange(self: *Document) ?js.Function.Global {
@@ -360,6 +365,11 @@ pub fn createEvent(_: *const Document, event_type: []const u8, page: *Page) !*@i
         return (try KeyboardEvent.init("", null, page)).asEvent();
     }
 
+    if (std.mem.eql(u8, normalized, "inputevent")) {
+        const InputEvent = @import("event/InputEvent.zig");
+        return (try InputEvent.init("", null, page)).asEvent();
+    }
+
     if (std.mem.eql(u8, normalized, "mouseevent") or std.mem.eql(u8, normalized, "mouseevents")) {
         const MouseEvent = @import("event/MouseEvent.zig");
         return (try MouseEvent.init("", null, page)).asEvent();
@@ -431,33 +441,12 @@ pub fn getActiveElement(self: *Document) ?*Element {
 }
 
 pub fn getStyleSheets(self: *Document, page: *Page) !*StyleSheetList {
-    if (self._style_sheets == null) {
-        self._style_sheets = try StyleSheetList.init(page);
+    if (self._style_sheets) |sheets| {
+        return sheets;
     }
-
-    const sheets = self._style_sheets.?;
-    var collected: std.ArrayList(*@import("css/CSSStyleSheet.zig")) = .{};
-    defer collected.deinit(page.call_arena);
-    try collectStyleSheets(self.asNode(), page, &collected);
-    try sheets.setSheets(page, collected.items);
+    const sheets = try StyleSheetList.init(page);
+    self._style_sheets = sheets;
     return sheets;
-}
-
-fn collectStyleSheets(node: *Node, page: *Page, out: *std.ArrayList(*@import("css/CSSStyleSheet.zig"))) !void {
-    if (node.is(Element.Html.Style)) |style| {
-        if (try style.getSheet(page)) |sheet| {
-            try out.append(page.call_arena, sheet);
-        }
-    } else if (node.is(Element.Html.Link)) |link| {
-        if (try link.getSheet(page)) |sheet| {
-            try out.append(page.call_arena, sheet);
-        }
-    }
-
-    var child = node.firstChild();
-    while (child) |current| : (child = current.nextSibling()) {
-        try collectStyleSheets(current, page, out);
-    }
 }
 
 pub fn getFonts(self: *Document, page: *Page) !*FontFaceSet {
@@ -602,8 +591,11 @@ pub fn elementFromPoint(self: *Document, x: f64, y: f64, page: *Page) !?*Element
     while (stack.items.len > 0) {
         const node = stack.pop() orelse break;
         if (node.is(Element)) |element| {
-            if (elementContainsVisiblePoint(element, x, y, page)) {
-                topmost = element;
+            if (element.checkVisibility(page)) {
+                const rect = element.getBoundingClientRectForVisible(page);
+                if (x >= rect.getLeft() and x <= rect.getRight() and y >= rect.getTop() and y <= rect.getBottom()) {
+                    topmost = element;
+                }
             }
         }
 
@@ -616,68 +608,6 @@ pub fn elementFromPoint(self: *Document, x: f64, y: f64, page: *Page) !?*Element
     }
 
     return topmost;
-}
-
-const OverflowAxis = enum {
-    x,
-    y,
-};
-
-fn elementContainsVisiblePoint(element: *Element, x: f64, y: f64, page: *Page) bool {
-    if (!element.checkVisibility(page)) {
-        return false;
-    }
-
-    const rect = element.getBoundingClientRectForVisible(page);
-    if (!rectContainsPoint(rect, x, y)) {
-        return false;
-    }
-
-    return pointWithinAncestorOverflowClip(element, x, y, page);
-}
-
-fn rectContainsPoint(rect: anytype, x: f64, y: f64) bool {
-    return x >= rect.getLeft() and x <= rect.getRight() and
-        y >= rect.getTop() and y <= rect.getBottom();
-}
-
-fn pointWithinAncestorOverflowClip(element: *Element, x: f64, y: f64, page: *Page) bool {
-    var current = element.parentElement();
-    while (current) |ancestor| {
-        const clip_x = elementOverflowClipsAxis(ancestor, page, .x);
-        const clip_y = elementOverflowClipsAxis(ancestor, page, .y);
-        if (clip_x or clip_y) {
-            const rect = ancestor.getBoundingClientRectForVisible(page);
-            if (clip_x and (x < rect.getLeft() or x > rect.getRight())) {
-                return false;
-            }
-            if (clip_y and (y < rect.getTop() or y > rect.getBottom())) {
-                return false;
-            }
-        }
-        current = ancestor.parentElement();
-    }
-    return true;
-}
-
-fn elementOverflowClipsAxis(element: *Element, page: *Page, axis: OverflowAxis) bool {
-    const style = page.window.getComputedStyle(element, null, page) catch return false;
-    const decl = style.asCSSStyleDeclaration();
-    if (overflowValueClips(decl.getPropertyValue("overflow", page))) {
-        return true;
-    }
-    return switch (axis) {
-        .x => overflowValueClips(decl.getPropertyValue("overflow-x", page)),
-        .y => overflowValueClips(decl.getPropertyValue("overflow-y", page)),
-    };
-}
-
-fn overflowValueClips(value: []const u8) bool {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    return std.ascii.eqlIgnoreCase(trimmed, "hidden") or
-        std.ascii.eqlIgnoreCase(trimmed, "clip") or
-        std.ascii.eqlIgnoreCase(trimmed, "auto") or
-        std.ascii.eqlIgnoreCase(trimmed, "scroll");
 }
 
 pub fn elementsFromPoint(self: *Document, x: f64, y: f64, page: *Page) ![]const *Element {
@@ -711,13 +641,17 @@ pub fn getDocType(self: *Document) ?*Node {
 // reasonable for 2 frames to document.write("<html>...</html>") into their own
 // frame.
 fn looksLikeNewDocument(html: []const u8) bool {
-    const trimmed = std.mem.trimLeft(u8, html, &std.ascii.whitespace);
+    const trimmed = std.mem.trimStart(u8, html, &std.ascii.whitespace);
     return std.ascii.startsWithIgnoreCase(trimmed, "<!DOCTYPE") or
         std.ascii.startsWithIgnoreCase(trimmed, "<html");
 }
 
 pub fn write(self: *Document, text: []const []const u8, page: *Page) !void {
     if (self._type == .xml) {
+        return error.InvalidStateError;
+    }
+
+    if (self._throw_on_dynamic_markup_insertion_counter > 0) {
         return error.InvalidStateError;
     }
 
@@ -803,6 +737,10 @@ pub fn open(self: *Document, page: *Page) !*Document {
         return error.InvalidStateError;
     }
 
+    if (self._throw_on_dynamic_markup_insertion_counter > 0) {
+        return error.InvalidStateError;
+    }
+
     if (page._load_state == .parsing) {
         return self;
     }
@@ -838,6 +776,10 @@ pub fn open(self: *Document, page: *Page) !*Document {
 
 pub fn close(self: *Document, page: *Page) !void {
     if (self._type == .xml) {
+        return error.InvalidStateError;
+    }
+
+    if (self._throw_on_dynamic_markup_insertion_counter > 0) {
         return error.InvalidStateError;
     }
 

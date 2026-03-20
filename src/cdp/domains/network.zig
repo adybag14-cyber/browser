@@ -19,12 +19,13 @@
 const std = @import("std");
 const lp = @import("lightpanda");
 const Allocator = std.mem.Allocator;
+const log = @import("../../log.zig");
 
 const CdpStorage = @import("storage.zig");
 
 const id = @import("../id.zig");
 const URL = @import("../../browser/URL.zig");
-const Transfer = @import("../../http/Client.zig").Transfer;
+const Transfer = @import("../../browser/HttpClient.zig").Transfer;
 const Notification = @import("../../Notification.zig");
 const Mime = @import("../../browser/Mime.zig");
 
@@ -117,10 +118,15 @@ fn deleteCookies(cmd: anytype) !void {
         path: ?[]const u8 = null,
         partitionKey: ?CdpStorage.CookiePartitionKey = null,
     })) orelse return error.InvalidParams;
-    if (params.partitionKey != null) return error.NotImplemented;
+    // Silently ignore partitionKey since we don't support partitioned cookies (CHIPS).
+    // This allows Puppeteer's page.setCookie() to work, which sends deleteCookies
+    // with partitionKey as part of its cookie-setting workflow.
+    if (params.partitionKey != null) {
+        log.warn(.not_implemented, "partition key", .{ .src = "deleteCookies" });
+    }
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    var cookies = &bc.session.cookie_jar.cookies;
+    const cookies = &bc.session.cookie_jar.cookies;
 
     var index = cookies.items.len;
     while (index > 0) {
@@ -151,7 +157,7 @@ fn setCookie(cmd: anytype) !void {
     )) orelse return error.InvalidParams;
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    try CdpStorage.setCdpCookie(bc.session.cookie_jar, params);
+    try CdpStorage.setCdpCookie(&bc.session.cookie_jar, params);
 
     try cmd.sendResult(.{ .success = true }, .{});
 }
@@ -163,7 +169,7 @@ fn setCookies(cmd: anytype) !void {
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
     for (params.cookies) |param| {
-        try CdpStorage.setCdpCookie(bc.session.cookie_jar, param);
+        try CdpStorage.setCdpCookie(&bc.session.cookie_jar, param);
     }
 
     try cmd.sendResult(null, .{});
@@ -189,7 +195,7 @@ fn getCookies(cmd: anytype) !void {
         });
     }
 
-    var jar = bc.session.cookie_jar;
+    var jar = &bc.session.cookie_jar;
     jar.removeExpired(null);
     const writer = CdpStorage.CookieWriter{ .cookies = jar.cookies.items, .urls = urls.items };
     try cmd.sendResult(.{ .cookies = writer }, .{});
@@ -238,7 +244,7 @@ pub fn httpRequestStart(bc: anytype, msg: *const Notification.RequestStart) !voi
     const transfer = msg.transfer;
     const req = &transfer.req;
     const frame_id = req.frame_id;
-    const page = bc.session.findPage(frame_id) orelse return;
+    const page = bc.session.findPageByFrameId(frame_id) orelse return;
 
     // Modify request with extra CDP headers
     for (bc.extra_headers.items) |extra| {

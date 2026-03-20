@@ -19,21 +19,14 @@
 const std = @import("std");
 const js = @import("../../../js/js.zig");
 const Page = @import("../../../Page.zig");
-const Http = @import("../../../../http/Http.zig");
 
 const URL = @import("../../URL.zig");
-const RawURL = @import("../../../URL.zig");
 const Node = @import("../../Node.zig");
 const Element = @import("../../Element.zig");
-const Event = @import("../../Event.zig");
 const HtmlElement = @import("../Html.zig");
-const CSSStyleSheet = @import("../../css/CSSStyleSheet.zig");
-const STYLESHEET_ACCEPT_HEADER: [:0]const u8 = "Accept: text/css,*/*;q=0.1";
 
 const Link = @This();
 _proto: *HtmlElement,
-_sheet: ?*CSSStyleSheet = null,
-_stylesheet_load_scheduled: bool = false,
 
 pub fn asElement(self: *Link) *Element {
     return self._proto._proto;
@@ -71,9 +64,6 @@ pub fn getRel(self: *Link) []const u8 {
 
 pub fn setRel(self: *Link, value: []const u8, page: *Page) !void {
     try self.asElement().setAttributeSafe(comptime .wrap("rel"), .wrap(value), page);
-    if (self.asNode().isConnected()) {
-        try self.linkAddedCallback(page);
-    }
 }
 
 pub fn getAs(self: *const Link) []const u8 {
@@ -96,190 +86,30 @@ pub fn setCrossOrigin(self: *Link, value: []const u8, page: *Page) !void {
     return self.asElement().setAttributeSafe(comptime .wrap("crossOrigin"), .wrap(normalized), page);
 }
 
-pub fn getSheet(self: *Link, page: *Page) !?*CSSStyleSheet {
-    if (!self.asNode().isConnected()) {
-        self._sheet = null;
-        return null;
-    }
-    if (!self.isStylesheetLink()) {
-        self._sheet = null;
-        return null;
-    }
-
-    const href = try self.getHref(page);
-    if (href.len == 0) {
-        self._sheet = null;
-        return null;
-    }
-
-    if (self._sheet == null) {
-        self._sheet = try CSSStyleSheet.initWithOwner(self.asElement(), page);
-    }
-
-    const include_credentials = stylesheetRequestIncludesCredentials(self);
-    self._sheet.?._href = try page.arena.dupe(u8, href);
-    self._sheet.?._title = self.asElement().getAttributeSafe(comptime .wrap("title")) orelse "";
-    self._sheet.?._request_base_url = try page.arena.dupeZ(u8, href);
-    self._sheet.?._request_referer_url = try page.arena.dupeZ(u8, href);
-    self._sheet.?._request_include_credentials = include_credentials;
-    return self._sheet.?;
-}
-
 pub fn linkAddedCallback(self: *Link, page: *Page) !void {
     // if we're planning on navigating to another page, don't trigger load event.
     if (page.isGoingAway()) {
         return;
     }
 
-    const sheet = (try self.getSheet(page)) orelse return;
-    _ = sheet;
-    if (self._stylesheet_load_scheduled) {
-        return;
-    }
+    const element = self.asElement();
 
-    self._stylesheet_load_scheduled = true;
-    const callback = try page.arena.create(StylesheetLoadCallback);
-    callback.* = .{
-        .link = self,
-        .page = page,
-    };
-    try page.js.scheduler.add(callback, StylesheetLoadCallback.run, 0, .{
-        .name = "HTMLLinkElement.loadStylesheet",
-        .low_priority = false,
+    const rel = element.getAttributeSafe(comptime .wrap("rel")) orelse return;
+    const loadable_rels = std.StaticStringMap(void).initComptime(.{
+        .{ "stylesheet", {} },
+        .{ "preload", {} },
+        .{ "modulepreload", {} },
     });
-}
-
-fn isStylesheetLink(self: *const Link) bool {
-    const rel = self.asConstElement().getAttributeSafe(comptime .wrap("rel")) orelse return false;
-    return std.ascii.eqlIgnoreCase(rel, "stylesheet");
-}
-
-fn dispatchLoad(self: *Link, page: *Page) !void {
-    if (!page._event_manager.has_dom_load_listener and !self._proto.hasAttributeFunction(.onload, page)) {
+    if (loadable_rels.has(rel) == false) {
         return;
     }
 
-    const event = try Event.initTrusted(comptime .wrap("load"), .{}, page);
-    try page._event_manager.dispatch(self.asElement().asEventTarget(), event);
-}
-
-const StylesheetFetchContext = struct {
-    html: *HtmlElement,
-    page: *Page,
-    sheet: *CSSStyleSheet,
-    allocator: std.mem.Allocator,
-    buffer: std.ArrayList(u8),
-    status: u16 = 0,
-    finished: bool = false,
-    failed: ?anyerror = null,
-};
-
-const StylesheetLoadCallback = struct {
-    link: *Link,
-    page: *Page,
-
-    fn run(ctx: *anyopaque) !?u32 {
-        const callback: *StylesheetLoadCallback = @ptrCast(@alignCast(ctx));
-        callback.link._stylesheet_load_scheduled = false;
-
-        if (callback.page.isGoingAway()) {
-            return null;
-        }
-        var ls: js.Local.Scope = undefined;
-        callback.page.js.localScope(&ls);
-        defer ls.deinit();
-
-        const sheet = (try callback.link.getSheet(callback.page)) orelse return null;
-        _ = sheet;
-        callback.link.fetchStylesheet(callback.page) catch return null;
-        try callback.link.dispatchLoad(callback.page);
-        return null;
-    }
-};
-
-fn fetchStylesheet(self: *Link, page: *Page) !void {
-    const href = try self.getHref(page);
+    const href = element.getAttributeSafe(comptime .wrap("href")) orelse return;
     if (href.len == 0) {
         return;
     }
 
-    var arena = std.heap.ArenaAllocator.init(page.arena);
-    defer arena.deinit();
-    const temp = arena.allocator();
-    const url = try temp.dupeZ(u8, href);
-
-    var ctx = StylesheetFetchContext{
-        .html = self._proto,
-        .page = page,
-        .sheet = self._sheet.?,
-        .allocator = page.arena,
-        .buffer = .{},
-    };
-    defer ctx.buffer.deinit(page.arena);
-
-    const include_credentials = stylesheetRequestIncludesCredentials(self);
-    const request_url = try stylesheetRequestUrlForFetch(temp, url, include_credentials);
-    var headers = try page._session.browser.http_client.newHeaders();
-    try headers.add(STYLESHEET_ACCEPT_HEADER);
-    try page.headersForRequestWithPolicy(page.arena, request_url, &headers, .{
-        .include_credentials = include_credentials,
-    });
-
-    try page._session.browser.http_client.request(.{
-        .url = request_url,
-        .ctx = &ctx,
-        .method = .GET,
-        .frame_id = page._frame_id,
-        .headers = headers,
-        .cookie_jar = if (include_credentials) page._session.cookie_jar else null,
-        .resource_type = .stylesheet,
-        .notification = page._session.notification,
-        .header_callback = stylesheetHeaderCallback,
-        .data_callback = stylesheetDataCallback,
-        .done_callback = stylesheetDoneCallback,
-        .error_callback = stylesheetErrorCallback,
-    });
-
-    while (!ctx.finished and ctx.failed == null) {
-        _ = try page._session.browser.http_client.tick(50);
-    }
-
-    if (ctx.failed) |err| {
-        return err;
-    }
-
-}
-
-fn stylesheetRequestIncludesCredentials(self: *const Link) bool {
-    return stylesheetRequestAttributeIncludesCredentials(self.getCrossOrigin());
-}
-
-fn stylesheetRequestAttributeIncludesCredentials(cross_origin: ?[]const u8) bool {
-    const value = cross_origin orelse return true;
-    return std.ascii.eqlIgnoreCase(std.mem.trim(u8, value, " \t\r\n"), "use-credentials");
-}
-
-fn stylesheetRequestUrlForFetch(
-    allocator: std.mem.Allocator,
-    url: [:0]const u8,
-    include_credentials: bool,
-) ![:0]const u8 {
-    if (include_credentials) {
-        return try allocator.dupeZ(u8, url);
-    }
-
-    if (RawURL.getUsername(url).len == 0) {
-        return try allocator.dupeZ(u8, url);
-    }
-
-    return try RawURL.buildUrl(
-        allocator,
-        RawURL.getProtocol(url),
-        RawURL.getHost(url),
-        RawURL.getPathname(url),
-        RawURL.getSearch(url),
-        RawURL.getHash(url),
-    );
+    try page._to_load.append(page.arena, self._proto);
 }
 
 pub const JsApi = struct {
@@ -294,7 +124,6 @@ pub const JsApi = struct {
     pub const as = bridge.accessor(Link.getAs, Link.setAs, .{});
     pub const rel = bridge.accessor(Link.getRel, Link.setRel, .{});
     pub const href = bridge.accessor(Link.getHref, Link.setHref, .{});
-    pub const sheet = bridge.accessor(Link.getSheet, null, .{ .null_as_undefined = true });
     pub const crossOrigin = bridge.accessor(Link.getCrossOrigin, Link.setCrossOrigin, .{});
     pub const relList = bridge.accessor(_getRelList, null, .{ .null_as_undefined = true });
 
@@ -308,52 +137,7 @@ pub const JsApi = struct {
     }
 };
 
-fn stylesheetHeaderCallback(transfer: *Http.Transfer) !bool {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(transfer.ctx));
-    const response_header = transfer.response_header orelse return true;
-    ctx.status = response_header.status;
-    if (response_header.status >= 400) {
-        ctx.failed = error.BadStatusCode;
-    }
-    return true;
-}
-
-fn stylesheetDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(transfer.ctx));
-    try ctx.buffer.appendSlice(ctx.allocator, data);
-}
-
-fn stylesheetDoneCallback(ctx_ptr: *anyopaque) !void {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(ctx_ptr));
-    try ctx.sheet.replaceSync(ctx.buffer.items, ctx.page);
-    ctx.finished = true;
-}
-
-fn stylesheetErrorCallback(ctx_ptr: *anyopaque, err: anyerror) void {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(ctx_ptr));
-    ctx.failed = err;
-}
-
 const testing = @import("../../../../testing.zig");
-test "stylesheetRequestAttributeIncludesCredentials requires use-credentials when crossorigin is present" {
-    try std.testing.expect(stylesheetRequestAttributeIncludesCredentials(null));
-    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials(""));
-    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials("anonymous"));
-    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials(" nope "));
-    try std.testing.expect(stylesheetRequestAttributeIncludesCredentials("use-credentials"));
-}
-
-test "stylesheetRequestUrlForFetch strips userinfo when credentials are disabled" {
-    const stripped = try stylesheetRequestUrlForFetch(
-        std.testing.allocator,
-        "http://css%20user:p%40ss@127.0.0.1:9582/private.css?x=1#frag",
-        false,
-    );
-    defer std.testing.allocator.free(stripped);
-
-    try std.testing.expectEqualStrings("http://127.0.0.1:9582/private.css?x=1#frag", stripped);
-}
-
 test "WebApi: HTML.Link" {
     try testing.htmlRunner("element/html/link.html", .{});
 }

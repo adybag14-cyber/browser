@@ -23,18 +23,18 @@ const Allocator = std.mem.Allocator;
 const log = @import("log.zig");
 const dump = @import("browser/dump.zig");
 
+const WebBotAuthConfig = @import("network/WebBotAuth.zig").Config;
+
 pub const RunMode = enum {
     help,
-    browse,
     fetch,
     serve,
     version,
     mcp,
 };
 
+pub const MAX_LISTENERS = 16;
 pub const CDP_MAX_HTTP_REQUEST_SIZE = 4096;
-pub const DEFAULT_VIEWPORT_WIDTH: u32 = 1920;
-pub const DEFAULT_VIEWPORT_HEIGHT: u32 = 1080;
 
 // max message size
 // +14 for max websocket payload overhead
@@ -63,56 +63,56 @@ pub fn deinit(self: *const Config, allocator: Allocator) void {
 
 pub fn tlsVerifyHost(self: *const Config) bool {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.tls_verify_host,
+        inline .serve, .fetch, .mcp => |opts| opts.common.tls_verify_host,
         else => unreachable,
     };
 }
 
 pub fn obeyRobots(self: *const Config) bool {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.obey_robots,
+        inline .serve, .fetch, .mcp => |opts| opts.common.obey_robots,
         else => unreachable,
     };
 }
 
 pub fn httpProxy(self: *const Config) ?[:0]const u8 {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.http_proxy,
+        inline .serve, .fetch, .mcp => |opts| opts.common.http_proxy,
         else => unreachable,
     };
 }
 
 pub fn proxyBearerToken(self: *const Config) ?[:0]const u8 {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.proxy_bearer_token,
+        inline .serve, .fetch, .mcp => |opts| opts.common.proxy_bearer_token,
         .help, .version => null,
     };
 }
 
 pub fn httpMaxConcurrent(self: *const Config) u8 {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.http_max_concurrent orelse 10,
+        inline .serve, .fetch, .mcp => |opts| opts.common.http_max_concurrent orelse 10,
         else => unreachable,
     };
 }
 
 pub fn httpMaxHostOpen(self: *const Config) u8 {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.http_max_host_open orelse 4,
+        inline .serve, .fetch, .mcp => |opts| opts.common.http_max_host_open orelse 4,
         else => unreachable,
     };
 }
 
 pub fn httpConnectTimeout(self: *const Config) u31 {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.http_connect_timeout orelse 0,
+        inline .serve, .fetch, .mcp => |opts| opts.common.http_connect_timeout orelse 0,
         else => unreachable,
     };
 }
 
 pub fn httpTimeout(self: *const Config) u31 {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.http_timeout orelse 5000,
+        inline .serve, .fetch, .mcp => |opts| opts.common.http_timeout orelse 5000,
         else => unreachable,
     };
 }
@@ -123,64 +123,54 @@ pub fn httpMaxRedirects(_: *const Config) u8 {
 
 pub fn httpMaxResponseSize(self: *const Config) ?usize {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.http_max_response_size,
+        inline .serve, .fetch, .mcp => |opts| opts.common.http_max_response_size,
         else => unreachable,
     };
 }
 
 pub fn logLevel(self: *const Config) ?log.Level {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.log_level,
+        inline .serve, .fetch, .mcp => |opts| opts.common.log_level,
         else => unreachable,
     };
 }
 
 pub fn logFormat(self: *const Config) ?log.Format {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.log_format,
+        inline .serve, .fetch, .mcp => |opts| opts.common.log_format,
         else => unreachable,
     };
 }
 
 pub fn logFilterScopes(self: *const Config) ?[]const log.Scope {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.log_filter_scopes,
+        inline .serve, .fetch, .mcp => |opts| opts.common.log_filter_scopes,
         else => unreachable,
     };
 }
 
 pub fn userAgentSuffix(self: *const Config) ?[]const u8 {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.user_agent_suffix,
+        inline .serve, .fetch, .mcp => |opts| opts.common.user_agent_suffix,
         .help, .version => null,
     };
 }
 
-pub fn profileDir(self: *const Config) ?[]const u8 {
+pub fn cdpTimeout(self: *const Config) usize {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.profile_dir,
+        .serve => |opts| if (opts.timeout > 604_800) 604_800_000 else @as(usize, opts.timeout) * 1000,
+        else => unreachable,
+    };
+}
+
+pub fn webBotAuth(self: *const Config) ?WebBotAuthConfig {
+    return switch (self.mode) {
+        inline .serve, .fetch, .mcp => |opts| WebBotAuthConfig{
+            .key_file = opts.common.web_bot_auth_key_file orelse return null,
+            .keyid = opts.common.web_bot_auth_keyid orelse return null,
+            .domain = opts.common.web_bot_auth_domain orelse return null,
+        },
         .help, .version => null,
-    };
-}
-
-pub fn browserMode(self: *const Config) BrowserMode {
-    return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.browser_mode,
-        .help, .version => .headless,
-    };
-}
-
-pub fn windowWidth(self: *const Config) u32 {
-    return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.window_width orelse DEFAULT_VIEWPORT_WIDTH,
-        .help, .version => DEFAULT_VIEWPORT_WIDTH,
-    };
-}
-
-pub fn windowHeight(self: *const Config) u32 {
-    return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp => |opts| opts.common.window_height orelse DEFAULT_VIEWPORT_HEIGHT,
-        .help, .version => DEFAULT_VIEWPORT_HEIGHT,
     };
 }
 
@@ -200,18 +190,10 @@ pub fn maxPendingConnections(self: *const Config) u31 {
 
 pub const Mode = union(RunMode) {
     help: bool, // false when being printed because of an error
-    browse: Browse,
     fetch: Fetch,
     serve: Serve,
     version: void,
     mcp: Mcp,
-};
-
-pub const Browse = struct {
-    url: [:0]const u8,
-    common: Common = .{ .browser_mode = .headed },
-    screenshot_bmp_path: ?[:0]const u8 = null,
-    screenshot_png_path: ?[:0]const u8 = null,
 };
 
 pub const Serve = struct {
@@ -231,6 +213,8 @@ pub const DumpFormat = enum {
     html,
     markdown,
     wpt,
+    semantic_tree,
+    semantic_tree_text,
 };
 
 pub const Fetch = struct {
@@ -240,11 +224,6 @@ pub const Fetch = struct {
     with_base: bool = false,
     with_frames: bool = false,
     strip: dump.Opts.Strip = .{},
-};
-
-pub const BrowserMode = enum {
-    headless,
-    headed,
 };
 
 pub const Common = struct {
@@ -261,10 +240,10 @@ pub const Common = struct {
     log_format: ?log.Format = null,
     log_filter_scopes: ?[]log.Scope = null,
     user_agent_suffix: ?[]const u8 = null,
-    profile_dir: ?[:0]const u8 = null,
-    browser_mode: BrowserMode = .headless,
-    window_width: ?u32 = null,
-    window_height: ?u32 = null,
+
+    web_bot_auth_key_file: ?[]const u8 = null,
+    web_bot_auth_keyid: ?[]const u8 = null,
+    web_bot_auth_domain: ?[]const u8 = null,
 };
 
 /// Pre-formatted HTTP headers for reuse across Http and Client.
@@ -372,46 +351,21 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
         \\--user_agent_suffix
         \\                Suffix to append to the Lightpanda/X.Y User-Agent
         \\
-        \\--profile_dir   Explicit browser profile root for cookies, storage,
-        \\                downloads, telemetry IDs, and other persisted state.
-        \\                Defaults to the platform app-data directory when
-        \\                available.
+        \\--web_bot_auth_key_file
+        \\                Path to the Ed25519 private key PEM file.
         \\
-        \\--browser_mode  Browser mode: headless or headed.
-        \\                Defaults to headless.
+        \\--web_bot_auth_keyid
+        \\                The JWK thumbprint of your public key.
         \\
-        \\--headed        Shortcut for '--browser_mode headed'
-        \\
-        \\--headless      Shortcut for '--browser_mode headless'
-        \\
-        \\--window_width  Window/viewport width in CSS pixels.
-        \\                Defaults to 1920.
-        \\
-        \\--window_height Window/viewport height in CSS pixels.
-        \\                Defaults to 1080.
-        \\
+        \\--web_bot_auth_domain
+        \\                Your domain e.g. yourdomain.com
     ;
 
     //                                                                     MAX_HELP_LEN|
     const usage =
         \\usage: {s} command [options] [URL]
         \\
-        \\Command can be either 'browse', 'fetch', 'serve', 'mcp' or 'help'
-        \\
-        \\browse command
-        \\Opens the specified URL in a native browser window.
-        \\Example: {s} browse https://lightpanda.io/
-        \\
-        \\Options:
-        \\--screenshot_bmp
-        \\                Save the first rendered headed browse frame as a BMP file.
-        \\                Argument must be the output path.
-        \\
-        \\--screenshot_png
-        \\                Save the first rendered headed browse frame as a PNG file.
-        \\                Argument must be the output path.
-        \\
-    ++ common_options ++
+        \\Command can be either 'fetch', 'serve', 'mcp' or 'help'
         \\
         \\fetch command
         \\Fetches the specified URL
@@ -419,7 +373,7 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
         \\
         \\Options:
         \\--dump          Dumps document to stdout.
-        \\                Argument must be 'html' or 'markdown'.
+        \\                Argument must be 'html', 'markdown', 'semantic_tree', or 'semantic_tree_text'.
         \\                Defaults to no dump.
         \\
         \\--strip_mode    Comma separated list of tag groups to remove from dump
@@ -472,15 +426,15 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
         \\Displays this message
         \\
     ;
-    std.debug.print(usage, .{ self.exec_name, self.exec_name, self.exec_name, self.exec_name, self.exec_name, self.exec_name });
+    std.debug.print(usage, .{ self.exec_name, self.exec_name, self.exec_name, self.exec_name, self.exec_name });
     if (success) {
-        return std.process.cleanExit();
+        return std.process.cleanExit(std.Options.debug_io);
     }
     std.process.exit(1);
 }
 
-pub fn parseArgs(allocator: Allocator) !Config {
-    var args = try std.process.argsWithAllocator(allocator);
+pub fn parseArgs(allocator: Allocator, process_args: std.process.Args) !Config {
+    var args = try std.process.Args.Iterator.initAllocator(process_args, allocator);
     defer args.deinit();
 
     const exec_name = try allocator.dupe(u8, std.fs.path.basename(args.next().?));
@@ -494,7 +448,7 @@ pub fn parseArgs(allocator: Allocator) !Config {
         // as we transition to this command mode approach.
         args.deinit();
 
-        args = try std.process.argsWithAllocator(allocator);
+        args = try std.process.Args.Iterator.initAllocator(process_args, allocator);
         // skip the exec_name
         _ = args.skip();
 
@@ -503,8 +457,6 @@ pub fn parseArgs(allocator: Allocator) !Config {
 
     const mode: Mode = switch (run_mode) {
         .help => .{ .help = true },
-        .browse => .{ .browse = parseBrowseArgs(allocator, &args) catch
-            return init(allocator, exec_name, .{ .help = false }) },
         .serve => .{ .serve = parseServeArgs(allocator, &args) catch
             return init(allocator, exec_name, .{ .help = false }) },
         .fetch => .{ .fetch = parseFetchArgs(allocator, &args) catch
@@ -549,34 +501,6 @@ fn inferMode(opt: []const u8) ?RunMode {
         return .serve;
     }
 
-    if (std.mem.eql(u8, opt, "--headed")) {
-        return .browse;
-    }
-
-    if (std.mem.eql(u8, opt, "--headless")) {
-        return .browse;
-    }
-
-    if (std.mem.eql(u8, opt, "--browser_mode")) {
-        return .browse;
-    }
-
-    if (std.mem.eql(u8, opt, "--window_width")) {
-        return .browse;
-    }
-
-    if (std.mem.eql(u8, opt, "--window_height")) {
-        return .browse;
-    }
-
-    if (std.mem.eql(u8, opt, "--screenshot_bmp")) {
-        return .browse;
-    }
-
-    if (std.mem.eql(u8, opt, "--screenshot_png")) {
-        return .browse;
-    }
-
     if (std.mem.eql(u8, opt, "--port")) {
         return .serve;
     }
@@ -588,66 +512,9 @@ fn inferMode(opt: []const u8) ?RunMode {
     return null;
 }
 
-fn parseBrowseArgs(
-    allocator: Allocator,
-    args: *std.process.ArgIterator,
-) !Browse {
-    var url: ?[:0]const u8 = null;
-    var common: Common = .{ .browser_mode = .headed };
-    var screenshot_bmp_path: ?[:0]const u8 = null;
-    var screenshot_png_path: ?[:0]const u8 = null;
-
-    while (args.next()) |opt| {
-        if (try parseCommonArg(allocator, opt, args, &common)) {
-            continue;
-        }
-
-        if (std.mem.eql(u8, "--screenshot_bmp", opt)) {
-            const str = args.next() orelse {
-                log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_bmp" });
-                return error.InvalidArgument;
-            };
-            screenshot_bmp_path = try allocator.dupeZ(u8, str);
-            continue;
-        }
-
-        if (std.mem.eql(u8, "--screenshot_png", opt)) {
-            const str = args.next() orelse {
-                log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_png" });
-                return error.InvalidArgument;
-            };
-            screenshot_png_path = try allocator.dupeZ(u8, str);
-            continue;
-        }
-
-        if (std.mem.startsWith(u8, opt, "--")) {
-            log.fatal(.app, "unknown argument", .{ .mode = "browse", .arg = opt });
-            return error.UnkownOption;
-        }
-
-        if (url != null) {
-            log.fatal(.app, "duplicate browse url", .{ .help = "only 1 URL can be specified" });
-            return error.TooManyURLs;
-        }
-        url = try allocator.dupeZ(u8, opt);
-    }
-
-    if (url == null) {
-        log.fatal(.app, "missing browse url", .{ .help = "URL to browse must be provided" });
-        return error.MissingURL;
-    }
-
-    return .{
-        .url = url.?,
-        .common = common,
-        .screenshot_bmp_path = screenshot_bmp_path,
-        .screenshot_png_path = screenshot_png_path,
-    };
-}
-
 fn parseServeArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Serve {
     var serve: Serve = .{};
 
@@ -726,7 +593,7 @@ fn parseServeArgs(
 
 fn parseMcpArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Mcp {
     var mcp: Mcp = .{};
 
@@ -744,7 +611,7 @@ fn parseMcpArgs(
 
 fn parseFetchArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Fetch {
     var dump_mode: ?DumpFormat = null;
     var with_base: bool = false;
@@ -848,7 +715,7 @@ fn parseFetchArgs(
 fn parseCommonArg(
     allocator: Allocator,
     opt: []const u8,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
     common: *Common,
 ) !bool {
     if (std.mem.eql(u8, "--insecure_disable_tls_host_verification", opt)) {
@@ -1013,69 +880,30 @@ fn parseCommonArg(
         return true;
     }
 
-    if (std.mem.eql(u8, "--profile_dir", opt)) {
+    if (std.mem.eql(u8, "--web_bot_auth_key_file", opt)) {
         const str = args.next() orelse {
-            log.fatal(.app, "missing argument value", .{ .arg = "--profile_dir" });
+            log.fatal(.app, "missing argument value", .{ .arg = "--web_bot_auth_key_file" });
             return error.InvalidArgument;
         };
-        common.profile_dir = try allocator.dupeZ(u8, str);
+        common.web_bot_auth_key_file = try allocator.dupe(u8, str);
         return true;
     }
 
-    if (std.mem.eql(u8, "--browser_mode", opt)) {
+    if (std.mem.eql(u8, "--web_bot_auth_keyid", opt)) {
         const str = args.next() orelse {
-            log.fatal(.app, "missing argument value", .{ .arg = "--browser_mode" });
+            log.fatal(.app, "missing argument value", .{ .arg = "--web_bot_auth_keyid" });
             return error.InvalidArgument;
         };
-
-        common.browser_mode = std.meta.stringToEnum(BrowserMode, str) orelse {
-            log.fatal(.app, "invalid option choice", .{ .arg = "--browser_mode", .value = str });
-            return error.InvalidArgument;
-        };
+        common.web_bot_auth_keyid = try allocator.dupe(u8, str);
         return true;
     }
 
-    if (std.mem.eql(u8, "--headed", opt)) {
-        common.browser_mode = .headed;
-        return true;
-    }
-
-    if (std.mem.eql(u8, "--headless", opt)) {
-        common.browser_mode = .headless;
-        return true;
-    }
-
-    if (std.mem.eql(u8, "--window_width", opt)) {
+    if (std.mem.eql(u8, "--web_bot_auth_domain", opt)) {
         const str = args.next() orelse {
-            log.fatal(.app, "missing argument value", .{ .arg = "--window_width" });
+            log.fatal(.app, "missing argument value", .{ .arg = "--web_bot_auth_domain" });
             return error.InvalidArgument;
         };
-
-        common.window_width = std.fmt.parseInt(u32, str, 10) catch |err| {
-            log.fatal(.app, "invalid argument value", .{ .arg = "--window_width", .err = err });
-            return error.InvalidArgument;
-        };
-        if (common.window_width.? == 0) {
-            log.fatal(.app, "invalid argument value", .{ .arg = "--window_width", .value = str });
-            return error.InvalidArgument;
-        }
-        return true;
-    }
-
-    if (std.mem.eql(u8, "--window_height", opt)) {
-        const str = args.next() orelse {
-            log.fatal(.app, "missing argument value", .{ .arg = "--window_height" });
-            return error.InvalidArgument;
-        };
-
-        common.window_height = std.fmt.parseInt(u32, str, 10) catch |err| {
-            log.fatal(.app, "invalid argument value", .{ .arg = "--window_height", .err = err });
-            return error.InvalidArgument;
-        };
-        if (common.window_height.? == 0) {
-            log.fatal(.app, "invalid argument value", .{ .arg = "--window_height", .value = str });
-            return error.InvalidArgument;
-        }
+        common.web_bot_auth_domain = try allocator.dupe(u8, str);
         return true;
     }
 

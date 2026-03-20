@@ -228,6 +228,13 @@ pub const Writer = struct {
 
         try w.objectField("value");
         switch (value) {
+            .integer => |v| {
+                // CDP spec requires integer values to be serialized as strings.
+                // 20 bytes is enough for the decimal representation of a 64-bit integer.
+                var buf: [20]u8 = undefined;
+                const s = try std.fmt.bufPrint(&buf, "{d}", .{v});
+                try w.write(s);
+            },
             inline else => |v| try w.write(v),
         }
 
@@ -557,13 +564,13 @@ pub const Writer = struct {
 
 pub const AXRole = enum(u8) {
     // zig fmt: off
-    none, article, banner, blockquote, button, caption, cell, checkbox, code,
-    columnheader, combobox, complementary, contentinfo, definition, deletion,
-    dialog, document, emphasis, figure, form, group, heading, image, insertion,
-    link, list, listbox, listitem, main, marquee, meter, navigation, option,
+    none, article, banner, blockquote, button, caption, cell, checkbox, code, color,
+    columnheader, combobox, complementary, contentinfo, date, definition, deletion,
+    dialog, document, emphasis, figure, file, form, group, heading, image, insertion,
+    link, list, listbox, listitem, main, marquee, menuitem, meter, month, navigation, option,
     paragraph, presentation, progressbar, radio, region, row, rowgroup,
     rowheader, searchbox, separator, slider, spinbutton, status, strong,
-    subscript, superscript, table, term, textbox, time, RootWebArea, LineBreak,
+    subscript, superscript, @"switch", table, term, textbox, time, RootWebArea, LineBreak,
     StaticText,
     // zig fmt: on
 
@@ -620,9 +627,13 @@ pub const AXRole = enum(u8) {
                         .number => .spinbutton,
                         .search => .searchbox,
                         .checkbox => .checkbox,
+                        .color => .color,
+                        .date => .date,
+                        .file => .file,
+                        .month => .month,
+                        .@"datetime-local", .week, .time => .combobox,
                         // zig fmt: off
-                        .password, .@"datetime-local", .hidden, .month, .color,
-                        .week, .time, .file, .date => .none,
+                        .password, .hidden => .none,
                         // zig fmt: on
                     };
                 },
@@ -738,6 +749,44 @@ const AXSource = enum(u8) {
     value, // input value
 };
 
+pub fn getName(self: AXNode, page: *Page, allocator: std.mem.Allocator) !?[]const u8 {
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
+
+    // writeName expects a std.json.Stringify instance.
+    const TextCaptureWriter = struct {
+        aw: *std.Io.Writer.Allocating,
+        writer: *std.Io.Writer,
+
+        pub fn write(w: @This(), val: anytype) !void {
+            const T = @TypeOf(val);
+            if (T == []const u8 or T == [:0]const u8 or T == *const [val.len]u8) {
+                try w.aw.writer.writeAll(val);
+            } else if (comptime std.meta.hasMethod(T, "format")) {
+                try std.fmt.format(w.aw.writer, "{s}", .{val});
+            } else {
+                // Ignore unexpected types (e.g. booleans) to avoid garbage output
+            }
+        }
+
+        // Mock JSON Stringifier lifecycle methods
+        pub fn beginWriteRaw(_: @This()) !void {}
+        pub fn endWriteRaw(_: @This()) void {}
+    };
+
+    const w: TextCaptureWriter = .{ .aw = &aw, .writer = &aw.writer };
+
+    const source = try self.writeName(w, page);
+    if (source != null) {
+        // Remove literal quotes inserted by writeString.
+        var raw_text = std.mem.trim(u8, aw.written(), "\"");
+        raw_text = std.mem.trim(u8, raw_text, &std.ascii.whitespace);
+        return try allocator.dupe(u8, raw_text);
+    }
+
+    return null;
+}
+
 fn writeName(axnode: AXNode, w: anytype, page: *Page) !?AXSource {
     const node = axnode.dom;
 
@@ -823,15 +872,17 @@ fn writeName(axnode: AXNode, w: anytype, page: *Page) !?AXSource {
                 .object, .progress, .meter, .main, .nav, .aside, .header,
                 .footer, .form, .section, .article, .ul, .ol, .dl, .menu,
                 .thead, .tbody, .tfoot, .tr, .td, .div, .span, .p, .details, .li,
-                .style, .script,
+                .style, .script, .html, .body,
                 // zig fmt: on
                 => {},
                 else => {
                     // write text content if exists.
-                    var buf = std.Io.Writer.Allocating.init(page.call_arena);
-                    try el.getInnerText(&buf.writer);
-                    try writeString(buf.written(), w);
-                    return .contents;
+                    var buf: std.Io.Writer.Allocating = .init(page.call_arena);
+                    try writeAccessibleNameFallback(node, &buf.writer, page);
+                    if (buf.written().len > 0) {
+                        try writeString(buf.written(), w);
+                        return .contents;
+                    }
                 },
             }
 
@@ -853,6 +904,48 @@ fn writeName(axnode: AXNode, w: anytype, page: *Page) !?AXSource {
             return null;
         },
     };
+}
+
+fn writeAccessibleNameFallback(node: *DOMNode, writer: *std.Io.Writer, page: *Page) !void {
+    var it = node.childrenIterator();
+    while (it.next()) |child| {
+        switch (child._type) {
+            .cdata => |cd| switch (cd._type) {
+                .text => |*text| {
+                    const content = std.mem.trim(u8, text.getWholeText(), &std.ascii.whitespace);
+                    if (content.len > 0) {
+                        try writer.writeAll(content);
+                        try writer.writeByte(' ');
+                    }
+                },
+                else => {},
+            },
+            .element => |el| {
+                if (el.getTag() == .img) {
+                    if (el.getAttributeSafe(.wrap("alt"))) |alt| {
+                        try writer.writeAll(alt);
+                        try writer.writeByte(' ');
+                    }
+                } else if (el.getTag() == .svg) {
+                    // Try to find a <title> inside SVG
+                    var sit = child.childrenIterator();
+                    while (sit.next()) |s_child| {
+                        if (s_child.is(DOMNode.Element)) |s_el| {
+                            if (std.mem.eql(u8, s_el.getTagNameLower(), "title")) {
+                                try writeAccessibleNameFallback(s_child, writer, page);
+                                try writer.writeByte(' ');
+                            }
+                        }
+                    }
+                } else {
+                    if (!el.getTag().isMetadata()) {
+                        try writeAccessibleNameFallback(child, writer, page);
+                    }
+                }
+            },
+            else => {},
+        }
+    }
 }
 
 fn isHidden(elt: *DOMNode.Element) bool {
@@ -987,7 +1080,7 @@ fn isIgnore(self: AXNode, page: *Page) bool {
     return false;
 }
 
-fn getRole(self: AXNode) ![]const u8 {
+pub fn getRole(self: AXNode) ![]const u8 {
     if (self.role_attr) |role_value| {
         // TODO the role can have multiple comma separated values.
         return role_value;
@@ -1071,7 +1164,7 @@ test "AXnode: stripWhitespaces" {
         .{ .value = "\"foo\"", .expected = "\\\"foo\\\"" },
     };
 
-    var buffer = std.io.Writer.Allocating.init(allocator);
+    var buffer = std.Io.Writer.Allocating.init(allocator);
     defer buffer.deinit();
 
     for (test_cases) |test_case| {
@@ -1126,4 +1219,25 @@ test "AXNode: writer" {
     // Check childIds array exists
     const child_ids = doc_node.get("childIds").?.array.items;
     try testing.expect(child_ids.len > 0);
+
+    // Find the h1 node and verify its level property is serialized as a string
+    for (nodes) |node_val| {
+        const obj = node_val.object;
+        const role_obj = obj.get("role") orelse continue;
+        const role_val = role_obj.object.get("value") orelse continue;
+        if (!std.mem.eql(u8, role_val.string, "heading")) continue;
+
+        const props = obj.get("properties").?.array.items;
+        for (props) |prop| {
+            const prop_obj = prop.object;
+            const name_str = prop_obj.get("name").?.string;
+            if (!std.mem.eql(u8, name_str, "level")) continue;
+            const level_value = prop_obj.get("value").?.object;
+            try testing.expectEqual("integer", level_value.get("type").?.string);
+            // CDP spec: integer values must be serialized as strings
+            try testing.expectEqual("1", level_value.get("value").?.string);
+            return;
+        }
+    }
+    return error.HeadingNodeNotFound;
 }

@@ -38,8 +38,8 @@ pub const newString = base.newString;
 const Client = struct {
     allocator: Allocator,
     send_arena: ArenaAllocator,
-    sent: std.ArrayList(json.Value) = .{},
-    serialized: std.ArrayList([]const u8) = .{},
+    sent: std.ArrayList(json.Value) = .empty,
+    serialized: std.ArrayList([]const u8) = .empty,
 
     fn init(alloc: Allocator) Client {
         return .{

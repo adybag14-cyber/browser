@@ -40,8 +40,8 @@ prev_context: *Context,
 
 // Takes the raw v8 isolate and extracts the context from it.
 pub fn init(self: *Caller, v8_isolate: *v8.Isolate) void {
-    const v8_context = v8.v8__Isolate__GetCurrentContext(v8_isolate).?;
-    initWithContext(self, Context.fromC(v8_context), v8_context);
+    const ctx, const v8_context = Context.fromIsolate(.{ .handle = v8_isolate });
+    initWithContext(self, ctx, v8_context);
 }
 
 fn initWithContext(self: *Caller, ctx: *Context, v8_context: *const v8.Context) void {
@@ -394,24 +394,14 @@ fn serializeFunctionArgs(local: *const Local, info: FunctionCallbackInfo) ![]con
 // @call a function
 fn ParameterTypes(comptime F: type) type {
     const params = @typeInfo(F).@"fn".params;
-    var fields: [params.len]std.builtin.Type.StructField = undefined;
+    var types: [params.len]type = undefined;
 
     inline for (params, 0..) |param, i| {
-        fields[i] = .{
-            .name = tupleFieldName(i),
-            .type = param.type.?,
-            .default_value_ptr = null,
-            .is_comptime = false,
-            .alignment = @alignOf(param.type.?),
-        };
+        _ = tupleFieldName(i);
+        types[i] = param.type.?;
     }
 
-    return @Type(.{ .@"struct" = .{
-        .layout = .auto,
-        .decls = &.{},
-        .fields = &fields,
-        .is_tuple = true,
-    } });
+    return std.meta.Tuple(&types);
 }
 
 fn tupleFieldName(comptime i: usize) [:0]const u8 {
@@ -537,9 +527,7 @@ pub const Function = struct {
 
     pub fn call(comptime T: type, info_handle: *const v8.FunctionCallbackInfo, func: anytype, comptime opts: Opts) void {
         const v8_isolate = v8.v8__FunctionCallbackInfo__GetIsolate(info_handle).?;
-        const v8_context = v8.v8__Isolate__GetCurrentContext(v8_isolate).?;
-
-        const ctx = Context.fromC(v8_context);
+        const ctx, const v8_context = Context.fromIsolate(.{ .handle = v8_isolate });
         const info = FunctionCallbackInfo{ .handle = info_handle };
 
         var hs: js.HandleScope = undefined;
@@ -734,7 +722,7 @@ fn getArgs(comptime F: type, comptime offset: usize, local: *const Local, info: 
         if (last_parameter_type_info == .pointer and last_parameter_type_info.pointer.size == .slice) {
             const slice_type = last_parameter_type_info.pointer.child;
             const corresponding_js_value = info.getArg(@intCast(last_js_parameter), local);
-            if (corresponding_js_value.isArray() == false and corresponding_js_value.isTypedArray() == false and slice_type != u8) {
+            if (slice_type == js.Value or (corresponding_js_value.isArray() == false and corresponding_js_value.isTypedArray() == false and slice_type != u8)) {
                 is_variadic = true;
                 if (js_parameter_count == 0) {
                     @field(args, tupleFieldName(params_to_map.len + offset - 1)) = &.{};

@@ -21,6 +21,7 @@ const String = @import("../../string.zig").String;
 
 const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
 const Node = @import("Node.zig");
 const Element = @import("Element.zig");
 const log = @import("../../log.zig");
@@ -40,8 +41,8 @@ const MutationObserver = @This();
 
 _arena: Allocator,
 _callback: js.Function.Temp,
-_observing: std.ArrayList(Observing) = .{},
-_pending_records: std.ArrayList(*MutationRecord) = .{},
+_observing: std.ArrayList(Observing) = .empty,
+_pending_records: std.ArrayList(*MutationRecord) = .empty,
 
 /// Intrusively linked to next element (see Page.zig).
 node: std.DoublyLinkedList.Node = .{},
@@ -84,13 +85,13 @@ pub fn init(callback: js.Function.Temp, page: *Page) !*MutationObserver {
     return self;
 }
 
-pub fn deinit(self: *MutationObserver, shutdown: bool, page: *Page) void {
-    page.js.release(self._callback);
-    if ((comptime IS_DEBUG) and !shutdown) {
-        std.debug.assert(self._observing.items.len == 0);
+pub fn deinit(self: *MutationObserver, shutdown: bool, session: *Session) void {
+    if (shutdown) {
+        self._callback.release();
+        session.releaseArena(self._arena);
+    } else if (comptime IS_DEBUG) {
+        std.debug.assert(false);
     }
-
-    page.releaseArena(self._arena);
 }
 
 pub fn observe(self: *MutationObserver, target: *Node, options: ObserveOptions, page: *Page) !void {
@@ -157,7 +158,6 @@ pub fn observe(self: *MutationObserver, target: *Node, options: ObserveOptions, 
 
     // Register with page if this is our first observation
     if (self._observing.items.len == 0) {
-        page.js.strongRef(self);
         try page.registerMutationObserver(self);
     }
 
@@ -168,13 +168,13 @@ pub fn observe(self: *MutationObserver, target: *Node, options: ObserveOptions, 
 }
 
 pub fn disconnect(self: *MutationObserver, page: *Page) void {
-    page.unregisterMutationObserver(self);
-    self._observing.clearRetainingCapacity();
     for (self._pending_records.items) |record| {
-        record.deinit(false, page);
+        record.deinit(false, page._session);
     }
     self._pending_records.clearRetainingCapacity();
-    page.js.safeWeakRef(self);
+
+    self._observing.clearRetainingCapacity();
+    page.unregisterMutationObserver(self);
 }
 
 pub fn takeRecords(self: *MutationObserver, page: *Page) ![]*MutationRecord {
@@ -363,8 +363,8 @@ pub const MutationRecord = struct {
         characterData,
     };
 
-    pub fn deinit(self: *const MutationRecord, _: bool, page: *Page) void {
-        page.releaseArena(self._arena);
+    pub fn deinit(self: *MutationRecord, _: bool, session: *Session) void {
+        session.releaseArena(self._arena);
     }
 
     pub fn getType(self: *const MutationRecord) []const u8 {
@@ -440,7 +440,6 @@ pub const JsApi = struct {
         pub const name = "MutationObserver";
         pub const prototype_chain = bridge.prototypeChain();
         pub var class_id: bridge.ClassId = undefined;
-        pub const weak = true;
         pub const finalizer = bridge.finalizer(MutationObserver.deinit);
     };
 

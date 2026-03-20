@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<body></body>
 <script src="../testing.js"></script>
 
 <script id="document_styleSheets">
@@ -18,91 +17,10 @@
 {
     const sheets = document.styleSheets;
     testing.expectEqual('StyleSheetList', sheets.constructor.name);
-}
-</script>
 
-<script id="document_styleSheets_connected_style">
-{
-    const startLen = document.styleSheets.length;
-    const style = document.createElement('style');
-    style.textContent = 'body { color: red; }';
-    document.head.appendChild(style);
-    testing.expectEqual(startLen + 1, document.styleSheets.length);
-    testing.expectEqual(style.sheet, document.styleSheets[document.styleSheets.length - 1]);
-    testing.expectEqual(1, style.sheet.cssRules.length);
-    testing.expectEqual(1, style.sheet.cssRules[0].type);
-    testing.expectTrue(style.sheet.cssRules[0].cssText.includes('body'));
-}
-</script>
-
-<script id="document_styleSheets_applies_authored_style_to_computed_style">
-{
-    const style = document.createElement('style');
-    style.textContent = '.sheet-target { color: rgb(12, 34, 56); background-color: rgb(220, 20, 20); }';
-    document.head.appendChild(style);
-
-    const div = document.createElement('div');
-    div.className = 'sheet-target';
-    document.body.appendChild(div);
-
-    const computed = getComputedStyle(div);
-    testing.expectEqual('rgb(12, 34, 56)', computed.color);
-    testing.expectEqual('rgb(220, 20, 20)', computed.backgroundColor);
-}
-</script>
-
-<script id="document_styleSheets_prefers_higher_specificity_match">
-{
-    const style = document.createElement('style');
-    style.textContent = 'a { color: rgb(1, 2, 3); } #gbz .gbzt { color: rgb(204, 204, 204); }';
-    document.head.appendChild(style);
-
-    const host = document.createElement('div');
-    host.id = 'gbz';
-    const link = document.createElement('a');
-    link.className = 'gbzt';
-    host.appendChild(link);
-    document.body.appendChild(host);
-
-    const computed = getComputedStyle(link);
-    testing.expectEqual('rgb(204, 204, 204)', computed.color);
-}
-</script>
-
-<script id="document_styleSheets_prefers_important_over_later_non_important">
-{
-    const style = document.createElement('style');
-    style.textContent = '#gbz .gbzt { color: rgb(204, 204, 204) !important; } a { color: rgb(9, 8, 7); }';
-    document.head.appendChild(style);
-
-    const host = document.createElement('div');
-    host.id = 'gbz';
-    const link = document.createElement('a');
-    link.className = 'gbzt';
-    host.appendChild(link);
-    document.body.appendChild(host);
-
-    const computed = getComputedStyle(link);
-    testing.expectEqual('rgb(204, 204, 204)', computed.color);
-}
-</script>
-
-<script id="document_styleSheets_applies_imported_style_to_computed_style">
-{
-    const style = document.createElement('style');
-    style.textContent = '@import "stylesheet_imported.css"; .sheet-import-target { color: rgb(4, 5, 6); }';
-    document.head.appendChild(style);
-
-    const div = document.createElement('div');
-    div.className = 'sheet-import-target';
-    document.body.appendChild(div);
-
-    testing.eventually(() => {
-        const computed = getComputedStyle(div);
-        const bodyComputed = getComputedStyle(document.body);
-        testing.expectEqual('rgb(4, 5, 6)', computed.color);
-        testing.expectEqual('rgb(10, 110, 210)', bodyComputed.backgroundColor);
-    });
+    // Test indexed access on empty list
+    testing.expectEqual(undefined, sheets[0]);
+    testing.expectEqual(undefined, sheets[99]);
 }
 </script>
 
@@ -355,5 +273,149 @@
 
     // Must not crash, and ASCII properties that follow non-ASCII ones must be readable.
     testing.expectEqual('red', div.style.getPropertyValue('color'));
+}
+</script>
+
+<script id="CSSStyleDeclaration_normalize_zero_to_0px">
+{
+    // Per CSSOM spec, unitless zero in length properties should serialize as "0px"
+    const div = document.createElement('div');
+
+    div.style.width = '0';
+    testing.expectEqual('0px', div.style.width);
+
+    div.style.margin = '0';
+    testing.expectEqual('0px', div.style.margin);
+
+    div.style.padding = '0';
+    testing.expectEqual('0px', div.style.padding);
+
+    div.style.top = '0';
+    testing.expectEqual('0px', div.style.top);
+
+    // Scroll properties
+    div.style.scrollMarginTop = '0';
+    testing.expectEqual('0px', div.style.scrollMarginTop);
+
+    div.style.scrollPaddingBottom = '0';
+    testing.expectEqual('0px', div.style.scrollPaddingBottom);
+
+    // Multi-column
+    div.style.columnWidth = '0';
+    testing.expectEqual('0px', div.style.columnWidth);
+
+    div.style.columnRuleWidth = '0';
+    testing.expectEqual('0px', div.style.columnRuleWidth);
+
+    // Outline shorthand
+    div.style.outline = '0';
+    testing.expectEqual('0px', div.style.outline);
+
+    // Shapes
+    div.style.shapeMargin = '0';
+    testing.expectEqual('0px', div.style.shapeMargin);
+
+    // Non-length properties should not be affected
+    div.style.opacity = '0';
+    testing.expectEqual('0', div.style.opacity);
+
+    div.style.zIndex = '0';
+    testing.expectEqual('0', div.style.zIndex);
+}
+</script>
+
+<script id="CSSStyleDeclaration_normalize_first_baseline">
+{
+    // "first baseline" should serialize canonically as "baseline"
+    const div = document.createElement('div');
+
+    div.style.alignItems = 'first baseline';
+    testing.expectEqual('baseline', div.style.alignItems);
+
+    div.style.alignContent = 'first baseline';
+    testing.expectEqual('baseline', div.style.alignContent);
+
+    div.style.alignSelf = 'first baseline';
+    testing.expectEqual('baseline', div.style.alignSelf);
+
+    div.style.justifySelf = 'first baseline';
+    testing.expectEqual('baseline', div.style.justifySelf);
+
+    // "last baseline" should remain unchanged
+    div.style.alignItems = 'last baseline';
+    testing.expectEqual('last baseline', div.style.alignItems);
+}
+</script>
+
+<script id="CSSStyleDeclaration_normalize_duplicate_values">
+{
+    // For 2-value shorthand properties, "X X" should collapse to "X"
+    const div = document.createElement('div');
+
+    div.style.placeContent = 'center center';
+    testing.expectEqual('center', div.style.placeContent);
+
+    div.style.placeContent = 'start start';
+    testing.expectEqual('start', div.style.placeContent);
+
+    div.style.gap = '10px 10px';
+    testing.expectEqual('10px', div.style.gap);
+
+    // Different values should not collapse
+    div.style.placeContent = 'center start';
+    testing.expectEqual('center start', div.style.placeContent);
+
+    div.style.gap = '10px 20px';
+    testing.expectEqual('10px 20px', div.style.gap);
+
+    // New shorthands
+    div.style.overflow = 'hidden hidden';
+    testing.expectEqual('hidden', div.style.overflow);
+
+    div.style.scrollSnapAlign = 'start start';
+    testing.expectEqual('start', div.style.scrollSnapAlign);
+
+    div.style.overscrollBehavior = 'auto auto';
+    testing.expectEqual('auto', div.style.overscrollBehavior);
+}
+</script>
+
+<script id="CSSStyleDeclaration_normalize_anchor_size">
+{
+    // anchor-size() should serialize with dashed ident (anchor name) before size keyword
+    const div = document.createElement('div');
+
+    // Already canonical order - should stay the same
+    div.style.width = 'anchor-size(--foo width)';
+    testing.expectEqual('anchor-size(--foo width)', div.style.width);
+
+    // Non-canonical order - should be reordered
+    div.style.width = 'anchor-size(width --foo)';
+    testing.expectEqual('anchor-size(--foo width)', div.style.width);
+
+    // With fallback value
+    div.style.width = 'anchor-size(height --bar, 100px)';
+    testing.expectEqual('anchor-size(--bar height, 100px)', div.style.width);
+
+    // Different size keywords
+    div.style.width = 'anchor-size(block --baz)';
+    testing.expectEqual('anchor-size(--baz block)', div.style.width);
+
+    div.style.width = 'anchor-size(inline --qux)';
+    testing.expectEqual('anchor-size(--qux inline)', div.style.width);
+
+    div.style.width = 'anchor-size(self-block --test)';
+    testing.expectEqual('anchor-size(--test self-block)', div.style.width);
+
+    div.style.width = 'anchor-size(self-inline --test)';
+    testing.expectEqual('anchor-size(--test self-inline)', div.style.width);
+
+    // Without anchor name (implicit default anchor)
+    div.style.width = 'anchor-size(width)';
+    testing.expectEqual('anchor-size(width)', div.style.width);
+
+    // Nested anchor-size in fallback
+    div.style.width = 'anchor-size(width --foo, anchor-size(height --bar))';
+    testing.expectEqual('anchor-size(--foo width, anchor-size(--bar height))', div.style.width);
 }
 </script>

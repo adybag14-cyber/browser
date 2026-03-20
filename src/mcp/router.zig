@@ -5,7 +5,7 @@ const resources = @import("resources.zig");
 const Server = @import("Server.zig");
 const tools = @import("tools.zig");
 
-pub fn processRequests(server: *Server, reader: *std.io.Reader) !void {
+pub fn processRequests(server: *Server, reader: *std.Io.Reader) !void {
     var arena: std.heap.ArenaAllocator = .init(server.allocator);
     defer arena.deinit();
 
@@ -34,6 +34,7 @@ const log = @import("../log.zig");
 
 const Method = enum {
     initialize,
+    ping,
     @"notifications/initialized",
     @"tools/list",
     @"tools/call",
@@ -43,6 +44,7 @@ const Method = enum {
 
 const method_map = std.StaticStringMap(Method).initComptime(.{
     .{ "initialize", .initialize },
+    .{ "ping", .ping },
     .{ "notifications/initialized", .@"notifications/initialized" },
     .{ "tools/list", .@"tools/list" },
     .{ "tools/call", .@"tools/call" },
@@ -68,6 +70,7 @@ pub fn handleMessage(server: *Server, arena: std.mem.Allocator, msg: []const u8)
 
     switch (method) {
         .initialize => try handleInitialize(server, req),
+        .ping => try handlePing(server, req),
         .@"notifications/initialized" => {},
         .@"tools/list" => try tools.handleList(server, arena, req),
         .@"tools/call" => try tools.handleCall(server, arena, req),
@@ -92,6 +95,11 @@ fn handleInitialize(server: *Server, req: protocol.Request) !void {
     try server.sendResult(req.id.?, result);
 }
 
+fn handlePing(server: *Server, req: protocol.Request) !void {
+    const id = req.id orelse return;
+    try server.sendResult(id, .{});
+}
+
 const testing = @import("../testing.zig");
 
 test "MCP.router - handleMessage - synchronous unit tests" {
@@ -99,7 +107,7 @@ test "MCP.router - handleMessage - synchronous unit tests" {
     const allocator = testing.allocator;
     const app = testing.test_app;
 
-    var out_alloc: std.io.Writer.Allocating = .init(testing.arena_allocator);
+    var out_alloc: std.Io.Writer.Allocating = .init(testing.arena_allocator);
     defer out_alloc.deinit();
 
     var server = try Server.init(allocator, app, &out_alloc.writer);
@@ -116,26 +124,32 @@ test "MCP.router - handleMessage - synchronous unit tests" {
     , out_alloc.writer.buffered());
     out_alloc.writer.end = 0;
 
-    // 2. Tools list
+    // 2. Ping
     try handleMessage(server, aa,
-        \\{"jsonrpc":"2.0","id":2,"method":"tools/list"}
+        \\{"jsonrpc":"2.0","id":2,"method":"ping"}
     );
-    try testing.expectJson(.{ .id = 2 }, out_alloc.writer.buffered());
+    try testing.expectJson(.{ .id = 2, .result = .{} }, out_alloc.writer.buffered());
+    out_alloc.writer.end = 0;
+
+    // 3. Tools list
+    try handleMessage(server, aa,
+        \\{"jsonrpc":"2.0","id":3,"method":"tools/list"}
+    );
+    try testing.expectJson(.{ .id = 3 }, out_alloc.writer.buffered());
     try testing.expect(std.mem.indexOf(u8, out_alloc.writer.buffered(), "\"name\":\"goto\"") != null);
     out_alloc.writer.end = 0;
 
-    // 3. Method not found
+    // 4. Method not found
     try handleMessage(server, aa,
-        \\{"jsonrpc":"2.0","id":3,"method":"unknown_method"}
+        \\{"jsonrpc":"2.0","id":4,"method":"unknown_method"}
     );
-    try testing.expectJson(.{ .id = 3, .@"error" = .{ .code = -32601 } }, out_alloc.writer.buffered());
+    try testing.expectJson(.{ .id = 4, .@"error" = .{ .code = -32601 } }, out_alloc.writer.buffered());
     out_alloc.writer.end = 0;
 
-    // 4. Parse error
+    // 5. Parse error
     {
-        const old_filter = log.opts.filter_scopes;
-        log.opts.filter_scopes = &.{.mcp};
-        defer log.opts.filter_scopes = old_filter;
+        const filter: testing.LogFilter = .init(&.{.mcp});
+        defer filter.deinit();
 
         try handleMessage(server, aa, "invalid json");
         try testing.expectJson("{\"id\": null, \"error\": {\"code\": -32700}}", out_alloc.writer.buffered());

@@ -38,16 +38,12 @@ const Event = @import("Event.zig");
 const EventTarget = @import("EventTarget.zig");
 const ErrorEvent = @import("event/ErrorEvent.zig");
 const MessageEvent = @import("event/MessageEvent.zig");
-const StorageEvent = @import("event/StorageEvent.zig");
 const MediaQueryList = @import("css/MediaQueryList.zig");
 const storage = @import("storage/storage.zig");
-const indexed_db = @import("storage/indexed_db.zig");
 const Element = @import("Element.zig");
 const CSSStyleProperties = @import("css/CSSStyleProperties.zig");
 const CustomElementRegistry = @import("CustomElementRegistry.zig");
 const Selection = @import("Selection.zig");
-const URL = @import("../URL.zig");
-const PopupSource = @import("../PopupSource.zig").PopupSource;
 
 const IS_DEBUG = builtin.mode == .Debug;
 
@@ -65,19 +61,14 @@ _navigator: Navigator = .init,
 _screen: *Screen,
 _visual_viewport: *VisualViewport,
 _performance: Performance,
-_opaque_local_storage: storage.Lookup = .{},
-_opaque_session_storage: storage.Lookup = .{},
-_opaque_indexed_db_shed: indexed_db.Shed = .{},
-_local_storage: *storage.Lookup = undefined,
-_session_storage: *storage.Lookup = undefined,
-_indexed_db_factory: ?*indexed_db.IDBFactory = null,
+_storage_bucket: storage.Bucket = .{},
 _on_load: ?js.Function.Global = null,
 _on_pageshow: ?js.Function.Global = null,
 _on_popstate: ?js.Function.Global = null,
 _on_error: ?js.Function.Global = null,
+_on_message: ?js.Function.Global = null,
 _on_unhandled_rejection: ?js.Function.Global = null, // TODO: invoke on error
-_on_storage: ?js.Function.Global = null,
-_local_storage_listener_id: ?u32 = null,
+_current_event: ?*Event = null,
 _location: *Location,
 _timer_id: u30 = 0,
 _timers: std.AutoHashMapUnmanaged(u32, *ScheduleCallback) = .{},
@@ -98,6 +89,10 @@ _scroll_pos: struct {
 
 pub fn asEventTarget(self: *Window) *EventTarget {
     return self._proto;
+}
+
+pub fn getEvent(self: *const Window) ?*Event {
+    return self._current_event;
 }
 
 pub fn getSelf(self: *Window) *Window {
@@ -143,18 +138,6 @@ pub fn getVisualViewport(self: *const Window) *VisualViewport {
     return self._visual_viewport;
 }
 
-pub fn getInnerWidth(self: *const Window) u32 {
-    return self._visual_viewport.getWidth();
-}
-
-pub fn getInnerHeight(self: *const Window) u32 {
-    return self._visual_viewport.getHeight();
-}
-
-pub fn getDevicePixelRatio(self: *const Window) f64 {
-    return self._visual_viewport.getScale();
-}
-
 pub fn getCrypto(self: *Window) *Crypto {
     return &self._crypto;
 }
@@ -168,55 +151,11 @@ pub fn getPerformance(self: *Window) *Performance {
 }
 
 pub fn getLocalStorage(self: *Window) *storage.Lookup {
-    return self._local_storage;
+    return &self._storage_bucket.local;
 }
 
 pub fn getSessionStorage(self: *Window) *storage.Lookup {
-    return self._session_storage;
-}
-
-pub fn getIndexedDB(self: *Window) !*indexed_db.IDBFactory {
-    if (self._indexed_db_factory) |factory| {
-        return factory;
-    }
-
-    const origin = try self._page.getOrigin(self._page.arena);
-    const factory = if (origin) |value|
-        try indexed_db.IDBFactory.init(self._page, self._page._session.indexed_db_shed, value, true)
-    else
-        try indexed_db.IDBFactory.init(self._page, &self._opaque_indexed_db_shed, "opaque", false);
-    self._indexed_db_factory = factory;
-    return factory;
-}
-
-pub fn unregisterStorageBucket(self: *Window) void {
-    if (self._local_storage_listener_id) |listener_id| {
-        self._local_storage.unregisterMutationListener(listener_id);
-        self._local_storage_listener_id = null;
-    }
-}
-
-pub fn syncStorageBucket(self: *Window) !void {
-    self.unregisterStorageBucket();
-    self._indexed_db_factory = null;
-
-    const origin = try self._page.getOrigin(self._page.arena);
-    if (origin) |value| {
-        const allocator = self._page._session.browser.app.allocator;
-        const local_bucket = try self._page._session.storage_shed.getOrPut(allocator, value);
-        self._local_storage = &local_bucket.local;
-        const session_bucket = try self._page._session.session_storage_shed.getOrPut(allocator, value);
-        self._session_storage = &session_bucket.session;
-    } else {
-        self._local_storage = &self._opaque_local_storage;
-        self._session_storage = &self._opaque_session_storage;
-    }
-
-    self._local_storage_listener_id = try self._local_storage.registerMutationListener(
-        self._page,
-        @ptrCast(self),
-        handleLocalStorageMutation,
-    );
+    return &self._storage_bucket.session;
 }
 
 pub fn getLocation(self: *const Window) *Location {
@@ -229,43 +168,6 @@ pub fn getSelection(self: *const Window) *Selection {
 
 pub fn setLocation(self: *Window, url: [:0]const u8, page: *Page) !void {
     return page.scheduleNavigation(url, .{ .reason = .script, .kind = .{ .push = null } }, .{ .script = self._page });
-}
-
-const WindowOpenTarget = union(enum) {
-    same_context,
-    new_tab,
-    named: []const u8,
-};
-
-const WindowOpenAction = enum {
-    same_context,
-    popup,
-    blocked,
-};
-
-fn normalizeWindowOpenUrl(url: ?[]const u8) []const u8 {
-    const value = url orelse return "about:blank";
-    if (value.len == 0) {
-        return "about:blank";
-    }
-    return value;
-}
-
-fn classifyWindowOpenTarget(target_value: ?[]const u8) WindowOpenTarget {
-    const target = std.mem.trim(u8, target_value orelse "", &std.ascii.whitespace);
-    if (target.len == 0) {
-        return .new_tab;
-    }
-    if (std.ascii.eqlIgnoreCase(target, "_self") or
-        std.ascii.eqlIgnoreCase(target, "_parent") or
-        std.ascii.eqlIgnoreCase(target, "_top"))
-    {
-        return .same_context;
-    }
-    if (std.ascii.eqlIgnoreCase(target, "_blank")) {
-        return .new_tab;
-    }
-    return .{ .named = target };
 }
 
 pub fn getHistory(_: *Window, page: *Page) *History {
@@ -312,6 +214,14 @@ pub fn setOnError(self: *Window, setter: ?FunctionSetter) void {
     self._on_error = getFunctionFromSetter(setter);
 }
 
+pub fn getOnMessage(self: *const Window) ?js.Function.Global {
+    return self._on_message;
+}
+
+pub fn setOnMessage(self: *Window, setter: ?FunctionSetter) void {
+    self._on_message = getFunctionFromSetter(setter);
+}
+
 pub fn getOnUnhandledRejection(self: *const Window) ?js.Function.Global {
     return self._on_unhandled_rejection;
 }
@@ -320,108 +230,8 @@ pub fn setOnUnhandledRejection(self: *Window, setter: ?FunctionSetter) void {
     self._on_unhandled_rejection = getFunctionFromSetter(setter);
 }
 
-pub fn getOnStorage(self: *const Window) ?js.Function.Global {
-    return self._on_storage;
-}
-
-pub fn setOnStorage(self: *Window, setter: ?FunctionSetter) void {
-    self._on_storage = getFunctionFromSetter(setter);
-}
-
-fn handleLocalStorageMutation(ctx: *anyopaque, mutation: storage.Lookup.Mutation) void {
-    const self: *Window = @ptrCast(@alignCast(ctx));
-    if (mutation.source_ctx) |source_ctx| {
-        if (@intFromPtr(source_ctx) == @intFromPtr(self)) {
-            return;
-        }
-    }
-    self.dispatchStorageEvent(mutation) catch |err| {
-        log.warn(.js, "window.storage", .{ .err = err });
-    };
-}
-
-fn dispatchStorageEvent(self: *Window, mutation: storage.Lookup.Mutation) !void {
-    const page = self._page;
-    const arena = try page.getArena(.{ .debug = "StorageEvent.schedule" });
-    errdefer page.releaseArena(arena);
-
-    const callback = try arena.create(StorageEventCallback);
-    callback.* = .{
-        .page = page,
-        .arena = arena,
-        .window = self,
-        .key = if (mutation.key) |value| try arena.dupe(u8, value) else null,
-        .old_value = if (mutation.old_value) |value| try arena.dupe(u8, value) else null,
-        .new_value = if (mutation.new_value) |value| try arena.dupe(u8, value) else null,
-        .url = try arena.dupe(u8, mutation.url),
-    };
-    try page.js.scheduler.add(callback, StorageEventCallback.run, 0, .{
-        .name = "storage",
-        .low_priority = false,
-        .finalizer = StorageEventCallback.cancelled,
-    });
-}
-
 pub fn fetch(_: *const Window, input: Fetch.Input, options: ?Fetch.InitOpts, page: *Page) !js.Promise {
     return Fetch.init(input, options, page);
-}
-
-fn openInner(self: *Window, url: ?[]const u8, target: ?[]const u8, page: *Page) !WindowOpenAction {
-    const open_url = normalizeWindowOpenUrl(url);
-    switch (classifyWindowOpenTarget(target)) {
-        .same_context => {
-            try page.scheduleNavigation(
-                open_url,
-                .{ .reason = .script, .kind = .{ .push = null } },
-                .{ .script = self._page },
-            );
-            return .same_context;
-        },
-        .new_tab => {
-            if (!page._session.allow_script_popups) {
-                return .blocked;
-            }
-            const resolved = try URL.resolve(page.call_arena, page.base(), open_url, .{
-                .always_dupe = false,
-                .encode = true,
-            });
-            try page._session.enqueueOpenInTargetTab(
-                resolved,
-                "_blank",
-                .{ .reason = .script, .kind = .{ .push = null } },
-                true,
-                0,
-                PopupSource.script,
-            );
-            return .popup;
-        },
-        .named => |target_name| {
-            if (!page._session.allow_script_popups) {
-                return .blocked;
-            }
-            const resolved = try URL.resolve(page.call_arena, page.base(), open_url, .{
-                .always_dupe = false,
-                .encode = true,
-            });
-            try page._session.enqueueOpenInTargetTab(
-                resolved,
-                target_name,
-                .{ .reason = .script, .kind = .{ .push = null } },
-                true,
-                0,
-                PopupSource.script,
-            );
-            return .popup;
-        },
-    }
-}
-
-pub fn open(self: *Window, url: ?[]const u8, target: ?[]const u8, features: ?[]const u8, page: *Page) !?js.Value {
-    _ = features;
-    return switch (try openInner(self, url, target, page)) {
-        .same_context => try page.js.local.?.zigValueToJs(self, .{}),
-        .popup, .blocked => null,
-    };
 }
 
 pub fn setTimeout(self: *Window, cb: js.Function.Temp, delay_ms: ?u32, params: []js.Value.Temp, page: *Page) !u32 {
@@ -538,7 +348,11 @@ pub fn reportError(self: *Window, err: js.Value, page: *Page) !void {
 
     const event = error_event.asEvent();
     event._prevent_default = prevent_default;
-    try page._event_manager.dispatch(self.asEventTarget(), event);
+    // Pass null as handler: onerror was already called above with 5 args.
+    // We still dispatch so that addEventListener('error', ...) listeners fire.
+    try page._event_manager.dispatchDirect(self.asEventTarget(), event, null, .{
+        .context = "window.reportError",
+    });
 
     if (comptime builtin.is_test == false) {
         if (!event._prevent_default) {
@@ -573,19 +387,26 @@ pub fn postMessage(self: *Window, message: js.Value.Temp, target_origin: ?[]cons
     // In a full implementation, we would validate the origin
     _ = target_origin;
 
-    // postMessage queues a task (not a microtask), so use the scheduler
-    const arena = try page.getArena(.{ .debug = "Window.schedule" });
-    errdefer page.releaseArena(arena);
+    // self = the window that will get the message
+    // page = the context calling postMessage
+    const target_page = self._page;
+    const source_window = target_page.js.getIncumbent().window;
 
-    const origin = try self._location.getOrigin(page);
+    const arena = try target_page.getArena(.{ .debug = "Window.postMessage" });
+    errdefer target_page.releaseArena(arena);
+
+    // Origin should be the source window's origin (where the message came from)
+    const origin = try source_window._location.getOrigin(page);
     const callback = try arena.create(PostMessageCallback);
     callback.* = .{
-        .page = page,
         .arena = arena,
         .message = message,
+        .page = target_page,
+        .source = source_window,
         .origin = try arena.dupe(u8, origin),
     };
-    try page.js.scheduler.add(callback, PostMessageCallback.run, 0, .{
+
+    try target_page.js.scheduler.add(callback, PostMessageCallback.run, 0, .{
         .name = "postMessage",
         .low_priority = false,
         .finalizer = PostMessageCallback.cancelled,
@@ -603,7 +424,7 @@ pub fn atob(_: *const Window, input: []const u8, page: *Page) ![]const u8 {
     // Forgiving base64 decode per WHATWG spec:
     // https://infra.spec.whatwg.org/#forgiving-base64-decode
     // Remove trailing padding to use standard_no_pad decoder
-    const unpadded = std.mem.trimRight(u8, trimmed, "=");
+    const unpadded = std.mem.trimEnd(u8, trimmed, "=");
 
     // Length % 4 == 1 is invalid (can't represent valid base64)
     if (unpadded.len % 4 == 1) {
@@ -614,6 +435,10 @@ pub fn atob(_: *const Window, input: []const u8, page: *Page) ![]const u8 {
     const decoded = try page.call_arena.alloc(u8, decoded_len);
     std.base64.standard_no_pad.Decoder.decode(decoded, unpadded) catch return error.InvalidCharacterError;
     return decoded;
+}
+
+pub fn structuredClone(_: *const Window, value: js.Value) !js.Value {
+    return value.structuredClone();
 }
 
 pub fn getFrame(self: *Window, idx: usize) !?*Window {
@@ -755,17 +580,14 @@ pub fn unhandledPromiseRejection(self: *Window, rejection: js.PromiseRejection, 
         });
     }
 
-    const event = (try @import("event/PromiseRejectionEvent.zig").init("unhandledrejection", .{
-        .reason = if (rejection.reason()) |r| try r.temp() else null,
-        .promise = try rejection.promise().temp(),
-    }, page)).asEvent();
-
-    try page._event_manager.dispatchDirect(
-        self.asEventTarget(),
-        event,
-        self._on_unhandled_rejection,
-        .{ .inject_target = true, .context = "window.unhandledrejection" },
-    );
+    const target = self.asEventTarget();
+    if (page._event_manager.hasDirectListeners(target, "unhandledrejection", self._on_unhandled_rejection)) {
+        const event = (try @import("event/PromiseRejectionEvent.zig").init("unhandledrejection", .{
+            .reason = if (rejection.reason()) |r| try r.temp() else null,
+            .promise = try rejection.promise().temp(),
+        }, page)).asEvent();
+        try page._event_manager.dispatchDirect(target, event, self._on_unhandled_rejection, .{ .context = "window.unhandledrejection" });
+    }
 }
 
 const ScheduleOpts = struct {
@@ -853,9 +675,9 @@ const ScheduleCallback = struct {
     }
 
     fn deinit(self: *ScheduleCallback) void {
-        self.page.js.release(self.cb);
+        self.cb.release();
         for (self.params) |param| {
-            self.page.js.release(param);
+            param.release();
         }
         self.page.releaseArena(self.arena);
     }
@@ -905,6 +727,7 @@ const ScheduleCallback = struct {
 
 const PostMessageCallback = struct {
     page: *Page,
+    source: *Window,
     arena: Allocator,
     origin: []const u8,
     message: js.Value.Temp,
@@ -915,7 +738,7 @@ const PostMessageCallback = struct {
 
     fn cancelled(ctx: *anyopaque) void {
         const self: *PostMessageCallback = @ptrCast(@alignCast(ctx));
-        self.page.releaseArena(self.arena);
+        self.deinit();
     }
 
     fn run(ctx: *anyopaque) !?u32 {
@@ -924,65 +747,19 @@ const PostMessageCallback = struct {
 
         const page = self.page;
         const window = page.window;
-        var ls: js.Local.Scope = undefined;
-        page.js.localScope(&ls);
-        defer ls.deinit();
 
-        const event = (try MessageEvent.initTrusted(comptime .wrap("message"), .{
-            .data = self.message,
-            .origin = self.origin,
-            .source = window,
-            .bubbles = false,
-            .cancelable = false,
-        }, page)).asEvent();
-        try page._event_manager.dispatch(window.asEventTarget(), event);
+        const event_target = window.asEventTarget();
+        if (page._event_manager.hasDirectListeners(event_target, "message", window._on_message)) {
+            const event = (try MessageEvent.initTrusted(comptime .wrap("message"), .{
+                .data = self.message,
+                .origin = self.origin,
+                .source = self.source,
+                .bubbles = false,
+                .cancelable = false,
+            }, page)).asEvent();
+            try page._event_manager.dispatchDirect(event_target, event, window._on_message, .{ .context = "window.postMessage" });
+        }
 
-        return null;
-    }
-};
-
-const StorageEventCallback = struct {
-    page: *Page,
-    arena: Allocator,
-    window: *Window,
-    key: ?[]const u8,
-    old_value: ?[]const u8,
-    new_value: ?[]const u8,
-    url: []const u8,
-
-    fn deinit(self: *StorageEventCallback) void {
-        self.page.releaseArena(self.arena);
-    }
-
-    fn cancelled(ctx: *anyopaque) void {
-        const self: *StorageEventCallback = @ptrCast(@alignCast(ctx));
-        self.page.releaseArena(self.arena);
-    }
-
-    fn run(ctx: *anyopaque) !?u32 {
-        const self: *StorageEventCallback = @ptrCast(@alignCast(ctx));
-        defer self.deinit();
-
-        const page = self.page;
-        const window = self.window;
-        var ls: js.Local.Scope = undefined;
-        page.js.localScope(&ls);
-        defer ls.deinit();
-        const event = (try StorageEvent.initTrusted(comptime .wrap("storage"), .{
-            .key = self.key,
-            .oldValue = self.old_value,
-            .newValue = self.new_value,
-            .url = self.url,
-            .storageArea = window._local_storage,
-            .bubbles = false,
-            .cancelable = false,
-        }, page)).asEvent();
-        try page._event_manager.dispatchDirect(
-            window.asEventTarget(),
-            event,
-            window._on_storage,
-            .{ .inject_target = true, .context = "window.storage" },
-        );
         return null;
     }
 };
@@ -1025,7 +802,6 @@ pub const JsApi = struct {
     pub const performance = bridge.accessor(Window.getPerformance, null, .{});
     pub const localStorage = bridge.accessor(Window.getLocalStorage, null, .{});
     pub const sessionStorage = bridge.accessor(Window.getSessionStorage, null, .{});
-    pub const indexedDB = bridge.accessor(Window.getIndexedDB, null, .{});
     pub const location = bridge.accessor(Window.getLocation, Window.setLocation, .{});
     pub const history = bridge.accessor(Window.getHistory, null, .{});
     pub const navigation = bridge.accessor(Window.getNavigation, null, .{});
@@ -1036,10 +812,10 @@ pub const JsApi = struct {
     pub const onpageshow = bridge.accessor(Window.getOnPageShow, Window.setOnPageShow, .{});
     pub const onpopstate = bridge.accessor(Window.getOnPopState, Window.setOnPopState, .{});
     pub const onerror = bridge.accessor(Window.getOnError, Window.setOnError, .{});
+    pub const onmessage = bridge.accessor(Window.getOnMessage, Window.setOnMessage, .{});
     pub const onunhandledrejection = bridge.accessor(Window.getOnUnhandledRejection, Window.setOnUnhandledRejection, .{});
-    pub const onstorage = bridge.accessor(Window.getOnStorage, Window.setOnStorage, .{});
+    pub const event = bridge.accessor(Window.getEvent, null, .{ .null_as_undefined = true });
     pub const fetch = bridge.function(Window.fetch, .{});
-    pub const open = bridge.function(Window.open, .{});
     pub const queueMicrotask = bridge.function(Window.queueMicrotask, .{});
     pub const setTimeout = bridge.function(Window.setTimeout, .{});
     pub const clearTimeout = bridge.function(Window.clearTimeout, .{});
@@ -1054,8 +830,9 @@ pub const JsApi = struct {
     pub const matchMedia = bridge.function(Window.matchMedia, .{});
     pub const postMessage = bridge.function(Window.postMessage, .{});
     pub const btoa = bridge.function(Window.btoa, .{});
-    pub const atob = bridge.function(Window.atob, .{});
+    pub const atob = bridge.function(Window.atob, .{ .dom_exception = true });
     pub const reportError = bridge.function(Window.reportError, .{});
+    pub const structuredClone = bridge.function(Window.structuredClone, .{});
     pub const getComputedStyle = bridge.function(Window.getComputedStyle, .{});
     pub const getSelection = bridge.function(Window.getSelection, .{});
 
@@ -1076,9 +853,9 @@ pub const JsApi = struct {
     // sites not to try to access those features
     pub const isSecureContext = bridge.property(false, .{ .template = false });
 
-    pub const innerWidth = bridge.accessor(Window.getInnerWidth, null, .{});
-    pub const innerHeight = bridge.accessor(Window.getInnerHeight, null, .{});
-    pub const devicePixelRatio = bridge.accessor(Window.getDevicePixelRatio, null, .{});
+    pub const innerWidth = bridge.property(1920, .{ .template = false });
+    pub const innerHeight = bridge.property(1080, .{ .template = false });
+    pub const devicePixelRatio = bridge.property(1, .{ .template = false });
 
     // This should return a window-like object in specific conditions. Would be
     // pretty complicated to properly support I think.
@@ -1108,146 +885,6 @@ test "WebApi: Window scroll" {
     try testing.htmlRunner("window_scroll.html", .{});
 }
 
-fn deinitPendingTabOpensForTest(
-    allocator: std.mem.Allocator,
-    pending: *std.ArrayListUnmanaged(@import("../Session.zig").PendingTabOpen),
-) void {
-    while (pending.items.len > 0) {
-        var request = pending.items[pending.items.len - 1];
-        pending.items.len -= 1;
-        request.deinit(allocator);
-    }
-    pending.deinit(allocator);
-}
-
-test "Window classifyWindowOpenTarget distinguishes context and popup targets" {
-    try std.testing.expectEqual(WindowOpenTarget.same_context, classifyWindowOpenTarget("_self"));
-    try std.testing.expectEqual(WindowOpenTarget.same_context, classifyWindowOpenTarget("_top"));
-    try std.testing.expectEqual(WindowOpenTarget.new_tab, classifyWindowOpenTarget(null));
-    try std.testing.expectEqual(WindowOpenTarget.new_tab, classifyWindowOpenTarget(""));
-    try std.testing.expectEqual(WindowOpenTarget.new_tab, classifyWindowOpenTarget("_blank"));
-
-    const named = classifyWindowOpenTarget("report");
-    try std.testing.expectEqualStrings(
-        "report",
-        switch (named) {
-            .named => |value| value,
-            else => return error.TestUnexpectedTargetKind,
-        },
-    );
-}
-
-test "Window open same-context queues navigation" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-
-    const action = try openInner(
-        page.window,
-        "/src/browser/tests/page/popup-target-result.html?from=window-open",
-        "_self",
-        page,
-    );
-
-    try std.testing.expectEqual(WindowOpenAction.same_context, action);
-    try std.testing.expect(page._queued_navigation != null);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=window-open",
-        page._queued_navigation.?.url,
-    );
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-    try testing.expectEqual(@as(usize, 0), pending.items.len);
-}
-
-test "Window open _blank queues script popup tab" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-
-    const action = try openInner(
-        page.window,
-        "/src/browser/tests/page/popup-target-result.html?from=blank-window-open",
-        "_blank",
-        page,
-    );
-
-    try std.testing.expectEqual(WindowOpenAction.popup, action);
-    try std.testing.expect(page._queued_navigation == null);
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expectString("_blank", pending.items[0].target_name);
-    try testing.expectEqual(PopupSource.script, pending.items[0].popup_source);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=blank-window-open",
-        pending.items[0].url,
-    );
-}
-
-test "Window open named target queues script popup tab" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-
-    const action = try openInner(
-        page.window,
-        "/src/browser/tests/page/popup-target-result.html?from=named-window-open",
-        "report",
-        page,
-    );
-
-    try std.testing.expectEqual(WindowOpenAction.popup, action);
-    try std.testing.expect(page._queued_navigation == null);
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expectString("report", pending.items[0].target_name);
-    try testing.expectEqual(PopupSource.script, pending.items[0].popup_source);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=named-window-open",
-        pending.items[0].url,
-    );
-}
-
-test "Window open _blank respects blocked script popup policy" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-    page._session.allow_script_popups = false;
-
-    const action = try openInner(
-        page.window,
-        "/src/browser/tests/page/popup-target-result.html?from=blocked-blank-window-open",
-        "_blank",
-        page,
-    );
-
-    try std.testing.expectEqual(WindowOpenAction.blocked, action);
-    try std.testing.expect(page._queued_navigation == null);
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-    try testing.expectEqual(@as(usize, 0), pending.items.len);
-}
-
-test "Window open named target respects blocked script popup policy" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-    page._session.allow_script_popups = false;
-
-    const action = try openInner(
-        page.window,
-        "/src/browser/tests/page/popup-target-result.html?from=blocked-named-window-open",
-        "report",
-        page,
-    );
-
-    try std.testing.expectEqual(WindowOpenAction.blocked, action);
-    try std.testing.expect(page._queued_navigation == null);
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-    try testing.expectEqual(@as(usize, 0), pending.items.len);
+test "WebApi: Window.onerror" {
+    try testing.htmlRunner("event/report_error.html", .{});
 }

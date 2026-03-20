@@ -21,21 +21,31 @@ const String = @import("../../string.zig").String;
 
 const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
 
 const Node = @import("Node.zig");
 const DocumentFragment = @import("DocumentFragment.zig");
 const AbstractRange = @import("AbstractRange.zig");
+const DOMRect = @import("DOMRect.zig");
+
+const Allocator = std.mem.Allocator;
 
 const Range = @This();
 
 _proto: *AbstractRange,
 
-pub fn asAbstractRange(self: *Range) *AbstractRange {
-    return self._proto;
+pub fn init(page: *Page) !*Range {
+    const arena = try page.getArena(.{ .debug = "Range" });
+    errdefer page.releaseArena(arena);
+    return page._factory.abstractRange(arena, Range{ ._proto = undefined }, page);
 }
 
-pub fn init(page: *Page) !*Range {
-    return page._factory.abstractRange(Range{ ._proto = undefined }, page);
+pub fn deinit(self: *Range, shutdown: bool, session: *Session) void {
+    self._proto.deinit(shutdown, session);
+}
+
+pub fn asAbstractRange(self: *Range) *AbstractRange {
+    return self._proto;
 }
 
 pub fn setStart(self: *Range, node: *Node, offset: u32) !void {
@@ -308,7 +318,10 @@ pub fn intersectsNode(self: *const Range, node: *Node) bool {
 }
 
 pub fn cloneRange(self: *const Range, page: *Page) !*Range {
-    const clone = try page._factory.abstractRange(Range{ ._proto = undefined }, page);
+    const arena = try page.getArena(.{ .debug = "Range.clone" });
+    errdefer page.releaseArena(arena);
+
+    const clone = try page._factory.abstractRange(arena, Range{ ._proto = undefined }, page);
     clone._proto._end_offset = self._proto._end_offset;
     clone._proto._start_offset = self._proto._start_offset;
     clone._proto._end_container = self._proto._end_container;
@@ -320,6 +333,11 @@ pub fn insertNode(self: *Range, node: *Node, page: *Page) !void {
     // Insert node at the start of the range
     const container = self._proto._start_container;
     const offset = self._proto._start_offset;
+
+    // Per spec: if range is collapsed, end offset should extend to include
+    // the inserted node. Capture before insertion since live range updates
+    // in the insert path will adjust non-collapsed ranges automatically.
+    const was_collapsed = self._proto.getCollapsed();
 
     if (container.is(Node.CData)) |_| {
         // If container is a text node, we need to split it
@@ -350,9 +368,10 @@ pub fn insertNode(self: *Range, node: *Node, page: *Page) !void {
         _ = try container.insertBefore(node, ref_child, page);
     }
 
-    // Update range to be after the inserted node
-    if (self._proto._start_container == self._proto._end_container) {
-        self._proto._end_offset += 1;
+    // Per spec step 11: if range was collapsed, extend end to include inserted node.
+    // Non-collapsed ranges are already handled by the live range update in the insert path.
+    if (was_collapsed) {
+        self._proto._end_offset = self._proto._start_offset + 1;
     }
 }
 
@@ -374,9 +393,12 @@ pub fn deleteContents(self: *Range, page: *Page) !void {
             );
             page.characterDataChange(self._proto._start_container, old_value);
         } else {
-            // Delete child nodes in range
-            var offset = self._proto._start_offset;
-            while (offset < self._proto._end_offset) : (offset += 1) {
+            // Delete child nodes in range.
+            // Capture count before the loop: removeChild triggers live range
+            // updates that decrement _end_offset on each removal.
+            const count = self._proto._end_offset - self._proto._start_offset;
+            var i: u32 = 0;
+            while (i < count) : (i += 1) {
                 if (self._proto._start_container.getChildAt(self._proto._start_offset)) |child| {
                     _ = try self._proto._start_container.removeChild(child, page);
                 }
@@ -643,6 +665,33 @@ fn nextAfterSubtree(node: *Node, root: *Node) ?*Node {
     return null;
 }
 
+pub fn getBoundingClientRect(self: *const Range, page: *Page) DOMRect {
+    if (self._proto.getCollapsed()) {
+        return .{ ._x = 0, ._y = 0, ._width = 0, ._height = 0 };
+    }
+    const element = self.getContainerElement() orelse {
+        return .{ ._x = 0, ._y = 0, ._width = 0, ._height = 0 };
+    };
+    return element.getBoundingClientRect(page);
+}
+
+pub fn getClientRects(self: *const Range, page: *Page) ![]DOMRect {
+    if (self._proto.getCollapsed()) {
+        return &.{};
+    }
+    const element = self.getContainerElement() orelse {
+        return &.{};
+    };
+    return element.getClientRects(page);
+}
+
+fn getContainerElement(self: *const Range) ?*Node.Element {
+    const container = self._proto.getCommonAncestorContainer();
+    if (container.is(Node.Element)) |el| return el;
+    const parent = container.parentNode() orelse return null;
+    return parent.is(Node.Element);
+}
+
 pub const JsApi = struct {
     pub const bridge = js.Bridge(Range);
 
@@ -650,6 +699,8 @@ pub const JsApi = struct {
         pub const name = "Range";
         pub const prototype_chain = bridge.prototypeChain();
         pub var class_id: bridge.ClassId = undefined;
+        pub const weak = true;
+        pub const finalizer = bridge.finalizer(Range.deinit);
     };
 
     // Constants for compareBoundaryPoints
@@ -681,9 +732,14 @@ pub const JsApi = struct {
     pub const surroundContents = bridge.function(Range.surroundContents, .{ .dom_exception = true });
     pub const createContextualFragment = bridge.function(Range.createContextualFragment, .{ .dom_exception = true });
     pub const toString = bridge.function(Range.toString, .{ .dom_exception = true });
+    pub const getBoundingClientRect = bridge.function(Range.getBoundingClientRect, .{});
+    pub const getClientRects = bridge.function(Range.getClientRects, .{});
 };
 
 const testing = @import("../../testing.zig");
 test "WebApi: Range" {
     try testing.htmlRunner("range.html", .{});
+}
+test "WebApi: Range mutations" {
+    try testing.htmlRunner("range_mutations.html", .{});
 }

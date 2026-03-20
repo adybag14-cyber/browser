@@ -9,15 +9,13 @@ env:
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "build.zig"
-      - "src/**/*.zig"
-      - "src/*.zig"
-      - "vendor/zig-js-runtime"
       - ".github/**"
-      - "vendor/**"
+      - "src/**"
+      - "build.zig"
+      - "build.zig.zon"
+
   pull_request:
 
     # By default GH trigger on types opened, synchronize and reopened.
@@ -29,12 +27,10 @@ on:
 
     paths:
       - ".github/**"
+      - "src/**"
       - "build.zig"
-      - "src/**/*.zig"
-      - "src/*.zig"
-      - "vendor/**"
-      - ".github/**"
-      - "vendor/**"
+      - "build.zig.zon"
+
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -52,8 +48,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          # fetch submodules recusively, to get zig-js-runtime submodules also.
-          submodules: recursive
 
       - uses: ./.github/actions/install
 
@@ -61,7 +55,7 @@ jobs:
         run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcpu=x86_64 -Dgit_commit=$(git rev-parse --short ${{ github.sha }})
 
       - name: upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lightpanda-build-release
           path: |
@@ -76,7 +70,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: 'lightpanda-io/demo'
           fetch-depth: 0
@@ -84,7 +78,7 @@ jobs:
       - run: npm install
 
       - name: download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: lightpanda-build-release
 
@@ -117,6 +111,107 @@ jobs:
           BASE_URL=https://demo-browser.lightpanda.io/ node playwright/proxy_auth.js
           kill `cat LPD.pid` `cat PROXY.id`
 
+  # e2e tests w/ web-bot-auth configuration on.
+  wba-demo-scripts:
+    name: wba-demo-scripts
+    needs: zig-build-release
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lightpanda-io/demo'
+          fetch-depth: 0
+
+      - run: npm install
+
+      - name: download artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: lightpanda-build-release
+
+      - run: chmod a+x ./lightpanda
+
+      - run: echo "${{ secrets.WBA_PRIVATE_KEY_PEM }}" > private_key.pem
+
+      - name: run end to end tests
+        run: |
+          ./lightpanda serve \
+            --web_bot_auth_key_file private_key.pem \
+            --web_bot_auth_keyid ${{ vars.WBA_KEY_ID }} \
+            --web_bot_auth_domain ${{ vars.WBA_DOMAIN }} \
+            & echo $! > LPD.pid
+          go run runner/main.go
+          kill `cat LPD.pid`
+
+      - name: build proxy
+        run: |
+          cd proxy
+          go build
+
+      - name: run end to end tests through proxy
+        run: |
+          ./proxy/proxy & echo $! > PROXY.id
+          ./lightpanda serve \
+            --web_bot_auth_key_file private_key.pem \
+            --web_bot_auth_keyid ${{ vars.WBA_KEY_ID }} \
+            --web_bot_auth_domain ${{ vars.WBA_DOMAIN }} \
+            --http_proxy 'http://127.0.0.1:3000' \
+            & echo $! > LPD.pid
+          go run runner/main.go
+          kill `cat LPD.pid` `cat PROXY.id`
+
+      - name: run request interception through proxy
+        run: |
+          export PROXY_USERNAME=username PROXY_PASSWORD=password
+          ./proxy/proxy & echo $! > PROXY.id
+          ./lightpanda serve & echo $! > LPD.pid
+          URL=https://demo-browser.lightpanda.io/campfire-commerce/ node puppeteer/proxy_auth.js
+          BASE_URL=https://demo-browser.lightpanda.io/ node playwright/proxy_auth.js
+          kill `cat LPD.pid` `cat PROXY.id`
+
+  wba-test:
+    name: wba-test
+    needs: zig-build-release
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lightpanda-io/demo'
+          fetch-depth: 0
+
+      - name: download artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: lightpanda-build-release
+
+      - run: chmod a+x ./lightpanda
+
+      # force a wakup of the auth server before requesting it w/ the test itself
+      - run: curl https://${{ vars.WBA_DOMAIN }}
+
+      - name: run wba test
+        shell: bash
+        run: |
+          node webbotauth/validator.js &
+          VALIDATOR_PID=$!
+          sleep 5
+
+          exec 3<<< "${{ secrets.WBA_PRIVATE_KEY_PEM }}"
+
+          ./lightpanda fetch --dump http://127.0.0.1:8989/ \
+            --web_bot_auth_key_file /proc/self/fd/3 \
+            --web_bot_auth_keyid ${{ vars.WBA_KEY_ID }} \
+            --web_bot_auth_domain ${{ vars.WBA_DOMAIN }}
+
+          wait $VALIDATOR_PID
+          exec 3>&-
+
   cdp-and-hyperfine-bench:
     name: cdp-and-hyperfine-bench
     needs: zig-build-release
@@ -125,7 +220,6 @@ jobs:
       MAX_VmHWM: 28000 # 28MB (KB)
       MAX_CG_PEAK: 8000 # 8MB (KB)
       MAX_AVG_DURATION: 17
-      LIGHTPANDA_DISABLE_TELEMETRY: true
 
       # How to give cgroups access to the user actions-runner on the host:
       # $ sudo apt install cgroup-tools
@@ -140,7 +234,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: 'lightpanda-io/demo'
           fetch-depth: 0
@@ -148,7 +242,7 @@ jobs:
       - run: npm install
 
       - name: download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: lightpanda-build-release
 
@@ -234,7 +328,7 @@ jobs:
           echo "${{github.sha}}" > commit.txt
 
       - name: upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bench-results
           path: |
@@ -257,12 +351,12 @@ jobs:
     container:
       image: ghcr.io/lightpanda-io/perf-fmt:latest
       credentials:
-       username: ${{ github.actor }}
-       password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bench-results
 
@@ -280,7 +374,7 @@ jobs:
 
     steps:
       - name: download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: lightpanda-build-release
 

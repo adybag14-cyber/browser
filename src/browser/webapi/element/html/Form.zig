@@ -18,7 +18,9 @@
 
 const std = @import("std");
 const js = @import("../../../js/js.zig");
+const URL = @import("../../../URL.zig");
 const Page = @import("../../../Page.zig");
+
 const Node = @import("../../Node.zig");
 const Element = @import("../../Element.zig");
 const HtmlElement = @import("../Html.zig");
@@ -85,6 +87,27 @@ pub fn getElements(self: *Form, page: *Page) !*collections.HTMLFormControlsColle
     });
 }
 
+pub fn getAction(self: *Form, page: *Page) ![]const u8 {
+    const element = self.asElement();
+    const action = element.getAttributeSafe(comptime .wrap("action")) orelse return page.url;
+    if (action.len == 0) {
+        return page.url;
+    }
+    return URL.resolve(page.call_arena, page.base(), action, .{ .encode = true });
+}
+
+pub fn setAction(self: *Form, value: []const u8, page: *Page) !void {
+    try self.asElement().setAttributeSafe(comptime .wrap("action"), .wrap(value), page);
+}
+
+pub fn getTarget(self: *Form) []const u8 {
+    return self.asElement().getAttributeSafe(comptime .wrap("target")) orelse "";
+}
+
+pub fn setTarget(self: *Form, value: []const u8, page: *Page) !void {
+    try self.asElement().setAttributeSafe(comptime .wrap("target"), .wrap(value), page);
+}
+
 pub fn getLength(self: *Form, page: *Page) !u32 {
     const elements = try self.getElements(page);
     return elements.length(page);
@@ -92,6 +115,47 @@ pub fn getLength(self: *Form, page: *Page) !u32 {
 
 pub fn submit(self: *Form, page: *Page) !void {
     return page.submitForm(null, self, .{ .fire_event = false });
+}
+
+/// https://html.spec.whatwg.org/multipage/forms.html#dom-form-requestsubmit
+/// Like submit(), but fires the submit event and validates the form.
+pub fn requestSubmit(self: *Form, submitter: ?*Element, page: *Page) !void {
+    const submitter_element = if (submitter) |s| blk: {
+        // The submitter must be a submit button.
+        if (!isSubmitButton(s)) return error.TypeError;
+
+        // The submitter's form owner must be this form element.
+        const submitter_form = getFormOwner(s, page);
+        if (submitter_form == null or submitter_form.? != self) return error.NotFound;
+
+        break :blk s;
+    } else self.asElement();
+
+    return page.submitForm(submitter_element, self, .{});
+}
+
+/// Returns true if the element is a submit button per the HTML spec:
+/// - <input type="submit"> or <input type="image">
+/// - <button type="submit"> (including default, since button's default type is "submit")
+fn isSubmitButton(element: *Element) bool {
+    if (element.is(Input)) |input| {
+        return input._input_type == .submit or input._input_type == .image;
+    }
+    if (element.is(Button)) |button| {
+        return std.mem.eql(u8, button.getType(), "submit");
+    }
+    return false;
+}
+
+/// Returns the form owner of a submittable element (Input or Button).
+fn getFormOwner(element: *Element, page: *Page) ?*Form {
+    if (element.is(Input)) |input| {
+        return input.getForm(page);
+    }
+    if (element.is(Button)) |button| {
+        return button.getForm(page);
+    }
+    return null;
 }
 
 pub const JsApi = struct {
@@ -104,9 +168,12 @@ pub const JsApi = struct {
 
     pub const name = bridge.accessor(Form.getName, Form.setName, .{});
     pub const method = bridge.accessor(Form.getMethod, Form.setMethod, .{});
+    pub const action = bridge.accessor(Form.getAction, Form.setAction, .{});
+    pub const target = bridge.accessor(Form.getTarget, Form.setTarget, .{});
     pub const elements = bridge.accessor(Form.getElements, null, .{});
     pub const length = bridge.accessor(Form.getLength, null, .{});
     pub const submit = bridge.function(Form.submit, .{});
+    pub const requestSubmit = bridge.function(Form.requestSubmit, .{ .dom_exception = true });
 };
 
 const testing = @import("../../../../testing.zig");

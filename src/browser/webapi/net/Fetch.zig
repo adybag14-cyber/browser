@@ -19,17 +19,15 @@
 const std = @import("std");
 
 const log = @import("../../../log.zig");
-const Http = @import("../../../http/Http.zig");
+const HttpClient = @import("../../HttpClient.zig");
 
 const js = @import("../../js/js.zig");
 const Page = @import("../../Page.zig");
 const URL = @import("../../URL.zig");
-const DOMException = @import("../DOMException.zig");
-const AbortSignal = @import("../AbortSignal.zig");
 
+const Blob = @import("../Blob.zig");
 const Request = @import("Request.zig");
 const Response = @import("Response.zig");
-const Allocator = std.mem.Allocator;
 
 const IS_DEBUG = @import("builtin").mode == .Debug;
 
@@ -41,53 +39,37 @@ _buf: std.ArrayList(u8),
 _response: *Response,
 _resolver: js.PromiseResolver.Global,
 _owns_response: bool,
-_signal: ?*AbortSignal,
-_signal_listener_id: ?u32,
-_abort_requested: bool,
 
 pub const Input = Request.Input;
 pub const InitOpts = Request.InitOpts;
 
 pub fn init(input: Input, options: ?InitOpts, page: *Page) !js.Promise {
     const request = try Request.init(input, options, page);
-    if (request._signal) |signal| {
-        if (signal.getAborted()) {
-            return page.js.local.?.rejectPromise(DOMException.fromError(error.AbortError) orelse unreachable);
-        }
+    const resolver = page.js.local.?.createPromiseResolver();
+
+    if (std.mem.startsWith(u8, request._url, "blob:")) {
+        return handleBlobUrl(request._url, resolver, page);
     }
 
-    const request_url = try fetchRequestUrlForFetch(page.arena, request._url);
     const response = try Response.init(null, .{ .status = 0 }, page);
-    errdefer response.deinit(true, page);
-
-    const resolver = page.js.local.?.createPromiseResolver();
+    errdefer response.deinit(true, page._session);
 
     const fetch = try response._arena.create(Fetch);
     fetch.* = .{
         ._page = page,
         ._buf = .empty,
-        ._url = try response._arena.dupe(u8, request_url),
+        ._url = try response._arena.dupe(u8, request._url),
         ._resolver = try resolver.persist(),
         ._response = response,
         ._owns_response = true,
-        ._signal = request._signal,
-        ._signal_listener_id = null,
-        ._abort_requested = false,
     };
-    if (request._signal) |signal| {
-        fetch._signal_listener_id = try signal.registerNativeAbortListener(page, fetch, nativeAbortCallback);
-    }
 
     const http_client = page._session.browser.http_client;
     var headers = try http_client.newHeaders();
     if (request._headers) |h| {
         try h.populateHttpHeader(page.call_arena, &headers);
     }
-    const include_credentials = try fetchIncludesCredentials(request, page);
-    try page.headersForRequestWithPolicy(page.arena, request_url, &headers, .{
-        .include_credentials = include_credentials,
-        .authorization_source_url = request._url,
-    });
+    try page.headersForRequest(page.arena, request._url, &headers);
 
     if (comptime IS_DEBUG) {
         log.debug(.http, "fetch", .{ .url = request._url });
@@ -95,13 +77,13 @@ pub fn init(input: Input, options: ?InitOpts, page: *Page) !js.Promise {
 
     try http_client.request(.{
         .ctx = fetch,
-        .url = request_url,
+        .url = request._url,
         .method = request._method,
         .frame_id = page._frame_id,
         .body = request._body,
         .headers = headers,
         .resource_type = .fetch,
-        .cookie_jar = if (include_credentials) page._session.cookie_jar else null,
+        .cookie_jar = &page._session.cookie_jar,
         .notification = page._session.notification,
         .start_callback = httpStartCallback,
         .header_callback = httpHeaderDoneCallback,
@@ -113,44 +95,35 @@ pub fn init(input: Input, options: ?InitOpts, page: *Page) !js.Promise {
     return resolver.promise();
 }
 
-fn fetchIncludesCredentials(request: *const Request, page: *Page) !bool {
-    return switch (request._credentials) {
-        .omit => false,
-        .include => true,
-        .@"same-origin" => try page.isSameOrigin(request._url),
+fn handleBlobUrl(url: []const u8, resolver: js.PromiseResolver, page: *Page) !js.Promise {
+    const blob: *Blob = page.lookupBlobUrl(url) orelse {
+        resolver.rejectError("fetch blob error", .{ .type_error = "BlobNotFound" });
+        return resolver.promise();
     };
-}
 
-fn fetchRequestUrlForFetch(
-    allocator: Allocator,
-    url: [:0]const u8,
-) ![:0]const u8 {
-    if (URL.getUsername(url).len == 0) {
-        return try allocator.dupeZ(u8, url);
+    const response = try Response.init(null, .{ .status = 200 }, page);
+    response._body = try response._arena.dupe(u8, blob._slice);
+    response._url = try response._arena.dupeZ(u8, url);
+    response._type = .basic;
+
+    if (blob._mime.len > 0) {
+        try response._headers.append("Content-Type", blob._mime, page);
     }
 
-    return try URL.buildUrl(
-        allocator,
-        URL.getProtocol(url),
-        URL.getHost(url),
-        URL.getPathname(url),
-        URL.getSearch(url),
-        URL.getHash(url),
-    );
+    const js_val = try page.js.local.?.zigValueToJs(response, .{});
+    resolver.resolve("fetch blob done", js_val);
+    return resolver.promise();
 }
 
-fn httpStartCallback(transfer: *Http.Transfer) !void {
+fn httpStartCallback(transfer: *HttpClient.Transfer) !void {
     const self: *Fetch = @ptrCast(@alignCast(transfer.ctx));
     if (comptime IS_DEBUG) {
         log.debug(.http, "request start", .{ .url = self._url, .source = "fetch" });
     }
     self._response._transfer = transfer;
-    if (self._abort_requested) {
-        transfer.abort(error.Abort);
-    }
 }
 
-fn httpHeaderDoneCallback(transfer: *Http.Transfer) !bool {
+fn httpHeaderDoneCallback(transfer: *HttpClient.Transfer) !bool {
     const self: *Fetch = @ptrCast(@alignCast(transfer.ctx));
 
     const arena = self._response._arena;
@@ -200,7 +173,7 @@ fn httpHeaderDoneCallback(transfer: *Http.Transfer) !bool {
     return true;
 }
 
-fn httpDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
+fn httpDataCallback(transfer: *HttpClient.Transfer, data: []const u8) !void {
     const self: *Fetch = @ptrCast(@alignCast(transfer.ctx));
     try self._buf.appendSlice(self._response._arena, data);
 }
@@ -210,7 +183,6 @@ fn httpDoneCallback(ctx: *anyopaque) !void {
     var response = self._response;
     response._transfer = null;
     response._body = self._buf.items;
-    self.unregisterAbortSignal();
 
     log.info(.http, "request complete", .{
         .source = "fetch",
@@ -233,12 +205,11 @@ fn httpErrorCallback(ctx: *anyopaque, err: anyerror) void {
 
     var response = self._response;
     response._transfer = null;
-    self.unregisterAbortSignal();
     // the response is only passed on v8 on success, if we're here, it's safe to
     // clear this. (defer since `self is in the response's arena).
 
     defer if (self._owns_response) {
-        response.deinit(err == error.Abort, self._page);
+        response.deinit(err == error.Abort, self._page._session);
         self._owns_response = false;
     };
 
@@ -246,20 +217,12 @@ fn httpErrorCallback(ctx: *anyopaque, err: anyerror) void {
     self._page.js.localScope(&ls);
     defer ls.deinit();
 
-    if (err == error.Abort) {
-        ls.toLocal(self._resolver).reject(
-            "fetch error",
-            DOMException.fromError(error.AbortError) orelse unreachable,
-        );
-        return;
-    }
-
-    ls.toLocal(self._resolver).reject("fetch error", @errorName(err));
+    // fetch() must reject with a TypeError on network errors per spec
+    ls.toLocal(self._resolver).rejectError("fetch error", .{ .type_error = @errorName(err) });
 }
 
 fn httpShutdownCallback(ctx: *anyopaque) void {
     const self: *Fetch = @ptrCast(@alignCast(ctx));
-    self.unregisterAbortSignal();
     if (comptime IS_DEBUG) {
         // should always be true
         std.debug.assert(self._owns_response);
@@ -268,71 +231,13 @@ fn httpShutdownCallback(ctx: *anyopaque) void {
     if (self._owns_response) {
         var response = self._response;
         response._transfer = null;
-        response.deinit(true, self._page);
+        response.deinit(true, self._page._session);
         // Do not access `self` after this point: the Fetch struct was
         // allocated from response._arena which has been released.
-    }
-}
-
-fn unregisterAbortSignal(self: *Fetch) void {
-    const signal = self._signal orelse return;
-    const listener_id = self._signal_listener_id orelse return;
-    signal.unregisterNativeAbortListener(listener_id);
-    self._signal_listener_id = null;
-}
-
-fn nativeAbortCallback(ctx: *anyopaque, _: *Page) void {
-    const self: *Fetch = @ptrCast(@alignCast(ctx));
-    self._abort_requested = true;
-    if (self._response._transfer) |transfer| {
-        transfer.abort(error.Abort);
     }
 }
 
 const testing = @import("../../../testing.zig");
 test "WebApi: fetch" {
     try testing.htmlRunner("net/fetch.html", .{});
-}
-
-test "fetchIncludesCredentials respects request credentials policy" {
-    var page = try testing.pageTest("page/auth_image_inherited.html");
-    defer page._session.removePage();
-
-    const omit_request = try Request.init(.{ .url = "http://127.0.0.1:9582/private.png" }, .{
-        .credentials = .omit,
-    }, page);
-    try std.testing.expect(!(try fetchIncludesCredentials(omit_request, page)));
-
-    const include_request = try Request.init(.{ .url = "http://127.0.0.1:9583/private.png" }, .{
-        .credentials = .include,
-    }, page);
-    try std.testing.expect(try fetchIncludesCredentials(include_request, page));
-
-    const same_origin_request = try Request.init(.{ .url = "http://127.0.0.1:9582/private.png" }, .{
-        .credentials = .@"same-origin",
-    }, page);
-    try std.testing.expect(try fetchIncludesCredentials(same_origin_request, page));
-
-    const cross_origin_request = try Request.init(.{ .url = "http://127.0.0.1:9583/private.png" }, .{
-        .credentials = .@"same-origin",
-    }, page);
-    try std.testing.expect(!(try fetchIncludesCredentials(cross_origin_request, page)));
-}
-
-test "fetchRequestUrlForFetch strips userinfo from request url" {
-    const allocator = std.testing.allocator;
-
-    const stripped = try fetchRequestUrlForFetch(
-        allocator,
-        "http://fetch%20user:p%40ss@127.0.0.1:9582/private.png?x=1#frag",
-    );
-    defer allocator.free(stripped);
-    try std.testing.expectEqualStrings("http://127.0.0.1:9582/private.png?x=1#frag", stripped);
-
-    const kept = try fetchRequestUrlForFetch(
-        allocator,
-        "http://127.0.0.1:9582/private.png?x=1#frag",
-    );
-    defer allocator.free(kept);
-    try std.testing.expectEqualStrings("http://127.0.0.1:9582/private.png?x=1#frag", kept);
 }

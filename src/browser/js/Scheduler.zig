@@ -35,21 +35,25 @@ const Queue = std.PriorityQueue(Task, void, struct {
 
 const Scheduler = @This();
 
+allocator: std.mem.Allocator,
 _sequence: u64,
 low_priority: Queue,
 high_priority: Queue,
 
 pub fn init(allocator: std.mem.Allocator) Scheduler {
     return .{
+        .allocator = allocator,
         ._sequence = 0,
-        .low_priority = Queue.init(allocator, {}),
-        .high_priority = Queue.init(allocator, {}),
+        .low_priority = Queue.initContext({}),
+        .high_priority = Queue.initContext({}),
     };
 }
 
 pub fn deinit(self: *Scheduler) void {
     finalizeTasks(&self.low_priority);
     finalizeTasks(&self.high_priority);
+    self.low_priority.deinit(self.allocator);
+    self.high_priority.deinit(self.allocator);
 }
 
 const AddOpts = struct {
@@ -64,7 +68,7 @@ pub fn add(self: *Scheduler, ctx: *anyopaque, cb: Callback, run_in_ms: u32, opts
     var queue = if (opts.low_priority) &self.low_priority else &self.high_priority;
     const seq = self._sequence + 1;
     self._sequence = seq;
-    return queue.add(.{
+    return queue.push(self.allocator, .{
         .ctx = ctx,
         .callback = cb,
         .sequence = seq,
@@ -74,9 +78,10 @@ pub fn add(self: *Scheduler, ctx: *anyopaque, cb: Callback, run_in_ms: u32, opts
     });
 }
 
-pub fn run(self: *Scheduler) !?u64 {
-    _ = try self.runQueue(&self.low_priority);
-    return self.runQueue(&self.high_priority);
+pub fn run(self: *Scheduler) !void {
+    const now = milliTimestamp(.monotonic);
+    try self.runQueue(&self.low_priority, now);
+    try self.runQueue(&self.high_priority, now);
 }
 
 pub fn hasReadyTasks(self: *Scheduler) bool {
@@ -84,18 +89,25 @@ pub fn hasReadyTasks(self: *Scheduler) bool {
     return queueuHasReadyTask(&self.low_priority, now) or queueuHasReadyTask(&self.high_priority, now);
 }
 
-fn runQueue(self: *Scheduler, queue: *Queue) !?u64 {
+pub fn msToNextHigh(self: *Scheduler) ?u64 {
+    const task = self.high_priority.peek() orelse return null;
+    const now = milliTimestamp(.monotonic);
+    if (task.run_at <= now) {
+        return 0;
+    }
+    return @intCast(task.run_at - now);
+}
+
+fn runQueue(self: *Scheduler, queue: *Queue, now: u64) !void {
     if (queue.count() == 0) {
-        return null;
+        return;
     }
 
-    const now = milliTimestamp(.monotonic);
-
-    while (queue.peek()) |*task_| {
+    while (queue.peek()) |task_| {
         if (task_.run_at > now) {
-            return @intCast(task_.run_at - now);
+            return;
         }
-        var task = queue.remove();
+        var task = queue.pop().?;
         if (comptime IS_DEBUG) {
             log.debug(.scheduler, "scheduler.runTask", .{ .name = task.name });
         }
@@ -111,10 +123,10 @@ fn runQueue(self: *Scheduler, queue: *Queue) !?u64 {
                 std.debug.assert(ms != 0);
             }
             task.run_at = now + ms;
-            try self.low_priority.add(task);
+            try self.low_priority.push(self.allocator, task);
         }
     }
-    return null;
+    return;
 }
 
 fn queueuHasReadyTask(queue: *Queue, now: u64) bool {

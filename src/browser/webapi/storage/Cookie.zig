@@ -22,7 +22,8 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 
 const URL = @import("../../URL.zig");
 const log = @import("../../../log.zig");
-const DateTime = @import("../../../datetime.zig").DateTime;
+const datetime = @import("../../../datetime.zig");
+const DateTime = datetime.DateTime;
 const public_suffix_list = @import("../../../data/public_suffix_list.zig").lookup;
 
 const Cookie = @This();
@@ -31,8 +32,11 @@ const max_cookie_size = 4 * 1024;
 const max_cookie_header_size = 8 * 1024;
 const max_jar_size = 1024;
 
+fn nowSeconds() i64 {
+    return @intCast(datetime.timestamp(.clock));
+}
+
 arena: ArenaAllocator,
-arena_owned: ?*ArenaAllocator = null,
 name: []const u8,
 value: []const u8,
 domain: []const u8,
@@ -42,43 +46,14 @@ secure: bool = false,
 http_only: bool = false,
 same_site: SameSite = .none,
 
-pub const SameSite = enum {
+const SameSite = enum {
     strict,
     lax,
     none,
 };
 
 pub fn deinit(self: *const Cookie) void {
-    if (self.arena_owned) |arena_owned| {
-        const child = arena_owned.child_allocator;
-        arena_owned.deinit();
-        child.destroy(arena_owned);
-        return;
-    }
-    var arena = self.arena;
-    _ = arena.reset(.free_all);
-}
-
-pub fn cloneOwned(self: *const Cookie, allocator: Allocator) !Cookie {
-    var arena = try allocator.create(ArenaAllocator);
-    arena.* = ArenaAllocator.init(allocator);
-    errdefer {
-        arena.deinit();
-        allocator.destroy(arena);
-    }
-    const aa = arena.allocator();
-    return .{
-        .arena = arena.*,
-        .arena_owned = arena,
-        .name = try aa.dupe(u8, self.name),
-        .value = try aa.dupe(u8, self.value),
-        .domain = try aa.dupe(u8, self.domain),
-        .path = try aa.dupe(u8, self.path),
-        .expires = self.expires,
-        .secure = self.secure,
-        .http_only = self.http_only,
-        .same_site = self.same_site,
-    };
+    self.arena.deinit();
 }
 
 // There's https://datatracker.ietf.org/doc/html/rfc6265 but browsers are
@@ -171,7 +146,7 @@ pub fn parse(allocator: Allocator, url: [:0]const u8, str: []const u8) !Cookie {
 
     var normalized_expires: ?f64 = null;
     if (max_age) |ma| {
-        normalized_expires = @floatFromInt(std.time.timestamp() + ma);
+        normalized_expires = @floatFromInt(nowSeconds() + ma);
     } else {
         // max age takes priority over expires
         if (expires) |expires_| {
@@ -434,14 +409,14 @@ pub const Jar = struct {
     }
 
     pub fn deinit(self: *Jar) void {
-        for (self.cookies.items) |*c| {
+        for (self.cookies.items) |c| {
             c.deinit();
         }
         self.cookies.deinit(self.allocator);
     }
 
     pub fn clearRetainingCapacity(self: *Jar) void {
-        for (self.cookies.items) |*c| {
+        for (self.cookies.items) |c| {
             c.deinit();
         }
         self.cookies.clearRetainingCapacity();
@@ -452,8 +427,11 @@ pub const Jar = struct {
         cookie: Cookie,
         request_time: i64,
     ) !void {
-        defer cookie.deinit();
         const is_expired = isCookieExpired(&cookie, request_time);
+        defer if (is_expired) {
+            cookie.deinit();
+        };
+
         if (self.cookies.items.len >= max_jar_size) {
             return error.CookieJarQuotaExceeded;
         }
@@ -463,36 +441,30 @@ pub const Jar = struct {
 
         for (self.cookies.items, 0..) |*c, i| {
             if (areCookiesEqual(&cookie, c)) {
+                c.deinit();
                 if (is_expired) {
-                    c.deinit();
                     _ = self.cookies.swapRemove(i);
                 } else {
-                    var owned = try cookie.cloneOwned(self.allocator);
-                    errdefer owned.deinit();
-                    c.deinit();
-                    c.* = owned;
+                    self.cookies.items[i] = cookie;
                 }
                 return;
             }
         }
 
         if (!is_expired) {
-            var owned = try cookie.cloneOwned(self.allocator);
-            errdefer owned.deinit();
-            try self.cookies.append(self.allocator, owned);
+            try self.cookies.append(self.allocator, cookie);
         }
     }
 
     pub fn removeExpired(self: *Jar, request_time: ?i64) void {
         if (self.cookies.items.len == 0) return;
-        const time = request_time orelse std.time.timestamp();
+        const time = request_time orelse nowSeconds();
         var i: usize = self.cookies.items.len;
         while (i > 0) {
             i -= 1;
             const cookie = &self.cookies.items[i];
             if (isCookieExpired(cookie, time)) {
-                var removed = self.cookies.swapRemove(i);
-                removed.deinit();
+                self.cookies.swapRemove(i).deinit();
             }
         }
     }
@@ -539,7 +511,7 @@ pub const Jar = struct {
             return;
         };
 
-        const now = std.time.timestamp();
+        const now = nowSeconds();
         try self.add(c, now);
     }
 
@@ -606,11 +578,11 @@ fn trim(str: []const u8) []const u8 {
 }
 
 fn trimLeft(str: []const u8) []const u8 {
-    return std.mem.trimLeft(u8, str, &std.ascii.whitespace);
+    return std.mem.trimStart(u8, str, &std.ascii.whitespace);
 }
 
 fn trimRight(str: []const u8) []const u8 {
-    return std.mem.trimRight(u8, str, &std.ascii.whitespace);
+    return std.mem.trimEnd(u8, str, &std.ascii.whitespace);
 }
 
 fn toLower(str: []u8) []u8 {
@@ -656,7 +628,7 @@ test "Jar: add" {
         }
     }.expect;
 
-    const now = std.time.timestamp();
+    const now = nowSeconds();
 
     var jar = Jar.init(testing.allocator);
     defer jar.deinit();
@@ -691,7 +663,7 @@ test "Jar: add limit" {
     var jar = Jar.init(testing.allocator);
     defer jar.deinit();
 
-    const now = std.time.timestamp();
+    const now = nowSeconds();
 
     // add a too big cookie value.
     try testing.expectError(error.CookieSizeExceeded, jar.add(.{
@@ -741,14 +713,14 @@ test "Jar: add limit" {
 test "Jar: forRequest" {
     const expectCookies = struct {
         fn expect(expected: []const u8, jar: *Jar, target_url: [:0]const u8, opts: Jar.LookupOpts) !void {
-            var arr: std.ArrayList(u8) = .empty;
-            defer arr.deinit(testing.allocator);
-            try jar.forRequest(target_url, arr.writer(testing.allocator), opts);
-            try testing.expectEqual(expected, arr.items);
+            var arr = std.Io.Writer.Allocating.init(testing.allocator);
+            defer arr.deinit();
+            try jar.forRequest(target_url, &arr.writer, opts);
+            try testing.expectEqual(expected, arr.written());
         }
     }.expect;
 
-    const now = std.time.timestamp();
+    const now = nowSeconds();
 
     var jar = Jar.init(testing.allocator);
     defer jar.deinit();
@@ -886,30 +858,6 @@ test "Jar: forRequest" {
     // the 'global2' cookie
 }
 
-test "Jar: forRequest sends host-only ip cookie on same-site navigation" {
-    var jar = Jar.init(testing.allocator);
-    defer jar.deinit();
-
-    const seed_url = "http://127.0.0.1:8192/seed.html";
-    const echo_url = "http://127.0.0.1:8192/echo.html";
-
-    try jar.add(
-        try Cookie.parse(testing.allocator, seed_url, "lppersist=ok; Path=/"),
-        std.time.timestamp(),
-    );
-
-    var arr: std.ArrayList(u8) = .empty;
-    defer arr.deinit(testing.allocator);
-
-    try jar.forRequest(echo_url, arr.writer(testing.allocator), .{
-        .origin_url = echo_url,
-        .is_navigation = true,
-        .is_http = true,
-    });
-
-    try std.testing.expectEqualStrings("lppersist=ok", arr.items);
-}
-
 test "Cookie: parse key=value" {
     try expectError(error.Empty, null, "");
     try expectError(error.InvalidByteSequence, null, &.{ 'a', 30, '=', 'b' });
@@ -1017,13 +965,13 @@ test "Cookie: parse max-age" {
     try expectAttribute(.{ .expires = null }, null, "b;max-age=13.22");
     try expectAttribute(.{ .expires = null }, null, "b;max-age=13abc");
 
-    try expectAttribute(.{ .expires = std.time.timestamp() + 13 }, null, "b;max-age=13");
-    try expectAttribute(.{ .expires = std.time.timestamp() + -22 }, null, "b;max-age=-22");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 4294967296 }, null, "b;max-age=4294967296");
-    try expectAttribute(.{ .expires = std.time.timestamp() + -4294967296 }, null, "b;Max-Age= -4294967296");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 0 }, null, "b; Max-Age=0");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 500 }, null, "b; Max-Age = 500  ; Max-Age=invalid");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 1000 }, null, "b;max-age=600;max-age=0;max-age = 1000");
+    try expectAttribute(.{ .expires = nowSeconds() + 13 }, null, "b;max-age=13");
+    try expectAttribute(.{ .expires = nowSeconds() + -22 }, null, "b;max-age=-22");
+    try expectAttribute(.{ .expires = nowSeconds() + 4294967296 }, null, "b;max-age=4294967296");
+    try expectAttribute(.{ .expires = nowSeconds() + -4294967296 }, null, "b;Max-Age= -4294967296");
+    try expectAttribute(.{ .expires = nowSeconds() + 0 }, null, "b; Max-Age=0");
+    try expectAttribute(.{ .expires = nowSeconds() + 500 }, null, "b; Max-Age = 500  ; Max-Age=invalid");
+    try expectAttribute(.{ .expires = nowSeconds() + 1000 }, null, "b;max-age=600;max-age=0;max-age = 1000");
 }
 
 test "Cookie: parse expires" {
@@ -1035,7 +983,7 @@ test "Cookie: parse expires" {
     try expectAttribute(.{ .expires = 1918798080 }, null, "b;expires=Wed, 21 Oct 2030 07:28:00 GMT");
     try expectAttribute(.{ .expires = 1784275395 }, null, "b;expires=Fri, 17-Jul-2026 08:03:15 GMT");
     // max-age has priority over expires
-    try expectAttribute(.{ .expires = std.time.timestamp() + 10 }, null, "b;Max-Age=10; expires=Wed, 21 Oct 2030 07:28:00 GMT");
+    try expectAttribute(.{ .expires = nowSeconds() + 10 }, null, "b;Max-Age=10; expires=Wed, 21 Oct 2030 07:28:00 GMT");
 }
 
 test "Cookie: parse all" {
@@ -1053,7 +1001,7 @@ test "Cookie: parse all" {
         .http_only = true,
         .secure = true,
         .domain = ".lightpanda.io",
-        .expires = @floatFromInt(std.time.timestamp() + 30),
+        .expires = @floatFromInt(nowSeconds() + 30),
     }, "https://lightpanda.io/cms/users", "user-id=9000; HttpOnly; Max-Age=30; Secure; path=/; Domain=lightpanda.io");
 
     try expectCookie(.{
@@ -1064,7 +1012,7 @@ test "Cookie: parse all" {
         .secure = false,
         .domain = ".localhost",
         .same_site = .lax,
-        .expires = @floatFromInt(std.time.timestamp() + 7200),
+        .expires = @floatFromInt(nowSeconds() + 7200),
     }, "http://localhost:8000/login", "app_session=123; Max-Age=7200; path=/; domain=localhost; httponly; samesite=lax");
 }
 

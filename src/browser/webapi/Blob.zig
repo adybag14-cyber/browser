@@ -21,6 +21,11 @@ const Writer = std.Io.Writer;
 
 const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
+
+const Mime = @import("../Mime.zig");
+
+const Allocator = std.mem.Allocator;
 
 /// https://w3c.github.io/FileAPI/#blob-section
 /// https://developer.mozilla.org/en-US/docs/Web/API/Blob
@@ -29,6 +34,8 @@ const Blob = @This();
 pub const _prototype_root = true;
 
 _type: Type,
+
+_arena: Allocator,
 
 /// Immutable slice of blob.
 /// Note that another blob may hold a pointer/slice to this,
@@ -50,26 +57,58 @@ const InitOptions = struct {
     endings: []const u8 = "transparent",
 };
 
-/// Creates a new Blob.
+/// Creates a new Blob (JS constructor).
 pub fn init(
     maybe_blob_parts: ?[]const []const u8,
     maybe_options: ?InitOptions,
     page: *Page,
 ) !*Blob {
+    return initWithMimeValidation(maybe_blob_parts, maybe_options, false, page);
+}
+
+/// Creates a new Blob with optional MIME validation.
+/// When validate_mime is true, uses full MIME parsing (for Response/Request).
+/// When false, uses simple ASCII validation per FileAPI spec (for Blob constructor).
+pub fn initWithMimeValidation(
+    maybe_blob_parts: ?[]const []const u8,
+    maybe_options: ?InitOptions,
+    validate_mime: bool,
+    page: *Page,
+) !*Blob {
+    const arena = try page.getArena(.{ .debug = "Blob" });
+    errdefer page.releaseArena(arena);
+
     const options: InitOptions = maybe_options orelse .{};
-    // Setup MIME; This can be any string according to my observations.
+
     const mime: []const u8 = blk: {
         const t = options.type;
         if (t.len == 0) {
             break :blk "";
         }
 
-        break :blk try page.arena.dupe(u8, t);
+        const buf = try arena.dupe(u8, t);
+
+        if (validate_mime) {
+            // Full MIME parsing per MIME sniff spec (for Content-Type headers)
+            _ = Mime.parse(buf) catch break :blk "";
+        } else {
+            // Simple validation per FileAPI spec (for Blob constructor):
+            // - If any char is outside U+0020-U+007E, return empty string
+            // - Otherwise lowercase
+            for (t) |c| {
+                if (c < 0x20 or c > 0x7E) {
+                    break :blk "";
+                }
+            }
+            _ = std.ascii.lowerString(buf, buf);
+        }
+
+        break :blk buf;
     };
 
     const data = blk: {
         if (maybe_blob_parts) |blob_parts| {
-            var w: Writer.Allocating = .init(page.arena);
+            var w: Writer.Allocating = .init(arena);
             const use_native_endings = std.mem.eql(u8, options.endings, "native");
             try writeBlobParts(&w.writer, blob_parts, use_native_endings);
 
@@ -79,11 +118,19 @@ pub fn init(
         break :blk "";
     };
 
-    return page._factory.create(Blob{
+    const self = try arena.create(Blob);
+    self.* = .{
+        ._arena = arena,
         ._type = .generic,
         ._slice = data,
         ._mime = mime,
-    });
+    };
+    return self;
+}
+
+pub fn deinit(self: *Blob, shutdown: bool, session: *Session) void {
+    _ = shutdown;
+    session.releaseArena(self._arena);
 }
 
 const largest_vector = @max(std.simd.suggestVectorLength(u8) orelse 1, 8);
@@ -234,57 +281,31 @@ pub fn bytes(self: *const Blob, page: *Page) !js.Promise {
 /// from a subset of the blob on which it's called.
 pub fn slice(
     self: *const Blob,
-    maybe_start: ?i32,
-    maybe_end: ?i32,
-    maybe_content_type: ?[]const u8,
+    start_: ?i32,
+    end_: ?i32,
+    content_type_: ?[]const u8,
     page: *Page,
 ) !*Blob {
-    const mime: []const u8 = blk: {
-        if (maybe_content_type) |content_type| {
-            if (content_type.len == 0) {
-                break :blk "";
-            }
+    const data = self._slice;
 
-            break :blk try page.dupeString(content_type);
+    const start = blk: {
+        const requested_start = start_ orelse break :blk 0;
+        if (requested_start < 0) {
+            break :blk data.len -| @abs(requested_start);
         }
-
-        break :blk "";
+        break :blk @min(data.len, @as(u31, @intCast(requested_start)));
     };
 
-    const data = self._slice;
-    if (maybe_start) |_start| {
-        const start = blk: {
-            if (_start < 0) {
-                break :blk data.len -| @abs(_start);
-            }
+    const end: usize = blk: {
+        const requested_end = end_ orelse break :blk data.len;
+        if (requested_end < 0) {
+            break :blk @max(start, data.len -| @abs(requested_end));
+        }
 
-            break :blk @min(data.len, @as(u31, @intCast(_start)));
-        };
+        break :blk @min(data.len, @max(start, @as(u31, @intCast(requested_end))));
+    };
 
-        const end: usize = blk: {
-            if (maybe_end) |_end| {
-                if (_end < 0) {
-                    break :blk @max(start, data.len -| @abs(_end));
-                }
-
-                break :blk @min(data.len, @max(start, @as(u31, @intCast(_end))));
-            }
-
-            break :blk data.len;
-        };
-
-        return page._factory.create(Blob{
-            ._type = .generic,
-            ._slice = data[start..end],
-            ._mime = mime,
-        });
-    }
-
-    return page._factory.create(Blob{
-        ._type = .generic,
-        ._slice = data,
-        ._mime = mime,
-    });
+    return Blob.init(&.{data[start..end]}, .{ .type = content_type_ orelse "" }, page);
 }
 
 /// Returns the size of the Blob in bytes.
@@ -304,6 +325,8 @@ pub const JsApi = struct {
         pub const name = "Blob";
         pub const prototype_chain = bridge.prototypeChain();
         pub var class_id: bridge.ClassId = undefined;
+        pub const weak = true;
+        pub const finalizer = bridge.finalizer(Blob.deinit);
     };
 
     pub const constructor = bridge.constructor(Blob.init, .{});

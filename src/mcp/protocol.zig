@@ -26,6 +26,7 @@ pub const ErrorCode = enum(i64) {
     MethodNotFound = -32601,
     InvalidParams = -32602,
     InternalError = -32603,
+    PageNotLoaded = -32604,
 };
 
 pub const Notification = struct {
@@ -113,6 +114,7 @@ pub const Tool = struct {
 };
 
 pub fn minify(comptime json: []const u8) []const u8 {
+    @setEvalBranchQuota(100000);
     return comptime blk: {
         var res: []const u8 = "";
         var in_string = false;
@@ -234,6 +236,27 @@ test "MCP.protocol - request parsing" {
     try testing.expectString("2024-11-05", init_params.value.protocolVersion);
     try testing.expectString("test-client", init_params.value.clientInfo.name);
     try testing.expectString("1.0.0", init_params.value.clientInfo.version);
+}
+
+test "MCP.protocol - ping request parsing" {
+    defer testing.reset();
+    const raw_json =
+        \\{
+        \\  "jsonrpc": "2.0",
+        \\  "id": "123",
+        \\  "method": "ping"
+        \\}
+    ;
+
+    const parsed = try std.json.parseFromSlice(Request, testing.arena_allocator, raw_json, .{ .ignore_unknown_fields = true });
+    defer parsed.deinit();
+
+    const req = parsed.value;
+    try testing.expectString("2.0", req.jsonrpc);
+    try testing.expectString("ping", req.method);
+    try testing.expect(req.id.? == .string);
+    try testing.expectString("123", req.id.?.string);
+    try testing.expectEqual(null, req.params);
 }
 
 test "MCP.protocol - response formatting" {

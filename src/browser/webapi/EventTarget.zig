@@ -35,7 +35,6 @@ pub const Type = union(enum) {
     node: *@import("Node.zig"),
     window: *@import("Window.zig"),
     xhr: *@import("net/XMLHttpRequestEventTarget.zig"),
-    websocket: *@import("net/WebSocket.zig"),
     abort_signal: *@import("AbortSignal.zig"),
     media_query_list: *@import("css/MediaQueryList.zig"),
     message_port: *@import("MessagePort.zig"),
@@ -45,9 +44,7 @@ pub const Type = union(enum) {
     screen_orientation: *@import("Screen.zig").Orientation,
     visual_viewport: *@import("VisualViewport.zig"),
     file_reader: *@import("FileReader.zig"),
-    idb_request: *@import("storage/indexed_db.zig").IDBRequest,
-    idb_open_db_request: *@import("storage/indexed_db.zig").IDBOpenDBRequest,
-    idb_database: *@import("storage/indexed_db.zig").IDBDatabase,
+    font_face_set: *@import("css/FontFaceSet.zig"),
 };
 
 pub fn init(page: *Page) !*EventTarget {
@@ -63,7 +60,7 @@ pub fn dispatchEvent(self: *EventTarget, event: *Event, page: *Page) !bool {
     event._is_trusted = false;
 
     event.acquireRef();
-    defer event.deinit(false, page);
+    defer event.deinit(false, page._session);
     try page._event_manager.dispatch(self, event);
     return !event._cancelable or !event._prevent_default;
 }
@@ -134,7 +131,6 @@ pub fn format(self: *EventTarget, writer: *std.Io.Writer) !void {
         .generic => writer.writeAll("<EventTarget>"),
         .window => writer.writeAll("<Window>"),
         .xhr => writer.writeAll("<XMLHttpRequestEventTarget>"),
-        .websocket => writer.writeAll("<WebSocket>"),
         .abort_signal => writer.writeAll("<AbortSignal>"),
         .media_query_list => writer.writeAll("<MediaQueryList>"),
         .message_port => writer.writeAll("<MessagePort>"),
@@ -144,9 +140,7 @@ pub fn format(self: *EventTarget, writer: *std.Io.Writer) !void {
         .screen_orientation => writer.writeAll("<ScreenOrientation>"),
         .visual_viewport => writer.writeAll("<VisualViewport>"),
         .file_reader => writer.writeAll("<FileReader>"),
-        .idb_request => writer.writeAll("<IDBRequest>"),
-        .idb_open_db_request => writer.writeAll("<IDBOpenDBRequest>"),
-        .idb_database => writer.writeAll("<IDBDatabase>"),
+        .font_face_set => writer.writeAll("<FontFaceSet>"),
     };
 }
 
@@ -156,7 +150,6 @@ pub fn toString(self: *EventTarget) []const u8 {
         .generic => return "[object EventTarget]",
         .window => return "[object Window]",
         .xhr => return "[object XMLHttpRequestEventTarget]",
-        .websocket => return "[object WebSocket]",
         .abort_signal => return "[object AbortSignal]",
         .media_query_list => return "[object MediaQueryList]",
         .message_port => return "[object MessagePort]",
@@ -166,9 +159,7 @@ pub fn toString(self: *EventTarget) []const u8 {
         .screen_orientation => return "[object ScreenOrientation]",
         .visual_viewport => return "[object VisualViewport]",
         .file_reader => return "[object FileReader]",
-        .idb_request => return "[object IDBRequest]",
-        .idb_open_db_request => return "[object IDBOpenDBRequest]",
-        .idb_database => return "[object IDBDatabase]",
+        .font_face_set => return "[object FontFaceSet]",
     };
 }
 

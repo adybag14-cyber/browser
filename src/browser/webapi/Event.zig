@@ -20,6 +20,7 @@ const std = @import("std");
 const js = @import("../js/js.zig");
 
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
 const EventTarget = @import("EventTarget.zig");
 const Node = @import("Node.zig");
 const String = @import("../../string.zig").String;
@@ -65,11 +66,9 @@ pub const EventPhase = enum(u8) {
 
 pub const Type = union(enum) {
     generic,
-    close_event: *@import("event/CloseEvent.zig"),
     error_event: *@import("event/ErrorEvent.zig"),
     custom_event: *@import("event/CustomEvent.zig"),
     message_event: *@import("event/MessageEvent.zig"),
-    storage_event: *@import("event/StorageEvent.zig"),
     progress_event: *@import("event/ProgressEvent.zig"),
     composition_event: *@import("event/CompositionEvent.zig"),
     navigation_current_entry_change_event: *@import("event/NavigationCurrentEntryChangeEvent.zig"),
@@ -141,9 +140,9 @@ pub fn acquireRef(self: *Event) void {
     self._rc += 1;
 }
 
-pub fn deinit(self: *Event, shutdown: bool, page: *Page) void {
+pub fn deinit(self: *Event, shutdown: bool, session: *Session) void {
     if (shutdown) {
-        page.releaseArena(self._arena);
+        session.releaseArena(self._arena);
         return;
     }
 
@@ -153,7 +152,7 @@ pub fn deinit(self: *Event, shutdown: bool, page: *Page) void {
     }
 
     if (rc == 1) {
-        page.releaseArena(self._arena);
+        session.releaseArena(self._arena);
     } else {
         self._rc = rc - 1;
     }
@@ -166,11 +165,9 @@ pub fn as(self: *Event, comptime T: type) *T {
 pub fn is(self: *Event, comptime T: type) ?*T {
     switch (self._type) {
         .generic => return if (T == Event) self else null,
-        .close_event => |e| return if (T == @import("event/CloseEvent.zig")) e else null,
         .error_event => |e| return if (T == @import("event/ErrorEvent.zig")) e else null,
         .custom_event => |e| return if (T == @import("event/CustomEvent.zig")) e else null,
         .message_event => |e| return if (T == @import("event/MessageEvent.zig")) e else null,
-        .storage_event => |e| return if (T == @import("event/StorageEvent.zig")) e else null,
         .progress_event => |e| return if (T == @import("event/ProgressEvent.zig")) e else null,
         .composition_event => |e| return if (T == @import("event/CompositionEvent.zig")) e else null,
         .navigation_current_entry_change_event => |e| return if (T == @import("event/NavigationCurrentEntryChangeEvent.zig")) e else null,
@@ -404,14 +401,21 @@ pub fn inheritOptions(comptime T: type, comptime additions: anytype) type {
     const additions_info = @typeInfo(additions);
     all_fields = all_fields ++ additions_info.@"struct".fields;
 
-    return @Type(.{
-        .@"struct" = .{
-            .layout = .auto,
-            .fields = all_fields,
-            .decls = &.{},
-            .is_tuple = false,
-        },
-    });
+    var field_names: [all_fields.len][:0]const u8 = undefined;
+    var field_types: [all_fields.len]type = undefined;
+    var field_attrs: [all_fields.len]std.builtin.Type.StructField.Attributes = undefined;
+
+    for (all_fields, 0..) |field, i| {
+        field_names[i] = field.name;
+        field_types[i] = field.type;
+        field_attrs[i] = .{
+            .@"comptime" = field.is_comptime,
+            .@"align" = field.alignment,
+            .default_value_ptr = field.default_value_ptr,
+        };
+    }
+
+    return @Struct(.auto, null, &field_names, &field_types, &field_attrs);
 }
 
 pub fn populatePrototypes(self: anytype, opts: anytype, trusted: bool) void {

@@ -117,31 +117,26 @@ const PostMessageCallback = struct {
         const self: *PostMessageCallback = @ptrCast(@alignCast(ctx));
         defer self.deinit();
         const page = self.page;
-        var ls: js.Local.Scope = undefined;
-        page.js.localScope(&ls);
-        defer ls.deinit();
 
         if (self.port._closed) {
             return null;
         }
 
-        const event = (MessageEvent.initTrusted(comptime .wrap("message"), .{
-            .data = self.message,
-            .origin = "",
-            .source = null,
-        }, page) catch |err| {
-            log.err(.dom, "MessagePort.postMessage", .{ .err = err });
-            return null;
-        }).asEvent();
+        const target = self.port.asEventTarget();
+        if (page._event_manager.hasDirectListeners(target, "message", self.port._on_message)) {
+            const event = (MessageEvent.initTrusted(comptime .wrap("message"), .{
+                .data = self.message,
+                .origin = "",
+                .source = null,
+            }, page) catch |err| {
+                log.err(.dom, "MessagePort.postMessage", .{ .err = err });
+                return null;
+            }).asEvent();
 
-        page._event_manager.dispatchDirect(
-            self.port.asEventTarget(),
-            event,
-            self.port._on_message,
-            .{ .context = "MessagePort message" },
-        ) catch |err| {
-            log.err(.dom, "MessagePort.postMessage", .{ .err = err });
-        };
+            page._event_manager.dispatchDirect(target, event, self.port._on_message, .{ .context = "MessagePort message" }) catch |err| {
+                log.err(.dom, "MessagePort.postMessage", .{ .err = err });
+            };
+        }
 
         return null;
     }

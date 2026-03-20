@@ -215,8 +215,8 @@ const Runner = struct {
 
         // stats
         if (self.env.metrics) {
-            var stdout = std.fs.File.stdout();
-            var writer = stdout.writer(&.{});
+            var stdout = std.Io.File.stdout();
+            var writer = stdout.writer(std.Options.debug_io, &.{});
             const stats = self.ta.stats();
             try std.json.Stringify.value(&.{
                 .{ .name = "browser", .bench = .{
@@ -442,7 +442,7 @@ pub const TrackingAllocator = struct {
     allocated_bytes: usize = 0,
     allocation_count: usize = 0,
     reallocation_count: usize = 0,
-    mutex: std.Thread.Mutex = .{},
+    mutex: @import("lightpanda").compat_sync.Mutex = .{},
 
     const Stats = struct {
         allocated_bytes: usize,
@@ -501,7 +501,7 @@ pub const TrackingAllocator = struct {
         defer self.mutex.unlock();
 
         const result = self.parent_allocator.rawResize(old_mem, alignment, new_len, ra);
-        self.reallocation_count += 1; // TODO: only if result is not null?
+        if (result) self.reallocation_count += 1;
         return result;
     }
 
@@ -531,7 +531,7 @@ pub const TrackingAllocator = struct {
         defer self.mutex.unlock();
 
         const result = self.parent_allocator.rawRemap(memory, alignment, new_len, ret_addr);
-        self.reallocation_count += 1; // TODO: only if result is not null?
+        if (result != null) self.reallocation_count += 1;
         return result;
     }
 };

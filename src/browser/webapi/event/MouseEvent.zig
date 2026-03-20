@@ -19,6 +19,7 @@
 const std = @import("std");
 const String = @import("../../../string.zig").String;
 const Page = @import("../../Page.zig");
+const Session = @import("../../Session.zig");
 const js = @import("../../js/js.zig");
 
 const Event = @import("../Event.zig");
@@ -26,6 +27,8 @@ const EventTarget = @import("../EventTarget.zig");
 
 const UIEvent = @import("UIEvent.zig");
 const PointerEvent = @import("PointerEvent.zig");
+
+const Allocator = std.mem.Allocator;
 
 const MouseEvent = @This();
 
@@ -82,12 +85,21 @@ pub fn init(typ: []const u8, _opts: ?Options, page: *Page) !*MouseEvent {
     const arena = try page.getArena(.{ .debug = "MouseEvent" });
     errdefer page.releaseArena(arena);
     const type_string = try String.init(arena, typ, .{});
+    return initWithTrusted(arena, type_string, _opts, false, page);
+}
 
+pub fn initTrusted(typ: String, _opts: ?Options, page: *Page) !*MouseEvent {
+    const arena = try page.getArena(.{ .debug = "MouseEvent.trusted" });
+    errdefer page.releaseArena(arena);
+    return initWithTrusted(arena, typ, _opts, true, page);
+}
+
+fn initWithTrusted(arena: Allocator, typ: String, _opts: ?Options, trusted: bool, page: *Page) !*MouseEvent {
     const opts = _opts orelse Options{};
 
     const event = try page._factory.uiEvent(
         arena,
-        type_string,
+        typ,
         MouseEvent{
             ._type = .generic,
             ._proto = undefined,
@@ -99,18 +111,18 @@ pub fn init(typ: []const u8, _opts: ?Options, page: *Page) !*MouseEvent {
             ._shift_key = opts.shiftKey,
             ._alt_key = opts.altKey,
             ._meta_key = opts.metaKey,
-            ._button = std.meta.intToEnum(MouseButton, opts.button) catch return error.TypeError,
+            ._button = std.enums.fromInt(MouseButton, opts.button) orelse return error.TypeError,
             ._buttons = opts.buttons,
             ._related_target = opts.relatedTarget,
         },
     );
 
-    Event.populatePrototypes(event, opts, false);
+    Event.populatePrototypes(event, opts, trusted);
     return event;
 }
 
-pub fn deinit(self: *MouseEvent, shutdown: bool, page: *Page) void {
-    self._proto.deinit(shutdown, page);
+pub fn deinit(self: *MouseEvent, shutdown: bool, session: *Session) void {
+    self._proto.deinit(shutdown, session);
 }
 
 pub fn asEvent(self: *MouseEvent) *Event {

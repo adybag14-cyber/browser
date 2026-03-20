@@ -28,7 +28,7 @@ const js = @import("../browser/js/js.zig");
 const App = @import("../App.zig");
 const Browser = @import("../browser/Browser.zig");
 const Session = @import("../browser/Session.zig");
-const HttpClient = @import("../http/Client.zig");
+const HttpClient = @import("../browser/HttpClient.zig");
 const Page = @import("../browser/Page.zig");
 const Incrementing = @import("id.zig").Incrementing;
 const Notification = @import("../Notification.zig");
@@ -168,13 +168,11 @@ pub fn CDPT(comptime TypeProvider: type) type {
 
             if (is_startup) {
                 dispatchStartupCommand(&command, input.method) catch |err| {
-                    command.sendError(-31999, @errorName(err), .{}) catch {};
-                    return err;
+                    command.sendError(-31999, @errorName(err), .{}) catch return err;
                 };
             } else {
                 dispatchCommand(&command, input.method) catch |err| {
-                    command.sendError(-31998, @errorName(err), .{}) catch {};
-                    return err;
+                    command.sendError(-31998, @errorName(err), .{}) catch return err;
                 };
             }
         }
@@ -196,7 +194,7 @@ pub fn CDPT(comptime TypeProvider: type) type {
                 return command.sendResult(.{
                     .frameTree = .{
                         .frame = .{
-                            .id = "TID-STARTUP-B",
+                            .id = "TID-STARTUP",
                             .loaderId = "LOADERID24DD2FD56CF1EF33C965C79C",
                             .securityOrigin = URL_BASE,
                             .url = "about:blank",
@@ -378,7 +376,6 @@ pub fn BrowserContext(comptime CDP_T: type) type {
         extra_headers: std.ArrayList([*c]const u8) = .empty,
 
         intercept_state: InterceptState,
-        emulated_viewport_override: ?ViewportOverride = null,
 
         // When network is enabled, we'll capture the transfer.id -> body
         // This is awfully memory intensive, but our underlying http client and
@@ -390,12 +387,6 @@ pub fn BrowserContext(comptime CDP_T: type) type {
         captured_responses: std.AutoHashMapUnmanaged(usize, std.ArrayList(u8)),
 
         notification: *Notification,
-
-        const ViewportOverride = struct {
-            width: u32,
-            height: u32,
-            device_pixel_ratio: f64,
-        };
 
         const Self = @This();
 
@@ -432,7 +423,6 @@ pub fn BrowserContext(comptime CDP_T: type) type {
                 .arena = cdp.browser_context_arena.allocator(),
                 .notification_arena = cdp.notification_arena.allocator(),
                 .intercept_state = try InterceptState.init(allocator),
-                .emulated_viewport_override = null,
                 .captured_responses = .empty,
                 .notification = notification,
             };
@@ -467,6 +457,12 @@ pub fn BrowserContext(comptime CDP_T: type) type {
             }
             self.isolated_worlds.clearRetainingCapacity();
 
+            // do this before closeSession, since we don't want to process any
+            // new notification (Or maybe, instead of the deinit above, we just
+            // rely on those notifications to do our normal cleanup?)
+
+            self.notification.unregisterAll(self);
+
             // If the session has a page, we need to clear it first. The page
             // context is always nested inside of the isolated world context,
             // so we need to shutdown the page one first.
@@ -474,7 +470,6 @@ pub fn BrowserContext(comptime CDP_T: type) type {
 
             self.node_registry.deinit();
             self.node_search_list.deinit();
-            self.notification.unregisterAll(self);
             self.notification.deinit();
 
             if (self.http_proxy_changed) {
@@ -484,39 +479,12 @@ pub fn BrowserContext(comptime CDP_T: type) type {
                     log.warn(.http, "restoreOriginalProxy", .{ .err = err });
                 };
             }
-            if (self.emulated_viewport_override != null) {
-                browser.app.display.resetViewport();
-            }
             self.intercept_state.deinit();
         }
 
         pub fn reset(self: *Self) void {
             self.node_registry.reset();
             self.node_search_list.reset();
-        }
-
-        pub fn setViewportOverride(self: *Self, width: u32, height: u32, device_pixel_ratio: f64) !void {
-            self.emulated_viewport_override = .{
-                .width = width,
-                .height = height,
-                .device_pixel_ratio = device_pixel_ratio,
-            };
-
-            const display = &self.cdp.browser.app.display;
-            display.setViewport(width, height, device_pixel_ratio);
-            if (self.session.currentPage()) |page| {
-                try page.setViewport(display.viewport.width, display.viewport.height, display.viewport.device_pixel_ratio);
-            }
-        }
-
-        pub fn clearViewportOverride(self: *Self) !void {
-            self.emulated_viewport_override = null;
-
-            const display = &self.cdp.browser.app.display;
-            display.resetViewport();
-            if (self.session.currentPage()) |page| {
-                try page.setViewport(display.viewport.width, display.viewport.height, display.viewport.device_pixel_ratio);
-            }
         }
 
         pub fn createIsolatedWorld(self: *Self, world_name: []const u8, grant_universal_access: bool) !*IsolatedWorld {
@@ -742,7 +710,7 @@ pub fn BrowserContext(comptime CDP_T: type) type {
             // + 10 for the max websocket header
             const message_len = msg.len + session_id.len + 1 + field.len + 10;
 
-            var buf: std.ArrayList(u8) = .{};
+            var buf: std.ArrayList(u8) = .empty;
             buf.ensureTotalCapacity(allocator, message_len) catch |err| {
                 log.err(.cdp, "inspector buffer", .{ .err = err });
                 return;
@@ -954,18 +922,20 @@ test "cdp: invalid json" {
     // method is required
     try testing.expectError(error.InvalidJSON, ctx.processMessage(.{}));
 
-    try testing.expectError(error.InvalidMethod, ctx.processMessage(.{
+    try ctx.processMessage(.{
         .method = "Target",
-    }));
+    });
     try ctx.expectSentError(-31998, "InvalidMethod", .{});
 
-    try testing.expectError(error.UnknownDomain, ctx.processMessage(.{
+    try ctx.processMessage(.{
         .method = "Unknown.domain",
-    }));
+    });
+    try ctx.expectSentError(-31998, "UnknownDomain", .{});
 
-    try testing.expectError(error.UnknownMethod, ctx.processMessage(.{
+    try ctx.processMessage(.{
         .method = "Target.over9000",
-    }));
+    });
+    try ctx.expectSentError(-31998, "UnknownMethod", .{});
 }
 
 test "cdp: invalid sessionId" {

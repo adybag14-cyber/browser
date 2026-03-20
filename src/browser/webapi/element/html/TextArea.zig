@@ -26,6 +26,7 @@ const HtmlElement = @import("../Html.zig");
 const Form = @import("Form.zig");
 const Selection = @import("../../Selection.zig");
 const Event = @import("../../Event.zig");
+const InputEvent = @import("../../event/InputEvent.zig");
 
 const TextArea = @This();
 
@@ -55,12 +56,9 @@ fn dispatchSelectionChangeEvent(self: *TextArea, page: *Page) !void {
     try page._event_manager.dispatch(self.asElement().asEventTarget(), event);
 }
 
-pub fn dispatchInputEvent(self: *TextArea, page: *Page) !void {
-    const event = try Event.initTrusted(comptime .wrap("input"), .{
-        .bubbles = true,
-        .composed = true,
-    }, page);
-    try page._event_manager.dispatch(self.asElement().asEventTarget(), event);
+fn dispatchInputEvent(self: *TextArea, data: ?[]const u8, input_type: []const u8, page: *Page) !void {
+    const event = try InputEvent.initTrusted(comptime .wrap("input"), .{ .data = data, .inputType = input_type }, page);
+    try page._event_manager.dispatch(self.asElement().asEventTarget(), event.asEvent());
 }
 
 pub fn asElement(self: *TextArea) *Element {
@@ -170,7 +168,6 @@ pub fn innerInsert(self: *TextArea, str: []const u8, page: *Page) !void {
             self._selection_end = @intCast(new_value.len);
             self._selection_direction = .none;
             try self.dispatchSelectionChangeEvent(page);
-            try self.dispatchInputEvent(page);
         },
         .partial => |range| {
             // if the text area is partially selected, replace the selected content.
@@ -190,33 +187,15 @@ pub fn innerInsert(self: *TextArea, str: []const u8, page: *Page) !void {
             self._selection_end = @intCast(new_pos);
             self._selection_direction = .none;
             try self.dispatchSelectionChangeEvent(page);
-            try self.dispatchInputEvent(page);
         },
         .none => {
             // if the text area is not selected, just insert at cursor.
             const current_value = self.getValue();
-            const len = current_value.len;
-            var start = @min(@as(usize, @intCast(self._selection_start)), len);
-            const end = @min(@as(usize, @intCast(self._selection_end)), len);
-            if (end < start) {
-                start = end;
-            }
-            const cursor = start;
-
-            const new_value = try std.mem.concat(
-                arena,
-                u8,
-                &.{ current_value[0..cursor], str, current_value[cursor..] },
-            );
+            const new_value = try std.mem.concat(arena, u8, &.{ current_value, str });
             try self.setValue(new_value, page);
-            const new_pos: u32 = @intCast(cursor + str.len);
-            self._selection_start = new_pos;
-            self._selection_end = new_pos;
-            self._selection_direction = .none;
-            try self.dispatchSelectionChangeEvent(page);
-            try self.dispatchInputEvent(page);
         },
     }
+    try self.dispatchInputEvent(str, "insertText", page);
 }
 
 pub fn getSelectionDirection(self: *const TextArea) []const u8 {

@@ -50,10 +50,10 @@ const Opts = struct {
 pub var opts = Opts{};
 
 // synchronizes writes to the output
-var out_lock: Thread.Mutex = .{};
+var out_lock: @import("lightpanda").compat_sync.Mutex = .{};
 
 // synchronizes access to last_log
-var last_log_lock: Thread.Mutex = .{};
+var last_log_lock: @import("lightpanda").compat_sync.Mutex = .{};
 
 pub fn enabled(comptime scope: Scope, level: Level) bool {
     if (@intFromEnum(level) < @intFromEnum(opts.level)) {
@@ -116,14 +116,13 @@ pub fn log(comptime scope: Scope, level: Level, comptime msg: []const u8, data: 
         return;
     }
 
-    std.debug.lockStdErr();
-    defer std.debug.unlockStdErr();
+    out_lock.lock();
+    defer out_lock.unlock();
 
     var buf: [4096]u8 = undefined;
-    var stderr = std.fs.File.stderr();
-    var writer = stderr.writer(&buf);
+    var stderr_writer = std.Io.File.stderr().writer(std.Options.debug_io, &buf);
 
-    logTo(scope, level, msg, data, &writer.interface) catch |log_err| {
+    logTo(scope, level, msg, data, &stderr_writer.interface) catch |log_err| {
         std.debug.print("$time={d} $level=fatal $scope={s} $msg=\"log err\" err={s} log_msg=\"{s}\"\n", .{ timestamp(.clock), @errorName(log_err), @tagName(scope), msg });
     };
 }

@@ -204,22 +204,24 @@
   });
 </script>
 
-<script id=fetch_abort_signal_immediate>
+<script id=fetch_blob_url>
   testing.async(async (restore) => {
-    const controller = new AbortController();
-    controller.abort();
+    // Create a blob and get its URL
+    const blob = new Blob(['Hello from blob!'], { type: 'text/plain' });
+    const blobUrl = URL.createObjectURL(blob);
 
-    let rejected = false;
-    let name = '';
-    try {
-      await fetch('http://127.0.0.1:9582/xhr', { signal: controller.signal });
-    } catch (err) {
-      rejected = true;
-      name = err.name;
-    }
+    const response = await fetch(blobUrl);
     restore();
 
-    testing.expectEqual(true, rejected);
-    testing.expectEqual('AbortError', name);
+    testing.expectEqual(200, response.status);
+    testing.expectEqual(true, response.ok);
+    testing.expectEqual(blobUrl, response.url);
+    testing.expectEqual('text/plain', response.headers.get('Content-Type'));
+
+    const text = await response.text();
+    testing.expectEqual('Hello from blob!', text);
+
+    // Clean up
+    URL.revokeObjectURL(blobUrl);
   });
 </script>

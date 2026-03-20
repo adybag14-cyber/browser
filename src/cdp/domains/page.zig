@@ -19,6 +19,8 @@
 const std = @import("std");
 const lp = @import("lightpanda");
 
+const screenshot_png = @embedFile("screenshot.png");
+
 const id = @import("../id.zig");
 const log = @import("../../log.zig");
 const js = @import("../../browser/js/js.zig");
@@ -39,6 +41,8 @@ pub fn processMessage(cmd: anytype) !void {
         navigate,
         stopLoading,
         close,
+        captureScreenshot,
+        getLayoutMetrics,
     }, cmd.input.action) orelse return error.UnknownMethod;
 
     switch (action) {
@@ -50,6 +54,8 @@ pub fn processMessage(cmd: anytype) !void {
         .navigate => return navigate(cmd),
         .stopLoading => return cmd.sendResult(null, .{}),
         .close => return close(cmd),
+        .captureScreenshot => return captureScreenshot(cmd),
+        .getLayoutMetrics => return getLayoutMetrics(cmd),
     }
 }
 
@@ -286,6 +292,10 @@ pub fn pageNavigate(bc: anytype, event: *const Notification.PageNavigate) !void 
 }
 
 pub fn pageRemove(bc: anytype) !void {
+    // Clear all remote object mappings to prevent stale objectIds from being used
+    // after the context is destroy
+    bc.inspector_session.inspector.resetContextGroup();
+
     // The main page is going to be removed, we need to remove contexts from other worlds first.
     for (bc.isolated_worlds.items) |isolated_world| {
         try isolated_world.removeContext();
@@ -404,7 +414,7 @@ pub fn pageNavigated(arena: Allocator, bc: anytype, event: *const Notification.P
         bc.inspector_session.inspector.contextCreated(
             &ls.local,
             "",
-            try page.getOrigin(arena) orelse "",
+            page.origin orelse "",
             aux_data,
             true,
         );
@@ -514,13 +524,116 @@ const LifecycleEvent = struct {
     timestamp: u64,
 };
 
+const Viewport = struct {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    scale: f64,
+};
+
+fn base64Encode(comptime input: []const u8) [std.base64.standard.Encoder.calcSize(input.len)]u8 {
+    const encoder = std.base64.standard.Encoder;
+    var buf: [encoder.calcSize(input.len)]u8 = undefined;
+    _ = encoder.encode(&buf, input);
+    return buf;
+}
+
+fn captureScreenshot(cmd: anytype) !void {
+    const Params = struct {
+        format: ?[]const u8 = "png",
+        quality: ?u8 = null,
+        clip: ?Viewport = null,
+        fromSurface: ?bool = false,
+        captureBeyondViewport: ?bool = false,
+        optimizeForSpeed: ?bool = false,
+    };
+    const params = try cmd.params(Params) orelse Params{};
+
+    const format = params.format orelse "png";
+
+    if (!std.mem.eql(u8, format, "png")) {
+        log.warn(.not_implemented, "Page.captureScreenshot params", .{ .format = format });
+        return cmd.sendError(-32000, "unsupported screenshot format.", .{});
+    }
+    if (params.quality != null) {
+        log.warn(.not_implemented, "Page.captureScreenshot params", .{ .quality = params.quality });
+    }
+    if (params.clip != null) {
+        log.warn(.not_implemented, "Page.captureScreenshot params", .{ .clip = params.clip });
+    }
+    if (params.fromSurface orelse false or params.captureBeyondViewport orelse false or params.optimizeForSpeed orelse false) {
+        log.warn(.not_implemented, "Page.captureScreenshot params", .{
+            .fromSurface = params.fromSurface,
+            .captureBeyondViewport = params.captureBeyondViewport,
+            .optimizeForSpeed = params.optimizeForSpeed,
+        });
+    }
+
+    return cmd.sendResult(.{
+        .data = base64Encode(screenshot_png),
+    }, .{});
+}
+
+fn getLayoutMetrics(cmd: anytype) !void {
+    const width = 1920;
+    const height = 1080;
+
+    return cmd.sendResult(.{
+        .layoutViewport = .{
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+        },
+        .visualViewport = .{
+            .offsetX = 0,
+            .offsetY = 0,
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+            .scale = 1,
+            .zoom = 1,
+        },
+        .contentSize = .{
+            .x = 0,
+            .y = 0,
+            .width = width,
+            .height = height,
+        },
+        .cssLayoutViewport = .{
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+        },
+        .cssVisualViewport = .{
+            .offsetX = 0,
+            .offsetY = 0,
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+            .scale = 1,
+            .zoom = 1,
+        },
+        .cssContentSize = .{
+            .x = 0,
+            .y = 0,
+            .width = width,
+            .height = height,
+        },
+    }, .{});
+}
+
 const testing = @import("../testing.zig");
 test "cdp.page: getFrameTree" {
     var ctx = testing.context();
     defer ctx.deinit();
 
     {
-        try testing.expectError(error.BrowserContextNotLoaded, ctx.processMessage(.{ .id = 10, .method = "Page.getFrameTree", .params = .{ .targetId = "X" } }));
+        try ctx.processMessage(.{ .id = 10, .method = "Page.getFrameTree", .params = .{ .targetId = "X" } });
         try ctx.expectSentError(-31998, "BrowserContextNotLoaded", .{ .id = 10 });
     }
 
@@ -546,4 +659,82 @@ test "cdp.page: getFrameTree" {
             },
         }, .{ .id = 11 });
     }
+}
+
+test "cdp.page: captureScreenshot" {
+    const LogFilter = @import("../../testing.zig").LogFilter;
+    const filter: LogFilter = .init(&.{.not_implemented});
+    defer filter.deinit();
+
+    var ctx = testing.context();
+    defer ctx.deinit();
+    {
+        try ctx.processMessage(.{ .id = 10, .method = "Page.captureScreenshot", .params = .{ .format = "jpg" } });
+        try ctx.expectSentError(-32000, "unsupported screenshot format.", .{ .id = 10 });
+    }
+
+    {
+        try ctx.processMessage(.{ .id = 11, .method = "Page.captureScreenshot" });
+        try ctx.expectSentResult(.{
+            .data = base64Encode(screenshot_png),
+        }, .{ .id = 11 });
+    }
+}
+
+test "cdp.page: getLayoutMetrics" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    _ = try ctx.loadBrowserContext(.{ .id = "BID-9", .url = "hi.html", .target_id = "FID-000000000X".* });
+
+    const width = 1920;
+    const height = 1080;
+
+    try ctx.processMessage(.{ .id = 12, .method = "Page.getLayoutMetrics" });
+    try ctx.expectSentResult(.{
+        .layoutViewport = .{
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+        },
+        .visualViewport = .{
+            .offsetX = 0,
+            .offsetY = 0,
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+            .scale = 1,
+            .zoom = 1,
+        },
+        .contentSize = .{
+            .x = 0,
+            .y = 0,
+            .width = width,
+            .height = height,
+        },
+        .cssLayoutViewport = .{
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+        },
+        .cssVisualViewport = .{
+            .offsetX = 0,
+            .offsetY = 0,
+            .pageX = 0,
+            .pageY = 0,
+            .clientWidth = width,
+            .clientHeight = height,
+            .scale = 1,
+            .zoom = 1,
+        },
+        .cssContentSize = .{
+            .x = 0,
+            .y = 0,
+            .width = width,
+            .height = height,
+        },
+    }, .{ .id = 12 });
 }

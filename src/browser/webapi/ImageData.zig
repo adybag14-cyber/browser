@@ -52,7 +52,7 @@ pub const ConstructorSettings = struct {
 /// ```
 ///
 /// We currently support only the first 2.
-pub fn constructor(
+pub fn init(
     width: u32,
     height: u32,
     maybe_settings: ?ConstructorSettings,
@@ -97,15 +97,6 @@ pub fn getData(self: *const ImageData) js.ArrayBufferRef(.uint8_clamped).Global 
     return self._data;
 }
 
-pub fn bytes(self: *const ImageData, page: *Page) ![]u8 {
-    const local = page.js.local.?;
-    const typed = self._data.local(local);
-    return local.jsValueToZig([]u8, .{
-        .local = local,
-        .handle = typed.handle,
-    });
-}
-
 pub const JsApi = struct {
     pub const bridge = js.Bridge(ImageData);
 
@@ -115,7 +106,7 @@ pub const JsApi = struct {
         pub var class_id: bridge.ClassId = undefined;
     };
 
-    pub const constructor = bridge.constructor(ImageData.constructor, .{ .dom_exception = true });
+    pub const constructor = bridge.constructor(ImageData.init, .{ .dom_exception = true });
 
     pub const colorSpace = bridge.property("srgb", .{ .template = false, .readonly = true });
     pub const pixelFormat = bridge.property("rgba-unorm8", .{ .template = false, .readonly = true });

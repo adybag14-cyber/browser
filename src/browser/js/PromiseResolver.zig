@@ -63,6 +63,20 @@ pub fn reject(self: PromiseResolver, comptime source: []const u8, value: anytype
     };
 }
 
+const RejectError = union(enum) {
+    generic: []const u8,
+    type_error: []const u8,
+};
+pub fn rejectError(self: PromiseResolver, comptime source: []const u8, err: RejectError) void {
+    const handle = switch (err) {
+        .type_error => |str| self.local.isolate.createTypeError(str),
+        .generic => |str| self.local.isolate.createError(str),
+    };
+    self._reject(js.Value{ .handle = handle, .local = self.local }) catch |reject_err| {
+        log.err(.bug, "rejectError", .{ .source = source, .err = reject_err, .persistent = false });
+    };
+}
+
 fn _reject(self: PromiseResolver, value: anytype) !void {
     const local = self.local;
     const js_val = try local.zigValueToJs(value, .{});
@@ -79,7 +93,7 @@ pub fn persist(self: PromiseResolver) !Global {
     var ctx = self.local.ctx;
     var global: v8.Global = undefined;
     v8.v8__Global__New(ctx.isolate.handle, self.handle, &global);
-    try ctx.global_promise_resolvers.append(ctx.arena, global);
+    try ctx.trackGlobal(global);
     return .{ .handle = global };
 }
 

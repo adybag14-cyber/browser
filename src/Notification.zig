@@ -21,7 +21,7 @@ const lp = @import("lightpanda");
 
 const log = @import("log.zig");
 const Page = @import("browser/Page.zig");
-const Transfer = @import("http/Client.zig").Transfer;
+const Transfer = @import("browser/HttpClient.zig").Transfer;
 
 const Allocator = std.mem.Allocator;
 
@@ -64,7 +64,7 @@ event_listeners: EventListeners,
 listeners: std.AutoHashMapUnmanaged(usize, std.ArrayList(*Listener)),
 
 allocator: Allocator,
-mem_pool: std.heap.MemoryPool(Listener),
+mem_pool: std.heap.memory_pool.Managed(Listener),
 
 const EventListeners = struct {
     page_remove: List = .{},
@@ -177,7 +177,7 @@ pub fn init(allocator: Allocator) !*Notification {
         .listeners = .{},
         .event_listeners = .{},
         .allocator = allocator,
-        .mem_pool = std.heap.MemoryPool(Listener).init(allocator),
+        .mem_pool = std.heap.memory_pool.Managed(Listener).init(allocator),
     };
 
     return notification;

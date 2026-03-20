@@ -31,6 +31,8 @@ const Script = @This();
 _proto: *HtmlElement,
 _src: []const u8 = "",
 _executed: bool = false,
+// dynamic scripts are forced to be async by default
+_force_async: bool = true,
 
 pub fn asElement(self: *Script) *Element {
     return self._proto._proto;
@@ -82,26 +84,12 @@ pub fn setCharset(self: *Script, value: []const u8, page: *Page) !void {
     return self.asElement().setAttributeSafe(comptime .wrap("charset"), .wrap(value), page);
 }
 
-pub fn getCrossOrigin(self: *const Script) ?[]const u8 {
-    return self.asConstElement().getAttributeSafe(comptime .wrap("crossorigin"));
-}
-
-pub fn setCrossOrigin(self: *Script, value: ?[]const u8, page: *Page) !void {
-    if (value) |raw| {
-        var normalized: []const u8 = "anonymous";
-        if (std.ascii.eqlIgnoreCase(raw, "use-credentials")) {
-            normalized = "use-credentials";
-        }
-        return self.asElement().setAttributeSafe(comptime .wrap("crossorigin"), .wrap(normalized), page);
-    }
-    return self.asElement().removeAttribute(comptime .wrap("crossorigin"), page);
-}
-
 pub fn getAsync(self: *const Script) bool {
-    return self.asConstElement().getAttributeSafe(comptime .wrap("async")) != null;
+    return self._force_async or self.asConstElement().getAttributeSafe(comptime .wrap("async")) != null;
 }
 
 pub fn setAsync(self: *Script, value: bool, page: *Page) !void {
+    self._force_async = false;
     if (value) {
         try self.asElement().setAttributeSafe(comptime .wrap("async"), .wrap(""), page);
     } else {
@@ -144,7 +132,6 @@ pub const JsApi = struct {
     pub const @"type" = bridge.accessor(Script.getType, Script.setType, .{});
     pub const nonce = bridge.accessor(Script.getNonce, Script.setNonce, .{});
     pub const charset = bridge.accessor(Script.getCharset, Script.setCharset, .{});
-    pub const crossOrigin = bridge.accessor(Script.getCrossOrigin, Script.setCrossOrigin, .{});
     pub const noModule = bridge.accessor(Script.getNoModule, null, .{});
     pub const innerText = bridge.accessor(_innerText, Script.setInnerText, .{});
     fn _innerText(self: *Script, page: *const Page) ![]const u8 {
@@ -152,7 +139,12 @@ pub const JsApi = struct {
         try self.asNode().getTextContent(&buf.writer);
         return buf.written();
     }
-    pub const text = bridge.accessor(_innerText, Script.setInnerText, .{});
+    pub const text = bridge.accessor(_text, Script.setInnerText, .{});
+    fn _text(self: *Script, page: *const Page) ![]const u8 {
+        var buf = std.Io.Writer.Allocating.init(page.call_arena);
+        try self.asNode().getChildTextContent(&buf.writer);
+        return buf.written();
+    }
 };
 
 pub const Build = struct {

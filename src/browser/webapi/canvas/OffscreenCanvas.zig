@@ -21,7 +21,6 @@ const js = @import("../../js/js.zig");
 const Page = @import("../../Page.zig");
 
 const Blob = @import("../Blob.zig");
-const CanvasSurface = @import("CanvasSurface.zig");
 const OffscreenCanvasRenderingContext2D = @import("OffscreenCanvasRenderingContext2D.zig");
 
 /// https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas
@@ -31,8 +30,6 @@ pub const _prototype_root = true;
 
 _width: u32,
 _height: u32,
-_surface: ?*CanvasSurface = null,
-_context_2d: ?*OffscreenCanvasRenderingContext2D = null,
 
 /// Since there's no base class rendering contextes inherit from,
 /// we're using tagged union.
@@ -51,49 +48,21 @@ pub fn getWidth(self: *const OffscreenCanvas) u32 {
     return self._width;
 }
 
-pub fn setWidth(self: *OffscreenCanvas, value: u32, page: *Page) !void {
+pub fn setWidth(self: *OffscreenCanvas, value: u32) void {
     self._width = value;
-    if (self._surface) |surface| {
-        try surface.resize(page.arena, self._width, self._height);
-    }
 }
 
 pub fn getHeight(self: *const OffscreenCanvas) u32 {
     return self._height;
 }
 
-pub fn setHeight(self: *OffscreenCanvas, value: u32, page: *Page) !void {
+pub fn setHeight(self: *OffscreenCanvas, value: u32) void {
     self._height = value;
-    if (self._surface) |surface| {
-        try surface.resize(page.arena, self._width, self._height);
-    }
 }
 
-fn ensureSurface(self: *OffscreenCanvas, page: *Page) !*CanvasSurface {
-    if (self._surface) |surface| return surface;
-    const surface = try CanvasSurface.init(page.arena, self._width, self._height);
-    self._surface = surface;
-    return surface;
-}
-
-pub fn getSurface(self: *const OffscreenCanvas) ?*const CanvasSurface {
-    return self._surface;
-}
-
-pub fn getMutableSurface(self: *OffscreenCanvas) ?*CanvasSurface {
-    return self._surface;
-}
-
-pub fn getContext(self: *OffscreenCanvas, context_type: []const u8, page: *Page) !?DrawingContext {
+pub fn getContext(_: *OffscreenCanvas, context_type: []const u8, page: *Page) !?DrawingContext {
     if (std.mem.eql(u8, context_type, "2d")) {
-        if (self._context_2d) |ctx| {
-            return .{ .@"2d" = ctx };
-        }
-        const ctx = try page._factory.create(OffscreenCanvasRenderingContext2D{
-            ._allocator = page.arena,
-            ._surface = try self.ensureSurface(page),
-        });
-        self._context_2d = ctx;
+        const ctx = try page._factory.create(OffscreenCanvasRenderingContext2D{});
         return .{ .@"2d" = ctx };
     }
 

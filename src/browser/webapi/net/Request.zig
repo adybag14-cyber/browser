@@ -19,24 +19,23 @@
 const std = @import("std");
 
 const js = @import("../../js/js.zig");
-const Http = @import("../../../http/Http.zig");
-const AbortSignal = @import("../AbortSignal.zig");
+const net_http = @import("../../../network/http.zig");
 
 const URL = @import("../URL.zig");
 const Page = @import("../../Page.zig");
 const Headers = @import("Headers.zig");
+const Blob = @import("../Blob.zig");
 const Allocator = std.mem.Allocator;
 
 const Request = @This();
 
 _url: [:0]const u8,
-_method: Http.Method,
+_method: net_http.Method,
 _headers: ?*Headers,
 _body: ?[]const u8,
 _arena: Allocator,
 _cache: Cache,
 _credentials: Credentials,
-_signal: ?*AbortSignal,
 
 pub const Input = union(enum) {
     request: *Request,
@@ -49,7 +48,6 @@ pub const InitOpts = struct {
     body: ?[]const u8 = null,
     cache: Cache = .default,
     credentials: Credentials = .@"same-origin",
-    signal: ?*AbortSignal = null,
 };
 
 const Credentials = enum {
@@ -99,13 +97,6 @@ pub fn init(input: Input, opts_: ?InitOpts, page: *Page) !*Request {
         .request => |r| r._body,
     };
 
-    const signal = if (opts.signal) |signal|
-        signal
-    else switch (input) {
-        .url => null,
-        .request => |r| r._signal,
-    };
-
     return page._factory.create(Request{
         ._url = url,
         ._arena = arena,
@@ -113,19 +104,18 @@ pub fn init(input: Input, opts_: ?InitOpts, page: *Page) !*Request {
         ._headers = headers,
         ._cache = opts.cache,
         ._credentials = opts.credentials,
-        ._signal = signal,
         ._body = body,
     });
 }
 
-fn parseMethod(method: []const u8, page: *Page) !Http.Method {
+fn parseMethod(method: []const u8, page: *Page) !net_http.Method {
     if (method.len > "propfind".len) {
         return error.InvalidMethod;
     }
 
     const lower = std.ascii.lowerString(&page.buf, method);
 
-    const method_lookup = std.StaticStringMap(Http.Method).initComptime(.{
+    const method_lookup = std.StaticStringMap(net_http.Method).initComptime(.{
         .{ "get", .GET },
         .{ "post", .POST },
         .{ "delete", .DELETE },
@@ -154,10 +144,6 @@ pub fn getCredentials(self: *const Request) []const u8 {
     return @tagName(self._credentials);
 }
 
-pub fn getSignal(self: *const Request) ?*AbortSignal {
-    return self._signal;
-}
-
 pub fn getHeaders(self: *Request, page: *Page) !*Headers {
     if (self._headers) |headers| {
         return headers;
@@ -166,6 +152,55 @@ pub fn getHeaders(self: *Request, page: *Page) !*Headers {
     const headers = try Headers.init(null, page);
     self._headers = headers;
     return headers;
+}
+
+pub fn blob(self: *Request, page: *Page) !js.Promise {
+    const body = self._body orelse "";
+    const headers = try self.getHeaders(page);
+    const content_type = try headers.get("content-type", page) orelse "";
+
+    const b = try Blob.initWithMimeValidation(
+        &.{body},
+        .{ .type = content_type },
+        true,
+        page,
+    );
+
+    return page.js.local.?.resolvePromise(b);
+}
+
+pub fn text(self: *const Request, page: *Page) !js.Promise {
+    const body = self._body orelse "";
+    return page.js.local.?.resolvePromise(body);
+}
+
+pub fn json(self: *const Request, page: *Page) !js.Promise {
+    const body = self._body orelse "";
+    const local = page.js.local.?;
+    const value = local.parseJSON(body) catch |err| {
+        return local.rejectPromise(.{@errorName(err)});
+    };
+    return local.resolvePromise(try value.persist());
+}
+
+pub fn arrayBuffer(self: *const Request, page: *Page) !js.Promise {
+    return page.js.local.?.resolvePromise(js.ArrayBuffer{ .values = self._body orelse "" });
+}
+
+pub fn bytes(self: *const Request, page: *Page) !js.Promise {
+    return page.js.local.?.resolvePromise(js.TypedArray(u8){ .values = self._body orelse "" });
+}
+
+pub fn clone(self: *const Request, page: *Page) !*Request {
+    return page._factory.create(Request{
+        ._url = self._url,
+        ._arena = self._arena,
+        ._method = self._method,
+        ._headers = self._headers,
+        ._cache = self._cache,
+        ._credentials = self._credentials,
+        ._body = self._body,
+    });
 }
 
 pub const JsApi = struct {
@@ -183,7 +218,12 @@ pub const JsApi = struct {
     pub const headers = bridge.accessor(Request.getHeaders, null, .{});
     pub const cache = bridge.accessor(Request.getCache, null, .{});
     pub const credentials = bridge.accessor(Request.getCredentials, null, .{});
-    pub const signal = bridge.accessor(Request.getSignal, null, .{});
+    pub const blob = bridge.function(Request.blob, .{});
+    pub const text = bridge.function(Request.text, .{});
+    pub const json = bridge.function(Request.json, .{});
+    pub const arrayBuffer = bridge.function(Request.arrayBuffer, .{});
+    pub const bytes = bridge.function(Request.bytes, .{});
+    pub const clone = bridge.function(Request.clone, .{});
 };
 
 const testing = @import("../../../testing.zig");

@@ -75,10 +75,6 @@ pub fn getCanGoForward(self: *const Navigation) bool {
     return self._entries.items.len > self._index + 1;
 }
 
-pub fn getCurrentIndex(self: *const Navigation) usize {
-    return self._index;
-}
-
 pub fn getCurrentEntryOrNull(self: *Navigation) ?*NavigationHistoryEntry {
     if (self._entries.items.len > self._index) {
         return self._entries.items[self._index];
@@ -117,44 +113,6 @@ pub fn back(self: *Navigation, page: *Page) !NavigationReturn {
 
 pub fn entries(self: *const Navigation) []*NavigationHistoryEntry {
     return self._entries.items;
-}
-
-pub fn removeEntryPreservingCurrent(self: *Navigation, index: usize) bool {
-    if (self._entries.items.len <= 1 or index >= self._entries.items.len or index == self._index) {
-        return false;
-    }
-
-    _ = self._entries.orderedRemove(index);
-    if (index < self._index) {
-        self._index -= 1;
-    }
-    return true;
-}
-
-pub fn removeEntriesBeforePreservingCurrent(self: *Navigation, index: usize) bool {
-    const len = self._entries.items.len;
-    if (len <= 1 or index == 0 or index >= len or index > self._index) {
-        return false;
-    }
-
-    std.mem.copyForwards(
-        *NavigationHistoryEntry,
-        self._entries.items[0 .. len - index],
-        self._entries.items[index..len],
-    );
-    self._entries.items.len = len - index;
-    self._index -= index;
-    return true;
-}
-
-pub fn removeEntriesAfterPreservingCurrent(self: *Navigation, index: usize) bool {
-    const len = self._entries.items.len;
-    if (len <= 1 or index >= len or index < self._index or index + 1 >= len) {
-        return false;
-    }
-
-    self._entries.items.len = index + 1;
-    return true;
 }
 
 pub fn forward(self: *Navigation, page: *Page) !NavigationReturn {
@@ -318,17 +276,12 @@ pub fn navigateInner(
 ) !NavigationReturn {
     const arena = page._session.arena;
     const url = _url orelse return error.MissingURL;
-    var ls: js.Local.Scope = undefined;
-    const local = page.js.local orelse blk: {
-        page.js.localScope(&ls);
-        break :blk &ls.local;
-    };
-    defer if (page.js.local == null) ls.deinit();
 
     // https://github.com/WICG/navigation-api/issues/95
     //
     // These will only settle on same-origin navigation (mostly intended for SPAs).
     // It is fine (and expected) for these to not settle on cross-origin requests :)
+    const local = page.js.local.?;
     const committed = local.createPromiseResolver();
     const finished = local.createPromiseResolver();
 
@@ -434,14 +387,12 @@ pub fn reload(self: *Navigation, _opts: ?ReloadOptions, page: *Page) !Navigation
         const previous = entry;
         entry._state = .{ .source = .navigation, .value = state.toJson(arena) catch return error.DataClone };
 
-        if (self._on_currententrychange) |cec| {
-            const event = (try NavigationCurrentEntryChangeEvent.initTrusted(
-                .wrap("currententrychange"),
-                .{ .from = previous, .navigationType = @tagName(.reload) },
-                page,
-            )).asEvent();
-            try self.dispatch(cec, event, page);
-        }
+        const event = try NavigationCurrentEntryChangeEvent.initTrusted(
+            .wrap("currententrychange"),
+            .{ .from = previous, .navigationType = @tagName(.reload) },
+            page,
+        );
+        try self.dispatch(.{ .currententrychange = event }, page);
     }
 
     return self.navigateInner(entry._url, .reload, page);
@@ -523,12 +474,12 @@ pub const JsApi = struct {
     pub const canGoForward = bridge.accessor(Navigation.getCanGoForward, null, .{});
     pub const currentEntry = bridge.accessor(Navigation.getCurrentEntry, null, .{});
     pub const transition = bridge.accessor(Navigation.getTransition, null, .{});
-    pub const back = bridge.function(Navigation.back, .{});
+    pub const back = bridge.function(Navigation.back, .{ .dom_exception = true });
     pub const entries = bridge.function(Navigation.entries, .{});
-    pub const forward = bridge.function(Navigation.forward, .{});
-    pub const navigate = bridge.function(Navigation.navigate, .{});
-    pub const traverseTo = bridge.function(Navigation.traverseTo, .{});
-    pub const updateCurrentEntry = bridge.function(Navigation.updateCurrentEntry, .{});
+    pub const forward = bridge.function(Navigation.forward, .{ .dom_exception = true });
+    pub const navigate = bridge.function(Navigation.navigate, .{ .dom_exception = true });
+    pub const traverseTo = bridge.function(Navigation.traverseTo, .{ .dom_exception = true });
+    pub const updateCurrentEntry = bridge.function(Navigation.updateCurrentEntry, .{ .dom_exception = true });
 
     pub const oncurrententrychange = bridge.accessor(
         Navigation.getOnCurrentEntryChange,
@@ -536,88 +487,3 @@ pub const JsApi = struct {
         .{},
     );
 };
-
-fn testNavigationEntry(
-    allocator: std.mem.Allocator,
-    id: []const u8,
-    url: [:0]const u8,
-) !*NavigationHistoryEntry {
-    const entry = try allocator.create(NavigationHistoryEntry);
-    entry.* = .{
-        ._id = id,
-        ._key = id,
-        ._url = url,
-        ._state = .{ .source = .navigation, .value = null },
-    };
-    return entry;
-}
-
-test "removeEntryPreservingCurrent removes non-current entry and keeps current coherent" {
-    var navigation = Navigation{ ._proto = undefined };
-    defer navigation._entries.deinit(std.testing.allocator);
-
-    const first = try testNavigationEntry(std.testing.allocator, "0", "https://one.test");
-    const second = try testNavigationEntry(std.testing.allocator, "1", "https://two.test");
-    const third = try testNavigationEntry(std.testing.allocator, "2", "https://three.test");
-    defer std.testing.allocator.destroy(first);
-    defer std.testing.allocator.destroy(second);
-    defer std.testing.allocator.destroy(third);
-
-    try navigation._entries.append(std.testing.allocator, first);
-    try navigation._entries.append(std.testing.allocator, second);
-    try navigation._entries.append(std.testing.allocator, third);
-    navigation._index = 1;
-
-    try std.testing.expect(navigation.removeEntryPreservingCurrent(0));
-    try std.testing.expectEqual(@as(usize, 2), navigation._entries.items.len);
-    try std.testing.expectEqual(@as(usize, 0), navigation._index);
-    try std.testing.expectEqualStrings("https://two.test", navigation._entries.items[0].url().?);
-    try std.testing.expectEqualStrings("https://three.test", navigation._entries.items[1].url().?);
-    try std.testing.expect(!navigation.removeEntryPreservingCurrent(0));
-}
-
-test "removeEntriesBeforePreservingCurrent prunes older entries without removing current" {
-    var navigation = Navigation{ ._proto = undefined };
-    defer navigation._entries.deinit(std.testing.allocator);
-
-    const first = try testNavigationEntry(std.testing.allocator, "0", "https://one.test");
-    const second = try testNavigationEntry(std.testing.allocator, "1", "https://two.test");
-    const third = try testNavigationEntry(std.testing.allocator, "2", "https://three.test");
-    defer std.testing.allocator.destroy(first);
-    defer std.testing.allocator.destroy(second);
-    defer std.testing.allocator.destroy(third);
-
-    try navigation._entries.append(std.testing.allocator, first);
-    try navigation._entries.append(std.testing.allocator, second);
-    try navigation._entries.append(std.testing.allocator, third);
-    navigation._index = 2;
-
-    try std.testing.expect(navigation.removeEntriesBeforePreservingCurrent(2));
-    try std.testing.expectEqual(@as(usize, 1), navigation._entries.items.len);
-    try std.testing.expectEqual(@as(usize, 0), navigation._index);
-    try std.testing.expectEqualStrings("https://three.test", navigation._entries.items[0].url().?);
-    try std.testing.expect(!navigation.removeEntriesBeforePreservingCurrent(1));
-}
-
-test "removeEntriesAfterPreservingCurrent prunes newer entries without removing current" {
-    var navigation = Navigation{ ._proto = undefined };
-    defer navigation._entries.deinit(std.testing.allocator);
-
-    const first = try testNavigationEntry(std.testing.allocator, "0", "https://one.test");
-    const second = try testNavigationEntry(std.testing.allocator, "1", "https://two.test");
-    const third = try testNavigationEntry(std.testing.allocator, "2", "https://three.test");
-    defer std.testing.allocator.destroy(first);
-    defer std.testing.allocator.destroy(second);
-    defer std.testing.allocator.destroy(third);
-
-    try navigation._entries.append(std.testing.allocator, first);
-    try navigation._entries.append(std.testing.allocator, second);
-    try navigation._entries.append(std.testing.allocator, third);
-    navigation._index = 0;
-
-    try std.testing.expect(navigation.removeEntriesAfterPreservingCurrent(0));
-    try std.testing.expectEqual(@as(usize, 1), navigation._entries.items.len);
-    try std.testing.expectEqual(@as(usize, 0), navigation._index);
-    try std.testing.expectEqualStrings("https://one.test", navigation._entries.items[0].url().?);
-    try std.testing.expect(!navigation.removeEntriesAfterPreservingCurrent(0));
-}

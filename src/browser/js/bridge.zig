@@ -21,11 +21,13 @@ const js = @import("js.zig");
 const lp = @import("lightpanda");
 const log = @import("../../log.zig");
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
 
 const v8 = js.v8;
 
 const Caller = @import("Caller.zig");
 const Context = @import("Context.zig");
+const Origin = @import("Origin.zig");
 
 const IS_DEBUG = @import("builtin").mode == .Debug;
 
@@ -104,24 +106,24 @@ pub fn Builder(comptime T: type) type {
             return entries;
         }
 
-        pub fn finalizer(comptime func: *const fn (self: *T, shutdown: bool, page: *Page) void) Finalizer {
+        pub fn finalizer(comptime func: *const fn (self: *T, shutdown: bool, session: *Session) void) Finalizer {
             return .{
                 .from_zig = struct {
-                    fn wrap(ptr: *anyopaque, page: *Page) void {
-                        func(@ptrCast(@alignCast(ptr)), true, page);
+                    fn wrap(ptr: *anyopaque, session: *Session) void {
+                        func(@ptrCast(@alignCast(ptr)), true, session);
                     }
                 }.wrap,
 
                 .from_v8 = struct {
                     fn wrap(handle: ?*const v8.WeakCallbackInfo) callconv(.c) void {
                         const ptr = v8.v8__WeakCallbackInfo__GetParameter(handle.?).?;
-                        const fc: *Context.FinalizerCallback = @ptrCast(@alignCast(ptr));
+                        const fc: *Origin.FinalizerCallback = @ptrCast(@alignCast(ptr));
 
-                        const ctx = fc.ctx;
+                        const origin = fc.origin;
                         const value_ptr = fc.ptr;
-                        if (ctx.finalizer_callbacks.contains(@intFromPtr(value_ptr))) {
-                            func(@ptrCast(@alignCast(value_ptr)), false, ctx.page);
-                            ctx.release(value_ptr);
+                        if (origin.finalizer_callbacks.contains(@intFromPtr(value_ptr))) {
+                            func(@ptrCast(@alignCast(value_ptr)), false, fc.session);
+                            origin.release(value_ptr);
                         } else {
                             // A bit weird, but v8 _requires_ that we release it
                             // If we don't. We'll 100% crash.
@@ -413,12 +415,12 @@ pub const Property = struct {
 };
 
 const Finalizer = struct {
-    // The finalizer wrapper when called fro Zig. This is only called on
-    // Context.deinit
-    from_zig: *const fn (ctx: *anyopaque, page: *Page) void,
+    // The finalizer wrapper when called from Zig. This is only called on
+    // Origin.deinit
+    from_zig: *const fn (ctx: *anyopaque, session: *Session) void,
 
     // The finalizer wrapper when called from V8. This may never be called
-    // (hence why we fallback to calling in Context.denit). If it is called,
+    // (hence why we fallback to calling in Origin.deinit). If it is called,
     // it is only ever called after we SetWeak on the Global.
     from_v8: *const fn (?*const v8.WeakCallbackInfo) callconv(.c) void,
 };
@@ -660,19 +662,14 @@ pub const JsApiLookup = struct {
     ///    const index_id = types.getId(@TypeOf(res));
     ///
     pub const Enum = blk: {
-        var fields: [JsApis.len]std.builtin.Type.EnumField = undefined;
+        var names: [JsApis.len][:0]const u8 = undefined;
+        var values: [JsApis.len]BackingInt = undefined;
         for (JsApis, 0..) |JsApi, i| {
-            fields[i] = .{ .name = @typeName(JsApi), .value = i };
+            names[i] = @typeName(JsApi);
+            values[i] = i;
         }
 
-        break :blk @Type(.{
-            .@"enum" = .{
-                .fields = &fields,
-                .tag_type = BackingInt,
-                .is_exhaustive = true,
-                .decls = &.{},
-            },
-        });
+        break :blk @Enum(BackingInt, .exhaustive, &names, &values);
     };
 
     /// Returns a boolean indicating if a type exist in the lookup.
@@ -730,6 +727,7 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/css/CSSStyleRule.zig"),
     @import("../webapi/css/CSSStyleSheet.zig"),
     @import("../webapi/css/CSSStyleProperties.zig"),
+    @import("../webapi/css/FontFace.zig"),
     @import("../webapi/css/FontFaceSet.zig"),
     @import("../webapi/css/MediaQueryList.zig"),
     @import("../webapi/css/StyleSheetList.zig"),
@@ -830,12 +828,10 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/encoding/TextEncoderStream.zig"),
     @import("../webapi/encoding/TextDecoderStream.zig"),
     @import("../webapi/Event.zig"),
-    @import("../webapi/event/CloseEvent.zig"),
     @import("../webapi/event/CompositionEvent.zig"),
     @import("../webapi/event/CustomEvent.zig"),
     @import("../webapi/event/ErrorEvent.zig"),
     @import("../webapi/event/MessageEvent.zig"),
-    @import("../webapi/event/StorageEvent.zig"),
     @import("../webapi/event/ProgressEvent.zig"),
     @import("../webapi/event/NavigationCurrentEntryChangeEvent.zig"),
     @import("../webapi/event/PageTransitionEvent.zig"),
@@ -847,6 +843,7 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/event/FocusEvent.zig"),
     @import("../webapi/event/WheelEvent.zig"),
     @import("../webapi/event/TextEvent.zig"),
+    @import("../webapi/event/InputEvent.zig"),
     @import("../webapi/event/PromiseRejectionEvent.zig"),
     @import("../webapi/MessageChannel.zig"),
     @import("../webapi/MessagePort.zig"),
@@ -864,7 +861,6 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/net/URLSearchParams.zig"),
     @import("../webapi/net/XMLHttpRequest.zig"),
     @import("../webapi/net/XMLHttpRequestEventTarget.zig"),
-    @import("../webapi/net/WebSocket.zig"),
     @import("../webapi/streams/ReadableStream.zig"),
     @import("../webapi/streams/ReadableStreamDefaultReader.zig"),
     @import("../webapi/streams/ReadableStreamDefaultController.zig"),
@@ -874,7 +870,6 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/streams/TransformStream.zig"),
     @import("../webapi/Node.zig"),
     @import("../webapi/storage/storage.zig"),
-    @import("../webapi/storage/indexed_db.zig"),
     @import("../webapi/URL.zig"),
     @import("../webapi/Window.zig"),
     @import("../webapi/Performance.zig"),
@@ -886,6 +881,7 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/IdleDeadline.zig"),
     @import("../webapi/Blob.zig"),
     @import("../webapi/File.zig"),
+    @import("../webapi/FileList.zig"),
     @import("../webapi/FileReader.zig"),
     @import("../webapi/Screen.zig"),
     @import("../webapi/VisualViewport.zig"),
@@ -894,7 +890,6 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/navigation/NavigationHistoryEntry.zig"),
     @import("../webapi/navigation/NavigationActivation.zig"),
     @import("../webapi/canvas/CanvasRenderingContext2D.zig"),
-    @import("../webapi/canvas/TextMetrics.zig"),
     @import("../webapi/canvas/WebGLRenderingContext.zig"),
     @import("../webapi/canvas/OffscreenCanvas.zig"),
     @import("../webapi/canvas/OffscreenCanvasRenderingContext2D.zig"),

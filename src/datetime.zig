@@ -533,35 +533,47 @@ pub const TimestampMode = enum {
     clock,
     monotonic,
 };
-pub fn timestamp(comptime mode: TimestampMode) u64 {
-    if (comptime is_posix == false or mode == .clock) {
-        return @intCast(std.time.timestamp());
+fn clockGetTimeCompat(clock_id: posix.clockid_t) posix.timespec {
+    var ts: posix.timespec = undefined;
+    switch (posix.errno(posix.system.clock_gettime(clock_id, &ts))) {
+        .SUCCESS => return ts,
+        else => unreachable,
     }
-    const ts = timespec();
+}
+
+pub fn timestamp(comptime mode: TimestampMode) u64 {
+    if (comptime is_posix == false) {
+        @compileError("timestamp requires posix support in this build");
+    }
+    const ts = if (mode == .clock)
+        clockGetTimeCompat(.REALTIME)
+    else
+        timespec();
     return @intCast(ts.sec);
 }
 
 pub fn milliTimestamp(comptime mode: TimestampMode) u64 {
-    if (comptime is_posix == false or mode == .clock) {
-        return @intCast(std.time.milliTimestamp());
+    if (comptime is_posix == false) {
+        @compileError("milliTimestamp requires posix support in this build");
     }
-    const ts = timespec();
+    const ts = if (mode == .clock)
+        clockGetTimeCompat(.REALTIME)
+    else
+        timespec();
     return @as(u64, @intCast(ts.sec)) * 1000 + @as(u64, @intCast(@divTrunc(ts.nsec, 1_000_000)));
 }
 
 pub fn timespec() posix.timespec {
     if (comptime is_posix == false) {
-        @panic("`timespec` should not be called when `is_posix` is false");
+        @compileError("`timespec` should not be called when `is_posix` is false");
     }
 
-    const clock_id = switch (@import("builtin").os.tag) {
-        .freebsd, .dragonfly => posix.CLOCK.MONOTONIC_FAST,
-        .macos, .ios, .tvos, .watchos, .visionos => posix.CLOCK.UPTIME_RAW, // continues counting while suspended
-        .linux => posix.CLOCK.BOOTTIME, // continues counting while suspended
-        else => posix.CLOCK.MONOTONIC,
+    return switch (@import("builtin").os.tag) {
+        .freebsd, .dragonfly => clockGetTimeCompat(.MONOTONIC_FAST),
+        .macos, .ios, .tvos, .watchos, .visionos => clockGetTimeCompat(.UPTIME_RAW), // continues counting while suspended
+        .linux => clockGetTimeCompat(.BOOTTIME), // continues counting while suspended
+        else => clockGetTimeCompat(.MONOTONIC),
     };
-    // unreac
-    return posix.clock_gettime(clock_id) catch unreachable;
 }
 
 fn writeDate(into: []u8, date: Date) u8 {

@@ -66,8 +66,18 @@ pub fn getUsername(self: *const URL) []const u8 {
     return U.getUsername(self._raw);
 }
 
+pub fn setUsername(self: *URL, value: []const u8) !void {
+    const allocator = self._arena orelse return error.NoAllocator;
+    self._raw = try U.setUsername(self._raw, value, allocator);
+}
+
 pub fn getPassword(self: *const URL) []const u8 {
     return U.getPassword(self._raw);
+}
+
+pub fn setPassword(self: *URL, value: []const u8) !void {
+    const allocator = self._arena orelse return error.NoAllocator;
+    self._raw = try U.setPassword(self._raw, value, allocator);
 }
 
 pub fn getPathname(self: *const URL) []const u8 {
@@ -233,13 +243,14 @@ pub fn createObjectURL(blob: *Blob, page: *Page) ![]const u8 {
     var uuid_buf: [36]u8 = undefined;
     @import("../../id.zig").uuidv4(&uuid_buf);
 
-    const origin = (try page.getOrigin(page.call_arena)) orelse "null";
     const blob_url = try std.fmt.allocPrint(
         page.arena,
         "blob:{s}/{s}",
-        .{ origin, uuid_buf },
+        .{ page.origin orelse "null", uuid_buf },
     );
     try page._blob_urls.put(page.arena, blob_url, blob);
+    // prevent GC from cleaning up the blob while it's in the registry
+    page.js.strongRef(blob);
     return blob_url;
 }
 
@@ -249,8 +260,10 @@ pub fn revokeObjectURL(url: []const u8, page: *Page) void {
         return;
     }
 
-    // Remove from registry (no-op if not found)
-    _ = page._blob_urls.remove(url);
+    // Remove from registry and release strong ref (no-op if not found)
+    if (page._blob_urls.fetchRemove(url)) |entry| {
+        page.js.weakRef(entry.value);
+    }
 }
 
 pub const JsApi = struct {
@@ -272,8 +285,8 @@ pub const JsApi = struct {
     pub const search = bridge.accessor(URL.getSearch, URL.setSearch, .{});
     pub const hash = bridge.accessor(URL.getHash, URL.setHash, .{});
     pub const pathname = bridge.accessor(URL.getPathname, URL.setPathname, .{});
-    pub const username = bridge.accessor(URL.getUsername, null, .{});
-    pub const password = bridge.accessor(URL.getPassword, null, .{});
+    pub const username = bridge.accessor(URL.getUsername, URL.setUsername, .{});
+    pub const password = bridge.accessor(URL.getPassword, URL.setPassword, .{});
     pub const hostname = bridge.accessor(URL.getHostname, URL.setHostname, .{});
     pub const host = bridge.accessor(URL.getHost, URL.setHost, .{});
     pub const port = bridge.accessor(URL.getPort, URL.setPort, .{});

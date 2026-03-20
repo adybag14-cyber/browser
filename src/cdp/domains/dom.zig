@@ -98,7 +98,7 @@ fn performSearch(cmd: anytype) !void {
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
     const page = bc.session.currentPage() orelse return error.PageNotLoaded;
     const list = try Selector.querySelectorAll(page.window._document.asNode(), params.query, page);
-    defer list.deinit(page);
+    defer list.deinit(page._session);
 
     const search = try bc.node_search_list.create(list._nodes);
 
@@ -249,7 +249,7 @@ fn querySelectorAll(cmd: anytype) !void {
     };
 
     const selected_nodes = try Selector.querySelectorAll(node.dom, params.selector, page);
-    defer selected_nodes.deinit(page);
+    defer selected_nodes.deinit(page._session);
 
     const nodes = selected_nodes._nodes;
 
@@ -502,9 +502,9 @@ fn getFrameOwner(cmd: anytype) !void {
     })) orelse return error.InvalidParams;
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    const page_id = try id.toPageId(.frame_id, params.frameId);
+    const page_frame_id = try id.toPageId(.frame_id, params.frameId);
 
-    const page = bc.session.findPage(page_id) orelse {
+    const page = bc.session.findPageByFrameId(page_frame_id) orelse {
         return cmd.sendError(-32000, "Frame with the given id does not belong to the target.", .{});
     };
 
@@ -550,11 +550,12 @@ test "cdp.dom: getSearchResults unknown search id" {
     var ctx = testing.context();
     defer ctx.deinit();
 
-    try testing.expectError(error.BrowserContextNotLoaded, ctx.processMessage(.{
+    try ctx.processMessage(.{
         .id = 8,
         .method = "DOM.getSearchResults",
         .params = .{ .searchId = "Nope", .fromIndex = 0, .toIndex = 10 },
-    }));
+    });
+    try ctx.expectSentError(-31998, "BrowserContextNotLoaded", .{ .id = 8 });
 }
 
 test "cdp.dom: search flow" {
@@ -604,11 +605,12 @@ test "cdp.dom: search flow" {
     try ctx.expectSentResult(null, .{ .id = 16 });
 
     // make sure the delete actually did something
-    try testing.expectError(error.SearchResultNotFound, ctx.processMessage(.{
+    try ctx.processMessage(.{
         .id = 17,
         .method = "DOM.getSearchResults",
         .params = .{ .searchId = "0", .fromIndex = 0, .toIndex = 1 },
-    }));
+    });
+    try ctx.expectSentError(-31998, "SearchResultNotFound", .{ .id = 17 });
 }
 
 test "cdp.dom: querySelector unknown search id" {
@@ -645,11 +647,12 @@ test "cdp.dom: querySelector Node not found" {
     });
     try ctx.expectSentResult(.{ .searchId = "0", .resultCount = 2 }, .{ .id = 3 });
 
-    try testing.expectError(error.NodeNotFoundForGivenId, ctx.processMessage(.{
+    try ctx.processMessage(.{
         .id = 4,
         .method = "DOM.querySelector",
         .params = .{ .nodeId = 1, .selector = "a" },
-    }));
+    });
+    try ctx.expectSentError(-31998, "NodeNotFoundForGivenId", .{ .id = 4 });
 
     try ctx.processMessage(.{
         .id = 5,

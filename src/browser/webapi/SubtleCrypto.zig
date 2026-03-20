@@ -525,13 +525,29 @@ pub const CryptoKey = struct {
         const private_key = try page.arena.alloc(u8, crypto.X25519_PRIVATE_KEY_LEN);
         errdefer page.arena.free(private_key);
 
-        // There's no info about whether this can fail; so I assume it cannot.
-        crypto.X25519_keypair(@ptrCast(public_value), @ptrCast(private_key));
+        const gen_ctx = crypto.EVP_PKEY_CTX_new_id(crypto.EVP_PKEY_X25519, null) orelse return error.OutOfMemory;
+        defer crypto.EVP_PKEY_CTX_free(gen_ctx);
+        if (crypto.EVP_PKEY_keygen_init(gen_ctx) != 1) {
+            return error.Internal;
+        }
 
-        // Create EVP_PKEY for public key.
-        // Seems we can use `EVP_PKEY_from_raw_private_key` for this, Chrome
-        // prefer not to, yet BoringSSL added it and recommends instead of what
-        // we're doing currently.
+        var private_pkey_raw: ?*crypto.EVP_PKEY = null;
+        if (crypto.EVP_PKEY_keygen(gen_ctx, &private_pkey_raw) != 1 or private_pkey_raw == null) {
+            return error.Internal;
+        }
+        const private_pkey = private_pkey_raw.?;
+        errdefer crypto.EVP_PKEY_free(private_pkey);
+
+        var public_len: usize = public_value.len;
+        if (crypto.EVP_PKEY_get_raw_public_key(private_pkey, public_value.ptr, &public_len) != 1 or public_len != public_value.len) {
+            return error.Internal;
+        }
+
+        var private_len: usize = private_key.len;
+        if (crypto.EVP_PKEY_get_raw_private_key(private_pkey, private_key.ptr, &private_len) != 1 or private_len != private_key.len) {
+            return error.Internal;
+        }
+
         const public_pkey = crypto.EVP_PKEY_new_raw_public_key(
             crypto.EVP_PKEY_X25519,
             null,
@@ -539,20 +555,6 @@ pub const CryptoKey = struct {
             public_value.len,
         );
         if (public_pkey == null) {
-            return error.OutOfMemory;
-        }
-
-        // Create EVP_PKEY for private key.
-        // Seems we can use `EVP_PKEY_from_raw_private_key` for this, Chrome
-        // prefer not to, yet BoringSSL added it and recommends instead of what
-        // we're doing currently.
-        const private_pkey = crypto.EVP_PKEY_new_raw_private_key(
-            crypto.EVP_PKEY_X25519,
-            null,
-            private_key.ptr,
-            private_key.len,
-        );
-        if (private_pkey == null) {
             return error.OutOfMemory;
         }
 

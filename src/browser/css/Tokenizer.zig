@@ -643,50 +643,12 @@ fn consumeNumeric(self: *Tokenizer) Token {
 }
 
 fn consumeUnquotedUrl(self: *Tokenizer) ?Token {
-    while (!self.isEof()) {
-        switch (self.nextByteUnchecked()) {
-            ' ', '\t' => self.advance(1),
-            '\n', '\x0C', '\r' => self.consumeNewline(),
-            else => break,
-        }
+    // TODO: true url parser
+    if (self.nextByte()) |it| {
+        return self.consumeString(it == '\'');
     }
 
-    const start_position = self.position;
-    while (!self.isEof()) {
-        switch (self.nextByteUnchecked()) {
-            ')' => {
-                const value = std.mem.trim(u8, self.slice(start_position, self.position), &std.ascii.whitespace);
-                self.advance(1);
-                return .{ .url = value };
-            },
-            ' ', '\t' => {
-                const end_position = self.position;
-                while (!self.isEof()) {
-                    switch (self.nextByteUnchecked()) {
-                        ' ', '\t' => self.advance(1),
-                        '\n', '\x0C', '\r' => self.consumeNewline(),
-                        else => break,
-                    }
-                }
-                if (!self.isEof() and self.nextByteUnchecked() == ')') {
-                    const value = std.mem.trim(u8, self.slice(start_position, end_position), &std.ascii.whitespace);
-                    self.advance(1);
-                    return .{ .url = value };
-                }
-                return .{ .bad_url = self.sliceFrom(start_position) };
-            },
-            '"', '\'', '(' => return .{ .bad_url = self.sliceFrom(start_position) },
-            '\\' => {
-                self.advance(1);
-                if (self.isEof()) break;
-                if (self.hasNewlineAt(0)) return .{ .bad_url = self.sliceFrom(start_position) };
-                self.consumeEscape();
-            },
-            else => self.consumeChar(),
-        }
-    }
-
-    return .{ .url = std.mem.trim(u8, self.sliceFrom(start_position), &std.ascii.whitespace) };
+    return null;
 }
 
 fn consumeIdentLike(self: *Tokenizer) Token {

@@ -21,11 +21,13 @@ const std = @import("std");
 pub fn processMessage(cmd: anytype) !void {
     const action = std.meta.stringToEnum(enum {
         enable,
+        disable,
         setIgnoreCertificateErrors,
     }, cmd.input.action) orelse return error.UnknownMethod;
 
     switch (action) {
         .enable => return cmd.sendResult(null, .{}),
+        .disable => return cmd.sendResult(null, .{}),
         .setIgnoreCertificateErrors => return setIgnoreCertificateErrors(cmd),
     }
 }
@@ -35,12 +37,7 @@ fn setIgnoreCertificateErrors(cmd: anytype) !void {
         ignore: bool,
     })) orelse return error.InvalidParams;
 
-    if (params.ignore) {
-        try cmd.cdp.browser.http_client.disableTlsVerify();
-    } else {
-        try cmd.cdp.browser.http_client.enableTlsVerify();
-    }
-
+    try cmd.cdp.browser.http_client.setTlsVerify(!params.ignore);
     return cmd.sendResult(null, .{});
 }
 

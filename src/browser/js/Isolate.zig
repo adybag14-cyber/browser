@@ -18,7 +18,6 @@
 
 const js = @import("js.zig");
 const v8 = js.v8;
-const V8MemoryPressureLevel = @typeInfo(@TypeOf(v8.v8__Isolate__MemoryPressureNotification)).@"fn".params[1].type.?;
 
 const Isolate = @This();
 
@@ -46,15 +45,14 @@ pub fn lowMemoryNotification(self: Isolate) void {
     v8.v8__Isolate__LowMemoryNotification(self.handle);
 }
 
-pub const MemoryPressureLevel = enum(u8) {
-    none = 0,
-    moderate = 1,
-    critical = 2,
+pub const MemoryPressureLevel = enum(u32) {
+    none = v8.kNone,
+    moderate = v8.kModerate,
+    critical = v8.kCritical,
 };
 
 pub fn memoryPressureNotification(self: Isolate, level: MemoryPressureLevel) void {
-    const v8_level: V8MemoryPressureLevel = @as(V8MemoryPressureLevel, @intCast(@intFromEnum(level)));
-    v8.v8__Isolate__MemoryPressureNotification(self.handle, v8_level);
+    v8.v8__Isolate__MemoryPressureNotification(self.handle, @intFromEnum(level));
 }
 
 pub fn notifyContextDisposed(self: Isolate) void {

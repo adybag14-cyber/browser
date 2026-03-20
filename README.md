@@ -1,18 +1,32 @@
 <p align="center">
   <a href="https://lightpanda.io"><img src="https://cdn.lightpanda.io/assets/images/logo/lpd-logo.png" alt="Logo" height=170></a>
 </p>
-
 <h1 align="center">Lightpanda Browser</h1>
+<p align="center">
+<strong>The headless browser built from scratch for AI agents and automation.</strong><br>
+Not a Chromium fork. Not a WebKit patch. A new browser, written in Zig.
+</p>
 
-<p align="center"><a href="https://lightpanda.io/">lightpanda.io</a></p>
-
+</div>
 <div align="center">
 
 [![License](https://img.shields.io/github/license/lightpanda-io/browser)](https://github.com/lightpanda-io/browser/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/lightpanda_io)](https://twitter.com/lightpanda_io)
 [![GitHub stars](https://img.shields.io/github/stars/lightpanda-io/browser)](https://github.com/lightpanda-io/browser)
+[![Discord](https://img.shields.io/discord/1391984864894521354?style=flat-square&label=discord)](https://discord.gg/K63XeymfB5)
 
 </div>
+<div align="center">
+
+[<img width="350px" src="https://cdn.lightpanda.io/assets/images/github/execution-time.svg">
+](https://github.com/lightpanda-io/demo)
+&emsp;
+[<img width="350px" src="https://cdn.lightpanda.io/assets/images/github/memory-frame.svg">
+](https://github.com/lightpanda-io/demo)
+</div>
+
+_Puppeteer requesting 100 pages from a local website on a AWS EC2 m5.large instance.
+See [benchmark details](https://github.com/lightpanda-io/demo)._
 
 Lightpanda is the open-source browser made for headless usage:
 
@@ -25,16 +39,6 @@ Fast web automation for AI agents, LLM training, scraping and testing:
 - Ultra-low memory footprint (9x less than Chrome)
 - Exceptionally fast execution (11x faster than Chrome)
 - Instant startup
-
-[<img width="350px" src="https://cdn.lightpanda.io/assets/images/github/execution-time.svg">
-](https://github.com/lightpanda-io/demo)
-&emsp;
-[<img width="350px" src="https://cdn.lightpanda.io/assets/images/github/memory-frame.svg">
-](https://github.com/lightpanda-io/demo)
-</div>
-
-_Puppeteer requesting 100 pages from a local website on a AWS EC2 m5.large instance.
-See [benchmark details](https://github.com/lightpanda-io/demo)._
 
 [^1]: **Playwright support disclaimer:**
 Due to the nature of Playwright, a script that works with the current version of the browser may not function correctly with a future version. Playwright uses an intermediate JavaScript layer that selects an execution strategy based on the browser's available features. If Lightpanda adds a new [Web API](https://developer.mozilla.org/en-US/docs/Web/API), Playwright may choose to execute different code for the same script. This new code path could attempt to use features that are not yet implemented. Lightpanda makes an effort to add compatibility tests, but we can't cover all scenarios. If you encounter an issue, please create a [GitHub issue](https://github.com/lightpanda-io/browser/issues) and include the last known working version of the script.
@@ -123,35 +127,6 @@ INFO  app : server running . . . . . . . . . . . . . . . . .  [+0ms]
       address = 127.0.0.1:9222
 ```
 
-### Browser mode switch (fork)
-
-This fork adds a browser mode switch on `fetch` and `serve`:
-
-```console
-./lightpanda serve --browser_mode headed
-```
-
-Shortcuts are available:
-- `--headed`
-- `--headless`
-
-`headed` is currently experimental.
-- On Windows targets, it starts a native headed window lifecycle backend.
-- Windows headed mode now forwards native mouse (down/up/move/wheel/hwheel), click, keydown/keyup (including repeat state), text input (`WM_CHAR`/`WM_UNICHAR`), IME result/preedit composition messages (`WM_IME_COMPOSITION`), back/forward mouse buttons, and window blur into page input, with caret-aware text insertion, `Ctrl/Meta + A` select-all, word-wise caret/edit shortcuts (`Ctrl/Meta + ArrowLeft/ArrowRight`, `Ctrl/Meta + Backspace/Delete`), textarea vertical/line navigation (`ArrowUp/ArrowDown`, line-aware `Home/End`, document `Ctrl/Meta + Home/End`), `Tab`/`Shift+Tab` focus traversal (including positive `tabindex` ordering), and native clipboard shortcuts (`Ctrl/Meta + C/X/V`, `Ctrl+Insert`, `Shift+Insert`, `Shift+Delete`) for text controls. Clipboard shortcuts now dispatch cancelable `copy`/`cut`/`paste` events first and respect `preventDefault()`.
-- On non-Windows targets, it safely falls back to headless execution.
-
-Viewport sizing is configurable for both modes:
-- `--window_width <px>`
-- `--window_height <px>`
-
-CDP viewport control is also wired in this fork:
-- `Emulation.setDeviceMetricsOverride`
-- `Emulation.clearDeviceMetricsOverride`
-- `Browser.setWindowBounds` (width/height)
-
-Windows run/build guide for this fork:
-- [`docs/WINDOWS_FULL_USE.md`](docs/WINDOWS_FULL_USE.md)
-
 Once the CDP server started, you can run a Puppeteer script by configuring the
 `browserWSEndpoint`.
 
@@ -215,8 +190,6 @@ Here are the key features we have implemented:
 
 NOTE: There are hundreds of Web APIs. Developing a browser (even just for headless mode) is a huge task. Coverage will increase over time.
 
-You can also follow the progress of our Javascript support in our dedicated [zig-js-runtime](https://github.com/lightpanda-io/zig-js-runtime#development) project.
-
 ## Build from sources
 
 ### Prerequisites
@@ -225,10 +198,10 @@ Lightpanda is written with [Zig](https://ziglang.org/) `0.15.2`. You have to
 install it with the right version in order to build the project.
 
 Lightpanda also depends on
-[zig-js-runtime](https://github.com/lightpanda-io/zig-js-runtime/) (with v8),
+[v8](https://chromium.googlesource.com/v8/v8.git),
 [Libcurl](https://curl.se/libcurl/) and [html5ever](https://github.com/servo/html5ever).
 
-To be able to build the v8 engine for zig-js-runtime, you have to install some libs:
+To be able to build the v8 engine, you have to install some libs:
 
 For **Debian/Ubuntu based Linux**:
 

@@ -57,22 +57,6 @@ pub const ScrollPosition = struct {
 };
 pub const ScrollPositionLookup = std.AutoHashMapUnmanaged(*Element, ScrollPosition);
 
-pub const ScrollMetrics = struct {
-    client_width: u32 = 0,
-    client_height: u32 = 0,
-    scroll_width: u32 = 0,
-    scroll_height: u32 = 0,
-};
-pub const ScrollMetricsLookup = std.AutoHashMapUnmanaged(*Element, ScrollMetrics);
-
-pub const LayoutBox = struct {
-    x: i32 = 0,
-    y: i32 = 0,
-    width: i32 = 0,
-    height: i32 = 0,
-};
-pub const LayoutBoxLookup = std.AutoHashMapUnmanaged(*Element, LayoutBox);
-
 pub const Namespace = enum(u8) {
     html,
     svg,
@@ -865,41 +849,6 @@ pub fn remove(self: *Element, page: *Page) void {
     page.removeNode(parent, node, .{ .will_be_reconnected = false });
 }
 
-fn initializeTextControlCaretOnFocus(self: *Element) void {
-    if (self.is(Html.Input)) |input| {
-        switch (input._input_type) {
-            .text, .search, .url, .tel, .password => {},
-            else => return,
-        }
-        if (input._selection_start != 0 or input._selection_end != 0) {
-            return;
-        }
-        const value = input.getValue();
-        if (value.len == 0) {
-            return;
-        }
-        const len: u32 = @intCast(@min(value.len, @as(usize, std.math.maxInt(u32))));
-        input._selection_start = len;
-        input._selection_end = len;
-        input._selection_direction = .none;
-        return;
-    }
-
-    if (self.is(Html.TextArea)) |textarea| {
-        if (textarea._selection_start != 0 or textarea._selection_end != 0) {
-            return;
-        }
-        const value = textarea.getValue();
-        if (value.len == 0) {
-            return;
-        }
-        const len: u32 = @intCast(@min(value.len, @as(usize, std.math.maxInt(u32))));
-        textarea._selection_start = len;
-        textarea._selection_end = len;
-        textarea._selection_direction = .none;
-    }
-}
-
 pub fn focus(self: *Element, page: *Page) !void {
     if (self.asNode().isConnected() == false) {
         // a disconnected node cannot take focus
@@ -927,8 +876,6 @@ pub fn focus(self: *Element, page: *Page) !void {
         const focusout_event = try FocusEvent.initTrusted(comptime .wrap("focusout"), .{ .bubbles = true, .composed = true, .relatedTarget = new_target }, page);
         try page._event_manager.dispatch(old_target, focusout_event.asEvent());
     }
-
-    initializeTextControlCaretOnFocus(self);
 
     const old_related: ?*EventTarget = if (old_active) |old| old.asEventTarget() else null;
 
@@ -1095,10 +1042,6 @@ pub fn parentElement(self: *Element) ?*Element {
 }
 
 pub fn checkVisibility(self: *Element, page: *Page) bool {
-    if (!isHitTestVisibleElement(self)) {
-        return false;
-    }
-
     var current: ?*Element = self;
 
     while (current) |el| {
@@ -1114,51 +1057,14 @@ pub fn checkVisibility(self: *Element, page: *Page) bool {
     return true;
 }
 
-fn isHitTestVisibleElement(self: *Element) bool {
-    const html = self.is(Html) orelse return true;
-    return switch (html._type) {
-        .base,
-        .head,
-        .link,
-        .meta,
-        .param,
-        .script,
-        .source,
-        .style,
-        .template,
-        .title,
-        .track,
-        => false,
-        .input => |input| input._input_type != .hidden,
-        else => true,
-    };
-}
-
 fn getElementDimensions(self: *Element, page: *Page) struct { width: f64, height: f64 } {
-    if (page._element_layout_boxes.get(self)) |layout_box| {
-        return .{
-            .width = @floatFromInt(layout_box.width),
-            .height = @floatFromInt(layout_box.height),
-        };
-    }
-
     var width: f64 = 5.0;
     var height: f64 = 5.0;
-    const parent = self.parentElement();
 
-    const style = page.window.getComputedStyle(self, null, page) catch null;
-    if (style) |resolved_style| {
-        const decl = resolved_style.asCSSStyleDeclaration();
-        width = resolveElementDimension(decl.getPropertyValue("width", page), .width, parent, page) orelse 5.0;
-        height = resolveElementDimension(decl.getPropertyValue("height", page), .height, parent, page) orelse 5.0;
-        const aspect_ratio = parseAspectRatioValue(decl.getPropertyValue("aspect-ratio", page));
-        if (aspect_ratio) |ratio| {
-            if (width == 5.0 and height != 5.0) {
-                width = height * ratio;
-            } else if (height == 5.0 and width != 5.0) {
-                height = width / ratio;
-            }
-        }
+    if (self.getStyle(page)) |style| {
+        const decl = style.asCSSStyleDeclaration();
+        width = CSS.parseDimension(decl.getPropertyValue("width", page)) orelse 5.0;
+        height = CSS.parseDimension(decl.getPropertyValue("height", page)) orelse 5.0;
     }
 
     if (width == 5.0 or height == 5.0) {
@@ -1178,93 +1084,15 @@ fn getElementDimensions(self: *Element, page: *Page) struct { width: f64, height
             if (self.getAttributeSafe(comptime .wrap("height"))) |h| {
                 height = std.fmt.parseFloat(f64, h) catch height;
             }
-            if (tag == .img) {
-                if (self.is(Element.Html.Image)) |image| {
-                    const natural_width = @as(f64, @floatFromInt(image.getNaturalWidth(page)));
-                    const natural_height = @as(f64, @floatFromInt(image.getNaturalHeight(page)));
-                    if (natural_width > 0 and natural_height > 0) {
-                        if (width == 5.0 and height == 5.0) {
-                            width = natural_width;
-                            height = natural_height;
-                        } else if (width != 5.0 and height == 5.0) {
-                            height = width * natural_height / natural_width;
-                        } else if (height != 5.0 and width == 5.0) {
-                            width = height * natural_width / natural_height;
-                        }
-                    }
-                }
-            }
         }
     }
 
     return .{ .width = width, .height = height };
 }
 
-fn parseAspectRatioValue(raw_value: []const u8) ?f64 {
-    const trimmed = std.mem.trim(u8, raw_value, &std.ascii.whitespace);
-    if (trimmed.len == 0 or std.ascii.eqlIgnoreCase(trimmed, "auto")) return null;
-    if (std.mem.indexOfScalar(u8, trimmed, '/')) |slash_index| {
-        const left = std.mem.trim(u8, trimmed[0..slash_index], &std.ascii.whitespace);
-        const right = std.mem.trim(u8, trimmed[slash_index + 1 ..], &std.ascii.whitespace);
-        if (left.len == 0 or right.len == 0) return null;
-        const numerator = std.fmt.parseFloat(f64, left) catch return null;
-        const denominator = std.fmt.parseFloat(f64, right) catch return null;
-        if (denominator == 0) return null;
-        return numerator / denominator;
-    }
-    return std.fmt.parseFloat(f64, trimmed) catch null;
-}
-
-const DimensionAxis = enum {
-    width,
-    height,
-};
-
-fn resolveElementDimension(value: []const u8, axis: DimensionAxis, parent: ?*Element, page: *Page) ?f64 {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) {
-        return null;
-    }
-
-    if (std.mem.endsWith(u8, trimmed, "%")) {
-        const percent = std.fmt.parseFloat(f64, trimmed[0 .. trimmed.len - 1]) catch return null;
-        const basis = if (parent) |ancestor| blk: {
-            const dims = ancestor.getElementDimensions(page);
-            break :blk switch (axis) {
-                .width => dims.width,
-                .height => dims.height,
-            };
-        } else return null;
-        return basis * percent / 100.0;
-    }
-
-    return CSS.parseDimension(trimmed);
-}
-
-fn inlineStyleDeclarationValue(self: *Element, comptime property: []const u8) ?[]const u8 {
-    const style_attr = self.getAttributeSafe(comptime .wrap("style")) orelse return null;
-    return inlineStyleAttributeValue(style_attr, property);
-}
-
-fn inlineStyleAttributeValue(style_attr: []const u8, comptime property: []const u8) ?[]const u8 {
-    var declarations = std.mem.tokenizeScalar(u8, style_attr, ';');
-    while (declarations.next()) |declaration| {
-        const colon = std.mem.indexOfScalar(u8, declaration, ':') orelse continue;
-        const name = std.mem.trim(u8, declaration[0..colon], &std.ascii.whitespace);
-        if (!std.ascii.eqlIgnoreCase(name, property)) {
-            continue;
-        }
-        return std.mem.trim(u8, declaration[colon + 1 ..], &std.ascii.whitespace);
-    }
-    return null;
-}
-
 pub fn getClientWidth(self: *Element, page: *Page) f64 {
     if (!self.checkVisibility(page)) {
         return 0.0;
-    }
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        return @floatFromInt(metrics.client_width);
     }
     const dims = self.getElementDimensions(page);
     return dims.width;
@@ -1273,9 +1101,6 @@ pub fn getClientWidth(self: *Element, page: *Page) f64 {
 pub fn getClientHeight(self: *Element, page: *Page) f64 {
     if (!self.checkVisibility(page)) {
         return 0.0;
-    }
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        return @floatFromInt(metrics.client_height);
     }
     const dims = self.getElementDimensions(page);
     return dims.height;
@@ -1297,30 +1122,11 @@ pub fn getBoundingClientRect(self: *Element, page: *Page) DOMRect {
 // Some cases need a the BoundingClientRect but have already done the
 // visibility check.
 pub fn getBoundingClientRectForVisible(self: *Element, page: *Page) DOMRect {
+    const y = calculateDocumentPosition(self.asNode());
     const dims = self.getElementDimensions(page);
-    var x = calculateSiblingPosition(self.asNode());
-    var y = calculateDocumentPosition(self.asNode());
 
     // Use sibling position for x coordinate to ensure siblings have different x values
-    if (page._element_layout_boxes.get(self)) |layout_box| {
-        x = @floatFromInt(layout_box.x);
-        y = @floatFromInt(layout_box.y);
-    }
-
-    var ancestor = self.asNode().parentElement();
-    while (ancestor) |current| : (ancestor = current.parentElement()) {
-        if (page._element_scroll_positions.get(current)) |scroll_position| {
-            x -= @as(f64, @floatFromInt(scroll_position.x));
-            y -= @as(f64, @floatFromInt(scroll_position.y));
-        }
-    }
-
-    var transform_node: ?*Element = self;
-    while (transform_node) |current| : (transform_node = current.parentElement()) {
-        const delta = resolveTranslateTransform(current, page);
-        x += delta.x;
-        y += delta.y;
-    }
+    const x = calculateSiblingPosition(self.asNode());
 
     return .{
         ._x = x,
@@ -1339,74 +1145,8 @@ pub fn getClientRects(self: *Element, page: *Page) ![]DOMRect {
     return rects;
 }
 
-const TranslateTransform = struct {
-    x: f64 = 0,
-    y: f64 = 0,
-};
-
-fn resolveTranslateTransform(element: *Element, page: *Page) TranslateTransform {
-    const dims = element.getElementDimensions(page);
-    const style = page.window.getComputedStyle(element, null, page) catch return .{};
-    const decl = style.asCSSStyleDeclaration();
-    const raw = std.mem.trim(u8, decl.getPropertyValue("transform", page), &std.ascii.whitespace);
-    if (raw.len == 0 or std.ascii.eqlIgnoreCase(raw, "none")) {
-        return .{};
-    }
-
-    if (std.mem.startsWith(u8, raw, "translate(") and std.mem.endsWith(u8, raw, ")")) {
-        return parseTranslateArguments(raw["translate(".len .. raw.len - 1], dims.width, dims.height);
-    }
-    if (std.mem.startsWith(u8, raw, "translate3d(") and std.mem.endsWith(u8, raw, ")")) {
-        return parseTranslateArguments(raw["translate3d(".len .. raw.len - 1], dims.width, dims.height);
-    }
-    if (std.mem.startsWith(u8, raw, "translateX(") and std.mem.endsWith(u8, raw, ")")) {
-        return .{ .x = parseTranslateLength(std.mem.trim(u8, raw["translateX(".len .. raw.len - 1], &std.ascii.whitespace), dims.width), .y = 0 };
-    }
-    if (std.mem.startsWith(u8, raw, "translateY(") and std.mem.endsWith(u8, raw, ")")) {
-        return .{ .x = 0, .y = parseTranslateLength(std.mem.trim(u8, raw["translateY(".len .. raw.len - 1], &std.ascii.whitespace), dims.height) };
-    }
-
-    return .{};
-}
-
-fn parseTranslateArguments(raw: []const u8, width: f64, height: f64) TranslateTransform {
-    const comma = std.mem.indexOfScalar(u8, raw, ',');
-    if (comma) |idx| {
-        const x_token = std.mem.trim(u8, raw[0..idx], &std.ascii.whitespace);
-        const tail = std.mem.trim(u8, raw[idx + 1 ..], &std.ascii.whitespace);
-        const y_end = std.mem.indexOfScalar(u8, tail, ',') orelse tail.len;
-        const y_token = std.mem.trim(u8, tail[0..y_end], &std.ascii.whitespace);
-        return .{
-            .x = parseTranslateLength(x_token, width),
-            .y = parseTranslateLength(y_token, height),
-        };
-    }
-
-    const first = std.mem.trim(u8, raw, &std.ascii.whitespace);
-    return .{
-        .x = parseTranslateLength(first, width),
-        .y = 0,
-    };
-}
-
-fn parseTranslateLength(token: []const u8, basis: f64) f64 {
-    if (token.len == 0) return 0;
-    if (std.mem.endsWith(u8, token, "%")) {
-        const parsed = std.fmt.parseFloat(f64, token[0 .. token.len - 1]) catch return 0;
-        return basis * parsed / 100.0;
-    }
-    if (std.mem.endsWith(u8, token, "px")) {
-        return std.fmt.parseFloat(f64, token[0 .. token.len - 2]) catch return 0;
-    }
-    return std.fmt.parseFloat(f64, token) catch 0;
-}
-
 pub fn getScrollTop(self: *Element, page: *Page) u32 {
     const pos = page._element_scroll_positions.get(self) orelse return 0;
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        const max_scroll = maxScrollOffset(metrics.scroll_height, metrics.client_height);
-        return @min(pos.y, max_scroll);
-    }
     return pos.y;
 }
 
@@ -1415,20 +1155,11 @@ pub fn setScrollTop(self: *Element, value: i32, page: *Page) !void {
     if (!gop.found_existing) {
         gop.value_ptr.* = .{};
     }
-    const next = @max(0, value);
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        gop.value_ptr.y = @intCast(@min(@as(u32, @intCast(next)), maxScrollOffset(metrics.scroll_height, metrics.client_height)));
-        return;
-    }
-    gop.value_ptr.y = @intCast(next);
+    gop.value_ptr.y = @intCast(@max(0, value));
 }
 
 pub fn getScrollLeft(self: *Element, page: *Page) u32 {
     const pos = page._element_scroll_positions.get(self) orelse return 0;
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        const max_scroll = maxScrollOffset(metrics.scroll_width, metrics.client_width);
-        return @min(pos.x, max_scroll);
-    }
     return pos.x;
 }
 
@@ -1437,25 +1168,16 @@ pub fn setScrollLeft(self: *Element, value: i32, page: *Page) !void {
     if (!gop.found_existing) {
         gop.value_ptr.* = .{};
     }
-    const next = @max(0, value);
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        gop.value_ptr.x = @intCast(@min(@as(u32, @intCast(next)), maxScrollOffset(metrics.scroll_width, metrics.client_width)));
-        return;
-    }
-    gop.value_ptr.x = @intCast(next);
+    gop.value_ptr.x = @intCast(@max(0, value));
 }
 
 pub fn getScrollHeight(self: *Element, page: *Page) f64 {
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        return @floatFromInt(metrics.scroll_height);
-    }
+    // In our dummy layout engine, content doesn't overflow
     return self.getClientHeight(page);
 }
 
 pub fn getScrollWidth(self: *Element, page: *Page) f64 {
-    if (page._element_scroll_metrics.get(self)) |metrics| {
-        return @floatFromInt(metrics.scroll_width);
-    }
+    // In our dummy layout engine, content doesn't overflow
     return self.getClientWidth(page);
 }
 
@@ -1492,13 +1214,6 @@ pub fn getOffsetLeft(self: *Element, page: *Page) f64 {
 pub fn getClientTop(_: *Element) f64 {
     // Border width - in our dummy layout, we don't apply borders to layout
     return 0.0;
-}
-
-fn maxScrollOffset(scroll_size: u32, client_size: u32) u32 {
-    if (scroll_size <= client_size) {
-        return 0;
-    }
-    return scroll_size - client_size;
 }
 
 pub fn getClientLeft(_: *Element) f64 {
@@ -1865,6 +1580,36 @@ pub const Tag = enum {
             else => tag,
         };
     }
+
+    pub fn isBlock(self: Tag) bool {
+        // zig fmt: off
+        return switch (self) {
+            // Semantic Layout
+            .article, .aside, .footer, .header, .main, .nav, .section,
+            // Grouping / Containers
+            .address, .div, .fieldset, .figure, .p,
+            // Headings
+            .h1, .h2, .h3, .h4, .h5, .h6,
+            // Lists
+            .dl, .ol, .ul,
+            // Preformatted / Quotes
+            .blockquote, .pre,
+            // Tables
+            .table,
+            // Other
+            .hr,
+            => true,
+            else => false,
+        };
+        // zig fmt: on
+    }
+
+    pub fn isMetadata(self: Tag) bool {
+        return switch (self) {
+            .base, .head, .link, .meta, .noscript, .script, .style, .template, .title => true,
+            else => false,
+        };
+    }
 };
 
 pub const JsApi = struct {
@@ -2026,13 +1771,6 @@ pub const Build = struct {
 };
 
 const testing = @import("../../testing.zig");
-test "inlineStyleDeclarationValue parses width and height from inline style" {
-    const style = "display:block; width: 220px; height: 40px; background: #1a55d6;";
-    try std.testing.expectEqualStrings("220px", inlineStyleAttributeValue(style, "width").?);
-    try std.testing.expectEqualStrings("40px", inlineStyleAttributeValue(style, "height").?);
-    try std.testing.expect(inlineStyleAttributeValue(style, "color") == null);
-}
-
 test "WebApi: Element" {
     try testing.htmlRunner("element", .{});
 }

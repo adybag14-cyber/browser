@@ -23,9 +23,11 @@ const log = @import("../../log.zig");
 const js = @import("js.zig");
 const Env = @import("Env.zig");
 const bridge = @import("bridge.zig");
+const Origin = @import("Origin.zig");
 const Scheduler = @import("Scheduler.zig");
 
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
 const ScriptManager = @import("../ScriptManager.zig");
 
 const v8 = js.v8;
@@ -37,14 +39,11 @@ const IS_DEBUG = @import("builtin").mode == .Debug;
 
 // Loosely maps to a Browser Page.
 const Context = @This();
-threadlocal var module_resolution_context: ?*Context = null;
-threadlocal var module_resolution_referrer: ?[:0]const u8 = null;
-
-pub const embedder_data_index: c_int = 2;
 
 id: usize,
 env: *Env,
 page: *Page,
+session: *Session,
 isolate: js.Isolate,
 
 // Per-context microtask queue for isolation between contexts
@@ -78,39 +77,11 @@ call_depth: usize = 0,
 // context.localScope
 local: ?*const js.Local = null,
 
-// Serves two purposes. Like `global_objects`, this is used to free
-// every Global(Object) we've created during the lifetime of the context.
-// More importantly, it serves as an identity map - for a given Zig
-// instance, we map it to the same Global(Object).
-// The key is the @intFromPtr of the Zig value
-identity_map: std.AutoHashMapUnmanaged(usize, v8.Global) = .empty,
+origin: *Origin,
 
-// Any type that is stored in the identity_map which has a finalizer declared
-// will have its finalizer stored here. This is only used when shutting down
-// if v8 hasn't called the finalizer directly itself.
-finalizer_callbacks: std.AutoHashMapUnmanaged(usize, *FinalizerCallback) = .empty,
-finalizer_callback_pool: std.heap.MemoryPool(FinalizerCallback),
-
-// Some web APIs have to manage opaque values. Ideally, they use an
-// js.Object, but the js.Object has no lifetime guarantee beyond the
-// current call. They can call .persist() on their js.Object to get
-// a `Global(Object)`. We need to track these to free them.
-// This used to be a map and acted like identity_map; the key was
-// the @intFromPtr(js_obj.handle). But v8 can re-use address. Without
-// a reliable way to know if an object has already been persisted,
-// we now simply persist every time persist() is called.
-global_values: std.ArrayList(v8.Global) = .empty,
-global_objects: std.ArrayList(v8.Global) = .empty,
+// Unlike other v8 types, like functions or objects, modules are not shared
+// across origins.
 global_modules: std.ArrayList(v8.Global) = .empty,
-global_promises: std.ArrayList(v8.Global) = .empty,
-global_functions: std.ArrayList(v8.Global) = .empty,
-global_promise_resolvers: std.ArrayList(v8.Global) = .empty,
-
-// Temp variants stored in HashMaps for O(1) early cleanup.
-// Key is global.data_ptr.
-global_values_temp: std.AutoHashMapUnmanaged(usize, v8.Global) = .empty,
-global_promises_temp: std.AutoHashMapUnmanaged(usize, v8.Global) = .empty,
-global_functions_temp: std.AutoHashMapUnmanaged(usize, v8.Global) = .empty,
 
 // Our module cache: normalized module specifier => module.
 module_cache: std.StringHashMapUnmanaged(ModuleEntry) = .empty,
@@ -121,7 +92,6 @@ module_cache: std.StringHashMapUnmanaged(ModuleEntry) = .empty,
 // given is the specifier, we can form the full path. The full path is
 // necessary to lookup/store the dependent module in the module_cache.
 module_identifier: std.AutoHashMapUnmanaged(u32, [:0]const u8) = .empty,
-module_resolution_order: std.StringHashMapUnmanaged(ModuleResolutionOrder) = .empty,
 
 // the page's script manager
 script_manager: ?*ScriptManager,
@@ -129,17 +99,12 @@ script_manager: ?*ScriptManager,
 // Our macrotasks
 scheduler: Scheduler,
 
-// Parked pages keep their live DOM/context for stop-restore, but their JS
-// event loop must not keep running while a provisional replacement page loads.
-suspended: bool = false,
-
 unknown_properties: (if (IS_DEBUG) std.StringHashMapUnmanaged(UnknownPropertyStat) else void) = if (IS_DEBUG) .{} else {},
 
 const ModuleEntry = struct {
     // Can be null if we're asynchrously loading the module, in
     // which case resolver_promise cannot be null.
     module: ?js.Module.Global = null,
-    include_credentials: bool = true,
 
     // The promise of the evaluating module. The resolved value is
     // meaningless to us, but the resolver promise needs to chain
@@ -154,68 +119,22 @@ const ModuleEntry = struct {
     resolver_promise: ?js.Promise.Global = null,
 };
 
-const ModuleResolutionOrder = struct {
-    referrer_path: [:0]const u8 = "",
-    specifiers: std.ArrayListUnmanaged([:0]const u8) = .empty,
-    next: usize = 0,
-};
-
-fn precompileStaticModuleDependencies(
-    self: *Context,
-    referrer_path: [:0]const u8,
-    local: *const js.Local,
-    visited: *std.StringHashMapUnmanaged(void),
-) !void {
-    const gop = try visited.getOrPut(self.call_arena, referrer_path);
-    if (gop.found_existing) {
-        return;
-    }
-
-    const order = self.module_resolution_order.getPtr(referrer_path) orelse return;
-    for (order.specifiers.items) |normalized_specifier| {
-        const entry = self.module_cache.getPtr(normalized_specifier) orelse continue;
-        if (entry.module == null) {
-            var source = try self.script_manager.?.waitForImport(normalized_specifier);
-            defer source.deinit();
-
-            var try_catch: js.TryCatch = undefined;
-            try_catch.init(local);
-            defer try_catch.deinit();
-
-            const mod = try compileModule(local, source.src(), normalized_specifier);
-            try self.postCompileModule(mod, normalized_specifier, local);
-            const refreshed_entry = self.module_cache.getPtr(normalized_specifier).?;
-            if (refreshed_entry.module == null) {
-                refreshed_entry.module = try mod.persist();
-            }
-        }
-
-        try self.precompileStaticModuleDependencies(normalized_specifier, local, visited);
-
-        const instantiated_entry = self.module_cache.getPtr(normalized_specifier) orelse continue;
-        const cached_module = local.toLocal(instantiated_entry.module orelse continue);
-        if (cached_module.getStatus() == .kUninstantiated) {
-            self.resetModuleResolutionOrder(normalized_specifier);
-            const previous_resolution_context = module_resolution_context;
-            const previous_resolution_referrer = module_resolution_referrer;
-            module_resolution_context = self;
-            module_resolution_referrer = normalized_specifier;
-            defer module_resolution_context = previous_resolution_context;
-            defer module_resolution_referrer = previous_resolution_referrer;
-            if (try cached_module.instantiate(resolveModuleCallback) == false) {
-                return error.ModuleInstantiationError;
-            }
-        }
-    }
+pub fn fromC(c_context: *const v8.Context) ?*Context {
+    return @ptrCast(@alignCast(v8.v8__Context__GetAlignedPointerFromEmbedderData(c_context, 1)));
 }
 
-pub fn fromC(c_context: *const v8.Context) *Context {
-    const raw = v8.v8__Context__GetAlignedPointerFromEmbedderData(c_context, embedder_data_index);
-    return @ptrFromInt(@intFromPtr(raw));
-}
-
-pub fn fromIsolate(isolate: js.Isolate) *Context {
-    return fromC(v8.v8__Isolate__GetCurrentContext(isolate.handle).?);
+/// Returns the Context and v8::Context for the given isolate.
+/// If the current context is from a destroyed Context (e.g., navigated-away iframe),
+/// falls back to the incumbent context (the calling context).
+pub fn fromIsolate(isolate: js.Isolate) struct { *Context, *const v8.Context } {
+    const v8_context = v8.v8__Isolate__GetCurrentContext(isolate.handle).?;
+    if (fromC(v8_context)) |ctx| {
+        return .{ ctx, v8_context };
+    }
+    // The current context's Context struct has been freed (e.g., iframe navigated away).
+    // Fall back to the incumbent context (the calling context).
+    const v8_incumbent = v8.v8__Isolate__GetIncumbentContext(isolate.handle).?;
+    return .{ fromC(v8_incumbent).?, v8_incumbent };
 }
 
 pub fn deinit(self: *Context) void {
@@ -240,64 +159,16 @@ pub fn deinit(self: *Context) void {
     // this can release objects
     self.scheduler.deinit();
 
-    {
-        var it = self.identity_map.valueIterator();
-        while (it.next()) |global| {
-            v8.v8__Global__Reset(global);
-        }
-    }
-    {
-        var it = self.finalizer_callbacks.valueIterator();
-        while (it.next()) |finalizer| {
-            finalizer.*.deinit();
-        }
-        self.finalizer_callback_pool.deinit();
-    }
-
-    for (self.global_values.items) |*global| {
-        v8.v8__Global__Reset(global);
-    }
-
-    for (self.global_objects.items) |*global| {
-        v8.v8__Global__Reset(global);
-    }
-
     for (self.global_modules.items) |*global| {
         v8.v8__Global__Reset(global);
     }
 
-    for (self.global_functions.items) |*global| {
-        v8.v8__Global__Reset(global);
-    }
+    self.session.releaseOrigin(self.origin);
 
-    for (self.global_promises.items) |*global| {
-        v8.v8__Global__Reset(global);
-    }
-
-    for (self.global_promise_resolvers.items) |*global| {
-        v8.v8__Global__Reset(global);
-    }
-
-    {
-        var it = self.global_values_temp.valueIterator();
-        while (it.next()) |global| {
-            v8.v8__Global__Reset(global);
-        }
-    }
-
-    {
-        var it = self.global_promises_temp.valueIterator();
-        while (it.next()) |global| {
-            v8.v8__Global__Reset(global);
-        }
-    }
-
-    {
-        var it = self.global_functions_temp.valueIterator();
-        while (it.next()) |global| {
-            v8.v8__Global__Reset(global);
-        }
-    }
+    // Clear the embedder data so that if V8 keeps this context alive
+    // (because objects created in it are still referenced), we don't
+    // have a dangling pointer to our freed Context struct.
+    v8.v8__Context__SetAlignedPointerInEmbedderData(entered.handle, 1, null);
 
     v8.v8__Global__Reset(&self.handle);
     env.isolate.notifyContextDisposed();
@@ -307,19 +178,53 @@ pub fn deinit(self: *Context) void {
     v8.v8__MicrotaskQueue__DELETE(self.microtask_queue);
 }
 
+pub fn setOrigin(self: *Context, key: ?[]const u8) !void {
+    const env = self.env;
+    const isolate = env.isolate;
+
+    lp.assert(self.origin.rc == 1, "Ref opaque origin", .{ .rc = self.origin.rc });
+
+    const origin = try self.session.getOrCreateOrigin(key);
+    errdefer self.session.releaseOrigin(origin);
+    try origin.takeover(self.origin);
+
+    self.origin = origin;
+
+    {
+        var ls: js.Local.Scope = undefined;
+        self.localScope(&ls);
+        defer ls.deinit();
+
+        // Set the V8::Context SecurityToken, which is a big part of what allows
+        // one context to access another.
+        const token_local = v8.v8__Global__Get(&origin.security_token, isolate.handle);
+        v8.v8__Context__SetSecurityToken(ls.local.handle, token_local);
+    }
+}
+
+pub fn trackGlobal(self: *Context, global: v8.Global) !void {
+    return self.origin.trackGlobal(global);
+}
+
+pub fn trackTemp(self: *Context, global: v8.Global) !void {
+    return self.origin.trackTemp(global);
+}
+
 pub fn weakRef(self: *Context, obj: anytype) void {
-    const fc = self.finalizer_callbacks.get(@intFromPtr(obj)) orelse {
+    const resolved = js.Local.resolveValue(obj);
+    const fc = self.origin.finalizer_callbacks.get(@intFromPtr(resolved.ptr)) orelse {
         if (comptime IS_DEBUG) {
             // should not be possible
             std.debug.assert(false);
         }
         return;
     };
-    v8.v8__Global__SetWeakFinalizer(&fc.global, fc, bridge.Struct(@TypeOf(obj)).JsApi.Meta.finalizer.from_v8, v8.kParameter);
+    v8.v8__Global__SetWeakFinalizer(&fc.global, fc, resolved.finalizer_from_v8, v8.kParameter);
 }
 
 pub fn safeWeakRef(self: *Context, obj: anytype) void {
-    const fc = self.finalizer_callbacks.get(@intFromPtr(obj)) orelse {
+    const resolved = js.Local.resolveValue(obj);
+    const fc = self.origin.finalizer_callbacks.get(@intFromPtr(resolved.ptr)) orelse {
         if (comptime IS_DEBUG) {
             // should not be possible
             std.debug.assert(false);
@@ -327,11 +232,12 @@ pub fn safeWeakRef(self: *Context, obj: anytype) void {
         return;
     };
     v8.v8__Global__ClearWeak(&fc.global);
-    v8.v8__Global__SetWeakFinalizer(&fc.global, fc, bridge.Struct(@TypeOf(obj)).JsApi.Meta.finalizer.from_v8, v8.kParameter);
+    v8.v8__Global__SetWeakFinalizer(&fc.global, fc, resolved.finalizer_from_v8, v8.kParameter);
 }
 
 pub fn strongRef(self: *Context, obj: anytype) void {
-    const fc = self.finalizer_callbacks.get(@intFromPtr(obj)) orelse {
+    const resolved = js.Local.resolveValue(obj);
+    const fc = self.origin.finalizer_callbacks.get(@intFromPtr(resolved.ptr)) orelse {
         if (comptime IS_DEBUG) {
             // should not be possible
             std.debug.assert(false);
@@ -339,51 +245,11 @@ pub fn strongRef(self: *Context, obj: anytype) void {
         return;
     };
     v8.v8__Global__ClearWeak(&fc.global);
-}
-
-pub fn release(self: *Context, item: anytype) void {
-    if (@TypeOf(item) == *anyopaque) {
-        // Existing *anyopaque path for identity_map. Called internally from
-        // finalizers
-        var global = self.identity_map.fetchRemove(@intFromPtr(item)) orelse {
-            if (comptime IS_DEBUG) {
-                // should not be possible
-                std.debug.assert(false);
-            }
-            return;
-        };
-        v8.v8__Global__Reset(&global.value);
-
-        // The item has been fianalized, remove it for the finalizer callback so that
-        // we don't try to call it again on shutdown.
-        const fc = self.finalizer_callbacks.fetchRemove(@intFromPtr(item)) orelse {
-            if (comptime IS_DEBUG) {
-                // should not be possible
-                std.debug.assert(false);
-            }
-            return;
-        };
-        self.finalizer_callback_pool.destroy(fc.value);
-        return;
-    }
-
-    var map = switch (@TypeOf(item)) {
-        js.Value.Temp => &self.global_values_temp,
-        js.Promise.Temp => &self.global_promises_temp,
-        js.Function.Temp => &self.global_functions_temp,
-        else => |T| @compileError("Context.release cannot be called with a " ++ @typeName(T)),
-    };
-
-    if (map.fetchRemove(item.handle.data_ptr)) |kv| {
-        var global = kv.value;
-        v8.v8__Global__Reset(&global);
-    }
 }
 
 // Any operation on the context have to be made from a local.
 pub fn localScope(self: *Context, ls: *js.Local.Scope) void {
     const isolate = self.isolate;
-    isolate.enter();
     js.HandleScope.init(&ls.handle_scope, isolate);
 
     const local_v8_context: *const v8.Context = @ptrCast(v8.v8__Global__Get(&self.handle, isolate.handle));
@@ -403,39 +269,25 @@ pub fn toLocal(self: *Context, global: anytype) js.Local.ToLocalReturnType(@Type
     return l.toLocal(global);
 }
 
-// This isn't expected to be called often. It's for converting attributes into
-// function calls, e.g. <body onload="doSomething"> will turn that "doSomething"
-// string into a js.Function which looks like: function(e) { doSomething(e) }
-// There might be more efficient ways to do this, but doing it this way means
-// our code only has to worry about js.Funtion, not some union of a js.Function
-// or a string.
-pub fn stringToPersistedFunction(self: *Context, str: []const u8) !js.Function.Global {
+pub fn getIncumbent(self: *Context) *Page {
+    return fromC(v8.v8__Isolate__GetIncumbentContext(self.env.isolate.handle).?).?.page;
+}
+
+pub fn stringToPersistedFunction(
+    self: *Context,
+    function_body: []const u8,
+    comptime parameter_names: []const []const u8,
+    extensions: []const *const v8.Object,
+) !js.Function.Global {
     var ls: js.Local.Scope = undefined;
     self.localScope(&ls);
     defer ls.deinit();
 
-    var extra: []const u8 = "";
-    const normalized = std.mem.trim(u8, str, &std.ascii.whitespace);
-    if (normalized.len > 0 and normalized[normalized.len - 1] != ')') {
-        extra = "(e)";
-    }
-    const full = try std.fmt.allocPrintSentinel(self.call_arena, "(function(e) {{ {s}{s} }})", .{ normalized, extra }, 0);
-    const js_val = try ls.local.compileAndRun(full, null);
-    if (!js_val.isFunction()) {
-        return error.StringFunctionError;
-    }
-    return try (js.Function{ .local = &ls.local, .handle = @ptrCast(js_val.handle) }).persist();
+    const js_function = try ls.local.compileFunction(function_body, parameter_names, extensions);
+    return js_function.persist();
 }
 
-pub fn module(
-    self: *Context,
-    comptime want_result: bool,
-    local: *const js.Local,
-    src: []const u8,
-    url: []const u8,
-    cacheable: bool,
-    include_credentials: bool,
-) !(if (want_result) ModuleEntry else void) {
+pub fn module(self: *Context, comptime want_result: bool, local: *const js.Local, src: []const u8, url: []const u8, cacheable: bool) !(if (want_result) ModuleEntry else void) {
     const mod, const owned_url = blk: {
         const arena = self.arena;
 
@@ -444,7 +296,6 @@ pub fn module(
         if (cacheable) {
             gop = try self.module_cache.getOrPut(arena, url);
             if (gop.found_existing) {
-                gop.value_ptr.include_credentials = include_credentials;
                 if (gop.value_ptr.module) |cache_mod| {
                     if (gop.value_ptr.module_promise == null) {
                         // This an usual case, but it can happen if a module is
@@ -468,37 +319,27 @@ pub fn module(
                 }
             } else {
                 // first time seeing this
-                gop.value_ptr.* = .{ .include_credentials = include_credentials };
+                gop.value_ptr.* = .{};
             }
         }
 
         const owned_url = try arena.dupeZ(u8, url);
+        if (cacheable and !gop.found_existing) {
+            gop.key_ptr.* = owned_url;
+        }
         const m = try compileModule(local, src, owned_url);
 
         if (cacheable) {
             // compileModule is synchronous - nothing can modify the cache during compilation
             lp.assert(gop.value_ptr.module == null, "Context.module has module", .{});
             gop.value_ptr.module = try m.persist();
-            if (!gop.found_existing) {
-                gop.key_ptr.* = owned_url;
-            }
         }
 
         break :blk .{ m, owned_url };
     };
 
     try self.postCompileModule(mod, owned_url, local);
-    var precompiled_static_modules: std.StringHashMapUnmanaged(void) = .empty;
-    defer precompiled_static_modules.deinit(self.call_arena);
-    try self.precompileStaticModuleDependencies(owned_url, local, &precompiled_static_modules);
 
-    self.resetModuleResolutionOrder(owned_url);
-    const previous_resolution_context = module_resolution_context;
-    const previous_resolution_referrer = module_resolution_referrer;
-    module_resolution_context = self;
-    module_resolution_referrer = owned_url;
-    defer module_resolution_context = previous_resolution_context;
-    defer module_resolution_referrer = previous_resolution_referrer;
     if (try mod.instantiate(resolveModuleCallback) == false) {
         return error.ModuleInstantiationError;
     }
@@ -524,6 +365,7 @@ fn evaluateModule(self: *Context, comptime want_result: bool, mod: js.Module, ur
         });
         return error.EvaluationError;
     };
+
     // https://v8.github.io/api/head/classv8_1_1Module.html#a1f1758265a4082595757c3251bb40e0f
     // Must be a promise that gets returned here.
     lp.assert(evaluated.isPromise(), "Context.module non-promise", .{});
@@ -599,17 +441,7 @@ fn compileModule(local: *const js.Local, src: []const u8, name: []const u8) !js.
 // we always want to track its identity (so that, if this module imports other
 // modules, we can resolve the full URL), and preload any dependent modules.
 fn postCompileModule(self: *Context, mod: js.Module, url: [:0]const u8, local: *const js.Local) !void {
-    const module_identity = mod.getIdentityHash();
-    try self.module_identifier.putNoClobber(self.arena, module_identity, url);
-    const include_credentials = if (self.module_cache.getPtr(url)) |entry| entry.include_credentials else true;
-    const order_gop = try self.module_resolution_order.getOrPut(self.arena, url);
-    if (!order_gop.found_existing) {
-        order_gop.value_ptr.* = .{ .referrer_path = url };
-    } else {
-        order_gop.value_ptr.referrer_path = url;
-        order_gop.value_ptr.specifiers.clearRetainingCapacity();
-        order_gop.value_ptr.next = 0;
-    }
+    try self.module_identifier.putNoClobber(self.arena, mod.getIdentityHash(), url);
 
     // Non-async modules are blocking. We can download them in parallel, but
     // they need to be processed serially. So we want to get the list of
@@ -624,14 +456,20 @@ fn postCompileModule(self: *Context, mod: js.Module, url: [:0]const u8, local: *
             url,
             try specifier.toSliceZ(),
         );
-        const resolution_specifier = try self.arena.dupeZ(u8, normalized_specifier);
-        try order_gop.value_ptr.specifiers.append(self.arena, resolution_specifier);
         const nested_gop = try self.module_cache.getOrPut(self.arena, normalized_specifier);
         if (!nested_gop.found_existing) {
             const owned_specifier = try self.arena.dupeZ(u8, normalized_specifier);
             nested_gop.key_ptr.* = owned_specifier;
-            nested_gop.value_ptr.* = .{ .include_credentials = include_credentials };
-            try script_manager.preloadImport(owned_specifier, url, include_credentials);
+            nested_gop.value_ptr.* = .{};
+            try script_manager.preloadImport(owned_specifier, url);
+        } else if (nested_gop.value_ptr.module == null) {
+            // Entry exists but module failed to compile previously.
+            // The imported_modules entry may have been consumed, so
+            // re-preload to ensure waitForImport can find it.
+            // Key was stored via dupeZ so it has a sentinel in memory.
+            const key = nested_gop.key_ptr.*;
+            const key_z: [:0]const u8 = key.ptr[0..key.len :0];
+            try script_manager.preloadImport(key_z, url);
         }
     }
 }
@@ -654,64 +492,28 @@ fn resolveModuleCallback(
     import_attributes: ?*const v8.FixedArray,
     c_referrer: ?*const v8.Module,
 ) callconv(.c) ?*const v8.Module {
-    _ = c_specifier;
     _ = import_attributes;
 
-    const self = module_resolution_context orelse return null;
-    var hs: js.HandleScope = undefined;
-    hs.init(self.isolate);
-    defer hs.deinit();
+    const self = fromC(c_context.?).?;
     const local = js.Local{
         .ctx = self,
         .handle = c_context.?,
         .isolate = self.isolate,
         .call_arena = self.call_arena,
     };
-    const referrer_path = blk: {
-        if (c_referrer) |handle| {
-            const referrer = js.Module{
-                .local = &local,
-                .handle = handle,
-            };
-            if (self.module_identifier.get(referrer.getIdentityHash())) |path| {
-                break :blk path;
-            }
-        }
-        break :blk module_resolution_referrer orelse return null;
-    };
-    const resolution = self.nextModuleResolution(referrer_path) catch |err| {
+
+    const specifier = js.String.toSliceZ(.{ .local = &local, .handle = c_specifier.? }) catch |err| {
         log.err(.js, "resolve module", .{ .err = err });
         return null;
     };
-    const resolved = self.resolvePrecomputedModule(resolution.referrer_path, resolution.specifier, &local) catch |err| {
+    const referrer = js.Module{ .local = &local, .handle = c_referrer.? };
+
+    return self._resolveModuleCallback(referrer, specifier, &local) catch |err| {
         log.err(.js, "resolve module", .{
             .err = err,
-            .specifier = resolution.specifier,
+            .specifier = specifier,
         });
         return null;
-    };
-    const resolved_module = js.Module{
-        .local = &local,
-        .handle = resolved orelse return null,
-    };
-    return resolved_module.handle;
-}
-
-const ModuleResolution = struct {
-    referrer_path: [:0]const u8,
-    specifier: [:0]const u8,
-};
-
-fn nextModuleResolution(self: *Context, referrer_path: [:0]const u8) !ModuleResolution {
-    const order = self.module_resolution_order.getPtr(referrer_path) orelse return error.UnknownModuleReferrer;
-    if (order.next >= order.specifiers.items.len) {
-        return error.UnknownModuleSpecifier;
-    }
-    const specifier = order.specifiers.items[order.next];
-    order.next += 1;
-    return .{
-        .referrer_path = order.referrer_path,
-        .specifier = specifier,
     };
 }
 
@@ -725,10 +527,7 @@ pub fn dynamicModuleCallback(
     _ = host_defined_options;
     _ = import_attrs;
 
-    const self = fromC(c_context.?);
-    var hs: js.HandleScope = undefined;
-    hs.init(self.isolate);
-    defer hs.deinit();
+    const self = fromC(c_context.?).?;
     const local = js.Local{
         .ctx = self,
         .handle = c_context.?,
@@ -774,10 +573,8 @@ pub fn dynamicModuleCallback(
 }
 
 pub fn metaObjectCallback(c_context: ?*v8.Context, c_module: ?*v8.Module, c_meta: ?*v8.Value) callconv(.c) void {
-    const self = fromC(c_context.?);
-    var hs: js.HandleScope = undefined;
-    hs.init(self.isolate);
-    defer hs.deinit();
+    // @HandleScope  implement this without a fat context/local..
+    const self = fromC(c_context.?).?;
     var local = js.Local{
         .ctx = self,
         .handle = c_context.?,
@@ -815,12 +612,21 @@ fn _resolveModuleCallback(self: *Context, referrer: js.Module, specifier: [:0]co
         referrer_path,
         specifier,
     );
+
     const entry = self.module_cache.getPtr(normalized_specifier).?;
     if (entry.module) |m| {
         return local.toLocal(m).handle;
     }
 
-    var source = try self.script_manager.?.waitForImport(normalized_specifier);
+    var source = self.script_manager.?.waitForImport(normalized_specifier) catch |err| switch (err) {
+        error.UnknownModule => blk: {
+            // Module is in cache but was consumed from imported_modules
+            // (e.g., by a previous failed resolution). Re-preload and retry.
+            try self.script_manager.?.preloadImport(normalized_specifier, referrer_path);
+            break :blk try self.script_manager.?.waitForImport(normalized_specifier);
+        },
+        else => return err,
+    };
     defer source.deinit();
 
     var try_catch: js.TryCatch = undefined;
@@ -829,38 +635,12 @@ fn _resolveModuleCallback(self: *Context, referrer: js.Module, specifier: [:0]co
 
     const mod = try compileModule(local, source.src(), normalized_specifier);
     try self.postCompileModule(mod, normalized_specifier, local);
-    const refreshed_entry = self.module_cache.getPtr(normalized_specifier).?;
-    refreshed_entry.module = try mod.persist();
+    entry.module = try mod.persist();
     // Note: We don't instantiate/evaluate here - V8 will handle instantiation
     // as part of the parent module's dependency chain. If there's a resolver
     // waiting, it will be handled when the module is eventually evaluated
     // (either as a top-level module or when accessed via dynamic import)
-    return local.toLocal(refreshed_entry.module.?).handle;
-}
-
-fn resolvePrecomputedModule(self: *Context, referrer_path: [:0]const u8, specifier: [:0]const u8, local: *const js.Local) !?*const v8.Module {
-    const normalized_specifier = try self.script_manager.?.resolveSpecifier(
-        self.arena,
-        referrer_path,
-        specifier,
-    );
-    const entry = self.module_cache.getPtr(normalized_specifier).?;
-    if (entry.module) |m| {
-        return local.toLocal(m).handle;
-    }
-
-    var source = try self.script_manager.?.waitForImport(normalized_specifier);
-    defer source.deinit();
-
-    var try_catch: js.TryCatch = undefined;
-    try_catch.init(local);
-    defer try_catch.deinit();
-
-    const mod = try compileModule(local, source.src(), normalized_specifier);
-    try self.postCompileModule(mod, normalized_specifier, local);
-    const refreshed_entry = self.module_cache.getPtr(normalized_specifier).?;
-    refreshed_entry.module = try mod.persist();
-    return local.toLocal(refreshed_entry.module.?).handle;
+    return mod.handle;
 }
 
 // Will get passed to ScriptManager and then passed back to us when
@@ -912,9 +692,7 @@ fn _dynamicModuleCallback(self: *Context, specifier: [:0]const u8, referrer: []c
         };
 
         // Next, we need to actually load it.
-        const referrer_include_credentials = if (self.module_cache.getPtr(referrer)) |entry| entry.include_credentials else true;
-        gop.value_ptr.include_credentials = referrer_include_credentials;
-        self.script_manager.?.getAsyncImport(specifier, dynamicModuleSourceCallback, state, referrer, referrer_include_credentials) catch |err| {
+        self.script_manager.?.getAsyncImport(specifier, dynamicModuleSourceCallback, state, referrer) catch |err| {
             const error_msg = local.newString(@errorName(err));
             _ = resolver.reject("dynamic module get async", error_msg);
         };
@@ -952,16 +730,6 @@ fn _dynamicModuleCallback(self: *Context, specifier: [:0]const u8, referrer: []c
         } else {
             // the module was loaded, but not evaluated, we _have_ to evaluate it now
             if (status == .kUninstantiated) {
-                var precompiled_static_modules: std.StringHashMapUnmanaged(void) = .empty;
-                defer precompiled_static_modules.deinit(self.call_arena);
-                try self.precompileStaticModuleDependencies(specifier, local, &precompiled_static_modules);
-                self.resetModuleResolutionOrder(specifier);
-                const previous_resolution_context = module_resolution_context;
-                const previous_resolution_referrer = module_resolution_referrer;
-                module_resolution_context = self;
-                module_resolution_referrer = specifier;
-                defer module_resolution_context = previous_resolution_context;
-                defer module_resolution_referrer = previous_resolution_referrer;
                 if (try mod.instantiate(resolveModuleCallback) == false) {
                     _ = resolver.reject("module instantiation", local.newString("Module instantiation failed"));
                     return promise;
@@ -996,7 +764,6 @@ fn _dynamicModuleCallback(self: *Context, specifier: [:0]const u8, referrer: []c
 fn dynamicModuleSourceCallback(ctx: *anyopaque, module_source_: anyerror!ScriptManager.ModuleSource) void {
     const state: *DynamicModuleResolveState = @ptrCast(@alignCast(ctx));
     var self = state.context;
-    const include_credentials = if (self.module_cache.getPtr(state.specifier)) |entry| entry.include_credentials else true;
 
     var ls: js.Local.Scope = undefined;
     self.localScope(&ls);
@@ -1016,7 +783,7 @@ fn dynamicModuleSourceCallback(ctx: *anyopaque, module_source_: anyerror!ScriptM
         try_catch.init(local);
         defer try_catch.deinit();
 
-        break :blk self.module(true, local, ms.src(), state.specifier, true, include_credentials) catch |err| {
+        break :blk self.module(true, local, ms.src(), state.specifier, true) catch |err| {
             const caught = try_catch.caughtOrError(self.call_arena, err);
             log.err(.js, "module compilation failed", .{
                 .caught = caught,
@@ -1104,12 +871,6 @@ fn resolveDynamicModule(self: *Context, state: *DynamicModuleResolveState, modul
     };
 }
 
-fn resetModuleResolutionOrder(self: *Context, referrer_path: [:0]const u8) void {
-    if (self.module_resolution_order.getPtr(referrer_path)) |order| {
-        order.next = 0;
-    }
-}
-
 // Used to make temporarily enter and exit a context, updating and restoring
 // page.js:
 //    var hs: js.HandleScope = undefined;
@@ -1117,7 +878,6 @@ fn resetModuleResolutionOrder(self: *Context, referrer_path: [:0]const u8) void 
 //    defer entered.exit();
 pub fn enter(self: *Context, hs: *js.HandleScope) Entered {
     const isolate = self.isolate;
-    isolate.enter();
     js.HandleScope.init(hs, isolate);
 
     const page = self.page;
@@ -1126,7 +886,7 @@ pub fn enter(self: *Context, hs: *js.HandleScope) Entered {
 
     const handle: *const v8.Context = @ptrCast(v8.v8__Global__Get(&self.handle, isolate.handle));
     v8.v8__Context__Enter(handle);
-    return .{ .original = original, .handle = handle, .handle_scope = hs, .isolate = isolate };
+    return .{ .original = original, .handle = handle, .handle_scope = hs };
 }
 
 const Entered = struct {
@@ -1137,13 +897,11 @@ const Entered = struct {
     handle: *const v8.Context,
 
     handle_scope: *js.HandleScope,
-    isolate: js.Isolate,
 
     pub fn exit(self: Entered) void {
         self.original.page.js = self.original;
         v8.v8__Context__Exit(self.handle);
         self.handle_scope.deinit();
-        self.isolate.exit();
     }
 };
 
@@ -1207,34 +965,6 @@ pub fn queueMicrotaskFunc(self: *Context, cb: js.Function) void {
     // Use context-specific microtask queue instead of isolate queue
     v8.v8__MicrotaskQueue__EnqueueMicrotaskFunc(self.microtask_queue, self.isolate.handle, cb.handle);
 }
-
-pub fn createFinalizerCallback(self: *Context, global: v8.Global, ptr: *anyopaque, finalizerFn: *const fn (ptr: *anyopaque, page: *Page) void) !*FinalizerCallback {
-    const fc = try self.finalizer_callback_pool.create();
-    fc.* = .{
-        .ctx = self,
-        .ptr = ptr,
-        .global = global,
-        .finalizerFn = finalizerFn,
-    };
-    return fc;
-}
-
-// == Misc ==
-// A type that has a finalizer can have its finalizer called one of two ways.
-// The first is from V8 via the WeakCallback we give to weakRef. But that isn't
-// guaranteed to fire, so we track this in ctx._finalizers and call them on
-// context shutdown.
-pub const FinalizerCallback = struct {
-    ctx: *Context,
-    ptr: *anyopaque,
-    global: v8.Global,
-    finalizerFn: *const fn (ptr: *anyopaque, page: *Page) void,
-
-    pub fn deinit(self: *FinalizerCallback) void {
-        self.finalizerFn(self.ptr, self.ctx.page);
-        self.ctx.finalizer_callback_pool.destroy(self);
-    }
-};
 
 // == Profiler ==
 pub fn startCpuProfiler(self: *Context) void {

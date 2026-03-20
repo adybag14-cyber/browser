@@ -1,151 +1,91 @@
+// Copyright (C) 2023-2026  Lightpanda (Selecy SAS)
+//
+// Francis Bouvier <francis@lightpanda.io>
+// Pierre Tachoire <pierre@lightpanda.io>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 const std = @import("std");
 const js = @import("../../js/js.zig");
 const Page = @import("../../Page.zig");
-const CSSStyleSheet = @import("CSSStyleSheet.zig");
+const Session = @import("../../Session.zig");
+const FontFace = @import("FontFace.zig");
+const EventTarget = @import("../EventTarget.zig");
+const Event = @import("../Event.zig");
+
+const Allocator = std.mem.Allocator;
 
 const FontFaceSet = @This();
 
-// Padding to avoid zero-size struct, which causes identity_map pointer collisions.
-_pad: bool = false,
-_page: *Page,
+_proto: *EventTarget,
+_arena: Allocator,
 
 pub fn init(page: *Page) !*FontFaceSet {
-    return page._factory.create(FontFaceSet{
-        ._page = page,
+    const arena = try page.getArena(.{ .debug = "FontFaceSet" });
+    errdefer page.releaseArena(arena);
+
+    return page._factory.eventTargetWithAllocator(arena, FontFaceSet{
+        ._proto = undefined,
+        ._arena = arena,
     });
 }
 
+pub fn deinit(self: *FontFaceSet, _: bool, session: *Session) void {
+    session.releaseArena(self._arena);
+}
+
+pub fn asEventTarget(self: *FontFaceSet) *EventTarget {
+    return self._proto;
+}
+
+// FontFaceSet.ready - returns an already-resolved Promise.
+// In a headless browser there is no font loading, so fonts are always ready.
 pub fn getReady(_: *FontFaceSet, page: *Page) !js.Promise {
     return page.js.local.?.resolvePromise({});
 }
 
-pub fn getSize(self: *const FontFaceSet) !u32 {
-    const faces = try self.collectFontFaces(self._page);
-    return @intCast(faces.len);
+// check(font, text?) - always true; headless has no real fonts to check.
+pub fn check(_: *const FontFaceSet, font: []const u8) bool {
+    _ = font;
+    return true;
 }
 
-pub fn getStatus(_: *const FontFaceSet) []const u8 {
-    return "loaded";
+// load(font, text?) - resolves immediately with an empty array.
+pub fn load(self: *FontFaceSet, font: []const u8, page: *Page) !js.Promise {
+    // TODO parse font to check if the font has been added before dispatching
+    // events.
+    _ = font;
+
+    // Dispatch loading event
+    const target = self.asEventTarget();
+    if (page._event_manager.hasDirectListeners(target, "loading", null)) {
+        const event = try Event.initTrusted(comptime .wrap("loading"), .{}, page);
+        try page._event_manager.dispatchDirect(target, event, null, .{ .context = "load font face set" });
+    }
+
+    // Dispatch loadingdone event
+    if (page._event_manager.hasDirectListeners(target, "loadingdone", null)) {
+        const event = try Event.initTrusted(comptime .wrap("loadingdone"), .{}, page);
+        try page._event_manager.dispatchDirect(target, event, null, .{ .context = "load font face set" });
+    }
+
+    return page.js.local.?.resolvePromise({});
 }
 
-pub fn check(self: *const FontFaceSet, font: []const u8, text: ?[]const u8) bool {
-    _ = text;
-    const family = parseRequestedFamily(font) orelse return true;
-    if (isGenericFontFamily(family)) {
-        return true;
-    }
-    const faces = self.collectFontFaces(self._page) catch return false;
-    for (faces) |entry| {
-        if (entry.loaded and std.ascii.eqlIgnoreCase(entry.family, family)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-pub fn load(self: *FontFaceSet, font: []const u8, text: ?[]const u8, page: *Page) !js.Promise {
-    _ = text;
-    const requested_family = parseRequestedFamily(font);
-    const faces = try self.collectFontFaces(page);
-    var arr = page.js.local.?.newArray(@intCast(countMatchingLoadedFaces(faces, requested_family)));
-    var index: u32 = 0;
-    for (faces) |entry| {
-        if (!matchesRequestedFamily(requested_family, entry)) {
-            continue;
-        }
-        _ = try arr.set(index, entry.family, .{});
-        index += 1;
-    }
-    return page.js.local.?.resolvePromise(arr.toValue());
-}
-
-fn collectFontFaces(self: *const FontFaceSet, page: *Page) ![]const CSSStyleSheet.FontFaceEntry {
-    _ = self;
-    const sheets = try page.window._document.getStyleSheets(page);
-    var entries: std.ArrayList(CSSStyleSheet.FontFaceEntry) = .{};
-    defer entries.deinit(page.call_arena);
-    for (sheets.items()) |sheet| {
-        try entries.appendSlice(page.call_arena, sheet.getFontFaces());
-    }
-    return try page.call_arena.dupe(CSSStyleSheet.FontFaceEntry, entries.items);
-}
-
-fn countMatchingLoadedFaces(
-    faces: []const CSSStyleSheet.FontFaceEntry,
-    requested_family: ?[]const u8,
-) usize {
-    var count: usize = 0;
-    for (faces) |entry| {
-        if (matchesRequestedFamily(requested_family, entry)) {
-            count += 1;
-        }
-    }
-    return count;
-}
-
-fn matchesRequestedFamily(requested_family: ?[]const u8, entry: CSSStyleSheet.FontFaceEntry) bool {
-    if (!entry.loaded) {
-        return false;
-    }
-    const family = requested_family orelse return true;
-    return std.ascii.eqlIgnoreCase(family, entry.family);
-}
-
-fn parseRequestedFamily(font: []const u8) ?[]const u8 {
-    const trimmed = std.mem.trim(u8, font, &std.ascii.whitespace);
-    if (trimmed.len == 0) {
-        return null;
-    }
-
-    for ([_]u8{ '"', '\'' }) |quote| {
-        const start = std.mem.indexOfScalar(u8, trimmed, quote) orelse continue;
-        const end = std.mem.lastIndexOfScalar(u8, trimmed, quote) orelse continue;
-        if (end > start) {
-            const family = std.mem.trim(u8, trimmed[start + 1 .. end], &std.ascii.whitespace);
-            if (family.len != 0) {
-                return family;
-            }
-        }
-    }
-
-    const comma = std.mem.indexOfScalar(u8, trimmed, ',') orelse trimmed.len;
-    const head = std.mem.trim(u8, trimmed[0..comma], &std.ascii.whitespace);
-    if (head.len == 0) {
-        return null;
-    }
-    const separators = &std.ascii.whitespace;
-    var family_start: usize = 0;
-    for (separators) |separator| {
-        if (std.mem.lastIndexOfScalar(u8, head, separator)) |idx| {
-            family_start = @max(family_start, idx + 1);
-        }
-    }
-    const family = std.mem.trim(u8, head[family_start..], &std.ascii.whitespace);
-    return if (family.len == 0) null else family;
-}
-
-fn isGenericFontFamily(family: []const u8) bool {
-    const generic_families = [_][]const u8{
-        "serif",
-        "sans-serif",
-        "monospace",
-        "cursive",
-        "fantasy",
-        "system-ui",
-        "emoji",
-        "math",
-        "fangsong",
-        "ui-serif",
-        "ui-sans-serif",
-        "ui-monospace",
-        "ui-rounded",
-    };
-    for (generic_families) |generic_family| {
-        if (std.ascii.eqlIgnoreCase(family, generic_family)) {
-            return true;
-        }
-    }
-    return false;
+// add(fontFace) - no-op; headless browser does not track loaded fonts.
+pub fn add(self: *FontFaceSet, _: *FontFace) *FontFaceSet {
+    return self;
 }
 
 pub const JsApi = struct {
@@ -155,30 +95,17 @@ pub const JsApi = struct {
         pub const name = "FontFaceSet";
         pub const prototype_chain = bridge.prototypeChain();
         pub var class_id: bridge.ClassId = undefined;
+        pub const weak = true;
+        pub const finalizer = bridge.finalizer(FontFaceSet.deinit);
     };
 
-    pub const size = bridge.accessor(FontFaceSet.getSize, null, .{});
-    pub const status = bridge.accessor(FontFaceSet.getStatus, null, .{});
+    pub const size = bridge.property(0, .{ .template = false, .readonly = true });
+    pub const status = bridge.property("loaded", .{ .template = false, .readonly = true });
     pub const ready = bridge.accessor(FontFaceSet.getReady, null, .{});
     pub const check = bridge.function(FontFaceSet.check, .{});
     pub const load = bridge.function(FontFaceSet.load, .{});
+    pub const add = bridge.function(FontFaceSet.add, .{});
 };
-
-test "parseRequestedFamily handles quoted family names" {
-    try std.testing.expectEqualStrings("Runner Font", parseRequestedFamily("16px \"Runner Font\"").?);
-    try std.testing.expectEqualStrings("Runner Font", parseRequestedFamily("italic bold 16px 'Runner Font'").?);
-}
-
-test "parseRequestedFamily handles unquoted generic family names" {
-    try std.testing.expectEqualStrings("sans-serif", parseRequestedFamily("16px sans-serif").?);
-    try std.testing.expectEqualStrings("monospace", parseRequestedFamily("italic 16px monospace, serif").?);
-}
-
-test "isGenericFontFamily recognizes generic families" {
-    try std.testing.expect(isGenericFontFamily("sans-serif"));
-    try std.testing.expect(isGenericFontFamily("SYSTEM-UI"));
-    try std.testing.expect(!isGenericFontFamily("Runner Font"));
-}
 
 const testing = @import("../../../testing.zig");
 test "WebApi: FontFaceSet" {

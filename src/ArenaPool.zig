@@ -28,8 +28,8 @@ retain_bytes: usize,
 free_list_len: u16 = 0,
 free_list: ?*Entry = null,
 free_list_max: u16,
-entry_pool: std.heap.MemoryPool(Entry),
-mutex: std.Thread.Mutex = .{},
+entry_pool: std.heap.memory_pool.Managed(Entry),
+mutex: @import("lightpanda").compat_sync.Mutex = .{},
 
 const Entry = struct {
     next: ?*Entry,

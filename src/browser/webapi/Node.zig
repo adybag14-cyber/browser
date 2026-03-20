@@ -277,10 +277,25 @@ pub fn getTextContent(self: *Node, writer: *std.Io.Writer) error{WriteFailed}!vo
     }
 }
 
-pub fn getTextContentAlloc(self: *Node, allocator: Allocator) (Allocator.Error || error{WriteFailed})![:0]const u8 {
+pub fn getTextContentAlloc(self: *Node, allocator: Allocator) error{WriteFailed}![:0]const u8 {
     var buf = std.Io.Writer.Allocating.init(allocator);
     try self.getTextContent(&buf.writer);
-    return try buf.toOwnedSliceSentinel(0);
+    try buf.writer.writeByte(0);
+    const data = buf.written();
+    return data[0 .. data.len - 1 :0];
+}
+
+/// Returns the "child text content" which is the concatenation of the data
+/// of all the Text node children of the node, in tree order.
+/// This differs from textContent which includes all descendant text.
+/// See: https://dom.spec.whatwg.org/#concept-child-text-content
+pub fn getChildTextContent(self: *Node, writer: *std.Io.Writer) error{WriteFailed}!void {
+    var it = self.childrenIterator();
+    while (it.next()) |child| {
+        if (child.is(CData.Text)) |text| {
+            try writer.writeAll(text._proto._data.str());
+        }
+    }
 }
 
 pub fn setTextContent(self: *Node, data: []const u8, page: *Page) !void {
@@ -291,7 +306,8 @@ pub fn setTextContent(self: *Node, data: []const u8, page: *Page) !void {
             }
             return el.replaceChildren(&.{.{ .text = data }}, page);
         },
-        .cdata => |c| c._data = try page.dupeSSO(data),
+        // Per spec, setting textContent on CharacterData runs replaceData(0, length, value)
+        .cdata => |c| try c.replaceData(0, c.getLength(), data, page),
         .document => {},
         .document_type => {},
         .document_fragment => |frag| {
@@ -490,6 +506,11 @@ pub fn ownerDocument(self: *const Node, page: *const Page) ?*Document {
     return page.document;
 }
 
+pub fn ownerPage(self: *const Node, default: *Page) *Page {
+    const doc = self.ownerDocument(default) orelse return default;
+    return doc._page orelse default;
+}
+
 pub fn isSameDocumentAs(self: *const Node, other: *const Node, page: *const Page) bool {
     // Get the root document for each node
     const self_doc = if (self._type == .document) self._type.document else self.ownerDocument(page);
@@ -610,7 +631,11 @@ pub fn getNodeValue(self: *const Node) ?String {
 
 pub fn setNodeValue(self: *const Node, value: ?String, page: *Page) !void {
     switch (self._type) {
-        .cdata => |c| try c.setData(if (value) |v| v.str() else null, page),
+        // Per spec, setting nodeValue on CharacterData runs replaceData(0, length, value)
+        .cdata => |c| {
+            const new_value: []const u8 = if (value) |v| v.str() else "";
+            try c.replaceData(0, c.getLength(), new_value, page);
+        },
         .attribute => |attr| try attr.setValue(value, page),
         .element => {},
         .document => {},
@@ -738,21 +763,7 @@ pub fn cloneNode(self: *Node, deep_: ?bool, page: *Page) CloneError!*Node {
                 .processing_instruction => |pi| page.createProcessingInstruction(pi._target, data),
             };
         },
-        .element => |el| return el.clone(deep, page) catch |err| switch (err) {
-            error.OutOfMemory => error.OutOfMemory,
-            error.StringTooLarge => error.StringTooLarge,
-            error.NotSupported => error.NotSupported,
-            error.NotImplemented => error.NotImplemented,
-            error.InvalidCharacterError => error.InvalidCharacterError,
-            error.IFrameLoadError => error.IFrameLoadError,
-            error.TooManyContexts => error.TooManyContexts,
-            error.LinkLoadError => error.LinkLoadError,
-            error.StyleLoadError => error.StyleLoadError,
-            error.TypeError => error.TypeError,
-            error.CompilationError => error.CompilationError,
-            error.JsException => error.JsException,
-            else => error.CloneError,
-        },
+        .element => |el| return el.clone(deep, page),
         .document => return error.NotSupported,
         .document_type => |dt| {
             const cloned = dt.clone(page) catch return error.CloneError;
@@ -1138,7 +1149,7 @@ pub const NodeOrText = union(enum) {
     node: *Node,
     text: []const u8,
 
-    pub fn format(self: *const NodeOrText, writer: *std.io.Writer) !void {
+    pub fn format(self: *const NodeOrText, writer: *std.Io.Writer) !void {
         switch (self.*) {
             .node => |n| try n.format(writer),
             .text => |text| {

@@ -8,7 +8,7 @@
   testing.expectEqual('https://lightpanda.io/opensource-browser/15', l2.href);
 
   l2.href = '/over/9000';
-  testing.expectEqual(testing.ORIGIN + 'over/9000', l2.href);
+  testing.expectEqual(testing.ORIGIN + '/over/9000', l2.href);
 
   l2.crossOrigin = 'nope';
   testing.expectEqual('anonymous', l2.crossOrigin);
@@ -25,7 +25,7 @@
   // A link with rel=stylesheet and a non-empty href fires a load event when appended to the DOM
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'link_stylesheet.css';
+  link.href = 'https://lightpanda.io/opensource-browser/15';
 
   testing.async(async () => {
     const result = await new Promise(resolve => {
@@ -79,61 +79,29 @@
   // Append to DOM,
   document.head.appendChild(link);
   // then set href.
-  link.href = 'link_stylesheet.css';
+  link.href = 'https://lightpanda.io/opensource-browser/15';
 
   testing.eventually(() => testing.expectEqual(true, result));
 }
 </script>
 
-<script id="link-sheet">
+<script id="refs">
 {
-  const startLen = document.styleSheets.length;
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'link_stylesheet.css';
-
-  testing.async(async () => {
-    await new Promise(resolve => {
-      link.addEventListener('load', () => resolve(true));
-      document.head.appendChild(link);
-    });
-
-    testing.expectEqual(true, link.sheet instanceof CSSStyleSheet);
-    testing.expectEqual(testing.BASE_URL + 'element/html/link_stylesheet.css', link.sheet.href);
-    testing.expectEqual(startLen + 1, document.styleSheets.length);
-    testing.expectEqual(link.sheet, document.styleSheets[document.styleSheets.length - 1]);
-    testing.expectEqual(1, link.sheet.cssRules.length);
-    testing.expectEqual(1, link.sheet.cssRules[0].type);
-    testing.expectTrue(link.sheet.cssRules[0].cssText.includes('body'));
+  const rels = ['stylesheet', 'preload', 'modulepreload'];
+  const results = rels.map(() => false);
+  rels.forEach((rel, i) => {
+    let link = document.createElement('link')
+    link.rel = rel;
+    link.href = '/nope';
+    link.onload = () => results[i] = true;
+    document.documentElement.appendChild(link);
   });
-}
-</script>
 
-<script id="link-sheet-import">
-{
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'link_import_root.css';
 
-  testing.async(async (restore) => {
-    await new Promise(resolve => {
-      link.addEventListener('load', () => resolve(true));
-      document.head.appendChild(link);
+  testing.eventually(() => {
+    results.forEach((r) => {
+      testing.expectEqual(true, r);
     });
-
-    restore();
-    const body = document.body || document.createElement('body');
-    if (!document.body) {
-      document.documentElement.appendChild(body);
-    }
-    const div = document.createElement('div');
-    div.className = 'link-import-target';
-    body.appendChild(div);
-
-    const computed = getComputedStyle(div);
-    testing.expectEqual('rgb(14, 144, 214)', computed.backgroundColor);
-    testing.expectEqual('rgb(9, 19, 29)', computed.color);
-    testing.expectTrue(link.sheet.cssRules.length >= 2);
   });
 }
 </script>

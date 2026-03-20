@@ -41,15 +41,27 @@ pub const CurlHeaderFunction = fn ([*]const u8, usize, usize, *anyopaque) usize;
 pub const CurlWriteFunction = fn ([*]const u8, usize, usize, *anyopaque) usize;
 pub const curl_writefunc_error: usize = c.CURL_WRITEFUNC_ERROR;
 
+pub const FreeCallback = fn (ptr: ?*anyopaque) void;
+pub const StrdupCallback = fn (str: [*:0]const u8) ?[*:0]u8;
+pub const MallocCallback = fn (size: usize) ?*anyopaque;
+pub const CallocCallback = fn (nmemb: usize, size: usize) ?*anyopaque;
+pub const ReallocCallback = fn (ptr: ?*anyopaque, size: usize) ?*anyopaque;
+
+pub const CurlAllocator = struct {
+    free: FreeCallback,
+    strdup: StrdupCallback,
+    malloc: MallocCallback,
+    calloc: CallocCallback,
+    realloc: ReallocCallback,
+};
+
 pub const CurlGlobalFlags = packed struct(u8) {
     ssl: bool = false,
-    win32: bool = false,
-    _reserved: u6 = 0,
+    _reserved: u7 = 0,
 
     pub fn to_c(self: @This()) c_long {
         var flags: c_long = 0;
         if (self.ssl) flags |= c.CURL_GLOBAL_SSL;
-        if (self.win32) flags |= c.CURL_GLOBAL_WIN32;
         return flags;
     }
 };
@@ -131,7 +143,6 @@ pub const CurlOption = enum(c.CURLoption) {
     follow_location = c.CURLOPT_FOLLOWLOCATION,
     redir_protocols_str = c.CURLOPT_REDIR_PROTOCOLS_STR,
     proxy = c.CURLOPT_PROXY,
-    no_proxy = c.CURLOPT_NOPROXY,
     ca_info_blob = c.CURLOPT_CAINFO_BLOB,
     proxy_ca_info_blob = c.CURLOPT_PROXY_CAINFO_BLOB,
     ssl_verify_host = c.CURLOPT_SSL_VERIFYHOST,
@@ -151,6 +162,7 @@ pub const CurlOption = enum(c.CURLoption) {
     cookie = c.CURLOPT_COOKIE,
     private = c.CURLOPT_PRIVATE,
     proxy_user_pwd = c.CURLOPT_PROXYUSERPWD,
+    user_pwd = c.CURLOPT_USERPWD,
     header_data = c.CURLOPT_HEADERDATA,
     header_function = c.CURLOPT_HEADERFUNCTION,
     write_data = c.CURLOPT_WRITEDATA,
@@ -451,8 +463,41 @@ pub const CurlMsg = struct {
     data: CurlMsgData,
 };
 
-pub fn curl_global_init(flags: CurlGlobalFlags) Error!void {
-    try errorCheck(c.curl_global_init(flags.to_c()));
+pub fn curl_global_init(flags: CurlGlobalFlags, comptime curl_allocator: ?CurlAllocator) Error!void {
+    const alloc = curl_allocator orelse {
+        return errorCheck(c.curl_global_init(flags.to_c()));
+    };
+
+    // The purpose of these wrappers is to hide callconv
+    // and provide an easy place to add logging when debugging.
+    const free = struct {
+        fn cb(ptr: ?*anyopaque) callconv(.c) void {
+            alloc.free(ptr);
+        }
+    }.cb;
+    const strdup = struct {
+        fn cb(str: [*c]const u8) callconv(.c) [*c]u8 {
+            const s: [*:0]const u8 = @ptrCast(str orelse return null);
+            return @ptrCast(alloc.strdup(s));
+        }
+    }.cb;
+    const malloc = struct {
+        fn cb(size: usize) callconv(.c) ?*anyopaque {
+            return alloc.malloc(size);
+        }
+    }.cb;
+    const calloc = struct {
+        fn cb(nmemb: usize, size: usize) callconv(.c) ?*anyopaque {
+            return alloc.calloc(nmemb, size);
+        }
+    }.cb;
+    const realloc = struct {
+        fn cb(ptr: ?*anyopaque, size: usize) callconv(.c) ?*anyopaque {
+            return alloc.realloc(ptr, size);
+        }
+    }.cb;
+
+    try errorCheck(c.curl_global_init_mem(flags.to_c(), malloc, free, realloc, strdup, calloc));
 }
 
 pub fn curl_global_cleanup() void {
@@ -512,10 +557,10 @@ pub fn curl_easy_setopt(easy: *Curl, comptime option: CurlOption, value: anytype
         .url,
         .redir_protocols_str,
         .proxy,
-        .no_proxy,
         .accept_encoding,
         .custom_request,
         .cookie,
+        .user_pwd,
         .proxy_user_pwd,
         .copy_post_fields,
         => blk: {
@@ -545,7 +590,10 @@ pub fn curl_easy_setopt(easy: *Curl, comptime option: CurlOption, value: anytype
         .header_data,
         .write_data,
         => blk: {
-            const ptr: *anyopaque = @ptrCast(value);
+            const ptr: ?*anyopaque = switch (@typeInfo(@TypeOf(value))) {
+                .null => null,
+                else => @ptrCast(value),
+            };
             break :blk c.curl_easy_setopt(easy, opt, ptr);
         },
 
@@ -581,10 +629,13 @@ pub fn curl_easy_setopt(easy: *Curl, comptime option: CurlOption, value: anytype
         .write_function => blk: {
             const cb: c.curl_write_callback = switch (@typeInfo(@TypeOf(value))) {
                 .null => null,
-                .@"fn" => struct {
+                .@"fn" => |info| struct {
                     fn cb(buffer: [*c]u8, count: usize, len: usize, user: ?*anyopaque) callconv(.c) usize {
-                        const u = user orelse unreachable;
-                        return value(@ptrCast(buffer), count, len, u);
+                        const user_arg = if (@typeInfo(info.params[3].type.?) == .optional)
+                            user
+                        else
+                            user orelse unreachable;
+                        return value(@ptrCast(buffer), count, len, user_arg);
                     }
                 }.cb,
                 else => @compileError("expected Zig function or null for " ++ @tagName(option) ++ ", got " ++ @typeName(@TypeOf(value))),
@@ -703,6 +754,15 @@ pub fn curl_multi_poll(
 ) ErrorMulti!void {
     const raw_fds: [*c]c.curl_waitfd = if (extra_fds.len == 0) null else @ptrCast(extra_fds.ptr);
     try errorMCheck(c.curl_multi_poll(multi, raw_fds, @intCast(extra_fds.len), timeout_ms, numfds));
+}
+
+pub fn curl_multi_waitfds(multi: *CurlM, ufds: []CurlWaitFd, fd_count: *c_uint) ErrorMulti!void {
+    const raw_fds: [*c]c.curl_waitfd = if (ufds.len == 0) null else @ptrCast(ufds.ptr);
+    try errorMCheck(c.curl_multi_waitfds(multi, raw_fds, @intCast(ufds.len), fd_count));
+}
+
+pub fn curl_multi_timeout(multi: *CurlM, timeout_ms: *c_long) ErrorMulti!void {
+    try errorMCheck(c.curl_multi_timeout(multi, timeout_ms));
 }
 
 pub fn curl_multi_info_read(multi: *CurlM, msgs_in_queue: *c_int) ?CurlMsg {

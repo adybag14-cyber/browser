@@ -82,12 +82,11 @@ pub fn parseList(arena: Allocator, input: []const u8, page: *Page) ParseError![]
 
     var remaining = preprocessed;
     while (true) {
-        const trimmed = std.mem.trimLeft(u8, remaining, &std.ascii.whitespace);
+        const trimmed = std.mem.trimStart(u8, remaining, &std.ascii.whitespace);
         if (trimmed.len == 0) break;
 
         var comma_pos: usize = trimmed.len;
         var depth: usize = 0;
-        var bracket_depth: usize = 0;
         var in_quote: u8 = 0; // 0 = not in quotes, '"' or '\'' = in that quote type
         var i: usize = 0;
         while (i < trimmed.len) {
@@ -125,16 +124,8 @@ pub fn parseList(arena: Allocator, input: []const u8, page: *Page) ParseError![]
                     if (depth > 0) depth -= 1;
                     i += 1;
                 },
-                '[' => {
-                    bracket_depth += 1;
-                    i += 1;
-                },
-                ']' => {
-                    if (bracket_depth > 0) bracket_depth -= 1;
-                    i += 1;
-                },
                 ',' => {
-                    if (depth == 0 and bracket_depth == 0) {
+                    if (depth == 0) {
                         comma_pos = i;
                         break;
                     }
@@ -146,7 +137,7 @@ pub fn parseList(arena: Allocator, input: []const u8, page: *Page) ParseError![]
             }
         }
 
-        const selector_input = std.mem.trimRight(u8, trimmed[0..comma_pos], &std.ascii.whitespace);
+        const selector_input = std.mem.trimEnd(u8, trimmed[0..comma_pos], &std.ascii.whitespace);
 
         if (selector_input.len > 0) {
             const selector = try parse(arena, selector_input, page);
@@ -298,37 +289,6 @@ pub fn parse(arena: Allocator, input: []const u8, page: *Page) ParseError!Select
     };
 }
 
-fn parseRelative(arena: Allocator, input: []const u8, page: *Page) ParseError!Selector.Selector {
-    var parser = Parser{ .input = input };
-    _ = parser.skipSpaces();
-
-    var relative: Selector.Combinator = .descendant;
-    switch (parser.peek()) {
-        '>' => {
-            parser.input = parser.input[1..];
-            relative = .child;
-        },
-        '+' => {
-            parser.input = parser.input[1..];
-            relative = .next_sibling;
-        },
-        '~' => {
-            parser.input = parser.input[1..];
-            relative = .subsequent_sibling;
-        },
-        else => {},
-    }
-
-    _ = parser.skipSpaces();
-    if (parser.peek() == 0) {
-        return error.InvalidSelector;
-    }
-
-    var selector = try parse(arena, parser.input, page);
-    selector.relative_combinator = relative;
-    return selector;
-}
-
 fn parsePart(self: *Parser, arena: Allocator, page: *Page) !Part {
     return switch (self.peek()) {
         '#' => .{ .id = try self.id(arena) },
@@ -367,7 +327,7 @@ fn isStartOfPart(c: u8) bool {
 
 // Returns true if there's more input after trimming whitespace
 fn skipSpaces(self: *Parser) bool {
-    const trimmed = std.mem.trimLeft(u8, self.input, &std.ascii.whitespace);
+    const trimmed = std.mem.trimStart(u8, self.input, &std.ascii.whitespace);
     self.input = trimmed;
     return trimmed.len > 0;
 }
@@ -375,7 +335,7 @@ fn skipSpaces(self: *Parser) bool {
 // Returns true if whitespace was actually removed
 fn skipSpacesConsumed(self: *Parser) bool {
     const original_len = self.input.len;
-    const trimmed = std.mem.trimLeft(u8, self.input, &std.ascii.whitespace);
+    const trimmed = std.mem.trimStart(u8, self.input, &std.ascii.whitespace);
     self.input = trimmed;
     return trimmed.len < original_len;
 }
@@ -391,66 +351,20 @@ fn peek(self: *const Parser) u8 {
 fn consumeUntilCommaOrParen(self: *Parser) []const u8 {
     const input = self.input;
     var depth: usize = 0;
-    var bracket_depth: usize = 0;
-    var in_quote: u8 = 0;
     var i: usize = 0;
 
-    while (i < input.len) {
+    while (i < input.len) : (i += 1) {
         const c = input[i];
-        if (in_quote != 0) {
-            if (c == '\\') {
-                i += 1;
-                if (i < input.len) i += 1;
-                continue;
-            }
-            if (c == in_quote) {
-                in_quote = 0;
-            }
-            i += 1;
-            continue;
-        }
-
         switch (c) {
-            '\\' => {
-                i += 1;
-                if (i < input.len) i += 1;
-                continue;
-            },
-            '"', '\'' => {
-                in_quote = c;
-                i += 1;
-                continue;
-            },
-            '[' => {
-                bracket_depth += 1;
-                i += 1;
-                continue;
-            },
-            ']' => {
-                if (bracket_depth > 0) bracket_depth -= 1;
-                i += 1;
-                continue;
-            },
-            '(' => {
-                depth += 1;
-                i += 1;
-                continue;
-            },
+            '(' => depth += 1,
             ')' => {
-                if (depth == 0 and bracket_depth == 0) break;
-                if (depth > 0) depth -= 1;
-                i += 1;
-                continue;
+                if (depth == 0) break;
+                depth -= 1;
             },
             ',' => {
-                if (depth == 0 and bracket_depth == 0) break;
-                i += 1;
-                continue;
+                if (depth == 0) break;
             },
-            else => {
-                i += 1;
-                continue;
-            },
+            else => {},
         }
     }
 
@@ -573,7 +487,7 @@ fn pseudoClass(self: *Parser, arena: Allocator, page: *Page) !Selector.PseudoCla
             if (self.peek() != ')') return error.InvalidPseudoClass;
             self.input = self.input[1..];
 
-            if (selectors.items.len == 0) return error.InvalidPseudoClass;
+            // Empty :is() is valid per spec - matches nothing
             return .{ .is = selectors.items };
         }
 
@@ -600,7 +514,7 @@ fn pseudoClass(self: *Parser, arena: Allocator, page: *Page) !Selector.PseudoCla
             if (self.peek() != ')') return error.InvalidPseudoClass;
             self.input = self.input[1..];
 
-            if (selectors.items.len == 0) return error.InvalidPseudoClass;
+            // Empty :where() is valid per spec - matches nothing
             return .{ .where = selectors.items };
         }
 
@@ -612,7 +526,7 @@ fn pseudoClass(self: *Parser, arena: Allocator, page: *Page) !Selector.PseudoCla
                 if (self.peek() == ')') break;
                 if (self.peek() == 0) return error.InvalidPseudoClass;
 
-                const selector = try parseRelative(arena, self.consumeUntilCommaOrParen(), page);
+                const selector = try parse(arena, self.consumeUntilCommaOrParen(), page);
                 try selectors.append(arena, selector);
 
                 _ = self.skipSpaces();
@@ -647,40 +561,13 @@ fn pseudoClass(self: *Parser, arena: Allocator, page: *Page) !Selector.PseudoCla
             return .{ .lang = lang };
         }
 
-        if (std.mem.eql(u8, name, "dir")) {
-            _ = self.skipSpaces();
-            const dir_start = self.input;
-            var dir_i: usize = 0;
-            while (dir_i < dir_start.len and dir_start[dir_i] != ')') : (dir_i += 1) {}
-            if (dir_i == 0 or self.peek() == 0) return error.InvalidPseudoClass;
-
-            const dir_value = std.mem.trim(u8, dir_start[0..dir_i], &std.ascii.whitespace);
-            self.input = dir_start[dir_i..];
-
-            if (self.peek() != ')') return error.InvalidPseudoClass;
-            self.input = self.input[1..];
-
-            if (std.ascii.eqlIgnoreCase(dir_value, "ltr")) {
-                return .{ .dir = .ltr };
-            }
-            if (std.ascii.eqlIgnoreCase(dir_value, "rtl")) {
-                return .{ .dir = .rtl };
-            }
-            return error.InvalidPseudoClass;
-        }
-
         return error.UnknownPseudoClass;
-    }
-
-    if (std.ascii.eqlIgnoreCase(name, "-webkit-any-link") or std.ascii.eqlIgnoreCase(name, "-moz-any-link")) {
-        return .any_link;
     }
 
     switch (name.len) {
         4 => {
             if (fastEql(name, "root")) return .root;
             if (fastEql(name, "link")) return .link;
-            if (fastEql(name, "open")) return .open;
         },
         5 => {
             if (fastEql(name, "modal")) return .modal;
@@ -1660,58 +1547,4 @@ test "Selector: Parser.parseNthPattern" {
         try testing.expectEqual(1, pattern.b);
         try testing.expectEqual("  )", parser.input);
     }
-}
-
-test "Selector: Parser.pseudoClass aliases vendor any-link and parses dir/open" {
-    const arena = testing.allocator;
-
-    {
-        var parser = Parser{ .input = ":-webkit-any-link" };
-        const pseudo = try parser.pseudoClass(arena, undefined);
-        try std.testing.expectEqual(Selector.PseudoClass.any_link, pseudo);
-        try testing.expectEqual("", parser.input);
-    }
-
-    {
-        var parser = Parser{ .input = ":-moz-any-link" };
-        const pseudo = try parser.pseudoClass(arena, undefined);
-        try std.testing.expectEqual(Selector.PseudoClass.any_link, pseudo);
-        try testing.expectEqual("", parser.input);
-    }
-
-    {
-        var parser = Parser{ .input = ":open" };
-        const pseudo = try parser.pseudoClass(arena, undefined);
-        try std.testing.expectEqual(Selector.PseudoClass.open, pseudo);
-        try testing.expectEqual("", parser.input);
-    }
-
-    {
-        var parser = Parser{ .input = ":dir(rtl)" };
-        const pseudo = try parser.pseudoClass(arena, undefined);
-        switch (pseudo) {
-            .dir => |direction| try std.testing.expectEqual(Selector.Direction.rtl, direction),
-            else => return error.UnexpectedPseudoClass,
-        }
-        try testing.expectEqual("", parser.input);
-    }
-}
-
-test "Selector: Parser.pseudoClass parses has relative selectors and quoted commas" {
-    var page = try testing.pageTest("page/selector_has_relative.html");
-    defer page._session.removePage();
-    const arena = page.call_arena;
-
-    var parser = Parser{ .input = ":has(> .direct, + li.selected, ~ [data-note='alpha,beta'])" };
-    const pseudo = try parser.pseudoClass(arena, page);
-    switch (pseudo) {
-        .has => |selectors| {
-            try std.testing.expectEqual(@as(usize, 3), selectors.len);
-            try std.testing.expectEqual(Selector.Combinator.child, selectors[0].relative_combinator.?);
-            try std.testing.expectEqual(Selector.Combinator.next_sibling, selectors[1].relative_combinator.?);
-            try std.testing.expectEqual(Selector.Combinator.subsequent_sibling, selectors[2].relative_combinator.?);
-        },
-        else => return error.UnexpectedPseudoClass,
-    }
-    try testing.expectEqual("", parser.input);
 }

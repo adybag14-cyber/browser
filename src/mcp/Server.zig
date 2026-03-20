@@ -3,10 +3,11 @@ const std = @import("std");
 const lp = @import("lightpanda");
 
 const App = @import("../App.zig");
-const HttpClient = @import("../http/Client.zig");
+const HttpClient = @import("../browser/HttpClient.zig");
 const testing = @import("../testing.zig");
 const protocol = @import("protocol.zig");
 const router = @import("router.zig");
+const CDPNode = @import("../cdp/Node.zig");
 
 const Self = @This();
 
@@ -17,14 +18,14 @@ http_client: *HttpClient,
 notification: *lp.Notification,
 browser: lp.Browser,
 session: *lp.Session,
-page: *lp.Page,
+node_registry: CDPNode.Registry,
 
-writer: *std.io.Writer,
-mutex: std.Thread.Mutex = .{},
-aw: std.io.Writer.Allocating,
+writer: *std.Io.Writer,
+mutex: @import("lightpanda").compat_sync.Mutex = .{},
+aw: std.Io.Writer.Allocating,
 
-pub fn init(allocator: std.mem.Allocator, app: *App, writer: *std.io.Writer) !*Self {
-    const http_client = try app.http.createClient(allocator);
+pub fn init(allocator: std.mem.Allocator, app: *App, writer: *std.Io.Writer) !*Self {
+    const http_client = try HttpClient.init(allocator, &app.network);
     errdefer http_client.deinit();
 
     const notification = try lp.Notification.init(allocator);
@@ -45,16 +46,15 @@ pub fn init(allocator: std.mem.Allocator, app: *App, writer: *std.io.Writer) !*S
         .http_client = http_client,
         .notification = notification,
         .session = undefined,
-        .page = undefined,
+        .node_registry = CDPNode.Registry.init(allocator),
     };
 
     self.session = try self.browser.newSession(self.notification);
-    self.page = try self.session.createPage();
-
     return self;
 }
 
 pub fn deinit(self: *Self) void {
+    self.node_registry.deinit();
     self.aw.deinit();
     self.browser.deinit();
     self.notification.deinit();
@@ -87,7 +87,7 @@ pub fn sendResult(self: *Self, id: std.json.Value, result: anytype) !void {
 }
 
 pub fn sendError(self: *Self, id: std.json.Value, code: protocol.ErrorCode, message: []const u8) !void {
-    try self.sendResponse(protocol.Response{
+    try self.sendResponse(.{
         .id = id,
         .@"error" = protocol.Error{
             .code = @intFromEnum(code),
@@ -105,8 +105,8 @@ test "MCP.Server - Integration: synchronous smoke test" {
         \\{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0.0"}}}
     ;
 
-    var in_reader: std.io.Reader = .fixed(input);
-    var out_alloc: std.io.Writer.Allocating = .init(testing.arena_allocator);
+    var in_reader: std.Io.Reader = .fixed(input);
+    var out_alloc: std.Io.Writer.Allocating = .init(testing.arena_allocator);
     defer out_alloc.deinit();
 
     var server = try Self.init(allocator, app, &out_alloc.writer);
@@ -115,4 +115,25 @@ test "MCP.Server - Integration: synchronous smoke test" {
     try router.processRequests(server, &in_reader);
 
     try testing.expectJson(.{ .id = 1 }, out_alloc.writer.buffered());
+}
+
+test "MCP.Server - Integration: ping request returns an empty result" {
+    defer testing.reset();
+    const allocator = testing.allocator;
+    const app = testing.test_app;
+
+    const input =
+        \\{"jsonrpc":"2.0","id":"ping-1","method":"ping"}
+    ;
+
+    var in_reader: std.Io.Reader = .fixed(input);
+    var out_alloc: std.Io.Writer.Allocating = .init(testing.arena_allocator);
+    defer out_alloc.deinit();
+
+    var server = try Self.init(allocator, app, &out_alloc.writer);
+    defer server.deinit();
+
+    try router.processRequests(server, &in_reader);
+
+    try testing.expectJson(.{ .id = "ping-1", .result = .{} }, out_alloc.writer.buffered());
 }

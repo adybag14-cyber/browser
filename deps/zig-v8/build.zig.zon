@@ -1,0 +1,20 @@
+.{
+    .name = .v8,
+    .version = "0.0.0",
+    .fingerprint = 0x10be7411eb47d7c5, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.2",
+    .dependencies = .{
+        .depot_tools = .{
+            .url = "https://chromium.googlesource.com/chromium/tools/depot_tools.git/+archive/4ce8ba39a3488397a2d1494f167020f21de502f3.tar.gz",
+            .hash = "N-V-__8AABDOXwDW4TLrTiydikRCN2ym9hJI1GKGR09ZLBvY",
+        },
+    },
+    .paths = .{
+        "src/",
+        "build-tools/",
+        "README",
+        "LICENSE",
+        "build.zig",
+        "build.zig.zon",
+    },
+}

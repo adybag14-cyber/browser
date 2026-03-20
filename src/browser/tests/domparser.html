@@ -4,9 +4,17 @@
 
 <script id=basic>
 {
-  const parser = new DOMParser();
-  testing.expectEqual('object', typeof parser);
-  testing.expectEqual('function', typeof parser.parseFromString);
+  {
+    const parser = new DOMParser();
+    testing.expectEqual('object', typeof parser);
+    testing.expectEqual('function', typeof parser.parseFromString);
+  }
+
+  {
+    const parser = new DOMParser();
+    let d = parser.parseFromString('', 'text/xml');
+    testing.expectEqual('<parsererror>error</parsererror>', new XMLSerializer().serializeToString(d));
+  }
 }
 </script>
 
@@ -387,5 +395,27 @@
       testing.expectEqual("description", elements.item(5).tagName);
     }
   }
+}
+</script>
+
+<script id=getElementsByTagName-xml>
+{
+  const parser = new DOMParser();
+  const doc = parser.parseFromString('<layout><row><col>A</col><col>B</col></row></layout>', 'text/xml');
+
+  // Test getElementsByTagName on document
+  const rows = doc.getElementsByTagName('row');
+  testing.expectEqual(1, rows.length);
+
+  // Test getElementsByTagName on element
+  const row = rows[0];
+  const cols = row.getElementsByTagName('col');
+  testing.expectEqual(2, cols.length);
+  testing.expectEqual('A', cols[0].textContent);
+  testing.expectEqual('B', cols[1].textContent);
+
+  // Test getElementsByTagName('*') on element
+  const allElements = row.getElementsByTagName('*');
+  testing.expectEqual(2, allElements.length);
 }
 </script>

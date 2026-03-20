@@ -19,6 +19,7 @@
 const std = @import("std");
 
 const Page = @import("../../Page.zig");
+const Session = @import("../../Session.zig");
 
 const Node = @import("../Node.zig");
 const Part = @import("Selector.zig").Part;
@@ -40,8 +41,8 @@ pub const EntryIterator = GenericIterator(Iterator, null);
 pub const KeyIterator = GenericIterator(Iterator, "0");
 pub const ValueIterator = GenericIterator(Iterator, "1");
 
-pub fn deinit(self: *const List, page: *Page) void {
-    page.releaseArena(self._arena);
+pub fn deinit(self: *const List, session: *Session) void {
+    session.releaseArena(self._arena);
 }
 
 pub fn collect(
@@ -508,7 +509,7 @@ fn matchesAttribute(el: *Node.Element, attr: Selector.Attribute) bool {
 fn attributeContainsWord(value: []const u8, word: []const u8) bool {
     var remaining = value;
     while (remaining.len > 0) {
-        const trimmed = std.mem.trimLeft(u8, remaining, &std.ascii.whitespace);
+        const trimmed = std.mem.trimStart(u8, remaining, &std.ascii.whitespace);
         if (trimmed.len == 0) return false;
 
         const end = std.mem.indexOfAny(u8, trimmed, &std.ascii.whitespace) orelse trimmed.len;
@@ -594,7 +595,6 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
             return el.getAttributeSafe(comptime .wrap("readonly")) == null;
         },
         .default => return false,
-        .open => return el.getAttributeSafe(comptime .wrap("open")) != null,
 
         // User interaction
         .hover => return false,
@@ -610,9 +610,12 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
         .focus_visible => return false,
 
         // Link states
-        .link => return matchesAnyLink(el),
+        .link => return false,
         .visited => return false,
-        .any_link => return matchesAnyLink(el),
+        .any_link => {
+            if (el.getTag() != .anchor) return false;
+            return el.getAttributeSafe(comptime .wrap("href")) != null;
+        },
         .target => {
             const element_id = el.getAttributeSafe(comptime .wrap("id")) orelse return false;
             const location = page.document._location orelse return false;
@@ -653,8 +656,7 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
         },
 
         // Functional
-        .dir => |direction| return resolveDirection(node) == direction,
-        .lang => |expected| return matchesLanguage(node, expected),
+        .lang => return false,
         .not => |selectors| {
             for (selectors) |selector| {
                 if (matches(node, selector, scope, page)) {
@@ -681,8 +683,22 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
         },
         .has => |selectors| {
             for (selectors) |selector| {
-                if (matchesHasSelector(node, selector, page)) {
-                    return true;
+                var child = node.firstChild();
+                while (child) |c| {
+                    const child_el = c.is(Node.Element) orelse {
+                        child = c.nextSibling();
+                        continue;
+                    };
+
+                    if (matches(child_el.asNode(), selector, scope, page)) {
+                        return true;
+                    }
+
+                    if (matchesHasDescendant(child_el, selector, scope, page)) {
+                        return true;
+                    }
+
+                    child = c.nextSibling();
                 }
             }
             return false;
@@ -690,122 +706,19 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
     }
 }
 
-fn matchesAnyLink(el: *Node.Element) bool {
-    switch (el.getTag()) {
-        .anchor, .area, .link => {},
-        else => return false,
-    }
-    return el.getAttributeSafe(comptime .wrap("href")) != null;
-}
-
-fn resolveDirection(node: *Node) Selector.Direction {
-    var current: ?*Node = node;
-    while (current) |candidate| {
-        if (candidate.is(Node.Element)) |element| {
-            if (element.getAttributeSafe(comptime .wrap("dir"))) |dir| {
-                const trimmed = std.mem.trim(u8, dir, &std.ascii.whitespace);
-                if (std.ascii.eqlIgnoreCase(trimmed, "rtl")) {
-                    return .rtl;
-                }
-                if (std.ascii.eqlIgnoreCase(trimmed, "ltr")) {
-                    return .ltr;
-                }
-            }
-        }
-        current = candidate.parentNode();
-    }
-    return .ltr;
-}
-
-fn matchesLanguage(node: *Node, expected: []const u8) bool {
-    const trimmed_expected = std.mem.trim(u8, expected, &std.ascii.whitespace);
-    if (trimmed_expected.len == 0) return false;
-
-    var current: ?*Node = node;
-    while (current) |candidate| {
-        if (candidate.is(Node.Element)) |element| {
-            if (element.getAttributeSafe(comptime .wrap("lang"))) |lang| {
-                const trimmed_lang = std.mem.trim(u8, lang, &std.ascii.whitespace);
-                if (trimmed_lang.len < trimmed_expected.len) {
-                    current = candidate.parentNode();
-                    continue;
-                }
-                if (!std.ascii.eqlIgnoreCase(trimmed_lang[0..trimmed_expected.len], trimmed_expected)) {
-                    current = candidate.parentNode();
-                    continue;
-                }
-                return trimmed_lang.len == trimmed_expected.len or trimmed_lang[trimmed_expected.len] == '-';
-            }
-        }
-        current = candidate.parentNode();
-    }
-    return false;
-}
-
-fn matchesHasSelector(anchor: *Node, selector: Selector.Selector, page: *Page) bool {
-    return switch (selector.relative_combinator orelse .descendant) {
-        .descendant => matchesHasDescendant(anchor, selector, page),
-        .child => matchesHasChild(anchor, selector, page),
-        .next_sibling => matchesHasAdjacentSibling(anchor, selector, page),
-        .subsequent_sibling => matchesHasFollowingSibling(anchor, selector, page),
-    };
-}
-
-fn matchesHasChild(anchor: *Node, selector: Selector.Selector, page: *Page) bool {
-    var child = anchor.firstChild();
+fn matchesHasDescendant(el: *Node.Element, selector: Selector.Selector, scope: *Node, page: *Page) bool {
+    var child = el.asNode().firstChild();
     while (child) |c| {
-        if (c.is(Node.Element) == null) {
+        const child_el = c.is(Node.Element) orelse {
             child = c.nextSibling();
             continue;
-        }
-        if (matches(c, selector, anchor, page)) {
-            return true;
-        }
-        child = c.nextSibling();
-    }
-    return false;
-}
+        };
 
-fn matchesHasAdjacentSibling(anchor: *Node, selector: Selector.Selector, page: *Page) bool {
-    var sibling = anchor.nextSibling();
-    while (sibling) |candidate| {
-        if (candidate.is(Node.Element) == null) {
-            sibling = candidate.nextSibling();
-            continue;
-        }
-        return matches(candidate, selector, anchor, page);
-    }
-    return false;
-}
-
-fn matchesHasFollowingSibling(anchor: *Node, selector: Selector.Selector, page: *Page) bool {
-    var sibling = anchor.nextSibling();
-    while (sibling) |candidate| {
-        if (candidate.is(Node.Element) == null) {
-            sibling = candidate.nextSibling();
-            continue;
-        }
-        if (matches(candidate, selector, anchor, page)) {
-            return true;
-        }
-        sibling = candidate.nextSibling();
-    }
-    return false;
-}
-
-fn matchesHasDescendant(anchor: *Node, selector: Selector.Selector, page: *Page) bool {
-    var child = anchor.firstChild();
-    while (child) |c| {
-        if (c.is(Node.Element) == null) {
-            child = c.nextSibling();
-            continue;
-        }
-
-        if (matches(c, selector, anchor, page)) {
+        if (matches(child_el.asNode(), selector, scope, page)) {
             return true;
         }
 
-        if (matchesHasDescendant(c, selector, page)) {
+        if (matchesHasDescendant(child_el, selector, scope, page)) {
             return true;
         }
 

@@ -18,6 +18,7 @@
 
 const std = @import("std");
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
 const log = @import("../../log.zig");
 const string = @import("../../string.zig");
 
@@ -115,6 +116,49 @@ pub fn exec(self: *const Local, src: []const u8, name: ?[]const u8) !js.Value {
     return self.compileAndRun(src, name);
 }
 
+/// Compiles a function body as function.
+///
+/// https://v8.github.io/api/head/classv8_1_1ScriptCompiler.html#a3a15bb5a7dfc3f998e6ac789e6b4646a
+pub fn compileFunction(
+    self: *const Local,
+    function_body: []const u8,
+    /// We tend to know how many params we'll pass; can remove the comptime if necessary.
+    comptime parameter_names: []const []const u8,
+    extensions: []const *const v8.Object,
+) !js.Function {
+    // TODO: Make configurable.
+    const script_name = self.isolate.initStringHandle("anonymous");
+    const script_source = self.isolate.initStringHandle(function_body);
+
+    var parameter_list: [parameter_names.len]*const v8.String = undefined;
+    inline for (0..parameter_names.len) |i| {
+        parameter_list[i] = self.isolate.initStringHandle(parameter_names[i]);
+    }
+
+    // Create `ScriptOrigin`.
+    var origin: v8.ScriptOrigin = undefined;
+    v8.v8__ScriptOrigin__CONSTRUCT(&origin, script_name);
+
+    // Create `ScriptCompilerSource`.
+    var script_compiler_source: v8.ScriptCompilerSource = undefined;
+    v8.v8__ScriptCompiler__Source__CONSTRUCT2(script_source, &origin, null, &script_compiler_source);
+    defer v8.v8__ScriptCompiler__Source__DESTRUCT(&script_compiler_source);
+
+    // Compile the function.
+    const result = v8.v8__ScriptCompiler__CompileFunction(
+        self.handle,
+        &script_compiler_source,
+        parameter_list.len,
+        &parameter_list,
+        extensions.len,
+        @as(?[*]const ?*const v8.Object, @ptrCast(extensions.ptr)),
+        v8.kNoCompileOptions,
+        v8.kNoCacheNoReason,
+    ) orelse return error.CompilationError;
+
+    return .{ .local = self, .handle = result };
+}
+
 pub fn compileAndRun(self: *const Local, src: []const u8, name: ?[]const u8) !js.Value {
     const script_name = self.isolate.initStringHandle(name orelse "anonymous");
     const script_source = self.isolate.initStringHandle(src);
@@ -158,20 +202,20 @@ pub fn compileAndRun(self: *const Local, src: []const u8, name: ?[]const u8) !js
 //      we can just grab it from the identity_map)
 pub fn mapZigInstanceToJs(self: *const Local, js_obj_handle: ?*const v8.Object, value: anytype) !js.Object {
     const ctx = self.ctx;
-    const arena = ctx.arena;
+    const origin_arena = ctx.origin.arena;
 
     const T = @TypeOf(value);
     switch (@typeInfo(T)) {
         .@"struct" => {
             // Struct, has to be placed on the heap
-            const heap = try arena.create(T);
+            const heap = try origin_arena.create(T);
             heap.* = value;
             return self.mapZigInstanceToJs(js_obj_handle, heap);
         },
         .pointer => |ptr| {
             const resolved = resolveValue(value);
 
-            const gop = try ctx.identity_map.getOrPut(arena, @intFromPtr(resolved.ptr));
+            const gop = try ctx.origin.addIdentity(@intFromPtr(resolved.ptr));
             if (gop.found_existing) {
                 // we've seen this instance before, return the same object
                 return (js.Object.Global{ .handle = gop.value_ptr.* }).local(self);
@@ -200,7 +244,7 @@ pub fn mapZigInstanceToJs(self: *const Local, js_obj_handle: ?*const v8.Object, 
                 // The TAO contains the pointer to our Zig instance as
                 // well as any meta data we'll need to use it later.
                 // See the TaggedOpaque struct for more details.
-                const tao = try arena.create(TaggedOpaque);
+                const tao = try origin_arena.create(TaggedOpaque);
                 tao.* = .{
                     .value = resolved.ptr,
                     .prototype_chain = resolved.prototype_chain.ptr,
@@ -225,16 +269,17 @@ pub fn mapZigInstanceToJs(self: *const Local, js_obj_handle: ?*const v8.Object, 
                 // can't figure out how to make that work, since it depends on
                 // the [runtime] `value`.
                 // We need the resolved finalizer, which we have in resolved.
+                //
                 // The above if statement would be more clear as:
                 //    if (resolved.finalizer_from_v8) |finalizer| {
                 // But that's a runtime check.
                 // Instead, we check if the base has finalizer. The assumption
                 // here is that if a resolve type has a finalizer, then the base
                 // should have a finalizer too.
-                const fc = try ctx.createFinalizerCallback(gop.value_ptr.*, resolved.ptr, resolved.finalizer_from_zig.?);
+                const fc = try ctx.origin.createFinalizerCallback(ctx.session, gop.value_ptr.*, resolved.ptr, resolved.finalizer_from_zig.?);
                 {
                     errdefer fc.deinit();
-                    try ctx.finalizer_callbacks.put(ctx.arena, @intFromPtr(resolved.ptr), fc);
+                    try ctx.origin.finalizer_callbacks.put(ctx.origin.arena, @intFromPtr(resolved.ptr), fc);
                 }
 
                 conditionallyReference(value);
@@ -601,7 +646,7 @@ pub fn jsValueToZig(self: *const Local, comptime T: type, js_val: js.Value) !T {
                 return std.meta.stringToEnum(T, try js_str.toSlice()) orelse return error.InvalidArgument;
             }
             switch (@typeInfo(e.tag_type)) {
-                .int => return std.meta.intToEnum(T, try jsIntToZig(e.tag_type, js_val)),
+                .int => return std.enums.fromInt(T, try jsIntToZig(e.tag_type, js_val)) orelse return error.InvalidArgument,
                 else => @compileError("unsupported enum parameter type: " ++ @typeName(T)),
             }
         },
@@ -756,56 +801,42 @@ fn jsValueToTypedArray(comptime T: type, js_val: js.Value) !?[]T {
             if (js_val.isUint16Array()) {
                 if (byte_len == 0) return &[_]u16{};
                 const arr_ptr = @as([*]u16, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 2 .. byte_offset / 2 + byte_len / 2];
+                return arr_ptr[byte_offset .. byte_offset + byte_len / 2];
             }
         },
         i16 => {
             if (js_val.isInt16Array()) {
                 if (byte_len == 0) return &[_]i16{};
                 const arr_ptr = @as([*]i16, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 2 .. byte_offset / 2 + byte_len / 2];
+                return arr_ptr[byte_offset .. byte_offset + byte_len / 2];
             }
         },
         u32 => {
             if (js_val.isUint32Array()) {
                 if (byte_len == 0) return &[_]u32{};
                 const arr_ptr = @as([*]u32, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 4 .. byte_offset / 4 + byte_len / 4];
+                return arr_ptr[byte_offset .. byte_offset + byte_len / 4];
             }
         },
         i32 => {
             if (js_val.isInt32Array()) {
                 if (byte_len == 0) return &[_]i32{};
                 const arr_ptr = @as([*]i32, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 4 .. byte_offset / 4 + byte_len / 4];
-            }
-        },
-        f32 => {
-            if (js_val.isFloat32Array()) {
-                if (byte_len == 0) return &[_]f32{};
-                const arr_ptr = @as([*]f32, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 4 .. byte_offset / 4 + byte_len / 4];
-            }
-        },
-        f64 => {
-            if (js_val.isFloat64Array()) {
-                if (byte_len == 0) return &[_]f64{};
-                const arr_ptr = @as([*]f64, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 8 .. byte_offset / 8 + byte_len / 8];
+                return arr_ptr[byte_offset .. byte_offset + byte_len / 4];
             }
         },
         u64 => {
             if (js_val.isBigUint64Array()) {
                 if (byte_len == 0) return &[_]u64{};
                 const arr_ptr = @as([*]u64, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 8 .. byte_offset / 8 + byte_len / 8];
+                return arr_ptr[byte_offset .. byte_offset + byte_len / 8];
             }
         },
         i64 => {
             if (js_val.isBigInt64Array()) {
                 if (byte_len == 0) return &[_]i64{};
                 const arr_ptr = @as([*]i64, @ptrCast(@alignCast(data)));
-                return arr_ptr[byte_offset / 8 .. byte_offset / 8 + byte_len / 8];
+                return arr_ptr[byte_offset .. byte_offset + byte_len / 8];
             }
         },
         else => {},
@@ -928,12 +959,6 @@ fn probeJsValueToZig(self: *const Local, comptime T: type, js_val: js.Value) !Pr
                             return .{ .ok = {} };
                         },
                         i32 => if (js_val.isInt32Array()) {
-                            return .{ .ok = {} };
-                        },
-                        f32 => if (js_val.isFloat32Array()) {
-                            return .{ .ok = {} };
-                        },
-                        f64 => if (js_val.isFloat64Array()) {
                             return .{ .ok = {} };
                         },
                         u64 => if (js_val.isBigUint64Array()) {
@@ -1103,7 +1128,7 @@ const Resolved = struct {
     class_id: u16,
     prototype_chain: []const @import("TaggedOpaque.zig").PrototypeChainEntry,
     finalizer_from_v8: ?*const fn (handle: ?*const v8.WeakCallbackInfo) callconv(.c) void = null,
-    finalizer_from_zig: ?*const fn (ptr: *anyopaque, page: *Page) void = null,
+    finalizer_from_zig: ?*const fn (ptr: *anyopaque, session: *Session) void = null,
 };
 pub fn resolveValue(value: anytype) Resolved {
     const T = bridge.Struct(@TypeOf(value));
@@ -1157,8 +1182,8 @@ pub fn stackTrace(self: *const Local) !?[]const u8 {
     const isolate = self.isolate;
     const separator = log.separator();
 
-    var buf: std.ArrayList(u8) = .empty;
-    var writer = buf.writer(self.call_arena);
+    var buf = std.Io.Writer.Allocating.init(self.call_arena);
+    const writer = &buf.writer;
 
     const stack_trace_handle = v8.v8__StackTrace__CurrentStackTrace__STATIC(isolate.handle, 30).?;
     const frame_count = v8.v8__StackTrace__GetFrameCount(stack_trace_handle);
@@ -1177,7 +1202,7 @@ pub fn stackTrace(self: *const Local) !?[]const u8 {
             try writer.print("{s}<anonymous>:{d}", .{ separator, v8.v8__StackFrame__GetLineNumber(frame_handle) });
         }
     }
-    return buf.items;
+    return buf.written();
 }
 
 // == Promise Helpers ==
@@ -1384,7 +1409,6 @@ pub const Scope = struct {
     pub fn deinit(self: *Scope) void {
         v8.v8__Context__Exit(self.local.handle);
         self.handle_scope.deinit();
-        self.local.isolate.exit();
     }
 
     pub fn toLocal(self: *Scope, global: anytype) ToLocalReturnType(@TypeOf(global)) {

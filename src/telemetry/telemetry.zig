@@ -11,25 +11,20 @@ const uuidv4 = @import("../id.zig").uuidv4;
 const IID_FILE = "iid";
 
 pub fn isDisabled() bool {
+    if (builtin.mode == .Debug or builtin.is_test) {
+        return true;
+    }
+
     return std.process.hasEnvVarConstant("LIGHTPANDA_DISABLE_TELEMETRY");
 }
 
-pub const Telemetry = TelemetryT(blk: {
-    if (builtin.mode == .Debug or builtin.is_test) break :blk NoopProvider;
-    break :blk @import("lightpanda.zig").LightPanda;
-});
+pub const Telemetry = TelemetryT(@import("lightpanda.zig"));
 
 fn TelemetryT(comptime P: type) type {
     return struct {
-        // an "install" id that we [try to] persist and re-use between runs
-        // null on IO error
-        iid: ?[36]u8,
-
-        provider: P,
+        provider: *P,
 
         disabled: bool,
-
-        run_mode: Config.RunMode,
 
         const Self = @This();
 
@@ -39,27 +34,29 @@ fn TelemetryT(comptime P: type) type {
                 log.info(.telemetry, "telemetry status", .{ .disabled = disabled });
             }
 
-            const provider = try P.init(app);
-            errdefer provider.deinit();
+            const iid: ?[36]u8 = if (disabled) null else getOrCreateId(app.app_dir_path);
+
+            const provider = try app.allocator.create(P);
+            errdefer app.allocator.destroy(provider);
+
+            try P.init(provider, app, iid, run_mode);
 
             return .{
                 .disabled = disabled,
-                .run_mode = run_mode,
                 .provider = provider,
-                .iid = if (disabled) null else getOrCreateId(app.app_dir_path),
             };
         }
 
-        pub fn deinit(self: *Self) void {
+        pub fn deinit(self: *Self, allocator: Allocator) void {
             self.provider.deinit();
+            allocator.destroy(self.provider);
         }
 
         pub fn record(self: *Self, event: Event) void {
             if (self.disabled) {
                 return;
             }
-            const iid: ?[]const u8 = if (self.iid) |*iid| iid else null;
-            self.provider.send(iid, self.run_mode, event) catch |err| {
+            self.provider.send(event) catch |err| {
                 log.warn(.telemetry, "record error", .{ .err = err, .type = @tagName(std.meta.activeTag(event)) });
             };
         }
@@ -74,13 +71,13 @@ fn getOrCreateId(app_dir_path_: ?[]const u8) ?[36]u8 {
     };
 
     var buf: [37]u8 = undefined;
-    var dir = std.fs.openDirAbsolute(app_dir_path, .{}) catch |err| {
+    var dir = std.Io.Dir.openDirAbsolute(std.Options.debug_io, app_dir_path, .{}) catch |err| {
         log.warn(.telemetry, "data directory open error", .{ .path = app_dir_path, .err = err });
         return null;
     };
-    defer dir.close();
+    defer dir.close(std.Options.debug_io);
 
-    const data = dir.readFile(IID_FILE, &buf) catch |err| switch (err) {
+    const data = dir.readFile(std.Options.debug_io, IID_FILE, &buf) catch |err| switch (err) {
         error.FileNotFound => &.{},
         else => {
             log.warn(.telemetry, "ID read error", .{ .path = app_dir_path, .err = err });
@@ -95,7 +92,7 @@ fn getOrCreateId(app_dir_path_: ?[]const u8) ?[36]u8 {
     }
 
     uuidv4(&id);
-    dir.writeFile(.{ .sub_path = IID_FILE, .data = &id }) catch |err| {
+    dir.writeFile(std.Options.debug_io, .{ .sub_path = IID_FILE, .data = &id }) catch |err| {
         log.warn(.telemetry, "ID write error", .{ .path = app_dir_path, .err = err });
         return null;
     };
@@ -105,6 +102,7 @@ fn getOrCreateId(app_dir_path_: ?[]const u8) ?[36]u8 {
 pub const Event = union(enum) {
     run: void,
     navigate: Navigate,
+    buffer_overflow: BufferOverflow,
     flag: []const u8, // used for testing
 
     const Navigate = struct {
@@ -112,53 +110,48 @@ pub const Event = union(enum) {
         proxy: bool,
         driver: []const u8 = "cdp",
     };
-};
 
-const NoopProvider = struct {
-    fn init(_: *App) !NoopProvider {
-        return .{};
-    }
-    fn deinit(_: NoopProvider) void {}
-    pub fn send(_: NoopProvider, _: ?[]const u8, _: Config.RunMode, _: Event) !void {}
+    const BufferOverflow = struct {
+        dropped: usize,
+    };
 };
 
 extern fn setenv(name: [*:0]u8, value: [*:0]u8, override: c_int) c_int;
 extern fn unsetenv(name: [*:0]u8) c_int;
 
 const testing = @import("../testing.zig");
-test "telemetry: disabled by environment" {
-    if (builtin.os.tag == .windows) {
-        return error.SkipZigTest;
-    }
+test "telemetry: always disabled in debug builds" {
+    // Must be disabled regardless of environment variable.
+    _ = unsetenv(@constCast("LIGHTPANDA_DISABLE_TELEMETRY"));
+    try testing.expectEqual(true, isDisabled());
 
     _ = setenv(@constCast("LIGHTPANDA_DISABLE_TELEMETRY"), @constCast(""), 0);
     defer _ = unsetenv(@constCast("LIGHTPANDA_DISABLE_TELEMETRY"));
+    try testing.expectEqual(true, isDisabled());
 
     const FailingProvider = struct {
-        fn init(_: *App) !@This() {
-            return .{};
-        }
-        fn deinit(_: @This()) void {}
-        pub fn send(_: @This(), _: ?[]const u8, _: Config.RunMode, _: Event) !void {
+        fn init(_: *@This(), _: *App, _: ?[36]u8, _: Config.RunMode) !void {}
+        fn deinit(_: *@This()) void {}
+        pub fn send(_: *@This(), _: Event) !void {
             unreachable;
         }
     };
 
-    var telemetry = try TelemetryT(FailingProvider).init(undefined, .serve);
-    defer telemetry.deinit();
+    var telemetry = try TelemetryT(FailingProvider).init(testing.test_app, .serve);
+    defer telemetry.deinit(testing.test_app.allocator);
     telemetry.record(.{ .run = {} });
 }
 
 test "telemetry: getOrCreateId" {
-    defer std.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
+    defer std.Io.Dir.cwd().deleteFile(std.Options.debug_io, "/tmp/" ++ IID_FILE) catch {};
 
-    std.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
+    std.Io.Dir.cwd().deleteFile(std.Options.debug_io, "/tmp/" ++ IID_FILE) catch {};
 
     const id1 = getOrCreateId("/tmp/").?;
     const id2 = getOrCreateId("/tmp/").?;
     try testing.expectEqual(&id1, &id2);
 
-    std.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
+    std.Io.Dir.cwd().deleteFile(std.Options.debug_io, "/tmp/" ++ IID_FILE) catch {};
     const id3 = getOrCreateId("/tmp/").?;
     try testing.expectEqual(false, std.mem.eql(u8, &id1, &id3));
 
@@ -169,8 +162,9 @@ test "telemetry: getOrCreateId" {
 
 test "telemetry: sends event to provider" {
     var telemetry = try TelemetryT(MockProvider).init(testing.test_app, .serve);
-    defer telemetry.deinit();
-    const mock = &telemetry.provider;
+    defer telemetry.deinit(testing.test_app.allocator);
+    telemetry.disabled = false;
+    const mock = telemetry.provider;
 
     telemetry.record(.{ .flag = "1" });
     telemetry.record(.{ .flag = "2" });
@@ -183,31 +177,19 @@ test "telemetry: sends event to provider" {
 }
 
 const MockProvider = struct {
-    iid: ?[]const u8,
-    run_mode: ?Config.RunMode,
     allocator: Allocator,
     events: std.ArrayList(Event),
 
-    fn init(app: *App) !@This() {
-        return .{
-            .iid = null,
-            .run_mode = null,
-            .events = .{},
+    fn init(self: *MockProvider, app: *App, _: ?[36]u8, _: Config.RunMode) !void {
+        self.* = .{
+            .events = .empty,
             .allocator = app.allocator,
         };
     }
     fn deinit(self: *MockProvider) void {
         self.events.deinit(self.allocator);
     }
-    pub fn send(self: *MockProvider, iid: ?[]const u8, run_mode: Config.RunMode, events: Event) !void {
-        if (self.iid == null) {
-            try testing.expectEqual(null, self.run_mode);
-            self.iid = iid.?;
-            self.run_mode = run_mode;
-        } else {
-            try testing.expectEqual(self.iid.?, iid.?);
-            try testing.expectEqual(self.run_mode.?, run_mode);
-        }
-        try self.events.append(self.allocator, events);
+    pub fn send(self: *MockProvider, event: Event) !void {
+        try self.events.append(self.allocator, event);
     }
 };

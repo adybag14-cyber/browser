@@ -24,11 +24,10 @@ const Allocator = std.mem.Allocator;
 const log = lp.log;
 const App = lp.App;
 const Config = lp.Config;
-const Host = lp.sys.Host;
 const SigHandler = @import("Sighandler.zig");
 pub const panic = lp.crash_handler.panic;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     // allocator
     // - in Debug mode we use the General Purpose Allocator to detect memory leaks
     // - in Release mode we use the c allocator
@@ -44,24 +43,28 @@ pub fn main() !void {
     const main_arena = main_arena_instance.allocator();
     defer main_arena_instance.deinit();
 
-    run(gpa, main_arena) catch |err| {
+    run(gpa, main_arena, init.minimal.args) catch |err| {
         log.fatal(.app, "exit", .{ .err = err });
         std.posix.exit(1);
     };
 }
 
-fn run(allocator: Allocator, main_arena: Allocator) !void {
-    const args = try Config.parseArgs(main_arena);
+fn run(allocator: Allocator, main_arena: Allocator, process_args: std.process.Args) !void {
+    const args = try Config.parseArgs(main_arena, process_args);
     defer args.deinit(main_arena);
 
     switch (args.mode) {
         .help => {
             args.printUsageAndExit(args.mode.help);
-            return std.process.cleanExit();
+            return std.process.cleanExit(std.Options.debug_io);
         },
         .version => {
-            std.debug.print("{s}\n", .{lp.build_config.git_commit});
-            return std.process.cleanExit();
+            if (lp.build_config.git_version) |version| {
+                std.debug.print("{s} ({s})\n", .{ version, lp.build_config.git_commit });
+            } else {
+                std.debug.print("{s}\n", .{lp.build_config.git_commit});
+            }
+            return std.process.cleanExit(std.Options.debug_io);
         },
         else => {},
     }
@@ -76,67 +79,49 @@ fn run(allocator: Allocator, main_arena: Allocator) !void {
         log.opts.filter_scopes = lfs;
     }
 
-    const requested_browser_mode = args.browserMode();
+    // must be installed before any other threads
+    const sighandler = try main_arena.create(SigHandler);
+    sighandler.* = .{ .arena = main_arena };
+    try sighandler.install();
 
     // _app is global to handle graceful shutdown.
-    var host = Host.initForBuildClass(allocator, lp.build_config.target_class == .bare_metal);
-    defer host.deinit();
-
-    var app = try App.init(allocator, &args, &host);
-
+    var app = try App.init(allocator, &args);
     defer app.deinit();
-    const browser_mode = app.display.runtime_mode;
-    if (requested_browser_mode != browser_mode) {
-        log.warn(.app, "browser mode fallback", .{
-            .requested = @tagName(requested_browser_mode),
-            .runtime = @tagName(browser_mode),
-            .status = "experimental",
-        });
-    }
+
+    try sighandler.on(lp.Network.stop, .{&app.network});
+
     app.telemetry.record(.{ .run = {} });
 
     switch (args.mode) {
         .serve => |opts| {
-            const sighandler = try main_arena.create(SigHandler);
-            sighandler.* = .{ .arena = main_arena };
-            try sighandler.install();
-
-            log.debug(.app, "startup", .{ .mode = "serve", .browser_mode = @tagName(browser_mode), .snapshot = app.snapshot.fromEmbedded() });
-            const address = std.net.Address.parseIp(opts.host, opts.port) catch |err| {
+            log.debug(.app, "startup", .{ .mode = "serve", .snapshot = app.snapshot.fromEmbedded() });
+            const address = std.Io.net.IpAddress.parse(opts.host, opts.port) catch |err| {
                 log.fatal(.app, "invalid server address", .{ .err = err, .host = opts.host, .port = opts.port });
                 return args.printUsageAndExit(false);
             };
 
-            // _server is global to handle graceful shutdown.
-            var server = try lp.Server.init(app, address);
+            var server = lp.Server.init(app, address) catch |err| {
+                if (err == error.AddressInUse) {
+                    log.fatal(.app, "address already in use", .{
+                        .host = opts.host,
+                        .port = opts.port,
+                        .hint = "Another process is already listening on this address. " ++
+                            "Stop the other process or use --port to choose a different port.",
+                    });
+                } else {
+                    log.fatal(.app, "server run error", .{ .err = err });
+                }
+                return err;
+            };
             defer server.deinit();
 
-            try sighandler.on(lp.Server.stop, .{&server});
+            try sighandler.on(lp.Server.shutdown, .{server});
 
-            // max timeout of 1 week.
-            const timeout = if (opts.timeout > 604_800) 604_800_000 else @as(u32, opts.timeout) * 1000;
-            server.run(address, timeout) catch |err| {
-                log.fatal(.app, "server run error", .{ .err = err });
-                return err;
-            };
-        },
-        .browse => |opts| {
-            const url = opts.url;
-            log.debug(.app, "startup", .{
-                .mode = "browse",
-                .browser_mode = @tagName(browser_mode),
-                .url = url,
-                .snapshot = app.snapshot.fromEmbedded(),
-            });
-
-            lp.browse(app, url, .{}) catch |err| {
-                log.fatal(.app, "browse error", .{ .err = err, .url = url });
-                return err;
-            };
+            app.network.run();
         },
         .fetch => |opts| {
             const url = opts.url;
-            log.debug(.app, "startup", .{ .mode = "fetch", .browser_mode = @tagName(browser_mode), .dump_mode = opts.dump_mode, .url = url, .snapshot = app.snapshot.fromEmbedded() });
+            log.debug(.app, "startup", .{ .mode = "fetch", .dump_mode = opts.dump_mode, .url = url, .snapshot = app.snapshot.fromEmbedded() });
 
             var fetch_opts = lp.FetchOpts{
                 .wait_ms = 5000,
@@ -148,32 +133,48 @@ fn run(allocator: Allocator, main_arena: Allocator) !void {
                 },
             };
 
-            var stdout = std.fs.File.stdout();
-            var writer = stdout.writer(&.{});
+            var stdout = std.Io.File.stdout();
+            var writer = stdout.writer(std.Options.debug_io, &.{});
             if (opts.dump_mode != null) {
                 fetch_opts.writer = &writer.interface;
             }
 
-            lp.fetch(app, url, fetch_opts) catch |err| {
-                log.fatal(.app, "fetch error", .{ .err = err, .url = url });
-                return err;
-            };
+            var worker_thread = try std.Thread.spawn(.{}, fetchThread, .{ app, url, fetch_opts });
+            defer worker_thread.join();
+
+            app.network.run();
         },
         .mcp => {
             log.info(.mcp, "starting server", .{});
 
             log.opts.format = .logfmt;
 
-            var stdout = std.fs.File.stdout().writer(&.{});
+            var stdout = std.Io.File.stdout().writer(std.Options.debug_io, &.{});
 
             var mcp_server: *lp.mcp.Server = try .init(allocator, app, &stdout.interface);
             defer mcp_server.deinit();
 
-            var stdin_buf: [64 * 1024]u8 = undefined;
-            var stdin = std.fs.File.stdin().reader(&stdin_buf);
+            var worker_thread = try std.Thread.spawn(.{}, mcpThread, .{ mcp_server, app });
+            defer worker_thread.join();
 
-            try lp.mcp.router.processRequests(mcp_server, &stdin.interface);
+            app.network.run();
         },
         else => unreachable,
     }
+}
+
+fn fetchThread(app: *App, url: [:0]const u8, fetch_opts: lp.FetchOpts) void {
+    defer app.network.stop();
+    lp.fetch(app, url, fetch_opts) catch |err| {
+        log.fatal(.app, "fetch error", .{ .err = err, .url = url });
+    };
+}
+
+fn mcpThread(mcp_server: *lp.mcp.Server, app: *App) void {
+    defer app.network.stop();
+    var stdin_buf: [64 * 1024]u8 = undefined;
+    var stdin = std.Io.File.stdin().reader(std.Options.debug_io, &stdin_buf);
+    lp.mcp.router.processRequests(mcp_server, &stdin.interface) catch |err| {
+        log.fatal(.mcp, "mcp error", .{ .err = err });
+    };
 }

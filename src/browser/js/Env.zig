@@ -26,6 +26,7 @@ const App = @import("../../App.zig");
 const log = @import("../../log.zig");
 
 const bridge = @import("bridge.zig");
+const Origin = @import("Origin.zig");
 const Context = @import("Context.zig");
 const Isolate = @import("Isolate.zig");
 const Platform = @import("Platform.zig");
@@ -45,7 +46,16 @@ fn initClassIds() void {
     }
 }
 
-var class_id_once = std.once(initClassIds);
+var class_id_once_lock: @import("lightpanda").compat_sync.Mutex = .{};
+var class_id_once_done = false;
+
+fn ensureClassIds() void {
+    class_id_once_lock.lock();
+    defer class_id_once_lock.unlock();
+    if (class_id_once_done) return;
+    initClassIds();
+    class_id_once_done = true;
+}
 
 // The Env maps to a V8 isolate, which represents a isolated sandbox for
 // executing JavaScript. The Env is where we'll define our V8 <-> Zig bindings,
@@ -56,6 +66,8 @@ var class_id_once = std.once(initClassIds);
 const Env = @This();
 
 app: *App,
+
+allocator: Allocator,
 
 platform: *const Platform,
 
@@ -69,6 +81,11 @@ context_count: usize,
 isolate_params: *v8.CreateParams,
 
 context_id: usize,
+
+// Maps origin -> shared Origin contains, for v8 values shared across
+// same-origin Contexts. There's a mismatch here between our JS model and our
+// Browser model. Origins only live as long as the root page of a session exists.
+// It would be wrong/dangerous to re-use an Origin across root page navigations.
 
 // Global handles that need to be freed on deinit
 eternal_function_templates: []v8.Eternal,
@@ -102,7 +119,7 @@ pub fn init(app: *App, opts: InitOpts) !Env {
     }
 
     // Initialize class IDs once before any V8 work
-    class_id_once.call();
+    ensureClassIds();
 
     const allocator = app.allocator;
     const snapshot = &app.snapshot;
@@ -206,6 +223,7 @@ pub fn init(app: *App, opts: InitOpts) !Env {
     return .{
         .app = app,
         .context_id = 0,
+        .allocator = allocator,
         .contexts = undefined,
         .context_count = 0,
         .isolate = isolate,
@@ -228,7 +246,9 @@ pub fn deinit(self: *Env) void {
         ctx.deinit();
     }
 
-    const allocator = self.app.allocator;
+    const app = self.app;
+    const allocator = app.allocator;
+
     if (self.inspector) |i| {
         i.deinit(allocator);
     }
@@ -272,6 +292,7 @@ pub fn createContext(self: *Env, page: *Page) !*Context {
 
     // get the global object for the context, this maps to our Window
     const global_obj = v8.v8__Context__Global(v8_context).?;
+
     {
         // Store our TAO inside the internal field of the global object. This
         // maps the v8::Object -> Zig instance. Almost all objects have this, and
@@ -287,6 +308,7 @@ pub fn createContext(self: *Env, page: *Page) !*Context {
         };
         v8.v8__Object__SetAlignedPointerInInternalField(global_obj, 0, tao);
     }
+
     // our window wrapped in a v8::Global
     var global_global: v8.Global = undefined;
     v8.v8__Global__New(isolate.handle, global_obj, &global_global);
@@ -294,10 +316,15 @@ pub fn createContext(self: *Env, page: *Page) !*Context {
     const context_id = self.context_id;
     self.context_id = context_id + 1;
 
+    const origin = try page._session.getOrCreateOrigin(null);
+    errdefer page._session.releaseOrigin(origin);
+
     const context = try context_arena.create(Context);
     context.* = .{
         .env = self,
         .page = page,
+        .session = page._session,
+        .origin = origin,
         .id = context_id,
         .isolate = isolate,
         .arena = context_arena,
@@ -307,13 +334,12 @@ pub fn createContext(self: *Env, page: *Page) !*Context {
         .microtask_queue = microtask_queue,
         .script_manager = &page._script_manager,
         .scheduler = .init(context_arena),
-        .finalizer_callback_pool = std.heap.MemoryPool(Context.FinalizerCallback).init(self.app.allocator),
     };
-    try context.identity_map.putNoClobber(context_arena, @intFromPtr(page.window), global_global);
+    try context.origin.identity_map.putNoClobber(origin.arena, @intFromPtr(page.window), global_global);
 
     // Store a pointer to our context inside the v8 context so that, given
     // a v8 context, we can get our context out
-    v8.v8__Context__SetAlignedPointerInEmbedderData(v8_context, Context.embedder_data_index, @ptrCast(context));
+    v8.v8__Context__SetAlignedPointerInEmbedderData(v8_context, 1, @ptrCast(context));
 
     const count = self.context_count;
     if (count >= self.contexts.len) {
@@ -360,28 +386,13 @@ pub fn runMicrotasks(self: *Env) void {
         var i: usize = 0;
         while (i < self.context_count) : (i += 1) {
             const ctx = self.contexts[i];
-            if (ctx.suspended) {
-                continue;
-            }
-
-            // Promise callbacks and queued JS microtasks can re-enter host
-            // bindings. Run the checkpoint inside the target context so those
-            // callbacks have a real V8 HandleScope and current context.
-            var hs: js.HandleScope = undefined;
-            const entered = ctx.enter(&hs);
-            defer entered.exit();
-
             v8.v8__MicrotaskQueue__PerformCheckpoint(ctx.microtask_queue, v8_isolate);
         }
     }
 }
 
-pub fn runMacrotasks(self: *Env) !?u64 {
-    var ms_to_next_task: ?u64 = null;
+pub fn runMacrotasks(self: *Env) !void {
     for (self.contexts[0..self.context_count]) |ctx| {
-        if (ctx.suspended) {
-            continue;
-        }
         if (comptime builtin.is_test == false) {
             // I hate this comptime check as much as you do. But we have tests
             // which rely on short execution before shutdown. In real world, it's
@@ -395,13 +406,17 @@ pub fn runMacrotasks(self: *Env) !?u64 {
         var hs: js.HandleScope = undefined;
         const entered = ctx.enter(&hs);
         defer entered.exit();
-
-        const ms = (try ctx.scheduler.run()) orelse continue;
-        if (ms_to_next_task == null or ms < ms_to_next_task.?) {
-            ms_to_next_task = ms;
-        }
+        try ctx.scheduler.run();
     }
-    return ms_to_next_task;
+}
+
+pub fn msToNextMacrotask(self: *Env) ?u64 {
+    var next_task: u64 = std.math.maxInt(u64);
+    for (self.contexts[0..self.context_count]) |ctx| {
+        const candidate = ctx.scheduler.msToNextHigh() orelse continue;
+        next_task = @min(candidate, next_task);
+    }
+    return if (next_task == std.math.maxInt(u64)) null else next_task;
 }
 
 pub fn pumpMessageLoop(self: *const Env) void {
@@ -491,16 +506,13 @@ pub fn terminate(self: *const Env) void {
 fn promiseRejectCallback(message_handle: v8.PromiseRejectMessage) callconv(.c) void {
     const promise_handle = v8.v8__PromiseRejectMessage__GetPromise(&message_handle).?;
     const v8_isolate = v8.v8__Object__GetIsolate(@ptrCast(promise_handle)).?;
-    const js_isolate = js.Isolate{ .handle = v8_isolate };
-    const ctx = Context.fromIsolate(js_isolate);
-    var handle_scope: js.HandleScope = undefined;
-    handle_scope.init(js_isolate);
-    defer handle_scope.deinit();
+    const isolate = js.Isolate{ .handle = v8_isolate };
+    const ctx, const v8_context = Context.fromIsolate(isolate);
 
     const local = js.Local{
         .ctx = ctx,
-        .isolate = js_isolate,
-        .handle = v8.v8__Isolate__GetCurrentContext(v8_isolate).?,
+        .isolate = isolate,
+        .handle = v8_context,
         .call_arena = ctx.call_arena,
     };
 

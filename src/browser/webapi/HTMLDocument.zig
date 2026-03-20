@@ -19,6 +19,7 @@
 const std = @import("std");
 const js = @import("../js/js.zig");
 const String = @import("../../string.zig").String;
+const datetime = @import("../../datetime.zig");
 
 const Page = @import("../Page.zig");
 const Node = @import("Node.zig");
@@ -167,9 +168,8 @@ pub fn getEmbeds(self: *HTMLDocument, page: *Page) !collections.NodeLive(.tag) {
     return collections.NodeLive(.tag).init(self.asNode(), .embed, page);
 }
 
-const applet_string = String.init(undefined, "applet", .{}) catch unreachable;
-pub fn getApplets(self: *HTMLDocument, page: *Page) !collections.NodeLive(.tag_name) {
-    return collections.NodeLive(.tag_name).init(self.asNode(), applet_string, page);
+pub fn getApplets(_: *const HTMLDocument) collections.HTMLCollection {
+    return .{ ._data = .empty };
 }
 
 pub fn getCurrentScript(self: *const HTMLDocument) ?*Element.Html.Script {
@@ -189,12 +189,12 @@ pub fn getAll(self: *HTMLDocument, page: *Page) !*collections.HTMLAllCollection 
 }
 
 pub fn getCookie(_: *HTMLDocument, page: *Page) ![]const u8 {
-    var buf: std.ArrayList(u8) = .empty;
-    try page._session.cookie_jar.forRequest(page.url, buf.writer(page.call_arena), .{
+    var buf = std.Io.Writer.Allocating.init(page.call_arena);
+    try page._session.cookie_jar.forRequest(page.url, &buf.writer, .{
         .is_http = false,
         .is_navigation = true,
     });
-    return buf.items;
+    return buf.written();
 }
 
 pub fn setCookie(_: *HTMLDocument, cookie_str: []const u8, page: *Page) ![]const u8 {
@@ -210,7 +210,7 @@ pub fn setCookie(_: *HTMLDocument, cookie_str: []const u8, page: *Page) ![]const
         c.deinit();
         return ""; // HttpOnly cookies cannot be set from JS
     }
-    try page._session.cookie_jar.add(c, std.time.timestamp());
+    try page._session.cookie_jar.add(c, @intCast(datetime.timestamp(.clock)));
     return cookie_str;
 }
 

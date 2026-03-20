@@ -19,6 +19,7 @@
 const std = @import("std");
 const String = @import("../../../string.zig").String;
 const Page = @import("../../Page.zig");
+const Session = @import("../../Session.zig");
 const js = @import("../../js/js.zig");
 
 const Event = @import("../Event.zig");
@@ -69,7 +70,7 @@ pub fn init(typ: []const u8, _opts: ?Options, page: *Page) !*WheelEvent {
             ._shift_key = opts.shiftKey,
             ._alt_key = opts.altKey,
             ._meta_key = opts.metaKey,
-            ._button = std.meta.intToEnum(MouseEvent.MouseButton, opts.button) catch return error.TypeError,
+            ._button = std.enums.fromInt(MouseEvent.MouseButton, opts.button) orelse return error.TypeError,
             ._buttons = opts.buttons,
             ._related_target = opts.relatedTarget,
         },
@@ -86,8 +87,8 @@ pub fn init(typ: []const u8, _opts: ?Options, page: *Page) !*WheelEvent {
     return event;
 }
 
-pub fn deinit(self: *WheelEvent, shutdown: bool, page: *Page) void {
-    self._proto.deinit(shutdown, page);
+pub fn deinit(self: *WheelEvent, shutdown: bool, session: *Session) void {
+    self._proto.deinit(shutdown, session);
 }
 
 pub fn asEvent(self: *WheelEvent) *Event {

@@ -34,7 +34,7 @@ pub fn getRandomValues(_: *const Crypto, js_obj: js.Object) !js.Object {
     if (buf.len > 65_536) {
         return error.QuotaExceeded;
     }
-    std.crypto.random.bytes(buf);
+    try std.Options.debug_io.randomSecure(buf);
     return js_obj;
 }
 

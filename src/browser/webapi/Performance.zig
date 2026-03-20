@@ -1,7 +1,6 @@
 const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
 const datetime = @import("../../datetime.zig");
-const builtin = @import("builtin");
 
 pub fn registerTypes() []const type {
     return &.{ Performance, Entry, Mark, Measure, PerformanceTiming, PerformanceNavigation };
@@ -12,19 +11,15 @@ const std = @import("std");
 const Performance = @This();
 
 _time_origin: u64,
-_entries: std.ArrayList(*Entry) = .{},
+_entries: std.ArrayList(*Entry) = .empty,
 _timing: PerformanceTiming = .{},
 _navigation: PerformanceNavigation = .{},
 
 /// Get high-resolution timestamp in microseconds, rounded to 5μs increments
 /// to match browser behavior (prevents fingerprinting)
 fn highResTimestamp() u64 {
-    const micros = if (builtin.os.tag == .windows or builtin.os.tag == .wasi or builtin.os.tag == .uefi) blk: {
-        break :blk @as(u64, @intCast(std.time.microTimestamp()));
-    } else blk: {
-        const ts = datetime.timespec();
-        break :blk @as(u64, @intCast(ts.sec)) * 1_000_000 + @as(u64, @intCast(@divTrunc(ts.nsec, 1_000)));
-    };
+    const ts = datetime.timespec();
+    const micros = @as(u64, @intCast(ts.sec)) * 1_000_000 + @as(u64, @intCast(@divTrunc(ts.nsec, 1_000)));
     // Round to nearest 5 microseconds (like Firefox default)
     const rounded = @divTrunc(micros + 2, 5) * 5;
     return rounded;
@@ -33,7 +28,7 @@ fn highResTimestamp() u64 {
 pub fn init() Performance {
     return .{
         ._time_origin = highResTimestamp(),
-        ._entries = .{},
+        ._entries = .empty,
         ._timing = .{},
         ._navigation = .{},
     };
@@ -273,7 +268,7 @@ pub const JsApi = struct {
 
     pub const now = bridge.function(Performance.now, .{});
     pub const mark = bridge.function(Performance.mark, .{});
-    pub const measure = bridge.function(Performance.measure, .{});
+    pub const measure = bridge.function(Performance.measure, .{ .dom_exception = true });
     pub const clearMarks = bridge.function(Performance.clearMarks, .{});
     pub const clearMeasures = bridge.function(Performance.clearMeasures, .{});
     pub const getEntries = bridge.function(Performance.getEntries, .{});

@@ -1,0 +1,91 @@
+name: prebuild v8
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+      target:
+        type: string
+      build_type:
+        type: string
+      lp_cache:
+        type: string
+        default: '.lp-cache'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - name: Parse target
+        shell: bash
+        run: |
+          echo "OS=$(echo "${{ inputs.target }}" | cut -d- -f2)" >> "$GITHUB_ENV"
+          echo "ARCH=$(echo "${{ inputs.target }}" | cut -d- -f1)" >> "$GITHUB_ENV"
+
+      - uses: mlugg/setup-zig@v2.2.1
+        with:
+          cache-key: ${{ inputs.target }}
+
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Read V8 version from build.zig
+        shell: bash
+        run: echo "V8_REVISION=$(sed -n 's/^const V8_VERSION.*"\(.*\)".*/\1/p' build.zig)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v6.2.0
+        if: contains(inputs.target, 'macos') || contains(inputs.target, 'ios')
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies (Linux x86_64)
+        if: contains(inputs.target, 'linux')
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yq libglib2.0-dev lld
+
+      - name: Install dependencies (Linux aarch64)
+        if: contains(inputs.target, 'aarch64-linux')
+        shell: bash
+        run: |
+            wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
+            sudo ./llvm.sh 21
+            sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins-aarch64.a /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins.a
+            sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/ /usr/lib/llvm-21/lib/clang/21/lib/aarch64-unknown-linux-gnu
+
+      - shell: bash
+        run: zig env
+
+      - name: Build V8
+        shell: bash
+        run: |
+          if [ "${{ inputs.build_type }}" = "debug" ]; then
+            zig build -Dtarget="${{ inputs.target }}" -Doptimize=Debug -Dis_tsan=true -Dv8_enable_sandbox=true build-v8
+          else
+            zig build -Dtarget="${{ inputs.target }}" -Doptimize=ReleaseSafe build-v8
+          fi
+
+      - name: Find v8 library
+        shell: bash
+        run: |
+          DST="${{ env.ARCH }}"
+          if [ "${{ inputs.build_type }}" = "debug" ]; then
+            DST="${DST}_debug"
+          fi
+          if [ "${{ env.OS }}" = "ios" ]; then
+            DST="simulator_${DST}"
+          fi
+          mv "${{ inputs.lp_cache }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/${{ inputs.build_type }}/obj/zig/libc_v8.a" "libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_$DST.a"
+
+      - name: Upload the build
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: libc_v8_*.a

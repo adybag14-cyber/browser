@@ -33,7 +33,6 @@ const String = @import("../string.zig").String;
 const Mime = @import("Mime.zig");
 const Factory = @import("Factory.zig");
 const Session = @import("Session.zig");
-const PopupSource = @import("PopupSource.zig").PopupSource;
 const EventManager = @import("EventManager.zig");
 const ScriptManager = @import("ScriptManager.zig");
 
@@ -55,6 +54,7 @@ const Performance = @import("webapi/Performance.zig");
 const Screen = @import("webapi/Screen.zig");
 const VisualViewport = @import("webapi/VisualViewport.zig");
 const PerformanceObserver = @import("webapi/PerformanceObserver.zig");
+const AbstractRange = @import("webapi/AbstractRange.zig");
 const MutationObserver = @import("webapi/MutationObserver.zig");
 const IntersectionObserver = @import("webapi/IntersectionObserver.zig");
 const CustomElementDefinition = @import("webapi/CustomElementDefinition.zig");
@@ -62,10 +62,9 @@ const storage = @import("webapi/storage/storage.zig");
 const PageTransitionEvent = @import("webapi/event/PageTransitionEvent.zig");
 const NavigationKind = @import("webapi/navigation/root.zig").NavigationKind;
 const KeyboardEvent = @import("webapi/event/KeyboardEvent.zig");
-const DocumentPainter = @import("../render/DocumentPainter.zig");
+const MouseEvent = @import("webapi/event/MouseEvent.zig");
 
-const Http = App.Http;
-const Net = @import("../Net.zig");
+const HttpClient = @import("HttpClient.zig");
 const ArenaPool = App.ArenaPool;
 
 const timestamp = @import("../datetime.zig").timestamp;
@@ -81,6 +80,8 @@ pub var default_location: Location = Location{ ._url = &default_url };
 pub const BUF_SIZE = 1024;
 
 const Page = @This();
+
+id: u32,
 
 // This is the "id" of the frame. It can be re-used from page-to-page, e.g.
 // when navigating.
@@ -114,8 +115,6 @@ _element_shadow_roots: Element.ShadowRootLookup = .empty,
 _node_owner_documents: Node.OwnerDocumentLookup = .empty,
 _element_assigned_slots: Element.AssignedSlotLookup = .empty,
 _element_scroll_positions: Element.ScrollPositionLookup = .empty,
-_element_scroll_metrics: Element.ScrollMetricsLookup = .empty,
-_element_layout_boxes: Element.LayoutBoxLookup = .empty,
 _element_namespace_uris: Element.NamespaceUriLookup = .empty,
 
 /// Lazily-created inline event listeners (or listeners provided as attributes).
@@ -143,9 +142,12 @@ _blob_urls: std.StringHashMapUnmanaged(*Blob) = .{},
 
 /// `load` events that'll be fired before window's `load` event.
 /// A call to `documentIsComplete` (which calls `_documentIsComplete`) resets it.
-_to_load: std.ArrayList(*Element.Html) = .{},
+_to_load: std.ArrayList(*Element.Html) = .empty,
 
 _script_manager: ScriptManager,
+
+// List of active live ranges (for mutation updates per DOM spec)
+_live_ranges: std.DoublyLinkedList = .{},
 
 // List of active MutationObservers
 _mutation_observers: std.DoublyLinkedList = .{},
@@ -153,7 +155,7 @@ _mutation_delivery_scheduled: bool = false,
 _mutation_delivery_depth: u32 = 0,
 
 // List of active IntersectionObservers
-_intersection_observers: std.ArrayList(*IntersectionObserver) = .{},
+_intersection_observers: std.ArrayList(*IntersectionObserver) = .empty,
 _intersection_check_scheduled: bool = false,
 _intersection_delivery_scheduled: bool = false,
 
@@ -163,7 +165,7 @@ _slotchange_delivery_scheduled: bool = false,
 
 /// List of active PerformanceObservers.
 /// Contrary to MutationObserver and IntersectionObserver, these are regular tasks.
-_performance_observers: std.ArrayList(*PerformanceObserver) = .{},
+_performance_observers: std.ArrayList(*PerformanceObserver) = .empty,
 _performance_delivery_scheduled: bool = false,
 
 // Lookup for customized built-in elements. Maps element pointer to definition.
@@ -176,7 +178,7 @@ _customized_builtin_disconnected_callback_invoked: std.AutoHashMapUnmanaged(*Ele
 _upgrading_element: ?*Node = null,
 
 // List of custom elements that were created before their definition was registered
-_undefined_custom_elements: std.ArrayList(*Element.Html.Custom) = .{},
+_undefined_custom_elements: std.ArrayList(*Element.Html.Custom) = .empty,
 
 // for heap allocations and managing WebAPI objects
 _factory: *Factory,
@@ -194,6 +196,8 @@ _queued_navigation: ?*QueuedNavigation = null,
 
 // The URL of the current page
 url: [:0]const u8 = "about:blank",
+
+origin: ?[]const u8 = null,
 
 // The base url specifies the base URL used to resolve the relative urls.
 // It is set by a <base> tag.
@@ -217,19 +221,11 @@ arena: Allocator,
 // from JS. Best arena to use, when possible.
 call_arena: Allocator,
 
-arena_pool: *ArenaPool,
-// In Debug, we use this to see if anything fails to release an arena back to
-// the pool.
-_arena_pool_leak_track: (if (IS_DEBUG) std.AutoHashMapUnmanaged(usize, struct {
-    owner: []const u8,
-    count: usize,
-}) else void) = if (IS_DEBUG) .empty else {},
-
 parent: ?*Page,
 window: *Window,
 document: *Document,
 iframe: ?*IFrame = null,
-frames: std.ArrayList(*Page) = .{},
+frames: std.ArrayList(*Page) = .empty,
 frames_sorted: bool = true,
 
 // DOM version used to invalidate cached state of "live" collections
@@ -246,34 +242,27 @@ _parent_notified: bool = false,
 _type: enum { root, frame }, // only used for logs right now
 _req_id: u32 = 0,
 _navigated_options: ?NavigatedOpts = null,
-_keyboard_text_suppression_depth: u32 = 0,
 
 pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void {
     if (comptime IS_DEBUG) {
         log.debug(.page, "page.init", .{});
     }
-    const browser = session.browser;
-    const arena_pool = browser.arena_pool;
 
-    const page_arena = if (parent) |p| p.arena else try arena_pool.acquire();
-    errdefer if (parent == null) arena_pool.release(page_arena);
+    const call_arena = try session.getArena(.{ .debug = "call_arena" });
+    errdefer session.releaseArena(call_arena);
 
-    var factory = if (parent) |p| p._factory else try Factory.init(page_arena);
-
-    const call_arena = try arena_pool.acquire();
-    errdefer arena_pool.release(call_arena);
-
+    const factory = &session.factory;
     const document = (try factory.document(Node.Document.HTMLDocument{
         ._proto = undefined,
     })).asDocument();
 
     self.* = .{
+        .id = session.nextPageId(),
         .js = undefined,
         .parent = parent,
-        .arena = page_arena,
+        .arena = session.page_arena,
         .document = document,
         .window = undefined,
-        .arena_pool = arena_pool,
         .call_arena = call_arena,
         ._frame_id = frame_id,
         ._session = session,
@@ -281,7 +270,7 @@ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void
         ._pending_loads = 1, // always 1 for the ScriptManager
         ._type = if (parent == null) .root else .frame,
         ._script_manager = undefined,
-        ._event_manager = EventManager.init(page_arena, self),
+        ._event_manager = EventManager.init(session.page_arena, self),
     };
 
     var screen: *Screen = undefined;
@@ -290,19 +279,12 @@ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void
         screen = p.window._screen;
         visual_viewport = p.window._visual_viewport;
     } else {
-        const viewport = session.browser.app.display.viewport;
         screen = try factory.eventTarget(Screen{
             ._proto = undefined,
             ._orientation = null,
-            ._width = viewport.width,
-            ._height = viewport.height,
-            ._avail_height = viewport.availHeight(),
         });
         visual_viewport = try factory.eventTarget(VisualViewport{
             ._proto = undefined,
-            ._width = viewport.width,
-            ._height = viewport.height,
-            ._scale = viewport.device_pixel_ratio,
         });
     }
 
@@ -315,8 +297,8 @@ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void
         ._screen = screen,
         ._visual_viewport = visual_viewport,
     });
-    try self.window.syncStorageBucket();
 
+    const browser = session.browser;
     self._script_manager = ScriptManager.init(browser.allocator, browser.http_client, self);
     errdefer self._script_manager.deinit();
 
@@ -326,14 +308,16 @@ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void
     document._page = self;
 
     if (comptime builtin.is_test == false) {
-        // HTML test runner manually calls these as necessary
-        try self.js.scheduler.add(session.browser, struct {
-            fn runIdleTasks(ctx: *anyopaque) !?u32 {
-                const b: *@import("Browser.zig") = @ptrCast(@alignCast(ctx));
-                b.runIdleTasks();
-                return 200;
-            }
-        }.runIdleTasks, 200, .{ .name = "page.runIdleTasks", .low_priority = true });
+        if (parent == null) {
+            // HTML test runner manually calls these as necessary
+            try self.js.scheduler.add(session.browser, struct {
+                fn runIdleTasks(ctx: *anyopaque) !?u32 {
+                    const b: *@import("Browser.zig") = @ptrCast(@alignCast(ctx));
+                    b.runIdleTasks();
+                    return 200;
+                }
+            }.runIdleTasks, 200, .{ .name = "page.runIdleTasks", .low_priority = true });
+        }
     }
 }
 
@@ -352,56 +336,28 @@ pub fn deinit(self: *Page, abort_http: bool) void {
         // stats.print(&stream) catch unreachable;
     }
 
+    const session = self._session;
+
     if (self._queued_navigation) |qn| {
-        self.arena_pool.release(qn.arena);
+        session.releaseArena(qn.arena);
     }
 
-    const session = self._session;
-    self.window.unregisterStorageBucket();
     session.browser.env.destroyContext(self.js);
 
     self._script_manager.shutdown = true;
-    if (abort_http) {
-        if (self.parent == null) {
-            session.browser.http_client.abort();
-        } else {
-            // a small optimization, it's faster to abort _everything_ on the root
-            // page, so we prefer that. But if it's just the frame that's going
-            // away (a frame navigation) then we'll abort the frame-related requests
-            session.browser.http_client.abortFrame(self._frame_id);
-        }
-    }
-    self._script_manager.deinit();
-
-    if (comptime IS_DEBUG) {
-        var it = self._arena_pool_leak_track.valueIterator();
-        while (it.next()) |value_ptr| {
-            if (value_ptr.count > 0) {
-                log.err(.bug, "ArenaPool Leak", .{ .owner = value_ptr.owner, .type = self._type, .url = self.url });
-                if (comptime builtin.is_test) {
-                    @panic("ArenaPool Leak");
-                }
-            }
-        }
-    }
-
-    self.arena_pool.release(self.call_arena);
 
     if (self.parent == null) {
-        self.arena_pool.release(self.arena);
+        session.browser.http_client.abort();
+    } else if (abort_http) {
+        // a small optimization, it's faster to abort _everything_ on the root
+        // page, so we prefer that. But if it's just the frame that's going
+        // away (a frame navigation) then we'll abort the frame-related requests
+        session.browser.http_client.abortFrame(self._frame_id);
     }
-}
 
-pub fn setSuspended(self: *Page, suspended: bool) void {
-    self.js.suspended = suspended;
-}
+    self._script_manager.deinit();
 
-pub fn setViewport(self: *Page, width: u32, height: u32, device_pixel_ratio: f64) !void {
-    self.window._screen.setDimensions(width, height);
-    self.window._visual_viewport.setMetrics(width, height, device_pixel_ratio);
-
-    const resize_event = try Event.initTrusted(comptime .wrap("resize"), .{}, self);
-    try self._event_manager.dispatch(self.window.asEventTarget(), resize_event);
+    session.releaseArena(self.call_arena);
 }
 
 pub fn base(self: *const Page) [:0]const u8 {
@@ -415,55 +371,18 @@ pub fn getTitle(self: *Page) !?[]const u8 {
     return null;
 }
 
-pub fn getOrigin(self: *Page, allocator: Allocator) !?[]const u8 {
-    return try URL.getOrigin(allocator, self.url);
-}
-
 // Add comon headers for a request:
 // * cookies
 // * referer
-pub fn headersForRequest(self: *Page, temp: Allocator, url: [:0]const u8, headers: *Http.Headers) !void {
-    return self.headersForRequestWithPolicy(temp, url, headers, .{});
-}
-
-pub const RequestHeaderPolicy = struct {
-    include_credentials: bool = true,
-    referer_override_url: ?[]const u8 = null,
-    authorization_source_url: ?[:0]const u8 = null,
-};
-
-pub fn headersForRequestWithPolicy(
-    self: *Page,
-    temp: Allocator,
-    url: [:0]const u8,
-    headers: *Http.Headers,
-    policy: RequestHeaderPolicy,
-) !void {
-    if (policy.include_credentials) {
-        try self.requestCookie(.{}).headersForRequest(temp, url, headers);
-        const authorization_url = policy.authorization_source_url orelse url;
-        if (try authorizationHeaderValueForRequest(temp, self.url, authorization_url)) |authorization_value| {
-            const authorization_header = try std.fmt.allocPrintSentinel(temp, "Authorization: {s}", .{authorization_value}, 0);
-            try headers.add(authorization_header);
-        }
-    }
+pub fn headersForRequest(self: *Page, temp: Allocator, url: [:0]const u8, headers: *HttpClient.Headers) !void {
+    try self.requestCookie(.{}).headersForRequest(temp, url, headers);
 
     // Build the referer
     const referer = blk: {
-        if (policy.referer_override_url) |override_url| {
-            if (!std.mem.startsWith(u8, override_url, "http")) {
-                break :blk "";
-            }
-            const override_url_z = try temp.dupeZ(u8, override_url);
-            const referer_value = try refererValueForUrl(temp, override_url_z);
-            break :blk try std.mem.concatWithSentinel(temp, u8, &.{ "Referer: ", referer_value }, 0);
-        }
-
         if (self.referer_header == null) {
             // build the cache
             if (std.mem.startsWith(u8, self.url, "http")) {
-                const referer_value = try refererValueForUrl(self.arena, self.url);
-                self.referer_header = try std.mem.concatWithSentinel(self.arena, u8, &.{ "Referer: ", referer_value }, 0);
+                self.referer_header = try std.mem.concatWithSentinel(self.arena, u8, &.{ "Referer: ", self.url }, 0);
             } else {
                 self.referer_header = "";
             }
@@ -478,97 +397,22 @@ pub fn headersForRequestWithPolicy(
     }
 }
 
-fn authorizationHeaderValueForRequest(temp: Allocator, page_url: [:0]const u8, request_url: [:0]const u8) !?[]const u8 {
-    if (try authorizationHeaderValueForUrl(temp, request_url)) |authorization_value| {
-        return authorization_value;
-    }
-
-    if (URL.getUsername(page_url).len == 0) {
-        return null;
-    }
-
-    if (!(try urlsShareOrigin(temp, page_url, request_url))) {
-        return null;
-    }
-
-    return authorizationHeaderValueForUrl(temp, page_url);
-}
-
-fn authorizationHeaderValueForUrl(temp: Allocator, url: [:0]const u8) !?[]const u8 {
-    const username_raw = URL.getUsername(url);
-    if (username_raw.len == 0) {
-        return null;
-    }
-
-    var arena_instance = std.heap.ArenaAllocator.init(temp);
-    defer arena_instance.deinit();
-    const arena = arena_instance.allocator();
-
-    const password_raw = URL.getPassword(url);
-    const username = try URL.unescape(arena, username_raw);
-    const password = try URL.unescape(arena, password_raw);
-    const userpwd = try std.fmt.allocPrint(arena, "{s}:{s}", .{ username, password });
-
-    const encoder = std.base64.standard.Encoder;
-    const out_len = encoder.calcSize(userpwd.len);
-    const out = try arena.alloc(u8, out_len);
-    _ = encoder.encode(out, userpwd);
-    return try std.fmt.allocPrint(temp, "Basic {s}", .{out});
-}
-
-fn urlsShareOrigin(temp: Allocator, first: [:0]const u8, second: [:0]const u8) !bool {
-    const first_origin = try URL.getOrigin(temp, first) orelse return false;
-    const second_origin = try URL.getOrigin(temp, second) orelse return false;
-    return std.mem.eql(u8, first_origin, second_origin);
-}
-
-fn refererValueForUrl(allocator: Allocator, url: [:0]const u8) ![]const u8 {
-    if (!std.mem.startsWith(u8, url, "http://") and !std.mem.startsWith(u8, url, "https://")) {
-        return "";
-    }
-
-    const protocol = URL.getProtocol(url);
-    const host = URL.getHost(url);
-    const pathname = URL.getPathname(url);
-    const search = URL.getSearch(url);
-    const referer = try URL.buildUrl(allocator, protocol, host, pathname, search, "");
-    return referer;
-}
-
-const GetArenaOpts = struct {
-    debug: []const u8,
-};
-pub fn getArena(self: *Page, comptime opts: GetArenaOpts) !Allocator {
-    const allocator = try self.arena_pool.acquire();
-    if (comptime IS_DEBUG) {
-        const gop = try self._arena_pool_leak_track.getOrPut(self.arena, @intFromPtr(allocator.ptr));
-        if (gop.found_existing) {
-            std.debug.assert(gop.value_ptr.count == 0);
-        }
-        gop.value_ptr.* = .{ .owner = opts.debug, .count = 1 };
-    }
-    return allocator;
+pub fn getArena(self: *Page, comptime opts: Session.GetArenaOpts) !Allocator {
+    return self._session.getArena(opts);
 }
 
 pub fn releaseArena(self: *Page, allocator: Allocator) void {
-    if (comptime IS_DEBUG) {
-        const found = self._arena_pool_leak_track.getPtr(@intFromPtr(allocator.ptr)).?;
-        if (found.count != 1) {
-            log.err(.bug, "ArenaPool Double Free", .{ .owner = found.owner, .count = found.count, .type = self._type, .url = self.url });
-            if (comptime builtin.is_test) {
-                @panic("ArenaPool Double Free");
-            }
-            return;
-        }
-        found.count = 0;
-    }
-    return self.arena_pool.release(allocator);
+    return self._session.releaseArena(allocator);
 }
 
 pub fn isSameOrigin(self: *const Page, url: [:0]const u8) !bool {
-    const current_origin = (try URL.getOrigin(self.call_arena, self.url)) orelse return false;
-    const target_origin = (try URL.getOrigin(self.call_arena, url)) orelse return false;
-    return std.mem.eql(u8, current_origin, target_origin);
+    const current_origin = self.origin orelse return false;
+    return std.mem.startsWith(u8, url, current_origin);
+}
+
+/// Look up a blob URL in this page's registry.
+pub fn lookupBlobUrl(self: *Page, url: []const u8) ?*Blob {
+    return self._blob_urls.get(url);
 }
 
 pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !void {
@@ -586,18 +430,50 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
         .type = self._type,
     });
 
-    // if the url is about:blank, we load an empty HTML document in the
-    // page and dispatch the events.
-    if (std.mem.eql(u8, "about:blank", request_url)) {
-        self.url = "about:blank";
+    // Handle synthetic navigations: about:blank and blob: URLs
+    const is_about_blank = std.mem.eql(u8, "about:blank", request_url);
+    const is_blob = !is_about_blank and std.mem.startsWith(u8, request_url, "blob:");
+
+    if (is_about_blank or is_blob) {
+        self.url = if (is_about_blank) "about:blank" else try self.arena.dupeZ(u8, request_url);
+
+        if (is_blob) {
+            // strip out blob:
+            self.origin = try URL.getOrigin(self.arena, request_url[5.. :0]);
+        } else if (self.parent) |parent| {
+            self.origin = parent.origin;
+        } else {
+            self.origin = null;
+        }
+        try self.js.setOrigin(self.origin);
+
         // Assume we parsed the document.
         // It's important to force a reset during the following navigation.
         self._parse_state = .complete;
 
-        self.document.injectBlank(self) catch |err| {
-            log.err(.browser, "inject blank", .{ .err = err });
-            return error.InjectBlankFailed;
-        };
+        // Content injection
+        if (is_blob) {
+            // For navigation, walk up the parent chain to find blob URLs
+            // (e.g., parent creates blob URL and sets iframe.src to it)
+            const blob = blk: {
+                var current: ?*Page = self.parent;
+                while (current) |page| {
+                    if (page._blob_urls.get(request_url)) |b| break :blk b;
+                    current = page.parent;
+                }
+                log.warn(.js, "invalid blob", .{ .url = request_url });
+                return error.BlobNotFound;
+            };
+            const parse_arena = try self.getArena(.{ .debug = "Page.parseBlob" });
+            defer self.releaseArena(parse_arena);
+            var parser = Parser.init(parse_arena, self.document.asNode(), self);
+            parser.parse(blob._slice);
+        } else {
+            self.document.injectBlank(self) catch |err| {
+                log.err(.browser, "inject blank", .{ .err = err });
+                return error.InjectBlankFailed;
+            };
+        }
         self.documentIsComplete();
 
         session.notification.dispatch(.page_navigate, &.{
@@ -611,7 +487,7 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
         // Record telemetry for navigation
         session.browser.app.telemetry.record(.{
             .navigate = .{
-                .tls = false, // about:blank is not TLS
+                .tls = false, // about:blank and blob: are not TLS
                 .proxy = session.browser.app.config.httpProxy() != null,
             },
         });
@@ -636,6 +512,7 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
     var http_client = session.browser.http_client;
 
     self.url = try self.arena.dupeZ(u8, request_url);
+    self.origin = try URL.getOrigin(self.arena, self.url);
 
     self._req_id = req_id;
     self._navigated_options = .{
@@ -675,7 +552,7 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
         .method = opts.method,
         .headers = headers,
         .body = opts.body,
-        .cookie_jar = session.cookie_jar,
+        .cookie_jar = &session.cookie_jar,
         .resource_type = .document,
         .notification = self._session.notification,
         .header_callback = pageHeaderDoneCallback,
@@ -688,23 +565,6 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
     };
 }
 
-pub fn navigateOwned(self: *Page, request_url: []const u8, opts: NavigateOpts) !void {
-    const owned_url = try self.arena.dupeZ(u8, request_url);
-    const owned_body = if (opts.body) |body|
-        try self.arena.dupe(u8, body)
-    else
-        null;
-    const owned_header = if (opts.header) |header|
-        try self.arena.dupeZ(u8, header)
-    else
-        null;
-
-    var owned_opts = opts;
-    owned_opts.body = owned_body;
-    owned_opts.header = owned_header;
-    return self.navigate(owned_url, owned_opts);
-}
-
 // Navigation can happen in many places, such as executing a <script> tag or
 // a JavaScript callback, a CDP command, etc...It's rarely safe to do immediately
 // as the caller almost certainly does'nt expect the page to go away during the
@@ -713,8 +573,8 @@ pub fn scheduleNavigation(self: *Page, request_url: []const u8, opts: NavigateOp
     if (self.canScheduleNavigation(std.meta.activeTag(nt)) == false) {
         return;
     }
-    const arena = try self.arena_pool.acquire();
-    errdefer self.arena_pool.release(arena);
+    const arena = try self._session.getArena(.{ .debug = "scheduleNavigation" });
+    errdefer self._session.releaseArena(arena);
     return self.scheduleNavigationWithArena(arena, request_url, opts, nt);
 }
 
@@ -737,12 +597,9 @@ fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url:
     };
 
     const target = switch (nt) {
+        .form, .anchor => |p| p,
         .script => |p| p orelse originator,
         .iframe => |iframe| iframe._window.?._page, // only an frame with existing content (i.e. a window) can be navigated
-        .anchor, .form => |node| blk: {
-            const doc = node.ownerDocument(originator) orelse break :blk originator;
-            break :blk doc._page orelse originator;
-        },
     };
 
     const session = target._session;
@@ -750,13 +607,11 @@ fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url:
         target.url = try target.arena.dupeZ(u8, resolved_url);
         target.window._location = try Location.init(target.url, target);
         target.document._location = target.window._location;
-        try target.window.syncStorageBucket();
         if (target.parent == null) {
             try session.navigation.updateEntries(target.url, opts.kind, target, true);
         }
-        // doin't defer this, the caller, the caller is responsible for freeing
-        // it on error
-        target.arena_pool.release(arena);
+        // don't defer this, the caller is responsible for freeing it on error
+        session.releaseArena(arena);
         return;
     }
 
@@ -786,6 +641,10 @@ fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url:
         .is_about_blank = is_about_blank,
         .navigation_type = std.meta.activeTag(nt),
     };
+
+    if (target._queued_navigation) |existing| {
+        session.releaseArena(existing.arena);
+    }
 
     target._queued_navigation = qn;
     return session.scheduleNavigation(target);
@@ -853,11 +712,14 @@ pub fn scriptsCompletedLoading(self: *Page) void {
 }
 
 pub fn iframeCompletedLoading(self: *Page, iframe: *IFrame) void {
-    blk: {
-        var ls: JS.Local.Scope = undefined;
-        self.js.localScope(&ls);
-        defer ls.deinit();
+    var ls: JS.Local.Scope = undefined;
+    self.js.localScope(&ls);
+    defer ls.deinit();
 
+    const entered = self.js.enter(&ls.handle_scope);
+    defer entered.exit();
+
+    blk: {
         const event = Event.initTrusted(comptime .wrap("load"), .{}, self) catch |err| {
             log.err(.page, "iframe event init", .{ .err = err, .url = iframe._src });
             break :blk;
@@ -866,6 +728,7 @@ pub fn iframeCompletedLoading(self: *Page, iframe: *IFrame) void {
             log.warn(.js, "iframe onload", .{ .err = err, .url = iframe._src });
         };
     }
+
     self.pendingLoadCompleted();
 }
 
@@ -917,63 +780,30 @@ pub fn documentIsComplete(self: *Page) void {
 
 fn _documentIsComplete(self: *Page) !void {
     self.document._ready_state = .complete;
-    try self.focusAutofocusElement();
 
     // Run load events before window.load.
     try self.dispatchLoad();
 
     // Dispatch window.load event.
-    const event = try Event.initTrusted(comptime .wrap("load"), .{}, self);
-    // This event is weird, it's dispatched directly on the window, but
-    // with the document as the target.
-    event._target = self.document.asEventTarget();
-    try self._event_manager.dispatchDirect(
-        self.window.asEventTarget(),
-        event,
-        self.window._on_load,
-        .{ .inject_target = false, .context = "page load" },
-    );
+    const window_target = self.window.asEventTarget();
+    if (self._event_manager.hasDirectListeners(window_target, "load", self.window._on_load)) {
+        const event = try Event.initTrusted(comptime .wrap("load"), .{}, self);
+        // This event is weird, it's dispatched directly on the window, but
+        // with the document as the target.
+        event._target = self.document.asEventTarget();
+        try self._event_manager.dispatchDirect(window_target, event, self.window._on_load, .{ .inject_target = false, .context = "page load" });
+    }
 
-    const pageshow_event = (try PageTransitionEvent.initTrusted(comptime .wrap("pageshow"), .{}, self)).asEvent();
-    try self._event_manager.dispatchDirect(
-        self.window.asEventTarget(),
-        pageshow_event,
-        self.window._on_pageshow,
-        .{ .context = "page show" },
-    );
+    if (self._event_manager.hasDirectListeners(window_target, "pageshow", self.window._on_pageshow)) {
+        const pageshow_event = (try PageTransitionEvent.initTrusted(comptime .wrap("pageshow"), .{}, self)).asEvent();
+        try self._event_manager.dispatchDirect(window_target, pageshow_event, self.window._on_pageshow, .{ .context = "page show" });
+    }
+
+    if (comptime IS_DEBUG) {
+        log.debug(.page, "load", .{ .url = self.url, .type = self._type });
+    }
 
     self.notifyParentLoadComplete();
-}
-
-fn focusAutofocusElement(self: *Page) !void {
-    if (self.document._active_element != null) {
-        return;
-    }
-
-    const element = findAutofocusCandidate(self.document.asNode()) orelse return;
-    try element.focus(self);
-}
-
-fn findAutofocusCandidate(node: *Node) ?*Element {
-    var child = node.firstChild();
-    while (child) |current| : (child = current.nextSibling()) {
-        if (current.is(Element)) |element| {
-            if (isAutofocusCandidate(element)) {
-                return element;
-            }
-        }
-        if (findAutofocusCandidate(current)) |candidate| {
-            return candidate;
-        }
-    }
-    return null;
-}
-
-fn isAutofocusCandidate(element: *Element) bool {
-    if (element.getAttributeSafe(comptime .wrap("autofocus")) == null) {
-        return false;
-    }
-    return isSequentiallyFocusableElement(element);
 }
 
 fn notifyParentLoadComplete(self: *Page) void {
@@ -991,16 +821,21 @@ fn notifyParentLoadComplete(self: *Page) void {
     parent.iframeCompletedLoading(self.iframe.?);
 }
 
-fn pageHeaderDoneCallback(transfer: *Http.Transfer) !bool {
+fn pageHeaderDoneCallback(transfer: *HttpClient.Transfer) !bool {
     var self: *Page = @ptrCast(@alignCast(transfer.ctx));
 
-    // would be different than self.url in the case of a redirect
     const header = &transfer.response_header.?;
-    self.url = try self.arena.dupeZ(u8, std.mem.span(header.url));
+
+    const response_url = std.mem.span(header.url);
+    if (std.mem.eql(u8, response_url, self.url) == false) {
+        // would be different than self.url in the case of a redirect
+        self.url = try self.arena.dupeZ(u8, response_url);
+        self.origin = try URL.getOrigin(self.arena, self.url);
+    }
+    try self.js.setOrigin(self.origin);
 
     self.window._location = try Location.init(self.url, self);
     self.document._location = self.window._location;
-    try self.window.syncStorageBucket();
 
     if (comptime IS_DEBUG) {
         log.debug(.page, "navigate header", .{
@@ -1011,124 +846,33 @@ fn pageHeaderDoneCallback(transfer: *Http.Transfer) !bool {
         });
     }
 
-    if (try shouldPromoteRootAttachmentNavigation(self, transfer)) {
-        const suggested_filename = blk: {
-            const disposition = transfer.getResponseHeaderValue("content-disposition", 0) orelse break :blk "";
-            break :blk (try contentDispositionSuggestedFilename(self.arena, disposition)) orelse "";
-        };
-        const adopted = try self._session.promoteRootAttachmentDownload(self, transfer, suggested_filename);
-        self._parse_state = .attachment_promoted;
-        self._session.noteAttachmentPromotion();
-        return adopted;
-    }
-
     return true;
 }
 
-fn shouldPromoteRootAttachmentNavigation(self: *Page, transfer: *Http.Transfer) !bool {
-    if (self.parent != null or self._session.browser.app.config.mode != .browse) {
-        return false;
-    }
-    const response_header = transfer.response_header orelse return false;
-    if (response_header.status < 200 or response_header.status >= 300) {
-        return false;
-    }
-    const disposition = transfer.getResponseHeaderValue("content-disposition", 0) orelse return false;
-    return contentDispositionIndicatesAttachment(disposition);
-}
-
-fn contentDispositionIndicatesAttachment(value: []const u8) bool {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) {
-        return false;
-    }
-    const end = std.mem.indexOfScalar(u8, trimmed, ';') orelse trimmed.len;
-    const disposition_type = std.mem.trim(u8, trimmed[0..end], &std.ascii.whitespace);
-    return std.ascii.eqlIgnoreCase(disposition_type, "attachment");
-}
-
-fn contentDispositionSuggestedFilename(allocator: Allocator, value: []const u8) !?[]u8 {
-    var it = std.mem.splitScalar(u8, value, ';');
-    _ = it.next();
-
-    var fallback: ?[]u8 = null;
-    errdefer if (fallback) |owned| allocator.free(owned);
-    while (it.next()) |raw_segment| {
-        const segment = std.mem.trim(u8, raw_segment, &std.ascii.whitespace);
-        if (segment.len == 0) {
-            continue;
-        }
-        const eq = std.mem.indexOfScalar(u8, segment, '=') orelse continue;
-        const name = std.mem.trim(u8, segment[0..eq], &std.ascii.whitespace);
-        const raw_value = trimContentDispositionParameterValue(segment[eq + 1 ..]);
-        if (raw_value.len == 0) {
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(name, "filename*")) {
-            const decoded = try decodeExtendedDispositionFilename(allocator, raw_value);
-            if (fallback) |owned| {
-                allocator.free(owned);
-                fallback = null;
-            }
-            return decoded;
-        }
-        if (fallback == null and std.ascii.eqlIgnoreCase(name, "filename")) {
-            fallback = try allocator.dupe(u8, raw_value);
-        }
-    }
-    return fallback;
-}
-
-fn trimContentDispositionParameterValue(value: []const u8) []const u8 {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len >= 2 and trimmed[0] == '"' and trimmed[trimmed.len - 1] == '"') {
-        return trimmed[1 .. trimmed.len - 1];
-    }
-    return trimmed;
-}
-
-fn decodeExtendedDispositionFilename(allocator: Allocator, value: []const u8) ![]u8 {
-    const encoded = if (std.mem.indexOf(u8, value, "''")) |sep|
-        value[sep + 2 ..]
-    else
-        value;
-
-    var buf = std.ArrayList(u8).empty;
-    defer buf.deinit(allocator);
-
-    var index: usize = 0;
-    while (index < encoded.len) : (index += 1) {
-        const char = encoded[index];
-        if (char == '%' and index + 2 < encoded.len) {
-            const hi = std.fmt.charToDigit(encoded[index + 1], 16) catch {
-                try buf.append(allocator, char);
-                continue;
-            };
-            const lo = std.fmt.charToDigit(encoded[index + 2], 16) catch {
-                try buf.append(allocator, char);
-                continue;
-            };
-            try buf.append(allocator, @as(u8, @intCast((hi << 4) | lo)));
-            index += 2;
-            continue;
-        }
-        try buf.append(allocator, char);
-    }
-    return allocator.dupe(u8, buf.items);
-}
-
-fn pageDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
+fn pageDataCallback(transfer: *HttpClient.Transfer, data: []const u8) !void {
     var self: *Page = @ptrCast(@alignCast(transfer.ctx));
 
     if (self._parse_state == .pre) {
         // we lazily do this, because we might need the first chunk of data
         // to sniff the content type
-        const mime: Mime = blk: {
+        var mime: Mime = blk: {
             if (transfer.response_header.?.contentType()) |ct| {
                 break :blk try Mime.parse(ct);
             }
             break :blk Mime.sniff(data);
         } orelse .unknown;
+
+        // If the HTTP Content-Type header didn't specify a charset and this is HTML,
+        // prescan the first 1024 bytes for a <meta charset> declaration.
+        if (mime.content_type == .text_html and mime.is_default_charset) {
+            if (Mime.prescanCharset(data)) |charset| {
+                if (charset.len <= 40) {
+                    @memcpy(mime.charset[0..charset.len], charset);
+                    mime.charset[charset.len] = 0;
+                    mime.charset_len = charset.len;
+                }
+            }
+        }
 
         if (comptime IS_DEBUG) {
             log.debug(.page, "navigate first chunk", .{
@@ -1140,7 +884,7 @@ fn pageDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
         }
 
         switch (mime.content_type) {
-            .text_html => self._parse_state = .{ .html = .{} },
+            .text_html => self._parse_state = .{ .html = .empty },
             .application_json, .text_javascript, .text_css, .text_plain => {
                 var arr: std.ArrayList(u8) = .empty;
                 try arr.appendSlice(self.arena, "<html><head><meta charset=\"utf-8\"></head><body><pre>");
@@ -1175,7 +919,6 @@ fn pageDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
         .pre => unreachable,
         .complete => unreachable,
         .err => unreachable,
-        .attachment_promoted => unreachable,
         .raw_done => unreachable,
     }
 }
@@ -1254,19 +997,12 @@ fn pageDoneCallback(ctx: *anyopaque) !void {
             parser.parse(html);
             self.documentIsComplete();
         },
-        .attachment_promoted => unreachable,
         else => unreachable,
     }
-
-    self._session.finalizeCommittedNavigation(self);
 }
 
 fn pageErrorCallback(ctx: *anyopaque, err: anyerror) void {
     var self: *Page = @ptrCast(@alignCast(ctx));
-
-    if (self._parse_state == .attachment_promoted and self._session.hasPendingAttachmentPromotions()) {
-        return;
-    }
 
     log.err(.page, "navigate failed", .{ .err = err, .type = self._type, .url = self.url });
     self._parse_state = .{ .err = err };
@@ -1277,10 +1013,6 @@ fn pageErrorCallback(ctx: *anyopaque, err: anyerror) void {
         log.err(.browser, "pageErrorCallback", .{ .err = e, .type = self._type, .url = self.url });
         return;
     };
-}
-
-pub fn failNavigation(self: *Page, err: anyerror) void {
-    pageErrorCallback(self, err);
 }
 
 pub fn isGoingAway(self: *const Page) bool {
@@ -1295,6 +1027,14 @@ pub fn scriptAddedCallback(self: *Page, comptime from_parser: bool, script: *Ele
     if (self.isGoingAway()) {
         // if we're planning on navigating to another page, don't run this script
         return;
+    }
+
+    if (comptime from_parser) {
+        // parser-inserted scripts have force-async set to false, but only if
+        // they have src or non-empty content
+        if (script._src.len > 0 or script.asNode().firstChild() != null) {
+            script._force_async = false;
+        }
     }
 
     self._script_manager.addFromElement(from_parser, script, "parsing") catch |err| {
@@ -1370,7 +1110,6 @@ pub fn iframeAddedCallback(self: *Page, iframe: *IFrame) !void {
         log.warn(.page, "iframe navigate failure", .{ .url = url, .err = err });
         self._pending_loads -= 1;
         iframe._window = null;
-        page_frame.deinit(true);
         return error.IFrameLoadError;
     };
 
@@ -1408,7 +1147,6 @@ pub fn iframeAddedCallback(self: *Page, iframe: *IFrame) !void {
 
 pub fn domChanged(self: *Page) void {
     self.version += 1;
-    self.resetElementLayoutBoxes();
 
     if (self._intersection_check_scheduled) {
         return;
@@ -1780,6 +1518,8 @@ pub fn adoptNodeTree(self: *Page, node: *Node, new_owner: *Document) !void {
 }
 
 pub fn createElementNS(self: *Page, namespace: Element.Namespace, name: []const u8, attribute_iterator: anytype) !*Node {
+    const from_parser = @TypeOf(attribute_iterator) == Parser.AttributeIterator;
+
     switch (namespace) {
         .html => {
             switch (name.len) {
@@ -2450,6 +2190,15 @@ pub fn createElementNS(self: *Page, namespace: Element.Namespace, name: []const 
                 self.js.localScope(&ls);
                 defer ls.deinit();
 
+                if (from_parser) {
+                    // There are some things custom elements aren't allowed to do
+                    // when we're parsing.
+                    self.document._throw_on_dynamic_markup_insertion_counter += 1;
+                }
+                defer if (from_parser) {
+                    self.document._throw_on_dynamic_markup_insertion_counter -= 1;
+                };
+
                 var caught: JS.TryCatch.Caught = undefined;
                 _ = ls.toLocal(def.constructor).newInstance(&caught) catch |err| {
                     log.warn(.js, "custom element constructor", .{ .name = name, .err = err, .caught = caught, .type = self._type, .url = self.url });
@@ -2719,6 +2468,12 @@ pub fn removeNode(self: *Page, parent: *Node, child: *Node, opts: RemoveNodeOpts
     const previous_sibling = child.previousSibling();
     const next_sibling = child.nextSibling();
 
+    // Capture child's index before removal for live range updates (DOM spec remove steps 4-7)
+    const child_index_for_ranges: ?u32 = if (self._live_ranges.first != null)
+        parent.getChildIndex(child)
+    else
+        null;
+
     const children = parent._children.?;
     switch (children.*) {
         .one => |n| {
@@ -2746,6 +2501,11 @@ pub fn removeNode(self: *Page, parent: *Node, child: *Node, opts: RemoveNodeOpts
 
     child._parent = null;
     child._child_link = .{};
+
+    // Update live ranges for removal (DOM spec remove steps 4-7)
+    if (child_index_for_ranges) |idx| {
+        self.updateRangesForNodeRemoval(parent, child, idx);
+    }
 
     // Handle slot assignment removal before mutation observers
     if (child.is(Element)) |el| {
@@ -2894,6 +2654,23 @@ pub fn _insertNodeRelative(self: *Page, comptime from_parser: bool, parent: *Nod
     }
     child._parent = parent;
 
+    // Update live ranges for insertion (DOM spec insert step 6).
+    // For .before/.after the child was inserted at a specific position;
+    // ranges on parent with offsets past that position must be incremented.
+    // For .append no range update is needed (spec: "if child is non-null").
+    if (self._live_ranges.first != null) {
+        switch (relative) {
+            .append => {},
+            .before, .after => {
+                if (parent.getChildIndex(child)) |idx| {
+                    self.updateRangesForNodeInsertion(parent, idx);
+                }
+            },
+        }
+    }
+
+    const parent_is_connected = parent.isConnected();
+
     // Tri-state behavior for mutations:
     // 1. from_parser=true, parse_mode=document -> no mutations (initial document parse)
     // 2. from_parser=true, parse_mode=fragment -> mutations (innerHTML additions)
@@ -2909,6 +2686,15 @@ pub fn _insertNodeRelative(self: *Page, comptime from_parser: bool, parent: *Nod
             // When the parser adds the node, nodeIsReady is only called when the
             // nodeComplete() callback is executed.
             try self.nodeIsReady(false, child);
+
+            // Check if text was added to a script that hasn't started yet.
+            if (child._type == .cdata and parent_is_connected) {
+                if (parent.is(Element.Html.Script)) |script| {
+                    if (!script._executed) {
+                        try self.nodeIsReady(false, parent);
+                    }
+                }
+            }
         }
 
         // Notify mutation observers about childList change
@@ -2947,7 +2733,6 @@ pub fn _insertNodeRelative(self: *Page, comptime from_parser: bool, parent: *Nod
     }
 
     const parent_in_shadow = parent.is(ShadowRoot) != null or parent.isInShadowTree();
-    const parent_is_connected = parent.isConnected();
 
     if (!parent_in_shadow and !parent_is_connected) {
         return;
@@ -3152,6 +2937,54 @@ pub fn childListChange(
     }
 }
 
+// --- Live range update methods (DOM spec §4.2.3, §4.2.4, §4.7, §4.8) ---
+
+/// Update all live ranges after a replaceData mutation on a CharacterData node.
+/// Per DOM spec: insertData = replaceData(offset, 0, data),
+///               deleteData = replaceData(offset, count, "").
+/// All parameters are in UTF-16 code unit offsets.
+pub fn updateRangesForCharacterDataReplace(self: *Page, target: *Node, offset: u32, count: u32, data_len: u32) void {
+    var it: ?*std.DoublyLinkedList.Node = self._live_ranges.first;
+    while (it) |link| : (it = link.next) {
+        const ar: *AbstractRange = @fieldParentPtr("_range_link", link);
+        ar.updateForCharacterDataReplace(target, offset, count, data_len);
+    }
+}
+
+/// Update all live ranges after a splitText operation.
+/// Steps 7b-7e of the DOM spec splitText algorithm.
+/// Steps 7d-7e complement (not overlap) updateRangesForNodeInsertion:
+/// the insert update handles offsets > child_index, while 7d/7e handle
+/// offsets == node_index+1 (these are equal values but with > vs == checks).
+pub fn updateRangesForSplitText(self: *Page, target: *Node, new_node: *Node, offset: u32, parent: *Node, node_index: u32) void {
+    var it: ?*std.DoublyLinkedList.Node = self._live_ranges.first;
+    while (it) |link| : (it = link.next) {
+        const ar: *AbstractRange = @fieldParentPtr("_range_link", link);
+        ar.updateForSplitText(target, new_node, offset, parent, node_index);
+    }
+}
+
+/// Update all live ranges after a node insertion.
+/// Per DOM spec insert algorithm step 6: only applies when inserting before a
+/// non-null reference node.
+pub fn updateRangesForNodeInsertion(self: *Page, parent: *Node, child_index: u32) void {
+    var it: ?*std.DoublyLinkedList.Node = self._live_ranges.first;
+    while (it) |link| : (it = link.next) {
+        const ar: *AbstractRange = @fieldParentPtr("_range_link", link);
+        ar.updateForNodeInsertion(parent, child_index);
+    }
+}
+
+/// Update all live ranges after a node removal.
+/// Per DOM spec remove algorithm steps 4-7.
+pub fn updateRangesForNodeRemoval(self: *Page, parent: *Node, child: *Node, child_index: u32) void {
+    var it: ?*std.DoublyLinkedList.Node = self._live_ranges.first;
+    while (it) |link| : (it = link.next) {
+        const ar: *AbstractRange = @fieldParentPtr("_range_link", link);
+        ar.updateForNodeRemoval(parent, child, child_index);
+    }
+}
+
 // TODO: optimize and cleanup, this is called a lot (e.g., innerHTML = '')
 pub fn parseHtmlAsChildren(self: *Page, node: *Node, html: []const u8) !void {
     const previous_parse_mode = self._parse_mode;
@@ -3192,9 +3025,12 @@ fn nodeIsReady(self: *Page, comptime from_parser: bool, node: *Node) !void {
     }
     if (node.is(Element.Html.Script)) |script| {
         if ((comptime from_parser == false) and script._src.len == 0) {
-            // script was added via JavaScript, but without a src, don't try
-            // to execute it (we'll execute it if/when the src is set)
-            return;
+            // Script was added via JavaScript without a src attribute.
+            // Only skip if it has no inline content either — scripts with
+            // textContent/text should still execute per spec.
+            if (node.firstChild() == null) {
+                return;
+            }
         }
 
         self.scriptAddedCallback(from_parser, script) catch |err| {
@@ -3223,7 +3059,6 @@ const ParseState = union(enum) {
     pre,
     complete,
     err: anyerror,
-    attachment_promoted,
     html: std.ArrayList(u8),
     text: std.ArrayList(u8),
     image: std.ArrayList(u8),
@@ -3330,7 +3165,7 @@ pub const NavigateReason = enum {
 pub const NavigateOpts = struct {
     cdp_id: ?i64 = null,
     reason: NavigateReason = .address_bar,
-    method: Http.Method = .GET,
+    method: HttpClient.Method = .GET,
     body: ?[]const u8 = null,
     header: ?[:0]const u8 = null,
     force: bool = false,
@@ -3340,7 +3175,7 @@ pub const NavigateOpts = struct {
 pub const NavigatedOpts = struct {
     cdp_id: ?i64 = null,
     reason: NavigateReason = .address_bar,
-    method: Http.Method = .GET,
+    method: HttpClient.Method = .GET,
 };
 
 const NavigationType = enum {
@@ -3351,9 +3186,9 @@ const NavigationType = enum {
 };
 
 const Navigation = union(NavigationType) {
-    form: *Node,
+    form: *Page,
     script: ?*Page,
-    anchor: *Node,
+    anchor: *Page,
     iframe: *IFrame,
 };
 
@@ -3365,309 +3200,95 @@ pub const QueuedNavigation = struct {
     navigation_type: NavigationType,
 };
 
+/// Resolves a target attribute value (e.g., "_self", "_parent", "_top", or frame name)
+/// to the appropriate Page to navigate.
+/// Returns null if the target is "_blank" (which would open a new window/tab).
+/// Note: Callers should handle empty target separately (for owner document resolution).
+pub fn resolveTargetPage(self: *Page, target_name: []const u8) ?*Page {
+    if (std.ascii.eqlIgnoreCase(target_name, "_self")) {
+        return self;
+    }
+
+    if (std.ascii.eqlIgnoreCase(target_name, "_blank")) {
+        return null;
+    }
+
+    if (std.ascii.eqlIgnoreCase(target_name, "_parent")) {
+        return self.parent orelse self;
+    }
+
+    if (std.ascii.eqlIgnoreCase(target_name, "_top")) {
+        var page = self;
+        while (page.parent) |p| {
+            page = p;
+        }
+        return page;
+    }
+
+    // Named frame lookup: search current page's descendants first, then from root
+    // This follows the HTML spec's "implementation-defined" search order.
+    if (findFrameByName(self, target_name)) |frame_page| {
+        return frame_page;
+    }
+
+    // If not found in descendants, search from root (catches siblings and ancestors' descendants)
+    var root = self;
+    while (root.parent) |p| {
+        root = p;
+    }
+    if (root != self) {
+        if (findFrameByName(root, target_name)) |frame_page| {
+            return frame_page;
+        }
+    }
+
+    // If no frame found with that name, navigate in current page
+    // (this matches browser behavior - unknown targets act like _self)
+    return self;
+}
+
+fn findFrameByName(page: *Page, name: []const u8) ?*Page {
+    for (page.frames.items) |frame| {
+        if (frame.iframe) |iframe| {
+            const frame_name = iframe.asElement().getAttributeSafe(comptime .wrap("name")) orelse "";
+            if (std.mem.eql(u8, frame_name, name)) {
+                return frame;
+            }
+        }
+        // Recursively search child frames
+        if (findFrameByName(frame, name)) |found| {
+            return found;
+        }
+    }
+    return null;
+}
+
 pub fn triggerMouseClick(self: *Page, x: f64, y: f64) !void {
-    try self.triggerMouseClickWithModifiers(x, y, .main, .{});
-}
-
-pub fn triggerMouseClickWithModifiers(self: *Page, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
-    _ = try self.triggerMouseButtonEventResult("click", x, y, button, modifiers);
-}
-
-pub const MouseClickDispatchResult = struct {
-    dispatched: bool,
-    default_prevented: bool,
-};
-
-pub fn triggerMouseClickWithResult(
-    self: *Page,
-    x: f64,
-    y: f64,
-    button: MouseButton,
-    modifiers: MouseModifiers,
-) !MouseClickDispatchResult {
-    return self.triggerMouseButtonEventResult("click", x, y, button, modifiers);
-}
-
-pub fn mouseClickRequiresRenderedInteractiveTarget(self: *Page, x: f64, y: f64) !bool {
-    const target = (try self.window._document.elementFromPoint(x, y, self)) orelse return false;
-    const html_element = findClickableHtmlAncestor(target.asNode()) orelse return false;
-    return switch (html_element._type) {
-        .anchor, .input, .button, .select, .textarea => true,
-        .label => false,
-        else => false,
-    };
-}
-
-pub fn triggerMouseClickOnNodePathWithResult(
-    self: *Page,
-    path: []const u16,
-    x: f64,
-    y: f64,
-    button: MouseButton,
-    modifiers: MouseModifiers,
-) !MouseClickDispatchResult {
-    const target = self.resolveNodePath(path) orelse return .{
-        .dispatched = false,
-        .default_prevented = false,
-    };
-    return self.dispatchMouseButtonEventResult(target, "click", x, y, button, modifiers);
-}
-
-pub const MouseButton = enum(i32) {
-    main = 0,
-    auxiliary = 1,
-    secondary = 2,
-    fourth = 3,
-    fifth = 4,
-};
-
-pub const MouseModifiers = struct {
-    alt: bool = false,
-    ctrl: bool = false,
-    meta: bool = false,
-    shift: bool = false,
-    buttons: u16 = 0,
-};
-
-pub fn triggerMouseMove(self: *Page, x: f64, y: f64, modifiers: MouseModifiers) !void {
-    _ = try self.triggerMouseButtonEventResult("mousemove", x, y, .main, modifiers);
-}
-
-pub fn triggerMouseDown(self: *Page, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
-    _ = try self.triggerMouseButtonEventResult("mousedown", x, y, button, modifiers);
-}
-
-pub fn triggerMouseUp(self: *Page, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
-    _ = try self.triggerMouseButtonEventResult("mouseup", x, y, button, modifiers);
-}
-
-pub const MouseWheelDispatchResult = struct {
-    dispatched: bool = false,
-    default_prevented: bool = false,
-    scrolled_element: bool = false,
-};
-
-pub fn triggerMouseWheel(self: *Page, x: f64, y: f64, delta_x: f64, delta_y: f64, modifiers: MouseModifiers) !MouseWheelDispatchResult {
-    const target = (try self.window._document.elementFromPoint(x, y, self)) orelse return .{};
+    const target = (try self.window._document.elementFromPoint(x, y, self)) orelse return;
     if (comptime IS_DEBUG) {
-        log.debug(.page, "page mouse wheel", .{
+        log.debug(.page, "page mouse click", .{
             .url = self.url,
             .node = target,
             .x = x,
             .y = y,
-            .delta_x = delta_x,
-            .delta_y = delta_y,
             .type = self._type,
         });
     }
-
-    const WheelEvent = @import("webapi/event/WheelEvent.zig");
-    const event = (try WheelEvent.init("wheel", .{
+    const mouse_event: *MouseEvent = try .initTrusted(comptime .wrap("click"), .{
         .bubbles = true,
         .cancelable = true,
         .composed = true,
         .clientX = x,
         .clientY = y,
-        .ctrlKey = modifiers.ctrl,
-        .shiftKey = modifiers.shift,
-        .altKey = modifiers.alt,
-        .metaKey = modifiers.meta,
-        .buttons = modifiers.buttons,
-        .deltaX = delta_x,
-        .deltaY = delta_y,
-        .deltaMode = WheelEvent.DOM_DELTA_PIXEL,
-    }, self)).asEvent();
-    try self._event_manager.dispatch(target.asEventTarget(), event);
-    const default_prevented = event.getDefaultPrevented();
-    const scrolled_element = if (!default_prevented)
-        try self.applyDefaultWheelScroll(target, delta_x, delta_y)
-    else
-        false;
-    return .{
-        .dispatched = true,
-        .default_prevented = default_prevented,
-        .scrolled_element = scrolled_element,
-    };
-}
-
-pub fn resetElementScrollMetrics(self: *Page) void {
-    self._element_scroll_metrics.clearRetainingCapacity();
-}
-
-pub fn resetElementLayoutBoxes(self: *Page) void {
-    self._element_layout_boxes.clearRetainingCapacity();
-}
-
-pub fn setElementScrollMetrics(self: *Page, element: *Element, metrics: Element.ScrollMetrics) !void {
-    try self._element_scroll_metrics.put(self.arena, element, metrics);
-    _ = try self.setElementScrollPosition(
-        element,
-        @as(i32, @intCast(element.getScrollLeft(self))),
-        @as(i32, @intCast(element.getScrollTop(self))),
-    );
-}
-
-pub fn setElementLayoutBox(self: *Page, element: *Element, box: Element.LayoutBox) !void {
-    try self._element_layout_boxes.put(self.arena, element, box);
-}
-
-pub fn setElementScrollPosition(self: *Page, element: *Element, x: i32, y: i32) !bool {
-    const gop = try self._element_scroll_positions.getOrPut(self.arena, element);
-    if (!gop.found_existing) {
-        gop.value_ptr.* = .{};
-    }
-
-    var next_x: u32 = @intCast(@max(0, x));
-    var next_y: u32 = @intCast(@max(0, y));
-    if (self._element_scroll_metrics.get(element)) |metrics| {
-        next_x = @min(next_x, maxElementScrollOffset(metrics.scroll_width, metrics.client_width));
-        next_y = @min(next_y, maxElementScrollOffset(metrics.scroll_height, metrics.client_height));
-    }
-
-    const changed = gop.value_ptr.x != next_x or gop.value_ptr.y != next_y;
-    gop.value_ptr.x = next_x;
-    gop.value_ptr.y = next_y;
-    return changed;
-}
-
-fn applyDefaultWheelScroll(self: *Page, target: *Element, delta_x: f64, delta_y: f64) !bool {
-    var current: ?*Element = target;
-    while (current) |element| {
-        const metrics = self._element_scroll_metrics.get(element) orelse {
-            current = element.parentElement();
-            continue;
-        };
-
-        var next_left: i32 = @intCast(element.getScrollLeft(self));
-        var next_top: i32 = @intCast(element.getScrollTop(self));
-        const current_left = next_left;
-        const current_top = next_top;
-
-        if (delta_y != 0 and try elementAllowsWheelScrollAxis(self, element, .y) and metrics.scroll_height > metrics.client_height) {
-            next_top += @intFromFloat(@round(delta_y));
-        }
-        if (delta_x != 0 and try elementAllowsWheelScrollAxis(self, element, .x) and metrics.scroll_width > metrics.client_width) {
-            next_left += @intFromFloat(@round(delta_x));
-        }
-
-        if (next_left != current_left or next_top != current_top) {
-            if (try self.setElementScrollPosition(element, next_left, next_top)) {
-                return true;
-            }
-        }
-        current = element.parentElement();
-    }
-    return false;
-}
-
-const ScrollAxis = enum { x, y };
-
-fn elementAllowsWheelScrollAxis(self: *Page, element: *Element, axis: ScrollAxis) !bool {
-    const style = try self.window.getComputedStyle(element, null, self);
-    const decl = style.asCSSStyleDeclaration();
-    if (overflowValueAllowsWheelScroll(decl.getPropertyValue("overflow", self))) {
-        return true;
-    }
-    return switch (axis) {
-        .x => overflowValueAllowsWheelScroll(decl.getPropertyValue("overflow-x", self)),
-        .y => overflowValueAllowsWheelScroll(decl.getPropertyValue("overflow-y", self)),
-    };
-}
-
-fn overflowValueAllowsWheelScroll(value: []const u8) bool {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    return std.ascii.eqlIgnoreCase(trimmed, "auto") or
-        std.ascii.eqlIgnoreCase(trimmed, "scroll");
-}
-
-fn maxElementScrollOffset(scroll_size: u32, client_size: u32) u32 {
-    if (scroll_size <= client_size) {
-        return 0;
-    }
-    return scroll_size - client_size;
-}
-
-fn triggerMouseButtonEventResult(
-    self: *Page,
-    typ: []const u8,
-    x: f64,
-    y: f64,
-    button: MouseButton,
-    modifiers: MouseModifiers,
-) !MouseClickDispatchResult {
-    const target = (try self.window._document.elementFromPoint(x, y, self)) orelse return .{
-        .dispatched = false,
-        .default_prevented = false,
-    };
-    return self.dispatchMouseButtonEventResult(target.asNode(), typ, x, y, button, modifiers);
-}
-
-fn dispatchMouseButtonEventResult(
-    self: *Page,
-    target: *Node,
-    typ: []const u8,
-    x: f64,
-    y: f64,
-    button: MouseButton,
-    modifiers: MouseModifiers,
-) !MouseClickDispatchResult {
-    if (comptime IS_DEBUG) {
-        log.debug(.page, "page mouse event", .{
-            .url = self.url,
-            .event_type = typ,
-            .node = target,
-            .x = x,
-            .y = y,
-            .button = @intFromEnum(button),
-            .buttons = modifiers.buttons,
-            .type = self._type,
-        });
-    }
-
-    const MouseEvent = @import("webapi/event/MouseEvent.zig");
-    const event = (try MouseEvent.init(typ, .{
-        .bubbles = true,
-        .cancelable = true,
-        .composed = true,
-        .clientX = x,
-        .clientY = y,
-        .button = @intFromEnum(button),
-        .buttons = modifiers.buttons,
-        .ctrlKey = modifiers.ctrl,
-        .shiftKey = modifiers.shift,
-        .altKey = modifiers.alt,
-        .metaKey = modifiers.meta,
-    }, self)).asEvent();
-    try self._event_manager.dispatch(target.asEventTarget(), event);
-    return .{
-        .dispatched = true,
-        .default_prevented = event._prevent_default,
-    };
-}
-
-fn resolveNodePath(self: *Page, path: []const u16) ?*Node {
-    var current = self.window._document.asNode();
-    for (path) |segment| {
-        var child = current.firstChild();
-        var index: u16 = 0;
-        while (child) |candidate| : (child = candidate.nextSibling()) {
-            if (index == segment) {
-                current = candidate;
-                break;
-            }
-            index += 1;
-        } else {
-            return null;
-        }
-    }
-    return current;
+    }, self);
+    try self._event_manager.dispatch(target.asEventTarget(), mouse_event.asEvent());
 }
 
 // callback when the "click" event reaches the pages.
 pub fn handleClick(self: *Page, target: *Node) !void {
     // TODO: Also support <area> elements when implement
-    const html_element = findClickableHtmlAncestor(target) orelse return;
-    const element = html_element.asElement();
+    const element = target.is(Element) orelse return;
+    const html_element = element.is(Element.Html) orelse return;
 
     switch (html_element._type) {
         .anchor => |anchor| {
@@ -3676,84 +3297,34 @@ pub fn handleClick(self: *Page, target: *Node) !void {
                 return;
             }
 
-            if (std.ascii.startsWithIgnoreCase(href, "browser://")) {
-                try element.focus(self);
-                try self._session.enqueueBrowserNavigation(href);
-                return;
-            }
-
             if (std.mem.startsWith(u8, href, "javascript:")) {
                 return;
             }
 
             if (try element.hasAttribute(comptime .wrap("download"), self)) {
-                const resolved_url = try URL.resolve(
-                    self.call_arena,
-                    self.base(),
-                    href,
-                    .{ .always_dupe = false, .encode = true },
-                );
-                const suggested_filename = element.getAttributeSafe(comptime .wrap("download")) orelse "";
-                try element.focus(self);
-                try self._session.enqueueDownload(resolved_url, suggested_filename);
-                log.info(.browser, "a.download", .{
-                    .type = self._type,
-                    .url = self.url,
-                    .href = href,
-                });
+                log.warn(.browser, "a.download", .{ .type = self._type, .url = self.url });
                 return;
             }
 
-            switch (classifyTopLevelTarget(anchor.getTarget())) {
-                .same_context => {},
-                .new_tab => {
-                    const resolved_url = try URL.resolve(
-                        self.call_arena,
-                        self.base(),
-                        href,
-                        .{ .always_dupe = false, .encode = true },
-                    );
-                    try element.focus(self);
-                    try self._session.enqueueOpenInTargetTab(resolved_url, "_blank", .{
-                        .reason = .script,
-                        .kind = .{ .push = null },
-                    }, true, 0, PopupSource.anchor);
+            const target_page = blk: {
+                const target_name = anchor.getTarget();
+                if (target_name.len == 0) {
+                    break :blk target.ownerPage(self);
+                }
+                break :blk self.resolveTargetPage(target_name) orelse {
+                    log.warn(.not_implemented, "target", .{ .type = self._type, .url = self.url, .target = target_name });
                     return;
-                },
-                .named => |target_name| {
-                    const resolved_url = try URL.resolve(
-                        self.call_arena,
-                        self.base(),
-                        href,
-                        .{ .always_dupe = false, .encode = true },
-                    );
-                    try element.focus(self);
-                    try self._session.enqueueOpenInTargetTab(resolved_url, target_name, .{
-                        .reason = .script,
-                        .kind = .{ .push = null },
-                    }, true, 0, PopupSource.anchor);
-                    return;
-                },
-            }
+                };
+            };
 
-            // TODO: We need to support targets properly, but this is the most
-            // common case: a click on an anchor navigates the page/frame that
-            // anchor is in.
-
-            // ownerDocument only returns null when `target` is a document, which
-            // it is NOT in this case. Even for a detched node, it'll return self.document
             try element.focus(self);
             try self.scheduleNavigation(href, .{
                 .reason = .script,
                 .kind = .{ .push = null },
-            }, .{ .anchor = target });
+            }, .{ .anchor = target_page });
         },
         .input => |input| {
             try element.focus(self);
-            if (input._input_type == .file) {
-                try self.handleFileInputActivation(input);
-                return;
-            }
             if (input._input_type == .submit) {
                 return self.submitForm(element, input.getForm(self), .{});
             }
@@ -3764,852 +3335,60 @@ pub fn handleClick(self: *Page, target: *Node) !void {
                 return self.submitForm(element, button.getForm(self), .{});
             }
         },
-        .label => |label| {
-            const control = label.getControl(self) orelse return;
-            const control_html = control.is(Element.Html) orelse return;
-            try control_html.click(self);
-        },
         .select, .textarea => try element.focus(self),
         else => {},
     }
 }
 
-fn handleFileInputActivation(self: *Page, input: *Element.Html.Input) !void {
-    const accept = input.getAccept();
-    const multiple = input.getMultiple();
-    var selected_files = self._session.browser.app.display.chooseFiles(accept, multiple) orelse return;
-    defer selected_files.deinit(self._session.browser.app.allocator);
-
-    const selected_specs = try self.call_arena.alloc(Element.Html.Input.SelectedFileSpec, selected_files.paths.len);
-    for (selected_files.paths, 0..) |selected_path, index| {
-        selected_specs[index] = .{ .path = selected_path };
-    }
-
-    if (!(try input.setSelectedFiles(selected_specs, self))) {
-        return;
-    }
-    try input.dispatchInputEvent(self);
-    try input.dispatchChangeEvent(self);
-}
-
-const TopLevelTarget = union(enum) {
-    same_context,
-    new_tab,
-    named: []const u8,
-};
-
-fn classifyTopLevelTarget(target_val: []const u8) TopLevelTarget {
-    const target = std.mem.trim(u8, target_val, &std.ascii.whitespace);
-    if (target.len == 0) {
-        return .same_context;
-    }
-    if (std.ascii.eqlIgnoreCase(target, "_self") or
-        std.ascii.eqlIgnoreCase(target, "_parent") or
-        std.ascii.eqlIgnoreCase(target, "_top"))
-    {
-        return .same_context;
-    }
-    if (std.ascii.eqlIgnoreCase(target, "_blank")) {
-        return .new_tab;
-    }
-    return .{ .named = target };
-}
-
-fn findClickableHtmlAncestor(target: *Node) ?*Element.Html {
-    var current: ?*Node = target;
-    while (current) |node| : (current = node._parent) {
-        const element = node.is(Element) orelse continue;
-        const html_element = element.is(Element.Html) orelse continue;
-        switch (html_element._type) {
-            .anchor, .input, .button, .label, .select, .textarea => return html_element,
-            else => {},
-        }
-    }
-    return null;
-}
-
-pub fn triggerKeyboard(self: *Page, keyboard_event: *KeyboardEvent) !bool {
+pub fn triggerKeyboard(self: *Page, keyboard_event: *KeyboardEvent) !void {
     const event = keyboard_event.asEvent();
-    const target = blk: {
-        if (self.window._document._active_element) |element| {
-            break :blk element.asNode();
-        }
-        if (self.window._document.getActiveElement()) |element| {
-            break :blk element.asNode();
-        }
-        break :blk self.document.asNode();
+    const element = self.window._document._active_element orelse {
+        keyboard_event.deinit(false, self._session);
+        return;
     };
+
     if (comptime IS_DEBUG) {
         log.debug(.page, "page keydown", .{
             .url = self.url,
-            .node = target,
+            .node = element,
             .key = keyboard_event._key,
             .type = self._type,
         });
     }
-    try self._event_manager.dispatch(target.asEventTarget(), event);
-    return !event._prevent_default;
-}
-
-pub const KeyboardModifiers = struct {
-    alt: bool = false,
-    ctrl: bool = false,
-    meta: bool = false,
-    shift: bool = false,
-};
-
-pub fn triggerKeyboardKeyDown(self: *Page, key: []const u8, modifiers: KeyboardModifiers) !bool {
-    return self.triggerKeyboardKeyDownWithRepeat(key, modifiers, false);
-}
-
-pub fn triggerKeyboardKeyDownWithRepeat(self: *Page, key: []const u8, modifiers: KeyboardModifiers, repeat: bool) !bool {
-    const keyboard_event = try KeyboardEvent.initTrusted(comptime .wrap("keydown"), .{
-        .key = key,
-        .altKey = modifiers.alt,
-        .ctrlKey = modifiers.ctrl,
-        .metaKey = modifiers.meta,
-        .shiftKey = modifiers.shift,
-        .repeat = repeat,
-    }, self);
-    return self.triggerKeyboard(keyboard_event);
-}
-
-pub fn triggerKeyboardKeyDownNoText(self: *Page, key: []const u8, modifiers: KeyboardModifiers) !bool {
-    return self.triggerKeyboardKeyDownNoTextWithRepeat(key, modifiers, false);
-}
-
-pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *Page, key: []const u8, modifiers: KeyboardModifiers, repeat: bool) !bool {
-    self._keyboard_text_suppression_depth += 1;
-    defer self._keyboard_text_suppression_depth -= 1;
-    return self.triggerKeyboardKeyDownWithRepeat(key, modifiers, repeat);
-}
-
-pub fn triggerKeyboardKeyUp(self: *Page, key: []const u8, modifiers: KeyboardModifiers) !bool {
-    const keyboard_event = try KeyboardEvent.initTrusted(comptime .wrap("keyup"), .{
-        .key = key,
-        .altKey = modifiers.alt,
-        .ctrlKey = modifiers.ctrl,
-        .metaKey = modifiers.meta,
-        .shiftKey = modifiers.shift,
-    }, self);
-    return self.triggerKeyboard(keyboard_event);
-}
-
-pub fn triggerWindowBlur(self: *Page) !void {
-    const active = self.document._active_element orelse return;
-    try active.blur(self);
-}
-
-pub fn triggerClipboardEvent(self: *Page, typ: []const u8) !bool {
-    const active = self.document._active_element orelse return false;
-    const event = try Event.init(typ, .{
-        .bubbles = true,
-        .cancelable = true,
-        .composed = true,
-    }, self);
-    event.setTrusted();
-    try self._event_manager.dispatch(active.asEventTarget(), event);
-    return !event._prevent_default;
-}
-
-fn blocksTextInsertion(keyboard_event: *const KeyboardEvent) bool {
-    return keyboard_event.getCtrlKey() or keyboard_event.getAltKey() or keyboard_event.getMetaKey();
-}
-
-fn hasAccelModifier(keyboard_event: *const KeyboardEvent) bool {
-    return keyboard_event.getCtrlKey() or keyboard_event.getMetaKey();
-}
-
-fn isSelectAllShortcutKey(key: KeyboardEvent.Key, accel_down: bool, alt_down: bool) bool {
-    if (!accel_down or alt_down) {
-        return false;
-    }
-    return switch (key) {
-        .standard => |s| s.len == 1 and std.ascii.toLower(s[0]) == 'a',
-        else => false,
-    };
-}
-
-fn isKeyboardActivationKey(key: KeyboardEvent.Key) bool {
-    return switch (key) {
-        .Enter => true,
-        .standard => |s| std.mem.eql(u8, s, " "),
-        else => false,
-    };
-}
-
-fn isKeyboardSpaceKey(key: KeyboardEvent.Key) bool {
-    return switch (key) {
-        .standard => |s| std.mem.eql(u8, s, " "),
-        else => false,
-    };
-}
-
-fn trySelectAllInput(input: *Element.Html.Input, page: *Page) !bool {
-    return switch (input._input_type) {
-        .text, .search, .url, .tel, .password => blk: {
-            try input.select(page);
-            break :blk true;
-        },
-        else => false,
-    };
-}
-
-const EditAction = enum {
-    backspace,
-    delete,
-};
-
-const MoveAction = enum {
-    left,
-    right,
-    up,
-    down,
-    home,
-    end,
-};
-
-fn editActionFromKey(key: KeyboardEvent.Key) ?EditAction {
-    return switch (key) {
-        .Backspace => .backspace,
-        .Delete => .delete,
-        else => null,
-    };
-}
-
-fn moveActionFromKey(key: KeyboardEvent.Key) ?MoveAction {
-    return switch (key) {
-        .ArrowLeft => .left,
-        .ArrowRight => .right,
-        .ArrowUp => .up,
-        .ArrowDown => .down,
-        .Home => .home,
-        .End => .end,
-        else => null,
-    };
-}
-
-const TabFocusCandidate = struct {
-    element: *Element,
-    tab_index: i32,
-    document_order: usize,
-};
-
-fn isHiddenFromSequentialFocus(element: *Element) bool {
-    var current: ?*Node = element.asNode();
-    while (current) |node| {
-        if (node.is(Element)) |el| {
-            if (el.getAttributeSafe(comptime .wrap("hidden")) != null) {
-                return true;
-            }
-        }
-        current = node.parentNode();
-    }
-    return false;
-}
-
-fn isSequentiallyFocusableElement(element: *Element) bool {
-    const html_element = element.is(Element.Html) orelse return false;
-    const tab_index = html_element.getTabIndex();
-    if (tab_index < 0) {
-        return false;
-    }
-
-    if (isHiddenFromSequentialFocus(element)) {
-        return false;
-    }
-
-    switch (html_element._type) {
-        .button => |button| if (button.getDisabled()) return false,
-        .input => |input| {
-            if (input.getDisabled() or input._input_type == .hidden) {
-                return false;
-            }
-        },
-        .select => |select| if (select.getDisabled()) return false,
-        .textarea => |textarea| if (textarea.getDisabled()) return false,
-        else => {},
-    }
-
-    return true;
-}
-
-fn collectSequentialFocusCandidates(
-    node: *Node,
-    candidates: *std.ArrayListUnmanaged(TabFocusCandidate),
-    allocator: Allocator,
-    document_order: *usize,
-) !void {
-    var child = node.firstChild();
-    while (child) |current| : (child = current.nextSibling()) {
-        if (current.is(Element)) |element| {
-            if (isSequentiallyFocusableElement(element)) {
-                const html_element = element.is(Element.Html).?;
-                try candidates.append(allocator, .{
-                    .element = element,
-                    .tab_index = html_element.getTabIndex(),
-                    .document_order = document_order.*,
-                });
-            }
-            document_order.* += 1;
-        }
-        try collectSequentialFocusCandidates(current, candidates, allocator, document_order);
-    }
-}
-
-fn tabFocusCandidateLessThan(_: void, lhs: TabFocusCandidate, rhs: TabFocusCandidate) bool {
-    const lhs_positive = lhs.tab_index > 0;
-    const rhs_positive = rhs.tab_index > 0;
-    if (lhs_positive != rhs_positive) {
-        return lhs_positive;
-    }
-
-    if (lhs_positive and rhs_positive and lhs.tab_index != rhs.tab_index) {
-        return lhs.tab_index < rhs.tab_index;
-    }
-
-    return lhs.document_order < rhs.document_order;
-}
-
-fn nextTabFocusIndex(len: usize, current_index: ?usize, backwards: bool) usize {
-    if (len == 0) {
-        return 0;
-    }
-    if (current_index) |idx| {
-        if (idx < len) {
-            if (backwards) {
-                return if (idx == 0) len - 1 else idx - 1;
-            }
-            return if (idx + 1 >= len) 0 else idx + 1;
-        }
-    }
-    return if (backwards) len - 1 else 0;
-}
-
-pub fn focusNextByTab(self: *Page, backwards: bool) !bool {
-    const arena = try self.arena_pool.acquire();
-    defer self.arena_pool.release(arena);
-
-    var candidates: std.ArrayListUnmanaged(TabFocusCandidate) = .{};
-    defer candidates.deinit(arena);
-
-    var order: usize = 0;
-    try collectSequentialFocusCandidates(self.document.asNode(), &candidates, arena, &order);
-    if (candidates.items.len == 0) {
-        return false;
-    }
-
-    std.mem.sort(TabFocusCandidate, candidates.items, {}, tabFocusCandidateLessThan);
-
-    var current_index: ?usize = null;
-    if (self.document._active_element) |active| {
-        for (candidates.items, 0..) |candidate, idx| {
-            if (candidate.element != active) {
-                continue;
-            }
-            current_index = idx;
-            break;
-        }
-    }
-
-    const target_index = nextTabFocusIndex(candidates.items.len, current_index, backwards);
-    try candidates.items[target_index].element.focus(self);
-    return true;
-}
-
-fn normalizedSelection(start_u32: u32, end_u32: u32, len: usize) struct { start: usize, end: usize } {
-    var start: usize = @min(@as(usize, @intCast(start_u32)), len);
-    const end: usize = @min(@as(usize, @intCast(end_u32)), len);
-    if (end < start) {
-        start = end;
-    }
-    return .{
-        .start = start,
-        .end = end,
-    };
-}
-
-fn removeValueRange(page: *Page, current: []const u8, start: usize, end: usize) ![]const u8 {
-    return std.mem.concat(page.arena, u8, &.{ current[0..start], current[end..] });
-}
-
-const SelectionRange = struct {
-    start: usize,
-    end: usize,
-};
-
-fn selectedRangeFromInput(input: *Element.Html.Input) ?SelectionRange {
-    switch (input._input_type) {
-        .text, .search, .url, .tel, .password => {},
-        else => return null,
-    }
-    const value = input.getValue();
-    const selection = normalizedSelection(input._selection_start, input._selection_end, value.len);
-    if (selection.end <= selection.start) {
-        return null;
-    }
-    return .{
-        .start = selection.start,
-        .end = selection.end,
-    };
-}
-
-fn selectedRangeFromTextArea(textarea: *Element.Html.TextArea) ?SelectionRange {
-    const value = textarea.getValue();
-    const selection = normalizedSelection(textarea._selection_start, textarea._selection_end, value.len);
-    if (selection.end <= selection.start) {
-        return null;
-    }
-    return .{
-        .start = selection.start,
-        .end = selection.end,
-    };
-}
-
-fn isWordByte(byte: u8) bool {
-    return std.ascii.isAlphanumeric(byte) or byte == '_';
-}
-
-fn lineStartForPosition(text: []const u8, pos_in: usize) usize {
-    const pos = @min(pos_in, text.len);
-    var i = pos;
-    while (i > 0) : (i -= 1) {
-        if (text[i - 1] == '\n') {
-            return i;
-        }
-    }
-    return 0;
-}
-
-fn lineEndForPosition(text: []const u8, pos_in: usize) usize {
-    var i = @min(pos_in, text.len);
-    while (i < text.len) : (i += 1) {
-        if (text[i] == '\n') {
-            return i;
-        }
-    }
-    return text.len;
-}
-
-fn previousLinePosition(text: []const u8, pos_in: usize) usize {
-    const pos = @min(pos_in, text.len);
-    const current_start = lineStartForPosition(text, pos);
-    if (current_start == 0) {
-        return pos;
-    }
-
-    const current_col = pos - current_start;
-    const prev_end = current_start - 1;
-    const prev_start = lineStartForPosition(text, prev_end);
-    const prev_len = prev_end - prev_start;
-    return prev_start + @min(current_col, prev_len);
-}
-
-fn nextLinePosition(text: []const u8, pos_in: usize) usize {
-    const pos = @min(pos_in, text.len);
-    const current_start = lineStartForPosition(text, pos);
-    const current_end = lineEndForPosition(text, pos);
-    if (current_end >= text.len) {
-        return pos;
-    }
-
-    const current_col = pos - current_start;
-    const next_start = current_end + 1;
-    const next_end = lineEndForPosition(text, next_start);
-    const next_len = next_end - next_start;
-    return next_start + @min(current_col, next_len);
-}
-
-fn previousWordBoundary(text: []const u8, cursor_in: usize) usize {
-    var cursor = @min(cursor_in, text.len);
-    while (cursor > 0 and std.ascii.isWhitespace(text[cursor - 1])) {
-        cursor -= 1;
-    }
-    if (cursor == 0) {
-        return 0;
-    }
-
-    if (isWordByte(text[cursor - 1])) {
-        while (cursor > 0 and isWordByte(text[cursor - 1])) {
-            cursor -= 1;
-        }
-        return cursor;
-    }
-
-    while (cursor > 0 and !std.ascii.isWhitespace(text[cursor - 1]) and !isWordByte(text[cursor - 1])) {
-        cursor -= 1;
-    }
-    return cursor;
-}
-
-fn nextWordBoundary(text: []const u8, cursor_in: usize) usize {
-    var cursor = @min(cursor_in, text.len);
-    while (cursor < text.len and std.ascii.isWhitespace(text[cursor])) {
-        cursor += 1;
-    }
-    if (cursor >= text.len) {
-        return text.len;
-    }
-
-    if (isWordByte(text[cursor])) {
-        while (cursor < text.len and isWordByte(text[cursor])) {
-            cursor += 1;
-        }
-        return cursor;
-    }
-
-    while (cursor < text.len and !std.ascii.isWhitespace(text[cursor]) and !isWordByte(text[cursor])) {
-        cursor += 1;
-    }
-    return cursor;
-}
-
-fn moveCursorPosition(text: []const u8, pos: usize, action: MoveAction, word_mode: bool, line_home_end_mode: bool) usize {
-    return switch (action) {
-        .left => if (word_mode) previousWordBoundary(text, pos) else if (pos > 0) pos - 1 else 0,
-        .right => if (word_mode) nextWordBoundary(text, pos) else if (pos < text.len) pos + 1 else text.len,
-        .up => previousLinePosition(text, pos),
-        .down => nextLinePosition(text, pos),
-        .home => if (line_home_end_mode) lineStartForPosition(text, pos) else 0,
-        .end => if (line_home_end_mode) lineEndForPosition(text, pos) else text.len,
-    };
-}
-
-const CursorMoveResult = struct {
-    start: u32,
-    end: u32,
-    backward: bool,
-};
-
-fn moveCursorSelection(
-    start_u32: u32,
-    end_u32: u32,
-    selection_is_backward: bool,
-    text: []const u8,
-    action: MoveAction,
-    with_shift: bool,
-    fallback_end_cursor: bool,
-    word_mode: bool,
-    line_home_end_mode: bool,
-) CursorMoveResult {
-    const len = text.len;
-    const selection = normalizedSelection(start_u32, end_u32, len);
-    var start = selection.start;
-    var end = selection.end;
-    var caret = end;
-    if (start == end and fallback_end_cursor and caret == 0 and len > 0) {
-        caret = len;
-        start = caret;
-        end = caret;
-    }
-
-    if (!with_shift) {
-        const pos: usize = switch (action) {
-            .left => if (start != end) start else moveCursorPosition(text, start, .left, word_mode, line_home_end_mode),
-            .right => if (start != end) end else moveCursorPosition(text, end, .right, word_mode, line_home_end_mode),
-            .up => if (start != end) start else moveCursorPosition(text, start, .up, word_mode, line_home_end_mode),
-            .down => if (start != end) end else moveCursorPosition(text, end, .down, word_mode, line_home_end_mode),
-            .home => moveCursorPosition(text, start, .home, word_mode, line_home_end_mode),
-            .end => moveCursorPosition(text, end, .end, word_mode, line_home_end_mode),
-        };
-        return .{
-            .start = @intCast(pos),
-            .end = @intCast(pos),
-            .backward = false,
-        };
-    }
-
-    var anchor: usize = undefined;
-    var focus: usize = undefined;
-    if (start != end) {
-        if (selection_is_backward) {
-            anchor = end;
-            focus = start;
-        } else {
-            anchor = start;
-            focus = end;
-        }
-    } else {
-        anchor = caret;
-        focus = caret;
-    }
-
-    focus = moveCursorPosition(text, focus, action, word_mode, line_home_end_mode);
-
-    if (focus < anchor) {
-        return .{
-            .start = @intCast(focus),
-            .end = @intCast(anchor),
-            .backward = true,
-        };
-    }
-    return .{
-        .start = @intCast(anchor),
-        .end = @intCast(focus),
-        .backward = false,
-    };
-}
-
-fn applyInputCursorMove(input: *Element.Html.Input, action: MoveAction, with_shift: bool, fallback_end_cursor: bool, word_mode: bool) bool {
-    const value = input.getValue();
-    const moved = moveCursorSelection(
-        input._selection_start,
-        input._selection_end,
-        input._selection_direction == .backward,
-        value,
-        action,
-        with_shift,
-        fallback_end_cursor,
-        word_mode and (action == .left or action == .right),
-        false,
-    );
-    input._selection_start = moved.start;
-    input._selection_end = moved.end;
-    input._selection_direction = if (moved.start == moved.end) .none else if (moved.backward) .backward else .forward;
-    return true;
-}
-
-fn applyTextAreaCursorMove(textarea: *Element.Html.TextArea, action: MoveAction, with_shift: bool, fallback_end_cursor: bool, word_mode: bool) bool {
-    const value = textarea.getValue();
-    const moved = moveCursorSelection(
-        textarea._selection_start,
-        textarea._selection_end,
-        textarea._selection_direction == .backward,
-        value,
-        action,
-        with_shift,
-        fallback_end_cursor,
-        word_mode and (action == .left or action == .right),
-        !word_mode,
-    );
-    textarea._selection_start = moved.start;
-    textarea._selection_end = moved.end;
-    textarea._selection_direction = if (moved.start == moved.end) .none else if (moved.backward) .backward else .forward;
-    return true;
-}
-
-fn editInputValue(page: *Page, input: *Element.Html.Input, action: EditAction, fallback_end_cursor: bool, word_mode: bool) !bool {
-    const current = input.getValue();
-    const len = current.len;
-    if (len == 0) {
-        return true;
-    }
-
-    const selection = normalizedSelection(input._selection_start, input._selection_end, len);
-    var cursor = selection.start;
-    if (selection.start == selection.end and fallback_end_cursor and cursor == 0 and len > 0) {
-        cursor = len;
-    }
-
-    if (selection.end > selection.start) {
-        const new_value = try removeValueRange(page, current, selection.start, selection.end);
-        try input.setValue(new_value, page);
-        const pos: u32 = @intCast(selection.start);
-        input._selection_start = pos;
-        input._selection_end = pos;
-        input._selection_direction = .none;
-        try input.dispatchInputEvent(page);
-        return true;
-    }
-
-    const remove_start, const remove_end = switch (action) {
-        .backspace => blk: {
-            if (cursor == 0) return true;
-            const remove_start = if (word_mode) previousWordBoundary(current, cursor) else cursor - 1;
-            if (remove_start == cursor) return true;
-            break :blk .{ remove_start, cursor };
-        },
-        .delete => blk: {
-            if (cursor >= len) return true;
-            const remove_end = if (word_mode) nextWordBoundary(current, cursor) else cursor + 1;
-            if (remove_end == cursor) return true;
-            break :blk .{ cursor, remove_end };
-        },
-    };
-    const new_value = try removeValueRange(page, current, remove_start, remove_end);
-    try input.setValue(new_value, page);
-
-    const new_pos: u32 = @intCast(remove_start);
-    input._selection_start = new_pos;
-    input._selection_end = new_pos;
-    input._selection_direction = .none;
-    try input.dispatchInputEvent(page);
-    return true;
-}
-
-fn editTextAreaValue(page: *Page, textarea: *Element.Html.TextArea, action: EditAction, fallback_end_cursor: bool, word_mode: bool) !bool {
-    const current = textarea.getValue();
-    const len = current.len;
-    if (len == 0) {
-        return true;
-    }
-
-    const selection = normalizedSelection(textarea._selection_start, textarea._selection_end, len);
-    var cursor = selection.start;
-    if (selection.start == selection.end and fallback_end_cursor and cursor == 0 and len > 0) {
-        cursor = len;
-    }
-
-    if (selection.end > selection.start) {
-        const new_value = try removeValueRange(page, current, selection.start, selection.end);
-        try textarea.setValue(new_value, page);
-        const pos: u32 = @intCast(selection.start);
-        textarea._selection_start = pos;
-        textarea._selection_end = pos;
-        textarea._selection_direction = .none;
-        try textarea.dispatchInputEvent(page);
-        return true;
-    }
-
-    const remove_start, const remove_end = switch (action) {
-        .backspace => blk: {
-            if (cursor == 0) return true;
-            const remove_start = if (word_mode) previousWordBoundary(current, cursor) else cursor - 1;
-            if (remove_start == cursor) return true;
-            break :blk .{ remove_start, cursor };
-        },
-        .delete => blk: {
-            if (cursor >= len) return true;
-            const remove_end = if (word_mode) nextWordBoundary(current, cursor) else cursor + 1;
-            if (remove_end == cursor) return true;
-            break :blk .{ cursor, remove_end };
-        },
-    };
-    const new_value = try removeValueRange(page, current, remove_start, remove_end);
-    try textarea.setValue(new_value, page);
-
-    const new_pos: u32 = @intCast(remove_start);
-    textarea._selection_start = new_pos;
-    textarea._selection_end = new_pos;
-    textarea._selection_direction = .none;
-    try textarea.dispatchInputEvent(page);
-    return true;
+    try self._event_manager.dispatch(element.asEventTarget(), event);
 }
 
 pub fn handleKeydown(self: *Page, target: *Node, event: *Event) !void {
     const keyboard_event = event.is(KeyboardEvent) orelse return;
     const key = keyboard_event.getKey();
-    const suppress_text = self._keyboard_text_suppression_depth > 0;
-    const accel_down = hasAccelModifier(keyboard_event);
-    const select_all_shortcut = isSelectAllShortcutKey(key, accel_down, keyboard_event.getAltKey());
-    const word_shortcuts = accel_down and !keyboard_event.getAltKey();
-    const edit_action = editActionFromKey(key);
-    const move_action = moveActionFromKey(key);
 
     if (key == .Dead) {
         return;
     }
 
-    if (key == .Tab and !keyboard_event.getCtrlKey() and !keyboard_event.getMetaKey() and !keyboard_event.getAltKey()) {
-        _ = try self.focusNextByTab(keyboard_event.getShiftKey());
-        return;
-    }
-
-    if (target.is(Element.Html.Anchor)) |anchor| {
-        if (!keyboard_event.getCtrlKey() and !keyboard_event.getMetaKey() and !keyboard_event.getAltKey() and key == .Enter) {
-            const html_element = anchor.asElement().is(Element.Html).?;
-            try html_element.click(self);
-        }
-        return;
-    }
-
-    if (target.is(Element.Html.Button)) |button| {
-        if (!keyboard_event.getCtrlKey() and !keyboard_event.getMetaKey() and !keyboard_event.getAltKey() and isKeyboardActivationKey(key)) {
-            const html_element = button.asElement().is(Element.Html).?;
-            try html_element.click(self);
-        }
-        return;
-    }
-
     if (target.is(Element.Html.Input)) |input| {
+        if (key == .Enter) {
+            return self.submitForm(input.asElement(), input.getForm(self), .{});
+        }
+
+        // Don't handle text input for radio/checkbox
         const input_type = input._input_type;
-
-        if (!keyboard_event.getCtrlKey() and !keyboard_event.getMetaKey() and !keyboard_event.getAltKey()) {
-            if (input_type == .file and (key == .Enter or isKeyboardSpaceKey(key))) {
-                const html_element = input.asElement().is(Element.Html).?;
-                try html_element.click(self);
-                return;
-            }
-            if (key == .Enter) {
-                switch (input_type) {
-                    .submit, .reset, .button, .image => {
-                        const html_element = input.asElement().is(Element.Html).?;
-                        try html_element.click(self);
-                        return;
-                    },
-                    .radio, .checkbox => return,
-                    else => return self.submitForm(input.asElement(), input.getForm(self), .{}),
-                }
-            }
-
-            if (isKeyboardSpaceKey(key)) {
-                switch (input_type) {
-                    .checkbox, .radio, .submit, .reset, .button, .image => {
-                        const html_element = input.asElement().is(Element.Html).?;
-                        try html_element.click(self);
-                        return;
-                    },
-                    else => {},
-                }
-            }
-        }
-
-        // Don't handle text input for radio/checkbox or activation-only inputs.
-        switch (input_type) {
-            .radio, .checkbox, .submit, .reset, .button, .image => return,
-            else => {},
-        }
-
         if (input_type == .radio or input_type == .checkbox) {
             return;
         }
 
-        if (select_all_shortcut) {
-            if (try trySelectAllInput(input, self)) {
-                return;
-            }
-        }
-
-        if (move_action) |action| {
-            _ = applyInputCursorMove(input, action, keyboard_event.getShiftKey(), suppress_text, word_shortcuts);
-            return;
-        }
-
-        if (edit_action) |action| {
-            _ = try editInputValue(self, input, action, suppress_text, word_shortcuts);
-            return;
-        }
-
         // Handle printable characters
-        if (!suppress_text and key.isPrintable() and !blocksTextInsertion(keyboard_event)) {
+        if (key.isPrintable()) {
             try input.innerInsert(key.asString(), self);
         }
         return;
     }
 
     if (target.is(Element.Html.TextArea)) |textarea| {
-        if (select_all_shortcut) {
-            try textarea.select(self);
-            return;
-        }
-
-        if (move_action) |action| {
-            _ = applyTextAreaCursorMove(textarea, action, keyboard_event.getShiftKey(), suppress_text, word_shortcuts);
-            return;
-        }
-
-        if (edit_action) |action| {
-            _ = try editTextAreaValue(self, textarea, action, suppress_text, word_shortcuts);
-            return;
-        }
-
-        if (suppress_text and (key == .Enter or key.isPrintable())) {
-            return;
-        }
         // zig fmt: off
         const append =
             if (key == .Enter) "\n"
-            else if (key.isPrintable() and !blocksTextInsertion(keyboard_event)) key.asString()
+            else if (key.isPrintable()) key.asString()
             else return
         ;
         // zig fmt: on
@@ -4635,12 +3414,31 @@ pub fn submitForm(self: *Page, submitter_: ?*Element, form_: ?*Element.Html.Form
 
     const form_element = form.asElement();
 
+    const target_name_: ?[]const u8 = blk: {
+        if (submitter_) |submitter| {
+            if (submitter.getAttributeSafe(comptime .wrap("formtarget"))) |ft| {
+                break :blk ft;
+            }
+        }
+        break :blk form_element.getAttributeSafe(comptime .wrap("target"));
+    };
+
+    const target_page = blk: {
+        const target_name = target_name_ orelse {
+            break :blk form_element.asNode().ownerPage(self);
+        };
+        break :blk self.resolveTargetPage(target_name) orelse {
+            log.warn(.not_implemented, "target", .{ .type = self._type, .url = self.url, .target = target_name });
+            return;
+        };
+    };
+
     if (submit_opts.fire_event) {
         const submit_event = try Event.initTrusted(comptime .wrap("submit"), .{ .bubbles = true, .cancelable = true }, self);
 
         // so submit_event is still valid when we check _prevent_default
         submit_event.acquireRef();
-        defer submit_event.deinit(false, self);
+        defer submit_event.deinit(false, self._session);
 
         try self._event_manager.dispatch(form_element.asEventTarget(), submit_event);
         // If the submit event was prevented, don't submit the form
@@ -4654,9 +3452,8 @@ pub fn submitForm(self: *Page, submitter_: ?*Element, form_: ?*Element.Html.Form
     // I don't think this is technically correct, but FormData handles it ok
     const form_data = try FormData.init(form, submitter_, self);
 
-    const arena = try self.arena_pool.acquire();
-    var release_arena = true;
-    defer if (release_arena) self.arena_pool.release(arena);
+    const arena = try self._session.getArena(.{ .debug = "submitForm" });
+    errdefer self._session.releaseArena(arena);
 
     const encoding = form_element.getAttributeSafe(comptime .wrap("enctype"));
 
@@ -4673,36 +3470,13 @@ pub fn submitForm(self: *Page, submitter_: ?*Element, form_: ?*Element.Html.Form
     if (std.ascii.eqlIgnoreCase(method, "post")) {
         opts.method = .POST;
         opts.body = buf.written();
-        opts.header = try form_data.contentTypeHeader(encoding);
+        // form_data.write currently only supports this encoding, so we know this has to be the content type
+        opts.header = "Content-Type: application/x-www-form-urlencoded";
     } else {
         action = try URL.concatQueryString(arena, action, buf.written());
     }
 
-    switch (classifyTopLevelTarget(form_element.getAttributeSafe(comptime .wrap("target")) orelse "")) {
-        .same_context => {},
-        .new_tab => {
-            const resolved_action = try URL.resolve(
-                self.call_arena,
-                self.base(),
-                action,
-                .{ .always_dupe = false, .encode = true },
-            );
-            try self._session.enqueueOpenInTargetTab(resolved_action, "_blank", opts, true, 0, PopupSource.form);
-            return;
-        },
-        .named => |target_name| {
-            const resolved_action = try URL.resolve(
-                self.call_arena,
-                self.base(),
-                action,
-                .{ .always_dupe = false, .encode = true },
-            );
-            try self._session.enqueueOpenInTargetTab(resolved_action, target_name, opts, true, 0, PopupSource.form);
-            return;
-        },
-    }
-    release_arena = false;
-    return self.scheduleNavigationWithArena(arena, action, opts, .{ .form = form_element.asNode() });
+    return self.scheduleNavigationWithArena(arena, action, opts, .{ .form = target_page });
 }
 
 // insertText is a shortcut to insert text into the active element.
@@ -4723,59 +3497,13 @@ pub fn insertText(self: *Page, v: []const u8) !void {
     }
 }
 
-pub fn getActiveTextSelection(self: *Page) ?[]const u8 {
-    const html_element = self.document._active_element orelse return null;
-
-    if (html_element.is(Element.Html.Input)) |input| {
-        const range = selectedRangeFromInput(input) orelse return null;
-        const value = input.getValue();
-        return value[range.start..range.end];
-    }
-
-    if (html_element.is(Element.Html.TextArea)) |textarea| {
-        const range = selectedRangeFromTextArea(textarea) orelse return null;
-        const value = textarea.getValue();
-        return value[range.start..range.end];
-    }
-
-    return null;
-}
-
-pub fn deleteActiveTextSelection(self: *Page) !bool {
-    const html_element = self.document._active_element orelse return false;
-
-    if (html_element.is(Element.Html.Input)) |input| {
-        if (selectedRangeFromInput(input) == null) {
-            return false;
-        }
-        _ = try editInputValue(self, input, .delete, false, false);
-        return true;
-    }
-
-    if (html_element.is(Element.Html.TextArea)) |textarea| {
-        if (selectedRangeFromTextArea(textarea) == null) {
-            return false;
-        }
-        _ = try editTextAreaValue(self, textarea, .delete, false, false);
-        return true;
-    }
-
-    return false;
-}
-
-pub fn cutActiveTextSelection(self: *Page) !?[]const u8 {
-    const selected = self.getActiveTextSelection() orelse return null;
-    _ = try self.deleteActiveTextSelection();
-    return selected;
-}
-
 const RequestCookieOpts = struct {
     is_http: bool = true,
     is_navigation: bool = false,
 };
-pub fn requestCookie(self: *const Page, opts: RequestCookieOpts) Http.Client.RequestCookie {
+pub fn requestCookie(self: *const Page, opts: RequestCookieOpts) HttpClient.RequestCookie {
     return .{
-        .jar = self._session.cookie_jar,
+        .jar = &self._session.cookie_jar,
         .origin = self.url,
         .is_http = opts.is_http,
         .is_navigation = opts.is_navigation,
@@ -4797,727 +3525,16 @@ fn asUint(comptime string: anytype) std.meta.Int(
 
 const testing = @import("../testing.zig");
 test "WebApi: Page" {
+    const filter: testing.LogFilter = .init(&.{ .http, .js });
+    defer filter.deinit();
+
     try testing.htmlRunner("page", .{});
 }
 
-test "Page moveCursorSelection basic behavior" {
-    const no_sel_left = moveCursorSelection(0, 0, false, "abcde", .left, false, true, false, false);
-    try testing.expectEqual(@as(u32, 4), no_sel_left.start);
-    try testing.expectEqual(@as(u32, 4), no_sel_left.end);
-    try testing.expectEqual(false, no_sel_left.backward);
-
-    const collapse_left = moveCursorSelection(2, 4, false, "0123456789", .left, false, false, false, false);
-    try testing.expectEqual(@as(u32, 2), collapse_left.start);
-    try testing.expectEqual(@as(u32, 2), collapse_left.end);
-
-    const shift_forward = moveCursorSelection(2, 4, false, "0123456789", .right, true, false, false, false);
-    try testing.expectEqual(@as(u32, 2), shift_forward.start);
-    try testing.expectEqual(@as(u32, 5), shift_forward.end);
-    try testing.expectEqual(false, shift_forward.backward);
-
-    const shift_backward = moveCursorSelection(2, 4, true, "0123456789", .left, true, false, false, false);
-    try testing.expectEqual(@as(u32, 1), shift_backward.start);
-    try testing.expectEqual(@as(u32, 4), shift_backward.end);
-    try testing.expectEqual(true, shift_backward.backward);
-}
-
-test "classifyTopLevelTarget distinguishes tab and named targets" {
-    try std.testing.expectEqual(TopLevelTarget.same_context, classifyTopLevelTarget(""));
-    try std.testing.expectEqual(TopLevelTarget.same_context, classifyTopLevelTarget("_self"));
-    try std.testing.expectEqual(TopLevelTarget.same_context, classifyTopLevelTarget("_SELF"));
-    try std.testing.expectEqual(TopLevelTarget.same_context, classifyTopLevelTarget("_parent"));
-    try std.testing.expectEqual(TopLevelTarget.same_context, classifyTopLevelTarget("_top"));
-    try std.testing.expectEqual(TopLevelTarget.new_tab, classifyTopLevelTarget("_blank"));
-    try std.testing.expectEqual(TopLevelTarget.new_tab, classifyTopLevelTarget("_BLANK"));
-
-    const named = classifyTopLevelTarget("named-window");
-    try std.testing.expectEqualStrings(
-        "named-window",
-        switch (named) {
-            .named => |value| value,
-            else => return error.TestUnexpectedTargetKind,
-        },
-    );
-}
-
-fn deinitPendingTabOpensForTest(
-    allocator: std.mem.Allocator,
-    pending: *std.ArrayListUnmanaged(Session.PendingTabOpen),
-) void {
-    while (pending.items.len > 0) {
-        var request = pending.items[pending.items.len - 1];
-        pending.items.len -= 1;
-        request.deinit(allocator);
-    }
-    pending.deinit(allocator);
-}
-
-fn deinitPendingDownloadsForTest(
-    allocator: std.mem.Allocator,
-    pending: *std.ArrayListUnmanaged(Session.PendingDownload),
-) void {
-    while (pending.items.len > 0) {
-        var request = pending.items[pending.items.len - 1];
-        pending.items.len -= 1;
-        request.deinit(allocator);
-    }
-    pending.deinit(allocator);
-}
-
-fn deinitPendingBrowserNavigationsForTest(
-    allocator: std.mem.Allocator,
-    pending: *std.ArrayListUnmanaged(Session.PendingBrowserNavigate),
-) void {
-    while (pending.items.len > 0) {
-        var request = pending.items[pending.items.len - 1];
-        pending.items.len -= 1;
-        request.deinit(allocator);
-    }
-    pending.deinit(allocator);
-}
-
-fn clickSelectorCenter(
-    page: *Page,
-    comptime selector: []const u8,
-) !MouseClickDispatchResult {
-    const element = (try page.window._document.querySelector(comptime .wrap(selector), page)).?;
-    const rect = element.getBoundingClientRect(page);
-    return page.triggerMouseClickWithResult(
-        rect.getX() + (rect.getWidth() / 2.0),
-        rect.getY() + (rect.getHeight() / 2.0),
-        .main,
-        .{},
-    );
-}
-
-test "Page handleClick queues named target anchor popup" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-
-    const anchor = (try page.window._document.querySelector(.wrap("#named_anchor"), page)).?;
-    try page.handleClick(anchor.asNode());
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expectString("report", pending.items[0].target_name);
-    try testing.expectEqual(PopupSource.anchor, pending.items[0].popup_source);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=anchor",
-        pending.items[0].url,
-    );
-}
-
-test "Page querySelector supports dir open and vendor any-link compatibility selectors" {
-    var page = try testing.pageTest("page/selector_compat.html");
-    defer page._session.removePage();
-
-    const link = (try page.window._document.querySelector(.wrap("body:dir(rtl) a:lang(ar):-webkit-any-link"), page)).?;
-    try testing.expectEqual(.anchor, link.getTag());
-    try testing.expectString("policy-link", link.getAttributeSafe(.wrap("id")).?);
-
-    try testing.expect(try link.matches(":link", page));
-
-    const details = (try page.window._document.querySelector(.wrap("details:open"), page)).?;
-    try testing.expectEqual(.details, details.getTag());
-    try testing.expectString("policy-details", details.getAttributeSafe(.wrap("id")).?);
-}
-
-test "Page querySelector supports has relative combinators and quoted comma arguments" {
-    var page = try testing.pageTest("page/selector_has_relative.html");
-    defer page._session.removePage();
-
-    const direct = (try page.window._document.querySelector(.wrap("section:has(> .direct-hit)"), page)).?;
-    try testing.expectString("parent_direct", direct.getAttributeSafe(.wrap("id")).?);
-
-    const attr_parent = (try page.window._document.querySelector(.wrap("section:has(> .missing, > [data-note='alpha,beta'])"), page)).?;
-    try testing.expectString("parent_attr", attr_parent.getAttributeSafe(.wrap("id")).?);
-
-    const adjacent = (try page.window._document.querySelector(.wrap("li:has(+ li.selected)"), page)).?;
-    try testing.expectString("item_one", adjacent.getAttributeSafe(.wrap("id")).?);
-
-    const following = (try page.window._document.querySelector(.wrap("li:has(~ li.selected)"), page)).?;
-    try testing.expectString("item_zero", following.getAttributeSafe(.wrap("id")).?);
-}
-
-test "Page Enter on focused anchor queues named target popup" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-
-    const anchor = (try page.window._document.querySelector(.wrap("#named_anchor"), page)).?;
-    try anchor.focus(page);
-    _ = try page.triggerKeyboardKeyDownNoText("Enter", .{});
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expectString("report", pending.items[0].target_name);
-    try testing.expectEqual(PopupSource.anchor, pending.items[0].popup_source);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?from=anchor",
-        pending.items[0].url,
-    );
-}
-
-test "Page handleClick queues browser navigation for internal browser link" {
-    var page = try testing.pageTest("page/internal_browser_link.html");
-    defer page._session.removePage();
-
-    const anchor = (try page.window._document.querySelector(.wrap("#browser_history"), page)).?;
-    try page.handleClick(anchor.asNode());
-
-    var pending_browser_navigations = page._session.takePendingBrowserNavigations();
-    defer deinitPendingBrowserNavigationsForTest(page._session.browser.app.allocator, &pending_browser_navigations);
-
-    try testing.expectEqual(@as(usize, 1), pending_browser_navigations.items.len);
-    try testing.expectString("browser://history/traverse/0", pending_browser_navigations.items[0].url);
-    try testing.expect(page._queued_navigation == null);
-}
-
-test "Page Enter on focused anchor queues browser navigation for internal browser link" {
-    var page = try testing.pageTest("page/internal_browser_link.html");
-    defer page._session.removePage();
-
-    const anchor = (try page.window._document.querySelector(.wrap("#browser_history"), page)).?;
-    try anchor.focus(page);
-    _ = try page.triggerKeyboardKeyDownNoText("Enter", .{});
-
-    var pending_browser_navigations = page._session.takePendingBrowserNavigations();
-    defer deinitPendingBrowserNavigationsForTest(page._session.browser.app.allocator, &pending_browser_navigations);
-
-    try testing.expectEqual(@as(usize, 1), pending_browser_navigations.items.len);
-    try testing.expectString("browser://history/traverse/0", pending_browser_navigations.items[0].url);
-    try testing.expect(page._queued_navigation == null);
-}
-
-test "Page handleClick queues named target GET form popup" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-
-    const submitter = (try page.window._document.querySelector(.wrap("#named_get_submit"), page)).?;
-    try page.handleClick(submitter.asNode());
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expectString("report", pending.items[0].target_name);
-    try testing.expectEqual(PopupSource.form, pending.items[0].popup_source);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/popup-target-result.html?q=one",
-        pending.items[0].url,
-    );
-    try testing.expectEqual(.GET, pending.items[0].opts.method);
-    try testing.expect(pending.items[0].opts.body == null);
-}
-
-test "Page handleClick queues named target POST form popup" {
-    var page = try testing.pageTest("page/popup_target.html");
-    defer page._session.removePage();
-
-    const submitter = (try page.window._document.querySelector(.wrap("#named_post_submit"), page)).?;
-    try page.handleClick(submitter.asNode());
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expectString("report", pending.items[0].target_name);
-    try testing.expectEqual(PopupSource.form, pending.items[0].popup_source);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/popup-target-post.html",
-        pending.items[0].url,
-    );
-    try testing.expectEqual(.POST, pending.items[0].opts.method);
-    try testing.expectString("q=two", pending.items[0].opts.body.?);
-    try testing.expectString("Content-Type: application/x-www-form-urlencoded", pending.items[0].opts.header.?);
-}
-
-test "Page handleClick serializes multipart file upload for named target form" {
-    var page = try testing.pageTest("page/upload_form.html");
-    defer page._session.removePage();
-
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload.txt", .data = "hello upload" });
-    defer std.fs.cwd().deleteFile("tmp-page-upload.txt") catch {};
-    const abs_path = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload.txt");
-    defer std.testing.allocator.free(abs_path);
-
-    const input_element = (try page.window._document.querySelector(.wrap("#upload"), page)).?;
-    const input = input_element.is(Element.Html.Input).?;
-    _ = try input.setSelectedFile(abs_path, "text/plain", page);
-
-    const submitter = (try page.window._document.querySelector(.wrap("#upload_submit"), page)).?;
-    try page.handleClick(submitter.asNode());
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expectString("report", pending.items[0].target_name);
-    try testing.expectEqual(PopupSource.form, pending.items[0].popup_source);
-    try testing.expectString("http://127.0.0.1:9582/upload", pending.items[0].url);
-    try testing.expectEqual(.POST, pending.items[0].opts.method);
-    try testing.expect(std.mem.startsWith(u8, pending.items[0].opts.header.?, "Content-Type: multipart/form-data; boundary="));
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "Content-Disposition: form-data; name=\"note\"") != null);
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "Content-Disposition: form-data; name=\"upload\"; filename=\"tmp-page-upload.txt\"") != null);
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "Content-Type: text/plain") != null);
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "hello upload") != null);
-}
-
-test "Page handleClick serializes multipart form with multiple selected files" {
-    var page = try testing.pageTest("page/upload_form.html");
-    defer page._session.removePage();
-
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload-a.txt", .data = "hello upload a" });
-    defer std.fs.cwd().deleteFile("tmp-page-upload-a.txt") catch {};
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload-b.json", .data = "{\"hello\":\"b\"}" });
-    defer std.fs.cwd().deleteFile("tmp-page-upload-b.json") catch {};
-
-    const abs_path_a = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload-a.txt");
-    defer std.testing.allocator.free(abs_path_a);
-    const abs_path_b = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload-b.json");
-    defer std.testing.allocator.free(abs_path_b);
-
-    const input_element = (try page.window._document.querySelector(.wrap("#upload"), page)).?;
-    const input = input_element.is(Element.Html.Input).?;
-    try input.setMultiple(true, page);
-
-    const files = [_]Element.Html.Input.SelectedFileSpec{
-        .{ .path = abs_path_a, .content_type = "text/plain" },
-        .{ .path = abs_path_b, .content_type = "application/json" },
-    };
-    _ = try input.setSelectedFiles(files[0..], page);
-
-    const submitter = (try page.window._document.querySelector(.wrap("#upload_submit"), page)).?;
-    try page.handleClick(submitter.asNode());
-
-    var pending = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending);
-
-    try testing.expectEqual(@as(usize, 1), pending.items.len);
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "filename=\"tmp-page-upload-a.txt\"") != null);
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "hello upload a") != null);
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "filename=\"tmp-page-upload-b.json\"") != null);
-    try testing.expect(std.mem.indexOf(u8, pending.items[0].opts.body.?, "{\"hello\":\"b\"}") != null);
-}
-
-test "Page triggerMouseClickWithResult respects anchor preventDefault" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-
-    const result = try clickSelectorCenter(page, "#plink");
-
-    try testing.expectEqual(true, result.dispatched);
-    try testing.expectEqual(true, result.default_prevented);
-    try testing.expect(page._queued_navigation == null);
-
-    var pending_downloads = page._session.takePendingDownloads();
-    defer deinitPendingDownloadsForTest(page._session.browser.app.allocator, &pending_downloads);
-    try testing.expectEqual(@as(usize, 0), pending_downloads.items.len);
-
-    var pending_tabs = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending_tabs);
-    try testing.expectEqual(@as(usize, 0), pending_tabs.items.len);
-
-    try testing.expectString("Rendered Prevented Click", (try page.getTitle()).?);
-}
-
-test "Page triggerMouseClickWithResult uses href mutated by onclick" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-
-    const result = try clickSelectorCenter(page, "#mlink");
-
-    try testing.expectEqual(true, result.dispatched);
-    try testing.expectEqual(false, result.default_prevented);
-    try testing.expect(page._queued_navigation != null);
-    try testing.expectString(
-        "http://127.0.0.1:9582/src/browser/tests/page/mutated-target.html?from=onclick",
-        page._queued_navigation.?.url,
-    );
-
-    var pending_downloads = page._session.takePendingDownloads();
-    defer deinitPendingDownloadsForTest(page._session.browser.app.allocator, &pending_downloads);
-    try testing.expectEqual(@as(usize, 0), pending_downloads.items.len);
-
-    var pending_tabs = page._session.takePendingTabOpens();
-    defer deinitPendingTabOpensForTest(page._session.browser.app.allocator, &pending_tabs);
-    try testing.expectEqual(@as(usize, 0), pending_tabs.items.len);
-}
-
-test "Page handleClick follows scrolled overflow auto link" {
-    var page = try testing.pageTest("page/overflow_auto_link_scroll_layout.html");
-    defer page._session.removePage();
-
-    var display_list = try DocumentPainter.paintDocument(std.testing.allocator, page, .{
-        .viewport_width = 640,
-        .layout_scale = 100,
-    });
-    defer display_list.deinit(std.testing.allocator);
-
-    const link = page.window._document.getElementById("link", page) orelse return error.OverflowAutoLinkMissing;
-    const link_region = blk: {
-        for (display_list.link_regions.items) |region| {
-            if (std.mem.indexOf(u8, region.url, "next-overflow-auto-link.html") != null) break :blk region;
-        }
-        return error.OverflowAutoLinkMissing;
-    };
-    try testing.expect(link_region.y >= 0);
-    try testing.expect(link_region.width >= 100);
-    try testing.expect(link_region.height >= 20);
-
-    try page.handleClick(link.asNode());
-    try testing.expect(page._queued_navigation != null);
-    try testing.expect(std.mem.indexOf(u8, page._queued_navigation.?.url, "next-overflow-auto-link.html") != null);
-}
-
-test "Page word boundary navigation helpers" {
-    try testing.expectEqual(@as(usize, 6), previousWordBoundary("hello world", 11));
-    try testing.expectEqual(@as(usize, 0), previousWordBoundary("hello world", 5));
-    try testing.expectEqual(@as(usize, 5), nextWordBoundary("hello world", 0));
-    try testing.expectEqual(@as(usize, 11), nextWordBoundary("hello world", 6));
-
-    const word_left = moveCursorSelection(11, 11, false, "hello world", .left, false, false, true, false);
-    try testing.expectEqual(@as(u32, 6), word_left.start);
-    try testing.expectEqual(@as(u32, 6), word_left.end);
-
-    const word_shift_left = moveCursorSelection(11, 11, false, "hello world", .left, true, false, true, false);
-    try testing.expectEqual(@as(u32, 6), word_shift_left.start);
-    try testing.expectEqual(@as(u32, 11), word_shift_left.end);
-    try testing.expectEqual(true, word_shift_left.backward);
-}
-
-test "Page line cursor helpers" {
-    const text = "abc\ndefg\nh";
-
-    try testing.expectEqual(@as(usize, 0), lineStartForPosition(text, 0));
-    try testing.expectEqual(@as(usize, 3), lineEndForPosition(text, 0));
-    try testing.expectEqual(@as(usize, 4), lineStartForPosition(text, 5));
-    try testing.expectEqual(@as(usize, 8), lineEndForPosition(text, 5));
-
-    try testing.expectEqual(@as(usize, 5), nextLinePosition(text, 1));
-    try testing.expectEqual(@as(usize, 1), previousLinePosition(text, 5));
-    try testing.expectEqual(@as(usize, 10), nextLinePosition(text, 7));
-    try testing.expectEqual(@as(usize, 0), previousLinePosition(text, 0));
-    try testing.expectEqual(@as(usize, 9), nextLinePosition(text, 9));
-
-    const up = moveCursorSelection(5, 5, false, text, .up, false, false, false, true);
-    try testing.expectEqual(@as(u32, 1), up.start);
-    try testing.expectEqual(@as(u32, 1), up.end);
-
-    const down = moveCursorSelection(1, 1, false, text, .down, false, false, false, true);
-    try testing.expectEqual(@as(u32, 5), down.start);
-    try testing.expectEqual(@as(u32, 5), down.end);
-
-    const home_line = moveCursorSelection(6, 6, false, text, .home, false, false, false, true);
-    try testing.expectEqual(@as(u32, 4), home_line.start);
-    try testing.expectEqual(@as(u32, 4), home_line.end);
-
-    const end_line = moveCursorSelection(5, 5, false, text, .end, false, false, false, true);
-    try testing.expectEqual(@as(u32, 8), end_line.start);
-    try testing.expectEqual(@as(u32, 8), end_line.end);
-}
-
-test "Page tab focus candidate ordering" {
-    const stride = @as(usize, @alignOf(Element));
-    const e0: *Element = @ptrFromInt(stride * 2);
-    const e1: *Element = @ptrFromInt(stride * 3);
-    const e2: *Element = @ptrFromInt(stride * 4);
-    const e3: *Element = @ptrFromInt(stride * 5);
-
-    var candidates = [_]TabFocusCandidate{
-        .{ .element = e0, .tab_index = 0, .document_order = 0 },
-        .{ .element = e1, .tab_index = 2, .document_order = 1 },
-        .{ .element = e2, .tab_index = 1, .document_order = 2 },
-        .{ .element = e3, .tab_index = 0, .document_order = 3 },
-    };
-
-    std.mem.sort(TabFocusCandidate, candidates[0..], {}, tabFocusCandidateLessThan);
-
-    try testing.expectEqual(e2, candidates[0].element);
-    try testing.expectEqual(e1, candidates[1].element);
-    try testing.expectEqual(e0, candidates[2].element);
-    try testing.expectEqual(e3, candidates[3].element);
-}
-
-test "Page nextTabFocusIndex wraps correctly" {
-    try testing.expectEqual(@as(usize, 0), nextTabFocusIndex(0, null, false));
-    try testing.expectEqual(@as(usize, 0), nextTabFocusIndex(3, null, false));
-    try testing.expectEqual(@as(usize, 2), nextTabFocusIndex(3, null, true));
-
-    try testing.expectEqual(@as(usize, 1), nextTabFocusIndex(3, 0, false));
-    try testing.expectEqual(@as(usize, 0), nextTabFocusIndex(3, 2, false));
-
-    try testing.expectEqual(@as(usize, 2), nextTabFocusIndex(3, 0, true));
-    try testing.expectEqual(@as(usize, 1), nextTabFocusIndex(3, 2, true));
-
-    try testing.expectEqual(@as(usize, 0), nextTabFocusIndex(3, 99, false));
-    try testing.expectEqual(@as(usize, 2), nextTabFocusIndex(3, 99, true));
-}
-
-test "Page select-all shortcut detection" {
-    try testing.expect(isSelectAllShortcutKey(KeyboardEvent.Key{ .standard = "a" }, true, false));
-    try testing.expect(isSelectAllShortcutKey(KeyboardEvent.Key{ .standard = "A" }, true, false));
-    try testing.expect(!isSelectAllShortcutKey(KeyboardEvent.Key{ .standard = "a" }, false, false));
-    try testing.expect(!isSelectAllShortcutKey(KeyboardEvent.Key{ .standard = "a" }, true, true));
-    try testing.expect(!isSelectAllShortcutKey(KeyboardEvent.Key{ .standard = "b" }, true, false));
-    try testing.expect(!isSelectAllShortcutKey(.Enter, true, false));
-}
-
-test "contentDispositionIndicatesAttachment matches attachment token only" {
-    try std.testing.expect(contentDispositionIndicatesAttachment("attachment"));
-    try std.testing.expect(contentDispositionIndicatesAttachment(" Attachment ; filename=\"report.txt\""));
-    try std.testing.expect(!contentDispositionIndicatesAttachment("inline; filename=\"report.txt\""));
-    try std.testing.expect(!contentDispositionIndicatesAttachment("filename=\"report.txt\""));
-}
-
-test "contentDispositionSuggestedFilename prefers extended filename" {
-    const filename = (try contentDispositionSuggestedFilename(
-        std.testing.allocator,
-        "attachment; filename=\"fallback.txt\"; filename*=UTF-8''server%20report.txt",
-    )).?;
-    defer std.testing.allocator.free(filename);
-
-    try std.testing.expectEqualStrings("server report.txt", filename);
-}
-
-test "contentDispositionSuggestedFilename parses quoted filename" {
-    const filename = (try contentDispositionSuggestedFilename(
-        std.testing.allocator,
-        "attachment; filename=\"server-report.txt\"",
-    )).?;
-    defer std.testing.allocator.free(filename);
-
-    try std.testing.expectEqualStrings("server-report.txt", filename);
-}
-
-test "authorizationHeaderValueForUrl builds basic auth from userinfo" {
-    const value = (try authorizationHeaderValueForUrl(
-        std.testing.allocator,
-        "http://img%20user:p%40ss@127.0.0.1/private.png",
-    )).?;
-    defer std.testing.allocator.free(value);
-
-    try std.testing.expectEqualStrings("Basic aW1nIHVzZXI6cEBzcw==", value);
-}
-
-test "refererValueForUrl strips userinfo and fragment" {
-    const value = try refererValueForUrl(
-        std.testing.allocator,
-        "http://img%20user:p%40ss@127.0.0.1:9582/path/index.html?x=1#frag",
-    );
-    defer std.testing.allocator.free(value);
-
-    try std.testing.expectEqualStrings("http://127.0.0.1:9582/path/index.html?x=1", value);
-}
-
-test "Page headersForRequest includes Authorization from userinfo" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-
-    var headers = try Http.Headers.init(page._session.browser.app.config.http_headers.user_agent_header);
-    defer headers.deinit();
-
-    try page.headersForRequest(page.arena, "http://img%20user:p%40ss@127.0.0.1/private.png", &headers);
-
-    var found_authorization = false;
-    var found_referer = false;
-    var iterator = headers.iterator();
-    while (iterator.next()) |header| {
-        if (std.ascii.eqlIgnoreCase(header.name, "Authorization")) {
-            try std.testing.expectEqualStrings("Basic aW1nIHVzZXI6cEBzcw==", header.value);
-            found_authorization = true;
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Referer")) {
-            try std.testing.expectEqualStrings(
-                "http://127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html",
-                header.value,
-            );
-            found_referer = true;
-        }
-    }
-
-    try std.testing.expect(found_authorization);
-    try std.testing.expect(found_referer);
-}
-
-test "Page headersForRequest inherits Authorization from same-origin page url" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-    page.url = "http://img%20user:p%40ss@127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html";
-    page.referer_header = null;
-
-    var headers = try Http.Headers.init(page._session.browser.app.config.http_headers.user_agent_header);
-    defer headers.deinit();
-
-    try page.headersForRequest(page.arena, "http://127.0.0.1:9582/private.png", &headers);
-
-    var found_authorization = false;
-    var found_referer = false;
-    var iterator = headers.iterator();
-    while (iterator.next()) |header| {
-        if (std.ascii.eqlIgnoreCase(header.name, "Authorization")) {
-            try std.testing.expectEqualStrings("Basic aW1nIHVzZXI6cEBzcw==", header.value);
-            found_authorization = true;
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Referer")) {
-            try std.testing.expectEqualStrings(
-                "http://127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html",
-                header.value,
-            );
-            found_referer = true;
-        }
-    }
-
-    try std.testing.expect(found_authorization);
-    try std.testing.expect(found_referer);
-}
-
-test "Page headersForRequest does not inherit Authorization cross-origin" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-    page.url = "http://img%20user:p%40ss@127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html";
-    page.referer_header = null;
-
-    var headers = try Http.Headers.init(page._session.browser.app.config.http_headers.user_agent_header);
-    defer headers.deinit();
-
-    try page.headersForRequest(page.arena, "http://127.0.0.1:9583/private.png", &headers);
-
-    var iterator = headers.iterator();
-    while (iterator.next()) |header| {
-        try std.testing.expect(!std.ascii.eqlIgnoreCase(header.name, "Authorization"));
-    }
-}
-
-test "Page headersForRequestWithPolicy suppresses credentials when disabled" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-    page.url = "http://img%20user:p%40ss@127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html";
-    page.referer_header = null;
-    try page._session.cookie_jar.populateFromResponse(page.url, "lpcss=ok; Path=/");
-
-    var headers = try Http.Headers.init(page._session.browser.app.config.http_headers.user_agent_header);
-    defer headers.deinit();
-
-    try page.headersForRequestWithPolicy(page.arena, "http://127.0.0.1:9582/private.css", &headers, .{
-        .include_credentials = false,
-    });
-
-    var found_cookie = false;
-    var found_authorization = false;
-    var found_referer = false;
-    var iterator = headers.iterator();
-    while (iterator.next()) |header| {
-        if (std.ascii.eqlIgnoreCase(header.name, "Cookie")) {
-            found_cookie = true;
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Authorization")) {
-            found_authorization = true;
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Referer")) {
-            try std.testing.expectEqualStrings(
-                "http://127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html",
-                header.value,
-            );
-            found_referer = true;
-        }
-    }
-
-    try std.testing.expect(!found_cookie);
-    try std.testing.expect(!found_authorization);
-    try std.testing.expect(found_referer);
-}
-
-test "Page headersForRequestWithPolicy keeps cookie and auth when request url is sanitized" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-    page.url = "http://fetch%20user:p%40ss@127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html";
-    page.referer_header = null;
-    try page._session.cookie_jar.populateFromResponse(page.url, "lpfetch=ok; Path=/");
-
-    var headers = try Http.Headers.init(page._session.browser.app.config.http_headers.user_agent_header);
-    defer headers.deinit();
-
-    try page.headersForRequestWithPolicy(page.arena, "http://127.0.0.1:9582/private.css", &headers, .{
-        .include_credentials = true,
-        .authorization_source_url = "http://fetch%20user:p%40ss@127.0.0.1:9582/private.css",
-    });
-
-    var found_cookie = false;
-    var found_authorization = false;
-    var found_referer = false;
-    var iterator = headers.iterator();
-    while (iterator.next()) |header| {
-        if (std.ascii.eqlIgnoreCase(header.name, "Cookie")) {
-            try std.testing.expectEqualStrings("lpfetch=ok", header.value);
-            found_cookie = true;
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Authorization")) {
-            try std.testing.expectEqualStrings("Basic ZmV0Y2ggdXNlcjpwQHNz", header.value);
-            found_authorization = true;
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Referer")) {
-            try std.testing.expectEqualStrings(
-                "http://127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html",
-                header.value,
-            );
-            found_referer = true;
-        }
-    }
-
-    try std.testing.expect(found_cookie);
-    try std.testing.expect(found_authorization);
-    try std.testing.expect(found_referer);
-}
-
-test "Page isSameOrigin ignores request userinfo" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-    page.url = "http://fetch%20user:p%40ss@127.0.0.1:9582/src/browser/tests/page/rendered_link_activation.html";
-
-    try std.testing.expect(try page.isSameOrigin("http://127.0.0.1:9582/private.css"));
-    try std.testing.expect(try page.isSameOrigin("http://other%20user:pw@127.0.0.1:9582/private.css"));
-    try std.testing.expect(!(try page.isSameOrigin("http://127.0.0.1:9583/private.css")));
-}
-
-test "Page requestCookie sends localhost cookie on top-level navigation" {
-    var page = try testing.pageTest("page/rendered_link_activation.html");
-    defer page._session.removePage();
-    page.url = "http://127.0.0.1:8195/seed.html";
-    page.referer_header = null;
-    try page._session.cookie_jar.populateFromResponse(page.url, "lppersist=ok; Path=/");
-
-    var headers = try Http.Headers.init(page._session.browser.app.config.http_headers.user_agent_header);
-    defer headers.deinit();
-
-    try page.requestCookie(.{ .is_navigation = true }).headersForRequest(
-        page.arena,
-        "http://127.0.0.1:8195/echo.html",
-        &headers,
-    );
-
-    var found_cookie = false;
-    var iterator = headers.iterator();
-    while (iterator.next()) |header| {
-        if (std.ascii.eqlIgnoreCase(header.name, "Cookie")) {
-            try std.testing.expectEqualStrings("lppersist=ok", header.value);
-            found_cookie = true;
-        }
-    }
-
-    try std.testing.expect(found_cookie);
-}
-
 test "WebApi: Frames" {
+    const filter: testing.LogFilter = .init(&.{.js});
+    defer filter.deinit();
+
     try testing.htmlRunner("frames", .{});
 }
 

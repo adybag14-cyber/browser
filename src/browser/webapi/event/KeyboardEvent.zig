@@ -21,6 +21,7 @@ const String = @import("../../../string.zig").String;
 
 const js = @import("../../js/js.zig");
 const Page = @import("../../Page.zig");
+const Session = @import("../../Session.zig");
 
 const Event = @import("../Event.zig");
 const UIEvent = @import("UIEvent.zig");
@@ -206,7 +207,7 @@ fn initWithTrusted(arena: Allocator, typ: String, _opts: ?Options, trusted: bool
         KeyboardEvent{
             ._proto = undefined,
             ._key = try Key.fromString(arena, opts.key),
-            ._location = std.meta.intToEnum(Location, opts.location) catch return error.TypeError,
+            ._location = std.enums.fromInt(Location, opts.location) orelse return error.TypeError,
             ._code = if (opts.code) |c| try arena.dupe(u8, c) else "",
             ._repeat = opts.repeat,
             ._is_composing = opts.isComposing,
@@ -218,11 +219,18 @@ fn initWithTrusted(arena: Allocator, typ: String, _opts: ?Options, trusted: bool
     );
 
     Event.populatePrototypes(event, opts, trusted);
+
+    // https://w3c.github.io/uievents/#event-type-keyup
+    const rootevt = event._proto._proto;
+    rootevt._bubbles = true;
+    rootevt._cancelable = true;
+    rootevt._composed = true;
+
     return event;
 }
 
-pub fn deinit(self: *KeyboardEvent, shutdown: bool, page: *Page) void {
-    self._proto.deinit(shutdown, page);
+pub fn deinit(self: *KeyboardEvent, shutdown: bool, session: *Session) void {
+    self._proto.deinit(shutdown, session);
 }
 
 pub fn asEvent(self: *KeyboardEvent) *Event {

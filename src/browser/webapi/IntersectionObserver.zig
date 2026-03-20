@@ -24,6 +24,7 @@ const IS_DEBUG = @import("builtin").mode == .Debug;
 const Allocator = std.mem.Allocator;
 
 const Page = @import("../Page.zig");
+const Session = @import("../Session.zig");
 const Element = @import("Element.zig");
 const DOMRect = @import("DOMRect.zig");
 
@@ -38,11 +39,11 @@ const IntersectionObserver = @This();
 
 _arena: Allocator,
 _callback: js.Function.Temp,
-_observing: std.ArrayList(*Element) = .{},
+_observing: std.ArrayList(*Element) = .empty,
 _root: ?*Element = null,
 _root_margin: []const u8 = "0px",
 _threshold: []const f64 = &.{0.0},
-_pending_entries: std.ArrayList(*IntersectionObserverEntry) = .{},
+_pending_entries: std.ArrayList(*IntersectionObserverEntry) = .empty,
 _previous_states: std.AutoHashMapUnmanaged(*Element, bool) = .{},
 
 // Shared zero DOMRect to avoid repeated allocations for non-intersecting elements
@@ -91,13 +92,13 @@ pub fn init(callback: js.Function.Temp, options: ?ObserverInit, page: *Page) !*I
     return self;
 }
 
-pub fn deinit(self: *IntersectionObserver, shutdown: bool, page: *Page) void {
-    page.js.release(self._callback);
-    if ((comptime IS_DEBUG) and !shutdown) {
-        std.debug.assert(self._observing.items.len == 0);
+pub fn deinit(self: *IntersectionObserver, shutdown: bool, session: *Session) void {
+    if (shutdown) {
+        self._callback.release();
+        session.releaseArena(self._arena);
+    } else if (comptime IS_DEBUG) {
+        std.debug.assert(false);
     }
-
-    page.releaseArena(self._arena);
 }
 
 pub fn observe(self: *IntersectionObserver, target: *Element, page: *Page) !void {
@@ -110,7 +111,6 @@ pub fn observe(self: *IntersectionObserver, target: *Element, page: *Page) !void
 
     // Register with page if this is our first observation
     if (self._observing.items.len == 0) {
-        page.js.strongRef(self);
         try page.registerIntersectionObserver(self);
     }
 
@@ -137,7 +137,7 @@ pub fn unobserve(self: *IntersectionObserver, target: *Element, page: *Page) voi
             while (j < self._pending_entries.items.len) {
                 if (self._pending_entries.items[j]._target == target) {
                     const entry = self._pending_entries.swapRemove(j);
-                    entry.deinit(false, page);
+                    entry.deinit(false, page._session);
                 } else {
                     j += 1;
                 }
@@ -145,22 +145,18 @@ pub fn unobserve(self: *IntersectionObserver, target: *Element, page: *Page) voi
             break;
         }
     }
-
-    if (self._observing.items.len == 0) {
-        page.js.safeWeakRef(self);
-    }
 }
 
 pub fn disconnect(self: *IntersectionObserver, page: *Page) void {
-    page.unregisterIntersectionObserver(self);
-    self._observing.clearRetainingCapacity();
     self._previous_states.clearRetainingCapacity();
 
     for (self._pending_entries.items) |entry| {
-        entry.deinit(false, page);
+        entry.deinit(false, page._session);
     }
     self._pending_entries.clearRetainingCapacity();
-    page.js.safeWeakRef(self);
+
+    self._observing.clearRetainingCapacity();
+    page.unregisterIntersectionObserver(self);
 }
 
 pub fn takeRecords(self: *IntersectionObserver, page: *Page) ![]*IntersectionObserverEntry {
@@ -176,16 +172,16 @@ fn calculateIntersection(
 ) !IntersectionData {
     const target_rect = target.getBoundingClientRect(page);
 
-    // Use root element's rect or current viewport.
+    // Use root element's rect or viewport (simplified: assume 1920x1080)
     const root_rect = if (self._root) |root|
         root.getBoundingClientRect(page)
     else
-        // Simplified viewport based on runtime browser dimensions.
+        // Simplified viewport - assume 1920x1080 for now
         DOMRect{
             ._x = 0.0,
             ._y = 0.0,
-            ._width = @floatFromInt(page.window.getInnerWidth()),
-            ._height = @floatFromInt(page.window.getInnerHeight()),
+            ._width = 1920.0,
+            ._height = 1080.0,
         };
 
     // For a headless browser without real layout, we treat all elements as fully visible.
@@ -302,8 +298,8 @@ pub const IntersectionObserverEntry = struct {
     _intersection_ratio: f64,
     _is_intersecting: bool,
 
-    pub fn deinit(self: *const IntersectionObserverEntry, _: bool, page: *Page) void {
-        page.releaseArena(self._arena);
+    pub fn deinit(self: *IntersectionObserverEntry, _: bool, session: *Session) void {
+        session.releaseArena(self._arena);
     }
 
     pub fn getTarget(self: *const IntersectionObserverEntry) *Element {
@@ -362,7 +358,6 @@ pub const JsApi = struct {
         pub const name = "IntersectionObserver";
         pub const prototype_chain = bridge.prototypeChain();
         pub var class_id: bridge.ClassId = undefined;
-        pub const weak = true;
         pub const finalizer = bridge.finalizer(IntersectionObserver.deinit);
     };
 

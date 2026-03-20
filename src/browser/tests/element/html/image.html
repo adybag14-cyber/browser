@@ -37,7 +37,7 @@
     testing.expectEqual('test.png', img.getAttribute('src'));
 
     img.src = '/absolute/path.png';
-    testing.expectEqual(testing.ORIGIN + 'absolute/path.png', img.src);
+    testing.expectEqual(testing.ORIGIN + '/absolute/path.png', img.src);
     testing.expectEqual('/absolute/path.png', img.getAttribute('src'));
 
     img.src = 'https://example.com/image.png';
@@ -111,15 +111,6 @@
     // Image constructor also complete
     const img2 = new Image();
     testing.expectEqual(true, img2.complete);
-}
-</script>
-
-<script id="natural_size_data_url">
-{
-  const img = document.createElement('img');
-  img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR42mP4z8AAQv8BD/kD/Zh51wAAAAAASUVORK5CYII=';
-  testing.expectEqual(2, img.naturalWidth);
-  testing.expectEqual(1, img.naturalHeight);
 }
 </script>
 

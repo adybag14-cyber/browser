@@ -26,25 +26,13 @@ const js = @import("../../js/js.zig");
 const Page = @import("../../Page.zig");
 const Element = @import("../Element.zig");
 
+const Allocator = std.mem.Allocator;
+
 const CSSStyleDeclaration = @This();
 
 _element: ?*Element = null,
 _properties: std.DoublyLinkedList = .{},
 _is_computed: bool = false,
-
-pub const CascadeSpecificity = struct {
-    inline_style: u16 = 0,
-    ids: u16 = 0,
-    classes: u16 = 0,
-    tags: u16 = 0,
-
-    pub fn compare(self: @This(), other: @This()) std.math.Order {
-        if (self.inline_style != other.inline_style) return std.math.order(self.inline_style, other.inline_style);
-        if (self.ids != other.ids) return std.math.order(self.ids, other.ids);
-        if (self.classes != other.classes) return std.math.order(self.classes, other.classes);
-        return std.math.order(self.tags, other.tags);
-    }
-};
 
 pub fn init(element: ?*Element, is_computed: bool, page: *Page) !*CSSStyleDeclaration {
     const self = try page._factory.create(CSSStyleDeclaration{
@@ -60,7 +48,7 @@ pub fn init(element: ?*Element, is_computed: bool, page: *Page) !*CSSStyleDeclar
             if (el.getAttributeSafe(comptime .wrap("style"))) |attr_value| {
                 var it = CssParser.parseDeclarationsList(attr_value);
                 while (it.next()) |declaration| {
-                    try self.applyDeclaration(declaration.name, declaration.value, declaration.important, page);
+                    try self.setPropertyImpl(declaration.name, declaration.value, declaration.important, page);
                 }
             }
         }
@@ -99,12 +87,6 @@ pub fn getPropertyValue(self: *const CSSStyleDeclaration, property_name: []const
     return prop._value.str();
 }
 
-pub fn getSpecifiedPropertyValue(self: *const CSSStyleDeclaration, property_name: []const u8, page: *Page) []const u8 {
-    const normalized = normalizePropertyName(property_name, &page.buf);
-    const prop = self.findProperty(normalized) orelse return "";
-    return prop._value.str();
-}
-
 pub fn getPropertyPriority(self: *const CSSStyleDeclaration, property_name: []const u8, page: *Page) []const u8 {
     const normalized = normalizePropertyName(property_name, &page.buf);
     const prop = self.findProperty(normalized) orelse return "";
@@ -134,12 +116,13 @@ fn setPropertyImpl(self: *CSSStyleDeclaration, property_name: []const u8, value:
 
     const normalized = normalizePropertyName(property_name, &page.buf);
 
+    // Normalize the value for canonical serialization
+    const normalized_value = try normalizePropertyValue(page.call_arena, normalized, value);
+
     // Find existing property
     if (self.findProperty(normalized)) |existing| {
-        existing._value = try String.init(page.arena, value, .{});
+        existing._value = try String.init(page.arena, normalized_value, .{});
         existing._important = important;
-        existing._cascade_specificity = .{};
-        existing._cascade_source_order = 0;
         return;
     }
 
@@ -147,95 +130,10 @@ fn setPropertyImpl(self: *CSSStyleDeclaration, property_name: []const u8, value:
     const prop = try page._factory.create(Property{
         ._node = .{},
         ._name = try String.init(page.arena, normalized, .{}),
-        ._value = try String.init(page.arena, value, .{}),
+        ._value = try String.init(page.arena, normalized_value, .{}),
         ._important = important,
-        ._cascade_specificity = .{},
-        ._cascade_source_order = 0,
     });
     self._properties.append(&prop._node);
-}
-
-fn setPropertyImplWithCascade(
-    self: *CSSStyleDeclaration,
-    property_name: []const u8,
-    value: []const u8,
-    important: bool,
-    specificity: CascadeSpecificity,
-    source_order: usize,
-    page: *Page,
-) !void {
-    if (value.len == 0) {
-        _ = try self.removePropertyImpl(property_name, page);
-        return;
-    }
-
-    const normalized = normalizePropertyName(property_name, &page.buf);
-    if (self.findProperty(normalized)) |existing| {
-        if (!shouldOverrideCascade(existing, important, specificity, source_order)) {
-            return;
-        }
-        existing._value = try String.init(page.arena, value, .{});
-        existing._important = important;
-        existing._cascade_specificity = specificity;
-        existing._cascade_source_order = source_order;
-        return;
-    }
-
-    const prop = try page._factory.create(Property{
-        ._node = .{},
-        ._name = try String.init(page.arena, normalized, .{}),
-        ._value = try String.init(page.arena, value, .{}),
-        ._important = important,
-        ._cascade_specificity = specificity,
-        ._cascade_source_order = source_order,
-    });
-    self._properties.append(&prop._node);
-}
-
-fn shouldOverrideCascade(
-    existing: *const Property,
-    important: bool,
-    specificity: CascadeSpecificity,
-    source_order: usize,
-) bool {
-    if (important != existing._important) {
-        return important;
-    }
-
-    switch (specificity.compare(existing._cascade_specificity)) {
-        .gt => return true,
-        .lt => return false,
-        .eq => {},
-    }
-
-    return source_order >= existing._cascade_source_order;
-}
-
-pub fn applyDeclarationsText(self: *CSSStyleDeclaration, text: []const u8, page: *Page) !void {
-    var it = CssParser.parseDeclarationsList(text);
-    while (it.next()) |declaration| {
-        try self.applyDeclaration(declaration.name, declaration.value, declaration.important, page);
-    }
-}
-
-pub fn applyDeclarationsTextWithCascade(
-    self: *CSSStyleDeclaration,
-    text: []const u8,
-    specificity: CascadeSpecificity,
-    source_order: usize,
-    page: *Page,
-) !void {
-    var it = CssParser.parseDeclarationsList(text);
-    while (it.next()) |declaration| {
-        try self.applyDeclarationWithCascade(
-            declaration.name,
-            declaration.value,
-            declaration.important,
-            specificity,
-            source_order,
-            page,
-        );
-    }
 }
 
 pub fn removeProperty(self: *CSSStyleDeclaration, property_name: []const u8, page: *Page) ![]const u8 {
@@ -297,404 +195,9 @@ pub fn setCssText(self: *CSSStyleDeclaration, text: []const u8, page: *Page) !vo
     // Parse and set new properties
     var it = CssParser.parseDeclarationsList(text);
     while (it.next()) |declaration| {
-        try self.applyDeclaration(declaration.name, declaration.value, declaration.important, page);
+        try self.setPropertyImpl(declaration.name, declaration.value, declaration.important, page);
     }
     try self.syncStyleAttribute(page);
-}
-
-fn applyDeclaration(self: *CSSStyleDeclaration, property_name: []const u8, value: []const u8, important: bool, page: *Page) !void {
-    try self.setPropertyImpl(property_name, value, important, page);
-
-    const normalized = normalizePropertyName(property_name, &page.buf);
-    if (std.mem.eql(u8, normalized, "background")) {
-        try self.expandBackgroundShorthand(value, important, page);
-        return;
-    }
-    if (std.mem.eql(u8, normalized, "border")) {
-        try self.expandBorderShorthand(value, important, page);
-        return;
-    }
-    if (std.mem.eql(u8, normalized, "font")) {
-        try self.expandFontShorthand(value, important, page);
-    }
-}
-
-fn applyDeclarationWithCascade(
-    self: *CSSStyleDeclaration,
-    property_name: []const u8,
-    value: []const u8,
-    important: bool,
-    specificity: CascadeSpecificity,
-    source_order: usize,
-    page: *Page,
-) !void {
-    try self.setPropertyImplWithCascade(property_name, value, important, specificity, source_order, page);
-
-    const normalized = normalizePropertyName(property_name, &page.buf);
-    if (std.mem.eql(u8, normalized, "background")) {
-        try self.expandBackgroundShorthandWithCascade(value, important, specificity, source_order, page);
-        return;
-    }
-    if (std.mem.eql(u8, normalized, "border")) {
-        try self.expandBorderShorthandWithCascade(value, important, specificity, source_order, page);
-        return;
-    }
-    if (std.mem.eql(u8, normalized, "font")) {
-        try self.expandFontShorthandWithCascade(value, important, specificity, source_order, page);
-    }
-}
-
-fn expandBackgroundShorthand(self: *CSSStyleDeclaration, value: []const u8, important: bool, page: *Page) !void {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) return;
-
-    if (extractBackgroundColorToken(trimmed)) |color_token| {
-        try self.setPropertyImpl("background-color", color_token, important, page);
-    }
-
-    var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var image_token: ?[]const u8 = null;
-    var repeat_token: ?[]const u8 = null;
-    var position_tokens = std.ArrayList([]const u8).empty;
-    var size_tokens = std.ArrayList([]const u8).empty;
-    var parsing_size = false;
-    defer position_tokens.deinit(page.call_arena);
-    defer size_tokens.deinit(page.call_arena);
-
-    while (tokens.next()) |token| {
-        if (token.len == 0) continue;
-
-        if (std.mem.eql(u8, token, "/")) {
-            parsing_size = true;
-            continue;
-        }
-
-        if (std.mem.indexOfScalar(u8, token, '/')) |slash| {
-            const left = std.mem.trim(u8, token[0..slash], &std.ascii.whitespace);
-            const right = std.mem.trim(u8, token[slash + 1 ..], &std.ascii.whitespace);
-            if (left.len > 0 and isBackgroundPositionToken(left) and position_tokens.items.len < 2) {
-                try position_tokens.append(page.call_arena, left);
-            }
-            if (right.len > 0 and isBackgroundSizeToken(right) and size_tokens.items.len < 2) {
-                try size_tokens.append(page.call_arena, right);
-                parsing_size = true;
-            }
-            continue;
-        }
-
-        if (image_token == null and isBackgroundImageToken(token)) {
-            image_token = token;
-            continue;
-        }
-        if (repeat_token == null and isBackgroundRepeatToken(token)) {
-            repeat_token = token;
-            continue;
-        }
-        if (parsing_size and isBackgroundSizeToken(token) and size_tokens.items.len < 2) {
-            try size_tokens.append(page.call_arena, token);
-            continue;
-        }
-        if (isBackgroundPositionToken(token) and position_tokens.items.len < 2) {
-            try position_tokens.append(page.call_arena, token);
-        }
-    }
-
-    if (image_token) |token| {
-        try self.setPropertyImpl("background-image", token, important, page);
-    }
-    if (repeat_token) |token| {
-        try self.setPropertyImpl("background-repeat", token, important, page);
-    }
-    if (position_tokens.items.len > 0) {
-        const background_position = try std.mem.join(page.call_arena, " ", position_tokens.items);
-        try self.setPropertyImpl("background-position", background_position, important, page);
-    }
-    if (size_tokens.items.len > 0) {
-        const background_size = try std.mem.join(page.call_arena, " ", size_tokens.items);
-        try self.setPropertyImpl("background-size", background_size, important, page);
-    }
-}
-
-fn expandBackgroundShorthandWithCascade(
-    self: *CSSStyleDeclaration,
-    value: []const u8,
-    important: bool,
-    specificity: CascadeSpecificity,
-    source_order: usize,
-    page: *Page,
-) !void {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) return;
-
-    if (extractBackgroundColorToken(trimmed)) |color_token| {
-        try self.setPropertyImplWithCascade("background-color", color_token, important, specificity, source_order, page);
-    }
-
-    var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var image_token: ?[]const u8 = null;
-    var repeat_token: ?[]const u8 = null;
-    var position_tokens = std.ArrayList([]const u8).empty;
-    var size_tokens = std.ArrayList([]const u8).empty;
-    var parsing_size = false;
-    defer position_tokens.deinit(page.call_arena);
-    defer size_tokens.deinit(page.call_arena);
-
-    while (tokens.next()) |token| {
-        if (token.len == 0) continue;
-
-        if (std.mem.eql(u8, token, "/")) {
-            parsing_size = true;
-            continue;
-        }
-
-        if (std.mem.indexOfScalar(u8, token, '/')) |slash| {
-            const left = std.mem.trim(u8, token[0..slash], &std.ascii.whitespace);
-            const right = std.mem.trim(u8, token[slash + 1 ..], &std.ascii.whitespace);
-            if (left.len > 0 and isBackgroundPositionToken(left) and position_tokens.items.len < 2) {
-                try position_tokens.append(page.call_arena, left);
-            }
-            if (right.len > 0 and isBackgroundSizeToken(right) and size_tokens.items.len < 2) {
-                try size_tokens.append(page.call_arena, right);
-                parsing_size = true;
-            }
-            continue;
-        }
-
-        if (image_token == null and isBackgroundImageToken(token)) {
-            image_token = token;
-            continue;
-        }
-        if (repeat_token == null and isBackgroundRepeatToken(token)) {
-            repeat_token = token;
-            continue;
-        }
-        if (parsing_size and isBackgroundSizeToken(token) and size_tokens.items.len < 2) {
-            try size_tokens.append(page.call_arena, token);
-            continue;
-        }
-        if (!parsing_size and isBackgroundPositionToken(token) and position_tokens.items.len < 2) {
-            try position_tokens.append(page.call_arena, token);
-        }
-    }
-
-    if (image_token) |token| {
-        try self.setPropertyImplWithCascade("background-image", token, important, specificity, source_order, page);
-    }
-    if (repeat_token) |token| {
-        try self.setPropertyImplWithCascade("background-repeat", token, important, specificity, source_order, page);
-    }
-    if (position_tokens.items.len > 0) {
-        const background_position = try std.mem.join(page.call_arena, " ", position_tokens.items);
-        try self.setPropertyImplWithCascade("background-position", background_position, important, specificity, source_order, page);
-    }
-    if (size_tokens.items.len > 0) {
-        const background_size = try std.mem.join(page.call_arena, " ", size_tokens.items);
-        try self.setPropertyImplWithCascade("background-size", background_size, important, specificity, source_order, page);
-    }
-}
-
-fn expandBorderShorthand(self: *CSSStyleDeclaration, value: []const u8, important: bool, page: *Page) !void {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) return;
-
-    var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var width_token: ?[]const u8 = null;
-    var style_token: ?[]const u8 = null;
-    var color_token: ?[]const u8 = null;
-
-    while (tokens.next()) |token| {
-        if (token.len == 0) continue;
-
-        if (style_token == null and isBorderStyleToken(token)) {
-            style_token = token;
-            continue;
-        }
-        if (width_token == null and isBorderWidthToken(token)) {
-            width_token = token;
-            continue;
-        }
-        if (color_token == null and isLikelyColorToken(token)) {
-            color_token = token;
-        }
-    }
-
-    if (width_token) |token| {
-        try self.setPropertyImpl("border-width", token, important, page);
-    }
-    if (style_token) |token| {
-        try self.setPropertyImpl("border-style", token, important, page);
-    }
-    if (color_token) |token| {
-        try self.setPropertyImpl("border-color", token, important, page);
-    }
-}
-
-fn expandBorderShorthandWithCascade(
-    self: *CSSStyleDeclaration,
-    value: []const u8,
-    important: bool,
-    specificity: CascadeSpecificity,
-    source_order: usize,
-    page: *Page,
-) !void {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) return;
-
-    var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var width_token: ?[]const u8 = null;
-    var style_token: ?[]const u8 = null;
-    var color_token: ?[]const u8 = null;
-    while (tokens.next()) |token| {
-        if (token.len == 0) continue;
-        if (width_token == null and isBorderWidthToken(token)) {
-            width_token = token;
-            continue;
-        }
-        if (style_token == null and isBorderStyleToken(token)) {
-            style_token = token;
-            continue;
-        }
-        if (color_token == null and isLikelyColorToken(token)) {
-            color_token = token;
-        }
-    }
-
-    if (width_token) |token| {
-        try self.setPropertyImplWithCascade("border-width", token, important, specificity, source_order, page);
-    }
-    if (style_token) |token| {
-        try self.setPropertyImplWithCascade("border-style", token, important, specificity, source_order, page);
-    }
-    if (color_token) |token| {
-        try self.setPropertyImplWithCascade("border-color", token, important, specificity, source_order, page);
-    }
-}
-
-fn expandFontShorthand(self: *CSSStyleDeclaration, value: []const u8, important: bool, page: *Page) !void {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) return;
-
-    var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var collected: std.ArrayList([]const u8) = .{};
-    defer collected.deinit(page.call_arena);
-    while (tokens.next()) |token| {
-        if (token.len == 0) continue;
-        try collected.append(page.call_arena, token);
-    }
-    if (collected.items.len == 0) return;
-
-    var style_token: ?[]const u8 = null;
-    var weight_token: ?[]const u8 = null;
-    var size_token: ?[]const u8 = null;
-    var line_height_token: ?[]const u8 = null;
-    var family_start: ?usize = null;
-
-    for (collected.items, 0..) |token, index| {
-        if (size_token == null) {
-            if (fontShorthandSizeAndLineHeight(token)) |size_line| {
-                size_token = size_line.size;
-                line_height_token = size_line.line_height;
-                family_start = index + 1;
-                break;
-            }
-            if (style_token == null and isFontStyleToken(token)) {
-                style_token = token;
-                continue;
-            }
-            if (weight_token == null and isFontWeightToken(token)) {
-                weight_token = token;
-                continue;
-            }
-        }
-    }
-
-    if (size_token == null or family_start == null or family_start.? >= collected.items.len) {
-        return;
-    }
-
-    const family = try std.mem.join(page.call_arena, " ", collected.items[family_start.?..]);
-    if (family.len == 0) return;
-
-    if (style_token) |token| {
-        try self.setPropertyImpl("font-style", token, important, page);
-    }
-    if (weight_token) |token| {
-        try self.setPropertyImpl("font-weight", token, important, page);
-    }
-    if (size_token) |token| {
-        try self.setPropertyImpl("font-size", token, important, page);
-    }
-    if (line_height_token) |token| {
-        try self.setPropertyImpl("line-height", token, important, page);
-    }
-    try self.setPropertyImpl("font-family", family, important, page);
-}
-
-fn expandFontShorthandWithCascade(
-    self: *CSSStyleDeclaration,
-    value: []const u8,
-    important: bool,
-    specificity: CascadeSpecificity,
-    source_order: usize,
-    page: *Page,
-) !void {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) return;
-
-    var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var collected: std.ArrayList([]const u8) = .{};
-    defer collected.deinit(page.call_arena);
-    while (tokens.next()) |token| {
-        if (token.len == 0) continue;
-        try collected.append(page.call_arena, token);
-    }
-    if (collected.items.len == 0) return;
-
-    var style_token: ?[]const u8 = null;
-    var weight_token: ?[]const u8 = null;
-    var size_token: ?[]const u8 = null;
-    var line_height_token: ?[]const u8 = null;
-    var family_start: ?usize = null;
-
-    for (collected.items, 0..) |token, index| {
-        if (size_token == null) {
-            if (fontShorthandSizeAndLineHeight(token)) |size_line| {
-                size_token = size_line.size;
-                line_height_token = size_line.line_height;
-                family_start = index + 1;
-                break;
-            }
-            if (style_token == null and isFontStyleToken(token)) {
-                style_token = token;
-                continue;
-            }
-            if (weight_token == null and isFontWeightToken(token)) {
-                weight_token = token;
-                continue;
-            }
-        }
-    }
-
-    if (size_token == null or family_start == null or family_start.? >= collected.items.len) {
-        return;
-    }
-
-    const family = try std.mem.join(page.call_arena, " ", collected.items[family_start.?..]);
-    if (family.len == 0) return;
-
-    if (style_token) |token| {
-        try self.setPropertyImplWithCascade("font-style", token, important, specificity, source_order, page);
-    }
-    if (weight_token) |token| {
-        try self.setPropertyImplWithCascade("font-weight", token, important, specificity, source_order, page);
-    }
-    if (size_token) |token| {
-        try self.setPropertyImplWithCascade("font-size", token, important, specificity, source_order, page);
-    }
-    if (line_height_token) |token| {
-        try self.setPropertyImplWithCascade("line-height", token, important, specificity, source_order, page);
-    }
-    try self.setPropertyImplWithCascade("font-family", family, important, specificity, source_order, page);
 }
 
 pub fn format(self: *const CSSStyleDeclaration, writer: *std.Io.Writer) !void {
@@ -729,6 +232,395 @@ fn normalizePropertyName(name: []const u8, buf: []u8) []const u8 {
     return std.ascii.lowerString(buf, name);
 }
 
+// Normalize CSS property values for canonical serialization
+fn normalizePropertyValue(arena: Allocator, property_name: []const u8, value: []const u8) ![]const u8 {
+    // Per CSSOM spec, unitless zero in length properties should serialize as "0px"
+    if (std.mem.eql(u8, value, "0") and isLengthProperty(property_name)) {
+        return "0px";
+    }
+
+    // "first baseline" serializes canonically as "baseline" (first is the default)
+    if (std.ascii.startsWithIgnoreCase(value, "first baseline")) {
+        if (value.len == 14) {
+            // Exact match "first baseline"
+            return "baseline";
+        }
+        if (value.len > 14 and value[14] == ' ') {
+            // "first baseline X" -> "baseline X"
+            return try std.mem.concat(arena, u8, &.{ "baseline", value[14..] });
+        }
+    }
+
+    // For 2-value shorthand properties, collapse "X X" to "X"
+    if (isTwoValueShorthand(property_name)) {
+        if (collapseDuplicateValue(value)) |single| {
+            return single;
+        }
+    }
+
+    // Canonicalize anchor-size() function: anchor name (dashed ident) comes before size keyword
+    if (std.mem.indexOf(u8, value, "anchor-size(") != null) {
+        return try canonicalizeAnchorSize(arena, value);
+    }
+
+    return value;
+}
+
+// Canonicalize anchor-size() so that the dashed ident (anchor name) comes before the size keyword.
+// e.g. "anchor-size(width --foo)" -> "anchor-size(--foo width)"
+fn canonicalizeAnchorSize(arena: Allocator, value: []const u8) ![]const u8 {
+    var buf = std.Io.Writer.Allocating.init(arena);
+    var i: usize = 0;
+
+    while (i < value.len) {
+        // Look for "anchor-size("
+        if (std.mem.startsWith(u8, value[i..], "anchor-size(")) {
+            try buf.writer.writeAll("anchor-size(");
+            i += "anchor-size(".len;
+
+            // Parse and canonicalize the arguments
+            i = try canonicalizeAnchorSizeArgs(value, i, &buf.writer);
+        } else {
+            try buf.writer.writeByte(value[i]);
+            i += 1;
+        }
+    }
+
+    return buf.written();
+}
+
+// Parse anchor-size arguments and write them in canonical order
+fn canonicalizeAnchorSizeArgs(value: []const u8, start: usize, writer: *std.Io.Writer) !usize {
+    var i = start;
+    var depth: usize = 1;
+
+    // Skip leading whitespace
+    while (i < value.len and value[i] == ' ') : (i += 1) {}
+
+    // Collect tokens before the comma or close paren
+    var first_token_start: ?usize = null;
+    var first_token_end: usize = 0;
+    var second_token_start: ?usize = null;
+    var second_token_end: usize = 0;
+    var comma_pos: ?usize = null;
+    var token_count: usize = 0;
+
+    const args_start = i;
+    var in_token = false;
+
+    // First pass: find the structure of arguments before comma/closing paren at depth 1
+    while (i < value.len and depth > 0) {
+        const c = value[i];
+
+        if (c == '(') {
+            depth += 1;
+            in_token = true;
+            i += 1;
+        } else if (c == ')') {
+            depth -= 1;
+            if (depth == 0) {
+                if (in_token) {
+                    if (token_count == 0) {
+                        first_token_end = i;
+                    } else if (token_count == 1) {
+                        second_token_end = i;
+                    }
+                }
+                break;
+            }
+            i += 1;
+        } else if (c == ',' and depth == 1) {
+            if (in_token) {
+                if (token_count == 0) {
+                    first_token_end = i;
+                } else if (token_count == 1) {
+                    second_token_end = i;
+                }
+            }
+            comma_pos = i;
+            break;
+        } else if (c == ' ') {
+            if (in_token and depth == 1) {
+                if (token_count == 0) {
+                    first_token_end = i;
+                    token_count = 1;
+                } else if (token_count == 1 and second_token_start != null) {
+                    second_token_end = i;
+                    token_count = 2;
+                }
+                in_token = false;
+            }
+            i += 1;
+        } else {
+            if (!in_token and depth == 1) {
+                if (token_count == 0) {
+                    first_token_start = i;
+                } else if (token_count == 1) {
+                    second_token_start = i;
+                }
+                in_token = true;
+            }
+            i += 1;
+        }
+    }
+
+    // Handle end of tokens
+    if (in_token and token_count == 1 and second_token_start != null) {
+        second_token_end = i;
+        token_count = 2;
+    } else if (in_token and token_count == 0) {
+        first_token_end = i;
+        token_count = 1;
+    }
+
+    // Check if we have exactly two tokens that need reordering
+    if (token_count == 2) {
+        const first_start = first_token_start orelse args_start;
+        const second_start = second_token_start orelse first_token_end;
+
+        const first_token = value[first_start..first_token_end];
+        const second_token = value[second_start..second_token_end];
+
+        // If second token is a dashed ident and first is a size keyword, swap them
+        if (std.mem.startsWith(u8, second_token, "--") and isAnchorSizeKeyword(first_token)) {
+            try writer.writeAll(second_token);
+            try writer.writeByte(' ');
+            try writer.writeAll(first_token);
+        } else {
+            // Keep original order
+            try writer.writeAll(first_token);
+            try writer.writeByte(' ');
+            try writer.writeAll(second_token);
+        }
+    } else if (first_token_start) |fts| {
+        // Single token, just copy it
+        try writer.writeAll(value[fts..first_token_end]);
+    }
+
+    // Handle comma and fallback value (may contain nested anchor-size)
+    if (comma_pos) |cp| {
+        try writer.writeAll(", ");
+        i = cp + 1;
+        // Skip whitespace after comma
+        while (i < value.len and value[i] == ' ') : (i += 1) {}
+
+        // Copy the fallback, recursively handling nested anchor-size
+        while (i < value.len and depth > 0) {
+            if (std.mem.startsWith(u8, value[i..], "anchor-size(")) {
+                try writer.writeAll("anchor-size(");
+                i += "anchor-size(".len;
+                depth += 1;
+                i = try canonicalizeAnchorSizeArgs(value, i, writer);
+                depth -= 1;
+            } else if (value[i] == '(') {
+                depth += 1;
+                try writer.writeByte(value[i]);
+                i += 1;
+            } else if (value[i] == ')') {
+                depth -= 1;
+                if (depth == 0) break;
+                try writer.writeByte(value[i]);
+                i += 1;
+            } else {
+                try writer.writeByte(value[i]);
+                i += 1;
+            }
+        }
+    }
+
+    // Write closing paren
+    try writer.writeByte(')');
+
+    return i + 1; // Skip past the closing paren
+}
+
+fn isAnchorSizeKeyword(token: []const u8) bool {
+    const keywords = std.StaticStringMap(void).initComptime(.{
+        .{ "width", {} },
+        .{ "height", {} },
+        .{ "block", {} },
+        .{ "inline", {} },
+        .{ "self-block", {} },
+        .{ "self-inline", {} },
+    });
+    return keywords.has(token);
+}
+
+// Check if a value is "X X" (duplicate) and return just "X"
+fn collapseDuplicateValue(value: []const u8) ?[]const u8 {
+    const space_idx = std.mem.indexOfScalar(u8, value, ' ') orelse return null;
+    if (space_idx == 0 or space_idx >= value.len - 1) return null;
+
+    const first = value[0..space_idx];
+    const rest = std.mem.trimStart(u8, value[space_idx + 1 ..], " ");
+
+    // Check if there's only one more value (no additional spaces)
+    if (std.mem.indexOfScalar(u8, rest, ' ') != null) return null;
+
+    if (std.mem.eql(u8, first, rest)) {
+        return first;
+    }
+    return null;
+}
+
+fn isTwoValueShorthand(name: []const u8) bool {
+    const shorthands = std.StaticStringMap(void).initComptime(.{
+        .{ "place-content", {} },
+        .{ "place-items", {} },
+        .{ "place-self", {} },
+        .{ "margin-block", {} },
+        .{ "margin-inline", {} },
+        .{ "padding-block", {} },
+        .{ "padding-inline", {} },
+        .{ "inset-block", {} },
+        .{ "inset-inline", {} },
+        .{ "border-block-style", {} },
+        .{ "border-inline-style", {} },
+        .{ "border-block-width", {} },
+        .{ "border-inline-width", {} },
+        .{ "border-block-color", {} },
+        .{ "border-inline-color", {} },
+        .{ "overflow", {} },
+        .{ "overscroll-behavior", {} },
+        .{ "gap", {} },
+        .{ "grid-gap", {} },
+        // Scroll
+        .{ "scroll-padding-block", {} },
+        .{ "scroll-padding-inline", {} },
+        .{ "scroll-snap-align", {} },
+        // Background/Mask
+        .{ "background-size", {} },
+        .{ "border-image-repeat", {} },
+        .{ "mask-repeat", {} },
+        .{ "mask-size", {} },
+    });
+    return shorthands.has(name);
+}
+
+fn isLengthProperty(name: []const u8) bool {
+    // Properties that accept <length> or <length-percentage> values
+    const length_properties = std.StaticStringMap(void).initComptime(.{
+        // Sizing
+        .{ "width", {} },
+        .{ "height", {} },
+        .{ "min-width", {} },
+        .{ "min-height", {} },
+        .{ "max-width", {} },
+        .{ "max-height", {} },
+        // Margins
+        .{ "margin", {} },
+        .{ "margin-top", {} },
+        .{ "margin-right", {} },
+        .{ "margin-bottom", {} },
+        .{ "margin-left", {} },
+        .{ "margin-block", {} },
+        .{ "margin-block-start", {} },
+        .{ "margin-block-end", {} },
+        .{ "margin-inline", {} },
+        .{ "margin-inline-start", {} },
+        .{ "margin-inline-end", {} },
+        // Padding
+        .{ "padding", {} },
+        .{ "padding-top", {} },
+        .{ "padding-right", {} },
+        .{ "padding-bottom", {} },
+        .{ "padding-left", {} },
+        .{ "padding-block", {} },
+        .{ "padding-block-start", {} },
+        .{ "padding-block-end", {} },
+        .{ "padding-inline", {} },
+        .{ "padding-inline-start", {} },
+        .{ "padding-inline-end", {} },
+        // Positioning
+        .{ "top", {} },
+        .{ "right", {} },
+        .{ "bottom", {} },
+        .{ "left", {} },
+        .{ "inset", {} },
+        .{ "inset-block", {} },
+        .{ "inset-block-start", {} },
+        .{ "inset-block-end", {} },
+        .{ "inset-inline", {} },
+        .{ "inset-inline-start", {} },
+        .{ "inset-inline-end", {} },
+        // Border
+        .{ "border-width", {} },
+        .{ "border-top-width", {} },
+        .{ "border-right-width", {} },
+        .{ "border-bottom-width", {} },
+        .{ "border-left-width", {} },
+        .{ "border-block-width", {} },
+        .{ "border-block-start-width", {} },
+        .{ "border-block-end-width", {} },
+        .{ "border-inline-width", {} },
+        .{ "border-inline-start-width", {} },
+        .{ "border-inline-end-width", {} },
+        .{ "border-radius", {} },
+        .{ "border-top-left-radius", {} },
+        .{ "border-top-right-radius", {} },
+        .{ "border-bottom-left-radius", {} },
+        .{ "border-bottom-right-radius", {} },
+        // Text
+        .{ "font-size", {} },
+        .{ "letter-spacing", {} },
+        .{ "word-spacing", {} },
+        .{ "text-indent", {} },
+        // Flexbox/Grid
+        .{ "gap", {} },
+        .{ "row-gap", {} },
+        .{ "column-gap", {} },
+        .{ "flex-basis", {} },
+        // Legacy grid aliases
+        .{ "grid-column-gap", {} },
+        .{ "grid-row-gap", {} },
+        // Outline
+        .{ "outline", {} },
+        .{ "outline-width", {} },
+        .{ "outline-offset", {} },
+        // Multi-column
+        .{ "column-rule-width", {} },
+        .{ "column-width", {} },
+        // Scroll
+        .{ "scroll-margin", {} },
+        .{ "scroll-margin-top", {} },
+        .{ "scroll-margin-right", {} },
+        .{ "scroll-margin-bottom", {} },
+        .{ "scroll-margin-left", {} },
+        .{ "scroll-padding", {} },
+        .{ "scroll-padding-top", {} },
+        .{ "scroll-padding-right", {} },
+        .{ "scroll-padding-bottom", {} },
+        .{ "scroll-padding-left", {} },
+        // Shapes
+        .{ "shape-margin", {} },
+        // Motion path
+        .{ "offset-distance", {} },
+        // Transforms
+        .{ "translate", {} },
+        // Animations
+        .{ "animation-range-end", {} },
+        .{ "animation-range-start", {} },
+        // Other
+        .{ "border-spacing", {} },
+        .{ "text-shadow", {} },
+        .{ "box-shadow", {} },
+        .{ "baseline-shift", {} },
+        .{ "vertical-align", {} },
+        .{ "text-decoration-inset", {} },
+        .{ "block-step-size", {} },
+        // Grid lanes
+        .{ "flow-tolerance", {} },
+        .{ "column-rule-edge-inset", {} },
+        .{ "column-rule-interior-inset", {} },
+        .{ "row-rule-edge-inset", {} },
+        .{ "row-rule-interior-inset", {} },
+        .{ "rule-edge-inset", {} },
+        .{ "rule-interior-inset", {} },
+    });
+
+    return length_properties.has(name);
+}
+
 fn getDefaultPropertyValue(self: *const CSSStyleDeclaration, normalized_name: []const u8) []const u8 {
     if (std.mem.eql(u8, normalized_name, "visibility")) {
         return "visible";
@@ -748,75 +640,6 @@ fn getDefaultPropertyValue(self: *const CSSStyleDeclaration, normalized_name: []
         // transparent
         return "rgba(0, 0, 0, 0)";
     }
-    if (std.mem.eql(u8, normalized_name, "box-shadow")) {
-        return "none";
-    }
-    if (std.mem.eql(u8, normalized_name, "line-height")) {
-        return "normal";
-    }
-    if (std.mem.eql(u8, normalized_name, "letter-spacing")) {
-        return "normal";
-    }
-    if (std.mem.eql(u8, normalized_name, "word-spacing")) {
-        return "normal";
-    }
-    if (std.mem.eql(u8, normalized_name, "text-transform")) {
-        return "none";
-    }
-    if (std.mem.eql(u8, normalized_name, "transform")) {
-        return "none";
-    }
-    if (std.mem.eql(u8, normalized_name, "box-sizing")) {
-        return "border-box";
-    }
-    if (std.mem.eql(u8, normalized_name, "flex-direction")) {
-        return "row";
-    }
-    if (std.mem.eql(u8, normalized_name, "flex-wrap")) {
-        return "nowrap";
-    }
-    if (std.mem.eql(u8, normalized_name, "flex-grow")) {
-        return "0";
-    }
-    if (std.mem.eql(u8, normalized_name, "flex-shrink")) {
-        return "1";
-    }
-    if (std.mem.eql(u8, normalized_name, "flex-basis")) {
-        return "auto";
-    }
-    if (std.mem.eql(u8, normalized_name, "justify-content")) {
-        return "normal";
-    }
-    if (std.mem.eql(u8, normalized_name, "align-items")) {
-        return "stretch";
-    }
-    if (std.mem.eql(u8, normalized_name, "align-content")) {
-        return "stretch";
-    }
-    if (std.mem.eql(u8, normalized_name, "align-self")) {
-        return "auto";
-    }
-    if (std.mem.eql(u8, normalized_name, "order")) {
-        return "0";
-    }
-    if (std.mem.eql(u8, normalized_name, "gap") or std.mem.eql(u8, normalized_name, "row-gap") or std.mem.eql(u8, normalized_name, "column-gap")) {
-        return "0";
-    }
-    if (std.mem.eql(u8, normalized_name, "object-fit")) {
-        return "fill";
-    }
-    if (std.mem.eql(u8, normalized_name, "object-position")) {
-        return "50% 50%";
-    }
-    if (std.mem.eql(u8, normalized_name, "aspect-ratio")) {
-        return "auto";
-    }
-
-    if (self._element) |element| {
-        if (presentationalPropertyValue(element, normalized_name)) |value| {
-            return value;
-        }
-    }
 
     return "";
 }
@@ -826,22 +649,8 @@ fn getDefaultDisplay(element: *const Element) []const u8 {
         .html => |html| {
             return switch (html._type) {
                 .anchor, .br, .span, .label, .time, .font, .mod, .quote => "inline",
-                .button, .canvas, .iframe, .img, .input, .select, .textarea => "inline-block",
-                .table => "table",
-                .table_caption => "table-caption",
-                .table_cell => "table-cell",
-                .table_col => |table_col| if (std.ascii.eqlIgnoreCase(table_col._tag_name.str(), "colgroup")) "table-column-group" else "table-column",
-                .table_row => "table-row",
-                .table_section => |section| switch (section._tag) {
-                    .thead => "table-header-group",
-                    .tfoot => "table-footer-group",
-                    else => "table-row-group",
-                },
-                .body, .div, .dl, .p, .heading, .form, .details, .dialog, .embed, .head, .html, .hr, .li, .link, .meta, .ol, .option, .script, .slot, .style, .template, .title, .ul, .media, .area, .base, .datalist, .directory, .fieldset, .legend, .map, .meter, .object, .optgroup, .output, .param, .picture, .pre, .progress, .source, .track => "block",
+                .body, .div, .dl, .p, .heading, .form, .button, .canvas, .details, .dialog, .embed, .head, .html, .hr, .iframe, .img, .input, .li, .link, .meta, .ol, .option, .script, .select, .slot, .style, .template, .textarea, .title, .ul, .media, .area, .base, .datalist, .directory, .fieldset, .legend, .map, .meter, .object, .optgroup, .output, .param, .picture, .pre, .progress, .source, .table, .table_caption, .table_cell, .table_col, .table_row, .table_section, .track => "block",
                 .generic, .custom, .unknown, .data => blk: {
-                    if (std.ascii.eqlIgnoreCase(element.getTagNameLower(), "center")) {
-                        break :blk "block";
-                    }
                     const tag = element.getTagNameLower();
                     if (isInlineTag(tag)) break :blk "inline";
                     break :blk "block";
@@ -880,301 +689,10 @@ fn getDefaultColor(element: *const Element) []const u8 {
     }
 }
 
-fn presentationalPropertyValue(element: *const Element, normalized_name: []const u8) ?[]const u8 {
-    if (std.mem.eql(u8, normalized_name, "text-align")) {
-        if (std.ascii.eqlIgnoreCase(element.getTagNameLower(), "center")) {
-            return "center";
-        }
-        if (element.getAttributeSafe(comptime .wrap("align"))) |attr_align| {
-            if (std.ascii.eqlIgnoreCase(attr_align, "left")) return "left";
-            if (std.ascii.eqlIgnoreCase(attr_align, "right")) return "right";
-            if (std.ascii.eqlIgnoreCase(attr_align, "center") or std.ascii.eqlIgnoreCase(attr_align, "middle")) return "center";
-            if (std.ascii.eqlIgnoreCase(attr_align, "justify")) return "justify";
-        }
-    }
-
-    if (std.mem.eql(u8, normalized_name, "vertical-align")) {
-        if (element.getAttributeSafe(comptime .wrap("valign"))) |valign| {
-            if (std.ascii.eqlIgnoreCase(valign, "top")) return "top";
-            if (std.ascii.eqlIgnoreCase(valign, "middle") or std.ascii.eqlIgnoreCase(valign, "center")) return "middle";
-            if (std.ascii.eqlIgnoreCase(valign, "bottom")) return "bottom";
-        }
-    }
-
-    if (std.mem.eql(u8, normalized_name, "white-space")) {
-        if (element.hasAttributeSafe(comptime .wrap("nowrap"))) {
-            return "nowrap";
-        }
-    }
-
-    if (std.mem.eql(u8, normalized_name, "width")) {
-        if (element.getAttributeSafe(comptime .wrap("width"))) |width| {
-            return std.mem.trim(u8, width, &std.ascii.whitespace);
-        }
-    }
-
-    if (std.mem.eql(u8, normalized_name, "height")) {
-        if (element.getAttributeSafe(comptime .wrap("height"))) |height| {
-            return std.mem.trim(u8, height, &std.ascii.whitespace);
-        }
-    }
-
-    return null;
-}
-
-const CssValueTokenizer = struct {
-    input: []const u8,
-    index: usize = 0,
-
-    fn next(self: *CssValueTokenizer) ?[]const u8 {
-        while (self.index < self.input.len and std.ascii.isWhitespace(self.input[self.index])) : (self.index += 1) {}
-        if (self.index >= self.input.len) return null;
-
-        const start = self.index;
-        var depth: usize = 0;
-        var quote: u8 = 0;
-        while (self.index < self.input.len) : (self.index += 1) {
-            const c = self.input[self.index];
-            if (quote != 0) {
-                if (c == '\\' and self.index + 1 < self.input.len) {
-                    self.index += 1;
-                    continue;
-                }
-                if (c == quote) {
-                    quote = 0;
-                }
-                continue;
-            }
-
-            switch (c) {
-                '"', '\'' => quote = c,
-                '(' => depth += 1,
-                ')' => {
-                    if (depth > 0) depth -= 1;
-                },
-                else => {},
-            }
-
-            if (depth == 0 and std.ascii.isWhitespace(c)) {
-                break;
-            }
-        }
-
-        const end = self.index;
-        while (self.index < self.input.len and std.ascii.isWhitespace(self.input[self.index])) : (self.index += 1) {}
-        return self.input[start..end];
-    }
-};
-
-fn tokenizeCssValue(input: []const u8, _: std.mem.Allocator) CssValueTokenizer {
-    return .{ .input = input };
-}
-
-fn extractBackgroundColorToken(value: []const u8) ?[]const u8 {
-    if (isLikelyColorToken(value)) return value;
-
-    var tokens = tokenizeCssValue(value, std.heap.page_allocator);
-    while (tokens.next()) |token| {
-        if (isLikelyColorToken(token)) {
-            return token;
-        }
-    }
-    return null;
-}
-
-fn isLikelyColorToken(token: []const u8) bool {
-    const trimmed = std.mem.trim(u8, token, &std.ascii.whitespace);
-    if (trimmed.len == 0) return false;
-    if (trimmed[0] == '#') return true;
-    if (std.ascii.startsWithIgnoreCase(trimmed, "rgb(") or
-        std.ascii.startsWithIgnoreCase(trimmed, "rgba(") or
-        std.ascii.startsWithIgnoreCase(trimmed, "hsl(") or
-        std.ascii.startsWithIgnoreCase(trimmed, "hsla("))
-    {
-        return true;
-    }
-
-    return asciiEqualsAnyIgnoreCase(trimmed, &.{
-        "transparent",
-        "black",
-        "white",
-        "red",
-        "green",
-        "blue",
-        "yellow",
-        "orange",
-        "purple",
-        "gray",
-        "grey",
-        "silver",
-        "maroon",
-        "navy",
-        "teal",
-        "aqua",
-        "lime",
-        "olive",
-        "fuchsia",
-        "currentcolor",
-    });
-}
-
-fn isBackgroundImageToken(token: []const u8) bool {
-    const trimmed = std.mem.trim(u8, token, &std.ascii.whitespace);
-    if (trimmed.len == 0) return false;
-    return std.ascii.startsWithIgnoreCase(trimmed, "url(") or std.ascii.eqlIgnoreCase(trimmed, "none");
-}
-
-fn isBackgroundRepeatToken(token: []const u8) bool {
-    return asciiEqualsAnyIgnoreCase(token, &.{
-        "repeat",
-        "repeat-x",
-        "repeat-y",
-        "no-repeat",
-    });
-}
-
-fn isBackgroundPositionToken(token: []const u8) bool {
-    if (likelyCssLengthToken(token)) return true;
-    return asciiEqualsAnyIgnoreCase(token, &.{
-        "left",
-        "right",
-        "top",
-        "bottom",
-        "center",
-    });
-}
-
-fn isBackgroundSizeToken(token: []const u8) bool {
-    if (likelyCssLengthToken(token)) return true;
-    return asciiEqualsAnyIgnoreCase(token, &.{
-        "auto",
-        "contain",
-        "cover",
-    });
-}
-
-fn isBorderStyleToken(token: []const u8) bool {
-    return asciiEqualsAnyIgnoreCase(token, &.{
-        "none",
-        "hidden",
-        "dotted",
-        "dashed",
-        "solid",
-        "double",
-        "groove",
-        "ridge",
-        "inset",
-        "outset",
-    });
-}
-
-fn isBorderWidthToken(token: []const u8) bool {
-    if (asciiEqualsAnyIgnoreCase(token, &.{ "thin", "medium", "thick" })) {
-        return true;
-    }
-    return likelyCssLengthToken(token);
-}
-
-fn isFontStyleToken(token: []const u8) bool {
-    return asciiEqualsAnyIgnoreCase(token, &.{ "normal", "italic", "oblique" });
-}
-
-fn isFontWeightToken(token: []const u8) bool {
-    if (asciiEqualsAnyIgnoreCase(token, &.{ "normal", "bold", "bolder", "lighter" })) {
-        return true;
-    }
-    const trimmed = std.mem.trim(u8, token, &std.ascii.whitespace);
-    return std.fmt.parseInt(i32, trimmed, 10) catch 0 > 0;
-}
-
-const FontSizeLineHeight = struct {
-    size: []const u8,
-    line_height: ?[]const u8 = null,
-};
-
-fn fontShorthandSizeAndLineHeight(token: []const u8) ?FontSizeLineHeight {
-    const trimmed = std.mem.trim(u8, token, &std.ascii.whitespace);
-    if (trimmed.len == 0) return null;
-
-    if (std.mem.indexOfScalar(u8, trimmed, '/')) |slash| {
-        const size = std.mem.trim(u8, trimmed[0..slash], &std.ascii.whitespace);
-        const line_height = std.mem.trim(u8, trimmed[slash + 1 ..], &std.ascii.whitespace);
-        if (likelyCssLengthToken(size) and line_height.len > 0) {
-            return .{ .size = size, .line_height = line_height };
-        }
-        return null;
-    }
-
-    if (likelyCssLengthToken(trimmed)) {
-        return .{ .size = trimmed };
-    }
-    return null;
-}
-
-fn likelyCssLengthToken(token: []const u8) bool {
-    const trimmed = std.mem.trim(u8, token, &std.ascii.whitespace);
-    if (trimmed.len == 0) return false;
-    if (std.mem.eql(u8, trimmed, "0")) return true;
-
-    var index: usize = 0;
-    if (trimmed[index] == '+' or trimmed[index] == '-') {
-        index += 1;
-    }
-
-    var saw_digit = false;
-    var saw_dot = false;
-    while (index < trimmed.len) : (index += 1) {
-        const c = trimmed[index];
-        if (std.ascii.isDigit(c)) {
-            saw_digit = true;
-            continue;
-        }
-        if (c == '.' and !saw_dot) {
-            saw_dot = true;
-            continue;
-        }
-        break;
-    }
-
-    if (!saw_digit) return false;
-    if (index >= trimmed.len) return true;
-
-    const unit = trimmed[index..];
-    return asciiEqualsAnyIgnoreCase(unit, &.{
-        "px",
-        "%",
-        "em",
-        "rem",
-        "vw",
-        "vh",
-        "vmin",
-        "vmax",
-        "pt",
-        "pc",
-        "cm",
-        "mm",
-        "in",
-        "ch",
-        "ex",
-    });
-}
-
-fn asciiEqualsAnyIgnoreCase(value: []const u8, candidates: []const []const u8) bool {
-    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    for (candidates) |candidate| {
-        if (std.ascii.eqlIgnoreCase(trimmed, candidate)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 pub const Property = struct {
     _name: String,
     _value: String,
     _important: bool = false,
-    _cascade_specificity: CascadeSpecificity = .{},
-    _cascade_source_order: usize = 0,
     _node: std.DoublyLinkedList.Node,
 
     fn fromNodeLink(n: *std.DoublyLinkedList.Node) *Property {
@@ -1219,3 +737,55 @@ pub const JsApi = struct {
     pub const removeProperty = bridge.function(CSSStyleDeclaration.removeProperty, .{});
     pub const cssFloat = bridge.accessor(CSSStyleDeclaration.getFloat, CSSStyleDeclaration.setFloat, .{});
 };
+
+const testing = @import("std").testing;
+
+test "normalizePropertyValue: unitless zero to 0px" {
+    const cases = .{
+        .{ "width", "0", "0px" },
+        .{ "height", "0", "0px" },
+        .{ "scroll-margin-top", "0", "0px" },
+        .{ "scroll-padding-bottom", "0", "0px" },
+        .{ "column-width", "0", "0px" },
+        .{ "column-rule-width", "0", "0px" },
+        .{ "outline", "0", "0px" },
+        .{ "shape-margin", "0", "0px" },
+        .{ "offset-distance", "0", "0px" },
+        .{ "translate", "0", "0px" },
+        .{ "grid-column-gap", "0", "0px" },
+        .{ "grid-row-gap", "0", "0px" },
+        // Non-length properties should NOT normalize
+        .{ "opacity", "0", "0" },
+        .{ "z-index", "0", "0" },
+    };
+    inline for (cases) |case| {
+        const result = try normalizePropertyValue(testing.allocator, case[0], case[1]);
+        try testing.expectEqualStrings(case[2], result);
+    }
+}
+
+test "normalizePropertyValue: first baseline to baseline" {
+    const result = try normalizePropertyValue(testing.allocator, "align-items", "first baseline");
+    try testing.expectEqualStrings("baseline", result);
+
+    const result2 = try normalizePropertyValue(testing.allocator, "align-self", "last baseline");
+    try testing.expectEqualStrings("last baseline", result2);
+}
+
+test "normalizePropertyValue: collapse duplicate two-value shorthands" {
+    const cases = .{
+        .{ "overflow", "hidden hidden", "hidden" },
+        .{ "gap", "10px 10px", "10px" },
+        .{ "scroll-snap-align", "start start", "start" },
+        .{ "scroll-padding-block", "5px 5px", "5px" },
+        .{ "background-size", "auto auto", "auto" },
+        .{ "overscroll-behavior", "auto auto", "auto" },
+        // Different values should NOT collapse
+        .{ "overflow", "hidden scroll", "hidden scroll" },
+        .{ "gap", "10px 20px", "10px 20px" },
+    };
+    inline for (cases) |case| {
+        const result = try normalizePropertyValue(testing.allocator, case[0], case[1]);
+        try testing.expectEqualStrings(case[2], result);
+    }
+}

@@ -6,13 +6,13 @@ const Allocator = std.mem.Allocator;
 // used in custom panic handler
 var current_test: ?[]const u8 = null;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
 
     const allocator = gpa.allocator();
 
-    var args = try std.process.argsWithAllocator(allocator);
+    var args = try std.process.Args.Iterator.initAllocator(init.minimal.args, allocator);
     defer args.deinit();
     _ = args.next(); // executable name
 
@@ -25,7 +25,7 @@ pub fn main() !void {
     defer http_server.deinit();
 
     {
-        var wg: std.Thread.WaitGroup = .{};
+        var wg: @import("lightpanda").compat_sync.WaitGroup = .{};
         wg.startMany(1);
         var thrd = try std.Thread.spawn(.{}, TestHTTPServer.run, .{ &http_server, &wg });
         thrd.detach();
@@ -40,13 +40,13 @@ pub fn main() !void {
     } });
     defer config.deinit(allocator);
 
-    var app = try lp.App.init(allocator, &config, null);
+    var app = try lp.App.init(allocator, &config);
     defer app.deinit();
 
     var test_arena = std.heap.ArenaAllocator.init(allocator);
     defer test_arena.deinit();
 
-    const http_client = try app.http.createClient(allocator);
+    const http_client = try lp.HttpClient.init(allocator, &app.network);
     defer http_client.deinit();
 
     var browser = try lp.Browser.init(app, .{ .http_client = http_client });
@@ -58,8 +58,8 @@ pub fn main() !void {
     const session = try browser.newSession(notification);
     defer session.deinit();
 
-    var dir = try std.fs.cwd().openDir("src/browser/tests/legacy/", .{ .iterate = true, .no_follow = true });
-    defer dir.close();
+    var dir = try std.Io.Dir.cwd().openDir(std.Options.debug_io, "src/browser/tests/legacy/", .{ .iterate = true, .follow_symlinks = false });
+    defer dir.close(std.Options.debug_io);
 
     var walker = try dir.walk(allocator);
     defer walker.deinit();
@@ -117,12 +117,12 @@ pub fn run(allocator: Allocator, file: []const u8, session: *lp.Session) !void {
 
 const TestHTTPServer = struct {
     shutdown: bool,
-    dir: std.fs.Dir,
-    listener: ?std.net.Server,
+    dir: std.Io.Dir,
+    listener: ?std.Io.net.Server,
 
     pub fn init() !TestHTTPServer {
         return .{
-            .dir = try std.fs.cwd().openDir("src/browser/tests/legacy/", .{}),
+            .dir = try std.Io.Dir.cwd().openDir(std.Options.debug_io, "src/browser/tests/legacy/", .{}),
             .shutdown = true,
             .listener = null,
         };
@@ -131,21 +131,21 @@ const TestHTTPServer = struct {
     pub fn deinit(self: *TestHTTPServer) void {
         self.shutdown = true;
         if (self.listener) |*listener| {
-            listener.deinit();
+            listener.deinit(std.Options.debug_io);
         }
-        self.dir.close();
+        self.dir.close(std.Options.debug_io);
     }
 
-    pub fn run(self: *TestHTTPServer, wg: *std.Thread.WaitGroup) !void {
-        const address = try std.net.Address.parseIp("127.0.0.1", 9589);
+    pub fn run(self: *TestHTTPServer, wg: *@import("lightpanda").compat_sync.WaitGroup) !void {
+        const address = try std.Io.net.IpAddress.parse("127.0.0.1", 9589);
 
-        self.listener = try address.listen(.{ .reuse_address = true });
+        self.listener = try address.listen(std.Options.debug_io, .{ .reuse_address = true });
         var listener = &self.listener.?;
 
         wg.finish();
 
         while (true) {
-            const conn = listener.accept() catch |err| {
+            const conn = listener.accept(std.Options.debug_io) catch |err| {
                 if (self.shutdown) {
                     return;
                 }
@@ -156,12 +156,12 @@ const TestHTTPServer = struct {
         }
     }
 
-    fn handleConnection(self: *TestHTTPServer, conn: std.net.Server.Connection) !void {
-        defer conn.stream.close();
+    fn handleConnection(self: *TestHTTPServer, conn: std.Io.net.Stream) !void {
+        defer conn.close(std.Options.debug_io);
 
         var req_buf: [2048]u8 = undefined;
-        var conn_reader = conn.stream.reader(&req_buf);
-        var conn_writer = conn.stream.writer(&req_buf);
+        var conn_reader = conn.reader(std.Options.debug_io, &req_buf);
+        var conn_writer = conn.writer(std.Options.debug_io, &req_buf);
 
         var http_server = std.http.Server.init(conn_reader.interface(), &conn_writer.interface);
 
@@ -203,10 +203,10 @@ const TestHTTPServer = struct {
         }
 
         // strip out leading '/' to make the path relative
-        const file = try server.dir.openFile(path[1..], .{});
-        defer file.close();
+        const file = try server.dir.openFile(std.Options.debug_io, path[1..], .{});
+        defer file.close(std.Options.debug_io);
 
-        const stat = try file.stat();
+        const stat = try file.stat(std.Options.debug_io);
         var send_buffer: [4096]u8 = undefined;
 
         var res = try req.respondStreaming(&send_buffer, .{
@@ -219,20 +219,20 @@ const TestHTTPServer = struct {
         });
 
         var read_buffer: [4096]u8 = undefined;
-        var reader = file.reader(&read_buffer);
+        var reader = file.reader(std.Options.debug_io, &read_buffer);
         _ = try res.writer.sendFileAll(&reader, .unlimited);
         try res.writer.flush();
         try res.end();
     }
 
     pub fn sendFile(req: *std.http.Server.Request, file_path: []const u8) !void {
-        var file = std.fs.cwd().openFile(file_path, .{}) catch |err| switch (err) {
+        var file = std.Io.Dir.cwd().openFile(std.Options.debug_io, file_path, .{}) catch |err| switch (err) {
             error.FileNotFound => return req.respond("server error", .{ .status = .not_found }),
             else => return err,
         };
-        defer file.close();
+        defer file.close(std.Options.debug_io);
 
-        const stat = try file.stat();
+        const stat = try file.stat(std.Options.debug_io);
         var send_buffer: [4096]u8 = undefined;
 
         var res = try req.respondStreaming(&send_buffer, .{
@@ -245,7 +245,7 @@ const TestHTTPServer = struct {
         });
 
         var read_buffer: [4096]u8 = undefined;
-        var reader = file.reader(&read_buffer);
+        var reader = file.reader(std.Options.debug_io, &read_buffer);
         _ = try res.writer.sendFileAll(&reader, .unlimited);
         try res.writer.flush();
         try res.end();

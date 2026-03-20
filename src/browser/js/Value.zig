@@ -147,14 +147,6 @@ pub fn isInt32Array(self: Value) bool {
     return v8.v8__Value__IsInt32Array(self.handle);
 }
 
-pub fn isFloat32Array(self: Value) bool {
-    return v8.v8__Value__IsFloat32Array(self.handle);
-}
-
-pub fn isFloat64Array(self: Value) bool {
-    return v8.v8__Value__IsFloat64Array(self.handle);
-}
-
 pub fn isBigUint64Array(self: Value) bool {
     return v8.v8__Value__IsBigUint64Array(self.handle);
 }
@@ -253,6 +245,46 @@ pub fn toJson(self: Value, allocator: Allocator) ![]u8 {
     return js.String.toSliceWithAlloc(.{ .local = local, .handle = str_handle }, allocator);
 }
 
+// Currently does not support host objects (Blob, File, etc.) or transferables
+// which require delegate callbacks to be implemented.
+pub fn structuredClone(self: Value) !Value {
+    const local = self.local;
+    const v8_context = local.handle;
+    const v8_isolate = local.isolate.handle;
+
+    const size, const data = blk: {
+        const serializer = v8.v8__ValueSerializer__New(v8_isolate, null) orelse return error.JsException;
+        defer v8.v8__ValueSerializer__DELETE(serializer);
+
+        var write_result: v8.MaybeBool = undefined;
+        v8.v8__ValueSerializer__WriteHeader(serializer);
+        v8.v8__ValueSerializer__WriteValue(serializer, v8_context, self.handle, &write_result);
+        if (!write_result.has_value or !write_result.value) {
+            return error.JsException;
+        }
+
+        var size: usize = undefined;
+        const data = v8.v8__ValueSerializer__Release(serializer, &size) orelse return error.JsException;
+        break :blk .{ size, data };
+    };
+
+    defer v8.v8__ValueSerializer__FreeBuffer(data);
+
+    const cloned_handle = blk: {
+        const deserializer = v8.v8__ValueDeserializer__New(v8_isolate, data, size, null) orelse return error.JsException;
+        defer v8.v8__ValueDeserializer__DELETE(deserializer);
+
+        var read_header_result: v8.MaybeBool = undefined;
+        v8.v8__ValueDeserializer__ReadHeader(deserializer, v8_context, &read_header_result);
+        if (!read_header_result.has_value or !read_header_result.value) {
+            return error.JsException;
+        }
+        break :blk v8.v8__ValueDeserializer__ReadValue(deserializer, v8_context) orelse return error.JsException;
+    };
+
+    return .{ .local = local, .handle = cloned_handle };
+}
+
 pub fn persist(self: Value) !Global {
     return self._persist(true);
 }
@@ -267,11 +299,11 @@ fn _persist(self: *const Value, comptime is_global: bool) !(if (is_global) Globa
     var global: v8.Global = undefined;
     v8.v8__Global__New(ctx.isolate.handle, self.handle, &global);
     if (comptime is_global) {
-        try ctx.global_values.append(ctx.arena, global);
-    } else {
-        try ctx.global_values_temp.put(ctx.arena, global.data_ptr, global);
+        try ctx.trackGlobal(global);
+        return .{ .handle = global, .origin = {} };
     }
-    return .{ .handle = global };
+    try ctx.trackTemp(global);
+    return .{ .handle = global, .origin = ctx.origin };
 }
 
 pub fn toZig(self: Value, comptime T: type) !T {
@@ -318,15 +350,18 @@ pub fn format(self: Value, writer: *std.Io.Writer) !void {
     return js_str.format(writer);
 }
 
-pub const Temp = G(0);
-pub const Global = G(1);
+pub const Temp = G(.temp);
+pub const Global = G(.global);
 
-fn G(comptime discriminator: u8) type {
+const GlobalType = enum(u8) {
+    temp,
+    global,
+};
+
+fn G(comptime global_type: GlobalType) type {
     return struct {
         handle: v8.Global,
-
-        // makes the types different (G(0) != G(1)), without taking up space
-        comptime _: u8 = discriminator,
+        origin: if (global_type == .temp) *js.Origin else void,
 
         const Self = @This();
 
@@ -343,6 +378,10 @@ fn G(comptime discriminator: u8) type {
 
         pub fn isEqual(self: *const Self, other: Value) bool {
             return v8.v8__Global__IsEqual(&self.handle, other.handle);
+        }
+
+        pub fn release(self: *const Self) void {
+            self.origin.releaseTemp(self.handle);
         }
     };
 }
