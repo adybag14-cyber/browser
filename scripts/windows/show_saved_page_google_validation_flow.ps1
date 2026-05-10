@@ -2,12 +2,22 @@
 param(
     [string]$PageRoot,
     [string[]]$InputPath,
+    [string]$PreferredInitialPage,
     [int]$Port = 8123,
     [switch]$Json
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
 
 $summaryHelper = '.\\scripts\\windows\\summarize_localhost_html_pages.ps1'
 $directHelper = '.\\scripts\\windows\\start_localhost_html_validation.ps1'
@@ -19,28 +29,45 @@ $homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase ho
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
 $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase trace"
+$preferredInitialPageArgument = ""
+if ($PreferredInitialPage) {
+    $quotedPreferredInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $PreferredInitialPage
+    $preferredInitialPageArgument = " -PreferredInitialPage $quotedPreferredInitialPage"
+}
+$manualInitialPageArgument = if ($PreferredInitialPage) {
+    " -ManualInitialPage $quotedPreferredInitialPage"
+} else {
+    ""
+}
+$launchInitialPageArgument = if ($PreferredInitialPage) {
+    " -InitialPage $quotedPreferredInitialPage"
+} else {
+    ""
+}
 
 if ($PageRoot) {
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '$PageRoot' -Port $Port"
-    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '$PageRoot' -Port $Port -LaunchBrowser -Wait"
+    $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot -Port $Port"
+    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot $quotedPageRoot -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
 } else {
     $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port"
-    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '<saved-page-dir>' -Port $Port -LaunchBrowser -Wait"
+    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '<saved-page-dir>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
 }
 
 if ($InputPath -and $InputPath.Count -gt 0) {
-    $quotedPaths = $InputPath | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }
+    $quotedPaths = $InputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $joinedPaths = $quotedPaths -join ", "
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port -LaunchBrowser -Wait"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInputPath $joinedPaths"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
 } else {
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -LaunchBrowser -Wait"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInputPath '<saved-html-or-folder>'"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
 }
 
 $flow = [ordered]@{
     issue = "Google-style saved page follow-up"
     focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the fast quick pass, the reduced homepage headed pass, the one-shot full pass, and the live trace path when real Google still diverges."
+    preferred_initial_page = $PreferredInitialPage
     steps = @(
         [ordered]@{
             name = "inventory"
@@ -105,6 +132,7 @@ $flow = [ordered]@{
         "Use google-shared for the stricter Enter-order wrapper when you want the shared label-click baseline and shared submit gates ahead of the saved-page manual pass.",
         "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, shared Enter-order wrapper, and watch phase in one command before the saved-page manual pass.",
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
+        "When PreferredInitialPage is set, the direct, staged, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
     )
 }
@@ -117,6 +145,9 @@ if ($Json) {
 Write-Host "Google-style saved page follow-up"
 Write-Host ""
 Write-Host ("Focus: {0}" -f $flow.focus)
+if ($PreferredInitialPage) {
+    Write-Host ("Preferred initial page: {0}" -f $PreferredInitialPage)
+}
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
