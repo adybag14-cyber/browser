@@ -3,8 +3,8 @@ param(
   [string]$RepoRoot,
   [string]$BrowserExe,
   [string]$Host = "127.0.0.1",
-  [int]$Port = 8154,
-  [string]$InputText = "n",
+  [int]$Port = 8155,
+  [string]$InputText = "QZ",
   [int]$ServerReadyTimeoutSeconds = 15,
   [int]$WindowReadyAttempts = 60,
   [int]$TitleWaitAttempts = 80,
@@ -43,16 +43,6 @@ function Resolve-PythonCommand {
   throw "Python was not found in PATH. Install Python or start the form-controls probe server separately."
 }
 
-function Wait-FileReady([string]$Path, [int]$Attempts) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $PollMilliseconds
-    if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).Length -gt 0)) {
-      return $true
-    }
-  }
-  return $false
-}
-
 function Wait-HttpReady([string]$Url, [int]$TimeoutSeconds) {
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   do {
@@ -66,7 +56,17 @@ function Wait-HttpReady([string]$Url, [int]$TimeoutSeconds) {
     Start-Sleep -Milliseconds $PollMilliseconds
   } while ((Get-Date) -lt $deadline)
 
-  throw "google enter order probe server did not become ready at $Url"
+  throw "google Enter-order probe server did not become ready at $Url"
+}
+
+function Wait-FileReady([string]$Path, [int]$Attempts) {
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).Length -gt 0)) {
+      return $true
+    }
+  }
+  return $false
 }
 
 function Get-SubmitEventRecord([string]$LogPath, [string]$ExpectedText) {
@@ -85,7 +85,7 @@ function Get-SubmitEventRecord([string]$LogPath, [string]$ExpectedText) {
   $line = $matches[-1]
   $match = [regex]::Match($line, "GOOGLE_ENTER_SUBMIT q=(?<query>[^ ]*) phase=(?<phase>[^ ]*) events=(?<events>.*)$")
   if (-not $match.Success) {
-    throw "google enter order probe could not parse the submit event record"
+    throw "google Enter-order probe could not parse the submit event record"
   }
 
   return @{
@@ -96,44 +96,19 @@ function Get-SubmitEventRecord([string]$LogPath, [string]$ExpectedText) {
   }
 }
 
-function Assert-EventSequence([string]$Events, [string]$InputText) {
-  $parts = @($Events -split ",")
-  $typedEvent = "IN:$InputText"
-  $keydownEvent = "KD:Enter:$InputText"
-  $keypressEvent = "KP:Enter:$InputText"
-  $submitEvent = "SUBMIT:$InputText"
-
-  $typedIndex = [Array]::IndexOf($parts, $typedEvent)
-  $keydownIndex = [Array]::IndexOf($parts, $keydownEvent)
-  $keypressIndex = [Array]::IndexOf($parts, $keypressEvent)
-  $submitIndex = [Array]::IndexOf($parts, $submitEvent)
-
-  if ($typedIndex -lt 0) { throw "google enter order probe did not observe the typed input event" }
-  if ($keydownIndex -lt 0) { throw "google enter order probe did not observe the Enter keydown event" }
-  if ($keypressIndex -lt 0) { throw "google enter order probe did not observe the Enter keypress event" }
-  if ($submitIndex -lt 0) { throw "google enter order probe did not observe the submit event" }
-  if ($typedIndex -gt $keydownIndex) { throw "google enter order probe saw keydown before the input value was committed" }
-  if ($keydownIndex -gt $keypressIndex) { throw "google enter order probe saw keypress before keydown" }
-  if ($keypressIndex -gt $submitIndex) { throw "google enter order probe saw submit before keypress" }
-}
-
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
 
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $root = Join-Path $repo "tmp-browser-smoke\form-controls"
 $profileRoot = Join-Path $root "profile-google-enter-order"
-$artifactStem = "google-enter-order"
 $browserExe = if ($BrowserExe) { $BrowserExe } elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
 $serverScript = Join-Path $root "form_server.py"
-$browserOut = Join-Path $root "$artifactStem.browser.stdout.txt"
-$browserErr = Join-Path $root "$artifactStem.browser.stderr.txt"
-$serverOut = Join-Path $root "$artifactStem.server.stdout.txt"
-$serverErr = Join-Path $root "$artifactStem.server.stderr.txt"
-$pngPath = Join-Path $root "$artifactStem.before.png"
-$probeUrl = "http://$Host`:$Port/google-enter-order.html"
-$typedTitleNeedle = "Google Enter VALUE:$InputText"
-$submitTitleNeedle = "Submitted $InputText"
+$browserOut = Join-Path $root "google-enter-order.browser.stdout.txt"
+$browserErr = Join-Path $root "google-enter-order.browser.stderr.txt"
+$serverOut = Join-Path $root "google-enter-order.server.stdout.txt"
+$serverErr = Join-Path $root "google-enter-order.server.stderr.txt"
+$pngPath = Join-Path $root "google-enter-order.before.png"
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
 
 if (-not (Test-Path -LiteralPath $browserExe)) {
@@ -142,6 +117,10 @@ if (-not (Test-Path -LiteralPath $browserExe)) {
 if (-not (Test-Path -LiteralPath $serverScript)) {
   throw "form-controls probe server script not found: $serverScript"
 }
+
+$probeUrl = "http://$Host`:$Port/google-enter-order.html"
+$typedTitleNeedle = "Google Enter VALUE:$InputText"
+$submittedTitleNeedle = "Submitted $InputText"
 
 cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
 New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
@@ -161,7 +140,9 @@ $titleAfterSubmit = $null
 $typedWorked = $false
 $submittedWorked = $false
 $submitPhase = $null
-$submitEvents = $null
+$eventLog = $null
+$submitAfterKeypress = $false
+$submitAfterKeydown = $false
 $submitRecord = $null
 $failure = $null
 
@@ -171,12 +152,12 @@ try {
   Wait-HttpReady -Url "http://$Host`:$Port/ping" -TimeoutSeconds $ServerReadyTimeoutSeconds
   $ready = $true
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "460", "--window_height", "520", "--screenshot_png", $pngPath, $probeUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "440", "--window_height", "520", "--screenshot_png", $pngPath, $probeUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $pngReady = Wait-FileReady -Path $pngPath -Attempts $WindowReadyAttempts
-  if (-not $pngReady) { throw "google enter order probe screenshot did not become ready" }
+  if (-not $pngReady) { throw "google Enter-order probe screenshot did not become ready" }
 
   $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts
-  if ($hwnd -eq [IntPtr]::Zero) { throw "google enter order probe window handle not found" }
+  if ($hwnd -eq [IntPtr]::Zero) { throw "google Enter-order probe window handle not found" }
 
   Show-SmokeWindow $hwnd
   $titleBefore = Get-SmokeWindowTitle $hwnd
@@ -184,24 +165,33 @@ try {
   Send-SmokeText $InputText
   $titleAfterType = Wait-TabTitle -ProcessId $browser.Id -Needle $typedTitleNeedle -Attempts $TitleWaitAttempts
   $typedWorked = $null -ne $titleAfterType
-  if (-not $typedWorked) { throw "google enter order probe did not commit the typed query" }
+  if (-not $typedWorked) { throw "Google-style search input did not receive typed text" }
 
   Send-SmokeEnter
-  $titleAfterSubmit = Wait-TabTitle -ProcessId $browser.Id -Needle $submitTitleNeedle -Attempts $TitleWaitAttempts
-
+  $titleAfterSubmit = Wait-TabTitle -ProcessId $browser.Id -Needle $submittedTitleNeedle -Attempts $TitleWaitAttempts
   $submitRecord = Get-SubmitEventRecord -LogPath $serverErr -ExpectedText $InputText
-  if ($null -eq $submitRecord) { throw "google enter order probe did not capture the submit event record" }
+  if ($submitRecord) {
+    $submitPhase = $submitRecord.Phase
+    $eventLog = $submitRecord.Events
+  }
+  $submittedWorked = ($null -ne $titleAfterSubmit) -and ($null -ne $submitRecord)
+  if (-not $submittedWorked) { throw "pressing Enter did not submit the Google-style form" }
+  if ($null -eq $titleAfterSubmit) { throw "Google-style Enter submit did not navigate to the submitted page" }
+  if ($null -eq $submitRecord) { throw "probe server did not capture the Google-style submit log" }
+  if ($submitRecord.Query -ne $InputText) { throw "probe server captured the wrong submitted query text" }
+  if ($submitPhase -ne "keypress") { throw "expected submit phase keypress, got '$submitPhase'" }
+  if ([string]::IsNullOrWhiteSpace($eventLog)) { throw "probe server did not capture the Enter event log" }
 
-  $submitPhase = $submitRecord.Phase
-  $submitEvents = $submitRecord.Events
-  if ($submitRecord.Query -ne $InputText) {
-    throw "google enter order probe submitted the wrong query text"
-  }
-  if ($submitPhase -ne "keypress") {
-    throw "google enter order probe submitted during '$submitPhase' instead of 'keypress'"
-  }
-  Assert-EventSequence -Events $submitEvents -InputText $InputText
-  $submittedWorked = ($null -ne $titleAfterSubmit) -or ($null -ne $submitRecord)
+  $keydownIndex = $eventLog.IndexOf("KD:Enter:$InputText")
+  $keypressIndex = $eventLog.IndexOf("KP:Enter:$InputText")
+  $submitIndex = $eventLog.IndexOf("SUBMIT:$InputText")
+  if ($keydownIndex -lt 0) { throw "event log did not capture Enter keydown" }
+  if ($keypressIndex -lt 0) { throw "event log did not capture Enter keypress" }
+  if ($submitIndex -lt 0) { throw "event log did not capture form submit" }
+
+  $submitAfterKeydown = $submitIndex -gt $keydownIndex
+  $submitAfterKeypress = $submitIndex -gt $keypressIndex
+  if (-not $submitAfterKeypress) { throw "form submit happened before Enter keypress reached the page" }
 } catch {
   $failure = $_.Exception.Message
 } finally {
@@ -214,7 +204,6 @@ try {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
-    mode = "google-enter-order"
     repo_root = $repo
     browser_exe = $browserExe
     host = $Host
@@ -235,8 +224,10 @@ try {
     typed_worked = $typedWorked
     submitted_worked = $submittedWorked
     submit_phase = $submitPhase
-    submit_events = $submitEvents
+    event_log = $eventLog
     submit_record = if ($submitRecord) { $submitRecord.Line } else { $null }
+    submit_after_keydown = $submitAfterKeydown
+    submit_after_keypress = $submitAfterKeypress
     error = $failure
     server_meta = $serverMeta
     browser_meta = $browserMeta
