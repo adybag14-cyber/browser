@@ -8,6 +8,7 @@ minimalist browser for real daily use".
 Read this together with:
 - `docs/FULL_BROWSER_MASTER_TRACKER.md`
 - `docs/HEADED_MODE_ROADMAP.md`
+- `docs/HEADED_MODE_VALIDATION_GATES.md`
 - `docs/WINDOWS_FULL_USE.md`
 
 The branch to treat as product truth is:
@@ -184,6 +185,10 @@ Tasks:
 - separate warm-build expectations from cold-build expectations in docs
 - ensure the main validation runbook tells future assistants which probe family
   to run for each subsystem change
+
+Use `docs/HEADED_MODE_VALIDATION_GATES.md` as the suite-routing map and
+`tmp-browser-smoke/README.md` as the directory-level index for the current
+probe families.
 
 Exit criteria:
 - a future assistant can recover from corrupted `.zig-cache` without guessing
@@ -495,6 +500,10 @@ Also require:
 - successful default-cache Windows build
 - successful fresh-cache Windows build
 - one long manual session run on a non-trivial real-site mix
+
+Treat `docs/HEADED_MODE_VALIDATION_GATES.md` as the canonical quick route into
+the release-gate suites when choosing the first bounded validation step for a
+change.
 
 ## Bare Metal Path
 
