@@ -127,13 +127,14 @@ Examples:
   localhost HTML pages after the matching bounded suite is green
 - `scripts/windows/run_localhost_html_validation_recommended.ps1`: one-command
   attached-or-saved localhost runner that auto-picks the attached HTML helper
-  when `agent_files/` already has page snapshots and otherwise forwards explicit
-  saved-page roots or staged input lists into the shared saved-page runner
+  when `agent_files/` already has page snapshots anywhere under that tree and
+  otherwise forwards explicit saved-page roots or staged input lists into the
+  shared saved-page runner
 - `scripts/windows/run_saved_page_localhost_validation.ps1`: one-command saved
   page summary plus direct-or-staged localhost launch helper
 - `scripts/windows/run_attached_html_localhost_validation.ps1`: one-command
-  attached HTML discovery, summary, and localhost launch helper for the current
-  workspace snapshots
+  attached HTML discovery, including nested files under `agent_files/`, plus
+  summary and localhost launch helper for the current workspace snapshots
 - `scripts/windows/show_saved_page_google_validation_flow.ps1`: saved-page
   issue #3 flow map that keeps the localhost Google phases ahead of the manual
   headed pass
@@ -162,6 +163,8 @@ Use this order unless a narrower issue demands something more specific first.
    `run_localhost_html_validation_recommended.ps1`, `manual-user/`,
    `run_saved_page_localhost_validation.ps1`, or
    `run_attached_html_localhost_validation.ps1` for the real page follow-up.
+   The attached-HTML helpers now scan nested `agent_files/` content instead of
+   only top-level files.
 6. Finish with the smallest real headed manual pass that exercises the same
    user flow.
 
