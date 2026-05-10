@@ -28,6 +28,7 @@ param(
     [string[]]$ManualInputPath,
     [string]$ManualInitialPage,
     [int]$ManualPort = 8123,
+    [switch]$ManualGoogleStyle,
     [switch]$LeaveOpen
 )
 
@@ -84,6 +85,9 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 }
 if ($ManualInitialPage) {
     $arguments.ManualInitialPage = $ManualInitialPage
+}
+if ($ManualGoogleStyle) {
+    $arguments.ManualGoogleStyle = $true
 }
 if ($LeaveOpen) {
     $arguments.LeaveOpen = $true
