@@ -90,3 +90,43 @@ Results are written under:
 
 This is a good first-pass validation path for exported real-site pages before
 moving into a narrower bug investigation or adding a dedicated bounded probe.
+
+## 6) Route headed validation quickly
+
+Use the shared suite map first when you need to choose the narrowest headed
+probe for a change:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+```
+
+For the current Google search-box work behind issue `#3`, use these helpers in
+order:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
+```
+
+For attached or saved localhost HTML follow-up after the matching bounded suite
+is green, use these entry points:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
+```
+
+Routing rules:
+
+- Start with the smallest bounded localhost suite before a saved-page or live-site pass.
+- Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
+- Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
+- Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
+- Use `show_saved_page_google_validation_flow.ps1` when the saved-page pass should stay in the same localhost-first Google investigation order before the manual headed retest.
