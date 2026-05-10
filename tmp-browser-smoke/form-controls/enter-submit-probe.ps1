@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
   [switch]$DeferredEnter,
+  [switch]$GoogleEnterOrder,
   [string]$RepoRoot,
   [string]$BrowserExe,
   [string]$Host = "127.0.0.1",
@@ -14,6 +15,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if ($DeferredEnter -and $GoogleEnterOrder) {
+  throw "Choose at most one specialized enter-submit mode."
+}
 
 function Resolve-RepoRoot([string]$StartPath) {
   if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -73,10 +78,22 @@ function Wait-FileReady([string]$Path, [int]$Attempts) {
   return $false
 }
 
+$probeMode = if ($GoogleEnterOrder) {
+  "google-enter-order"
+} elseif ($DeferredEnter) {
+  "deferred-enter"
+} else {
+  "default-enter"
+}
+
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $root = Join-Path $repo "tmp-browser-smoke\form-controls"
-$profileRoot = Join-Path $root (if ($DeferredEnter) { "profile-enter-submit-deferred" } else { "profile-enter-submit-default" })
-$artifactStem = if ($DeferredEnter) { "enter-submit.deferred" } else { "enter-submit.default" }
+$profileRoot = Join-Path $root ("profile-" + $probeMode)
+$artifactStem = switch ($probeMode) {
+  "deferred-enter" { "enter-submit.deferred" }
+  "google-enter-order" { "enter-submit.google-order" }
+  default { "enter-submit.default" }
+}
 $browserExe = if ($BrowserExe) { $BrowserExe } elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
 $serverScript = Join-Path $root "form_server.py"
 $browserOut = Join-Path $root "$artifactStem.browser.stdout.txt"
@@ -93,13 +110,30 @@ if (-not (Test-Path -LiteralPath $serverScript)) {
   throw "form-controls probe server script not found: $serverScript"
 }
 
-$pagePath = if ($DeferredEnter) { "/deferred-submit.html" } else { "/submit.html" }
+$pagePath = switch ($probeMode) {
+  "deferred-enter" { "/deferred-submit.html" }
+  "google-enter-order" { "/google-enter-order.html" }
+  default { "/submit.html" }
+}
 $probeUrl = "http://$Host`:$Port$pagePath"
-$inputTextTitle = [System.Management.Automation.WildcardPattern]::Escape($InputText)
-$typedTitlePattern = if ($DeferredEnter) { "Deferred Enter Typed $inputTextTitle*" } else { "Enter Submit $inputTextTitle*" }
-$pendingTitlePattern = if ($DeferredEnter) { "Deferred Enter Pending $inputTextTitle*" } else { $null }
-$submitTitlePattern = "Submitted $inputTextTitle*"
-$serverSubmitPattern = if ($DeferredEnter) { "FORM_SUBMIT /submitted\.html\?q=$([regex]::Escape($InputText))" } else { "FORM_SUBMIT /submitted\.html\?name=$([regex]::Escape($InputText))" }
+$typedTitleNeedle = switch ($probeMode) {
+  "deferred-enter" { "Deferred Enter Typed $InputText" }
+  "google-enter-order" { "Google Enter VALUE:$InputText" }
+  default { "Enter Submit $InputText" }
+}
+$focusTitleNeedle = if ($probeMode -eq "google-enter-order") { "Google Enter Focused" } else { $null }
+$pendingTitleNeedle = if ($probeMode -eq "deferred-enter") { "Deferred Enter Pending $InputText" } else { $null }
+$submitTitleNeedle = "Submitted $InputText"
+$serverSubmitPattern = switch ($probeMode) {
+  "deferred-enter" { "FORM_SUBMIT /submitted\.html\?q=$([regex]::Escape($InputText))" }
+  "google-enter-order" { "FORM_SUBMIT /submitted\.html\?submit_phase=.*\bq=$([regex]::Escape($InputText))" }
+  default { "FORM_SUBMIT /submitted\.html\?name=$([regex]::Escape($InputText))" }
+}
+$googleServerPattern = if ($probeMode -eq "google-enter-order") {
+  "GOOGLE_ENTER_SUBMIT q=$([regex]::Escape($InputText)) phase=([^ ]*) events=(.*)"
+} else {
+  $null
+}
 
 cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
 New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
@@ -114,13 +148,17 @@ $browser = $null
 $ready = $false
 $pngReady = $false
 $titleBefore = $null
+$titleAfterFocus = $null
 $titleAfterType = $null
 $titleAfterPending = $null
 $titleAfterSubmit = $null
+$focusWorked = $false
 $typedWorked = $false
 $pendingWorked = $false
 $submittedWorked = $false
 $serverSawSubmit = $false
+$googleSubmitPhase = $null
+$googleEventLog = $null
 $failure = $null
 
 try {
@@ -139,23 +177,49 @@ try {
   Show-SmokeWindow $hwnd
   $titleBefore = Get-SmokeWindowTitle $hwnd
 
+  if ($focusTitleNeedle) {
+    Send-SmokeTab
+    $titleAfterFocus = Wait-TabTitle -ProcessId $browser.Id -Needle $focusTitleNeedle -Attempts $TitleWaitAttempts
+    $focusWorked = $null -ne $titleAfterFocus
+    if (-not $focusWorked) { throw "google enter-order page did not focus the query input" }
+  }
+
   Send-SmokeText $InputText
-  $titleAfterType = Wait-TabTitle -ProcessId $browser.Id -Needle $typedTitlePattern.TrimEnd('*') -Attempts $TitleWaitAttempts
+  $titleAfterType = Wait-TabTitle -ProcessId $browser.Id -Needle $typedTitleNeedle -Attempts $TitleWaitAttempts
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "autofocus input did not receive typed text" }
 
   Send-SmokeEnter
-  if ($pendingTitlePattern) {
-    $titleAfterPending = Wait-TabTitle -ProcessId $browser.Id -Needle $pendingTitlePattern.TrimEnd('*') -Attempts $TitleWaitAttempts
+  if ($pendingTitleNeedle) {
+    $titleAfterPending = Wait-TabTitle -ProcessId $browser.Id -Needle $pendingTitleNeedle -Attempts $TitleWaitAttempts
     $pendingWorked = $null -ne $titleAfterPending
   }
-  $titleAfterSubmit = Wait-TabTitle -ProcessId $browser.Id -Needle $submitTitlePattern.TrimEnd('*') -Attempts $TitleWaitAttempts
+  $titleAfterSubmit = Wait-TabTitle -ProcessId $browser.Id -Needle $submitTitleNeedle -Attempts $TitleWaitAttempts
   if (Test-Path -LiteralPath $serverErr) {
     $serverLog = Get-Content -LiteralPath $serverErr -Raw
     $serverSawSubmit = $serverLog -match $serverSubmitPattern
+    if ($googleServerPattern -and $serverLog -match $googleServerPattern) {
+      $googleSubmitPhase = $Matches[1]
+      $googleEventLog = $Matches[2]
+    }
   }
   $submittedWorked = ($null -ne $titleAfterSubmit) -or $serverSawSubmit
   if (-not $submittedWorked) { throw "pressing Enter did not submit the form" }
+
+  if ($probeMode -eq "google-enter-order") {
+    if ([string]::IsNullOrWhiteSpace($googleSubmitPhase)) {
+      throw "google enter-order probe did not capture submit phase telemetry"
+    }
+    if ($googleSubmitPhase -eq "keydown") {
+      throw "google enter-order probe observed submit at keydown instead of after keypress"
+    }
+    if ($googleSubmitPhase -ne "keypress") {
+      throw "google enter-order probe observed submit phase '$googleSubmitPhase' instead of keypress"
+    }
+    if ([string]::IsNullOrWhiteSpace($googleEventLog) -or $googleEventLog -notlike "*KP:Enter:$InputText*" -or $googleEventLog -notlike "*SUBMIT:$InputText*") {
+      throw "google enter-order probe did not capture the expected Enter event trail"
+    }
+  }
 } catch {
   $failure = $_.Exception.Message
 } finally {
@@ -168,7 +232,7 @@ try {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
-    mode = if ($DeferredEnter) { "deferred-enter" } else { "default-enter" }
+    mode = $probeMode
     repo_root = $repo
     browser_exe = $browserExe
     host = $Host
@@ -184,13 +248,17 @@ try {
     ready = $ready
     screenshot_ready = $pngReady
     title_before = $titleBefore
+    title_after_focus = $titleAfterFocus
     title_after_type = $titleAfterType
     title_after_pending = $titleAfterPending
     title_after_submit = $titleAfterSubmit
+    focus_worked = $focusWorked
     typed_worked = $typedWorked
     pending_title_seen = $pendingWorked
     submitted_worked = $submittedWorked
     server_saw_submit = $serverSawSubmit
+    google_submit_phase = $googleSubmitPhase
+    google_event_log = $googleEventLog
     error = $failure
     server_meta = $serverMeta
     browser_meta = $browserMeta
