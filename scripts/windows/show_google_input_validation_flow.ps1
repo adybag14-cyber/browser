@@ -76,12 +76,14 @@ $flow = [ordered]@{
     }
     common_overrides = @(
         "-Host 127.0.0.1",
+        "-LocalhostPort 8176",
         "-TitlePort 9582",
         "-HomePort 8168",
         "-WatchPort 9582",
         "-SharedDefaultPort 8154",
         "-SharedDeferredPort 8155",
         "-InlineFlowPort 8148",
+        "-ManualPort 8123",
         "-InputText QZ",
         "-SharedInputText Q",
         "-ServerReadyTimeoutSeconds 15",
@@ -96,7 +98,7 @@ $flow = [ordered]@{
         "Use shared before a live Google manual check when input or submit behavior still looks suspicious.",
         "Use manual only after the closest bounded suite is already green.",
         "Use full when you want the runner's built-in localhost-first order plus the extra title, shared, and watch phases in one pass.",
-        "Use the common overrides when you need to keep the title, home, watch, and shared probes aligned on the same host, ports, timing budget, or input text."
+        "Use the common overrides when you need to keep the localhost, title, home, watch, shared, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
 
