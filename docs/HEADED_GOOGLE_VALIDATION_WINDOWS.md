@@ -56,9 +56,11 @@ Only move to `manual` or `trace` after those bounded phases are green.
   markers without a long manual session.
 - `google-home`: the reduced homepage probe still reaches the headed title
   markers `FOCUSED`, `TYPED:QZ`, and `SUBMIT:QZ`.
-- `shared-enter-order`: the shared label-click baseline, nearby submit gates,
-  and stricter keypress-before-submit wrapper still agree with the reduced
-  Google path.
+- `shared-enter-order`: the shared label baseline, submit gates, and stricter
+  keypress-before-submit wrapper still agree with the reduced Google path, and
+  the reduced title probe should stay at a `KEYDOWN:<text>|13|13` marker on the
+  Enter keydown edge before it finally advances to `SUBMIT:<text>` after the
+  matching keypress path.
 - `manual`: the saved or attached localhost HTML pages can now be compared
   against the bounded passes under the same manual port and preferred initial
   page.
@@ -104,3 +106,7 @@ Do not treat a saved-page manual pass as the first evidence for issue `#3`.
 Use the bounded localhost, reduced homepage, and shared Enter-order passes
 first, then use the saved-page or live-Google follow-up only when those gates
 already agree.
+
+For Enter-order work, do not accept a reduced-title pass as green unless the
+keydown edge still reads `KEYDOWN:<text>|13|13` before the final
+`SUBMIT:<text>` marker.
