@@ -2,7 +2,7 @@
 param(
     [string]$RepoRoot,
     [string]$BrowserExe,
-    [ValidateSet("localhost", "title", "home", "shared", "watch", "manual", "all")]
+    [ValidateSet("localhost", "title", "home", "quick", "shared", "watch", "manual", "all")]
     [string]$Phase = "all",
     [switch]$IncludeWatch,
     [switch]$IncludeSharedInput,
@@ -88,6 +88,11 @@ function Invoke-HomeSequence {
     Invoke-ProbeScript -Label "google-home-enter" -ScriptPath $googleHomeProbe -Arguments $args
 }
 
+function Invoke-QuickSequence {
+    Invoke-TitleSequence
+    Invoke-WatchSequence
+}
+
 function Invoke-SharedInputSequence {
     $previousRepoRoot = $env:LIGHTPANDA_REPO_ROOT
     $previousBrowserExe = $env:LIGHTPANDA_BROWSER_EXE
@@ -169,6 +174,9 @@ switch ($Phase) {
     "home" {
         Invoke-HomeSequence
     }
+    "quick" {
+        Invoke-QuickSequence
+    }
     "shared" {
         Invoke-SharedInputSequence
     }
@@ -202,7 +210,9 @@ if ($Phase -eq "manual") {
 } elseif ($Phase -eq "shared") {
     Write-Host "Next: return to -Phase home or -Phase watch once the deferred/basic form-controls and inline-flow probes are green."
 } elseif ($Phase -eq "title") {
-    Write-Host "Next: use -Phase home for the reduced homepage Enter pass, or run -Phase all -IncludeTitleProbe to put the quick headed title check at the front of the shared flow."
+    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, use -Phase home for the reduced homepage Enter pass, or run -Phase all -IncludeTitleProbe to put the quick headed title check at the front of the shared flow."
+} elseif ($Phase -eq "quick") {
+    Write-Host "Next: use -Phase home for the reduced homepage Enter pass, or run -Phase all -IncludeTitleProbe -IncludeWatch to fold the same fast first pass into the broader validation flow."
 } elseif ($Phase -eq "watch" -or $IncludeWatch) {
     if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
         Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced homepage watcher before the smallest live Google manual pass."
@@ -218,5 +228,5 @@ if ($Phase -eq "manual") {
 } elseif ($IncludeTitleProbe) {
     Write-Host "Next: if the quick title probe and reduced Google pass stay green, add -IncludeSharedInput or move on to the smallest live Google manual pass."
 } else {
-    Write-Host "Next: use -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus inline-flow checks, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
+    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus inline-flow checks, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
 }
