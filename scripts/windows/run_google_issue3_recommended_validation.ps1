@@ -63,14 +63,36 @@ function Test-GoogleStyleAttachedHtmlAvailable {
     return [bool]$googleFixture
 }
 
+function Resolve-GoogleStyleAttachedHtmlSelection {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    $resolvedInputPath = @(Get-DefaultAttachedHtmlInputPath -RepoRoot $RepoRoot -GoogleStyle)
+    if ($resolvedInputPath.Count -eq 0) {
+        return $null
+    }
+
+    $resolvedInitialPage = Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
+    return [ordered]@{
+        InputPath = $resolvedInputPath
+        InitialPage = $resolvedInitialPage
+    }
+}
+
 $runner = Join-Path $PSScriptRoot "run_google_input_validation.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
 }
 
 $autoAttachedHtml = $false
+$autoAttachedSelection = $null
 if (-not $SkipAutoAttachedHtml -and -not $ManualGoogleStyle -and -not ($ManualInputPath -and $ManualInputPath.Count -gt 0)) {
     $autoAttachedHtml = Test-GoogleStyleAttachedHtmlAvailable -RepoRoot $RepoRoot
+    if ($autoAttachedHtml) {
+        $autoAttachedSelection = Resolve-GoogleStyleAttachedHtmlSelection -RepoRoot $RepoRoot
+    }
 }
 
 $arguments = @{
@@ -115,12 +137,21 @@ if ($ManualInitialPage) {
 if ($ManualGoogleStyle -or $autoAttachedHtml) {
     $arguments.ManualGoogleStyle = $true
 }
+if ($autoAttachedSelection) {
+    $arguments.ManualInputPath = $autoAttachedSelection.InputPath
+    if (-not $ManualInitialPage -and $autoAttachedSelection.InitialPage) {
+        $arguments.ManualInitialPage = $autoAttachedSelection.InitialPage
+    }
+}
 if ($LeaveOpen) {
     $arguments.LeaveOpen = $true
 }
 
-if ($autoAttachedHtml) {
-    Write-Host "Issue #3 recommended runner: Google-style attached HTML files were detected in the current search roots, so the Google-style manual localhost follow-up will run automatically."
+if ($autoAttachedSelection) {
+    Write-Host ("Issue #3 recommended runner: Google-style attached HTML files were detected in the current search roots, so the Google-style manual localhost follow-up will run automatically with {0} locked fixture(s)." -f $autoAttachedSelection.InputPath.Count)
+    if ($autoAttachedSelection.InitialPage) {
+        Write-Host ("Issue #3 recommended runner: Preferred auto-selected Google-style initial page: {0}" -f $autoAttachedSelection.InitialPage)
+    }
 }
 
 & $runner @arguments
