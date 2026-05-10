@@ -132,6 +132,9 @@ function Invoke-HomeSequence {
         TitleWaitAttempts = $HomeTitleWaitAttempts
         PollMilliseconds = $HomePollMilliseconds
     }
+    if ($LeaveOpen) {
+        $args.LeaveOpen = $true
+    }
     Invoke-ProbeScript -Label "google-home" -ScriptPath $googleHomeProbe -Arguments $args
 }
 
