@@ -6,6 +6,7 @@ param(
     [string]$BrowserExe,
     [string]$Host = "127.0.0.1",
     [int]$Port = 8123,
+    [switch]$GoogleStyle,
     [switch]$SummaryOnly,
     [switch]$Wait,
     [switch]$LeaveServerRunning
@@ -85,6 +86,20 @@ function Resolve-AttachedPreferredInitialPage {
     throw "preferred initial page '$PreferredInitialPage' was not found in the attached HTML inputs. Pass a full path or a unique attached HTML file name."
 }
 
+function Select-GoogleStyleInitialPage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$ResolvedInputPath
+    )
+
+    return $ResolvedInputPath |
+        Where-Object {
+            $leaf = [System.IO.Path]::GetFileName($_)
+            $leaf -match "Google|Safety|Search|Privacy"
+        } |
+        Select-Object -First 1
+}
+
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
 }
@@ -97,6 +112,8 @@ $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
 
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     Resolve-AttachedPreferredInitialPage -ResolvedInputPath $resolvedInputPath -PreferredInitialPage $PreferredInitialPage
+} elseif ($GoogleStyle) {
+    Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 } else {
     $null
 }
@@ -134,10 +151,15 @@ if (-not $SummaryOnly) {
     Write-Host ""
     Write-Host ("Inputs discovered: {0}" -f $resolvedInputPath.Count)
     if ($resolvedPreferredInitialPage) {
-        Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
+        if ($PreferredInitialPage) {
+            Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
+        } else {
+            Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
+        }
     } else {
         Write-Host "Preferred initial page: auto (from saved-page summary)"
     }
+    Write-Host ("Validation mode: {0}" -f $(if ($GoogleStyle) { "google-style" } else { "general" }))
     Write-Host "Runner: .\\scripts\\windows\\run_saved_page_localhost_validation.ps1"
     Write-Host ""
 }
