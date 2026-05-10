@@ -141,20 +141,21 @@ If Linux validation is running from saved archives instead of live package
 fetches:
 
 1. Restore the sibling dependency layout first.
-   - Run `scripts/linux/prepare_offline_build_inputs.sh`.
-   - Pass the saved browser dependency bundle, the saved `boringssl-zig`
-     archive, and the saved html5ever vendor bundle when available.
+   - When the saved archives already live under the standard Memory path, run
+     `scripts/linux/restore_offline_build_inputs.sh`.
+   - Use `scripts/linux/prepare_offline_build_inputs.sh` only when the archives
+     are stored somewhere else and the explicit archive flags are needed.
 2. Confirm the restore created:
    - `../zig-v8-fork`
    - `../boringssl-zig`
-   - `../offline-deps/{brotli,zlib,nghttp2,curl}`
+   - `../offline-deps/...` for brotli, zlib, nghttp2, and curl
    - `.cargo/config.toml` and `vendor/` when html5ever is being validated
 3. Run `scripts/linux/check_offline_build_prereqs.sh` before `zig build`.
    - Treat a failing preflight as a setup or toolchain issue, not a code
      regression.
    - The active `zig version` must match `build.zig.zon` exactly.
-4. Confirm `build.zig.zon` now uses local `.path` dependencies for brotli,
-   zlib, nghttp2, and curl.
+4. Confirm `build.zig.zon` now uses local `.path` dependencies under
+   `../offline-deps/`.
 5. Re-run Linux validation with the restored prebuilt V8 archive:
    - `zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a`
 6. Treat remaining failures after this point as compile or toolchain
@@ -624,7 +625,7 @@ Exit criteria:
 - the same browser UI can be driven on the bare-metal surface without desktop
   dependencies
 
-#### Phase 11: Persistence and Networking
+### Phase 11: Persistence and Networking
 
 Objective:
 - make browser state survive power loss and restart on a non-desktop target
@@ -749,12 +750,12 @@ browser core.
 
 Split the first bring-up into these host modules:
 - `src/sys/boot.zig` for startup, panic routing, and shutdown
-- `src/sys/framebuffer.zig` for the pixel surface and screenshot capture
-- `src/sys/input.zig` for keyboard and pointer event ingestion
+- `src/sys/serial_log.zig` for non-console logging
 - `src/sys/timer.zig` for monotonic time, sleeps, and animation pacing
+- `src/sys/input.zig` for keyboard and pointer event ingestion
+- `src/sys/framebuffer.zig` for the pixel surface and screenshot capture
 - `src/sys/storage.zig` for profile persistence and file emulation
 - `src/sys/net.zig` for the transport and socket/driver shim
-- `src/sys/serial_log.zig` for log output when no desktop console exists
 
 Rules:
 - browser code never talks to drivers directly
