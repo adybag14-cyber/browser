@@ -38,11 +38,17 @@ $traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace$l
 $watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch$leaveOpenArgument"
 $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$manualGoogleStyleArgument$leaveOpenArgument"
 
+$quotedManualInitialPage = $null
 $manualInitialPageArgument = ""
+$attachedGoogleInitialPageArgument = ""
 if ($ManualInitialPage) {
     $quotedManualInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $ManualInitialPage
     $manualInitialPageArgument = " -ManualInitialPage $quotedManualInitialPage"
+    $attachedGoogleInitialPageArgument = " -PreferredInitialPage $quotedManualInitialPage"
 }
+
+$attachedGoogleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1$attachedGoogleInitialPageArgument$leaveOpenArgument"
+$attachedGoogleCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1$attachedGoogleInitialPageArgument -Wait"
 
 $manualCommand = $null
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
@@ -57,7 +63,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for reduced localhost probes, the narrower title-flow helper, title readiness, reduced homepage submit, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for reduced localhost probes, the narrower title-flow helper, title readiness, reduced homepage submit, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -108,6 +114,16 @@ $flow = [ordered]@{
             command = $sharedEnterOrderCommand
         }
         [ordered]@{
+            name = "attached-google-flow"
+            goal = "Print the attached Google-style helper flow when you want the current run's attached HTML pages auto-discovered and mapped onto the same localhost-first issue #3 order before the broader manual follow-up."
+            command = $attachedGoogleFlowCommand
+        }
+        [ordered]@{
+            name = "attached-google"
+            goal = "Auto-discover current-run attached Google-like pages and launch them through the same Google-style localhost follow-up before the broader manual or live Google pass."
+            command = $attachedGoogleCommand
+        }
+        [ordered]@{
             name = "trace"
             goal = "Capture the live Google homepage trace through the same runner once the bounded localhost phases are green but the real homepage still diverges."
             command = $traceCommand
@@ -119,7 +135,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "full"
-            goal = "Run the localhost-first flow in one pass, then fold in the quick title, reduced homepage submit, bounded submit-timing, shared label baseline, shared submit gates, stricter Enter-order wrapper, and watcher before the broader Google manual follow-up."
+            goal = "Run the localhost-first flow in one pass, then fold in the quick title, reduced homepage submit, bounded submit-timing, shared label baseline, shared submit gates, stricter Enter-order wrapper, attached Google helper handoff, and watcher before the broader Google manual follow-up."
             command = $fullCommand
         }
     )
@@ -134,7 +150,7 @@ $flow = [ordered]@{
         }
     } else {
         [ordered]@{
-            goal = "After the matching bounded suite is green, rerun with -ManualInputPath to stage the saved or attached localhost pages, or add -ManualGoogleStyle to auto-discover attached Google-like pages first."
+            goal = "After the matching bounded suite is green, rerun with -ManualInputPath to stage the saved or attached localhost pages, or use the dedicated attached-Google helper when you want current-run attached Google-like pages auto-discovered first."
             command = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
         }
     }
@@ -172,13 +188,15 @@ $flow = [ordered]@{
         "Use shared before a live Google manual check when label activation, input, or submit behavior still looks suspicious.",
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
         "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that shared Enter-order stack printed as its own narrower read-first handoff before you run it.",
-        "Use trace when the bounded localhost, reduced homepage, submit-timing, and shared phases are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
+        "Use attached-google-flow when you want the current run's attached Google-like HTML pages auto-discovered and the matching localhost-first issue #3 sequence printed before the broader manual follow-up.",
+        "Use attached-google when you want the helper to auto-discover current-run attached Google-like HTML pages instead of restating ManualInputPath by hand.",
+        "Use trace when the bounded localhost, reduced homepage, submit-timing, shared phases, and attached Google follow-up are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
-        "Use full when you want the runner's built-in localhost-first order plus the extra title, bounded submit-timing, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
-        "When ManualInitialPage is set, the printed manual follow-up command keeps that saved page as the first headed target instead of falling back to a generated index or another arbitrary file.",
+        "Use full when you want the runner's built-in localhost-first order plus the extra title, bounded submit-timing, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
+        "When ManualInitialPage is set, the printed attached-google-flow and attached-google commands keep that page preferred for the auto-discovered attached-page path, and the manual follow-up command keeps the same saved page first instead of falling back to a generated index or another arbitrary file.",
         "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
         "When ManualGoogleStyle is set, the printed manual and full commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when ManualInitialPage is not set.",
-        "When LeaveOpen is set, the printed quick, watch, trace, manual, and full commands keep the browser session open so you can inspect the same headed state after the bounded automation phases finish.",
+        "When LeaveOpen is set, the printed quick, watch, trace, manual, full, and attached-google-flow commands keep the headed follow-up state easier to inspect after the bounded automation phases finish.",
         "Use the common overrides when you need to keep the localhost, title, home, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
