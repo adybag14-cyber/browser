@@ -163,6 +163,90 @@ function Resolve-FixtureSelection {
   return @($fixtures | ForEach-Object { $_.FullName })
 }
 
+function Get-DefaultAttachedHtmlInputPath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot
+  )
+
+  $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
+  if ($searchRoots.Count -eq 0) {
+    throw "attached HTML directories not found under the repo root, its parent workspace, or the current working directory"
+  }
+
+  $htmlFiles = @(Resolve-FixtureSelection -RepoRoot $RepoRoot -MaxCount 0)
+  if ($htmlFiles.Count -eq 0) {
+    throw "no attached HTML files were found anywhere under $($searchRoots -join '; ')"
+  }
+
+  return $htmlFiles
+}
+
+function Normalize-AttachedHtmlSelector {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $normalized = ($Path -replace "\\", "/").Trim()
+  while ($normalized.StartsWith("./")) {
+    $normalized = $normalized.Substring(2)
+  }
+  return $normalized.TrimStart('/')
+}
+
+function Resolve-AttachedPreferredInitialPage {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string[]]$ResolvedInputPath,
+    [Parameter(Mandatory = $true)]
+    [string]$PreferredInitialPage
+  )
+
+  if (Test-Path -LiteralPath $PreferredInitialPage -PathType Leaf) {
+    return (Resolve-Path -LiteralPath $PreferredInitialPage).Path
+  }
+
+  $normalizedSelector = Normalize-AttachedHtmlSelector -Path $PreferredInitialPage
+  $matches = @(
+    $ResolvedInputPath | Where-Object {
+      $resolvedPath = $_
+      $normalizedResolvedPath = Normalize-AttachedHtmlSelector -Path $resolvedPath
+      $leaf = [System.IO.Path]::GetFileName($resolvedPath)
+
+      [string]::Equals($resolvedPath, $PreferredInitialPage, [System.StringComparison]::OrdinalIgnoreCase) -or
+      [string]::Equals($leaf, $PreferredInitialPage, [System.StringComparison]::OrdinalIgnoreCase) -or
+      [string]::Equals($normalizedResolvedPath, $normalizedSelector, [System.StringComparison]::OrdinalIgnoreCase) -or
+      $normalizedResolvedPath.EndsWith("/" + $normalizedSelector, [System.StringComparison]::OrdinalIgnoreCase)
+    } | Select-Object -Unique
+  )
+
+  if ($matches.Count -eq 1) {
+    return $matches[0]
+  }
+  if ($matches.Count -gt 1) {
+    throw "preferred initial page '$PreferredInitialPage' matched multiple attached HTML files. Pass a more specific path. Matches: $($matches -join '; ')"
+  }
+
+  throw "preferred initial page '$PreferredInitialPage' was not found in the attached HTML inputs. Pass a full path or a unique attached HTML file name."
+}
+
+function Select-GoogleStyleInitialPage {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string[]]$ResolvedInputPath
+  )
+
+  foreach ($path in $ResolvedInputPath) {
+    $fixture = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+    if ($fixture -and (Test-GoogleStyleFixture $fixture)) {
+      return $fixture.FullName
+    }
+  }
+
+  return $null
+}
+
 function Convert-ToFixtureArgumentLines {
   param(
     [string[]]$FixturePaths,
