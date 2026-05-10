@@ -60,6 +60,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
     $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
 } else {
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
@@ -98,7 +99,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "google-full"
-            goal = "Run the one-shot localhost-first Google validation pass with the quick title, reduced homepage submit, shared Enter-order, and watch phases folded in."
+            goal = "Run the one-shot localhost-first Google validation pass with the quick title, reduced homepage submit, shared Enter-order, and watch phases folded in, and keep the same saved-page manual inputs when they are already supplied."
             command = $fullCommand
         }
         [ordered]@{
@@ -132,7 +133,7 @@ $flow = [ordered]@{
         "Run the reduced localhost, quick, and reduced homepage phases before treating a saved-page manual pass as evidence for issue #3.",
         "Use google-home after google-quick when you want the bounded real-surface Enter path before the shared gates or saved-page manual pass.",
         "Use google-shared for the stricter Enter-order wrapper when you want the shared label-click baseline and shared submit gates ahead of the saved-page manual pass.",
-        "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, shared Enter-order wrapper, and watch phase in one command before the saved-page manual pass.",
+        "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, shared Enter-order wrapper, and watch phase in one command, and keep the same saved-page manual follow-up attached when InputPath is already supplied.",
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
         "When PreferredInitialPage is set, the direct, staged, Google manual, and broader flow-map commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When InputPath is provided, the broader flow-map command also preserves the same manual port and saved-page inputs for the next printed handoff.",
