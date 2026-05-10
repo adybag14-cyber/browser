@@ -76,10 +76,12 @@ function Get-GoogleStyleFixtureScore($Fixture) {
     $score += 6
   } elseif ($pathText -match 'search[-_ ]?(home|input|query|submit|probe|results)') {
     $score += 4
+  } elseif ($pathText -match '\bgoogle\b') {
+    $score += 5
   }
 
   if ($pathText -match '(safety|privacy|policy|account|support)') {
-    $score -= 6
+    $score -= 2
   }
 
   try {
@@ -88,6 +90,8 @@ function Get-GoogleStyleFixtureScore($Fixture) {
 
     if ($rawLower -match "<title[^>]*>[^<]*google[^<]*(search|home)") {
       $score += 6
+    } elseif ($rawLower -match "<title[^>]*>[^<]*google[^<]*</title>") {
+      $score += 4
     }
 
     if ($rawLower -match "name\s*=\s*['`"]q['`"]") {
@@ -102,7 +106,7 @@ function Get-GoogleStyleFixtureScore($Fixture) {
     }
 
     if ($rawLower -match '(google safety|safety centre|privacy)') {
-      $score -= 8
+      $score -= 2
     }
   } catch {
     return $score
