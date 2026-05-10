@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+[CmdletBinding()]
 param(
   [switch]$DeferredEnter,
   [string]$RepoRoot,
@@ -8,9 +8,12 @@ param(
   [string]$InputText = "Q",
   [int]$ServerReadyTimeoutSeconds = 15,
   [int]$WindowReadyAttempts = 60,
-  [int]$TitleWaitAttempts = 20,
+  [int]$TitleWaitAttempts = 80,
   [int]$PollMilliseconds = 250
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
 function Resolve-RepoRoot([string]$StartPath) {
   if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -42,9 +45,37 @@ function Resolve-PythonCommand {
 }
 
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
+
+function Wait-HttpReady([string]$Url, [int]$TimeoutSeconds) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  do {
+    try {
+      $resp = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
+      if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) {
+        return
+      }
+    } catch {
+    }
+    Start-Sleep -Milliseconds $PollMilliseconds
+  } while ((Get-Date) -lt $deadline)
+
+  throw "enter submit probe server did not become ready at $Url"
+}
+
+function Wait-FileReady([string]$Path, [int]$Attempts) {
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).Length -gt 0)) {
+      return $true
+    }
+  }
+  return $false
+}
 
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $root = Join-Path $repo "tmp-browser-smoke\form-controls"
+$profileRoot = Join-Path $root (if ($DeferredEnter) { "profile-enter-submit-deferred" } else { "profile-enter-submit-default" })
 $browserExe = if ($BrowserExe) { $BrowserExe } elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
 $serverScript = Join-Path $root "form_server.py"
 $browserOut = Join-Path $root "enter-submit.browser.stdout.txt"
@@ -66,7 +97,16 @@ $probeUrl = "http://$Host`:$Port$pagePath"
 $inputTextTitle = [System.Management.Automation.WildcardPattern]::Escape($InputText)
 $typedTitlePattern = if ($DeferredEnter) { "Deferred Enter Typed $inputTextTitle*" } else { "Enter Submit $inputTextTitle*" }
 $pendingTitlePattern = if ($DeferredEnter) { "Deferred Enter Pending $inputTextTitle*" } else { $null }
+$submitTitlePattern = "Submitted $inputTextTitle*"
 $serverSubmitPattern = if ($DeferredEnter) { "FORM_SUBMIT /submitted\.html\?q=$([regex]::Escape($InputText))" } else { "FORM_SUBMIT /submitted\.html\?name=$([regex]::Escape($InputText))" }
+
+cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
+$originalAppData = $env:APPDATA
+$originalLocalAppData = $env:LOCALAPPDATA
+$probeEnv = Get-TabProbeEnvironment $profileRoot
+$env:APPDATA = $probeEnv.APPDATA
+$env:LOCALAPPDATA = $probeEnv.LOCALAPPDATA
 
 $server = $null
 $browser = $null
@@ -82,89 +122,35 @@ $submittedWorked = $false
 $serverSawSubmit = $false
 $failure = $null
 
-function Wait-HttpReady([string]$Url, [int]$TimeoutSeconds) {
-  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-  do {
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
-      if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) {
-        return
-      }
-    } catch {}
-    Start-Sleep -Milliseconds $PollMilliseconds
-  } while ((Get-Date) -lt $deadline)
-
-  throw "enter submit probe server did not become ready at $Url"
-}
-
-function Wait-ForWindowHandle([int]$ProcessId, [int]$Attempts) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $PollMilliseconds
-    $proc = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
-    if ($proc -and $proc.MainWindowHandle -ne 0) {
-      return [IntPtr]$proc.MainWindowHandle
-    }
-  }
-  return [IntPtr]::Zero
-}
-
-function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $PollMilliseconds
-    $title = Get-SmokeWindowTitle $Hwnd
-    if ($title -like $Pattern) {
-      return $title
-    }
-  }
-  return $null
-}
-
-function Stop-OwnedProcess($Process) {
-  if (-not $Process) {
-    return $null
-  }
-
-  $meta = Get-CimInstance Win32_Process -Filter "ProcessId=$($Process.Id)" -ErrorAction SilentlyContinue |
-    Select-Object Name,ProcessId,CommandLine,CreationDate
-  if ($meta -and $meta.CommandLine -and $meta.CommandLine -notmatch "codex\\.js|@openai/codex") {
-    Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
-  }
-  return $meta
-}
-
 try {
   $python = Resolve-PythonCommand
-  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  Wait-HttpReady "http://$Host`:$Port/ping" $ServerReadyTimeoutSeconds
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port, $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  Wait-HttpReady -Url "http://$Host`:$Port/ping" -TimeoutSeconds $ServerReadyTimeoutSeconds
   $ready = $true
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed",$probeUrl,"--window_width","420","--window_height","520","--screenshot_png",$pngPath) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
-    Start-Sleep -Milliseconds $PollMilliseconds
-    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) { $pngReady = $true; break }
-  }
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "420", "--window_height", "520", "--screenshot_png", $pngPath, $probeUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $pngReady = Wait-FileReady -Path $pngPath -Attempts $WindowReadyAttempts
   if (-not $pngReady) { throw "enter submit probe screenshot did not become ready" }
 
-  $hwnd = Wait-ForWindowHandle $browser.Id $WindowReadyAttempts
+  $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts
   if ($hwnd -eq [IntPtr]::Zero) { throw "enter submit probe window handle not found" }
 
   Show-SmokeWindow $hwnd
-  Start-Sleep -Milliseconds $PollMilliseconds
   $titleBefore = Get-SmokeWindowTitle $hwnd
 
   Send-SmokeText $InputText
-  $titleAfterType = Wait-ForTitleLike $hwnd $typedTitlePattern $TitleWaitAttempts
+  $titleAfterType = Wait-TabTitle -ProcessId $browser.Id -Needle $typedTitlePattern.TrimEnd('*') -Attempts $TitleWaitAttempts
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "autofocus input did not receive typed text" }
 
   Send-SmokeEnter
   if ($pendingTitlePattern) {
-    $titleAfterPending = Wait-ForTitleLike $hwnd $pendingTitlePattern $TitleWaitAttempts
+    $titleAfterPending = Wait-TabTitle -ProcessId $browser.Id -Needle $pendingTitlePattern.TrimEnd('*') -Attempts $TitleWaitAttempts
     $pendingWorked = $null -ne $titleAfterPending
   }
-  $titleAfterSubmit = Wait-ForTitleLike $hwnd "Submitted $inputTextTitle*" $TitleWaitAttempts
-  if (Test-Path $serverErr) {
-    $serverLog = Get-Content $serverErr -Raw
+  $titleAfterSubmit = Wait-TabTitle -ProcessId $browser.Id -Needle $submitTitlePattern.TrimEnd('*') -Attempts $TitleWaitAttempts
+  if (Test-Path -LiteralPath $serverErr) {
+    $serverLog = Get-Content -LiteralPath $serverErr -Raw
     $serverSawSubmit = $serverLog -match $serverSubmitPattern
   }
   $submittedWorked = ($null -ne $titleAfterSubmit) -or $serverSawSubmit
@@ -172,8 +158,10 @@ try {
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  $serverMeta = Stop-OwnedProcess $server
-  $browserMeta = Stop-OwnedProcess $browser
+  $serverMeta = Stop-OwnedProbeProcess $server
+  $browserMeta = Stop-OwnedProbeProcess $browser
+  $env:APPDATA = $originalAppData
+  $env:LOCALAPPDATA = $originalLocalAppData
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
