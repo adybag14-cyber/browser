@@ -63,6 +63,7 @@ $googleTitleProbe = '.\tmp-browser-smoke\google-investigation-next\chrome-google
 $reducedHomeProbe = '.\tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1'
 $localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1'
 $formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
+$formControlsFlow = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
 
 $runnerArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $runnerArgs -Name RepoRoot -Value $RepoRoot
@@ -148,6 +149,7 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
+        "Use .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1 when you want only the dedicated shared form-controls gate printed and parameterized before you run it.",
         "Use .\scripts\windows\run_google_issue3_recommended_validation.ps1 when you want this stack folded into the broader localhost-first issue #3 flow.",
         "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, and both Enter-order probes stay green together.",
         "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
@@ -155,7 +157,8 @@ $flow = [ordered]@{
     notes = @(
         "Start with the recommended runner unless you are already narrowing a known failing step.",
         "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
-        "The localhost wrapper and the dedicated form-controls probe both default to the shared Enter-order port on purpose so one port override keeps the pair aligned."
+        "The localhost wrapper and the dedicated form-controls probe both default to the shared Enter-order port on purpose so one port override keeps the pair aligned.",
+        "Use the dedicated form-controls flow helper when you only need the last shared keypress-before-submit gate without printing the wider shared Enter-order ladder."
     )
 }
 
