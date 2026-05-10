@@ -89,6 +89,70 @@ function Get-HtmlTitle {
     return ($decoded -replace "\s+", " ").Trim()
 }
 
+function Add-UniqueString {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$List,
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    if (-not $List.Contains($Value)) {
+        $List.Add($Value) | Out-Null
+    }
+}
+
+function Get-RecommendedProbeSuites {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Counts
+    )
+
+    $result = [System.Collections.Generic.List[string]]::new()
+
+    $hasTextInput = ($Counts.inputs + $Counts.textareas + $Counts.contenteditable) -gt 0
+    $hasForms = $Counts.forms -gt 0
+    $hasAnchors = $Counts.anchors -gt 0
+    $hasImages = $Counts.images -gt 0
+    $hasCanvas = $Counts.canvas -gt 0
+    $hasScripts = $Counts.scripts -gt 0
+    $hasFrames = $Counts.iframes -gt 0
+    $hasInteractiveControls = $hasForms -or $hasTextInput -or ($Counts.buttons -gt 0)
+
+    if ($hasInteractiveControls) {
+        Add-UniqueString -List $result -Value "form-controls"
+        Add-UniqueString -List $result -Value "inline-flow"
+    }
+
+    if ($hasAnchors) {
+        Add-UniqueString -List $result -Value "wrapped-link"
+        Add-UniqueString -List $result -Value "rendered-link-dom"
+    }
+
+    if ($hasImages) {
+        Add-UniqueString -List $result -Value "image-smoke"
+        Add-UniqueString -List $result -Value "flow-layout"
+    }
+
+    if ($hasCanvas) {
+        Add-UniqueString -List $result -Value "canvas-smoke"
+    }
+
+    if ($hasScripts -or $hasFrames) {
+        Add-UniqueString -List $result -Value "layout-smoke"
+    }
+
+    if ($result.Count -eq 0) {
+        Add-UniqueString -List $result -Value "layout-smoke"
+    }
+
+    return @($result)
+}
+
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 }
@@ -141,6 +205,7 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         ($counts.buttons * 2) +
         ($counts.contenteditable * 4) +
         $counts.anchors
+    $recommendedSuites = Get-RecommendedProbeSuites -Counts $counts
 
     [pscustomobject]@{
         relative_path = $relativePath
@@ -150,12 +215,21 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         file_size_bytes = $_.Length
         interactive_score = $interactiveScore
         counts = [pscustomobject]$counts
+        recommended_bounded_suites = $recommendedSuites
+        manual_follow_up_suite = "manual-user"
     }
 })
 
 $recommendedInitialPage = $pageSummaries |
     Sort-Object @{ Expression = "interactive_score"; Descending = $true }, @{ Expression = "relative_path"; Descending = $false } |
     Select-Object -First 1
+
+$overallRecommendedSuites = [System.Collections.Generic.List[string]]::new()
+foreach ($page in $pageSummaries) {
+    foreach ($suite in $page.recommended_bounded_suites) {
+        Add-UniqueString -List $overallRecommendedSuites -Value $suite
+    }
+}
 
 $summary = [pscustomobject]@{
     page_root = $resolvedPageRoot
@@ -165,6 +239,9 @@ $summary = [pscustomobject]@{
     page_count = $pageSummaries.Count
     recommended_initial_page = $recommendedInitialPage.relative_path
     recommended_initial_url = $recommendedInitialPage.url
+    overall_recommended_suites = @($overallRecommendedSuites)
+    manual_follow_up_suite = "manual-user"
+    next_step = "Run one or two of the recommended bounded suites first, then use manual-user for the saved-page localhost follow-up."
     generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
     pages = $pageSummaries
 }
@@ -173,6 +250,8 @@ $summary | ConvertTo-Json -Depth 6 | Set-Content -Path $OutputPath -Encoding Asc
 
 Write-Host ("Saved HTML summary: {0}" -f $OutputPath)
 Write-Host ("Recommended initial page: {0}" -f $recommendedInitialPage.relative_path)
+Write-Host ("Suggested bounded suites: {0}" -f ($summary.overall_recommended_suites -join ", "))
+Write-Host ("Manual follow-up suite: {0}" -f $summary.manual_follow_up_suite)
 Write-Host ""
 
 foreach ($page in $pageSummaries) {
@@ -192,6 +271,7 @@ foreach ($page in $pageSummaries) {
             $page.counts.anchors,
             $page.counts.scripts
         ))
+    Write-Host ("  bounded suites: {0}" -f ($page.recommended_bounded_suites -join ", "))
     Write-Host ("  url: {0}" -f $page.url)
 }
 
