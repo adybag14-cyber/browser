@@ -26,7 +26,7 @@ $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase loc
 $titleCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase title"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
-$submitTimingCommand = "powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\layout-smoke\\chrome-google-submit-timing-probe.ps1"
+$submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase submit-timing"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace$leaveOpenArgument"
@@ -49,7 +49,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the bounded Google-shaped submit-timing probe, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the bounded Google-shaped submit-timing pass through the shared runner, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     leave_open = [bool]$LeaveOpen
     steps = @(
@@ -75,7 +75,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "submit-timing"
-            goal = "Run the bounded Google-shaped timing probe that requires typed text plus keydown,keypress,submit ordering on a headed localhost shell."
+            goal = "Run the bounded Google-shaped timing probe through the shared runner so typed text plus keydown,keypress,submit ordering stay on the same reusable command surface."
             command = $submitTimingCommand
         }
         [ordered]@{
@@ -100,7 +100,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "full"
-            goal = "Run the localhost-first flow in one pass, then fold in the quick title, reduced homepage submit, shared label baseline, shared submit gates, stricter Enter-order wrapper, and watcher before the broader Google manual follow-up."
+            goal = "Run the localhost-first flow in one pass, then fold in the quick title, reduced homepage submit, bounded submit-timing, shared label baseline, shared submit gates, stricter Enter-order wrapper, and watcher before the broader Google manual follow-up."
             command = $fullCommand
         }
     )
@@ -126,6 +126,7 @@ $flow = [ordered]@{
         "-SharedDeferredPort 8155",
         "-SharedReducedGooglePort 8156",
         "-SharedEnterOrderPort 8157",
+        "-SubmitTimingPort 8181",
         "-InlineFlowPort 8148",
         "-ManualPort 8123",
         "-InputText QZ",
@@ -147,11 +148,11 @@ $flow = [ordered]@{
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
         "Use trace when the bounded localhost, reduced homepage, submit-timing, and shared phases are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
-        "Use full when you want the runner's built-in localhost-first order plus the extra title, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
+        "Use full when you want the runner's built-in localhost-first order plus the extra title, bounded submit-timing, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed manual follow-up command keeps that saved page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
         "When LeaveOpen is set, the printed watch, trace, manual, and full commands keep the browser session open so you can inspect the same headed state after the bounded automation phases finish.",
-        "Use the common overrides when you need to keep the localhost, title, home, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
+        "Use the common overrides when you need to keep the localhost, title, home, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
 
