@@ -13,6 +13,7 @@ param(
     [int]$SharedLabelPort = 8153,
     [int]$InlineFlowPort = 8148,
     [int]$ReducedHomeKeypressPort = 8167,
+    [int]$TitleProbePort = 8159,
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$HomeWindowReadyAttempts = 60,
     [int]$HomeTitleWaitAttempts = 80,
@@ -58,6 +59,7 @@ function Add-SharedArgument {
 
 $runner = '.\scripts\windows\run_google_shared_enter_order_validation.ps1'
 $sharedRunner = '.\scripts\windows\run_google_input_validation.ps1'
+$googleTitleProbe = '.\tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1'
 $reducedHomeProbe = '.\tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1'
 $localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1'
 $formControlsProbe = '.\tmp-browser-smoke\form-controls\google-enter-order-probe.ps1'
@@ -75,6 +77,7 @@ Add-SharedArgument -Arguments $runnerArgs -Name SharedReducedGooglePort -Value $
 Add-SharedArgument -Arguments $runnerArgs -Name SharedEnterOrderPort -Value $SharedEnterOrderPort
 Add-SharedArgument -Arguments $runnerArgs -Name InlineFlowPort -Value $InlineFlowPort
 Add-SharedArgument -Arguments $runnerArgs -Name ReducedHomeKeypressPort -Value $ReducedHomeKeypressPort
+Add-SharedArgument -Arguments $runnerArgs -Name TitleProbePort -Value $TitleProbePort
 Add-SharedArgument -Arguments $runnerArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
 Add-SharedArgument -Arguments $runnerArgs -Name HomeWindowReadyAttempts -Value $HomeWindowReadyAttempts
 Add-SharedArgument -Arguments $runnerArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
@@ -107,10 +110,11 @@ Add-SharedArgument -Arguments $sharedOnlyArgs -Name HomePollMilliseconds -Value 
 
 $flow = [ordered]@{
     issue = "Headed Windows Google shared Enter-order validation flow"
-    focus = "Run the shared form-controls baseline, the reduced Google homepage keypress probe, the localhost Enter-order wrapper, and the dedicated shared Enter-order gate in the same order before a live Google manual pass."
+    focus = "Run the shared form-controls baseline, the localhost Google title probe, the reduced Google homepage keypress probe, the localhost Enter-order wrapper, and the dedicated shared Enter-order gate in the same order before a live Google manual pass."
     shared_input_text = $SharedInputText
     enter_mutation_suffix = $EnterMutationSuffix
     host = $Host
+    title_probe_port = $TitleProbePort
     steps = @(
         [ordered]@{
             name = "recommended"
@@ -119,12 +123,17 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "shared-only"
-            goal = "Narrow failures to the shared label, immediate Enter, deferred Enter, reduced Google-home, and inline-flow gates before the stricter Enter-order probes."
+            goal = "Narrow failures to the shared label, immediate Enter, deferred Enter, reduced Google-home, and inline-flow gates before the stricter headed probes."
             command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $sharedRunner, $(if ($sharedOnlyArgs.Count -gt 0) { " " + ($sharedOnlyArgs -join " ") } else { "" }))
         }
         [ordered]@{
+            name = "google-title-localhost"
+            goal = "Verify the dedicated localhost Google-style title probe still reaches click focus, typed text visibility, and Enter submit on the headed surface."
+            command = ("powershell -ExecutionPolicy Bypass -File {0} -InputText {1} -Port {2}{3}" -f $googleTitleProbe, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $TitleProbePort, $(if ($commonProbeArgs.Count -gt 0) { " " + ($commonProbeArgs -join " ") } else { "" }))
+        }
+        [ordered]@{
             name = "reduced-home-keypress"
-            goal = "Check the reduced Google homepage keypress-before-submit path in isolation once the shared baseline is green."
+            goal = "Check the reduced Google homepage keypress-before-submit path in isolation once the shared baseline and localhost title probe are green."
             command = ("powershell -ExecutionPolicy Bypass -File {0} -InputText {1} -Port {2}{3}" -f $reducedHomeProbe, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $ReducedHomeKeypressPort, $(if ($commonProbeArgs.Count -gt 0) { " " + ($commonProbeArgs -join " ") } else { "" }))
         }
         [ordered]@{
@@ -140,12 +149,12 @@ $flow = [ordered]@{
     )
     next_steps = @(
         "Use .\scripts\windows\run_google_issue3_recommended_validation.ps1 when you want this stack folded into the broader localhost-first issue #3 flow.",
-        "Move on to the smallest live Google manual pass only after the reduced-home keypress and both Enter-order probes stay green together.",
+        "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, and both Enter-order probes stay green together.",
         "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
     )
     notes = @(
         "Start with the recommended runner unless you are already narrowing a known failing step.",
-        "Keep the same SharedInputText across the whole stack so the reduced-home probe, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
+        "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
         "The localhost wrapper and the dedicated form-controls probe both default to the shared Enter-order port on purpose so one port override keeps the pair aligned."
     )
 }
@@ -161,6 +170,7 @@ Write-Host ("Focus: {0}" -f $flow.focus)
 Write-Host ("Host: {0}" -f $flow.host)
 Write-Host ("Shared input text: {0}" -f $flow.shared_input_text)
 Write-Host ("Enter mutation suffix: {0}" -f $flow.enter_mutation_suffix)
+Write-Host ("Google title probe port: {0}" -f $flow.title_probe_port)
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
