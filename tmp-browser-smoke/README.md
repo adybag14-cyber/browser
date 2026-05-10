@@ -59,10 +59,6 @@ Examples:
 ### Input, forms, and editing
 
 - `form-controls/`: label activation and Enter-submit basics
-- `google-investigation-next/`: reduced Google-style localhost probes for focus
-  churn, delayed readiness, correction, and Enter-submit ordering
-- `google-home/`: reduced homepage watcher and Enter-submit probe on the real
-  headed surface after the localhost Google-style probes are green
 - `find/`: find-in-page surface behavior
 - `file-upload/`: chooser flows, replacement, cancel, multipart submit, and
   target-page upload behavior
@@ -72,11 +68,12 @@ Examples:
 ### Storage and session state
 
 - `cookie-persistence/`: clear, cross-tab, and restart cookie behavior
-- `localstorage-persistence/`: localStorage same-tab, cross-tab, and restart
-  behavior
+- `localstorage-persistence/`: localStorage same-tab, cross-tab, storage-event,
+  and restart behavior
 - `indexeddb-persistence/`: IndexedDB clear, cursor, index, transaction, and
   restart behavior
-- `sessionstorage-scope/`: same-tab vs new-tab sessionStorage scoping
+- `sessionstorage-scope/`: same-tab, cross-tab, and restart sessionStorage
+  scoping
 
 ### Runtime networking and fetch behavior
 
@@ -87,17 +84,10 @@ Examples:
 ### Graphics and canvas
 
 - `canvas-smoke/`: canvas 2D, drawImage, text metrics, and early WebGL probes
-- `multi-image/`: multiple image placement checks
 
 ### Packaging and release-oriented probes
 
 - `bare-metal-release/`: packaged-image and bare-metal release probes
-
-### Manual real-page follow-up
-
-- `manual-user/`: manual headed validation helpers for saved or attached
-  localhost HTML pages after the bounded suite for the changed subsystem is
-  green
 
 ### Shared helpers
 
@@ -111,41 +101,42 @@ Use this order unless a narrower issue demands something more specific first.
 2. Run one narrow suite for the subsystem you changed.
 3. Run one nearby shared-behavior suite if the change touched input, rendering,
    navigation, storage, or downloads.
-4. Re-run `google-investigation-next/` and `google-home/` or another
-   issue-specific reduced probe only after the bounded localhost suite is green.
+4. For Google search-box or other real-page typing issues, re-run the closest
+   reduced localhost probe under `form-controls/` or `inline-flow/` before the
+   live-site pass.
 5. Finish with the smallest real headed manual pass that exercises the same
    user flow.
 
 ## Fast Mapping By Change Type
 
-- Browser shell, tabs, address bar, start/history/bookmarks/downloads/settings:
-  run `tabs/`, `browser-pages/`, and the closest `settings/` or `popup/` probe.
+- Browser shell, tabs, address bar, start/history/bookmarks/downloads/settings,
+  or stop/recovery behavior: run `tabs/`, `browser-pages/`, `bookmarks/`, and
+  the closest `settings/`, `popup/`, or `stop-loading/` probe.
 - Shared input, focus, caret, or form submit behavior: run `form-controls/`,
-  the closest `inline-flow/` probe, `google-investigation-next/` for reduced
-  localhost Google-style coverage, and `google-home/` before live-site passes
+  the closest `inline-flow/` probe, and only then move on to the live-site pass
   when the issue is Google search-box related.
 - Layout, painter, screenshots, clipping, or hit testing: run `layout-smoke/`,
   `flow-layout/`, `rendered-link-dom/`, and the nearest `inline-flow/` case.
 - Font, text metrics, or zoom behavior: run `font-render/`, `font-smoke/`, and
   `zoom/`.
 - Network policy or protected subresource loading: run `image-smoke/`,
-  `stylesheet-smoke/`, `fetch-credentials/`, and `fetch-abort/` as needed.
+  `stylesheet-smoke/`, `fetch-credentials/`, `fetch-abort/`, and
+  `websocket-smoke/` as needed.
 - Persistence or restart behavior: run the matching storage suite plus
   `tabs/` or `browser-pages/` when shell state also changed.
 - File chooser or download manager changes: run `file-upload/`, `downloads/`,
   and `attachment-downloads/`.
 - Saved or attached HTML compatibility passes: run the matching bounded suite
-  first, then use `manual-user/` with
-  `scripts/windows/start_localhost_html_validation.ps1` for the real-page
-  localhost follow-up.
+  first, then reuse the same headed browser launch flow against the saved
+  localhost pages for the real follow-up.
 
 ## Issue-Specific Note
 
-For live-site Google search-box work, start with the reduced probes under
-`google-investigation-next/`, then run `tmp-browser-smoke/google-home/`
-for the reduced homepage Enter-submit pass, then use
-`scripts/windows/watch_headed_probe.ps1` against
-`src/browser/tests/page/google_home_title_probe.html`, and only then move on to
-the full `https://www.google.com/` pass. These probes are narrowing and
-regression tools, not replacements for the core `form-controls/` and
-`inline-flow/` gates.
+For live-site Google search-box work, start with
+`tmp-browser-smoke/form-controls/enter-submit-probe.ps1`, then run the closest
+`tmp-browser-smoke/inline-flow/` Enter-submit probe, use
+`src/browser/tests/page/google_home_title_probe.html` when the change touches
+load/readiness ordering, and only then move on to the full
+`https://www.google.com/` pass. These probes are narrowing and regression
+helpers, not replacements for the core `form-controls/` and `inline-flow/`
+gates.
