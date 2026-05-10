@@ -3,8 +3,9 @@
 This folder holds the reduced localhost probes for issue-driven headed Google
 search-box work.
 
-Use these before the reduced homepage watcher or the live
-`https://www.google.com/` pass.
+Use these as the first bounded gate before the title probe, reduced homepage
+probe, bounded submit-timing pass, shared Enter-order wrapper, or the live
+`https://www.google.com/` trace path.
 
 ## Probe Order
 
@@ -59,13 +60,46 @@ Both probes intentionally treat typed-text, event-order, or submit failure as
 investigation data. They exit nonzero only when setup fails or when the reduced
 fixture still reproduces the problem they are meant to capture.
 
+## Validation Handoff
+
+After the reduced localhost probes are green, keep the next steps on the shared
+runner surface:
+
+1. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase title`
+   Confirms the bounded title fixture reaches the expected focus and typed-text
+   markers.
+2. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick`
+   Runs the fast title-plus-watch first pass.
+3. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home`
+   Exercises the reduced homepage Enter-submit path on the real headed surface.
+4. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing`
+   Verifies the bounded Google-shaped keydown, keypress, and submit ordering.
+5. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order`
+   Rechecks the shared label-click baseline, shared submit gates, and the
+   stricter localhost keypress-before-submit wrapper before the manual or live
+   Google pass.
+
 ## Follow-Up Path
 
-After the reduced localhost probes are green, run
+After the bounded localhost probes are green, run
 `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1` for the
-bounded real-surface reduced homepage pass. Use
+bounded real-surface reduced homepage pass, or use the shared runner commands
+above when you want the title, submit-timing, and shared Enter-order steps on
+one reusable surface.
+
+Use
 `tmp-browser-smoke/google-investigation-next/chrome-google-home-enter-trace-probe.ps1`
 when you need the reduced homepage on the real headed surface plus the runtime
 trace bundle, then finish with
 `tmp-browser-smoke/google-investigation-next/chrome-google-home-input-probe.ps1`
 for the live Google homepage if the reduced page still is not enough.
+
+For the one-shot ordered path, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 \
+  -Phase all \
+  -IncludeTitleProbe \
+  -IncludeSharedEnterOrder \
+  -IncludeWatch
+```
