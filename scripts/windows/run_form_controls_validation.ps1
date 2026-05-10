@@ -35,6 +35,7 @@ $probeTable = [ordered]@{
         ScriptPath = Join-Path $probeRoot "label-click-probe.ps1"
         Port = $LabelPort
         DeferredEnter = $false
+        GoogleEnterOrder = $false
         UsesInputText = $false
     }
     "default-enter" = [ordered]@{
@@ -42,6 +43,7 @@ $probeTable = [ordered]@{
         ScriptPath = Join-Path $probeRoot "enter-submit-probe.ps1"
         Port = $DefaultEnterPort
         DeferredEnter = $false
+        GoogleEnterOrder = $false
         UsesInputText = $true
     }
     "deferred-enter" = [ordered]@{
@@ -49,6 +51,7 @@ $probeTable = [ordered]@{
         ScriptPath = Join-Path $probeRoot "enter-submit-probe.ps1"
         Port = $DeferredEnterPort
         DeferredEnter = $true
+        GoogleEnterOrder = $false
         UsesInputText = $true
     }
     "reduced-google-home" = [ordered]@{
@@ -56,13 +59,15 @@ $probeTable = [ordered]@{
         ScriptPath = Join-Path $probeRoot "chrome-google-home-enter-submit-probe.ps1"
         Port = $ReducedGoogleHomePort
         DeferredEnter = $false
+        GoogleEnterOrder = $false
         UsesInputText = $true
     }
     "google-enter-order" = [ordered]@{
         Label = "google-enter-order"
-        ScriptPath = Join-Path $probeRoot "google-enter-order-probe.ps1"
+        ScriptPath = Join-Path $probeRoot "enter-submit-probe.ps1"
         Port = $GoogleEnterOrderPort
         DeferredEnter = $false
+        GoogleEnterOrder = $true
         UsesInputText = $true
     }
 }
@@ -96,6 +101,9 @@ function Invoke-FormControlsProbe {
     }
     if ($entry.DeferredEnter) {
         $arguments.DeferredEnter = $true
+    }
+    if ($entry.GoogleEnterOrder) {
+        $arguments.GoogleEnterOrder = $true
     }
 
     Write-Host ""
