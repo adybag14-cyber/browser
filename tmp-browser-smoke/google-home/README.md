@@ -29,11 +29,22 @@ live `https://www.google.com/` pass.
 - `TYPED:QZ`
 - `SUBMIT:QZ`
 
+## One-Command Runner
+
+Use the Windows helper below when you want the reduced localhost probes, the
+bounded homepage probe, and the nearby shared input checks in one ordered pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase all -IncludeSharedInput
+```
+
+Add `-IncludeWatch` when you also want the longer interactive watcher on the
+same reduced homepage fixture before the smallest live Google manual check.
+
 ## Recommended Order
 
 1. Run the reduced localhost probes in `tmp-browser-smoke/google-investigation-next/`.
 2. Run `chrome-google-home-enter-probe.ps1`.
-3. Use `scripts/windows/watch_headed_probe.ps1` only when you need a longer
-   interactive watcher on the same fixture.
-4. Move on to the smallest live Google manual pass only after the bounded
-   reduced homepage probe is green.
+3. Run the nearby shared input checks in `tmp-browser-smoke/form-controls/` and `tmp-browser-smoke/inline-flow/` when the change touched broader submit or focus behavior.
+4. Use `scripts/windows/watch_headed_probe.ps1` only when you need a longer interactive watcher on the same fixture.
+5. Move on to the smallest live Google manual pass only after the bounded reduced homepage probe is green.
