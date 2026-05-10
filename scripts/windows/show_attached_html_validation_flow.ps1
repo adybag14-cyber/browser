@@ -13,6 +13,45 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
 
+function Get-AttachedHtmlFlowMetadata {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string[]]$ResolvedInputPath,
+        [string]$PreferredInitialPage,
+        [string]$ResolvedPreferredInitialPage,
+        [Parameter(Mandatory = $true)]
+        [bool]$UsingExplicitInputPath,
+        [Parameter(Mandatory = $true)]
+        [bool]$GoogleStyle,
+        [Parameter(Mandatory = $true)]
+        [bool]$LeaveOpen,
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    $preferredInitialPageMode = if ($PreferredInitialPage) {
+        "explicit"
+    } elseif ($ResolvedPreferredInitialPage) {
+        if ($GoogleStyle) { "google-style-auto" } else { "auto-selected" }
+    } else {
+        "saved-page-summary-auto"
+    }
+
+    return [ordered]@{
+        input_mode = if ($UsingExplicitInputPath) { "explicit" } else { "auto-discovered attached HTML" }
+        input_count = @($ResolvedInputPath).Count
+        resolved_input_path = @($ResolvedInputPath)
+        preferred_initial_page = $ResolvedPreferredInitialPage
+        preferred_initial_page_mode = $preferredInitialPageMode
+        validation_mode = if ($GoogleStyle) { "google-style" } else { "general" }
+        leave_open = $LeaveOpen
+        port = $Port
+        search_roots = if ($UsingExplicitInputPath) { @() } else { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) }
+    }
+}
+
 $repoRoot = Resolve-LightpandaRepoRoot $PSScriptRoot
 $usingExplicitInputPath = $InputPath -and $InputPath.Count -gt 0
 $resolvedInputPath = if ($usingExplicitInputPath) {
@@ -48,10 +87,6 @@ if (-not ($GoogleStyle -and -not $usingExplicitInputPath)) {
 if ($resolvedPreferredInitialPage) {
     $helperArgs["PreferredInitialPage"] = $resolvedPreferredInitialPage
 }
-
-if ($Json) {
-    $helperArgs["Json"] = $true
-}
 if ($GoogleStyle) {
     $helperArgs["ManualGoogleStyle"] = $true
 }
@@ -59,22 +94,41 @@ if ($GoogleStyle -and $LeaveOpen) {
     $helperArgs["LeaveOpen"] = $true
 }
 
-if (-not $Json) {
-    Write-Host "Attached HTML validation flow"
-    Write-Host ""
-    Write-Host ("Inputs discovered: {0}" -f $resolvedInputPath.Count)
-    Write-Host ("Input mode: {0}" -f $(if ($usingExplicitInputPath) { "explicit" } else { "auto-discovered attached HTML" }))
-    if ($resolvedPreferredInitialPage) {
-        if ($PreferredInitialPage) {
-            Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
-        } else {
-            Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
-        }
-    } else {
-        Write-Host "Preferred initial page: auto (from saved-page summary)"
+$attachedHtmlMetadata = Get-AttachedHtmlFlowMetadata `
+    -RepoRoot $repoRoot `
+    -ResolvedInputPath $resolvedInputPath `
+    -PreferredInitialPage $PreferredInitialPage `
+    -ResolvedPreferredInitialPage $resolvedPreferredInitialPage `
+    -UsingExplicitInputPath ([bool]$usingExplicitInputPath) `
+    -GoogleStyle ([bool]$GoogleStyle) `
+    -LeaveOpen ([bool]$LeaveOpen) `
+    -Port $Port
+
+if ($Json) {
+    $helperArgs["Json"] = $true
+    $helperJson = (& $helperPath @helperArgs) -join [Environment]::NewLine
+    $result = [ordered]@{
+        attached_html = $attachedHtmlMetadata
+        flow = $helperJson | ConvertFrom-Json -Depth 10
     }
-    Write-Host ("Validation mode: {0}" -f $(if ($GoogleStyle) { "google-style" } else { "general" }))
-    Write-Host ""
+    $result | ConvertTo-Json -Depth 10
+    exit $LASTEXITCODE
 }
+
+Write-Host "Attached HTML validation flow"
+Write-Host ""
+Write-Host ("Inputs discovered: {0}" -f $attachedHtmlMetadata.input_count)
+Write-Host ("Input mode: {0}" -f $attachedHtmlMetadata.input_mode)
+if ($resolvedPreferredInitialPage) {
+    if ($PreferredInitialPage) {
+        Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
+    } else {
+        Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
+    }
+} else {
+    Write-Host "Preferred initial page: auto (from saved-page summary)"
+}
+Write-Host ("Validation mode: {0}" -f $attachedHtmlMetadata.validation_mode)
+Write-Host ""
 
 & $helperPath @helperArgs
