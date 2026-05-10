@@ -32,7 +32,7 @@ if (-not $BrowserExe) {
 $sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
 $reducedHomeKeypressProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1"
 $localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
-$formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\enter-submit-probe.ps1"
+$formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\google-enter-order-probe.ps1"
 
 if (-not (Test-Path -LiteralPath $sharedRunner -PathType Leaf)) {
     throw "Shared Google validation runner not found: $sharedRunner"
@@ -44,7 +44,7 @@ if (-not (Test-Path -LiteralPath $localhostEnterOrderProbe -PathType Leaf)) {
     throw "Google enter-order localhost probe not found: $localhostEnterOrderProbe"
 }
 if (-not (Test-Path -LiteralPath $formControlsEnterOrderProbe -PathType Leaf)) {
-    throw "Canonical shared form-controls enter-order probe not found: $formControlsEnterOrderProbe"
+    throw "Dedicated shared form-controls Google enter-order probe not found: $formControlsEnterOrderProbe"
 }
 
 $sharedArgs = @{
@@ -95,7 +95,6 @@ $formControlsEnterOrderArgs = @{
     Host = $Host
     Port = $SharedEnterOrderPort
     InputText = $SharedInputText
-    GoogleEnterOrder = $true
     ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
     WindowReadyAttempts = $HomeWindowReadyAttempts
     TitleWaitAttempts = $HomeTitleWaitAttempts
@@ -129,4 +128,4 @@ Write-Host ("Script: {0}" -f $formControlsEnterOrderProbe)
 & $formControlsEnterOrderProbe @formControlsEnterOrderArgs
 
 Write-Host ""
-Write-Host "Next: if the shared gates, reduced-home keypress-before-submit probe, shared form-controls Enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
+Write-Host "Next: if the shared gates, reduced-home keypress-before-submit probe, dedicated shared form-controls Google enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
