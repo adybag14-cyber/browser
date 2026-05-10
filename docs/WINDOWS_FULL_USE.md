@@ -64,7 +64,39 @@ Graphical rendering and native input translation are still in-progress:
 - frame presentation pipeline
 - IME candidate/composition UI and dead-key edge cases
 
-## 5) Reduced Google homepage probe
+## 5) Headed validation gate map
+
+The headed probe suites under `tmp-browser-smoke/` are now the default
+validation map for this fork.
+
+Start with:
+
+1. the narrowest suite for the subsystem you changed
+2. one nearby shared-behavior suite when the change touches input, rendering,
+   navigation, persistence, or downloads
+3. the issue-specific reduced Google or manual real-site pass only after the
+   bounded local suite is green
+
+Primary suite families:
+
+- shell and browser pages: `tabs/`, `browser-pages/`, `settings/`, `popup/`,
+  `wrapped-link/`, `stop-loading/`, `bookmarks/`
+- rendering and layout: `layout-smoke/`, `inline-flow/`, `flow-layout/`,
+  `rendered-link-dom/`, `font-render/`, `font-smoke/`, `image-smoke/`,
+  `stylesheet-smoke/`, `zoom/`
+- forms and editing: `form-controls/`, `find/`, `file-upload/`, `downloads/`,
+  `attachment-downloads/`
+- persistence and runtime: `cookie-persistence/`,
+  `localstorage-persistence/`, `indexeddb-persistence/`,
+  `sessionstorage-scope/`, `fetch-abort/`, `fetch-credentials/`,
+  `websocket-smoke/`
+- graphics and packaging: `canvas-smoke/`, `multi-image/`,
+  `bare-metal-release/`
+
+See `tmp-browser-smoke/README.md` for the full suite map and recommended
+change-to-probe routing.
+
+## 6) Reduced Google homepage probe
 
 Use the reduced Google probe page when issue-driven headed input work needs a
 repeatable local check before moving on to the full live homepage.
