@@ -17,12 +17,25 @@ function Get-AttachedHtmlSearchRoots {
         [string]$RepoRoot
     )
 
-    return @(
-        (Join-Path $RepoRoot "user_files"),
-        (Join-Path $RepoRoot "agent_files")
-    ) | Where-Object {
-        Test-Path -LiteralPath $_ -PathType Container
+    $candidateRoots = New-Object System.Collections.Generic.List[string]
+    $candidateRoots.Add((Join-Path $RepoRoot "user_files"))
+    $candidateRoots.Add((Join-Path $RepoRoot "agent_files"))
+
+    $repoParent = Split-Path $RepoRoot -Parent
+    if (-not [string]::IsNullOrWhiteSpace($repoParent) -and $repoParent -ne $RepoRoot) {
+        $candidateRoots.Add((Join-Path $repoParent "user_files"))
+        $candidateRoots.Add((Join-Path $repoParent "agent_files"))
     }
+
+    $currentRoot = (Get-Location).Path
+    if (-not [string]::IsNullOrWhiteSpace($currentRoot)) {
+        $candidateRoots.Add((Join-Path $currentRoot "user_files"))
+        $candidateRoots.Add((Join-Path $currentRoot "agent_files"))
+    }
+
+    return $candidateRoots |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Container } |
+        Select-Object -Unique
 }
 
 function Get-DefaultAttachedHtmlInputPath {
@@ -33,7 +46,7 @@ function Get-DefaultAttachedHtmlInputPath {
 
     $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
     if ($searchRoots.Count -eq 0) {
-        throw "attached HTML directories not found under $(Join-Path $RepoRoot 'user_files') or $(Join-Path $RepoRoot 'agent_files')"
+        throw "attached HTML directories not found under the repo root, its parent workspace, or the current working directory"
     }
 
     $htmlFiles = @(
