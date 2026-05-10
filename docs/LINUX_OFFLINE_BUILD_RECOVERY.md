@@ -89,6 +89,10 @@ What it checks:
 5. the extracted offline dependency directories, `.cargo/config.toml`,
    `vendor/`, and a prebuilt `libc_v8_*.a` archive are present
 
+If the configured Zig binary is missing or the version is wrong, the preflight
+also scans nearby workspace roots for an exact-match Zig binary and prints
+ready-to-rerun `--zig-binary` and `ZIG=...` hints for any candidates it finds.
+
 If the preflight fails, rerun `scripts/linux/restore_offline_build_inputs.sh`
 or use `scripts/linux/prepare_offline_build_inputs.sh` when the archives are
 stored outside the standard Memory layout.
