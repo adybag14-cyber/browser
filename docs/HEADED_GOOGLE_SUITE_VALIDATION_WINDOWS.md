@@ -26,6 +26,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_suite_val
   -LeaveOpen
 ```
 
+## Shared Entry Points
+
+Use these commands when you want the same issue `#3` work surfaced through the
+broader Windows validation router before you drop into the compact helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-title
+```
+
+That keeps the compact suite guide aligned with the shared validation index
+instead of making future runs choose between two separate routing surfaces.
+
 ## What It Covers
 
 The helper keeps these checks in one printed order:
