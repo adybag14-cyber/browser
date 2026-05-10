@@ -34,6 +34,8 @@ $titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\window
 $titleCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_title_validation.ps1"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase home"
+$homepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
+$homepageFixtureCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1"
 $submitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase submit-timing"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
@@ -85,7 +87,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Google-style saved page follow-up"
-    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the dedicated title flow, bounded title wrapper, fast quick pass, reduced homepage headed pass, read-first submit-timing flow, bounded submit-timing pass, one-shot full pass, and live trace path when real Google still diverges."
+    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the dedicated title flow, bounded title wrapper, fast quick pass, reduced homepage headed pass, saved homepage fixture pass, read-first submit-timing flow, bounded submit-timing pass, one-shot full pass, and live trace path when real Google still diverges."
     preferred_initial_page = $PreferredInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -117,8 +119,18 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "google-home"
-            goal = "Run the reduced headed homepage Enter-submit pass before the shared or saved-page manual follow-up."
+            goal = "Run the reduced headed homepage Enter-submit pass before the saved homepage fixture, shared, or saved-page manual follow-up."
             command = $homeCommand
+        }
+        [ordered]@{
+            name = "google-homepage-fixture-flow"
+            goal = "Print the saved homepage fixture wrapper flow when you want the bounded localhost copy of the captured Google homepage spelled out before execution."
+            command = $homepageFixtureFlowCommand
+        }
+        [ordered]@{
+            name = "google-homepage-fixture"
+            goal = "Run the saved homepage fixture wrapper before the shared gates or saved-page manual follow-up when you want the bounded localhost copy of the captured Google homepage in the same issue #3 order."
+            command = $homepageFixtureCommand
         }
         [ordered]@{
             name = "google-submit-timing-flow"
@@ -170,15 +182,16 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "flow-map"
-            goal = "Print the broader Google validation flow when you need the full localhost, title, reduced-homepage, submit-timing, watch, and trace sequence."
+            goal = "Print the broader Google validation flow when you need the full localhost, title, reduced-homepage, saved-homepage-fixture, submit-timing, watch, and trace sequence."
             command = $flowMapCommand
         }
     )
     notes = @(
         "Use this helper when the saved or attached HTML pages look like search-box, delayed-readiness, or Enter-submit investigations related to headed Google-style behavior.",
-        "Run the reduced localhost, title, quick, reduced homepage, and bounded submit-timing phases before treating a saved-page manual pass as evidence for issue #3.",
+        "Run the reduced localhost, title, quick, reduced homepage, saved homepage fixture, and bounded submit-timing phases before treating a saved-page manual pass as evidence for issue #3.",
         "Use google-title-flow when you want the dedicated title wrapper and raw probe handoff printed before you run that narrower slice.",
-        "Use google-home after google-quick when you want the bounded real-surface Enter path before the submit-timing pass, shared gates, or saved-page manual pass.",
+        "Use google-home after google-quick when you want the bounded real-surface Enter path before the saved homepage fixture, submit-timing pass, shared gates, or saved-page manual pass.",
+        "Use google-homepage-fixture-flow when the next question is whether the bounded localhost copy of the captured Google homepage still matches the reduced headed flow before you widen into broader saved-page or attached-page follow-up.",
         "Use google-submit-timing-flow when you want the bounded Google-shaped keydown, keypress, and submit-ordering wrapper printed before the shared or saved-page manual follow-up.",
         "Use google-shared for the stricter Enter-order wrapper when you want the shared label-click baseline and shared submit gates ahead of the saved-page manual pass.",
         "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, bounded submit-timing pass, shared Enter-order wrapper, and watch phase in one command, and keep the same saved-page manual follow-up attached when InputPath is already supplied.",
