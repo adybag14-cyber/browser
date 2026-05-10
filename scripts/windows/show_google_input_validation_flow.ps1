@@ -24,7 +24,7 @@ $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
 $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
 $titleCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase title"
-$quickCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase quick"
+$quickCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1$leaveOpenArgument"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
 $submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase submit-timing"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
@@ -151,7 +151,7 @@ $flow = [ordered]@{
         "Use full when you want the runner's built-in localhost-first order plus the extra title, bounded submit-timing, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed manual follow-up command keeps that saved page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
-        "When LeaveOpen is set, the printed watch, trace, manual, and full commands keep the browser session open so you can inspect the same headed state after the bounded automation phases finish.",
+        "When LeaveOpen is set, the printed quick, watch, trace, manual, and full commands keep the browser session open so you can inspect the same headed state after the bounded automation phases finish.",
         "Use the common overrides when you need to keep the localhost, title, home, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
