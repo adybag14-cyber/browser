@@ -27,33 +27,47 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
 $wrapperRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
 $directProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-title-probe.ps1'
 
-$commonArguments = ""
+$wrapperArguments = ""
+$directProbeArguments = ""
 if ($RepoRoot) {
-    $commonArguments += " -RepoRoot " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot)
+    $quotedRepoRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot
+    $wrapperArguments += " -RepoRoot $quotedRepoRoot"
+    $directProbeArguments += " -RepoRoot $quotedRepoRoot"
 }
 if ($BrowserExe) {
-    $commonArguments += " -BrowserExe " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe)
+    $quotedBrowserExe = ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe
+    $wrapperArguments += " -BrowserExe $quotedBrowserExe"
+    $directProbeArguments += " -BrowserExe $quotedBrowserExe"
 }
 if ($Host) {
-    $commonArguments += " -Host " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $Host)
+    $quotedHost = ConvertTo-PowerShellSingleQuotedLiteral -Value $Host
+    $wrapperArguments += " -Host $quotedHost"
+    $directProbeArguments += " -Host $quotedHost"
 }
 if ($TitlePort) {
-    $commonArguments += " -TitlePort $TitlePort"
+    $wrapperArguments += " -TitlePort $TitlePort"
+    $directProbeArguments += " -Port $TitlePort"
 }
 if ($InputText) {
-    $commonArguments += " -InputText " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $InputText)
+    $quotedInputText = ConvertTo-PowerShellSingleQuotedLiteral -Value $InputText
+    $wrapperArguments += " -InputText $quotedInputText"
+    $directProbeArguments += " -InputText $quotedInputText"
 }
 if ($ServerReadyTimeoutSeconds) {
-    $commonArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
+    $wrapperArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
+    $directProbeArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
 }
 if ($HomeWindowReadyAttempts) {
-    $commonArguments += " -HomeWindowReadyAttempts $HomeWindowReadyAttempts"
+    $wrapperArguments += " -HomeWindowReadyAttempts $HomeWindowReadyAttempts"
+    $directProbeArguments += " -WindowReadyAttempts $HomeWindowReadyAttempts"
 }
 if ($HomeTitleWaitAttempts) {
-    $commonArguments += " -HomeTitleWaitAttempts $HomeTitleWaitAttempts"
+    $wrapperArguments += " -HomeTitleWaitAttempts $HomeTitleWaitAttempts"
+    $directProbeArguments += " -TitleWaitAttempts $HomeTitleWaitAttempts"
 }
 if ($HomePollMilliseconds) {
-    $commonArguments += " -HomePollMilliseconds $HomePollMilliseconds"
+    $wrapperArguments += " -HomePollMilliseconds $HomePollMilliseconds"
+    $directProbeArguments += " -PollMilliseconds $HomePollMilliseconds"
 }
 
 $flow = [ordered]@{
@@ -63,12 +77,12 @@ $flow = [ordered]@{
         [ordered]@{
             name = "wrapper"
             goal = "Run the dedicated title wrapper first so the bounded probe stays on the same reusable command surface as the other Windows validation helpers."
-            command = "powershell -ExecutionPolicy Bypass -File $wrapperRunner$commonArguments"
+            command = "powershell -ExecutionPolicy Bypass -File $wrapperRunner$wrapperArguments"
         }
         [ordered]@{
             name = "direct-probe"
             goal = "Run the raw title probe only when you need to narrow a wrapper failure to the underlying localhost fixture or headed click,type,submit path."
-            command = "powershell -ExecutionPolicy Bypass -File $directProbe$commonArguments"
+            command = "powershell -ExecutionPolicy Bypass -File $directProbe$directProbeArguments"
         }
     )
     next_steps = @(
