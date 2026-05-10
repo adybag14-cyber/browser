@@ -265,7 +265,7 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("google-investigation-next", "google-home", "form-controls", "inline-flow")
+    "google-input" = @("google-investigation-next", "google-home", "layout-smoke", "form-controls", "inline-flow")
     "manual-html" = @("manual-user", "form-controls", "google-investigation-next")
 }
 
@@ -320,7 +320,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper, then run google-investigation-next, google-home, form-controls (including deferred-enter-submit), and inline-flow before the smallest live Google manual check."
+        "Start with the dedicated Google-input flow helper, then run google-investigation-next, google-home, the layout-smoke submit-timing probe, form-controls (including deferred-enter-submit and the shared Enter-order wrapper), and inline-flow before the smallest live Google manual check."
     } elseif ($ChangeArea -eq "manual-html") {
         "Start with the matching bounded suite, then use the localhost flow helper to summarize, serve, or stage the saved pages before the issue-specific manual runner hand-off."
     } else {
