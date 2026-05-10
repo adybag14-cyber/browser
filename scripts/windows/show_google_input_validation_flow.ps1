@@ -4,7 +4,8 @@ param(
     [switch]$LeaveOpen,
     [string[]]$ManualInputPath,
     [string]$ManualInitialPage,
-    [int]$ManualPort = 8123
+    [int]$ManualPort = 8123,
+    [switch]$ManualGoogleStyle
 )
 
 Set-StrictMode -Version Latest
@@ -20,6 +21,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
 }
 
 $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
+$manualGoogleStyleArgument = if ($ManualGoogleStyle) { " -ManualGoogleStyle" } else { "" }
 
 $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
@@ -31,7 +33,7 @@ $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace$leaveOpenArgument"
 $watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch$leaveOpenArgument"
-$fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$leaveOpenArgument"
+$fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$manualGoogleStyleArgument$leaveOpenArgument"
 
 $manualInitialPageArgument = ""
 if ($ManualInitialPage) {
@@ -43,14 +45,18 @@ $manualCommand = $null
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     $quotedPaths = $ManualInputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $manualPathsArgument = " -ManualInputPath " + ($quotedPaths -join ", ")
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$leaveOpenArgument"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$leaveOpenArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$manualGoogleStyleArgument$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$manualGoogleStyleArgument$leaveOpenArgument"
+} elseif ($ManualGoogleStyle) {
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
 }
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
     focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the bounded Google-shaped submit-timing pass through a dedicated wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
+    manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
     steps = @(
         [ordered]@{
@@ -106,12 +112,16 @@ $flow = [ordered]@{
     )
     saved_page_follow_up = if ($manualCommand) {
         [ordered]@{
-            goal = "Compare the attached or saved localhost pages against the bounded Google and shared-input probes."
+            goal = if ($ManualGoogleStyle) {
+                "Compare the attached or saved localhost pages against the bounded Google and shared-input probes, while preferring a Google-like attached page first."
+            } else {
+                "Compare the attached or saved localhost pages against the bounded Google and shared-input probes."
+            }
             command = $manualCommand
         }
     } else {
         [ordered]@{
-            goal = "After the matching bounded suite is green, rerun with -ManualInputPath to stage the saved or attached localhost pages."
+            goal = "After the matching bounded suite is green, rerun with -ManualInputPath to stage the saved or attached localhost pages, or add -ManualGoogleStyle to auto-discover attached Google-like pages first."
             command = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
         }
     }
@@ -151,6 +161,7 @@ $flow = [ordered]@{
         "Use full when you want the runner's built-in localhost-first order plus the extra title, bounded submit-timing, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed manual follow-up command keeps that saved page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
+        "When ManualGoogleStyle is set, the printed manual and full commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when ManualInitialPage is not set.",
         "When LeaveOpen is set, the printed quick, watch, trace, manual, and full commands keep the browser session open so you can inspect the same headed state after the bounded automation phases finish.",
         "Use the common overrides when you need to keep the localhost, title, home, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
@@ -167,6 +178,7 @@ Write-Host ("Focus: {0}" -f $flow.focus)
 if ($ManualInitialPage) {
     Write-Host ("Manual initial page: {0}" -f $ManualInitialPage)
 }
+Write-Host ("Manual Google-style attached follow-up: {0}" -f ([bool]$ManualGoogleStyle))
 Write-Host ("Leave open after bounded phases: {0}" -f ([bool]$LeaveOpen))
 Write-Host ""
 foreach ($step in $flow.steps) {
