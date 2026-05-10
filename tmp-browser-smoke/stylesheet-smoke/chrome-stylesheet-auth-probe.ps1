@@ -1,9 +1,10 @@
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\stylesheet-smoke"
+$root = $PSScriptRoot
+$repo = (Resolve-Path (Join-Path $root "..\..")).Path
 $profileRoot = Join-Path $root "profile-stylesheet-auth"
 $appDataRoot = Join-Path $profileRoot "lightpanda"
 $port = 8160
-$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
+$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $serverScript = Join-Path $root "stylesheet_server.py"
 $browserOut = Join-Path $root "stylesheet-auth.browser.stdout.txt"
 $browserErr = Join-Path $root "stylesheet-auth.browser.stderr.txt"
