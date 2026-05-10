@@ -22,12 +22,12 @@ function Get-DefaultAttachedHtmlInputPath {
         throw "agent_files directory not found: $agentFilesRoot"
     }
 
-    $htmlFiles = Get-ChildItem -LiteralPath $agentFilesRoot -File |
+    $htmlFiles = Get-ChildItem -LiteralPath $agentFilesRoot -Recurse -File |
         Where-Object { $_.Extension -in @(".html", ".htm") } |
         Sort-Object FullName
 
     if ($htmlFiles.Count -eq 0) {
-        throw "no attached HTML files were found under $agentFilesRoot"
+        throw "no attached HTML files were found anywhere under $agentFilesRoot"
     }
 
     return @($htmlFiles.FullName)
