@@ -695,10 +695,35 @@ pub fn deinit(self: *Display) void {
         log.info(.app, "headed stub shutdown", .{});
     }
     switch (self.backend) {
+        .bare_metal => |*backend| {
+            backend.deinit();
+            log.info(.app, "bare metal backend shutdown", .{});
+        },
         .headed_windows => |*backend| {
             backend.deinit();
             log.info(.app, "headed windows shutdown", .{});
         },
         else => {},
     }
+}
+
+test "display deinit releases bare metal backend state" {
+    var host = Host.initMock(std.testing.allocator);
+    defer host.deinit();
+
+    var backend = BareMetalBackend.init(&host, std.testing.allocator, 320, 180);
+    try std.testing.expectEqual(@import("../sys/boot.zig").BootState.banner, host.boot.state);
+    _ = backend.onPageCreated();
+    try std.testing.expectEqual(@import("../sys/boot.zig").BootState.running, host.boot.state);
+
+    var display: Display = .{
+        .requested_mode = .headed,
+        .runtime_mode = .headed,
+        .backend = .{ .bare_metal = backend },
+        .default_viewport = .{ .width = 320, .height = 180, .device_pixel_ratio = 1.0 },
+        .viewport = .{ .width = 320, .height = 180, .device_pixel_ratio = 1.0 },
+    };
+
+    display.deinit();
+    try std.testing.expectEqual(@import("../sys/boot.zig").BootState.stopped, host.boot.state);
 }
