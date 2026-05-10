@@ -103,7 +103,7 @@ Primary suite families:
   Enter-submit probe and title-stream watcher path against
   `google_home_title_probe.html`
 - reduced Google wrapper-first pass: `google-recommended` for the current
-  one-command localhost-first issue #3 flow that bundles the title pass,
+  one-command localhost-first issue `#3` flow that bundles the title pass,
   reduced homepage pass, submit-timing check, shared Enter-order wrapper, and
   watcher before any saved-page or live-site follow-up
 - persistence and runtime: `cookie-persistence/`,
@@ -191,6 +191,12 @@ attaching a separate debugger first.
 Use `scripts\windows\start_localhost_html_validation.ps1` when you want a
 repeatable headed session against saved or attached HTML pages instead of the
 repo's built-in smoke fixtures.
+
+For the current attached standalone HTML snapshots and similar mixed saved-page
+sets, start with `docs/ATTACHED_HTML_LOCALHOST_VALIDATION.md`. That runbook
+maps the current page shapes to the closest bounded suites, shows staged
+`-InputPath` examples, and keeps the preferred first page explicit for the
+manual headed follow-up.
 
 Typical flow:
 
