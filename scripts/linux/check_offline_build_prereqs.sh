@@ -11,8 +11,9 @@ Usage:
 
 This helper confirms that an offline Linux browser checkout is ready for a real
 build attempt before `zig build` runs. It checks the active Zig version against
-`build.zig.zon`, verifies the restored sibling dependency layout, confirms the
-manifest rewrite backup exists, and prints the suggested validation command.
+`build.zig.zon`, verifies the restored sibling dependency layout, accepts the
+current offline manifest backup names, and prints the suggested validation
+command.
 EOF
 }
 
@@ -68,9 +69,18 @@ fi
 write_status "BrowserRoot" true "${BROWSER_ROOT}"
 
 BUILD_ZON_PATH="${BROWSER_ROOT}/build.zig.zon"
-BUILD_ZON_BACKUP="${BROWSER_ROOT}/build.zig.zon.before-offline"
 WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
+BUILD_ZON_BACKUP=""
+for candidate in \
+    "${BROWSER_ROOT}/build.zig.zon.remote-sources.bak" \
+    "${BROWSER_ROOT}/build.zig.zon.before-offline"
+do
+    if [[ -f "${candidate}" ]]; then
+        BUILD_ZON_BACKUP="${candidate}"
+        break
+    fi
+done
 
 MINIMUM_ZIG_VERSION="$(python3 - "${BUILD_ZON_PATH}" <<'PY'
 import pathlib
@@ -100,35 +110,61 @@ if [[ -n "${zig_version}" ]]; then
     fi
 fi
 
-if [[ -f "${BUILD_ZON_BACKUP}" ]]; then
+if [[ -n "${BUILD_ZON_BACKUP}" ]]; then
     write_status "ManifestBackup" true "${BUILD_ZON_BACKUP}"
 else
-    write_status "ManifestBackup" false "missing ${BUILD_ZON_BACKUP}"
+    write_status "ManifestBackup" false "missing build.zig.zon.remote-sources.bak or build.zig.zon.before-offline"
 fi
 
-MANIFEST_PATHS_OK="$(python3 - "${BUILD_ZON_PATH}" <<'PY'
+DEP_PATH_ROWS="$(python3 - "${BUILD_ZON_PATH}" <<'PY'
 import pathlib
 import re
 import sys
 text = pathlib.Path(sys.argv[1]).read_text()
-expected = {
-    'brotli': '../offline-deps/brotli',
-    'zlib': '../offline-deps/zlib',
-    'nghttp2': '../offline-deps/nghttp2',
-    'curl': '../offline-deps/curl',
-}
-for dep, path in expected.items():
-    pattern = rf'\.{re.escape(dep)}\s*=\s*\.\{{.*?\.path\s*=\s*"{re.escape(path)}"'
-    if not re.search(pattern, text, re.S):
-        print('false')
-        raise SystemExit(0)
-print('true')
+for dep in ("brotli", "zlib", "nghttp2", "curl"):
+    match = re.search(rf'\.{re.escape(dep)}\s*=\s*\.\{{.*?\.path\s*=\s*"([^"]+)"', text, re.S)
+    print(f"{dep}\t{match.group(1) if match else ''}")
 PY
 )"
-if [[ "${MANIFEST_PATHS_OK}" == "true" ]]; then
-    write_status "ManifestPaths" true "build.zig.zon points brotli/zlib/nghttp2/curl at ../offline-deps"
+
+manifest_paths_ok=true
+while IFS=$'\t' read -r dep relpath; do
+    if [[ -z "${dep}" ]]; then
+        continue
+    fi
+
+    if [[ -z "${relpath}" ]]; then
+        write_status "manifest:${dep}" false "missing .path entry for ${dep} in build.zig.zon"
+        manifest_paths_ok=false
+        continue
+    fi
+
+    if [[ "${relpath}" != ../offline-deps/* ]]; then
+        write_status "manifest:${dep}" false "expected ${dep} to resolve under ../offline-deps, found ${relpath}"
+        manifest_paths_ok=false
+        continue
+    fi
+
+    dep_path="$(python3 - "${BROWSER_ROOT}" "${relpath}" <<'PY'
+from pathlib import Path
+import sys
+browser_root = Path(sys.argv[1])
+relpath = sys.argv[2]
+print((browser_root / relpath).resolve())
+PY
+)"
+    if [[ -d "${dep_path}" ]]; then
+        write_status "offline:${dep}" true "${dep_path}"
+    else
+        write_status "offline:${dep}" false "missing ${dep_path}"
+        manifest_paths_ok=false
+    fi
+done <<< "${DEP_PATH_ROWS}"
+
+if [[ "${manifest_paths_ok}" == "true" ]]; then
+    write_status "ManifestPaths" true "build.zig.zon points brotli/zlib/nghttp2/curl at local ../offline-deps paths"
 else
-    write_status "ManifestPaths" false "build.zig.zon still needs local .path rewrites for offline deps"
+    write_status "ManifestPaths" false "build.zig.zon and the extracted offline dependency directories are not aligned yet"
 fi
 
 for sibling in zig-v8-fork boringssl-zig; do
@@ -137,15 +173,6 @@ for sibling in zig-v8-fork boringssl-zig; do
         write_status "${sibling}" true "${sibling_path}"
     else
         write_status "${sibling}" false "missing ${sibling_path}"
-    fi
-done
-
-for dep in brotli zlib nghttp2 curl; do
-    dep_path="${OFFLINE_DEPS_ROOT}/${dep}"
-    if [[ -d "${dep_path}" ]]; then
-        write_status "offline:${dep}" true "${dep_path}"
-    else
-        write_status "offline:${dep}" false "missing ${dep_path}"
     fi
 done
 
@@ -180,5 +207,5 @@ fi
 
 echo
 echo "Offline build prerequisites are not ready yet."
-echo "Run scripts/linux/prepare_offline_build_inputs.sh and switch to Zig ${MINIMUM_ZIG_VERSION} before retrying zig build."
+echo "Run scripts/linux/restore_offline_build_inputs.sh (or scripts/linux/prepare_offline_build_inputs.sh for custom archive locations) and switch to Zig ${MINIMUM_ZIG_VERSION} before retrying zig build."
 exit 1
