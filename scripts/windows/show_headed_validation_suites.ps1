@@ -307,7 +307,7 @@ $changeRecommendations = @{
 
 $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
-$manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_localhost_html_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
+$manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
 
 function Get-SuiteRecord {
     param(
@@ -361,7 +361,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     } elseif ($ChangeArea -eq "google-saved-html") {
         "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "manual-html") {
-        "Start with the matching bounded suite, then use the localhost flow helper to summarize, serve, or stage the saved pages before the manual follow-up."
+        "Start with the matching bounded suite, then use the one-command recommended localhost HTML runner to auto-route attached or saved pages into the right helper before dropping to the printed flow map."
     } else {
         "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
     }
@@ -419,4 +419,4 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
-Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_localhost_html_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
