@@ -44,8 +44,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_staged_localhos
   -Wait
 ```
 
-Auto-discover attached HTML files already present in the current workspace and
-launch the preferred page in headed mode:
+Auto-discover attached HTML files already present in the current workspace,
+prefer `user_files/` before `agent_files/`, and launch the preferred page in
+headed mode:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 `
@@ -66,6 +67,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_h
   -Wait
 ```
 
+Use `-PreferredInitialPage` when one Google-like page should stay first, or
+pass `-InputPath` / `-PageRoot` when you want the attached Google helpers to
+skip auto-discovery and target an explicit saved-page set.
+
 Inventory a saved-page directory before you choose the first page to open:
 
 ```powershell
@@ -85,11 +90,12 @@ Use the current attached-page folder as the page root when the run already has
 saved HTML snapshots available locally. Use the staged wrapper when the run has
 a mix of standalone HTML files and saved-page folders or when you want a
 per-run manifest of exactly which HTML files were served. Use the attached HTML
-runner when those snapshots already live under `agent_files/` and you want the
-helper to pick the inputs and preferred initial page automatically. Use the
-Google-style attached HTML helpers when those same snapshots are part of the
-issue `#3` typing and Enter-submit follow-up and you want the localhost-first
-Google flow preserved without reshaping the general saved-page commands by hand.
+runner when those snapshots already live under `user_files/` or `agent_files/`
+and you want the helper to pick the inputs and preferred initial page
+automatically. Use the Google-style attached HTML helpers when those same
+snapshots are part of the issue `#3` typing and Enter-submit follow-up and you
+want the localhost-first Google flow preserved without reshaping the general
+saved-page commands by hand.
 
 ## What The Helper Records
 
@@ -165,6 +171,8 @@ Use `-Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch` when 
 - `run_attached_html_localhost_validation.ps1 -PreferredInitialPage <saved-page.html>` keeps one attached HTML page as the first headed target when the auto-selected page is not the one you want
 - `run_google_attached_html_validation.ps1 -PreferredInitialPage <saved-page.html>` keeps the dedicated issue `#3` attached-page follow-up on one chosen Google-like page first
 - `show_google_attached_html_validation_flow.ps1 -PreferredInitialPage <saved-page.html>` prints the same attached-page Google order with an explicit first page override
+- `run_google_attached_html_validation.ps1 -InputPath <file-or-folder>, <file-or-folder>` keeps the same Google-style route while targeting an explicit saved-page set instead of auto-discovery
+- `show_google_attached_html_validation_flow.ps1 -InputPath <file-or-folder>, <file-or-folder>` prints the same attached-page Google order while targeting an explicit saved-page set instead of auto-discovery
 - `start_staged_localhost_html_validation.ps1 -InputPath <file-or-folder>, <file-or-folder>` stages a mixed saved-page set into one clean localhost root before the normal helper runs
 - `-InitialPage C:\path\to\saved-page.html` works with the staged wrapper when you want a specific source file to open first
 - `summarize_localhost_html_pages.ps1 -PageRoot <saved-page-dir> -Port 8124` lets the saved-page inventory reflect a non-default localhost port before you launch the browser
