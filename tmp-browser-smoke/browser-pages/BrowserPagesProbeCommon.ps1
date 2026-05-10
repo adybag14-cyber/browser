@@ -1,5 +1,5 @@
-$script:Repo = "C:\Users\adyba\src\lightpanda-browser"
-$script:Root = Join-Path $script:Repo "tmp-browser-smoke\browser-pages"
+$script:Root = $PSScriptRoot
+$script:Repo = (Resolve-Path (Join-Path $script:Root "..\..")).Path
 $script:BrowserExe = Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
 
 . "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
