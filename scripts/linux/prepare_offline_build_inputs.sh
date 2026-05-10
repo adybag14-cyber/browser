@@ -18,8 +18,10 @@ for offline Linux validation:
   ../offline-deps/{brotli,zlib,nghttp2,curl}
 
 It also rewrites build.zig.zon from remote URL dependencies to local path
-dependencies and optionally restores .cargo/config.toml plus vendor/ from the
-saved html5ever dependency bundle.
+dependencies, optionally restores .cargo/config.toml plus vendor/ from the
+saved html5ever dependency bundle, and when a prebuilt V8 archive is available
+it rewrites ../zig-v8-fork/build.zig.zon to skip the unused depot_tools fetch
+that would otherwise block offline validation.
 EOF
 }
 
@@ -161,6 +163,33 @@ if [[ -n "${PREBUILT_V8_ARCHIVE}" ]]; then
     extract_nested_file "${BROWSER_DEPS_ARCHIVE}" 'libc_v8_.*\.a$' "${PREBUILT_V8_PATH}"
 else
     PREBUILT_V8_PATH=""
+fi
+
+ZIG_V8_BUILD_ZON_PATH="${WORKSPACE_ROOT}/zig-v8-fork/build.zig.zon"
+if [[ -n "${PREBUILT_V8_PATH}" ]]; then
+    echo "Disabling zig-v8-fork depot_tools fetch because a prebuilt V8 archive is available"
+    ZIG_V8_BUILD_ZON_BACKUP="${ZIG_V8_BUILD_ZON_PATH}.before-offline"
+    if [[ ! -f "${ZIG_V8_BUILD_ZON_BACKUP}" ]]; then
+        cp "${ZIG_V8_BUILD_ZON_PATH}" "${ZIG_V8_BUILD_ZON_BACKUP}"
+    fi
+
+    python3 - "${ZIG_V8_BUILD_ZON_PATH}" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+old = '''    .dependencies = .{
+        .depot_tools = .{
+            .url = "git+https://github.com/rust-skia/depot_tools#8efa575d754b8703d99b0f827528e45aeaa167aa",
+            .hash = "N-V-__8AANgeXQAuTDjDItrtITfVslPonFWB-h3Az2C0-2AM",
+        },
+    },'''
+new = '''    .dependencies = .{},'''
+if old not in text:
+    raise SystemExit(f"Expected depot_tools dependency stanza was not found in {path}")
+path.write_text(text.replace(old, new))
+PY
 fi
 
 if [[ -n "${HTML5EVER_ARCHIVE}" ]]; then
