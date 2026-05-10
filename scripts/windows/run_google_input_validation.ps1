@@ -2,7 +2,7 @@
 param(
     [string]$RepoRoot,
     [string]$BrowserExe,
-    [ValidateSet("localhost", "title", "home", "quick", "shared", "shared-enter-order", "watch", "manual", "all")]
+    [ValidateSet("localhost", "title", "home", "quick", "shared", "shared-enter-order", "trace", "watch", "manual", "all")]
     [string]$Phase = "all",
     [switch]$IncludeWatch,
     [switch]$IncludeSharedInput,
@@ -12,6 +12,7 @@ param(
     [int]$LocalhostPort = 8176,
     [string]$InputText = "QZ",
     [string]$SharedInputText = "Q",
+    [string]$TraceInputText = "lightpanda",
     [int]$TitlePort = 9582,
     [int]$HomePort = 8168,
     [int]$WatchPort = 9582,
@@ -25,6 +26,8 @@ param(
     [int]$HomeWindowReadyAttempts = 60,
     [int]$HomeTitleWaitAttempts = 80,
     [int]$HomePollMilliseconds = 250,
+    [int]$TraceWindowReadyAttempts = 80,
+    [int]$TracePollMilliseconds = 250,
     [int]$WatchTimeoutSeconds = 90,
     [int]$WatchPollMilliseconds = 250,
     [string[]]$ManualInputPath,
@@ -55,6 +58,7 @@ $inlineFlowEnterProbe = Join-Path $probeRoot "inline-flow\chrome-inline-break-in
 $watchProbe = Join-Path $scriptRoot "run_google_home_watch_probe.ps1"
 $manualHtmlHelper = Join-Path $scriptRoot "start_staged_localhost_html_validation.ps1"
 $sharedEnterOrderRunner = Join-Path $scriptRoot "run_google_shared_enter_order_validation.ps1"
+$liveGoogleTraceProbe = Join-Path $googleLocalhostRoot "chrome-google-home-input-probe.ps1"
 
 $localhostProbes = @(
     "google-style-localhost-probe.ps1",
@@ -198,6 +202,20 @@ function Invoke-SharedEnterOrderSequence {
     Invoke-ProbeScript -Label "google-shared-enter-order" -ScriptPath $sharedEnterOrderRunner -Arguments $args
 }
 
+function Invoke-TraceSequence {
+    $args = @{
+        RepoRoot = $RepoRoot
+        BrowserExe = $BrowserExe
+        InputText = $TraceInputText
+        WindowReadyAttempts = $TraceWindowReadyAttempts
+        PollMilliseconds = $TracePollMilliseconds
+    }
+    if ($LeaveOpen) {
+        $args.LeaveOpen = $true
+    }
+    Invoke-ProbeScript -Label "google-home-live-trace" -ScriptPath $liveGoogleTraceProbe -Arguments $args
+}
+
 function Invoke-WatchSequence {
     $args = @{
         RepoRoot = $RepoRoot
@@ -247,6 +265,7 @@ Write-Host ("Host: {0}" -f $Host)
 Write-Host ("Localhost probe port: {0}" -f $LocalhostPort)
 Write-Host ("Primary input text: {0}" -f $InputText)
 Write-Host ("Shared input text: {0}" -f $SharedInputText)
+Write-Host ("Trace input text: {0}" -f $TraceInputText)
 Write-Host ("Shared label port: {0}" -f $SharedLabelPort)
 Write-Host ("Shared reduced Google port: {0}" -f $SharedReducedGooglePort)
 Write-Host ("Shared enter-order port: {0}" -f $SharedEnterOrderPort)
@@ -272,6 +291,9 @@ switch ($Phase) {
     }
     "shared-enter-order" {
         Invoke-SharedEnterOrderSequence
+    }
+    "trace" {
+        Invoke-TraceSequence
     }
     "watch" {
         Invoke-WatchSequence
@@ -302,32 +324,34 @@ switch ($Phase) {
 Write-Host ""
 if ($Phase -eq "manual") {
     Write-Host "Next: compare any saved-page failures with the reduced localhost and bounded homepage probes before moving on to the smallest live Google manual pass."
+} elseif ($Phase -eq "trace") {
+    Write-Host "Next: inspect the captured real-Google trace tails, then compare them with the nearest bounded localhost or reduced-homepage phase before changing the headed input path."
 } elseif ($Phase -eq "shared-enter-order") {
     Write-Host "Next: if the shared label baseline, submit gates, and stricter enter-order localhost probe stay green, move on to the smallest live Google manual pass."
 } elseif ($Phase -eq "shared") {
     Write-Host "Next: return to -Phase home or -Phase watch once the label baseline, deferred/basic form-controls, reduced Google-home, and inline-flow probes are green, or use -Phase shared-enter-order for the stricter keypress-before-submit wrapper."
 } elseif ($Phase -eq "title") {
-    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, use -Phase home for the reduced homepage Enter pass, or run -Phase all -IncludeTitleProbe to put the quick headed title check at the front of the shared flow."
+    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, use -Phase home for the reduced homepage Enter pass, use -Phase trace for live Google divergence capture, or run -Phase all -IncludeTitleProbe to put the quick headed title check at the front of the shared flow."
 } elseif ($Phase -eq "quick") {
-    Write-Host "Next: use -Phase home for the reduced homepage Enter pass, or run -Phase all -IncludeTitleProbe -IncludeWatch to fold the same fast first pass into the broader validation flow."
+    Write-Host "Next: use -Phase home for the reduced homepage Enter pass, use -Phase trace when the bounded passes are green but real Google still diverges, or run -Phase all -IncludeTitleProbe -IncludeWatch to fold the same fast first pass into the broader validation flow."
 } elseif ($Phase -eq "watch" -or $IncludeWatch) {
     if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
         Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced homepage watcher before the smallest live Google manual pass."
     } else {
-        Write-Host "Next: move on to the smallest live Google manual pass once the self-starting watcher confirms SUBMIT:QZ."
+        Write-Host "Next: move on to the smallest live Google manual pass once the self-starting watcher confirms SUBMIT:QZ, or use -Phase trace if the live homepage still needs trace capture."
     }
 } elseif ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced Google and shared-input probes before the smallest live Google manual pass."
 } elseif ($IncludeSharedEnterOrder -and $IncludeTitleProbe) {
-    Write-Host "Next: if the quick title probe, reduced Google pass, shared label baseline, shared submit gates, stricter enter-order wrapper, and watcher stay green, move on to the smallest live Google manual pass."
+    Write-Host "Next: if the quick title probe, reduced Google pass, shared label baseline, shared submit gates, stricter enter-order wrapper, and watcher stay green, move on to the smallest live Google manual pass or use -Phase trace for real-Google divergence capture."
 } elseif ($IncludeSharedEnterOrder) {
-    Write-Host "Next: if the reduced Google pass, shared label baseline, shared submit gates, and stricter enter-order wrapper stay green, move on to the smallest live Google manual pass."
+    Write-Host "Next: if the reduced Google pass, shared label baseline, shared submit gates, and stricter enter-order wrapper stay green, move on to the smallest live Google manual pass or use -Phase trace for real-Google divergence capture."
 } elseif ($IncludeSharedInput -and $IncludeTitleProbe) {
-    Write-Host "Next: if the quick title probe, reduced Google pass, shared label baseline, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, move on to the smallest live Google manual pass."
+    Write-Host "Next: if the quick title probe, reduced Google pass, shared label baseline, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, move on to the smallest live Google manual pass or use -Phase trace for real-Google divergence capture."
 } elseif ($IncludeSharedInput) {
-    Write-Host "Next: if the reduced Google, shared label baseline, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, use -IncludeSharedEnterOrder or move on to the smallest live Google manual pass."
+    Write-Host "Next: if the reduced Google, shared label baseline, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, use -IncludeSharedEnterOrder or move on to the smallest live Google manual pass, then use -Phase trace if the live homepage still diverges."
 } elseif ($IncludeTitleProbe) {
-    Write-Host "Next: if the quick title probe and reduced Google pass stay green, add -IncludeSharedEnterOrder or -IncludeSharedInput, or move on to the smallest live Google manual pass."
+    Write-Host "Next: if the quick title probe and reduced Google pass stay green, add -IncludeSharedEnterOrder or -IncludeSharedInput, or move on to the smallest live Google manual pass and -Phase trace if needed."
 } else {
-    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the label baseline plus deferred/basic form-controls, reduced Google-home, and inline-flow checks, -IncludeSharedEnterOrder to fold the stricter wrapper into the one-shot flow, -Phase shared-enter-order for the stricter wrapper by itself, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
+    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the label baseline plus deferred/basic form-controls, reduced Google-home, and inline-flow checks, -IncludeSharedEnterOrder to fold the stricter wrapper into the one-shot flow, -Phase shared-enter-order for the stricter wrapper by itself, -Phase trace for live Google trace capture after the bounded phases, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
 }
