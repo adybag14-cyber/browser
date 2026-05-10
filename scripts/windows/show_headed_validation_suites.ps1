@@ -174,8 +174,8 @@ $suiteCatalog = @(
     [pscustomobject]@{
         Name = "google-submit-timing"
         Category = "input"
-        Path = "tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1"
-        Purpose = "Bounded Google-shaped keydown, keypress, and submit ordering on the real headed surface before the broader shared gates or manual Google pass."
+        Path = "scripts/windows/run_google_submit_timing_validation.ps1"
+        Purpose = "One-command wrapper for the bounded Google-shaped keydown, keypress, and submit-ordering probe on the real headed surface before the broader shared gates or manual Google pass."
         RecommendedWith = @("google-title", "google-shared-enter-order")
     }
     [pscustomobject]@{
@@ -421,6 +421,7 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-saved-html"
