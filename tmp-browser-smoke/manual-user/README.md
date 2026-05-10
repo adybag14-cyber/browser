@@ -35,8 +35,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_localhost_html_
   -Wait
 ```
 
+Stage mixed saved files or folders into one clean localhost run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_staged_localhost_html_validation.ps1 `
+  -InputPath C:\path\to\saved-page.html, C:\path\to\saved-folder `
+  -LaunchBrowser `
+  -Wait
+```
+
 Use the current attached-page folder as the page root when the run already has
-saved HTML snapshots available locally.
+saved HTML snapshots available locally. Use the staged wrapper when the run has
+a mix of standalone HTML files and saved-page folders or when you want a
+per-run manifest of exactly which HTML files were served.
 
 ## What The Helper Records
 
@@ -54,13 +65,18 @@ That session record includes:
 - the browser PID when `-LaunchBrowser` is used
 - the stdout and stderr log paths for the local server
 
+`start_staged_localhost_html_validation.ps1` also writes
+`staged-input-manifest.json` inside the staged page root that it prepares for
+each run.
+
 ## Recommended Flow
 
 1. Pick the bounded suite for the subsystem you changed with `scripts/windows/show_headed_validation_suites.ps1`.
 2. Run that suite and one nearby shared-behavior suite if the change crossed subsystems.
-3. Start the saved-page localhost pass from this directory's helper flow.
-4. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
-5. Only move to live-site checking after the saved-page pass is stable.
+3. If the saved pages are spread across several files or folders, stage them first with `start_staged_localhost_html_validation.ps1`.
+4. Start the saved-page localhost pass from this directory's helper flow.
+5. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
+6. Only move to live-site checking after the saved-page pass is stable.
 
 ## Google-Style Input Work
 
@@ -77,3 +93,5 @@ If the issue is headed Google-style typing or Enter-submit behavior:
 - `-Host 0.0.0.0` exposes the same saved pages to another device on the LAN
 - `-LeaveServerRunning` keeps the server alive after the wait prompt
 - omit `-LaunchBrowser` when you only want the localhost URLs and logs first
+- `start_staged_localhost_html_validation.ps1 -InputPath <file-or-folder>, <file-or-folder>` stages a mixed saved-page set into one clean localhost root before the normal helper runs
+- `-InitialPage C:\path\to\saved-page.html` works with the staged wrapper when you want a specific source file to open first
