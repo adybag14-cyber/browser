@@ -5,6 +5,19 @@ This directory is the headed Windows validation matrix for the fork.
 Use it as the first stop when a change needs a bounded localhost or browser-page
 probe before broader manual browsing.
 
+## Command-Line Helper
+
+Use `scripts/windows/show_headed_validation_suites.ps1` when you want the probe
+map in a quick table or when you need the default suite set for a specific
+change area.
+
+Examples:
+
+- `.\scripts\windows\show_headed_validation_suites.ps1`
+- `.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName layout-smoke`
+- `.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input`
+- `.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
+
 ## Core Rule
 
 - Pick the suite that matches the subsystem you changed.
