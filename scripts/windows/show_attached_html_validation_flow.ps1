@@ -33,49 +33,21 @@ function Get-DefaultAttachedHtmlInputPath {
     return @($htmlFiles.FullName)
 }
 
-function Select-PreferredInitialPage {
+function Select-GoogleStyleInitialPage {
     param(
         [Parameter(Mandatory = $true)]
-        [string[]]$ResolvedInputPath,
-        [switch]$PreferGoogleStyle
+        [string[]]$ResolvedInputPath
     )
 
-    if ($PreferGoogleStyle) {
-        $googleMatch = $ResolvedInputPath |
-            Where-Object {
-                $leaf = [System.IO.Path]::GetFileName($_)
-                $leaf -match "Google|Safety|Search|Privacy"
-            } |
-            Select-Object -First 1
-        if ($googleMatch) {
-            return $googleMatch
-        }
-    }
-
-    $anthropicMatch = $ResolvedInputPath |
+    return $ResolvedInputPath |
         Where-Object {
             $leaf = [System.IO.Path]::GetFileName($_)
-            $leaf -match "Anthropic|Job Application"
+            $leaf -match "Google|Safety|Search|Privacy"
         } |
         Select-Object -First 1
-    if ($anthropicMatch) {
-        return $anthropicMatch
-    }
-
-    $formLikeMatch = $ResolvedInputPath |
-        Where-Object {
-            $leaf = [System.IO.Path]::GetFileName($_)
-            $leaf -match "Application|Form|Apply"
-        } |
-        Select-Object -First 1
-    if ($formLikeMatch) {
-        return $formLikeMatch
-    }
-
-    return $ResolvedInputPath | Select-Object -First 1
 }
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
 $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
     @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
 } else {
@@ -84,8 +56,10 @@ $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
 
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     (Resolve-Path -LiteralPath $PreferredInitialPage).Path
+} elseif ($GoogleStyle) {
+    Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 } else {
-    Select-PreferredInitialPage -ResolvedInputPath $resolvedInputPath -PreferGoogleStyle:$GoogleStyle
+    $null
 }
 
 $helperPath = if ($GoogleStyle) {
@@ -100,8 +74,10 @@ if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
 
 $helperArgs = @{
     InputPath = $resolvedInputPath
-    PreferredInitialPage = $resolvedPreferredInitialPage
     Port = $Port
+}
+if ($resolvedPreferredInitialPage) {
+    $helperArgs["PreferredInitialPage"] = $resolvedPreferredInitialPage
 }
 
 if ($Json) {
@@ -115,7 +91,15 @@ if (-not $Json) {
     Write-Host "Attached HTML validation flow"
     Write-Host ""
     Write-Host ("Inputs discovered: {0}" -f $resolvedInputPath.Count)
-    Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
+    if ($resolvedPreferredInitialPage) {
+        if ($PreferredInitialPage) {
+            Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
+        } else {
+            Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
+        }
+    } else {
+        Write-Host "Preferred initial page: auto (from saved-page summary)"
+    }
     Write-Host ("Validation mode: {0}" -f $(if ($GoogleStyle) { "google-style" } else { "general" }))
     Write-Host ""
 }
