@@ -68,6 +68,9 @@ Examples:
   that folds in the title pass, reduced homepage pass, submit-timing check,
   shared Enter-order wrapper, and watcher before saved-page or live-site
   follow-up
+- `google-title`: bounded reduced-homepage title, focus, typing, and
+  Enter-submit ordering on the real headed surface before the broader
+  `google-home/`, `google-submit-timing`, or wrapper-first passes
 - `google-home/`: reduced homepage watcher and bounded Enter-submit pass on the
   real headed surface after the localhost Google-style probes are green
 - `google-submit-timing`: bounded Google-shaped keydown, keypress, and submit
@@ -129,9 +132,9 @@ Use this order unless a narrower issue demands something more specific first.
 3. Run one nearby shared-behavior suite if the change touched input, rendering,
    navigation, storage, or downloads.
 4. For Google search-box or other real-page typing issues, start with
-   `google-investigation-next/`, then use `google-recommended` for the current
-   one-command bounded pass or `run_google_input_validation.ps1 -Phase quick`
-   when you want the stepwise first pass, then `google-home/`, then
+   `google-investigation-next/`, then use `google-title` for the narrow
+   real-surface title/focus gate or `google-recommended` for the current
+   one-command bounded pass, then `google-home/`, then
    `google-submit-timing`, then `google-shared-enter-order`, and only then move
    on to the saved-page or live-site follow-up.
 5. For saved or attached localhost HTML pages, start with the matching bounded
@@ -149,7 +152,8 @@ Use this order unless a narrower issue demands something more specific first.
   the closest `inline-flow/` probe, and only then move on to the live-site pass
   when the issue is Google search-box related.
 - Google-style focus churn, delayed readiness, correction, or Enter-submit
-  ordering: run `google-investigation-next/`, then `google-recommended` for the
+  ordering: run `google-investigation-next/`, then `google-title` for the
+  narrow real-surface title/focus gate, then `google-recommended` for the
   current one-command bounded pass, or drop into the stepwise `quick`, `home`,
   `submit-timing`, and `shared-enter-order` phases when you need to narrow the
   first failing gate before the saved-page or live-site follow-up.
@@ -174,6 +178,10 @@ Use this order unless a narrower issue demands something more specific first.
 
 For live-site Google search-box work, start with
 `tmp-browser-smoke/google-investigation-next/`, then use
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_title_probe.ps1`
+or `show_headed_validation_suites.ps1 -SuiteName google-title` when the next
+question is whether the reduced headed surface is reaching the expected title,
+focus, typing, and Enter-submit markers. Then use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 for the current one-command bounded pass, or use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase quick`
