@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$Json,
+    [switch]$LeaveOpen,
     [string[]]$ManualInputPath,
     [string]$ManualInitialPage,
     [int]$ManualPort = 8123
@@ -18,6 +19,8 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
+
 $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
 $titleCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase title"
@@ -25,9 +28,9 @@ $quickCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
-$traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace"
-$watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch"
-$fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch"
+$traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace$leaveOpenArgument"
+$watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch$leaveOpenArgument"
+$fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$leaveOpenArgument"
 
 $manualInitialPageArgument = ""
 if ($ManualInitialPage) {
@@ -39,14 +42,15 @@ $manualCommand = $null
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     $quotedPaths = $ManualInputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $manualPathsArgument = " -ManualInputPath " + ($quotedPaths -join ", ")
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$leaveOpenArgument"
 }
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
     focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
+    leave_open = [bool]$LeaveOpen
     steps = @(
         [ordered]@{
             name = "localhost"
@@ -102,7 +106,7 @@ $flow = [ordered]@{
     } else {
         [ordered]@{
             goal = "After the matching bounded suite is green, rerun with -ManualInputPath to stage the saved or attached localhost pages."
-            command = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
+            command = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
         }
     }
     common_overrides = @(
@@ -139,6 +143,7 @@ $flow = [ordered]@{
         "Use full when you want the runner's built-in localhost-first order plus the extra title, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed manual follow-up command keeps that saved page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
+        "When LeaveOpen is set, the printed watch, trace, manual, and full commands keep the browser session open so you can inspect the same headed state after the bounded automation phases finish.",
         "Use the common overrides when you need to keep the localhost, title, home, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
@@ -154,6 +159,7 @@ Write-Host ("Focus: {0}" -f $flow.focus)
 if ($ManualInitialPage) {
     Write-Host ("Manual initial page: {0}" -f $ManualInitialPage)
 }
+Write-Host ("Leave open after bounded phases: {0}" -f ([bool]$LeaveOpen))
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
