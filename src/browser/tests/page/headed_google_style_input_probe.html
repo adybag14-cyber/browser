@@ -101,6 +101,10 @@
       return document.activeElement ? document.activeElement.id || document.activeElement.tagName : 'none';
     }
 
+    function updateTitle(prefix, value) {
+      document.title = prefix + ':' + value;
+    }
+
     function renderState(submitValue) {
       state.textContent = [
         'active=' + activeId(),
@@ -109,6 +113,9 @@
         'namedForm=' + String(window.f === form),
         'namedInput=' + String(form.q === input)
       ].join('\n');
+      if (submitValue === undefined) {
+        updateTitle('typed', input.value);
+      }
     }
 
     function push(label, event) {
@@ -143,7 +150,7 @@
       event.preventDefault();
       push('submit', event);
       renderState(input.value);
-      document.title = 'submitted:' + input.value;
+      updateTitle('submitted', input.value);
     });
 
     renderState();
