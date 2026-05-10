@@ -58,6 +58,7 @@ $submittedWorked = $false
 $titleAfterType = $null
 $titleAfterKeypress = $null
 $titleAfterSubmit = $null
+$focusStrategy = "none"
 $failure = $null
 
 try {
@@ -75,10 +76,11 @@ try {
 
   Show-SmokeWindow $hwnd
   Start-Sleep -Milliseconds 300
-  Send-SmokeText $InputText
-  $titleAfterType = Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern "typed:$InputText" -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
-  $typedWorked = $null -ne $titleAfterType
-  if (-not $typedWorked) { throw "google enter-order probe did not commit typed text after focus churn" }
+  $typeResult = Invoke-GoogleProbeTypeWithFocusRecovery -Hwnd $hwnd -Text $InputText -TitlePattern ("typed:{0}" -f $InputText) -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
+  if (-not $typeResult) { throw "google enter-order probe did not commit typed text after focus churn" }
+  $titleAfterType = $typeResult.title
+  $focusStrategy = $typeResult.focus_strategy
+  $typedWorked = $true
 
   Send-SmokeEnter
   $titleAfterKeypress = Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern $keypressTitle -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
@@ -122,6 +124,7 @@ try {
     title_after_type = $titleAfterType
     title_after_keypress = $titleAfterKeypress
     title_after_submit = $titleAfterSubmit
+    focus_strategy = $focusStrategy
     error = $failure
     server_meta = $serverMeta
     browser_meta = $browserMeta
