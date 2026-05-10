@@ -38,7 +38,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 That keeps the localhost-first issue `#3` order intact and only folds in the
 attached-page manual follow-up after the bounded phases are green.
 
-For saved or attached localhost HTML pages:
+For attached HTML snapshots that should stay on the same Google-style follow-up
+route without manually restating each file path first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
+```
+
+Those dedicated helpers auto-discover nested attached `.html` files under
+`user_files/` first and then `agent_files/`, prefer a Google-like page first
+when one is present, and keep the same bounded Google-style localhost flow in
+front of the manual headed follow-up.
+
+For saved localhost HTML pages that live outside the attached-file folders, keep
+using the explicit saved-page helper:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 `
@@ -164,20 +178,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 ## 4a) Attached HTML auto-discovery
 
 When the current run already has attached HTML snapshots under `agent_files/`,
-use the attached-page helpers instead of manually restating each path first:
+use the dedicated Google-attached helpers instead of manually restating each
+path first:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -GoogleStyle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle
 ```
 
-The flow helper auto-discovers nested `.html` files anywhere under
-`agent_files/`, prefers a Google-like page first when one is present, and keeps
-the same localhost-first issue `#3` order before the broader manual headed
-follow-up.
+The dedicated flow helper auto-discovers nested `.html` files anywhere under
+`user_files/` and `agent_files/`, prefers a Google-like page first when one is
+present, and keeps the same localhost-first issue `#3` order before the broader
+manual headed follow-up.
 
-Use `show_attached_html_validation_flow.ps1 -PreferredInitialPage <saved-page>`
+Use `show_google_attached_html_validation_flow.ps1 -PreferredInitialPage <saved-page>`
 when the auto-selected first page is not the one you want, and use
 `docs/HEADED_ATTACHED_HTML_VALIDATION_WINDOWS.md` when you want the full
 attached-page command map, override patterns, and staging rules in one place.
@@ -196,8 +211,10 @@ bounded issue `#3` flow in one reusable command. Drop back to the stepwise
 that regressed.
 
 For attached HTML snapshots that already live under `agent_files/`, start with
-`show_attached_html_validation_flow.ps1 -GoogleStyle` so the same pages route
-through the bounded Google-first helper order before you inspect them manually.
+`show_google_attached_html_validation_flow.ps1` so the same pages route through
+the bounded Google-first helper order before you inspect them manually, and use
+`run_google_attached_html_validation.ps1 -Wait` when you want the same attached
+set reopened directly on that Google-style localhost path.
 
 For Enter-order work, do not accept a reduced-title pass as green unless the
 keydown edge still reads `KEYDOWN:<text>|13|13` before the final
