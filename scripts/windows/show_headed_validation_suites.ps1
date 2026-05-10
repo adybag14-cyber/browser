@@ -141,7 +141,14 @@ $suiteCatalog = @(
         Category = "input"
         Path = "tmp-browser-smoke/google-investigation-next"
         Purpose = "Reduced Google-style localhost probes for focus churn, delayed readiness, correction, and Enter-submit ordering."
-        RecommendedWith = @("google-title", "google-home")
+        RecommendedWith = @("google-recommended", "google-title")
+    }
+    [pscustomobject]@{
+        Name = "google-recommended"
+        Category = "input"
+        Path = "scripts/windows/run_google_issue3_recommended_validation.ps1"
+        Purpose = "One-command localhost-first issue #3 runner that includes the bounded title pass, reduced homepage pass, submit-timing check, shared Enter-order wrapper, watch phase, and optional saved-page follow-up."
+        RecommendedWith = @("google-investigation-next", "manual-user")
     }
     [pscustomobject]@{
         Name = "google-title"
@@ -286,7 +293,7 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("google-investigation-next", "google-title", "google-home", "google-submit-timing", "google-shared-enter-order", "manual-user")
+    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-home", "google-submit-timing", "google-shared-enter-order", "manual-user")
     "manual-html" = @("manual-user", "form-controls", "google-investigation-next")
 }
 
@@ -341,7 +348,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper, then run google-investigation-next, google-title, google-home, google-submit-timing, the shared Enter-order wrapper, and the saved-page localhost follow-up before the smallest live Google manual check."
+        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-home, google-submit-timing, the shared Enter-order wrapper, and the saved-page localhost follow-up before the smallest live Google manual check."
     } elseif ($ChangeArea -eq "manual-html") {
         "Start with the matching bounded suite, then use the localhost flow helper to summarize, serve, or stage the saved pages before the issue-specific manual runner hand-off."
     } else {
@@ -387,6 +394,7 @@ Write-Host (Format-SuiteList -Items $suiteCatalog)
 Write-Host "Examples:"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-title"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
