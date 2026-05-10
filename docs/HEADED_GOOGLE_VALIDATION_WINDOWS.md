@@ -14,6 +14,16 @@ For the general reduced-Google flow:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 ```
 
+For the current one-command bounded pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
+```
+
+That wrapper keeps the current localhost-first issue `#3` path together:
+`localhost`, `title`, reduced `home`, `submit-timing`, `shared-enter-order`,
+and `watch`, with the same optional saved-page follow-up parameters.
+
 For saved or attached localhost HTML pages:
 
 ```powershell
@@ -28,7 +38,13 @@ HTML file.
 
 ## 2) Recommended validation order
 
-Run the smallest bounded gate first:
+Preferred one-command bounded pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
+```
+
+Run the stepwise flow when you want to narrow the failure one phase at a time:
 
 1. `localhost`
 2. `quick`
@@ -73,6 +89,9 @@ Only move to `manual` or `trace` after those bounded phases are green.
 - `trace`: the live Google homepage is only needed when the bounded phases are
   green but the real homepage still diverges.
 
+The recommended wrapper simply runs the current bounded phases in the same
+order without making you restate the longer flag bundle each time.
+
 ## 4) Saved-page follow-up
 
 When the HTML pages are already in one directory:
@@ -105,6 +124,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_val
   -ManualInputPath C:\path\to\saved-page.html, C:\path\to\saved-folder
 ```
 
+When you want the same saved-page inputs routed through the current one-command
+bounded pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 `
+  -ManualPort 8123 `
+  -ManualInitialPage google-saved-page.html `
+  -ManualInputPath C:\path\to\saved-page.html, C:\path\to\saved-folder
+```
+
 ## 5) Working rule
 
 Do not treat a saved-page manual pass as the first evidence for issue `#3`.
@@ -112,6 +141,11 @@ Do not treat a saved-page manual pass as the first evidence for issue `#3`.
 Use the bounded localhost, reduced homepage, submit-timing, and shared
 Enter-order passes first, then use the saved-page or live-Google follow-up only
 when those gates already agree.
+
+Use `run_google_issue3_recommended_validation.ps1` when you want the current
+bounded issue `#3` flow in one reusable command. Drop back to the stepwise
+`run_google_input_validation.ps1` phases when you need to narrow the exact step
+that regressed.
 
 For Enter-order work, do not accept a reduced-title pass as green unless the
 keydown edge still reads `KEYDOWN:<text>|13|13` before the final
