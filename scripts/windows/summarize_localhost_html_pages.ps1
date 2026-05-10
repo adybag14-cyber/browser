@@ -106,6 +106,15 @@ function Add-UniqueString {
     }
 }
 
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
 function Test-GoogleStyleHtml {
     param(
         [Parameter(Mandatory = $true)]
@@ -210,6 +219,25 @@ function Get-PageNextStep {
     return "Use scripts/windows/show_localhost_html_validation_flow.ps1 for the general saved-page follow-up."
 }
 
+function Get-RecommendedFlowCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$GoogleStyle,
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedPageRoot,
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    $helper = if ($GoogleStyle) {
+        ".\\scripts\\windows\\show_saved_page_google_validation_flow.ps1"
+    } else {
+        ".\\scripts\\windows\\show_localhost_html_validation_flow.ps1"
+    }
+    $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
+    return "powershell -ExecutionPolicy Bypass -File $helper -PageRoot $quotedPageRoot -Port $Port"
+}
+
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 }
@@ -266,6 +294,12 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         $counts.anchors
     $recommendedSuites = Get-RecommendedProbeSuites -Counts $counts -GoogleStyle $googleStyle
     $nextStep = Get-PageNextStep -GoogleStyle $googleStyle -RecommendedSuites $recommendedSuites
+    $recommendedFlowHelper = if ($googleStyle) {
+        "scripts/windows/show_saved_page_google_validation_flow.ps1"
+    } else {
+        "scripts/windows/show_localhost_html_validation_flow.ps1"
+    }
+    $recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $googleStyle -ResolvedPageRoot $resolvedPageRoot -Port $Port
 
     [pscustomobject]@{
         relative_path = $relativePath
@@ -278,6 +312,8 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         counts = [pscustomobject]$counts
         recommended_bounded_suites = $recommendedSuites
         manual_follow_up_suite = "manual-user"
+        recommended_flow_helper = $recommendedFlowHelper
+        recommended_flow_command = $recommendedFlowCommand
         next_step = $nextStep
     }
 })
@@ -304,6 +340,7 @@ $flowHelper = if ($hasGoogleStylePages) {
 } else {
     "scripts/windows/show_localhost_html_validation_flow.ps1"
 }
+$recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $hasGoogleStylePages -ResolvedPageRoot $resolvedPageRoot -Port $Port
 
 $summary = [pscustomobject]@{
     page_root = $resolvedPageRoot
@@ -316,6 +353,7 @@ $summary = [pscustomobject]@{
     overall_recommended_suites = @($overallRecommendedSuites)
     manual_follow_up_suite = "manual-user"
     recommended_flow_helper = $flowHelper
+    recommended_flow_command = $recommendedFlowCommand
     overall_google_style = $hasGoogleStylePages
     next_step = $overallNextStep
     generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
@@ -329,6 +367,7 @@ Write-Host ("Recommended initial page: {0}" -f $recommendedInitialPage.relative_
 Write-Host ("Suggested bounded suites: {0}" -f ($summary.overall_recommended_suites -join ", "))
 Write-Host ("Manual follow-up suite: {0}" -f $summary.manual_follow_up_suite)
 Write-Host ("Flow helper: {0}" -f $summary.recommended_flow_helper)
+Write-Host ("Flow command: {0}" -f $summary.recommended_flow_command)
 Write-Host ("Next step: {0}" -f $summary.next_step)
 Write-Host ""
 
@@ -351,6 +390,8 @@ foreach ($page in $pageSummaries) {
         ))
     Write-Host ("  google-style: {0}" -f $page.google_style.ToString().ToLowerInvariant())
     Write-Host ("  bounded suites: {0}" -f ($page.recommended_bounded_suites -join ", "))
+    Write-Host ("  flow helper: {0}" -f $page.recommended_flow_helper)
+    Write-Host ("  flow command: {0}" -f $page.recommended_flow_command)
     Write-Host ("  url: {0}" -f $page.url)
     Write-Host ("  next: {0}" -f $page.next_step)
 }
