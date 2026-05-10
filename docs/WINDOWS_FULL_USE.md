@@ -96,7 +96,10 @@ Primary suite families:
   `attachment-downloads/`
 - reduced Google input investigation: `google-investigation-next/` for
   Google-style localhost probes that cover focus churn, delayed readiness,
-  correction, and Enter-submit ordering before live-site passes
+  correction, and Enter-submit ordering before the reduced homepage pass
+- reduced Google homepage surface: `google-home/` for the bounded real-window
+  Enter-submit probe and title-stream watcher path against
+  `google_home_title_probe.html`
 - persistence and runtime: `cookie-persistence/`,
   `localstorage-persistence/`, `indexeddb-persistence/`,
   `sessionstorage-scope/`, `fetch-abort/`, `fetch-credentials/`,
@@ -109,12 +112,25 @@ change-to-probe routing.
 
 ## 6) Reduced Google homepage probe
 
-Use the reduced Google probe page when issue-driven headed input work needs a
+Use the reduced Google probe pages when issue-driven headed input work needs a
 repeatable local check before moving on to the full live homepage.
 
 Start with `tmp-browser-smoke/google-investigation-next/` for the narrowed
-localhost probes, then use the watcher below when you need to observe the title
-stream from the reduced homepage fixture itself.
+localhost probes. Then use `tmp-browser-smoke/google-home/` when you need a
+bounded real-surface Enter-submit pass on the reduced homepage fixture itself.
+Use the watcher below only when you want a longer interactive title stream on
+that same fixture.
+
+Bounded reduced homepage pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-home\chrome-google-home-enter-probe.ps1
+```
+
+That probe should reach the title markers `FOCUSED`, `TYPED:QZ`, and
+`SUBMIT:QZ` before you move on to a live Google manual pass.
+
+Interactive watcher path:
 
 1. Start a local static server from the repo root:
 
