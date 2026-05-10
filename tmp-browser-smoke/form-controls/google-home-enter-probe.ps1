@@ -1,28 +1,62 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8157,
+  [int]$WindowWidth = 1440,
+  [int]$WindowHeight = 900,
+  [string]$FixturePath = "/src/browser/tests/page/google_home_title_probe.html",
+  [string]$ProbeDir
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$root = Join-Path $repo "tmp-browser-smoke\form-controls"
-$port = 8157
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
-$fixturePath = "/src/browser/tests/page/google_home_title_probe.html"
+
+if (-not $RepoRoot) {
+  $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+}
+if (-not $BrowserExe) {
+  $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+}
+if (-not $ProbeDir) {
+  $ProbeDir = Join-Path $RepoRoot "tmp-browser-smoke\form-controls"
+}
+
+$root = $ProbeDir
+$probeUrl = "http://$Host`:$Port$FixturePath"
+$fixtureLocalPath = Join-Path $RepoRoot (($FixturePath.TrimStart('/')) -replace '/', '\')
 $browserOut = Join-Path $root "google-home-enter.browser.stdout.txt"
 $browserErr = Join-Path $root "google-home-enter.browser.stderr.txt"
 $serverOut = Join-Path $root "google-home-enter.server.stdout.txt"
 $serverErr = Join-Path $root "google-home-enter.server.stderr.txt"
 $pngPath = Join-Path $root "google-home-enter.before.png"
+$win32InputPath = Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1"
+
+if (-not (Test-Path -LiteralPath $BrowserExe -PathType Leaf)) {
+  throw "Lightpanda binary not found: $BrowserExe"
+}
+if (-not (Test-Path -LiteralPath $fixtureLocalPath -PathType Leaf)) {
+  throw "Google home probe fixture not found: $fixtureLocalPath"
+}
+if (-not (Test-Path -LiteralPath $win32InputPath -PathType Leaf)) {
+  throw "Win32 input helper not found: $win32InputPath"
+}
+
+New-Item -ItemType Directory -Force -Path $root | Out-Null
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
 
-. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. $win32InputPath
 
-$server = $null
-$browser = $null
-$ready = $false
-$pngReady = $false
-$titleBefore = $null
-$titleAfterType = $null
-$titleAfterSubmit = $null
-$typedWorked = $false
-$submittedWorked = $false
-$failure = $null
+function Resolve-PythonCommand {
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    return @{ FileName = "python"; Arguments = @("-m", "http.server") }
+  }
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    return @{ FileName = "py"; Arguments = @("-3", "-m", "http.server") }
+  }
+  throw "Python was not found in PATH."
+}
 
 function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts = 20, [int]$SleepMs = 200) {
   for ($i = 0; $i -lt $Attempts; $i++) {
@@ -35,18 +69,30 @@ function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts = 20,
   return $null
 }
 
+$server = $null
+$browser = $null
+$ready = $false
+$pngReady = $false
+$titleBefore = $null
+$titleAfterType = $null
+$titleAfterSubmit = $null
+$typedWorked = $false
+$submittedWorked = $false
+$failure = $null
+
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $python = Resolve-PythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($Port, "--bind", $Host)) -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
   for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Milliseconds 250
     try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port$fixturePath" -TimeoutSec 2
+      $resp = Invoke-WebRequest -UseBasicParsing -Uri $probeUrl -TimeoutSec 2
       if ($resp.StatusCode -eq 200) { $ready = $true; break }
     } catch {}
   }
   if (-not $ready) { throw "google home probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port$fixturePath","--window_width","1440","--window_height","900","--screenshot_png",$pngPath -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse",$probeUrl,"--window_width",$WindowWidth,"--window_height",$WindowHeight,"--screenshot_png",$pngPath -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Milliseconds 250
     if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) { $pngReady = $true; break }
@@ -89,11 +135,15 @@ try {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $RepoRoot
+    browser_exe = $BrowserExe
+    probe_dir = $root
+    probe_url = $probeUrl
+    fixture_path = $FixturePath
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
     screenshot_ready = $pngReady
-    fixture_path = $fixturePath
     title_before = $titleBefore
     title_after_type = $titleAfterType
     title_after_submit = $titleAfterSubmit
