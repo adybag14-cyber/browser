@@ -20,6 +20,10 @@ Use these before the reduced homepage watcher or the live
 4. `google-style-delayed-ready-localhost-probe.ps1`
    Verifies the headed path can wait through a delayed readiness gate before
    typing and submitting.
+5. `chrome-google-home-input-probe.ps1`
+   Launches the real headed browser on `https://www.google.com/`, types a live
+   query, presses `Enter`, and captures the Google-specific runtime trace logs
+   that the headed input path already emits.
 
 ## Shared Helper
 
@@ -34,13 +38,30 @@ Use these before the reduced homepage watcher or the live
 - `headed_google_style_input_delayed_ready_probe.html`
 - `headed_google_enter_order_probe.html`
 
+## Live Trace Capture Outputs
+
+The live Google probe collects or tails these files when the runtime creates
+them:
+
+- `browse-render.log`
+- `runtime-renderer.log`
+- `session-wait.log`
+- `runtime-input-backend-<pid>.log`
+- `wndproc-input-<pid>.log`
+
+It intentionally treats typed-text or submit failure as investigation data.
+The script exits nonzero only when setup fails, such as when the headed browser
+binary is missing or the Win32 window never appears.
+
 ## Follow-Up Path
 
-After these probes are green, run
+After the reduced localhost probes are green, run
 `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1` for the
 bounded real-surface reduced homepage pass. Use
-`scripts/windows/watch_headed_probe.ps1` against
-`src/browser/tests/page/google_home_title_probe.html` only when you need a
-longer interactive title stream on that same fixture, then finish with the
+`tmp-browser-smoke/google-investigation-next/chrome-google-home-input-probe.ps1`
+when the real Google homepage still diverges and you need trace evidence from
+that exact headed input path. Use `scripts/windows/watch_headed_probe.ps1`
+against `src/browser/tests/page/google_home_title_probe.html` only when you need
+a longer interactive title stream on that same fixture, then finish with the
 smallest real headed Google manual pass that exercises the same interaction
 path.
