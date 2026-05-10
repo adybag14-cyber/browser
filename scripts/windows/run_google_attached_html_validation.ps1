@@ -51,8 +51,25 @@ if ($LeaveServerRunning) {
 Write-Host "Google-style attached HTML validation"
 Write-Host ""
 Write-Host "Mode: attached HTML auto-discovery with the Google-style localhost follow-up"
+switch ($PSCmdlet.ParameterSetName) {
+    "PageRoot" {
+        Write-Host ("Mode detail: explicit page root ({0})" -f $PageRoot)
+    }
+    "InputPath" {
+        Write-Host ("Mode detail: explicit saved HTML inputs ({0})" -f $InputPath.Count)
+    }
+    default {
+        Write-Host "Mode detail: auto-discover attached HTML under user_files first, then agent_files."
+    }
+}
 if ($PreferredInitialPage) {
     Write-Host ("Preferred initial page override: {0}" -f $PreferredInitialPage)
+}
+Write-Host "Override: use -PreferredInitialPage to pin the first Google-like page, or pass -PageRoot / -InputPath to skip auto-discovery."
+if ($SummaryOnly) {
+    Write-Host "Launch mode: summary only"
+} elseif ($Wait) {
+    Write-Host "Launch mode: launch and wait"
 }
 Write-Host "Runner: .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle"
 Write-Host ""
