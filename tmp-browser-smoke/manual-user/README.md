@@ -44,6 +44,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_staged_localhos
   -Wait
 ```
 
+Auto-discover attached HTML files already present in the current workspace and
+launch the preferred page in headed mode:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 `
+  -Wait
+```
+
 Inventory a saved-page directory before you choose the first page to open:
 
 ```powershell
@@ -51,10 +59,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\summarize_localhost_h
   -PageRoot C:\path\to\saved-pages
 ```
 
+Only print the attached HTML inventory and recommended first page without
+launching the browser yet:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 `
+  -SummaryOnly
+```
+
 Use the current attached-page folder as the page root when the run already has
 saved HTML snapshots available locally. Use the staged wrapper when the run has
 a mix of standalone HTML files and saved-page folders or when you want a
-per-run manifest of exactly which HTML files were served.
+per-run manifest of exactly which HTML files were served. Use the attached HTML
+runner when those snapshots already live under `agent_files/` and you want the
+helper to pick the inputs and preferred initial page automatically.
 
 ## What The Helper Records
 
@@ -94,12 +112,13 @@ artifact root with:
 
 1. Pick the bounded suite for the subsystem you changed with `scripts/windows/show_headed_validation_suites.ps1`.
 2. Run that suite and one nearby shared-behavior suite if the change crossed subsystems.
-3. If the saved pages are spread across several files or folders, stage them first with `start_staged_localhost_html_validation.ps1`.
-4. Run `summarize_localhost_html_pages.ps1` when you need a quick inventory, a suggested first page, or a recommended bounded-suite set for the saved HTML pages.
-5. Run one or two of the suggested bounded suites from the summary JSON before you start the localhost manual pass.
-6. Start the saved-page localhost pass from this directory's helper flow.
-7. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
-8. Only move to live-site checking after the saved-page pass is stable.
+3. If the run already has attached HTML files under `agent_files/`, use `run_attached_html_localhost_validation.ps1` first so the helper can discover the inputs and choose a preferred initial page automatically.
+4. If the saved pages are spread across several files or folders, stage them first with `start_staged_localhost_html_validation.ps1`.
+5. Run `summarize_localhost_html_pages.ps1` when you need a quick inventory, a suggested first page, or a recommended bounded-suite set for the saved HTML pages.
+6. Run one or two of the suggested bounded suites from the summary JSON before you start the localhost manual pass.
+7. Start the saved-page localhost pass from this directory's helper flow.
+8. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
+9. Only move to live-site checking after the saved-page pass is stable.
 
 ## Google-Style Input Work
 
@@ -111,7 +130,7 @@ If the issue is headed Google-style typing or Enter-submit behavior:
 4. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home`
 5. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing`
 6. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order`
-7. then use `start_localhost_html_validation.ps1` or `start_staged_localhost_html_validation.ps1` for any saved HTML snapshots
+7. then use `run_attached_html_localhost_validation.ps1`, `start_localhost_html_validation.ps1`, or `start_staged_localhost_html_validation.ps1` for any saved HTML snapshots
 8. finish with the smallest live-site pass that proves the same behavior
 
 Use `-Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch` when you want the runner to execute the localhost-first Google flow in one pass before the saved-page follow-up.
@@ -122,6 +141,8 @@ Use `-Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch` when 
 - `-Host 0.0.0.0` exposes the same saved pages to another device on the LAN
 - `-LeaveServerRunning` keeps the server alive after the wait prompt
 - omit `-LaunchBrowser` when you only want the localhost URLs and logs first
+- `run_attached_html_localhost_validation.ps1 -SummaryOnly` prints the auto-discovered attached-page inventory without launching the browser
+- `run_attached_html_localhost_validation.ps1 -PreferredInitialPage <saved-page.html>` keeps one attached HTML page as the first headed target when the auto-selected page is not the one you want
 - `start_staged_localhost_html_validation.ps1 -InputPath <file-or-folder>, <file-or-folder>` stages a mixed saved-page set into one clean localhost root before the normal helper runs
 - `-InitialPage C:\path\to\saved-page.html` works with the staged wrapper when you want a specific source file to open first
 - `summarize_localhost_html_pages.ps1 -PageRoot <saved-page-dir> -Port 8124` lets the saved-page inventory reflect a non-default localhost port before you launch the browser
