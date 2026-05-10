@@ -6,6 +6,10 @@ This guide is the shortest reliable path for issue `#3` follow-up on
 Use it when you need to validate Google-style headed text entry, Enter submit,
 or saved-page follow-up without starting from the full live homepage first.
 
+Use `docs/HEADED_ATTACHED_HTML_VALIDATION_WINDOWS.md` when the next follow-up
+should start from attached HTML snapshots under `agent_files/` instead of a
+manually enumerated saved-page list.
+
 ## 1) Start with the printed flow map
 
 For the general reduced-Google flow:
@@ -134,6 +138,26 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
   -ManualInputPath C:\path\to\saved-page.html, C:\path\to\saved-folder
 ```
 
+## 4a) Attached HTML auto-discovery
+
+When the current run already has attached HTML snapshots under `agent_files/`,
+use the attached-page helpers instead of manually restating each path first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 -Wait
+```
+
+The flow helper auto-discovers nested `.html` files anywhere under
+`agent_files/`, prefers a Google-like page first when one is present, and keeps
+the same localhost-first issue `#3` order before the broader manual headed
+follow-up.
+
+Use `show_attached_html_validation_flow.ps1 -PreferredInitialPage <saved-page>`
+when the auto-selected first page is not the one you want, and use
+`docs/HEADED_ATTACHED_HTML_VALIDATION_WINDOWS.md` when you want the full
+attached-page command map, override patterns, and staging rules in one place.
+
 ## 5) Working rule
 
 Do not treat a saved-page manual pass as the first evidence for issue `#3`.
@@ -146,6 +170,10 @@ Use `run_google_issue3_recommended_validation.ps1` when you want the current
 bounded issue `#3` flow in one reusable command. Drop back to the stepwise
 `run_google_input_validation.ps1` phases when you need to narrow the exact step
 that regressed.
+
+For attached HTML snapshots that already live under `agent_files/`, start with
+`show_attached_html_validation_flow.ps1 -GoogleStyle` so the same pages route
+through the bounded Google-first helper order before you inspect them manually.
 
 For Enter-order work, do not accept a reduced-title pass as green unless the
 keydown edge still reads `KEYDOWN:<text>|13|13` before the final
