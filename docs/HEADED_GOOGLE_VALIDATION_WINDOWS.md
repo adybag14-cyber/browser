@@ -74,6 +74,18 @@ That saved-page helper keeps the same preferred first page threaded through the
 manual headed follow-up commands so later reruns do not drift onto a different
 HTML file.
 
+When the saved or attached follow-up itself is a captured Google homepage and
+you want one bounded localhost pass before broader manual replay, use the
+homepage-fixture helper directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
+```
+
+That slice keeps the saved homepage fixture on the same issue `#3` route as the
+reduced title, reduced home, submit-timing, and shared Enter-order checks.
+
 ## 2) Recommended validation order
 
 Preferred one-command bounded pass:
@@ -89,10 +101,11 @@ Run the stepwise flow when you want to narrow the failure one phase at a time:
 3. `quick-flow`
 4. `quick`
 5. `google-home`
-6. `submit-timing`
-7. `shared-enter-order`
-8. `manual`
-9. `trace`
+6. `google-homepage-fixture`
+7. `submit-timing`
+8. `shared-enter-order`
+9. `manual`
+10. `trace`
 
 Use these commands through the main runner or the bounded helpers directly:
 
@@ -102,6 +115,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_vali
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_quick_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-google-submit-timing-probe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order
 ```
@@ -131,6 +146,9 @@ Only move to `manual` or `trace` after those bounded phases are green.
   markers without a long manual session.
 - `google-home`: the reduced homepage probe still reaches the headed title
   markers `FOCUSED`, `TYPED:QZ`, and `SUBMIT:QZ`.
+- `google-homepage-fixture`: the bounded saved homepage fixture still proves the
+  localhost copy reaches focus, typed text, and Enter submit before the broader
+  saved-page or attached-page manual follow-up.
 - `submit-timing`: the bounded headed Win32 layout-smoke probe still clicks the
   Google-shaped shell, types `QZ`, reaches the submitted page, and preserves
   `keydown,keypress,submit` ordering in the submitted title trace before the
@@ -217,9 +235,9 @@ attached-page command map, override patterns, and staging rules in one place.
 
 Do not treat a saved-page manual pass as the first evidence for issue `#3`.
 
-Use the bounded localhost, reduced homepage, submit-timing, and shared
-Enter-order passes first, then use the saved-page or live-Google follow-up only
-when those gates already agree.
+Use the bounded localhost, reduced homepage, saved homepage fixture,
+submit-timing, and shared Enter-order passes first, then use the saved-page or
+live-Google follow-up only when those gates already agree.
 
 Use `run_google_issue3_recommended_validation.ps1` when you want the current
 bounded issue `#3` flow in one reusable command. Drop back to the stepwise
