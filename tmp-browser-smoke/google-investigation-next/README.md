@@ -81,6 +81,12 @@ runner surface:
    Rechecks the shared label-click baseline, shared submit gates, and the
    stricter localhost keypress-before-submit wrapper before the manual or live
    Google pass.
+7. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1`
+   Auto-discovers current-run attached Google-like HTML pages and prints the
+   same localhost-first issue #3 order before the broader manual follow-up.
+8. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait`
+   Launches the current attached Google-like pages through that same
+   Google-style localhost follow-up without restating file paths by hand.
 
 Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1`
 when you want the bounded title stack printed as its own read-first handoff
@@ -90,13 +96,18 @@ Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_subm
 when you want the bounded Google-shaped timing stack printed as its own
 read-first handoff before the shared Enter-order or live Google phases.
 
+Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1`
+when the current run already includes attached Google-like HTML pages and you
+want that saved-page replay locked onto the same issue #3 order before another
+live Google trace capture.
+
 ## Follow-Up Path
 
 After the bounded localhost probes are green, run
 `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1` for the
 bounded real-surface reduced homepage pass, or use the shared runner commands
-above when you want the title, submit-timing, and shared Enter-order steps on
-one reusable surface.
+above when you want the title, submit-timing, shared Enter-order, and attached
+Google-style follow-up steps on one reusable surface.
 
 Use
 `tmp-browser-smoke/google-investigation-next/chrome-google-home-enter-trace-probe.ps1`
