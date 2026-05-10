@@ -137,7 +137,7 @@ try {
     }
   }
 
-  $hwnd = Wait-WindowHandle -Pid $browser.Id -Attempts 2
+  $hwnd = Wait-WindowHandle -Pid $browser.Id -Attempts 8
   if ($hwnd -eq [IntPtr]::Zero) { throw "google home title probe window handle not found" }
 
   Show-SmokeWindow $hwnd
@@ -150,19 +150,22 @@ try {
   Send-SmokeCtrlA
   Start-Sleep -Milliseconds 100
   Send-SmokeText $InputText
-  $typedTitle = Wait-WindowTitle $hwnd { param($t) $t -like $args[0] } $TitleWaitAttempts 60 -Args (Get-LikePrefixPattern -Prefix "TYPED:" -Value $InputText)
-  $typeWorked = $typedTitle -like (Get-LikePrefixPattern -Prefix "TYPED:" -Value $InputText)
+  $typedPattern = Get-LikePrefixPattern -Prefix "TYPED:" -Value $InputText
+  $typedTitle = Wait-WindowTitle $hwnd { param($t) $t -like $typedPattern } $TitleWaitAttempts 60
+  $typeWorked = $typedTitle -like $typedPattern
   if (-not $typeWorked) { throw "google home title probe did not update title after typing" }
 
   Send-SmokeEnter
+  $keydownPattern = Get-LikePrefixPattern -Prefix "KEYDOWN:" -Value $InputText
+  $submitPattern = Get-LikePrefixPattern -Prefix "SUBMIT:" -Value $InputText
   for ($i = 0; $i -lt ($TitleWaitAttempts * 4); $i++) {
     Start-Sleep -Milliseconds 20
     $finalTitle = Get-SmokeWindowTitle $hwnd
-    if ($finalTitle -like (Get-LikePrefixPattern -Prefix "KEYDOWN:" -Value $InputText)) {
+    if ($finalTitle -like $keydownPattern) {
       $keydownObserved = $true
       continue
     }
-    if ($finalTitle -like (Get-LikePrefixPattern -Prefix "SUBMIT:" -Value $InputText)) {
+    if ($finalTitle -like $submitPattern) {
       $submitObserved = $true
       break
     }
