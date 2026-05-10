@@ -143,3 +143,37 @@ Useful options:
 The probe mirrors the query box state into the window title so you can track
 focus, keydown, keypress, beforeinput, input, and submit behavior without
 attaching a separate debugger first.
+
+## 7) Saved localhost HTML page validation
+
+Use `scripts\windows\start_localhost_html_validation.ps1` when you want a
+repeatable headed session against saved or attached HTML pages instead of the
+repo's built-in smoke fixtures.
+
+Typical flow:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_localhost_html_validation.ps1 `
+  -PageRoot C:\path\to\saved-pages `
+  -LaunchBrowser `
+  -Wait
+```
+
+What the helper does:
+
+- serves every `.html` and `.htm` file under `-PageRoot` on `http://127.0.0.1:<port>/`
+- chooses the first HTML file alphabetically unless `-InitialPage` is provided
+- optionally launches the headed browser directly against that first page
+- writes the session summary and server logs under `tmp-browser-smoke\manual-user\localhost-html-validation\`
+
+Useful options:
+
+- `-InitialPage subdir/page.html` opens a specific saved page first
+- `-Port 8124` moves the local server when another harness is already bound
+- `-Host 0.0.0.0` exposes the same pages to other machines on the LAN when needed
+- `-LeaveServerRunning` keeps the server alive after the `-Wait` prompt completes
+- omit `-LaunchBrowser` when you only want the localhost URLs and log files
+
+This helper is meant for manual compatibility passes on real saved pages after
+bounded probe suites are green. It does not replace the normal `tmp-browser-smoke/`
+validation gates; it gives them a cleaner follow-up path for real-world local HTML.
