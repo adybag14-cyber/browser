@@ -61,6 +61,8 @@ Examples:
 - `form-controls/`: label activation and Enter-submit basics
 - `google-investigation-next/`: reduced Google-style localhost probes for focus
   churn, delayed readiness, correction, and Enter-submit ordering
+- `google-home/`: reduced homepage watcher and Enter-submit probe on the real
+  headed surface after the localhost Google-style probes are green
 - `find/`: find-in-page surface behavior
 - `file-upload/`: chooser flows, replacement, cancel, multipart submit, and
   target-page upload behavior
@@ -109,8 +111,8 @@ Use this order unless a narrower issue demands something more specific first.
 2. Run one narrow suite for the subsystem you changed.
 3. Run one nearby shared-behavior suite if the change touched input, rendering,
    navigation, storage, or downloads.
-4. Re-run `google-investigation-next/` or another issue-specific reduced probe
-   only after the bounded localhost suite is green.
+4. Re-run `google-investigation-next/` and `google-home/` or another
+   issue-specific reduced probe only after the bounded localhost suite is green.
 5. Finish with the smallest real headed manual pass that exercises the same
    user flow.
 
@@ -119,8 +121,9 @@ Use this order unless a narrower issue demands something more specific first.
 - Browser shell, tabs, address bar, start/history/bookmarks/downloads/settings:
   run `tabs/`, `browser-pages/`, and the closest `settings/` or `popup/` probe.
 - Shared input, focus, caret, or form submit behavior: run `form-controls/`,
-  the closest `inline-flow/` probe, and `google-investigation-next/` when the
-  issue is Google search-box related.
+  the closest `inline-flow/` probe, `google-investigation-next/` for reduced
+  localhost Google-style coverage, and `google-home/` before live-site passes
+  when the issue is Google search-box related.
 - Layout, painter, screenshots, clipping, or hit testing: run `layout-smoke/`,
   `flow-layout/`, `rendered-link-dom/`, and the nearest `inline-flow/` case.
 - Font, text metrics, or zoom behavior: run `font-render/`, `font-smoke/`, and
@@ -139,8 +142,10 @@ Use this order unless a narrower issue demands something more specific first.
 ## Issue-Specific Note
 
 For live-site Google search-box work, start with the reduced probes under
-`google-investigation-next/`, then use `scripts/windows/watch_headed_probe.ps1`
-against `src/browser/tests/page/google_home_title_probe.html`, and only then
-move on to the full `https://www.google.com/` pass. These probes are narrowing
-and regression tools, not replacements for the core `form-controls/` and
+`google-investigation-next/`, then run `tmp-browser-smoke/google-home/`
+for the reduced homepage Enter-submit pass, then use
+`scripts/windows/watch_headed_probe.ps1` against
+`src/browser/tests/page/google_home_title_probe.html`, and only then move on to
+the full `https://www.google.com/` pass. These probes are narrowing and
+regression tools, not replacements for the core `form-controls/` and
 `inline-flow/` gates.
