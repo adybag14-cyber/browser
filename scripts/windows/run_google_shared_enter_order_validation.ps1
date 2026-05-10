@@ -30,7 +30,7 @@ if (-not $BrowserExe) {
 
 $sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
 $localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
-$formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\chrome-google-enter-order-probe.ps1"
+$formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\google-enter-order-probe.ps1"
 
 if (-not (Test-Path -LiteralPath $sharedRunner -PathType Leaf)) {
     throw "Shared Google validation runner not found: $sharedRunner"
@@ -39,7 +39,7 @@ if (-not (Test-Path -LiteralPath $localhostEnterOrderProbe -PathType Leaf)) {
     throw "Google enter-order localhost probe not found: $localhostEnterOrderProbe"
 }
 if (-not (Test-Path -LiteralPath $formControlsEnterOrderProbe -PathType Leaf)) {
-    throw "Shared form-controls enter-order probe not found: $formControlsEnterOrderProbe"
+    throw "Canonical shared form-controls enter-order probe not found: $formControlsEnterOrderProbe"
 }
 
 $sharedArgs = @{
