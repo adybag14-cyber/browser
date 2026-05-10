@@ -8,14 +8,18 @@ Usage:
   scripts/linux/check_offline_build_prereqs.sh \
     [--browser-root /path/to/browser-repo] \
     [--zig-binary /path/to/zig] \
+    [--cargo-binary /path/to/cargo] \
+    [--rustc-binary /path/to/rustc] \
     [--prebuilt-v8-path /path/to/libc_v8_*.a]
 
 This helper confirms that an offline Linux browser checkout is ready for a real
 build attempt before `zig build` runs. It checks the active Zig version against
-`build.zig.zon`, verifies the restored sibling dependency layout, accepts the
-current offline manifest backup names, and prints the suggested validation
-command. Use `--zig-binary` or `ZIG=/path/to/zig` when the compatible toolchain
-is installed outside PATH.
+`build.zig.zon`, verifies the restored sibling dependency layout, confirms the
+Rust/Cargo toolchain still required by `build.zig`'s html5ever step, accepts
+the current offline manifest backup names, and prints the suggested validation
+command. Use `--zig-binary`, `--cargo-binary`, `--rustc-binary`, `ZIG=...`,
+`CARGO=...`, or `RUSTC=...` when compatible toolchains are installed outside
+PATH.
 EOF
 }
 
@@ -24,6 +28,8 @@ DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 ZIG_BINARY="${ZIG:-}"
+CARGO_BINARY="${CARGO:-}"
+RUSTC_BINARY="${RUSTC:-}"
 PREBUILT_V8_PATH=""
 
 while [[ $# -gt 0 ]]; do
@@ -34,6 +40,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --zig-binary)
             ZIG_BINARY="$2"
+            shift 2
+            ;;
+        --cargo-binary)
+            CARGO_BINARY="$2"
+            shift 2
+            ;;
+        --rustc-binary)
+            RUSTC_BINARY="$2"
             shift 2
             ;;
         --prebuilt-v8-path)
@@ -65,6 +79,29 @@ write_status() {
         all_ok=false
     fi
     printf '[%s] %s - %s\n' "${mark}" "${name}" "${details}"
+}
+
+resolve_command() {
+    local provided_path="$1"
+    local status_name="$2"
+    local binary_name="$3"
+
+    if [[ -n "${provided_path}" ]]; then
+        if [[ -x "${provided_path}" ]]; then
+            printf '%s\n' "${provided_path}"
+            return 0
+        fi
+        write_status "${status_name}" false "configured ${binary_name} binary is not executable: ${provided_path}"
+        return 1
+    fi
+
+    if command -v "${binary_name}" >/dev/null 2>&1; then
+        command -v "${binary_name}"
+        return 0
+    fi
+
+    write_status "${status_name}" false "${binary_name} not found in PATH"
+    return 1
 }
 
 if [[ ! -f "${BROWSER_ROOT}/build.zig.zon" ]]; then
@@ -102,19 +139,7 @@ PY
 )"
 
 zig_version=""
-zig_cmd=""
-if [[ -n "${ZIG_BINARY}" ]]; then
-    if [[ -x "${ZIG_BINARY}" ]]; then
-        zig_cmd="${ZIG_BINARY}"
-    else
-        write_status "Zig" false "configured zig binary is not executable: ${ZIG_BINARY}"
-    fi
-elif command -v zig >/dev/null 2>&1; then
-    zig_cmd="$(command -v zig)"
-else
-    write_status "Zig" false "zig not found in PATH"
-fi
-
+zig_cmd="$(resolve_command "${ZIG_BINARY}" "Zig" zig || true)"
 if [[ -n "${zig_cmd}" ]]; then
     zig_version="$(${zig_cmd} version | tr -d '\r')"
     write_status "Zig" true "${zig_cmd} (${zig_version})"
@@ -126,6 +151,18 @@ if [[ -n "${zig_version}" ]]; then
     else
         write_status "ZigVersion" false "expected ${MINIMUM_ZIG_VERSION}, found ${zig_version}"
     fi
+fi
+
+cargo_cmd="$(resolve_command "${CARGO_BINARY}" "Cargo" cargo || true)"
+if [[ -n "${cargo_cmd}" ]]; then
+    cargo_version="$(${cargo_cmd} --version | tr -d '\r')"
+    write_status "Cargo" true "${cargo_cmd} (${cargo_version})"
+fi
+
+rustc_cmd="$(resolve_command "${RUSTC_BINARY}" "Rustc" rustc || true)"
+if [[ -n "${rustc_cmd}" ]]; then
+    rustc_version="$(${rustc_cmd} --version | tr -d '\r')"
+    write_status "Rustc" true "${rustc_cmd} (${rustc_version})"
 fi
 
 if [[ -n "${BUILD_ZON_BACKUP}" ]]; then
@@ -229,5 +266,5 @@ fi
 
 echo
 echo "Offline build prerequisites are not ready yet."
-echo "Run scripts/linux/restore_offline_build_inputs.sh (or scripts/linux/prepare_offline_build_inputs.sh for custom archive locations) and switch to Zig ${MINIMUM_ZIG_VERSION} before retrying zig build. Use --zig-binary /path/to/zig or ZIG=/path/to/zig when the compatible toolchain is installed outside PATH."
+echo "Run scripts/linux/restore_offline_build_inputs.sh (or scripts/linux/prepare_offline_build_inputs.sh for custom archive locations), switch to Zig ${MINIMUM_ZIG_VERSION}, and make sure cargo plus rustc are available before retrying zig build. Use --zig-binary /path/to/zig, --cargo-binary /path/to/cargo, --rustc-binary /path/to/rustc, or the ZIG/CARGO/RUSTC environment variables when the compatible toolchains are installed outside PATH."
 exit 1
