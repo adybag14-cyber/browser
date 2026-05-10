@@ -63,3 +63,37 @@ function Wait-GoogleProbeTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attemp
   }
   return $null
 }
+
+function Invoke-GoogleProbeTypeWithFocusRecovery(
+  [IntPtr]$Hwnd,
+  [string]$Text,
+  [string]$TitlePattern,
+  [int]$Attempts = 25,
+  [int]$PollMilliseconds = 250,
+  [int]$ClickX = 480,
+  [int]$ClickY = 300
+) {
+  Send-SmokeText $Text
+  $title = Wait-GoogleProbeTitleLike -Hwnd $Hwnd -Pattern $TitlePattern -Attempts $Attempts -PollMilliseconds $PollMilliseconds
+  if ($title) {
+    return [ordered]@{ title = $title; focus_strategy = "direct" }
+  }
+
+  [void](Invoke-SmokeClientClick $Hwnd $ClickX $ClickY)
+  Start-Sleep -Milliseconds $PollMilliseconds
+  Send-SmokeText $Text
+  $title = Wait-GoogleProbeTitleLike -Hwnd $Hwnd -Pattern $TitlePattern -Attempts $Attempts -PollMilliseconds $PollMilliseconds
+  if ($title) {
+    return [ordered]@{ title = $title; focus_strategy = "click" }
+  }
+
+  Send-SmokeTab
+  Start-Sleep -Milliseconds $PollMilliseconds
+  Send-SmokeText $Text
+  $title = Wait-GoogleProbeTitleLike -Hwnd $Hwnd -Pattern $TitlePattern -Attempts $Attempts -PollMilliseconds $PollMilliseconds
+  if ($title) {
+    return [ordered]@{ title = $title; focus_strategy = "tab" }
+  }
+
+  return $null
+}
