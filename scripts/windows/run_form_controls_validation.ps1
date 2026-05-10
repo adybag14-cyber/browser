@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("all", "label", "default-enter", "deferred-enter")]
+    [ValidateSet("all", "label", "default-enter", "deferred-enter", "reduced-google-home", "google-enter-order")]
     [string]$Probe = "all",
     [string]$RepoRoot,
     [string]$BrowserExe,
@@ -9,6 +9,8 @@ param(
     [int]$LabelPort = 8153,
     [int]$DefaultEnterPort = 8154,
     [int]$DeferredEnterPort = 8155,
+    [int]$ReducedGoogleHomePort = 8156,
+    [int]$GoogleEnterOrderPort = 8157,
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$WindowReadyAttempts = 60,
     [int]$TitleWaitAttempts = 80,
@@ -47,6 +49,20 @@ $probeTable = [ordered]@{
         ScriptPath = Join-Path $probeRoot "enter-submit-probe.ps1"
         Port = $DeferredEnterPort
         DeferredEnter = $true
+        UsesInputText = $true
+    }
+    "reduced-google-home" = [ordered]@{
+        Label = "google-home-enter-submit"
+        ScriptPath = Join-Path $probeRoot "chrome-google-home-enter-submit-probe.ps1"
+        Port = $ReducedGoogleHomePort
+        DeferredEnter = $false
+        UsesInputText = $true
+    }
+    "google-enter-order" = [ordered]@{
+        Label = "google-enter-order"
+        ScriptPath = Join-Path $probeRoot "google-enter-order-probe.ps1"
+        Port = $GoogleEnterOrderPort
+        DeferredEnter = $false
         UsesInputText = $true
     }
 }
@@ -94,6 +110,8 @@ Write-Host ("Host: {0}" -f $Host)
 Write-Host ("Label port: {0}" -f $LabelPort)
 Write-Host ("Default Enter port: {0}" -f $DefaultEnterPort)
 Write-Host ("Deferred Enter port: {0}" -f $DeferredEnterPort)
+Write-Host ("Reduced Google-home port: {0}" -f $ReducedGoogleHomePort)
+Write-Host ("Google enter-order port: {0}" -f $GoogleEnterOrderPort)
 Write-Host ""
 
 switch ($Probe) {
@@ -110,15 +128,21 @@ switch ($Probe) {
 Write-Host ""
 switch ($Probe) {
     "label" {
-        Write-Host "Next: use -Probe default-enter and -Probe deferred-enter to confirm the shared Enter-submit gates before moving on to inline-flow or Google-specific probes."
+        Write-Host "Next: use -Probe default-enter and -Probe deferred-enter to confirm the shared Enter-submit gates before moving on to the Google-style form probes."
     }
     "default-enter" {
-        Write-Host "Next: use -Probe deferred-enter to check the pending-submit gate, then move on to inline-flow or the smaller Google localhost passes."
+        Write-Host "Next: use -Probe deferred-enter to check the pending-submit gate, then move on to -Probe reduced-google-home for the reduced fixture submit path."
     }
     "deferred-enter" {
-        Write-Host "Next: if the deferred Enter gate stays green, move on to the shared Enter-order or reduced Google localhost probes."
+        Write-Host "Next: if the deferred Enter gate stays green, move on to -Probe reduced-google-home and -Probe google-enter-order before the broader shared Google wrappers."
+    }
+    "reduced-google-home" {
+        Write-Host "Next: if the reduced Google-home submit gate stays green, use -Probe google-enter-order for the stricter keypress-before-submit localhost check."
+    }
+    "google-enter-order" {
+        Write-Host "Next: if the stricter enter-order localhost check stays green, move on to the broader shared Google wrapper or the smallest live Google manual pass."
     }
     default {
-        Write-Host "Next: if the shared label and Enter gates stay green, move on to inline-flow, google-shared-enter-order, or the reduced Google localhost probes."
+        Write-Host "Next: if the shared label, Enter, reduced Google-home, and enter-order gates stay green, move on to inline-flow, google-shared-enter-order, or the broader reduced Google localhost probes."
     }
 }
