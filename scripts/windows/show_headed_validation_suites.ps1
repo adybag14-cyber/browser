@@ -137,6 +137,13 @@ $suiteCatalog = @(
         RecommendedWith = @("inline-flow", "find")
     }
     [pscustomobject]@{
+        Name = "google-investigation-next"
+        Category = "input"
+        Path = "tmp-browser-smoke/google-investigation-next"
+        Purpose = "Reduced Google-style localhost probes for focus churn, delayed readiness, correction, and Enter-submit ordering."
+        RecommendedWith = @("form-controls", "inline-flow")
+    }
+    [pscustomobject]@{
         Name = "find"
         Category = "input"
         Path = "tmp-browser-smoke/find"
@@ -244,7 +251,7 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("form-controls", "inline-flow")
+    "google-input" = @("google-investigation-next", "form-controls", "inline-flow")
 }
 
 function Get-SuiteRecord {
@@ -299,7 +306,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
             change_area = $ChangeArea
             suites = $items
             next_step = if ($ChangeArea -eq "google-input") {
-                "After the bounded suites pass, run scripts/windows/watch_headed_probe.ps1 and then do the smallest real Google manual check."
+                "Start with google-investigation-next, then run form-controls and inline-flow, and only then use the reduced homepage watcher or the smallest real Google manual check."
             } else {
                 "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
             }
@@ -311,7 +318,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     Write-Host ("Recommended suites for change area '{0}':" -f $ChangeArea)
     Write-Host (Format-SuiteList -Items $items)
     if ($ChangeArea -eq "google-input") {
-        Write-Host "Next step: after these suites are green, run scripts/windows/watch_headed_probe.ps1 before the smallest real Google manual pass."
+        Write-Host "Next step: start with google-investigation-next, then run form-controls and inline-flow before the reduced homepage watcher or the smallest real Google manual pass."
     } else {
         Write-Host "Next step: start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
     }
