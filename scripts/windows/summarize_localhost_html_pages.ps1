@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
     [string]$PageRoot,
-
+    [string[]]$InputPath,
+    [string]$PreferredInitialPage,
     [string]$RepoRoot,
     [string]$Host = "127.0.0.1",
     [int]$Port = 8123,
@@ -52,6 +52,41 @@ function Get-RelativeHtmlUrlPath {
         }
     }
     return ($encodedSegments -join "/")
+}
+
+function Get-RelativeHtmlPathCandidates {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = Normalize-RelativeHtmlPath -Path $Path
+    $decodedSegments = foreach ($segment in ($normalized -split "/")) {
+        if ($segment -ne "") {
+            [System.Uri]::UnescapeDataString($segment)
+        }
+    }
+    $decoded = $decodedSegments -join "/"
+
+    if ($decoded -eq $normalized) {
+        return @($normalized)
+    }
+
+    return @($normalized, $decoded)
+}
+
+function Test-PathUnderRoot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $resolvedRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+    $resolvedPath = [System.IO.Path]::GetFullPath($Path)
+    return $resolvedPath.StartsWith($resolvedRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $resolvedPath.StartsWith($resolvedRoot + [System.IO.Path]::AltDirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 function Get-RegexMatchCount {
@@ -113,6 +148,44 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     )
 
     return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Test-HtmlFilePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    return [System.IO.Path]::GetExtension($Path) -in @(".html", ".htm")
+}
+
+function Get-UniqueChildPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Parent,
+        [Parameter(Mandatory = $true)]
+        [string]$LeafName
+    )
+
+    $candidate = Join-Path $Parent $LeafName
+    if (-not (Test-Path -LiteralPath $candidate)) {
+        return $candidate
+    }
+
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($LeafName)
+    $extension = [System.IO.Path]::GetExtension($LeafName)
+    if ([string]::IsNullOrEmpty($base)) {
+        $base = $LeafName
+    }
+
+    $index = 2
+    while ($true) {
+        $candidate = Join-Path $Parent ("{0}-{1}{2}" -f $base, $index, $extension)
+        if (-not (Test-Path -LiteralPath $candidate)) {
+            return $candidate
+        }
+        $index += 1
+    }
 }
 
 function Test-GoogleStyleHtml {
@@ -219,53 +292,153 @@ function Get-PageNextStep {
     return "Use scripts/windows/show_localhost_html_validation_flow.ps1 for the general saved-page follow-up."
 }
 
+function Join-QuotedInputPaths {
+    param(
+        [string[]]$Paths
+    )
+
+    if (-not $Paths -or $Paths.Count -eq 0) {
+        return ""
+    }
+
+    return (($Paths | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }) -join ", ")
+}
+
 function Get-RecommendedFlowCommand {
     param(
         [Parameter(Mandatory = $true)]
         [bool]$GoogleStyle,
-        [Parameter(Mandatory = $true)]
         [string]$ResolvedPageRoot,
-        [Parameter(Mandatory = $true)]
         [int]$Port,
-        [string]$InitialPage
+        [string]$InitialPage,
+        [string[]]$OriginalInputPath
     )
 
     $helper = if ($GoogleStyle) {
-        ".\\scripts\\windows\\show_saved_page_google_validation_flow.ps1"
+        ".\scripts\windows\show_saved_page_google_validation_flow.ps1"
     } else {
-        ".\\scripts\\windows\\show_localhost_html_validation_flow.ps1"
+        ".\scripts\windows\show_localhost_html_validation_flow.ps1"
     }
-    $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
-    $command = "powershell -ExecutionPolicy Bypass -File $helper -PageRoot $quotedPageRoot -Port $Port"
+
+    if ($OriginalInputPath -and $OriginalInputPath.Count -gt 0) {
+        $command = "powershell -ExecutionPolicy Bypass -File $helper -InputPath $(Join-QuotedInputPaths -Paths $OriginalInputPath) -Port $Port"
+    } else {
+        $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
+        $command = "powershell -ExecutionPolicy Bypass -File $helper -PageRoot $quotedPageRoot -Port $Port"
+    }
+
     if ($InitialPage) {
         $quotedInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $InitialPage
         $command += " -PreferredInitialPage $quotedInitialPage"
     }
+
     return $command
 }
 
-function Get-DirectLaunchCommand {
+function Get-LaunchCommand {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ResolvedPageRoot,
         [Parameter(Mandatory = $true)]
         [int]$Port,
         [Parameter(Mandatory = $true)]
-        [string]$InitialPage
+        [string]$InitialPage,
+        [string[]]$OriginalInputPath
     )
 
-    $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
     $quotedInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $InitialPage
-    return "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_localhost_html_validation.ps1 -PageRoot $quotedPageRoot -Port $Port -InitialPage $quotedInitialPage -LaunchBrowser -Wait"
+    if ($OriginalInputPath -and $OriginalInputPath.Count -gt 0) {
+        return "powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_staged_localhost_html_validation.ps1 -InputPath $(Join-QuotedInputPaths -Paths $OriginalInputPath) -Port $Port -InitialPage $quotedInitialPage -LaunchBrowser -Wait"
+    }
+
+    $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
+    return "powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_localhost_html_validation.ps1 -PageRoot $quotedPageRoot -Port $Port -InitialPage $quotedInitialPage -LaunchBrowser -Wait"
+}
+
+function Get-StagedPageRootFromInputPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$InputPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactRoot,
+        [string]$PreferredInitialPage
+    )
+
+    $stageRoot = Join-Path $ArtifactRoot ("staged-summary-" + (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmmss"))
+    New-Item -ItemType Directory -Force -Path $stageRoot | Out-Null
+
+    $resolvedInitialSource = $null
+    if ($PreferredInitialPage -and (Test-Path -LiteralPath $PreferredInitialPage -PathType Leaf)) {
+        $resolvedInitialSource = (Resolve-Path -LiteralPath $PreferredInitialPage).Path
+    }
+
+    $stagedPreferredInitialPage = $null
+
+    foreach ($input in $InputPath) {
+        $resolvedInput = (Resolve-Path -LiteralPath $input).Path
+        $item = Get-Item -LiteralPath $resolvedInput
+
+        if ($item.PSIsContainer) {
+            $targetDir = Get-UniqueChildPath -Parent $stageRoot -LeafName $item.Name
+            New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+
+            Get-ChildItem -LiteralPath $resolvedInput -Force | ForEach-Object {
+                Copy-Item -LiteralPath $_.FullName -Destination $targetDir -Recurse -Force
+            }
+
+            if ($resolvedInitialSource) {
+                $htmlFiles = Get-ChildItem -LiteralPath $resolvedInput -Recurse -File |
+                    Where-Object { Test-HtmlFilePath -Path $_.FullName }
+                $matchedInitial = $htmlFiles | Where-Object {
+                    [string]::Equals($_.FullName, $resolvedInitialSource, [System.StringComparison]::OrdinalIgnoreCase)
+                } | Select-Object -First 1
+                if ($matchedInitial) {
+                    $relativeWithinInput = Get-ForwardRelativePath -Root $resolvedInput -Path $matchedInitial.FullName
+                    $stagedPreferredInitialPage = ((Join-Path (Split-Path -Leaf $targetDir) $relativeWithinInput) -replace "\\", "/")
+                }
+            }
+
+            continue
+        }
+
+        if (-not (Test-HtmlFilePath -Path $item.FullName)) {
+            throw "standalone inputs must be .html or .htm files: $resolvedInput"
+        }
+
+        $standaloneRootName = [System.IO.Path]::GetFileNameWithoutExtension($item.Name)
+        if ([string]::IsNullOrWhiteSpace($standaloneRootName)) {
+            $standaloneRootName = $item.Name
+        }
+        $targetDir = Get-UniqueChildPath -Parent $stageRoot -LeafName $standaloneRootName
+        New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+
+        $standaloneSourceDir = Split-Path -Parent $item.FullName
+        Get-ChildItem -LiteralPath $standaloneSourceDir -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $targetDir -Recurse -Force
+        }
+
+        $targetFile = Join-Path $targetDir $item.Name
+        if (-not (Test-Path -LiteralPath $targetFile -PathType Leaf)) {
+            Copy-Item -LiteralPath $item.FullName -Destination $targetFile -Force
+        }
+
+        if ($resolvedInitialSource -and [string]::Equals($item.FullName, $resolvedInitialSource, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $stagedPreferredInitialPage = ((Join-Path (Split-Path -Leaf $targetDir) $item.Name) -replace "\\", "/")
+        }
+    }
+
+    return [pscustomobject]@{
+        page_root = $stageRoot
+        preferred_initial_page = $stagedPreferredInitialPage
+    }
 }
 
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 }
 
-$resolvedPageRoot = (Resolve-Path -LiteralPath $PageRoot).Path
-if (-not (Test-Path -LiteralPath $resolvedPageRoot -PathType Container)) {
-    throw "page root must be a directory: $PageRoot"
+if (-not $PageRoot -and (-not $InputPath -or $InputPath.Count -eq 0)) {
+    throw "either PageRoot or InputPath is required"
 }
 
 if ($Port -lt 0 -or $Port -gt 65535) {
@@ -274,6 +447,34 @@ if ($Port -lt 0 -or $Port -gt 65535) {
 
 $artifactRoot = Join-Path $RepoRoot "tmp-browser-smoke\manual-user\localhost-html-validation"
 New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+
+$originalInputPath = if ($InputPath -and $InputPath.Count -gt 0) { @($InputPath) } else { @() }
+$stagedFromInputPath = $false
+$resolvedPageRoot = $null
+$resolvedPreferredInitialPage = $null
+
+if ($originalInputPath.Count -gt 0) {
+    $staged = Get-StagedPageRootFromInputPath -InputPath $originalInputPath -ArtifactRoot $artifactRoot -PreferredInitialPage $PreferredInitialPage
+    $resolvedPageRoot = $staged.page_root
+    $resolvedPreferredInitialPage = $staged.preferred_initial_page
+    $stagedFromInputPath = $true
+} else {
+    $resolvedPageRoot = (Resolve-Path -LiteralPath $PageRoot).Path
+    if (-not (Test-Path -LiteralPath $resolvedPageRoot -PathType Container)) {
+        throw "page root must be a directory: $PageRoot"
+    }
+
+    if ($PreferredInitialPage) {
+        if (Test-Path -LiteralPath $PreferredInitialPage -PathType Leaf) {
+            $resolvedInitialPath = (Resolve-Path -LiteralPath $PreferredInitialPage).Path
+            if (Test-PathUnderRoot -Root $resolvedPageRoot -Path $resolvedInitialPath) {
+                $resolvedPreferredInitialPage = Get-ForwardRelativePath -Root $resolvedPageRoot -Path $resolvedInitialPath
+            }
+        } else {
+            $resolvedPreferredInitialPage = (Get-RelativeHtmlPathCandidates -Path $PreferredInitialPage)[0]
+        }
+    }
+}
 
 if (-not $OutputPath) {
     $timestamp = (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmmss")
@@ -320,8 +521,8 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
     } else {
         "scripts/windows/show_localhost_html_validation_flow.ps1"
     }
-    $recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $googleStyle -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $relativePath
-    $directLaunchCommand = Get-DirectLaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $relativePath
+    $recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $googleStyle -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $relativePath -OriginalInputPath $originalInputPath
+    $launchCommand = Get-LaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $relativePath -OriginalInputPath $originalInputPath
 
     [pscustomobject]@{
         relative_path = $relativePath
@@ -336,14 +537,23 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         manual_follow_up_suite = "manual-user"
         recommended_flow_helper = $recommendedFlowHelper
         recommended_flow_command = $recommendedFlowCommand
-        direct_launch_command = $directLaunchCommand
+        launch_command = $launchCommand
         next_step = $nextStep
     }
 })
 
-$recommendedInitialPage = $pageSummaries |
-    Sort-Object @{ Expression = "interactive_score"; Descending = $true }, @{ Expression = "relative_path"; Descending = $false } |
-    Select-Object -First 1
+$recommendedInitialPage = $null
+if ($resolvedPreferredInitialPage) {
+    $preferredCandidates = Get-RelativeHtmlPathCandidates -Path $resolvedPreferredInitialPage
+    $recommendedInitialPage = $pageSummaries |
+        Where-Object { $preferredCandidates -contains $_.relative_path } |
+        Select-Object -First 1
+}
+if (-not $recommendedInitialPage) {
+    $recommendedInitialPage = $pageSummaries |
+        Sort-Object @{ Expression = "interactive_score"; Descending = $true }, @{ Expression = "relative_path"; Descending = $false } |
+        Select-Object -First 1
+}
 
 $overallRecommendedSuites = [System.Collections.Generic.List[string]]::new()
 foreach ($page in $pageSummaries) {
@@ -363,8 +573,8 @@ $flowHelper = if ($hasGoogleStylePages) {
 } else {
     "scripts/windows/show_localhost_html_validation_flow.ps1"
 }
-$recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $hasGoogleStylePages -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $recommendedInitialPage.relative_path
-$recommendedDirectLaunchCommand = Get-DirectLaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $recommendedInitialPage.relative_path
+$recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $hasGoogleStylePages -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $recommendedInitialPage.relative_path -OriginalInputPath $originalInputPath
+$recommendedLaunchCommand = Get-LaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $recommendedInitialPage.relative_path -OriginalInputPath $originalInputPath
 
 $summary = [pscustomobject]@{
     page_root = $resolvedPageRoot
@@ -378,8 +588,10 @@ $summary = [pscustomobject]@{
     manual_follow_up_suite = "manual-user"
     recommended_flow_helper = $flowHelper
     recommended_flow_command = $recommendedFlowCommand
-    recommended_direct_launch_command = $recommendedDirectLaunchCommand
+    recommended_launch_command = $recommendedLaunchCommand
     overall_google_style = $hasGoogleStylePages
+    staged_from_input_paths = $stagedFromInputPath
+    original_input_paths = $originalInputPath
     next_step = $overallNextStep
     generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
     pages = $pageSummaries
@@ -393,8 +605,11 @@ Write-Host ("Suggested bounded suites: {0}" -f ($summary.overall_recommended_sui
 Write-Host ("Manual follow-up suite: {0}" -f $summary.manual_follow_up_suite)
 Write-Host ("Flow helper: {0}" -f $summary.recommended_flow_helper)
 Write-Host ("Flow command: {0}" -f $summary.recommended_flow_command)
-Write-Host ("Direct launch command: {0}" -f $summary.recommended_direct_launch_command)
+Write-Host ("Launch command: {0}" -f $summary.recommended_launch_command)
 Write-Host ("Next step: {0}" -f $summary.next_step)
+if ($stagedFromInputPath) {
+    Write-Host ("Staged page root: {0}" -f $resolvedPageRoot)
+}
 Write-Host ""
 
 foreach ($page in $pageSummaries) {
@@ -418,7 +633,7 @@ foreach ($page in $pageSummaries) {
     Write-Host ("  bounded suites: {0}" -f ($page.recommended_bounded_suites -join ", "))
     Write-Host ("  flow helper: {0}" -f $page.recommended_flow_helper)
     Write-Host ("  flow command: {0}" -f $page.recommended_flow_command)
-    Write-Host ("  direct launch command: {0}" -f $page.direct_launch_command)
+    Write-Host ("  launch command: {0}" -f $page.launch_command)
     Write-Host ("  url: {0}" -f $page.url)
     Write-Host ("  next: {0}" -f $page.next_step)
 }
