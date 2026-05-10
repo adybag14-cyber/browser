@@ -95,6 +95,122 @@ function Copy-FixtureAssets([System.IO.FileInfo]$Fixture, [string]$TargetDir) {
   }
 }
 
+function Add-UniqueString {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Collections.Generic.List[string]]$List,
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return
+  }
+
+  if (-not $List.Contains($Value)) {
+    $List.Add($Value) | Out-Null
+  }
+}
+
+function Test-IgnoredLocalAssetReference([string]$Reference) {
+  if ([string]::IsNullOrWhiteSpace($Reference)) {
+    return $true
+  }
+
+  $trimmed = [System.Net.WebUtility]::HtmlDecode($Reference).Trim()
+  if ([string]::IsNullOrWhiteSpace($trimmed)) {
+    return $true
+  }
+
+  if ($trimmed.StartsWith("#") -or $trimmed.StartsWith("/")) {
+    return $true
+  }
+
+  if ($trimmed -match '^(?i)([a-z][a-z0-9+.-]*:|//)') {
+    return $true
+  }
+
+  return $false
+}
+
+function Get-LocalReferenceCandidates([string]$Content) {
+  $candidates = [System.Collections.Generic.List[string]]::new()
+  $patterns = @(
+    '\b(?:src|href|poster)\s*=\s*["'']([^"'']+)["'']',
+    '\bsrcset\s*=\s*["'']([^"'']+)["'']'
+  )
+
+  foreach ($pattern in $patterns) {
+    foreach ($match in [System.Text.RegularExpressions.Regex]::Matches($Content, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+      $value = $match.Groups[1].Value
+      if ($pattern -like '*srcset*') {
+        foreach ($entry in ($value -split ',')) {
+          $srcsetCandidate = ($entry.Trim() -split '\s+')[0]
+          if (-not [string]::IsNullOrWhiteSpace($srcsetCandidate)) {
+            Add-UniqueString -List $candidates -Value $srcsetCandidate
+          }
+        }
+      } else {
+        Add-UniqueString -List $candidates -Value $value
+      }
+    }
+  }
+
+  return @($candidates)
+}
+
+function Resolve-LocalFixtureReferencePath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$FixturePath,
+    [Parameter(Mandatory = $true)]
+    [string]$Reference
+  )
+
+  if (Test-IgnoredLocalAssetReference $Reference) {
+    return $null
+  }
+
+  $decoded = [System.Net.WebUtility]::HtmlDecode($Reference).Trim()
+  $relativeReference = (($decoded -split '#', 2)[0] -split '\?', 2)[0]
+  if ([string]::IsNullOrWhiteSpace($relativeReference)) {
+    return $null
+  }
+
+  $fixtureDir = Split-Path -Parent $FixturePath
+  $fullFixtureDir = [System.IO.Path]::GetFullPath($fixtureDir).TrimEnd('\', '/')
+  $combined = Join-Path $fixtureDir ($relativeReference -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+  $resolved = [System.IO.Path]::GetFullPath($combined)
+  $directoryPrefix = $fullFixtureDir + [System.IO.Path]::DirectorySeparatorChar
+  if (-not $resolved.StartsWith($directoryPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    return $null
+  }
+
+  $displayPath = ($relativeReference -replace '\\', '/').TrimStart('./')
+  return [pscustomobject]@{
+    full_path = $resolved
+    display_path = $displayPath
+  }
+}
+
+function Get-MissingLocalFixtureAssets([string]$FixturePath) {
+  $content = Get-Content -LiteralPath $FixturePath -Raw
+  $missing = [System.Collections.Generic.List[string]]::new()
+
+  foreach ($reference in (Get-LocalReferenceCandidates -Content $content)) {
+    $resolved = Resolve-LocalFixtureReferencePath -FixturePath $FixturePath -Reference $reference
+    if (-not $resolved) {
+      continue
+    }
+
+    if (-not (Test-Path -LiteralPath $resolved.full_path)) {
+      Add-UniqueString -List $missing -Value $resolved.display_path
+    }
+  }
+
+  return @($missing)
+}
+
 function Resolve-FixtureFiles {
   if ($PSCmdlet.ParameterSetName -eq "ByPaths") {
     $resolved = @()
@@ -170,6 +286,7 @@ for ($i = 0; $i -lt $fixtureFiles.Count; $i++) {
   New-Item -ItemType Directory -Force -Path $fixtureDir | Out-Null
   Copy-Item -Force -LiteralPath $fixture.FullName -Destination (Join-Path $fixtureDir "index.html")
   Copy-FixtureAssets $fixture $fixtureDir
+  $missingLocalAssets = @(Get-MissingLocalFixtureAssets -FixturePath $fixture.FullName)
 
   $fixtureSpecs += [ordered]@{
     name = $fixture.Name
@@ -178,6 +295,8 @@ for ($i = 0; $i -lt $fixtureFiles.Count; $i++) {
     expected_title = Get-HtmlTitle $fixture.FullName
     url = "http://$Host`:$Port/$slug/index.html"
     screenshot_path = Join-Path $outputRoot ($slug + ".png")
+    missing_local_assets = $missingLocalAssets
+    missing_local_asset_count = $missingLocalAssets.Count
   }
 }
 
@@ -202,8 +321,14 @@ try {
     $windowTitle = $null
     $titleMatched = $false
     $screenshotReady = $false
+    $missingLocalAssets = @($fixture.missing_local_assets)
 
     try {
+      if ($fixture.missing_local_asset_count -gt 0) {
+        $missingPreview = ($missingLocalAssets | Select-Object -First 8) -join ", "
+        throw "fixture references missing local assets: $missingPreview"
+      }
+
       $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", $WindowWidth, "--window_height", $WindowHeight, "--screenshot_png", $fixture.screenshot_path, $fixture.url) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
       $screenshotReady = Wait-ForScreenshot -Path $fixture.screenshot_path -Attempts $WindowReadyAttempts -SleepMs $PollMilliseconds
       if (-not $screenshotReady) {
@@ -240,6 +365,8 @@ try {
         screenshot_path = $fixture.screenshot_path
         screenshot_ready = $screenshotReady
         title_matched = $titleMatched
+        missing_local_assets = $missingLocalAssets
+        missing_local_asset_count = $fixture.missing_local_asset_count
         error = $failure
         browser_meta = $browserMeta
       }
@@ -261,6 +388,7 @@ $summary = [ordered]@{
   server_stderr = $serverErr
   fixtures = $results
   fixture_count = $results.Count
+  fixtures_with_missing_local_assets = @($results | Where-Object { $_.missing_local_asset_count -gt 0 }).Count
   server_meta = $serverMeta
 }
 
