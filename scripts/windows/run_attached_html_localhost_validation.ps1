@@ -36,37 +36,8 @@ function Get-DefaultAttachedHtmlInputPath {
     return @($htmlFiles.FullName)
 }
 
-function Select-PreferredInitialPage {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string[]]$ResolvedInputPath
-    )
-
-    $anthropicMatch = $ResolvedInputPath |
-        Where-Object {
-            $leaf = [System.IO.Path]::GetFileName($_)
-            $leaf -match "Anthropic|Job Application"
-        } |
-        Select-Object -First 1
-    if ($anthropicMatch) {
-        return $anthropicMatch
-    }
-
-    $formLikeMatch = $ResolvedInputPath |
-        Where-Object {
-            $leaf = [System.IO.Path]::GetFileName($_)
-            $leaf -match "Application|Form|Apply"
-        } |
-        Select-Object -First 1
-    if ($formLikeMatch) {
-        return $formLikeMatch
-    }
-
-    return $ResolvedInputPath | Select-Object -First 1
-}
-
 if (-not $RepoRoot) {
-    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
 }
 
 $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
@@ -78,7 +49,7 @@ $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     (Resolve-Path -LiteralPath $PreferredInitialPage).Path
 } else {
-    Select-PreferredInitialPage -ResolvedInputPath $resolvedInputPath
+    $null
 }
 
 $runnerPath = Join-Path $RepoRoot "scripts/windows/run_saved_page_localhost_validation.ps1"
@@ -88,10 +59,12 @@ if (-not (Test-Path -LiteralPath $runnerPath -PathType Leaf)) {
 
 $runnerArgs = @{
     InputPath = $resolvedInputPath
-    PreferredInitialPage = $resolvedPreferredInitialPage
     RepoRoot = $RepoRoot
     Host = $Host
     Port = $Port
+}
+if ($resolvedPreferredInitialPage) {
+    $runnerArgs["PreferredInitialPage"] = $resolvedPreferredInitialPage
 }
 
 if ($BrowserExe) {
@@ -111,8 +84,12 @@ if (-not $SummaryOnly) {
     Write-Host "Attached HTML localhost validation"
     Write-Host ""
     Write-Host ("Inputs discovered: {0}" -f $resolvedInputPath.Count)
-    Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
-    Write-Host "Runner: .\scripts\windows\run_saved_page_localhost_validation.ps1"
+    if ($resolvedPreferredInitialPage) {
+        Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
+    } else {
+        Write-Host "Preferred initial page: auto (from saved-page summary)"
+    }
+    Write-Host "Runner: .\\scripts\\windows\\run_saved_page_localhost_validation.ps1"
     Write-Host ""
 }
 
