@@ -36,6 +36,55 @@ function Get-DefaultAttachedHtmlInputPath {
     return @($htmlFiles.FullName)
 }
 
+function Normalize-AttachedHtmlSelector {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = ($Path -replace "\\", "/").Trim()
+    while ($normalized.StartsWith("./")) {
+        $normalized = $normalized.Substring(2)
+    }
+    return $normalized.TrimStart('/')
+}
+
+function Resolve-AttachedPreferredInitialPage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$ResolvedInputPath,
+        [Parameter(Mandatory = $true)]
+        [string]$PreferredInitialPage
+    )
+
+    if (Test-Path -LiteralPath $PreferredInitialPage -PathType Leaf) {
+        return (Resolve-Path -LiteralPath $PreferredInitialPage).Path
+    }
+
+    $normalizedSelector = Normalize-AttachedHtmlSelector -Path $PreferredInitialPage
+    $matches = @(
+        $ResolvedInputPath | Where-Object {
+            $resolvedPath = $_
+            $normalizedResolvedPath = Normalize-AttachedHtmlSelector -Path $resolvedPath
+            $leaf = [System.IO.Path]::GetFileName($resolvedPath)
+
+            [string]::Equals($resolvedPath, $PreferredInitialPage, [System.StringComparison]::OrdinalIgnoreCase) -or
+            [string]::Equals($leaf, $PreferredInitialPage, [System.StringComparison]::OrdinalIgnoreCase) -or
+            [string]::Equals($normalizedResolvedPath, $normalizedSelector, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $normalizedResolvedPath.EndsWith("/" + $normalizedSelector, [System.StringComparison]::OrdinalIgnoreCase)
+        } | Select-Object -Unique
+    )
+
+    if ($matches.Count -eq 1) {
+        return $matches[0]
+    }
+    if ($matches.Count -gt 1) {
+        throw "preferred initial page '$PreferredInitialPage' matched multiple attached HTML files. Pass a more specific path. Matches: $($matches -join '; ')"
+    }
+
+    throw "preferred initial page '$PreferredInitialPage' was not found in the attached HTML inputs. Pass a full path or a unique attached HTML file name."
+}
+
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
 }
@@ -47,7 +96,7 @@ $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
 }
 
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
-    (Resolve-Path -LiteralPath $PreferredInitialPage).Path
+    Resolve-AttachedPreferredInitialPage -ResolvedInputPath $resolvedInputPath -PreferredInitialPage $PreferredInitialPage
 } else {
     $null
 }
