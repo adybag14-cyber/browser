@@ -28,6 +28,16 @@ That wrapper keeps the current localhost-first issue `#3` path together:
 `localhost`, `title`, reduced `home`, `submit-timing`, `shared-enter-order`,
 and `watch`, with the same optional saved-page follow-up parameters.
 
+For the same bounded flow plus the attached-page follow-up when the current run
+already has HTML snapshots under `user_files/` or `agent_files/`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle
+```
+
+That keeps the localhost-first issue `#3` order intact and only folds in the
+attached-page manual follow-up after the bounded phases are green.
+
 For saved or attached localhost HTML pages:
 
 ```powershell
@@ -67,6 +77,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_vali
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-google-submit-timing-probe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order
 ```
+
+When the question is whether the shared Enter path already agrees with the
+reduced Google probes, use the form-controls wrapper before the broader manual
+follow-up:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation.ps1 -Probe google-enter-order
+```
+
+That wrapper keeps the shared label-click, immediate Enter, deferred Enter,
+reduced Google-home submit, and stricter localhost Enter-order gates on one
+command surface.
 
 Only move to `manual` or `trace` after those bounded phases are green.
 
@@ -146,6 +169,7 @@ use the attached-page helpers instead of manually restating each path first:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle
 ```
 
 The flow helper auto-discovers nested `.html` files anywhere under
