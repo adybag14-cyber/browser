@@ -2,9 +2,10 @@
 param(
     [string]$RepoRoot,
     [string]$BrowserExe,
-    [ValidateSet("localhost", "home", "watch", "all")]
+    [ValidateSet("localhost", "home", "shared", "watch", "all")]
     [string]$Phase = "all",
     [switch]$IncludeWatch,
+    [switch]$IncludeSharedInput,
     [switch]$LeaveOpen
 )
 
@@ -22,6 +23,8 @@ if (-not $BrowserExe) {
 $probeRoot = Join-Path $RepoRoot "tmp-browser-smoke"
 $googleLocalhostRoot = Join-Path $probeRoot "google-investigation-next"
 $googleHomeProbe = Join-Path $probeRoot "google-home\chrome-google-home-enter-probe.ps1"
+$formControlsEnterProbe = Join-Path $probeRoot "form-controls\enter-submit-probe.ps1"
+$inlineFlowEnterProbe = Join-Path $probeRoot "inline-flow\chrome-inline-break-input-enter-submit-probe.ps1"
 $watchProbe = Join-Path $scriptRoot "watch_headed_probe.ps1"
 
 $localhostProbes = @(
@@ -70,6 +73,33 @@ function Invoke-HomeSequence {
     Invoke-ProbeScript -Label "google-home-enter" -ScriptPath $googleHomeProbe -Arguments $args
 }
 
+function Invoke-SharedInputSequence {
+    $previousRepoRoot = $env:LIGHTPANDA_REPO_ROOT
+    $previousBrowserExe = $env:LIGHTPANDA_BROWSER_EXE
+    try {
+        $env:LIGHTPANDA_REPO_ROOT = $RepoRoot
+        $env:LIGHTPANDA_BROWSER_EXE = $BrowserExe
+        Invoke-ProbeScript -Label "form-controls-enter-submit" -ScriptPath $formControlsEnterProbe
+    } finally {
+        if ($null -eq $previousRepoRoot) {
+            Remove-Item Env:LIGHTPANDA_REPO_ROOT -ErrorAction SilentlyContinue
+        } else {
+            $env:LIGHTPANDA_REPO_ROOT = $previousRepoRoot
+        }
+        if ($null -eq $previousBrowserExe) {
+            Remove-Item Env:LIGHTPANDA_BROWSER_EXE -ErrorAction SilentlyContinue
+        } else {
+            $env:LIGHTPANDA_BROWSER_EXE = $previousBrowserExe
+        }
+    }
+
+    $args = @{
+        RepoRoot = $RepoRoot
+        BrowserExe = $BrowserExe
+    }
+    Invoke-ProbeScript -Label "inline-flow-enter-submit" -ScriptPath $inlineFlowEnterProbe -Arguments $args
+}
+
 function Invoke-WatchSequence {
     $args = @{
         RepoRoot = $RepoRoot
@@ -96,12 +126,18 @@ switch ($Phase) {
     "home" {
         Invoke-HomeSequence
     }
+    "shared" {
+        Invoke-SharedInputSequence
+    }
     "watch" {
         Invoke-WatchSequence
     }
     "all" {
         Invoke-LocalhostSequence
         Invoke-HomeSequence
+        if ($IncludeSharedInput) {
+            Invoke-SharedInputSequence
+        }
         if ($IncludeWatch) {
             Invoke-WatchSequence
         }
@@ -109,8 +145,12 @@ switch ($Phase) {
 }
 
 Write-Host ("")
-if ($Phase -eq "watch" -or $IncludeWatch) {
+if ($Phase -eq "shared") {
+    Write-Host "Next: return to -Phase home or -Phase watch once the nearby shared input probes are green."
+} elseif ($Phase -eq "watch" -or $IncludeWatch) {
     Write-Host "Next: move on to the smallest live Google manual pass once the watcher confirms SUBMIT:QZ."
+} elseif ($IncludeSharedInput) {
+    Write-Host "Next: if the reduced Google and shared input probes stay green, move on to the smallest live Google manual pass."
 } else {
-    Write-Host "Next: use -IncludeWatch or -Phase watch for the longer title-stream pass before the smallest live Google manual check."
+    Write-Host "Next: use -IncludeSharedInput for the nearby form-controls and inline-flow checks, or -IncludeWatch for the longer title-stream pass before the smallest live Google manual check."
 }
