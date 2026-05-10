@@ -141,7 +141,7 @@ $suiteCatalog = @(
         Category = "input"
         Path = "tmp-browser-smoke/google-investigation-next"
         Purpose = "Reduced Google-style localhost probes for focus churn, delayed readiness, correction, and Enter-submit ordering."
-        RecommendedWith = @("form-controls", "inline-flow")
+        RecommendedWith = @("google-home", "form-controls")
     }
     [pscustomobject]@{
         Name = "google-home"
@@ -355,5 +355,6 @@ Write-Host (Format-SuiteList -Items $suiteCatalog)
 Write-Host "Examples:"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
