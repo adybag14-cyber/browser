@@ -11,32 +11,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Get-AttachedHtmlSearchRoots {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$RepoRoot
-    )
-
-    $candidateRoots = New-Object System.Collections.Generic.List[string]
-    $candidateRoots.Add((Join-Path $RepoRoot "user_files"))
-    $candidateRoots.Add((Join-Path $RepoRoot "agent_files"))
-
-    $repoParent = Split-Path $RepoRoot -Parent
-    if (-not [string]::IsNullOrWhiteSpace($repoParent) -and $repoParent -ne $RepoRoot) {
-        $candidateRoots.Add((Join-Path $repoParent "user_files"))
-        $candidateRoots.Add((Join-Path $repoParent "agent_files"))
-    }
-
-    $currentRoot = (Get-Location).Path
-    if (-not [string]::IsNullOrWhiteSpace($currentRoot)) {
-        $candidateRoots.Add((Join-Path $currentRoot "user_files"))
-        $candidateRoots.Add((Join-Path $currentRoot "agent_files"))
-    }
-
-    return $candidateRoots |
-        Where-Object { Test-Path -LiteralPath $_ -PathType Container } |
-        Select-Object -Unique
-}
+. (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
 
 function Get-DefaultAttachedHtmlInputPath {
     param(
@@ -120,15 +95,17 @@ function Select-GoogleStyleInitialPage {
         [string[]]$ResolvedInputPath
     )
 
-    return $ResolvedInputPath |
-        Where-Object {
-            $leaf = [System.IO.Path]::GetFileName($_)
-            $leaf -match "Google|Safety|Search|Privacy"
-        } |
-        Select-Object -First 1
+    foreach ($path in $ResolvedInputPath) {
+        $fixture = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+        if ($fixture -and (Test-GoogleStyleFixture $fixture)) {
+            return $fixture.FullName
+        }
+    }
+
+    return $null
 }
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
+$repoRoot = Resolve-LightpandaRepoRoot $PSScriptRoot
 $usingExplicitInputPath = $InputPath -and $InputPath.Count -gt 0
 $resolvedInputPath = if ($usingExplicitInputPath) {
     @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
