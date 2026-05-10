@@ -26,7 +26,7 @@ $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase loc
 $titleCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase title"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1$leaveOpenArgument"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
-$submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase submit-timing"
+$submitTimingCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace$leaveOpenArgument"
@@ -49,7 +49,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the bounded Google-shaped submit-timing pass through the shared runner, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the bounded Google-shaped submit-timing pass through a dedicated wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     leave_open = [bool]$LeaveOpen
     steps = @(
@@ -75,7 +75,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "submit-timing"
-            goal = "Run the bounded Google-shaped timing probe through the shared runner so typed text plus keydown,keypress,submit ordering stay on the same reusable command surface."
+            goal = "Run the bounded Google-shaped timing probe through the dedicated submit-timing wrapper so typed text plus keydown,keypress,submit ordering stay on one reusable command surface."
             command = $submitTimingCommand
         }
         [ordered]@{
