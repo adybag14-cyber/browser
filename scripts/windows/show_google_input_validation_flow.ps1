@@ -74,11 +74,29 @@ $flow = [ordered]@{
             command = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInputPath '<saved-html-or-folder>'"
         }
     }
+    common_overrides = @(
+        "-Host 127.0.0.1",
+        "-TitlePort 9582",
+        "-HomePort 8168",
+        "-WatchPort 9582",
+        "-SharedDefaultPort 8154",
+        "-SharedDeferredPort 8155",
+        "-InlineFlowPort 8148",
+        "-InputText QZ",
+        "-SharedInputText Q",
+        "-ServerReadyTimeoutSeconds 15",
+        "-HomeWindowReadyAttempts 60",
+        "-HomeTitleWaitAttempts 80",
+        "-HomePollMilliseconds 250",
+        "-WatchTimeoutSeconds 90",
+        "-WatchPollMilliseconds 250"
+    )
     notes = @(
         "Start with localhost before title or quick so the reduced Google-style probes stay the first bounded gate.",
         "Use shared before a live Google manual check when input or submit behavior still looks suspicious.",
         "Use manual only after the closest bounded suite is already green.",
-        "Use full when you want the runner's built-in localhost-first order plus the extra title, shared, and watch phases in one pass."
+        "Use full when you want the runner's built-in localhost-first order plus the extra title, shared, and watch phases in one pass.",
+        "Use the common overrides when you need to keep the title, home, watch, and shared probes aligned on the same host, ports, timing budget, or input text."
     )
 }
 
@@ -98,6 +116,11 @@ foreach ($step in $flow.steps) {
 }
 Write-Host "[manual] $($flow.saved_page_follow_up.goal)"
 Write-Host ("  {0}" -f $flow.saved_page_follow_up.command)
+Write-Host ""
+Write-Host "Common overrides:"
+foreach ($override in $flow.common_overrides) {
+    Write-Host ("- {0}" -f $override)
+}
 Write-Host ""
 Write-Host "Notes:"
 foreach ($note in $flow.notes) {
