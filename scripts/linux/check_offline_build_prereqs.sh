@@ -19,7 +19,9 @@ Rust/Cargo toolchain still required by `build.zig`'s html5ever step, accepts
 the current offline manifest backup names, and prints the suggested validation
 command. Use `--zig-binary`, `--cargo-binary`, `--rustc-binary`, `ZIG=...`,
 `CARGO=...`, or `RUSTC=...` when compatible toolchains are installed outside
-PATH.
+PATH. When the configured Zig binary is missing or version-mismatched, the
+helper also scans nearby workspace roots for an exact-match Zig and prints
+rerun hints for the discovered candidate paths.
 EOF
 }
 
@@ -67,6 +69,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 all_ok=true
+zig_candidate_details=()
+zig_candidate_paths=()
 
 write_status() {
     local name="$1"
@@ -104,6 +108,50 @@ resolve_command() {
     return 1
 }
 
+append_unique_search_root() {
+    local candidate="$1"
+    [[ -n "${candidate}" ]] || return 0
+    [[ -d "${candidate}" ]] || return 0
+
+    local resolved
+    resolved="$(cd "${candidate}" && pwd)"
+    for existing in "${ZIG_SEARCH_ROOTS[@]:-}"; do
+        if [[ "${existing}" == "${resolved}" ]]; then
+            return 0
+        fi
+    done
+    ZIG_SEARCH_ROOTS+=("${resolved}")
+}
+
+discover_matching_zig_candidates() {
+    local expected_version="$1"
+    shift
+
+    local root
+    local candidate
+    local candidate_version
+    local -A seen=()
+    zig_candidate_details=()
+    zig_candidate_paths=()
+
+    for root in "$@"; do
+        [[ -d "${root}" ]] || continue
+        while IFS= read -r candidate; do
+            [[ -n "${candidate}" ]] || continue
+            if [[ -n "${seen["${candidate}"]:-}" ]]; then
+                continue
+            fi
+            seen["${candidate}"]=1
+
+            candidate_version="$("${candidate}" version 2>/dev/null | tr -d '\r' || true)"
+            if [[ "${candidate_version}" == "${expected_version}" ]]; then
+                zig_candidate_details+=("${candidate} (${candidate_version})")
+                zig_candidate_paths+=("${candidate}")
+            fi
+        done < <(find "${root}" -maxdepth 4 -type f -name zig -perm -u+x 2>/dev/null)
+    done
+}
+
 if [[ ! -f "${BROWSER_ROOT}/build.zig.zon" ]]; then
     write_status "BrowserRoot" false "build.zig.zon not found under ${BROWSER_ROOT}"
     echo
@@ -116,6 +164,15 @@ BUILD_ZON_PATH="${BROWSER_ROOT}/build.zig.zon"
 WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
 BUILD_ZON_BACKUP=""
+ZIG_SEARCH_ROOTS=()
+append_unique_search_root "${BROWSER_ROOT}"
+append_unique_search_root "${WORKSPACE_ROOT}"
+append_unique_search_root "$(cd "${WORKSPACE_ROOT}/.." && pwd 2>/dev/null || true)"
+if [[ -n "${ZIG_BINARY}" ]]; then
+    append_unique_search_root "$(dirname "${ZIG_BINARY}")"
+    append_unique_search_root "$(cd "$(dirname "${ZIG_BINARY}")/.." && pwd 2>/dev/null || true)"
+fi
+
 for candidate in \
     "${BROWSER_ROOT}/build.zig.zon.remote-sources.bak" \
     "${BROWSER_ROOT}/build.zig.zon.before-offline"
@@ -141,7 +198,7 @@ PY
 zig_version=""
 zig_cmd="$(resolve_command "${ZIG_BINARY}" "Zig" zig || true)"
 if [[ -n "${zig_cmd}" ]]; then
-    zig_version="$(${zig_cmd} version | tr -d '\r')"
+    zig_version="$("${zig_cmd}" version | tr -d '\r')"
     write_status "Zig" true "${zig_cmd} (${zig_version})"
 fi
 
@@ -153,15 +210,26 @@ if [[ -n "${zig_version}" ]]; then
     fi
 fi
 
+if [[ -z "${zig_cmd}" || "${zig_version}" != "${MINIMUM_ZIG_VERSION}" ]]; then
+    discover_matching_zig_candidates "${MINIMUM_ZIG_VERSION}" "${ZIG_SEARCH_ROOTS[@]}"
+    if (( ${#zig_candidate_details[@]} > 0 )); then
+        for candidate_detail in "${zig_candidate_details[@]}"; do
+            write_status "ZigCandidate" true "${candidate_detail}"
+        done
+    else
+        write_status "ZigCandidate" false "no local zig binary matching ${MINIMUM_ZIG_VERSION} was discovered under ${ZIG_SEARCH_ROOTS[*]}"
+    fi
+fi
+
 cargo_cmd="$(resolve_command "${CARGO_BINARY}" "Cargo" cargo || true)"
 if [[ -n "${cargo_cmd}" ]]; then
-    cargo_version="$(${cargo_cmd} --version | tr -d '\r')"
+    cargo_version="$("${cargo_cmd}" --version | tr -d '\r')"
     write_status "Cargo" true "${cargo_cmd} (${cargo_version})"
 fi
 
 rustc_cmd="$(resolve_command "${RUSTC_BINARY}" "Rustc" rustc || true)"
 if [[ -n "${rustc_cmd}" ]]; then
-    rustc_version="$(${rustc_cmd} --version | tr -d '\r')"
+    rustc_version="$("${rustc_cmd}" --version | tr -d '\r')"
     write_status "Rustc" true "${rustc_cmd} (${rustc_version})"
 fi
 
@@ -266,5 +334,14 @@ fi
 
 echo
 echo "Offline build prerequisites are not ready yet."
+if (( ${#zig_candidate_paths[@]} > 0 )); then
+    echo "Compatible Zig candidate(s) were found locally. Re-run the preflight with one of these:"
+    for candidate_path in "${zig_candidate_paths[@]}"; do
+        printf "  --zig-binary '%s'\n" "${candidate_path}"
+        printf "  ZIG='%s' scripts/linux/check_offline_build_prereqs.sh\n" "${candidate_path}"
+    done
+else
+    echo "No local Zig candidate matching ${MINIMUM_ZIG_VERSION} was discovered in the nearby workspace roots."
+fi
 echo "Run scripts/linux/restore_offline_build_inputs.sh (or scripts/linux/prepare_offline_build_inputs.sh for custom archive locations), switch to Zig ${MINIMUM_ZIG_VERSION}, and make sure cargo plus rustc are available before retrying zig build. Use --zig-binary /path/to/zig, --cargo-binary /path/to/cargo, --rustc-binary /path/to/rustc, or the ZIG/CARGO/RUSTC environment variables when the compatible toolchains are installed outside PATH."
 exit 1
