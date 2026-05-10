@@ -101,12 +101,68 @@ class FormHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        if self.path == "/google-enter-order.html":
+            body = (
+                b"<!doctype html><html><head><meta charset=\"utf-8\">"
+                b"<title>Google Enter Ready</title>"
+                b"</head><body style=\"margin:0;background:white;color:#202124;font:16px Arial,sans-serif;\">"
+                b"<main style=\"padding:28px 24px;\">"
+                b"<form action=\"/submitted.html\" method=\"get\" name=\"f\" style=\"display:block;\">"
+                b"<input type=\"hidden\" name=\"submit_phase\" id=\"submit_phase\" value=\"idle\" />"
+                b"<input type=\"hidden\" name=\"event_log\" id=\"event_log\" value=\"\" />"
+                b"<label for=\"q\" style=\"display:block;margin:0 0 10px 0;font-size:14px;\">Search</label>"
+                b"<input id=\"q\" name=\"q\" type=\"text\" autofocus autocomplete=\"off\""
+                b" style=\"display:block;width:280px;height:40px;padding:8px 10px;border:1px solid #5f6368;\" />"
+                b"</form>"
+                b"<script>"
+                b"const form=document.forms.f;"
+                b"const input=form.q;"
+                b"const submitPhase=document.getElementById('submit_phase');"
+                b"const eventLog=document.getElementById('event_log');"
+                b"const events=[];"
+                b"function pushEvent(label){events.push(label);eventLog.value=events.join(',');}"
+                b"input.addEventListener('keydown',function(e){"
+                b" if(e.key==='Enter'){submitPhase.value='keydown';pushEvent('KD:Enter:'+input.value);}"
+                b"},true);"
+                b"input.addEventListener('keypress',function(e){"
+                b" if(e.key==='Enter'){submitPhase.value='keypress';pushEvent('KP:Enter:'+input.value);}"
+                b"},true);"
+                b"input.addEventListener('beforeinput',function(e){"
+                b" if(typeof e.data==='string'){pushEvent('BI:'+e.data+':'+input.value);}"
+                b"},true);"
+                b"input.addEventListener('input',function(){"
+                b" document.title='Google Enter VALUE:'+input.value;"
+                b" pushEvent('IN:'+input.value);"
+                b"},true);"
+                b"form.addEventListener('submit',function(){"
+                b" pushEvent('SUBMIT:'+input.value);"
+                b" document.title='Google Enter SUBMIT:'+input.value+'|'+submitPhase.value;"
+                b"},true);"
+                b"</script>"
+                b"</main></body></html>"
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if self.path.startswith("/submitted.html"):
             sys.stderr.write("FORM_SUBMIT " + self.path + "\n")
             sys.stderr.flush()
             parsed = urllib.parse.urlparse(self.path)
             params = urllib.parse.parse_qs(parsed.query)
-            value = params.get("name", [""])[0] or params.get("q", [""])[0]
+            name = params.get("name", [""])[0]
+            query = params.get("q", [""])[0]
+            submit_phase = params.get("submit_phase", [""])[0]
+            event_log = params.get("event_log", [""])[0]
+            if query or submit_phase or event_log:
+                sys.stderr.write(
+                    "GOOGLE_ENTER_SUBMIT q=%s phase=%s events=%s\n" % (query, submit_phase, event_log)
+                )
+                sys.stderr.flush()
+            value = name or query
             title = f"Submitted {value}".encode("utf-8")
             body = (
                 b"<!doctype html><html><head><meta charset=\"utf-8\"><title>"
