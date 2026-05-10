@@ -23,6 +23,7 @@ if (-not $BrowserExe) {
 $probeRoot = Join-Path $RepoRoot "tmp-browser-smoke"
 $googleLocalhostRoot = Join-Path $probeRoot "google-investigation-next"
 $googleHomeProbe = Join-Path $probeRoot "google-home\chrome-google-home-enter-probe.ps1"
+$deferredEnterProbe = Join-Path $probeRoot "form-controls\deferred-enter-submit-probe.ps1"
 $formControlsEnterProbe = Join-Path $probeRoot "form-controls\enter-submit-probe.ps1"
 $inlineFlowEnterProbe = Join-Path $probeRoot "inline-flow\chrome-inline-break-input-enter-submit-probe.ps1"
 $watchProbe = Join-Path $scriptRoot "watch_headed_probe.ps1"
@@ -79,6 +80,7 @@ function Invoke-SharedInputSequence {
     try {
         $env:LIGHTPANDA_REPO_ROOT = $RepoRoot
         $env:LIGHTPANDA_BROWSER_EXE = $BrowserExe
+        Invoke-ProbeScript -Label "form-controls-deferred-enter-submit" -ScriptPath $deferredEnterProbe
         Invoke-ProbeScript -Label "form-controls-enter-submit" -ScriptPath $formControlsEnterProbe
     } finally {
         if ($null -eq $previousRepoRoot) {
@@ -146,11 +148,11 @@ switch ($Phase) {
 
 Write-Host ("")
 if ($Phase -eq "shared") {
-    Write-Host "Next: return to -Phase home or -Phase watch once the nearby shared input probes are green."
+    Write-Host "Next: return to -Phase home or -Phase watch once the deferred/basic form-controls and inline-flow probes are green."
 } elseif ($Phase -eq "watch" -or $IncludeWatch) {
     Write-Host "Next: move on to the smallest live Google manual pass once the watcher confirms SUBMIT:QZ."
 } elseif ($IncludeSharedInput) {
-    Write-Host "Next: if the reduced Google and shared input probes stay green, move on to the smallest live Google manual pass."
+    Write-Host "Next: if the reduced Google, deferred/basic form-controls, and inline-flow probes stay green, move on to the smallest live Google manual pass."
 } else {
-    Write-Host "Next: use -IncludeSharedInput for the nearby form-controls and inline-flow checks, or -IncludeWatch for the longer title-stream pass before the smallest live Google manual check."
+    Write-Host "Next: use -IncludeSharedInput for the deferred/basic form-controls plus inline-flow checks, or -IncludeWatch for the longer title-stream pass before the smallest live Google manual check."
 }
