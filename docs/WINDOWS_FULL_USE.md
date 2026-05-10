@@ -82,6 +82,7 @@ Command-line helper:
 ```powershell
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
 .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName layout-smoke
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-home
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input -Json
 ```
 
