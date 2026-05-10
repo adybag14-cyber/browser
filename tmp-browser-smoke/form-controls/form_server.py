@@ -68,17 +68,50 @@ class FormHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        if self.path == "/deferred-submit.html":
+            body = (
+                b"<!doctype html><html><head><meta charset=\"utf-8\">"
+                b"<title>Deferred Enter Base</title>"
+                b"</head><body style=\"margin:0;background:white;color:#222;font:22px sans-serif;\">"
+                b"<main style=\"display:block;padding:24px;\">"
+                b"<form id=\"search-form\" name=\"f\" action=\"/submitted.html\" method=\"get\" style=\"display:block;\">"
+                b"<label for=\"q\" style=\"display:block;margin:0 0 10px 0;\">Query</label>"
+                b"<input id=\"q\" name=\"q\" type=\"text\" autofocus"
+                b" style=\"display:block;width:220px;height:40px;padding:8px;border:1px solid #666;\" />"
+                b"</form>"
+                b"<script>"
+                b"const form = document.forms.f;"
+                b"const queryInput = form.elements.q;"
+                b"queryInput.addEventListener('input', function() {"
+                b" document.title='Deferred Enter Typed '+queryInput.value;"
+                b"});"
+                b"queryInput.addEventListener('keydown', function(event) {"
+                b" if (event.key !== 'Enter') return;"
+                b" event.preventDefault();"
+                b" document.title='Deferred Enter Pending '+queryInput.value;"
+                b" setTimeout(function() { form.requestSubmit(); }, 0);"
+                b"});"
+                b"</script>"
+                b"</main></body></html>"
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if self.path.startswith("/submitted.html"):
             sys.stderr.write("FORM_SUBMIT " + self.path + "\n")
             sys.stderr.flush()
             parsed = urllib.parse.urlparse(self.path)
             params = urllib.parse.parse_qs(parsed.query)
-            name = params.get("name", [""])[0]
-            title = f"Submitted {name}".encode("utf-8")
+            value = params.get("name", [""])[0] or params.get("q", [""])[0]
+            title = f"Submitted {value}".encode("utf-8")
             body = (
-                b"<!doctype html><html><head><meta charset=\"utf-8\"><title>" +
-                title +
-                b"</title></head><body><h1>Submitted</h1></body></html>"
+                b"<!doctype html><html><head><meta charset=\"utf-8\"><title>"
+                + title
+                + b"</title></head><body><h1>Submitted</h1></body></html>"
             )
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
