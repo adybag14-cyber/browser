@@ -101,6 +101,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 ```
 
 For the current Google search-box work behind issue `#3`, use these helpers in
@@ -133,6 +134,7 @@ Routing rules:
 - Start with the smallest bounded localhost suite before a saved-page or live-site pass.
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
 - Use `run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle` when you want the one-command issue `#3` flow to finish by auto-discovering current-run attached HTML under `user_files/` and `agent_files/`, while preferring a Google-like page first.
+- Use `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` when you want the shared validation router to point directly at the dedicated attached-HTML Google follow-up helper.
 - Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
 - Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
 - Use `show_google_attached_html_validation_flow.ps1` when you want the printed Google-style localhost-first flow for auto-discovered attached HTML without reshaping the broader issue `#3` commands by hand.
