@@ -34,7 +34,7 @@ $sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
 $googleTitleProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1"
 $reducedHomeKeypressProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1"
 $localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
-$formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\google-enter-order-probe.ps1"
+$formControlsEnterOrderRunner = Join-Path $scriptRoot "run_google_form_controls_enter_order_validation.ps1"
 
 if (-not (Test-Path -LiteralPath $sharedRunner -PathType Leaf)) {
     throw "Shared Google validation runner not found: $sharedRunner"
@@ -48,8 +48,8 @@ if (-not (Test-Path -LiteralPath $reducedHomeKeypressProbe -PathType Leaf)) {
 if (-not (Test-Path -LiteralPath $localhostEnterOrderProbe -PathType Leaf)) {
     throw "Google enter-order localhost probe not found: $localhostEnterOrderProbe"
 }
-if (-not (Test-Path -LiteralPath $formControlsEnterOrderProbe -PathType Leaf)) {
-    throw "Dedicated shared form-controls Google enter-order probe not found: $formControlsEnterOrderProbe"
+if (-not (Test-Path -LiteralPath $formControlsEnterOrderRunner -PathType Leaf)) {
+    throw "Dedicated shared form-controls Google enter-order runner not found: $formControlsEnterOrderRunner"
 }
 
 $sharedArgs = @{
@@ -110,12 +110,12 @@ $formControlsEnterOrderArgs = @{
     RepoRoot = $RepoRoot
     BrowserExe = $BrowserExe
     Host = $Host
-    Port = $SharedEnterOrderPort
-    InputText = $SharedInputText
+    SharedEnterOrderPort = $SharedEnterOrderPort
+    SharedInputText = $SharedInputText
     ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
-    WindowReadyAttempts = $HomeWindowReadyAttempts
-    TitleWaitAttempts = $HomeTitleWaitAttempts
-    PollMilliseconds = $HomePollMilliseconds
+    HomeWindowReadyAttempts = $HomeWindowReadyAttempts
+    HomeTitleWaitAttempts = $HomeTitleWaitAttempts
+    HomePollMilliseconds = $HomePollMilliseconds
 }
 
 Write-Host "Google shared Enter-order validation"
@@ -147,8 +147,8 @@ Write-Host ("Script: {0}" -f $localhostEnterOrderProbe)
 
 Write-Host ""
 Write-Host "=== form-controls-google-enter-order ==="
-Write-Host ("Script: {0}" -f $formControlsEnterOrderProbe)
-& $formControlsEnterOrderProbe @formControlsEnterOrderArgs
+Write-Host ("Script: {0}" -f $formControlsEnterOrderRunner)
+& $formControlsEnterOrderRunner @formControlsEnterOrderArgs
 
 Write-Host ""
 Write-Host "Next: if the shared gates, localhost title probe, reduced-home keypress-before-submit probe, dedicated shared form-controls Google enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
