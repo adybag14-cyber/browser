@@ -15,10 +15,7 @@ The browser repo expects these sibling paths:
 
 The browser build also needs local copies of:
 
-- `../offline-deps/brotli`
-- `../offline-deps/zlib`
-- `../offline-deps/nghttp2`
-- `../offline-deps/curl`
+- `../offline-deps/...` for brotli, zlib, nghttp2, and curl
 - a prebuilt `libc_v8_*.a` archive for `-Dprebuilt_v8_path`
 
 If html5ever was saved as a vendor bundle, the repo root should also contain:
@@ -28,13 +25,11 @@ If html5ever was saved as a vendor bundle, the repo root should also contain:
 
 ## Restore Helper
 
-Run the in-repo helper from the browser checkout:
+When the saved dependency archives already live under the standard Memory path,
+run the in-repo helper from the browser checkout with no extra arguments:
 
 ```bash
-scripts/linux/prepare_offline_build_inputs.sh \
-  --browser-deps-archive /path/to/zig-browser-depo.tar.zip \
-  --boringssl-archive /path/to/boringssl-zig-main.zip \
-  --html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip
+scripts/linux/restore_offline_build_inputs.sh
 ```
 
 What it does:
@@ -43,11 +38,21 @@ What it does:
 2. extracts `boringssl-zig` beside the browser repo
 3. extracts brotli, zlib, nghttp2, curl, and any prebuilt `libc_v8_*.a`
    archive under `../offline-deps/`
-4. restores `.cargo/config.toml` and `vendor/` when the html5ever archive is
-   provided
-5. saves a one-time backup at `build.zig.zon.before-offline`
+4. restores `.cargo/config.toml` and `vendor/` from the saved html5ever bundle
+5. saves a one-time backup at `build.zig.zon.remote-sources.bak`
 6. rewrites `build.zig.zon` from remote URL dependencies to local `.path`
    dependencies
+7. removes `zig-v8-fork`'s remote `depot_tools` dependency when the saved
+   prebuilt V8 archive is being used for offline validation
+
+If the archives live somewhere else, use the explicit-archive helper instead:
+
+```bash
+scripts/linux/prepare_offline_build_inputs.sh \
+  --browser-deps-archive /path/to/zig-browser-depo.tar.zip \
+  --boringssl-archive /path/to/boringssl-zig-main.zip \
+  --html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip
+```
 
 ## Preflight Check
 
@@ -61,14 +66,18 @@ What it checks:
 
 1. `zig version` exactly matches the `build.zig.zon` minimum (`0.15.2` on the
    current branch)
-2. `build.zig.zon.before-offline` exists
-3. `build.zig.zon` points brotli, zlib, nghttp2, and curl at `../offline-deps`
+2. an offline manifest backup exists at either
+   `build.zig.zon.remote-sources.bak` or the older
+   `build.zig.zon.before-offline`
+3. `build.zig.zon` points brotli, zlib, nghttp2, and curl at local
+   `../offline-deps/...` paths
 4. the sibling `zig-v8-fork` and `boringssl-zig` directories exist
 5. the extracted offline dependency directories, `.cargo/config.toml`,
    `vendor/`, and a prebuilt `libc_v8_*.a` archive are present
 
-If the preflight fails, rerun `scripts/linux/prepare_offline_build_inputs.sh`
-or switch to the repo-compatible Zig toolchain before retrying the build.
+If the preflight fails, rerun `scripts/linux/restore_offline_build_inputs.sh`
+or use `scripts/linux/prepare_offline_build_inputs.sh` when the archives are
+stored outside the standard Memory layout.
 
 ## Validation
 
@@ -86,7 +95,9 @@ Expected result:
 
 ## Notes
 
-- The helper is intentionally destructive for the extracted sibling dependency
-  directories and for `vendor/`; it rebuilds those from the supplied archives.
-- The original manifest is preserved at `build.zig.zon.before-offline` so the
-  checkout can be restored after the offline validation pass.
+- The helpers are intentionally destructive for the extracted sibling
+  dependency directories and for `vendor/`; they rebuild those from the saved
+  archives.
+- The original manifest is preserved at `build.zig.zon.remote-sources.bak` on
+  the current path, with `build.zig.zon.before-offline` still accepted as a
+  legacy backup name.
