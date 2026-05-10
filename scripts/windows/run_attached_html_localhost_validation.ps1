@@ -15,26 +15,45 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Get-AttachedHtmlSearchRoots {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    return @(
+        (Join-Path $RepoRoot "user_files"),
+        (Join-Path $RepoRoot "agent_files")
+    ) | Where-Object {
+        Test-Path -LiteralPath $_ -PathType Container
+    }
+}
+
 function Get-DefaultAttachedHtmlInputPath {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepoRoot
     )
 
-    $agentFilesRoot = Join-Path $RepoRoot "agent_files"
-    if (-not (Test-Path -LiteralPath $agentFilesRoot -PathType Container)) {
-        throw "agent_files directory not found: $agentFilesRoot"
+    $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
+    if ($searchRoots.Count -eq 0) {
+        throw "attached HTML directories not found under $(Join-Path $RepoRoot 'user_files') or $(Join-Path $RepoRoot 'agent_files')"
     }
 
-    $htmlFiles = Get-ChildItem -LiteralPath $agentFilesRoot -Recurse -File |
-        Where-Object { $_.Extension -in @(".html", ".htm") } |
-        Sort-Object FullName
+    $htmlFiles = @(
+        foreach ($root in $searchRoots) {
+            Get-ChildItem -LiteralPath $root -Recurse -File |
+                Where-Object { $_.Extension -in @(".html", ".htm") } |
+                Sort-Object FullName |
+                ForEach-Object { $_.FullName }
+        }
+    ) | Select-Object -Unique
 
     if ($htmlFiles.Count -eq 0) {
-        throw "no attached HTML files were found anywhere under $agentFilesRoot"
+        throw "no attached HTML files were found anywhere under $($searchRoots -join '; ')"
     }
 
-    return @($htmlFiles.FullName)
+    return @($htmlFiles)
 }
 
 function Normalize-AttachedHtmlSelector {
