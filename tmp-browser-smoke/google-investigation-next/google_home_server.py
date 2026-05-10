@@ -32,6 +32,29 @@ class GoogleHomeHandler(http.server.BaseHTTPRequestHandler):
             self.send_bytes(200, b"ok", "text/plain; charset=utf-8")
             return
 
+        if path == "/google-home-enter-submit.html":
+            self.send_bytes(200, self.enter_submit_fixture_html(), "text/html; charset=utf-8")
+            return
+
+        if path == "/google-home-result.html":
+            sys.stderr.write("GOOGLE_HOME_SUBMIT " + self.path + "\n")
+            sys.stderr.flush()
+            params = urllib.parse.parse_qs(parsed.query)
+            query = params.get("q", [""])[0]
+            submit_stage = params.get("submit_stage", ["none"])[0]
+            keypress_seen = params.get("keypress_seen", ["0"])[0]
+            title = f"Google Home Result {submit_stage} {query}".encode("utf-8")
+            body = (
+                b'<!doctype html><html><head><meta charset="utf-8"><title>'
+                + title
+                + b'</title></head><body style="font:20px Arial,sans-serif;">'
+                + b"<h1>Google Home Result</h1>"
+                + f"<p>query={query}</p><p>submit_stage={submit_stage}</p><p>keypress_seen={keypress_seen}</p>".encode("utf-8")
+                + b"</body></html>"
+            )
+            self.send_bytes(200, body, "text/html; charset=utf-8")
+            return
+
         if path in {"/", "/google-home.html"}:
             self.send_bytes(200, self.fixture_html, "text/html; charset=utf-8")
             return
@@ -75,6 +98,53 @@ class GoogleHomeHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    @staticmethod
+    def enter_submit_fixture_html() -> bytes:
+        return (
+            b'<!doctype html><html><head><meta charset="utf-8">'
+            b"<title>Google Home Input Ready</title>"
+            b'</head><body style="margin:0;background:#ffffff;color:#202124;font:20px Arial,sans-serif;">'
+            b'<main style="display:flex;min-height:100vh;align-items:center;justify-content:center;">'
+            b'<table role="presentation" style="border-collapse:collapse;">'
+            b'<tr><td style="padding:24px 32px;text-align:center;">'
+            b'<div style="font-size:34px;margin-bottom:18px;color:#4285f4;">Google Home Probe</div>'
+            b'<form name="f" action="/google-home-result.html" method="get" style="display:block;">'
+            b'<input id="q" name="q" type="text" autofocus'
+            b' style="display:block;width:420px;height:48px;padding:0 16px;border:1px solid #dadce0;border-radius:24px;font-size:22px;" />'
+            b'<input id="keydown_seen" name="keydown_seen" type="hidden" value="0" />'
+            b'<input id="keypress_seen" name="keypress_seen" type="hidden" value="0" />'
+            b'<input id="submit_stage" name="submit_stage" type="hidden" value="none" />'
+            b"</form>"
+            b"</td></tr></table></main>"
+            b"<script>"
+            b"const form = document.f;"
+            b"const input = form.q;"
+            b"const keydownSeen = document.getElementById('keydown_seen');"
+            b"const keypressSeen = document.getElementById('keypress_seen');"
+            b"const submitStage = document.getElementById('submit_stage');"
+            b"input.addEventListener('input', function() {"
+            b" document.title = 'Google Home Input ' + input.value;"
+            b"});"
+            b"input.addEventListener('keydown', function(event) {"
+            b" if (event.key === 'Enter') {"
+            b"  keydownSeen.value = '1';"
+            b"  submitStage.value = 'keydown';"
+            b"  document.title = 'Google Home Keydown ' + input.value;"
+            b" }"
+            b"});"
+            b"input.addEventListener('keypress', function(event) {"
+            b" if (event.key === 'Enter') {"
+            b"  keypressSeen.value = '1';"
+            b"  submitStage.value = 'keypress';"
+            b"  document.title = 'Google Home Keypress ' + input.value;"
+            b" }"
+            b"});"
+            b"form.addEventListener('submit', function() {"
+            b" document.title = 'Google Home Submit ' + submitStage.value + ' ' + input.value;"
+            b"});"
+            b"</script></body></html>"
+        )
 
 
 class ReusableTCPServer(socketserver.TCPServer):
