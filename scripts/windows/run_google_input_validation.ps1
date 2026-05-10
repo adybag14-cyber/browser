@@ -150,11 +150,8 @@ function Invoke-SharedInputSequence {
     $deferredArgs.Port = $SharedDeferredPort
     Invoke-ProbeScript -Label "form-controls-deferred-enter-submit" -ScriptPath $formControlsEnterProbe -Arguments $deferredArgs
 
-    $inlineArgs = @{
-        RepoRoot = $RepoRoot
-        BrowserExe = $BrowserExe
-        Port = $InlineFlowPort
-    }
+    $inlineArgs = $commonArgs.Clone()
+    $inlineArgs.Port = $InlineFlowPort
     Invoke-ProbeScript -Label "inline-flow-enter-submit" -ScriptPath $inlineFlowEnterProbe -Arguments $inlineArgs
 }
 
