@@ -4,26 +4,17 @@ param(
     [string]$BrowserExe,
     [string]$Url = "http://127.0.0.1:9582/src/browser/tests/page/google_home_title_probe.html",
     [string]$ExpectedTitleContains = "BOUND|",
+    [string]$ExpectedTypedTitleContains,
+    [string]$ExpectedEnterTitleContains,
+    [string]$InputText,
     [int]$TimeoutSeconds = 90,
     [int]$PollMilliseconds = 250,
+    [switch]$SendEnter,
     [switch]$LeaveOpen
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-
-if (-not ("LightpandaProbeUser32" -as [type])) {
-    Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-using System.Text;
-
-public static class LightpandaProbeUser32 {
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern int GetWindowTextW(IntPtr hWnd, StringBuilder text, int count);
-}
-"@
-}
 
 $scriptRoot = $PSScriptRoot
 if (-not $RepoRoot) {
@@ -35,6 +26,8 @@ if (-not $BrowserExe) {
 if (-not (Test-Path -LiteralPath $BrowserExe)) {
     throw "headed browser binary not found: $BrowserExe"
 }
+
+. (Join-Path $RepoRoot "tmp-browser-smoke\common\Win32Input.ps1")
 
 $artifactRoot = Join-Path $RepoRoot "tmp-browser-smoke\headed-probe"
 New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
@@ -63,37 +56,88 @@ $stderrTask = $process.StandardError.ReadToEndAsync()
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $lastTitle = ""
-$matchedExpectation = $false
+$matchedReady = [string]::IsNullOrWhiteSpace($ExpectedTitleContains)
+$matchedTyped = [string]::IsNullOrEmpty($InputText)
+$matchedEnter = -not $SendEnter
+$inputSent = [string]::IsNullOrEmpty($InputText)
+$enterSent = -not $SendEnter
+$preparedWindow = $false
 $trace = New-Object System.Collections.Generic.List[object]
 
 Write-Host ("Watching headed probe at {0}" -f $Url)
-Write-Host ("Expected title marker: {0}" -f $ExpectedTitleContains)
+if ($ExpectedTitleContains) {
+    Write-Host ("Expected ready title marker: {0}" -f $ExpectedTitleContains)
+}
+if ($InputText) {
+    Write-Host ("Input text: {0}" -f $InputText)
+}
+if ($ExpectedTypedTitleContains) {
+    Write-Host ("Expected typed title marker: {0}" -f $ExpectedTypedTitleContains)
+}
+if ($SendEnter) {
+    Write-Host "Enter will be sent after the ready or typed condition is met."
+}
+if ($ExpectedEnterTitleContains) {
+    Write-Host ("Expected enter title marker: {0}" -f $ExpectedEnterTitleContains)
+}
 
 while ((Get-Date) -lt $deadline) {
     if ($process.HasExited) {
         break
     }
 
-    if ($process.MainWindowHandle -ne 0) {
-        $buffer = New-Object System.Text.StringBuilder 2048
-        [void][LightpandaProbeUser32]::GetWindowTextW($process.MainWindowHandle, $buffer, $buffer.Capacity)
-        $title = $buffer.ToString()
-        if ($title -and $title -ne $lastTitle) {
-            $stamp = (Get-Date).ToUniversalTime().ToString("o")
-            $entry = [pscustomobject]@{
-                observed_at_utc = $stamp
-                title = $title
-            }
-            $trace.Add($entry) | Out-Null
-            $lastTitle = $title
-            Write-Host ("[{0}] {1}" -f $stamp, $title)
-            if ($ExpectedTitleContains -and $title.Contains($ExpectedTitleContains)) {
-                $matchedExpectation = $true
-                if (-not $LeaveOpen) {
-                    break
-                }
-            }
+    if ($process.MainWindowHandle -eq 0) {
+        Start-Sleep -Milliseconds $PollMilliseconds
+        continue
+    }
+
+    if (-not $preparedWindow) {
+        Show-SmokeWindow ([IntPtr]$process.MainWindowHandle)
+        $preparedWindow = $true
+    }
+
+    $title = Get-SmokeWindowTitle ([IntPtr]$process.MainWindowHandle)
+    if ($title -and $title -ne $lastTitle) {
+        $stamp = (Get-Date).ToUniversalTime().ToString("o")
+        $entry = [pscustomobject]@{
+            observed_at_utc = $stamp
+            title = $title
         }
+        $trace.Add($entry) | Out-Null
+        $lastTitle = $title
+        Write-Host ("[{0}] {1}" -f $stamp, $title)
+    }
+
+    if (-not $matchedReady -and $title -and $title.Contains($ExpectedTitleContains)) {
+        $matchedReady = $true
+    }
+
+    if ($matchedReady -and -not $inputSent) {
+        Send-SmokeText $InputText
+        $inputSent = $true
+        if ([string]::IsNullOrWhiteSpace($ExpectedTypedTitleContains)) {
+            $matchedTyped = $true
+        }
+    }
+
+    if ($inputSent -and -not $matchedTyped -and $title -and $title.Contains($ExpectedTypedTitleContains)) {
+        $matchedTyped = $true
+    }
+
+    if ($matchedReady -and $matchedTyped -and -not $enterSent) {
+        Send-SmokeEnter
+        $enterSent = $true
+        if ([string]::IsNullOrWhiteSpace($ExpectedEnterTitleContains)) {
+            $matchedEnter = $true
+        }
+    }
+
+    if ($enterSent -and -not $matchedEnter -and $title -and $title.Contains($ExpectedEnterTitleContains)) {
+        $matchedEnter = $true
+    }
+
+    if ($matchedReady -and $matchedTyped -and $matchedEnter -and -not $LeaveOpen) {
+        break
     }
 
     Start-Sleep -Milliseconds $PollMilliseconds
@@ -111,7 +155,15 @@ $stderrTask.Result | Set-Content -Path $stderrPath -Encoding Ascii
 $result = [pscustomobject]@{
     url = $Url
     expected_title_contains = $ExpectedTitleContains
-    matched_expectation = $matchedExpectation
+    expected_typed_title_contains = $ExpectedTypedTitleContains
+    expected_enter_title_contains = $ExpectedEnterTitleContains
+    input_text = $InputText
+    send_enter = [bool]$SendEnter
+    matched_ready = $matchedReady
+    matched_typed = $matchedTyped
+    matched_enter = $matchedEnter
+    input_sent = $inputSent
+    enter_sent = $enterSent
     last_title = $lastTitle
     leave_open = [bool]$LeaveOpen
     process_exited = $process.HasExited
@@ -125,6 +177,6 @@ $result = [pscustomobject]@{
 $result | ConvertTo-Json -Depth 6 | Set-Content -Path $tracePath -Encoding Ascii
 $result | ConvertTo-Json -Depth 6
 
-if (-not $matchedExpectation) {
-    throw "headed probe did not observe the expected title marker"
+if (-not ($matchedReady -and $matchedTyped -and $matchedEnter)) {
+    throw "headed probe did not observe the expected title markers"
 }
