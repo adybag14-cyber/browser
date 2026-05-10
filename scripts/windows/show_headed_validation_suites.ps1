@@ -155,7 +155,14 @@ $suiteCatalog = @(
         Category = "input"
         Path = "scripts/windows/run_google_home_title_probe.ps1"
         Purpose = "Bounded reduced-homepage title, focus, typing, and Enter-submit ordering probe on the real headed surface before the broader Google-home or shared Enter-order passes."
-        RecommendedWith = @("google-home", "google-submit-timing")
+        RecommendedWith = @("google-quick", "google-home")
+    }
+    [pscustomobject]@{
+        Name = "google-quick"
+        Category = "input"
+        Path = "scripts/windows/run_google_input_validation.ps1 -Phase quick"
+        Purpose = "Fast title-plus-watch first pass on the real headed surface before the reduced homepage, submit-timing, or shared Enter-order phases."
+        RecommendedWith = @("google-title", "google-home")
     }
     [pscustomobject]@{
         Name = "google-home"
@@ -293,7 +300,7 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-home", "google-submit-timing", "google-shared-enter-order", "manual-user")
+    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-submit-timing", "google-shared-enter-order", "manual-user")
     "google-saved-html" = @("manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
     "manual-html" = @("manual-user", "form-controls", "layout-smoke")
 }
@@ -350,7 +357,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-home, google-submit-timing, the shared Enter-order wrapper, and the saved-page localhost follow-up before the smallest live Google manual check."
+        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-submit-timing, the shared Enter-order wrapper, and the saved-page localhost follow-up before the smallest live Google manual check."
     } elseif ($ChangeArea -eq "google-saved-html") {
         "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "manual-html") {
@@ -402,6 +409,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-title"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-quick"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
