@@ -28,8 +28,9 @@ $lines = @(
   "   powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_suite_validation_flow.ps1",
   "   powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_probe_trace_guide.ps1",
   "",
-  "2. Run the narrowed bounded ladders before any broader manual pass:",
+  "2. Read the narrowed bounded ladders before any broader manual pass:",
   "   powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1",
+  "   powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1",
   "   powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1",
   "",
   "3. Run the one-command localhost-first issue #3 pass:",
@@ -40,7 +41,7 @@ $lines = @(
   "   powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'",
   "",
   "Working rule:",
-  "- Keep localhost, title, submit-order, and shared Enter-order agreement ahead of any live-Google or long manual replay.",
+  "- Keep localhost, title, reduced homepage, saved homepage fixture, submit-order, and shared Enter-order agreement ahead of any live-Google or long manual replay.",
   "- Treat KEYDOWN:<text>|13|13 before SUBMIT:<text> as the Enter-order acceptance edge on the bounded probes."
 )
 
