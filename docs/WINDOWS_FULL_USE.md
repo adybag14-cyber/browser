@@ -94,6 +94,9 @@ Primary suite families:
   `stylesheet-smoke/`, `zoom/`
 - forms and editing: `form-controls/`, `find/`, `file-upload/`, `downloads/`,
   `attachment-downloads/`
+- reduced Google input investigation: `google-investigation-next/` for
+  Google-style localhost probes that cover focus churn, delayed readiness,
+  correction, and Enter-submit ordering before live-site passes
 - persistence and runtime: `cookie-persistence/`,
   `localstorage-persistence/`, `indexeddb-persistence/`,
   `sessionstorage-scope/`, `fetch-abort/`, `fetch-credentials/`,
@@ -108,6 +111,10 @@ change-to-probe routing.
 
 Use the reduced Google probe page when issue-driven headed input work needs a
 repeatable local check before moving on to the full live homepage.
+
+Start with `tmp-browser-smoke/google-investigation-next/` for the narrowed
+localhost probes, then use the watcher below when you need to observe the title
+stream from the reduced homepage fixture itself.
 
 1. Start a local static server from the repo root:
 
