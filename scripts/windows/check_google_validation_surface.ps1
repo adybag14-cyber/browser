@@ -72,6 +72,7 @@ $profiles = @{
         (New-ValidationReference -Path "scripts/windows/run_google_home_title_probe.ps1" -Kind "file" -Purpose "Reduced Google-home title marker probe runner."),
         (New-ValidationReference -Path "scripts/windows/run_google_home_validation.ps1" -Kind "file" -Purpose "Reduced Google-home submit runner."),
         (New-ValidationReference -Path "scripts/windows/run_google_homepage_fixture_validation.ps1" -Kind "file" -Purpose "Bounded saved-homepage fixture runner."),
+        (New-ValidationReference -Path "scripts/windows/run_google_submit_timing_validation.ps1" -Kind "file" -Purpose "One-command bounded Google-shaped submit-timing runner."),
         (New-ValidationReference -Path "scripts/windows/run_google_shared_enter_order_validation.ps1" -Kind "file" -Purpose "Shared Enter-order ladder runner."),
         (New-ValidationReference -Path "scripts/windows/run_google_attached_html_validation.ps1" -Kind "file" -Purpose "One-command Google attached HTML runner."),
         (New-ValidationReference -Path "scripts/windows/run_localhost_html_validation_recommended.ps1" -Kind "file" -Purpose "Shared localhost validation router used by the Google follow-up."),
