@@ -135,7 +135,7 @@ artifact root with:
 
 1. Pick the bounded suite for the subsystem you changed with `scripts/windows/show_headed_validation_suites.ps1`.
 2. Run that suite and one nearby shared-behavior suite if the change crossed subsystems.
-3. If the run already has attached HTML files under `agent_files/`, use `run_attached_html_localhost_validation.ps1` first so the helper can discover the inputs and choose a preferred initial page automatically.
+3. If the run already has attached HTML files under `user_files/` or `agent_files/`, use `run_attached_html_localhost_validation.ps1` first so the helper can discover the inputs and choose a preferred initial page automatically.
 4. If the same attached HTML set is part of the issue `#3` Google-style follow-up, use `show_google_attached_html_validation_flow.ps1` to print the localhost-first order or `run_google_attached_html_validation.ps1` to execute that same route directly.
 5. If the saved pages are spread across several files or folders, stage them first with `start_staged_localhost_html_validation.ps1`.
 6. Run `summarize_localhost_html_pages.ps1` when you need a quick inventory, a suggested first page, or a recommended bounded-suite set for the saved HTML pages.
