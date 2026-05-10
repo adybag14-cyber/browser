@@ -1,9 +1,10 @@
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\image-smoke"
+$root = $PSScriptRoot
+$repo = (Resolve-Path (Join-Path $root "..\..")).Path
 $profileRoot = Join-Path $root "profile-http-runtime"
 $appDataRoot = Join-Path $profileRoot "lightpanda"
 $port = 8153
-$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
+$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $serverScript = Join-Path $root "http_runtime_server.py"
 $outPng = Join-Path $root "http-runtime.png"
 $browserOut = Join-Path $root "http-runtime.browser.stdout.txt"
