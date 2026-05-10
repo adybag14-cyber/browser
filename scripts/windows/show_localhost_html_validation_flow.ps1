@@ -63,7 +63,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "google-flow"
-            goal = "When the saved-page follow-up belongs to issue #3, print the dedicated Google-style saved-page flow so the reduced localhost and shared Enter-order gates run before the manual headed pass and the live trace step stays close at hand when real Google still diverges."
+            goal = "When the saved-page follow-up belongs to issue #3, print the dedicated Google-style saved-page flow so the reduced localhost, quick, reduced homepage, and shared Enter-order gates run before the manual headed pass and the live trace step stays close at hand when real Google still diverges."
             command = $googleSavedFlowCommand
         }
         [ordered]@{
@@ -75,7 +75,7 @@ $flow = [ordered]@{
     notes = @(
         "Run the matching bounded suite first, then move into direct or staged localhost validation.",
         "Use summary before the manual pass when you need help picking the first page or closest bounded suite.",
-        "Use google-flow before google-manual when the saved-page follow-up is part of the Google-style headed typing investigation, especially when the next likely evidence may need to come from the live trace step after the saved-page pass."
+        "Use google-flow before google-manual when the saved-page follow-up is part of the Google-style headed typing investigation, especially when the reduced homepage gate should run before the manual pass and the next likely evidence may need to come from the live trace step after the saved-page pass."
     )
 }
 
