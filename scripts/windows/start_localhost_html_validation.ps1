@@ -63,6 +63,42 @@ function Normalize-RelativeHtmlPath {
     return $normalized.TrimStart('/')
 }
 
+function Get-RelativeHtmlPathCandidates {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = Normalize-RelativeHtmlPath -Path $Path
+    $decodedSegments = foreach ($segment in ($normalized -split "/")) {
+        if ($segment -ne "") {
+            [System.Uri]::UnescapeDataString($segment)
+        }
+    }
+    $decoded = $decodedSegments -join "/"
+
+    if ($decoded -eq $normalized) {
+        return @($normalized)
+    }
+
+    return @($normalized, $decoded)
+}
+
+function Get-RelativeHtmlUrlPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = Normalize-RelativeHtmlPath -Path $Path
+    $encodedSegments = foreach ($segment in ($normalized -split "/")) {
+        if ($segment -ne "") {
+            [System.Uri]::EscapeDataString($segment)
+        }
+    }
+    return ($encodedSegments -join "/")
+}
+
 function Test-PathUnderRoot {
     param(
         [Parameter(Mandatory = $true)]
@@ -71,7 +107,7 @@ function Test-PathUnderRoot {
         [string]$Path
     )
 
-    $resolvedRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+    $resolvedRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\\', '/')
     $resolvedPath = [System.IO.Path]::GetFullPath($Path)
     return $resolvedPath.StartsWith($resolvedRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
         $resolvedPath.StartsWith($resolvedRoot + [System.IO.Path]::AltDirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
@@ -135,7 +171,13 @@ if (-not $InitialPage) {
         }
         $InitialPage = Get-RelativeHtmlPath -Root $resolvedPageRoot -Path $resolvedInitialPath
     } else {
-        $InitialPage = Normalize-RelativeHtmlPath -Path $InitialPage
+        $initialPageCandidates = Get-RelativeHtmlPathCandidates -Path $InitialPage
+        $matchedInitialPage = $relativePages | Where-Object { $initialPageCandidates -contains $_ } | Select-Object -First 1
+        if ($matchedInitialPage) {
+            $InitialPage = $matchedInitialPage
+        } else {
+            $InitialPage = $initialPageCandidates[0]
+        }
     }
 }
 
@@ -143,7 +185,8 @@ if ($relativePages -notcontains $InitialPage) {
     throw "initial page '$InitialPage' was not found under $resolvedPageRoot"
 }
 
-$initialUrl = "http://{0}:{1}/{2}" -f $Host, $Port, $InitialPage
+$initialUrlPath = Get-RelativeHtmlUrlPath -Path $InitialPage
+$initialUrl = "http://{0}:{1}/{2}" -f $Host, $Port, $initialUrlPath
 $server = Start-Process -FilePath "python" `
     -ArgumentList "-m", "http.server", "$Port", "--bind", $Host `
     -WorkingDirectory $resolvedPageRoot `
@@ -168,9 +211,16 @@ if ($LaunchBrowser) {
     $browserPid = $browser.Id
 }
 
-$pageUrls = @($relativePages | ForEach-Object {
-    "http://{0}:{1}/{2}" -f $Host, $Port, $_
+$pageRecords = @($relativePages | ForEach-Object {
+    $relativePath = $_
+    $urlPath = Get-RelativeHtmlUrlPath -Path $relativePath
+    [pscustomobject]@{
+        relative_path = $relativePath
+        url_path = $urlPath
+        url = "http://{0}:{1}/{2}" -f $Host, $Port, $urlPath
+    }
 })
+$pageUrls = @($pageRecords | ForEach-Object { $_.url })
 
 $result = [pscustomobject]@{
     page_root = $resolvedPageRoot
@@ -178,9 +228,11 @@ $result = [pscustomobject]@{
     host = $Host
     port = $Port
     initial_page = $InitialPage
+    initial_url_path = $initialUrlPath
     initial_url = $initialUrl
     page_count = $relativePages.Count
     pages = $relativePages
+    page_records = $pageRecords
     urls = $pageUrls
     server_pid = $server.Id
     browser_pid = $browserPid
@@ -200,8 +252,8 @@ if ($browserPid) {
 Write-Host ("Session record: {0}" -f $sessionPath)
 Write-Host ""
 Write-Host "Available pages:"
-foreach ($page in $relativePages) {
-    Write-Host ("  {0}" -f $page)
+foreach ($page in $pageRecords) {
+    Write-Host ("  {0} -> {1}" -f $page.relative_path, $page.url)
 }
 
 if ($Wait) {
