@@ -7,7 +7,7 @@ param(
     [string]$SuiteName,
 
     [Parameter(ParameterSetName = "Change")]
-    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input")]
+    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "manual-html")]
     [string]$ChangeArea,
 
     [switch]$Json
@@ -241,6 +241,13 @@ $suiteCatalog = @(
         Purpose = "Packaged-image and bare-metal release validation."
         RecommendedWith = @("tabs", "browser-pages")
     }
+    [pscustomobject]@{
+        Name = "manual-user"
+        Category = "manual-html"
+        Path = "tmp-browser-smoke/manual-user"
+        Purpose = "Manual headed validation helpers for saved or attached localhost HTML pages after the bounded suite is green."
+        RecommendedWith = @("form-controls", "google-investigation-next")
+    }
 )
 
 $changeRecommendations = @{
@@ -252,6 +259,7 @@ $changeRecommendations = @{
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
     "google-input" = @("google-investigation-next", "form-controls", "inline-flow")
+    "manual-html" = @("manual-user", "form-controls", "google-investigation-next")
 }
 
 function Get-SuiteRecord {
@@ -307,6 +315,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
             suites = $items
             next_step = if ($ChangeArea -eq "google-input") {
                 "Start with google-investigation-next, then run form-controls and inline-flow, and only then use the reduced homepage watcher or the smallest real Google manual check."
+            } elseif ($ChangeArea -eq "manual-html") {
+                "Start with manual-user only after the matching bounded suite is green, then use start_localhost_html_validation.ps1 to serve the saved pages and capture the localhost follow-up." 
             } else {
                 "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
             }
@@ -319,6 +329,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     Write-Host (Format-SuiteList -Items $items)
     if ($ChangeArea -eq "google-input") {
         Write-Host "Next step: start with google-investigation-next, then run form-controls and inline-flow before the reduced homepage watcher or the smallest real Google manual pass."
+    } elseif ($ChangeArea -eq "manual-html") {
+        Write-Host "Next step: start with the matching bounded suite, then use manual-user with start_localhost_html_validation.ps1 for the saved-page localhost follow-up."
     } else {
         Write-Host "Next step: start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
     }
@@ -337,3 +349,4 @@ Write-Host "Examples:"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
