@@ -1,11 +1,32 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$Host = "127.0.0.1",
+    [int]$Port = 8159,
+    [string]$InputText = "zig headed",
+    [int]$ServerReadyTimeoutSeconds = 15,
+    [int]$WindowReadyAttempts = 80,
+    [int]$TitleWaitAttempts = 30,
+    [int]$PollMilliseconds = 250,
+    [int]$QueryClickX = 640,
+    [int]$QueryClickY = 248
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$root = Join-Path $repo "tmp-browser-smoke\google-investigation-next"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
-$port = 8159
+$scriptRoot = $PSScriptRoot
+if (-not $RepoRoot) {
+    $RepoRoot = (Resolve-Path (Join-Path $scriptRoot "..\..")).Path
+}
+if (-not $BrowserExe) {
+    $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+}
+
+$root = $scriptRoot
 $probePath = "src/browser/tests/page/google_home_title_probe.html"
-$probeUrl = "http://127.0.0.1:$port/$probePath"
+$probeUrl = "http://$Host`:$Port/$probePath"
 $serverOut = Join-Path $root "google-title.server.stdout.txt"
 $serverErr = Join-Path $root "google-title.server.stderr.txt"
 $browserOut = Join-Path $root "google-title.browser.stdout.txt"
@@ -15,7 +36,7 @@ $screenshotPath = Join-Path $root "google-title.before.png"
 New-Item -ItemType Directory -Force -Path $root | Out-Null
 Remove-Item $serverOut,$serverErr,$browserOut,$browserErr,$screenshotPath -Force -ErrorAction SilentlyContinue
 
-. (Join-Path $repo "tmp-browser-smoke\common\Win32Input.ps1")
+. (Join-Path $RepoRoot "tmp-browser-smoke\common\Win32Input.ps1")
 
 $server = $null
 $browser = $null
@@ -35,8 +56,8 @@ function Wait-ForGoogleProbeTitle {
   param(
     [IntPtr]$Hwnd,
     [string[]]$Patterns,
-    [int]$Attempts = 30,
-    [int]$SleepMs = 250
+    [int]$Attempts = $TitleWaitAttempts,
+    [int]$SleepMs = $PollMilliseconds
   )
 
   for ($i = 0; $i -lt $Attempts; $i++) {
@@ -53,9 +74,10 @@ function Wait-ForGoogleProbeTitle {
 }
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
+  $serverPollAttempts = [Math]::Max([int][Math]::Ceiling(($ServerReadyTimeoutSeconds * 1000) / [Math]::Max($PollMilliseconds, 1)), 1)
+  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$Port,"--bind",$Host -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  for ($i = 0; $i -lt $serverPollAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
     try {
       $resp = Invoke-WebRequest -UseBasicParsing -Uri $probeUrl -TimeoutSec 2
       if ($resp.StatusCode -eq 200) {
@@ -66,11 +88,11 @@ try {
   }
   if (-not $ready) { throw "google title probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$probeUrl,"--window_width","1280","--window_height","900","--screenshot_png",$screenshotPath -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse",$probeUrl,"--window_width","1280","--window_height","900","--screenshot_png",$screenshotPath -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
   $hwnd = [IntPtr]::Zero
-  for ($i = 0; $i -lt 80; $i++) {
-    Start-Sleep -Milliseconds 250
+  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
     $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
     if ($proc -and $proc.MainWindowHandle -ne 0) {
       $hwnd = [IntPtr]$proc.MainWindowHandle
@@ -82,26 +104,27 @@ try {
 
   Show-SmokeWindow $hwnd
 
-  $titleInitial = Wait-ForGoogleProbeTitle $hwnd @("*BOUND*","*NOQ*","*INIT*") 50 250
+  $titleInitial = Wait-ForGoogleProbeTitle $hwnd @("*BOUND*","*NOQ*","*INIT*")
   $initialReady = $null -ne $titleInitial
   if (-not $initialReady) { throw "google title probe page did not publish an initial title marker" }
 
-  [void](Invoke-SmokeClientClick $hwnd 640 248)
-  $titleFocused = Wait-ForGoogleProbeTitle $hwnd @("*FOCUSED*","*FOCUSIN:INPUT:q*","*A=INPUT:q*") 20 250
+  [void](Invoke-SmokeClientClick $hwnd $QueryClickX $QueryClickY)
+  $titleFocused = Wait-ForGoogleProbeTitle $hwnd @("*FOCUSED*","*FOCUSIN:INPUT:q*","*A=INPUT:q*")
   if (-not $titleFocused) {
-    [void](Invoke-SmokeClientClick $hwnd 640 248)
-    $titleFocused = Wait-ForGoogleProbeTitle $hwnd @("*FOCUSED*","*FOCUSIN:INPUT:q*","*A=INPUT:q*") 20 250
+    [void](Invoke-SmokeClientClick $hwnd $QueryClickX $QueryClickY)
+    $titleFocused = Wait-ForGoogleProbeTitle $hwnd @("*FOCUSED*","*FOCUSIN:INPUT:q*","*A=INPUT:q*")
   }
   $focusedWorked = $null -ne $titleFocused
   if (-not $focusedWorked) { throw "google title probe did not focus the query input after click" }
 
-  Send-SmokeText "zig headed"
-  $titleTyped = Wait-ForGoogleProbeTitle $hwnd @("*TYPED:zig headed*","*|V=zig headed|*") 30 250
+  Send-SmokeText $InputText
+  $escapedInputText = [WildcardPattern]::Escape($InputText)
+  $titleTyped = Wait-ForGoogleProbeTitle $hwnd @("*TYPED:$escapedInputText*","*|V=$escapedInputText|*")
   $typedWorked = $null -ne $titleTyped
   if (-not $typedWorked) { throw "google title probe did not reflect typed text in the query input" }
 
   Send-SmokeEnter
-  $titleSubmitted = Wait-ForGoogleProbeTitle $hwnd @("*SUBMIT:zig headed*") 30 250
+  $titleSubmitted = Wait-ForGoogleProbeTitle $hwnd @("*SUBMIT:$escapedInputText*")
   $submittedWorked = $null -ne $titleSubmitted
   if (-not $submittedWorked) { throw "google title probe did not observe submit after Enter" }
 } catch {
@@ -114,6 +137,11 @@ try {
   Start-Sleep -Milliseconds 200
 
   [ordered]@{
+    repo_root = $RepoRoot
+    browser_exe = $BrowserExe
+    host = $Host
+    port = $Port
+    input_text = $InputText
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
@@ -126,6 +154,7 @@ try {
     title_focused = $titleFocused
     title_typed = $titleTyped
     title_submitted = $titleSubmitted
+    screenshot_path = $screenshotPath
     error = $failure
     server_meta = $serverMeta
     browser_meta = $browserMeta
