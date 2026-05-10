@@ -2,7 +2,13 @@
 param(
     [string]$RepoRoot,
     [string]$BrowserExe,
-    [int]$Port = 8148
+    [string]$Host = "127.0.0.1",
+    [int]$Port = 8148,
+    [string]$InputText = "Q",
+    [int]$ServerReadyTimeoutSeconds = 15,
+    [int]$WindowReadyAttempts = 60,
+    [int]$TitleWaitAttempts = 80,
+    [int]$PollMilliseconds = 250
 )
 
 Set-StrictMode -Version Latest
@@ -27,6 +33,16 @@ function Resolve-RepoRoot([string]$StartPath) {
   }
 }
 
+function Resolve-PythonCommand {
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    return @{ FileName = "python"; Arguments = @("-m", "http.server") }
+  }
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    return @{ FileName = "py"; Arguments = @("-3", "-m", "http.server") }
+  }
+  throw "Python was not found in PATH. Install Python or start the inline-flow probe server separately."
+}
+
 $root = $PSScriptRoot
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $browserExe = if ($BrowserExe) {
@@ -39,6 +55,10 @@ $browserExe = if ($BrowserExe) {
 if (-not (Test-Path -LiteralPath $browserExe)) {
   throw "headed browser binary not found: $browserExe"
 }
+
+$probeUrl = "http://$Host`:$Port/input-break-submit.html"
+$escapedInputText = [System.Management.Automation.WildcardPattern]::Escape($InputText)
+$serverSubmitPattern = 'GET /submitted\.html\?entry=' + [regex]::Escape($InputText) + ' HTTP/1\.1" 200'
 
 $outPng = Join-Path $root "break-input-submit.png"
 $browserOut = Join-Path $root "break-input-submit.browser.stdout.txt"
@@ -76,6 +96,26 @@ function Add-Pixel($o, $x, $y) {
   $o.count++
 }
 
+function Wait-HttpReady {
+  param(
+    [string]$Url,
+    [int]$TimeoutSeconds
+  )
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  do {
+    try {
+      $resp = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
+      if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) {
+        return
+      }
+    } catch {}
+    Start-Sleep -Milliseconds $PollMilliseconds
+  } while ((Get-Date) -lt $deadline)
+
+  throw "inline break input submit probe server did not become ready at $Url"
+}
+
 $server = $null
 $browser = $null
 $ready = $false
@@ -91,17 +131,14 @@ $failure = $null
 $clickClientX = $null
 $clickClientY = $null
 $clickPoint = $null
+$originalAppData = $env:APPDATA
+$originalLocalAppData = $env:LOCALAPPDATA
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/input-break-submit.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
-  if (-not $ready) { throw "inline break input submit probe server did not become ready" }
+  $python = Resolve-PythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($Port, "--bind", $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  Wait-HttpReady -Url $probeUrl -TimeoutSeconds $ServerReadyTimeoutSeconds
+  $ready = $true
 
   $profileRoot = Join-Path $root "profile-inline-break-submit"
   $appDataRoot = Join-Path $profileRoot "lightpanda"
@@ -117,15 +154,15 @@ homepage_url
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/input-break-submit.html","--window_width","820","--window_height","520","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "820", "--window_height", "520", "--screenshot_png", $outPng, $probeUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
     if ((Test-Path $outPng) -and ((Get-Item $outPng).Length -gt 0)) { $pngReady = $true; break }
   }
   if (-not $pngReady) { throw "inline break input submit screenshot did not become ready" }
 
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
+  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
     $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
     if ($proc -and $proc.MainWindowHandle -ne 0) {
       $hwnd = [IntPtr]$proc.MainWindowHandle
@@ -158,19 +195,19 @@ homepage_url
   $titleBefore = Get-SmokeWindowTitle $hwnd
   $clickPoint = Invoke-SmokeClientClick $hwnd $clickClientX $clickClientY
   Start-Sleep -Milliseconds 120
-  Send-SmokeText "QZ"
+  Send-SmokeText $InputText
 
   $titleAfterType = $titleBefore
-  for ($i = 0; $i -lt 40; $i++) {
+  for ($i = 0; $i -lt $TitleWaitAttempts; $i++) {
     Start-Sleep -Milliseconds 150
     $titleAfterType = Get-SmokeWindowTitle $hwnd
-    if ($titleAfterType -like "Inline Input QZ*") { break }
+    if ($titleAfterType -like "Inline Input $escapedInputText*") { break }
   }
-  if ($titleAfterType -notlike "Inline Input QZ*") { throw "inline break input did not update title after typing" }
+  if ($titleAfterType -notlike "Inline Input $escapedInputText*") { throw "inline break input did not update title after typing" }
 
   Send-SmokeEnter
   $titleAfterEnter = $titleAfterType
-  for ($i = 0; $i -lt 40; $i++) {
+  for ($i = 0; $i -lt $TitleWaitAttempts; $i++) {
     Start-Sleep -Milliseconds 150
     $titleAfterEnter = Get-SmokeWindowTitle $hwnd
     if ($titleAfterEnter -like "Inline Break Submitted*") {
@@ -180,16 +217,16 @@ homepage_url
   }
   if (-not $submitWorked -and (Test-Path $serverErr)) {
     $serverLog = Get-Content $serverErr -Raw
-    $serverSawSubmit = $serverLog -match 'GET /submitted\.html\?entry=QZ HTTP/1\.1" 200'
+    $serverSawSubmit = $serverLog -match $serverSubmitPattern
     if ($serverSawSubmit) {
       $submitWorked = $true
     }
   }
-}
-catch {
+} catch {
   $failure = $_.Exception.Message
-}
-finally {
+} finally {
+  $env:APPDATA = $originalAppData
+  $env:LOCALAPPDATA = $originalLocalAppData
   $serverMeta = if ($server) { Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
   $browserMeta = if ($browser) { Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
   if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-VerifiedProcess $browser.Id }
@@ -201,7 +238,14 @@ finally {
   [ordered]@{
     repo_root = $repo
     browser_exe = $browserExe
+    host = $Host
     port = $port
+    probe_url = $probeUrl
+    input_text = $InputText
+    server_ready_timeout_seconds = $ServerReadyTimeoutSeconds
+    window_ready_attempts = $WindowReadyAttempts
+    title_wait_attempts = $TitleWaitAttempts
+    poll_milliseconds = $PollMilliseconds
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
