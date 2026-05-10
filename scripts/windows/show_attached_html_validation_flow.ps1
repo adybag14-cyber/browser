@@ -57,7 +57,7 @@ $usingExplicitInputPath = $InputPath -and $InputPath.Count -gt 0
 $resolvedInputPath = if ($usingExplicitInputPath) {
     @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
 } else {
-    Get-DefaultAttachedHtmlInputPath -RepoRoot $repoRoot
+    Get-DefaultAttachedHtmlInputPath -RepoRoot $repoRoot -GoogleStyle:$GoogleStyle
 }
 
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
