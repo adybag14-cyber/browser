@@ -23,6 +23,7 @@ $suiteHelper = '.\scripts\windows\show_headed_validation_suites.ps1'
 $summaryHelper = '.\scripts\windows\summarize_localhost_html_pages.ps1'
 $localhostHelper = '.\scripts\windows\start_localhost_html_validation.ps1'
 $stagedHelper = '.\scripts\windows\start_staged_localhost_html_validation.ps1'
+$attachedHelper = '.\scripts\windows\run_attached_html_localhost_validation.ps1'
 $googleRunner = '.\scripts\windows\run_google_input_validation.ps1'
 $googleSavedFlowHelper = '.\scripts\windows\show_saved_page_google_validation_flow.ps1'
 $preferredInitialPageArgument = ""
@@ -40,6 +41,7 @@ $launchInitialPageArgument = if ($PreferredInitialPage) {
 } else {
     ""
 }
+$attachedCommand = "powershell -ExecutionPolicy Bypass -File $attachedHelper -Port $Port$preferredInitialPageArgument -Wait"
 
 if ($PageRoot) {
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
@@ -59,6 +61,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
     $googleManualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
     $googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleSavedFlowHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
+    $attachedCommand = "powershell -ExecutionPolicy Bypass -File $attachedHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument -Wait"
 } else {
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
     $googleManualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
@@ -73,6 +76,11 @@ $flow = [ordered]@{
             name = "suite-map"
             goal = "Choose the closest bounded suite before starting the real saved-page pass."
             command = "powershell -ExecutionPolicy Bypass -File $suiteHelper -ChangeArea manual-html"
+        }
+        [ordered]@{
+            name = "attached-auto"
+            goal = "When the run already has attached HTML snapshots under agent_files, auto-discover them and route them through the saved-page localhost runner without restating each input path."
+            command = $attachedCommand
         }
         [ordered]@{
             name = "summary"
@@ -102,9 +110,10 @@ $flow = [ordered]@{
     )
     notes = @(
         "Run the matching bounded suite first, then move into direct or staged localhost validation.",
+        "Use attached-auto when the current run already has HTML snapshots under agent_files and you want the helper to auto-discover the inputs and preferred first page before the manual headed follow-up.",
         "Use summary before the manual pass when you need help picking the first page or closest bounded suite.",
         "Use google-flow before google-manual when the saved-page follow-up is part of the Google-style headed typing investigation, especially when the reduced homepage gate should run before the manual pass and the next likely evidence may need to come from the live trace step after the saved-page pass.",
-        "When PreferredInitialPage is set, the summary, direct, staged, Google-style flow, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file."
+        "When PreferredInitialPage is set, the attached-auto, summary, direct, staged, Google-style flow, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file."
     )
 }
 
