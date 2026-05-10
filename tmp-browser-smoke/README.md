@@ -18,6 +18,8 @@ Examples:
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input`
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch`
 
 ## Core Rule
 
@@ -64,6 +66,13 @@ Examples:
   churn, delayed readiness, correction, and Enter-submit ordering
 - `google-home/`: reduced homepage watcher and bounded Enter-submit pass on the
   real headed surface after the localhost Google-style probes are green
+- `google-submit-timing`: bounded Google-shaped keydown, keypress, and submit
+  ordering on the real headed surface before broader shared gates or a manual
+  Google pass
+- `google-shared-enter-order`: shared label-click baseline plus shared submit
+  gates, reduced Google-home form coverage, inline-flow submit coverage, and
+  the stricter localhost keypress-before-submit wrapper through one runner
+  entrypoint
 - `find/`: find-in-page surface behavior
 
 ### Downloads and attachments
@@ -116,8 +125,10 @@ Use this order unless a narrower issue demands something more specific first.
 3. Run one nearby shared-behavior suite if the change touched input, rendering,
    navigation, storage, or downloads.
 4. For Google search-box or other real-page typing issues, start with
-   `google-investigation-next/`, then `google-home/`, then the nearest shared
-   `form-controls/` or `inline-flow/` submit probe before the live-site pass.
+   `google-investigation-next/`, then the bounded title or quick pass,
+   then `google-home/`, then `google-submit-timing`, then
+   `google-shared-enter-order`, and only then move on to the saved-page or
+   live-site follow-up.
 5. For saved or attached localhost HTML pages, start with the matching bounded
    suite first and only then move into `manual-user/` for the real page
    follow-up.
@@ -133,8 +144,10 @@ Use this order unless a narrower issue demands something more specific first.
   the closest `inline-flow/` probe, and only then move on to the live-site pass
   when the issue is Google search-box related.
 - Google-style focus churn, delayed readiness, correction, or Enter-submit
-  ordering: run `google-investigation-next/`, then `google-home/`, then one
-  nearby shared input gate such as `form-controls/` or `inline-flow/`.
+  ordering: run `google-investigation-next/`, then the bounded `title` or
+  `quick` path from `run_google_input_validation.ps1`, then `google-home/`,
+  then `google-submit-timing`, then `google-shared-enter-order`, and finally
+  the saved-page or live-site follow-up.
 - Saved or attached localhost HTML compatibility passes: run the matching
   bounded suite first, then use `manual-user/` and the localhost helper scripts
   for the real follow-up on the saved pages.
@@ -155,15 +168,19 @@ Use this order unless a narrower issue demands something more specific first.
 ## Issue-Specific Note
 
 For live-site Google search-box work, start with
-`tmp-browser-smoke/google-investigation-next/`, then
-`tmp-browser-smoke/google-home/`, then the closest shared submit gates such as
-`tmp-browser-smoke/form-controls/enter-submit-probe.ps1` and
-`tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`.
+`tmp-browser-smoke/google-investigation-next/`, then use
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase quick`
+for the bounded title-plus-watch first pass, then move on to
+`-Phase home`, `-Phase submit-timing`, and `-Phase shared-enter-order` before
+using the saved-page localhost follow-up or the full `https://www.google.com/`
+pass.
+
 Use `src/browser/tests/page/google_home_title_probe.html` when the change
-specifically touches load or readiness ordering, and only then move on to the
-full `https://www.google.com/` pass. These probes are narrowing and regression
-helpers, not replacements for the core `form-controls/` and `inline-flow/`
-gates.
+specifically touches load or readiness ordering, and use
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
+when you want the current issue #3 validation order printed as reusable
+commands. These probes are narrowing and regression helpers, not replacements
+for the core `form-controls/` and `inline-flow/` gates.
 
 For attached or saved HTML page follow-up, use
 `tmp-browser-smoke/manual-user/README.md`,
