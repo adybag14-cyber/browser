@@ -71,6 +71,9 @@ Examples:
 - `google-title`: bounded reduced-homepage title, focus, typing, and
   Enter-submit ordering on the real headed surface before the broader
   `google-home/`, `google-submit-timing`, or wrapper-first passes
+- `google-quick`: fast title-plus-watch first pass on the real headed surface
+  before the reduced homepage, submit-timing, shared Enter-order, or wrapper
+  passes
 - `google-home/`: reduced homepage watcher and bounded Enter-submit pass on the
   real headed surface after the localhost Google-style probes are green
 - `google-submit-timing`: bounded Google-shaped keydown, keypress, and submit
@@ -118,6 +121,14 @@ Examples:
 
 - `manual-user/`: manual headed validation helpers for saved or attached
   localhost HTML pages after the matching bounded suite is green
+- `scripts/windows/run_saved_page_localhost_validation.ps1`: one-command saved
+  page summary plus direct-or-staged localhost launch helper
+- `scripts/windows/run_attached_html_localhost_validation.ps1`: one-command
+  attached HTML discovery, summary, and localhost launch helper for the current
+  workspace snapshots
+- `scripts/windows/show_saved_page_google_validation_flow.ps1`: saved-page
+  issue #3 flow map that keeps the localhost Google phases ahead of the manual
+  headed pass
 
 ### Shared helpers
 
@@ -133,13 +144,15 @@ Use this order unless a narrower issue demands something more specific first.
    navigation, storage, or downloads.
 4. For Google search-box or other real-page typing issues, start with
    `google-investigation-next/`, then use `google-title` for the narrow
-   real-surface title/focus gate or `google-recommended` for the current
-   one-command bounded pass, then `google-home/`, then
+   real-surface title/focus gate or `google-quick` for the fast title-plus-watch
+   first pass, then use `google-recommended` for the one-command bounded pass
+   when you want the shared watcher flow bundled in, then `google-home/`, then
    `google-submit-timing`, then `google-shared-enter-order`, and only then move
    on to the saved-page or live-site follow-up.
 5. For saved or attached localhost HTML pages, start with the matching bounded
-   suite first and only then move into `manual-user/` for the real page
-   follow-up.
+   suite first and only then move into `manual-user/`,
+   `run_saved_page_localhost_validation.ps1`, or
+   `run_attached_html_localhost_validation.ps1` for the real page follow-up.
 6. Finish with the smallest real headed manual pass that exercises the same
    user flow.
 
@@ -153,13 +166,17 @@ Use this order unless a narrower issue demands something more specific first.
   when the issue is Google search-box related.
 - Google-style focus churn, delayed readiness, correction, or Enter-submit
   ordering: run `google-investigation-next/`, then `google-title` for the
-  narrow real-surface title/focus gate, then `google-recommended` for the
-  current one-command bounded pass, or drop into the stepwise `quick`, `home`,
-  `submit-timing`, and `shared-enter-order` phases when you need to narrow the
-  first failing gate before the saved-page or live-site follow-up.
+  narrow real-surface title/focus gate, then `google-quick` for the fast
+  title-plus-watch first pass, then `google-recommended` for the current
+  one-command bounded pass, or drop into the stepwise `home`, `submit-timing`,
+  and `shared-enter-order` phases when you need to narrow the first failing
+  gate before the saved-page or live-site follow-up.
 - Saved or attached localhost HTML compatibility passes: run the matching
-  bounded suite first, then use `manual-user/` and the localhost helper scripts
-  for the real follow-up on the saved pages.
+  bounded suite first, then use `manual-user/`,
+  `run_saved_page_localhost_validation.ps1`,
+  `run_attached_html_localhost_validation.ps1`, and
+  `show_saved_page_google_validation_flow.ps1` when the saved-page follow-up is
+  part of the Google-style headed typing investigation.
 - Layout, painter, screenshots, clipping, or hit testing: run `layout-smoke/`,
   `flow-layout/`, `rendered-link-dom/`, and the nearest `inline-flow/` case.
 - Font, text metrics, or zoom behavior: run `font-render/`, `font-smoke/`, and
@@ -182,11 +199,13 @@ For live-site Google search-box work, start with
 or `show_headed_validation_suites.ps1 -SuiteName google-title` when the next
 question is whether the reduced headed surface is reaching the expected title,
 focus, typing, and Enter-submit markers. Then use
-`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
-for the current one-command bounded pass, or use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase quick`
-when you want the fast title-plus-watch first pass before moving on to
-`-Phase home`, `-Phase submit-timing`, and `-Phase shared-enter-order`.
+for the fast title-plus-watch first pass, then
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
+for the current one-command bounded pass, or move through
+`-Phase home`, `-Phase submit-timing`, and `-Phase shared-enter-order` when you
+want to isolate the first failing gate before the saved-page or live-site
+follow-up.
 
 Use `src/browser/tests/page/google_home_title_probe.html` when the change
 specifically touches load or readiness ordering, and use
@@ -197,6 +216,9 @@ for the core `form-controls/` and `inline-flow/` gates.
 
 For attached or saved HTML page follow-up, use
 `tmp-browser-smoke/manual-user/README.md`,
+`run_saved_page_localhost_validation.ps1`,
+`run_attached_html_localhost_validation.ps1`,
+`show_saved_page_google_validation_flow.ps1`,
 `start_localhost_html_validation.ps1`,
 `start_staged_localhost_html_validation.ps1`, and
 `summarize_localhost_html_pages.ps1` after the matching bounded suite is green.
