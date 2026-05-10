@@ -14,6 +14,9 @@ $directHelper = '.\\scripts\\windows\\start_localhost_html_validation.ps1'
 $stagedHelper = '.\\scripts\\windows\\start_staged_localhost_html_validation.ps1'
 $googleFlowHelper = '.\\scripts\\windows\\show_google_input_validation_flow.ps1'
 $googleRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase quick"
+$sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
+$fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase trace"
 
 if ($PageRoot) {
@@ -36,7 +39,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Google-style saved page follow-up"
-    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the live trace path when real Google still diverges."
+    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the fast quick pass, the one-shot full pass, and the live trace path when real Google still diverges."
     steps = @(
         [ordered]@{
             name = "inventory"
@@ -49,9 +52,19 @@ $flow = [ordered]@{
             command = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase localhost"
         }
         [ordered]@{
+            name = "google-quick"
+            goal = "Run the fast title-plus-watch first pass before the shared or saved-page manual follow-up."
+            command = $quickCommand
+        }
+        [ordered]@{
             name = "google-shared"
             goal = "Run the nearest shared submit and Enter-order gates before the saved-page manual follow-up."
-            command = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
+            command = $sharedEnterOrderCommand
+        }
+        [ordered]@{
+            name = "google-full"
+            goal = "Run the one-shot localhost-first Google validation pass with the quick title, shared Enter-order, and watch phases folded in."
+            command = $fullCommand
         }
         [ordered]@{
             name = "google-manual"
@@ -81,7 +94,9 @@ $flow = [ordered]@{
     )
     notes = @(
         "Use this helper when the saved or attached HTML pages look like search-box, delayed-readiness, or Enter-submit investigations related to headed Google-style behavior.",
-        "Run the reduced localhost and shared Enter-order phases before treating a saved-page manual pass as evidence for issue #3.",
+        "Run the reduced localhost and quick phases before treating a saved-page manual pass as evidence for issue #3.",
+        "Use google-shared for the stricter Enter-order wrapper when you want the shared label-click baseline and shared submit gates ahead of the saved-page manual pass.",
+        "Use google-full when you want the runner's built-in localhost-first order, quick title pass, shared Enter-order wrapper, and watch phase in one command before the saved-page manual pass.",
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
     )
