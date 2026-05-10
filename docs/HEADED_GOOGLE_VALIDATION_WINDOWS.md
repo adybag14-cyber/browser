@@ -25,8 +25,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 ```
 
 That wrapper keeps the current localhost-first issue `#3` path together:
-`localhost`, `title`, reduced `home`, `submit-timing`, `shared-enter-order`,
-and `watch`, with the same optional saved-page follow-up parameters.
+`localhost`, `title`, reduced `home`, saved `homepage-fixture`,
+`submit-timing`, `shared-enter-order`, and `watch`, with the same optional
+attached-page or saved-page follow-up parameters.
 
 For the same bounded flow plus the attached-page follow-up when the current run
 already has HTML snapshots under `user_files/` or `agent_files/`:
