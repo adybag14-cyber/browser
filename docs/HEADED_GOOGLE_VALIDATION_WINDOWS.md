@@ -6,7 +6,7 @@ This guide is the shortest reliable path for issue `#3` follow-up on
 Use it when you need to validate Google-style headed text entry, Enter submit,
 or saved-page follow-up without starting from the full live homepage first.
 
-Use `docs/HEADED_ATTACHED_HTML_VALIDATION_WINDOWS.md` when the next follow-up
+Use `docs/HEADED_ATTACHED_HTML_VALIDATION.md` when the next follow-up
 should start from attached HTML snapshots under `agent_files/` instead of a
 manually enumerated saved-page list.
 
@@ -194,7 +194,7 @@ manual headed follow-up.
 
 Use `show_google_attached_html_validation_flow.ps1 -PreferredInitialPage <saved-page>`
 when the auto-selected first page is not the one you want, and use
-`docs/HEADED_ATTACHED_HTML_VALIDATION_WINDOWS.md` when you want the full
+`docs/HEADED_ATTACHED_HTML_VALIDATION.md` when you want the full
 attached-page command map, override patterns, and staging rules in one place.
 
 ## 5) Working rule
