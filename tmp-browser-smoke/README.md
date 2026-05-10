@@ -20,6 +20,7 @@ Examples:
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait`
 
 ## Core Rule
 
@@ -123,6 +124,10 @@ Examples:
 
 - `manual-user/`: manual headed validation helpers for saved or attached
   localhost HTML pages after the matching bounded suite is green
+- `scripts/windows/run_localhost_html_validation_recommended.ps1`: one-command
+  attached-or-saved localhost runner that auto-picks the attached HTML helper
+  when `agent_files/` already has page snapshots and otherwise forwards explicit
+  saved-page roots or staged input lists into the shared saved-page runner
 - `scripts/windows/run_saved_page_localhost_validation.ps1`: one-command saved
   page summary plus direct-or-staged localhost launch helper
 - `scripts/windows/run_attached_html_localhost_validation.ps1`: one-command
@@ -152,7 +157,8 @@ Use this order unless a narrower issue demands something more specific first.
    `google-submit-timing`, then `google-shared-enter-order`, and only then move
    on to the saved-page or live-site follow-up.
 5. For saved or attached localhost HTML pages, start with the matching bounded
-   suite first and only then move into `manual-user/`,
+   suite first and only then move into
+   `run_localhost_html_validation_recommended.ps1`, `manual-user/`,
    `run_saved_page_localhost_validation.ps1`, or
    `run_attached_html_localhost_validation.ps1` for the real page follow-up.
 6. Finish with the smallest real headed manual pass that exercises the same
@@ -174,8 +180,8 @@ Use this order unless a narrower issue demands something more specific first.
   and `shared-enter-order` phases when you need to narrow the first failing
   gate before the saved-page or live-site follow-up.
 - Saved or attached localhost HTML compatibility passes: run the matching
-  bounded suite first, then use `manual-user/`,
-  `run_saved_page_localhost_validation.ps1`,
+  bounded suite first, then use `run_localhost_html_validation_recommended.ps1`,
+  `manual-user/`, `run_saved_page_localhost_validation.ps1`,
   `run_attached_html_localhost_validation.ps1`, and
   `show_saved_page_google_validation_flow.ps1` when the saved-page follow-up is
   part of the Google-style headed typing investigation.
@@ -218,6 +224,7 @@ for the core `form-controls/` and `inline-flow/` gates.
 
 For attached or saved HTML page follow-up, use
 `tmp-browser-smoke/manual-user/README.md`,
+`run_localhost_html_validation_recommended.ps1`,
 `run_saved_page_localhost_validation.ps1`,
 `run_attached_html_localhost_validation.ps1`,
 `show_saved_page_google_validation_flow.ps1`,
