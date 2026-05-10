@@ -1,0 +1,185 @@
+# Headed Mode Validation Gates
+
+This document turns the existing headed smoke directories into named gate
+suites so future work can pick the right bounded validation path quickly.
+
+Read this with:
+- `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
+- `docs/FULL_BROWSER_MASTER_TRACKER.md`
+- `docs/WINDOWS_FULL_USE.md`
+- `tmp-browser-smoke/README.md`
+
+## How To Use This File
+
+When a change touches one subsystem, run the smallest matching gate suite first.
+If that passes, move outward only when the changed behavior crosses into another
+shared subsystem.
+
+Keep these rules:
+- run the narrowest matching suite before broader regression sweeps
+- prefer the probe family that exercises the real headed Win32 surface
+- treat saved artifacts and logs as part of the validation result, not optional
+- do not mark a slice complete unless the primary matching suite is green or the
+  failure is captured with a specific blocker note
+
+## Gate Suites
+
+### 1. Shell And Navigation
+
+Use when changes touch browser chrome, internal pages, tab lifecycle, popup
+policy, address-bar behavior, restore, or navigation recovery.
+
+Directories:
+- `tmp-browser-smoke/tabs`
+- `tmp-browser-smoke/browser-pages`
+- `tmp-browser-smoke/settings`
+- `tmp-browser-smoke/wrapped-link`
+- `tmp-browser-smoke/popup`
+- `tmp-browser-smoke/stop-loading`
+
+Good first probes:
+- `tmp-browser-smoke/tabs/chrome-tabs-probe.ps1`
+- `tmp-browser-smoke/browser-pages/chrome-browser-pages-start-shell-probe.ps1`
+- `tmp-browser-smoke/settings/chrome-settings-home-probe.ps1`
+- `tmp-browser-smoke/wrapped-link/addressbar-probe.ps1`
+- `tmp-browser-smoke/popup/chrome-popup-script-policy-probe.ps1`
+- `tmp-browser-smoke/stop-loading/chrome-stop-probe.ps1`
+
+### 2. Rendering And Layout
+
+Use when changes touch paint ordering, layout geometry, hit-testing parity,
+screenshots, clipping, transforms, overflow, or visual composition.
+
+Directories:
+- `tmp-browser-smoke/layout-smoke`
+- `tmp-browser-smoke/inline-flow`
+- `tmp-browser-smoke/flow-layout`
+- `tmp-browser-smoke/rendered-link-dom`
+
+Good first probes:
+- `tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1`
+- `tmp-browser-smoke/inline-flow/probe.ps1`
+- `tmp-browser-smoke/flow-layout/probe.ps1`
+- `tmp-browser-smoke/rendered-link-dom/chrome-rendered-link-dom-probe.ps1`
+
+### 3. Text, Fonts, Editing, And Focus
+
+Use when changes touch input delivery, caret behavior, clipboard, IME, focus
+traversal, text measurement, fonts, or zoom-sensitive editing behavior.
+
+Directories:
+- `tmp-browser-smoke/form-controls`
+- `tmp-browser-smoke/font-smoke`
+- `tmp-browser-smoke/font-render`
+- `tmp-browser-smoke/find`
+- `tmp-browser-smoke/zoom`
+
+Good first probes:
+- `tmp-browser-smoke/form-controls/label-click-probe.ps1`
+- `tmp-browser-smoke/form-controls/enter-submit-probe.ps1`
+- `tmp-browser-smoke/font-render/chrome-font-render-probe.ps1`
+- `tmp-browser-smoke/find/chrome-find-probe.ps1`
+- `tmp-browser-smoke/zoom/chrome-zoom-probe.ps1`
+
+### 4. Graphics And Canvas
+
+Use when changes touch canvas 2D, WebGL, image compositing inside canvas, or
+screenshot parity for graphics-heavy surfaces.
+
+Directories:
+- `tmp-browser-smoke/canvas-smoke`
+
+Good first probes:
+- `tmp-browser-smoke/canvas-smoke/chrome-canvas-render-probe.ps1`
+- `tmp-browser-smoke/canvas-smoke/chrome-canvas-text-probe.ps1`
+- `tmp-browser-smoke/canvas-smoke/chrome-canvas-webgl-triangle-probe.ps1`
+
+### 5. Network, Downloads, And Resource Policy
+
+Use when changes touch shared `Http` runtime behavior, cookies, auth, fetch,
+websockets, downloads, attachments, stylesheets, scripts, or image loading.
+
+Directories:
+- `tmp-browser-smoke/image-smoke`
+- `tmp-browser-smoke/stylesheet-smoke`
+- `tmp-browser-smoke/fetch-abort`
+- `tmp-browser-smoke/fetch-credentials`
+- `tmp-browser-smoke/websocket-smoke`
+- `tmp-browser-smoke/downloads`
+- `tmp-browser-smoke/attachment-downloads`
+
+Good first probes:
+- `tmp-browser-smoke/image-smoke/chrome-http-runtime-image-probe.ps1`
+- `tmp-browser-smoke/stylesheet-smoke/chrome-stylesheet-auth-probe.ps1`
+- `tmp-browser-smoke/fetch-abort/chrome-fetch-abort-probe.ps1`
+- `tmp-browser-smoke/fetch-credentials/chrome-fetch-credentials-probe.ps1`
+- `tmp-browser-smoke/websocket-smoke/chrome-websocket-echo-probe.ps1`
+- `tmp-browser-smoke/downloads/chrome-download-probe.ps1`
+- `tmp-browser-smoke/attachment-downloads/chrome-attachment-link-probe.ps1`
+
+### 6. Storage And Session
+
+Use when changes touch cookies, localStorage, sessionStorage, IndexedDB,
+restart restore, or shared profile behavior across tabs.
+
+Directories:
+- `tmp-browser-smoke/cookie-persistence`
+- `tmp-browser-smoke/localstorage-persistence`
+- `tmp-browser-smoke/indexeddb-persistence`
+- `tmp-browser-smoke/sessionstorage-scope`
+- `tmp-browser-smoke/bare-metal-release`
+
+Good first probes:
+- `tmp-browser-smoke/cookie-persistence/chrome-cookie-restart-probe.ps1`
+- `tmp-browser-smoke/localstorage-persistence/chrome-localstorage-restart-probe.ps1`
+- `tmp-browser-smoke/indexeddb-persistence/chrome-indexeddb-restart-probe.ps1`
+- `tmp-browser-smoke/sessionstorage-scope/chrome-sessionstorage-same-tab-probe.ps1`
+- `tmp-browser-smoke/bare-metal-release/chrome-bare-metal-persistence-probe.ps1`
+
+### 7. Product Polish And Long-Session Checks
+
+Use when changes touch release packaging, manual headed sessions, internal page
+ergonomics, or end-to-end readiness instead of a single engine subsystem.
+
+Directories:
+- `tmp-browser-smoke/bare-metal-release`
+
+Good first probes:
+- `tmp-browser-smoke/bare-metal-release/chrome-bare-metal-start-shell-probe.ps1`
+- `tmp-browser-smoke/bare-metal-release/chrome-bare-metal-tabs-session-restore-probe.ps1`
+
+## Subsystem-To-Suite Map
+
+- `src/display/win32_backend.zig`: start with Text, Fonts, Editing, And Focus; add Shell And Navigation when window chrome or shell commands changed
+- `src/render/DocumentPainter.zig` and `src/render/DisplayList.zig`: start with Rendering And Layout; add Graphics And Canvas when canvas paint paths changed
+- `src/browser/Page.zig` and `src/browser/EventManager.zig`: choose between Rendering And Layout, Text, or Shell based on whether the change affects geometry, input, or navigation lifecycle
+- `src/browser/webapi/canvas/`: start with Graphics And Canvas
+- `src/browser/webapi/net/`, `src/http/`, resource elements, and downloads flows: start with Network, Downloads, And Resource Policy
+- persistent stores and profile wiring: start with Storage And Session
+- browser pages, tab strip, settings, popup policy, and address bar: start with Shell And Navigation
+
+## Probe Selection Rules
+
+Pick the first probe that matches the specific behavior you changed, then widen
+only as needed.
+
+- single control or text-entry changes: start with one `form-controls` or `inline-flow` probe before broader sweeps
+- screenshot or visual regressions: start with one `layout-smoke` or `rendered-link-dom` probe that proves the visible surface
+- auth/cookie/subresource changes: start with one targeted `image-smoke`, `stylesheet-smoke`, `fetch-credentials`, or `attachment-downloads` probe
+- restart or persistence changes: start with the restart-oriented probe in the matching persistence directory
+- shell-state changes: start with one `browser-pages`, `tabs`, or `settings` probe that exercises the changed action directly
+
+## Expected Artifacts
+
+For Windows headed runs, keep:
+- the exact probe script name that was run
+- the browser build command, if the slice required a rebuild
+- screenshots, logs, or downloaded artifacts produced by the probe
+- the first failing observable if the suite is red
+
+If a probe cannot be run from the current environment, record:
+- which suite should have been run
+- which exact script would be the first validation step
+- what environment constraint prevented it
+
+That keeps the gate decision explicit instead of implied.
