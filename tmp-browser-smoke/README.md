@@ -56,10 +56,18 @@ Examples:
 - `stylesheet-smoke/`: stylesheet loading, import handling, and CSS policy
 - `zoom/`: headed zoom behavior against shared layout and text paths
 
-### Input, forms, and editing
+### Input, forms, editing, and Google-style follow-up
 
-- `form-controls/`: label activation and Enter-submit basics
+- `form-controls/`: label activation, focus, basic typing, immediate
+  Enter-submit, and deferred pending-submit behavior
+- `google-investigation-next/`: reduced Google-style localhost probes for focus
+  churn, delayed readiness, correction, and Enter-submit ordering
+- `google-home/`: reduced homepage watcher and bounded Enter-submit pass on the
+  real headed surface after the localhost Google-style probes are green
 - `find/`: find-in-page surface behavior
+
+### Downloads and attachments
+
 - `file-upload/`: chooser flows, replacement, cancel, multipart submit, and
   target-page upload behavior
 - `downloads/`: normal download create/delete shell behavior
@@ -84,10 +92,16 @@ Examples:
 ### Graphics and canvas
 
 - `canvas-smoke/`: canvas 2D, drawImage, text metrics, and early WebGL probes
+- `multi-image/`: multiple image placement and shared image-surface checks
 
 ### Packaging and release-oriented probes
 
 - `bare-metal-release/`: packaged-image and bare-metal release probes
+
+### Manual saved-page follow-up
+
+- `manual-user/`: manual headed validation helpers for saved or attached
+  localhost HTML pages after the matching bounded suite is green
 
 ### Shared helpers
 
@@ -101,10 +115,13 @@ Use this order unless a narrower issue demands something more specific first.
 2. Run one narrow suite for the subsystem you changed.
 3. Run one nearby shared-behavior suite if the change touched input, rendering,
    navigation, storage, or downloads.
-4. For Google search-box or other real-page typing issues, re-run the closest
-   reduced localhost probe under `form-controls/` or `inline-flow/` before the
-   live-site pass.
-5. Finish with the smallest real headed manual pass that exercises the same
+4. For Google search-box or other real-page typing issues, start with
+   `google-investigation-next/`, then `google-home/`, then the nearest shared
+   `form-controls/` or `inline-flow/` submit probe before the live-site pass.
+5. For saved or attached localhost HTML pages, start with the matching bounded
+   suite first and only then move into `manual-user/` for the real page
+   follow-up.
+6. Finish with the smallest real headed manual pass that exercises the same
    user flow.
 
 ## Fast Mapping By Change Type
@@ -115,6 +132,12 @@ Use this order unless a narrower issue demands something more specific first.
 - Shared input, focus, caret, or form submit behavior: run `form-controls/`,
   the closest `inline-flow/` probe, and only then move on to the live-site pass
   when the issue is Google search-box related.
+- Google-style focus churn, delayed readiness, correction, or Enter-submit
+  ordering: run `google-investigation-next/`, then `google-home/`, then one
+  nearby shared input gate such as `form-controls/` or `inline-flow/`.
+- Saved or attached localhost HTML compatibility passes: run the matching
+  bounded suite first, then use `manual-user/` and the localhost helper scripts
+  for the real follow-up on the saved pages.
 - Layout, painter, screenshots, clipping, or hit testing: run `layout-smoke/`,
   `flow-layout/`, `rendered-link-dom/`, and the nearest `inline-flow/` case.
 - Font, text metrics, or zoom behavior: run `font-render/`, `font-smoke/`, and
@@ -126,17 +149,24 @@ Use this order unless a narrower issue demands something more specific first.
   `tabs/` or `browser-pages/` when shell state also changed.
 - File chooser or download manager changes: run `file-upload/`, `downloads/`,
   and `attachment-downloads/`.
-- Saved or attached HTML compatibility passes: run the matching bounded suite
-  first, then reuse the same headed browser launch flow against the saved
-  localhost pages for the real follow-up.
+- Multi-image placement or shared image-surface regressions: run `multi-image/`
+  plus the closest `image-smoke/`, `flow-layout/`, or `layout-smoke/` check.
 
 ## Issue-Specific Note
 
 For live-site Google search-box work, start with
-`tmp-browser-smoke/form-controls/enter-submit-probe.ps1`, then run the closest
-`tmp-browser-smoke/inline-flow/` Enter-submit probe, use
-`src/browser/tests/page/google_home_title_probe.html` when the change touches
-load/readiness ordering, and only then move on to the full
-`https://www.google.com/` pass. These probes are narrowing and regression
+`tmp-browser-smoke/google-investigation-next/`, then
+`tmp-browser-smoke/google-home/`, then the closest shared submit gates such as
+`tmp-browser-smoke/form-controls/enter-submit-probe.ps1` and
+`tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`.
+Use `src/browser/tests/page/google_home_title_probe.html` when the change
+specifically touches load or readiness ordering, and only then move on to the
+full `https://www.google.com/` pass. These probes are narrowing and regression
 helpers, not replacements for the core `form-controls/` and `inline-flow/`
 gates.
+
+For attached or saved HTML page follow-up, use
+`tmp-browser-smoke/manual-user/README.md`,
+`start_localhost_html_validation.ps1`,
+`start_staged_localhost_html_validation.ps1`, and
+`summarize_localhost_html_pages.ps1` after the matching bounded suite is green.
