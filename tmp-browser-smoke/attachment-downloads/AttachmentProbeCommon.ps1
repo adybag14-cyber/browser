@@ -1,6 +1,14 @@
-$script:Repo = "C:\Users\adyba\src\lightpanda-browser"
-$script:Root = Join-Path $script:Repo "tmp-browser-smoke\attachment-downloads"
-$script:BrowserExe = Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
+$script:Root = $PSScriptRoot
+$script:Repo = if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+  $env:LIGHTPANDA_REPO_ROOT
+} else {
+  (Resolve-Path (Join-Path $script:Root "..\..")).Path
+}
+$script:BrowserExe = if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) {
+  $env:LIGHTPANDA_BROWSER_EXE
+} else {
+  Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
+}
 
 . "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
 
