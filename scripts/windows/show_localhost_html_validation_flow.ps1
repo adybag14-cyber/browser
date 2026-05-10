@@ -43,11 +43,11 @@ $launchInitialPageArgument = if ($PreferredInitialPage) {
 
 if ($PageRoot) {
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot -Port $Port"
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot -Port $Port$preferredInitialPageArgument"
     $directCommand = "powershell -ExecutionPolicy Bypass -File $localhostHelper -PageRoot $quotedPageRoot -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
     $googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleSavedFlowHelper -PageRoot $quotedPageRoot -Port $Port$preferredInitialPageArgument"
 } else {
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port"
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port -PreferredInitialPage '<preferred-initial-page>'"
     $directCommand = "powershell -ExecutionPolicy Bypass -File $localhostHelper -PageRoot '<saved-page-dir>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
     $googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleSavedFlowHelper -PageRoot '<saved-page-dir>' -Port $Port -PreferredInitialPage '<preferred-initial-page>'"
 }
@@ -55,6 +55,7 @@ if ($PageRoot) {
 if ($InputPath -and $InputPath.Count -gt 0) {
     $quotedPaths = $InputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $joinedPaths = $quotedPaths -join ", "
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
     $googleManualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
     $googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleSavedFlowHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
@@ -103,7 +104,7 @@ $flow = [ordered]@{
         "Run the matching bounded suite first, then move into direct or staged localhost validation.",
         "Use summary before the manual pass when you need help picking the first page or closest bounded suite.",
         "Use google-flow before google-manual when the saved-page follow-up is part of the Google-style headed typing investigation, especially when the reduced homepage gate should run before the manual pass and the next likely evidence may need to come from the live trace step after the saved-page pass.",
-        "When PreferredInitialPage is set, the direct, staged, Google-style flow, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file."
+        "When PreferredInitialPage is set, the summary, direct, staged, Google-style flow, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file."
     )
 }
 
