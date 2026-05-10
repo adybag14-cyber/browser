@@ -123,6 +123,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
 ```
 
@@ -133,5 +135,7 @@ Routing rules:
 - Use `run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle` when you want the one-command issue `#3` flow to finish by auto-discovering current-run attached HTML under `user_files/` and `agent_files/`, while preferring a Google-like page first.
 - Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
 - Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
+- Use `show_google_attached_html_validation_flow.ps1` when you want the printed Google-style localhost-first flow for auto-discovered attached HTML without reshaping the broader issue `#3` commands by hand.
+- Use `run_google_attached_html_validation.ps1` when you want the same Google-style attached HTML follow-up to execute directly in one command.
 - Use `show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle` when you want the saved-page handoff commands to target the same auto-discovered Google-style attached pages without restating input paths.
 - Use `show_saved_page_google_validation_flow.ps1` when the saved-page pass should stay in the same localhost-first Google investigation order before the manual headed retest.
