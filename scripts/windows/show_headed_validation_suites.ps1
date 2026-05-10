@@ -160,8 +160,8 @@ $suiteCatalog = @(
     [pscustomobject]@{
         Name = "google-quick"
         Category = "input"
-        Path = "scripts/windows/run_google_input_validation.ps1 -Phase quick"
-        Purpose = "Fast title-plus-watch first pass on the real headed surface before the reduced homepage, submit-timing, or shared Enter-order phases."
+        Path = "scripts/windows/run_google_quick_validation.ps1"
+        Purpose = "One-command fast title-plus-watch first pass on the real headed surface before the reduced homepage, submit-timing, or shared Enter-order phases."
         RecommendedWith = @("google-title", "google-home")
     }
     [pscustomobject]@{
@@ -411,6 +411,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-title"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-quick"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
