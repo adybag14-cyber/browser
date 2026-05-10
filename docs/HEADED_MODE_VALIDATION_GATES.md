@@ -27,7 +27,8 @@ Keep these rules:
 ### 1. Shell And Navigation
 
 Use when changes touch browser chrome, internal pages, tab lifecycle, popup
-policy, address-bar behavior, restore, or navigation recovery.
+policy, address-bar behavior, restore, bookmarks, stop/loading recovery, or
+navigation recovery.
 
 Directories:
 - `tmp-browser-smoke/tabs`
@@ -36,6 +37,7 @@ Directories:
 - `tmp-browser-smoke/wrapped-link`
 - `tmp-browser-smoke/popup`
 - `tmp-browser-smoke/stop-loading`
+- `tmp-browser-smoke/bookmarks`
 
 Good first probes:
 - `tmp-browser-smoke/tabs/chrome-tabs-probe.ps1`
@@ -44,6 +46,7 @@ Good first probes:
 - `tmp-browser-smoke/wrapped-link/addressbar-probe.ps1`
 - `tmp-browser-smoke/popup/chrome-popup-script-policy-probe.ps1`
 - `tmp-browser-smoke/stop-loading/chrome-stop-probe.ps1`
+- `tmp-browser-smoke/bookmarks/bookmark-toggle-probe.ps1`
 
 ### 2. Rendering And Layout
 
@@ -77,6 +80,7 @@ Directories:
 Good first probes:
 - `tmp-browser-smoke/form-controls/label-click-probe.ps1`
 - `tmp-browser-smoke/form-controls/enter-submit-probe.ps1`
+- `tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`
 - `tmp-browser-smoke/font-render/chrome-font-render-probe.ps1`
 - `tmp-browser-smoke/find/chrome-find-probe.ps1`
 - `tmp-browser-smoke/zoom/chrome-zoom-probe.ps1`
@@ -156,18 +160,19 @@ Good first probes:
 - `src/browser/webapi/canvas/`: start with Graphics And Canvas
 - `src/browser/webapi/net/`, `src/http/`, resource elements, and downloads flows: start with Network, Downloads, And Resource Policy
 - persistent stores and profile wiring: start with Storage And Session
-- browser pages, tab strip, settings, popup policy, and address bar: start with Shell And Navigation
+- browser pages, tab strip, settings, popup policy, address bar, bookmarks, and stop/reload flows: start with Shell And Navigation
 
 ## Probe Selection Rules
 
 Pick the first probe that matches the specific behavior you changed, then widen
 only as needed.
 
-- single control or text-entry changes: start with one `form-controls` or `inline-flow` probe before broader sweeps
+- single control or text-entry changes: start with one `form-controls` probe; when submit timing changed, also run the closest `inline-flow` Enter-submit probe before broader sweeps
 - screenshot or visual regressions: start with one `layout-smoke` or `rendered-link-dom` probe that proves the visible surface
-- auth/cookie/subresource changes: start with one targeted `image-smoke`, `stylesheet-smoke`, `fetch-credentials`, or `attachment-downloads` probe
+- auth/cookie/subresource changes: start with one targeted `image-smoke`, `stylesheet-smoke`, `fetch-credentials`, `websocket-smoke`, or `attachment-downloads` probe
 - restart or persistence changes: start with the restart-oriented probe in the matching persistence directory
-- shell-state changes: start with one `browser-pages`, `tabs`, or `settings` probe that exercises the changed action directly
+- shell-state changes: start with one `browser-pages`, `tabs`, `settings`, `bookmarks`, or `stop-loading` probe that exercises the changed action directly
+- live-site Google search-box work: start with `tmp-browser-smoke/form-controls/enter-submit-probe.ps1`, then the closest `inline-flow` Enter-submit case, and use `src/browser/tests/page/google_home_title_probe.html` only when load/readiness ordering changed before moving to the full live-site pass
 
 ## Expected Artifacts
 
