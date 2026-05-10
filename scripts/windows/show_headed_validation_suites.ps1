@@ -167,8 +167,8 @@ $suiteCatalog = @(
     [pscustomobject]@{
         Name = "google-home"
         Category = "input"
-        Path = "tmp-browser-smoke/form-controls/google-home-enter-probe.ps1"
-        Purpose = "Portable reduced Google-home watcher and bounded Enter-submit probe on the real headed surface after the localhost Google-style probes are green."
+        Path = "scripts/windows/run_google_home_validation.ps1"
+        Purpose = "One-command reduced homepage focus, typing, keydown, and Enter-submit probe on the real headed surface after the localhost Google-style probes are green."
         RecommendedWith = @("google-title", "google-submit-timing")
     }
     [pscustomobject]@{
@@ -419,7 +419,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-quick"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
-Write-Host "  powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\form-controls\\google-home-enter-probe.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
