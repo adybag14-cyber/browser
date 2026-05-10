@@ -24,6 +24,18 @@ Examples:
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait`
 
+## Flow Helpers
+
+Use these command surfaces when you want the validation order itself printed or
+when you need the same saved-page inputs to stay attached to the next rerun.
+
+- `show_headed_validation_suites.ps1`: quick suite index by subsystem, issue path, or change area.
+- `show_google_input_validation_flow.ps1`: prints the issue `#3` localhost-first order from reduced Google probes through saved-page and live Google follow-up.
+- `show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'`: keeps the saved-page Google follow-up in the same bounded order while preserving the manual input set and preferred first page.
+- `show_attached_html_validation_flow.ps1`: auto-discovers nested attached HTML under `agent_files/` and routes it into the general localhost follow-up flow.
+- `show_attached_html_validation_flow.ps1 -GoogleStyle`: prefers a Google-like attached page first when one is present, then prints the Google-style follow-up route for that same input set.
+- `run_localhost_html_validation_recommended.ps1 -Wait`: one-command attached-or-saved localhost runner that forwards into the right helper after the matching bounded suite is green.
+
 ## Core Rule
 
 - Pick the suite that matches the subsystem you changed.
