@@ -62,6 +62,7 @@ Directories:
 
 Good first probes:
 - `tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1`
+- `tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1`
 - `tmp-browser-smoke/inline-flow/probe.ps1`
 - `tmp-browser-smoke/flow-layout/probe.ps1`
 - `tmp-browser-smoke/rendered-link-dom/chrome-rendered-link-dom-probe.ps1`
@@ -83,6 +84,7 @@ Directories:
 Good first probes:
 - `tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1`
 - `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1`
+- `tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1`
 - `tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1`
 - `tmp-browser-smoke/form-controls/label-click-probe.ps1`
 - `tmp-browser-smoke/form-controls/enter-submit-probe.ps1`
@@ -178,7 +180,7 @@ only as needed.
 - auth/cookie/subresource changes: start with one targeted `image-smoke`, `stylesheet-smoke`, `fetch-credentials`, `websocket-smoke`, or `attachment-downloads` probe
 - restart or persistence changes: start with the restart-oriented probe in the matching persistence directory
 - shell-state changes: start with one `browser-pages`, `tabs`, `settings`, `bookmarks`, or `stop-loading` probe that exercises the changed action directly
-- live-site Google search-box work: start with `tmp-browser-smoke/google-investigation-next/`, then `tmp-browser-smoke/google-home/`, then `tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1`, then the closest shared submit gates such as `tmp-browser-smoke/form-controls/enter-submit-probe.ps1` and `tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`; use `src/browser/tests/page/google_home_title_probe.html` when the change specifically touches load or readiness ordering before moving to the full live-site pass
+- live-site Google search-box work: start with `tmp-browser-smoke/google-investigation-next/`, then `tmp-browser-smoke/google-home/`, then `tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1`, then `tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1`, then the closest shared submit gates such as `tmp-browser-smoke/form-controls/enter-submit-probe.ps1` and `tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`; use `src/browser/tests/page/google_home_title_probe.html` when the change specifically touches load or readiness ordering before moving to the full live-site pass
 
 ## Issue #3 Flow
 
@@ -187,9 +189,10 @@ For issue `#3`, keep the bounded follow-up order consistent across the branch:
 1. `google-investigation-next`
 2. `quick` or the matching title-readiness probe when needed
 3. `google-home`
-4. `tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1` and the nearest shared Enter-order gates
-5. saved-page manual follow-up
-6. live Google trace or full homepage follow-up
+4. `tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1`
+5. `tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1` and the nearest shared Enter-order gates
+6. saved-page manual follow-up
+7. live Google trace or full homepage follow-up
 
 Use `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md` and
 `scripts/windows/show_google_input_validation_flow.ps1` when you need the
