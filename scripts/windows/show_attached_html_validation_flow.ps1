@@ -36,8 +36,21 @@ function Get-DefaultAttachedHtmlInputPath {
 function Select-PreferredInitialPage {
     param(
         [Parameter(Mandatory = $true)]
-        [string[]]$ResolvedInputPath
+        [string[]]$ResolvedInputPath,
+        [switch]$PreferGoogleStyle
     )
+
+    if ($PreferGoogleStyle) {
+        $googleMatch = $ResolvedInputPath |
+            Where-Object {
+                $leaf = [System.IO.Path]::GetFileName($_)
+                $leaf -match "Google|Safety|Search|Privacy"
+            } |
+            Select-Object -First 1
+        if ($googleMatch) {
+            return $googleMatch
+        }
+    }
 
     $anthropicMatch = $ResolvedInputPath |
         Where-Object {
@@ -72,7 +85,7 @@ $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     (Resolve-Path -LiteralPath $PreferredInitialPage).Path
 } else {
-    Select-PreferredInitialPage -ResolvedInputPath $resolvedInputPath
+    Select-PreferredInitialPage -ResolvedInputPath $resolvedInputPath -PreferGoogleStyle:$GoogleStyle
 }
 
 $helperPath = if ($GoogleStyle) {
