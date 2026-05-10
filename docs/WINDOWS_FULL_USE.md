@@ -110,6 +110,7 @@ order:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle -LeaveOpen
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
@@ -133,7 +134,9 @@ Routing rules:
 
 - Start with the smallest bounded localhost suite before a saved-page or live-site pass.
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
+- Use `run_google_issue3_recommended_validation.ps1` when you want the one-command issue `#3` flow to include the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
 - Use `run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle` when you want the one-command issue `#3` flow to finish by auto-discovering current-run attached HTML under `user_files/` and `agent_files/`, while preferring a Google-like page first.
+- Use `run_google_shared_enter_order_validation.ps1` when you want the shared issue `#3` enter-order stack by itself, including the reduced-home keypress-before-submit probe, the stricter localhost wrapper, and the shared form-controls gate.
 - Use `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` when you want the shared validation router to point directly at the dedicated attached-HTML Google follow-up helper.
 - Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
 - Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
