@@ -25,7 +25,9 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
 }
 
 $wrapperRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
+$traceGuide = '.\\scripts\\windows\\show_google_title_probe_trace_guide.ps1'
 $directProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-title-probe.ps1'
+$traceGuidePath = 'tmp-browser-smoke/google-investigation-next/GOOGLE_HOME_TITLE_PROBE_TRACE.md'
 
 $wrapperArguments = ""
 $directProbeArguments = ""
@@ -73,7 +75,13 @@ if ($HomePollMilliseconds) {
 $flow = [ordered]@{
     issue = "Headed Windows Google title validation flow"
     focus = "Bounded localhost readiness, click-focus, typed-text, and Enter-submit markers on the Google-style title probe before wider homepage or shared Enter-order passes."
+    read_first_guide = $traceGuidePath
     steps = @(
+        [ordered]@{
+            name = "read-first"
+            goal = "Print the dedicated marker guide so the bounded title string maps cleanly to focus, text commit, and Enter-submit stages before you run the wrapper."
+            command = "powershell -ExecutionPolicy Bypass -File $traceGuide"
+        }
         [ordered]@{
             name = "wrapper"
             goal = "Run the dedicated title wrapper first so the bounded probe stays on the same reusable command surface as the other Windows validation helpers."
@@ -91,6 +99,8 @@ $flow = [ordered]@{
         "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when the title wrapper is green and you want the stricter shared Enter-order stack printed before you run it."
     )
     notes = @(
+        "Start with the read-first guide when you want the marker meanings without opening the markdown note by hand.",
+        "The printed guide mirrors $traceGuidePath so the command output and the saved note stay aligned.",
         "Start with the wrapper unless you already know you need the direct probe output files from tmp-browser-smoke/google-investigation-next.",
         "Keep the title wrapper bounded to localhost before moving into the reduced homepage, shared, or live Google trace phases.",
         "Reuse the same host, port, input text, and timing overrides here when you need the title probe to stay aligned with the broader issue #3 validation flow."
@@ -105,6 +115,7 @@ if ($Json) {
 Write-Host "Headed Windows Google title validation flow"
 Write-Host ""
 Write-Host ("Focus: {0}" -f $flow.focus)
+Write-Host ("Guide: {0}" -f $flow.read_first_guide)
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
