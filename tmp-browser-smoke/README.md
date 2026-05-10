@@ -19,6 +19,7 @@ Examples:
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait`
 
@@ -74,9 +75,9 @@ Examples:
 - `google-title`: bounded reduced-homepage title, focus, typing, and
   Enter-submit ordering on the real headed surface before the broader
   `google-home/`, `google-submit-timing`, or wrapper-first passes
-- `google-quick`: fast title-plus-watch first pass on the real headed surface
-  before the reduced homepage, submit-timing, shared Enter-order, or wrapper
-  passes
+- `google-quick`: one-command fast title-plus-watch first pass on the real
+  headed surface before the reduced homepage, submit-timing, shared
+  Enter-order, or wrapper passes
 - `google-home/`: reduced homepage watcher and bounded Enter-submit pass on the
   real headed surface after the localhost Google-style probes are green
 - `google-submit-timing`: bounded Google-shaped keydown, keypress, and submit
@@ -207,7 +208,7 @@ For live-site Google search-box work, start with
 or `show_headed_validation_suites.ps1 -SuiteName google-title` when the next
 question is whether the reduced headed surface is reaching the expected title,
 focus, typing, and Enter-submit markers. Then use
-`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase quick`
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1`
 for the fast title-plus-watch first pass, then
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 for the current one-command bounded pass, or move through
