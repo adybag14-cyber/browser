@@ -24,12 +24,13 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: google_style_probe_server.py <port>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print("usage: google_style_probe_server.py <port> [host]", file=sys.stderr)
         return 2
 
     port = int(sys.argv[1])
-    with ThreadingHTTPServer(("127.0.0.1", port), Handler) as server:
+    host = sys.argv[2] if len(sys.argv) == 3 else "127.0.0.1"
+    with ThreadingHTTPServer((host, port), Handler) as server:
         server.serve_forever()
 
 
