@@ -64,190 +64,29 @@ Graphical rendering and native input translation are still in-progress:
 - frame presentation pipeline
 - IME candidate/composition UI and dead-key edge cases
 
-## 5) Headed validation gate map
+## 5) Run saved local HTML fixtures in headed mode
 
-The headed probe suites under `tmp-browser-smoke/` are now the default
-validation map for this fork.
-
-Start with:
-
-1. the narrowest suite for the subsystem you changed
-2. one nearby shared-behavior suite when the change touches input, rendering,
-   navigation, persistence, or downloads
-3. the issue-specific reduced Google or manual real-site pass only after the
-   bounded local suite is green
-
-Command-line helper:
+For richer localhost validation, use the reusable local-fixture probe:
 
 ```powershell
-.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
-.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName layout-smoke
-.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-title
-.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-home
-.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
-.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input -Json
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 `
+  -FixturePaths `
+    "C:\path\to\Control your online safety and privacy – Google Safety Centre.html",`
+    "C:\path\to\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic.html",`
+    "C:\path\to\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html"
 ```
 
-Primary suite families:
+What it does:
 
-- shell and browser pages: `tabs/`, `browser-pages/`, `settings/`, `popup/`,
-  `wrapped-link/`, `stop-loading/`, `bookmarks/`
-- rendering and layout: `layout-smoke/`, `inline-flow/`, `flow-layout/`,
-  `rendered-link-dom/`, `font-render/`, `font-smoke/`, `image-smoke/`,
-  `stylesheet-smoke/`, `zoom/`
-- forms and editing: `form-controls/`, `find/`, `file-upload/`, `downloads/`,
-  `attachment-downloads/`
-- reduced Google input investigation: `google-investigation-next/` for
-  Google-style localhost probes that cover focus churn, delayed readiness,
-  correction, and Enter-submit ordering before the reduced homepage pass
-- reduced Google title pass: `google-title` for the narrow bounded real-surface
-  title, focus, typing, and Enter-submit ordering gate before the broader
-  reduced homepage or wrapper-first pass
-- reduced Google homepage surface: `google-home/` for the bounded real-window
-  Enter-submit probe and title-stream watcher path against
-  `google_home_title_probe.html`
-- reduced Google wrapper-first pass: `google-recommended` for the current
-  one-command localhost-first issue `#3` flow that bundles the title pass,
-  reduced homepage pass, submit-timing check, shared Enter-order wrapper, and
-  watcher before any saved-page or live-site follow-up
-- persistence and runtime: `cookie-persistence/`,
-  `localstorage-persistence/`, `indexeddb-persistence/`,
-  `sessionstorage-scope/`, `fetch-abort/`, `fetch-credentials/`,
-  `websocket-smoke/`
-- graphics and packaging: `canvas-smoke/`, `multi-image/`,
-  `bare-metal-release/`
+- stages each saved HTML file behind a localhost server
+- copies a sibling `<page-base>_files` asset directory when one exists
+- opens each page in headed `browse`
+- captures a screenshot for each fixture
+- checks that the native window title matches the page `<title>`
 
-See `tmp-browser-smoke/README.md` for the full suite map and recommended
-change-to-probe routing.
+Results are written under:
 
-## 6) Reduced Google homepage probe
+- `tmp-browser-smoke\local-html-fixtures\output\`
 
-Use the reduced Google probe pages when issue-driven headed input work needs a
-repeatable local check before moving on to the full live homepage.
-
-Start with `tmp-browser-smoke/google-investigation-next/` for the narrowed
-localhost probes. Then use the bounded title pass when you need the narrowest
-real-surface title, focus, typing, and Enter-submit ordering gate before the
-broader reduced homepage pass:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_title_probe.ps1
-```
-
-Then use `tmp-browser-smoke/google-home/` when you need a bounded real-surface
-Enter-submit pass on the reduced homepage fixture itself. Use the watcher below
-only when you want a longer interactive title stream on that same fixture.
-
-Bounded reduced homepage pass:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-home\chrome-google-home-enter-probe.ps1
-```
-
-That probe should reach the title markers `FOCUSED`, `TYPED:QZ`, and
-`SUBMIT:QZ` before you move on to a live Google manual pass.
-
-Preferred one-command bounded Google validation pass:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
-```
-
-That wrapper keeps the current localhost-first issue `#3` flow together:
-`localhost`, `title`, reduced `home`, `submit-timing`, `shared-enter-order`,
-and `watch`, with the same optional saved-page follow-up parameters.
-
-Broader shared-input follow-up through the main runner:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared
-```
-
-Use that narrower shared-input phase when the wrapper points at a regression in
-label activation, deferred submit, reduced Google-home form coverage, or the
-nearby inline-flow submit gates and you want the shared checks by themselves.
-
-Interactive watcher path:
-
-1. Start a local static server from the repo root:
-
-```powershell
-python -m http.server 9582
-```
-
-2. In a second shell, watch the headed probe title stream:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\watch_headed_probe.ps1
-```
-
-Defaults:
-
-- URL: `http://127.0.0.1:9582/src/browser/tests/page/google_home_title_probe.html`
-- Expected ready marker: `BOUND|`
-- Trace output: `tmp-browser-smoke\headed-probe\headed-probe-trace.json`
-
-Useful options:
-
-- `-LeaveOpen` keeps the headed browser running after the expected marker is seen so you can click and type manually.
-- `-ExpectedTitleContains "SUBMIT:"` is useful when validating that an Enter path reaches form submission on the reduced probe.
-- `-BrowserExe <path>` lets you point at a custom Windows build output.
-
-The probe mirrors the query box state into the window title so you can track
-focus, keydown, keypress, beforeinput, input, and submit behavior without
-attaching a separate debugger first.
-
-## 7) Saved localhost HTML page validation
-
-Use `scripts\windows\start_localhost_html_validation.ps1` when you want a
-repeatable headed session against saved or attached HTML pages instead of the
-repo's built-in smoke fixtures.
-
-For the current attached standalone HTML snapshots and similar mixed saved-page
-sets, start with `docs/ATTACHED_HTML_LOCALHOST_VALIDATION.md`. That runbook
-maps the current page shapes to the closest bounded suites, shows staged
-`-InputPath` examples, and keeps the preferred first page explicit for the
-manual headed follow-up.
-
-Typical flow:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_localhost_html_validation.ps1 `
-  -PageRoot C:\path\to\saved-pages `
-  -LaunchBrowser `
-  -Wait
-```
-
-When the saved pages live across several standalone HTML files or folders,
-stage them into one clean localhost run first:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_staged_localhost_html_validation.ps1 `
-  -InputPath C:\path\to\saved-page.html, C:\path\to\saved-folder `
-  -LaunchBrowser `
-  -Wait
-```
-
-That wrapper copies the provided inputs into a timestamped validation root,
-writes `staged-input-manifest.json`, and then hands off to
-`start_localhost_html_validation.ps1`.
-
-What the helper does:
-
-- serves every `.html` and `.htm` file under `-PageRoot` on `http://127.0.0.1:<port>/`
-- chooses the first HTML file alphabetically unless `-InitialPage` is provided
-- optionally launches the headed browser directly against that first page
-- writes the session summary and server logs under `tmp-browser-smoke\manual-user\localhost-html-validation\`
-
-Useful options:
-
-- `-InitialPage subdir/page.html` opens a specific saved page first
-- `-InitialPage C:\path\to\saved-page.html` also works with `start_staged_localhost_html_validation.ps1` when you want to open one staged source file first
-- `-Port 8124` moves the local server when another harness is already bound
-- `-Host 0.0.0.0` exposes the same pages to other machines on the LAN when needed
-- `-LeaveServerRunning` keeps the server alive after the `-Wait` prompt completes
-- omit `-LaunchBrowser` when you only want the localhost URLs and log files
-
-This helper is meant for manual compatibility passes on real saved pages after
-bounded probe suites are green. It does not replace the normal `tmp-browser-smoke/`
-validation gates; it gives them a cleaner follow-up path for real-world local HTML.
+This is a good first-pass validation path for exported real-site pages before
+moving into a narrower bug investigation or adding a dedicated bounded probe.
