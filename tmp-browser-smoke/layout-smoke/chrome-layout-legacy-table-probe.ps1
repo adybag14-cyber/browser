@@ -1,8 +1,36 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$Host = "127.0.0.1",
+    [int]$Port = 8180,
+    [int]$ServerReadyTimeoutSeconds = 15,
+    [int]$WindowReadyAttempts = 60,
+    [int]$PollMilliseconds = 200
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\layout-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+function Resolve-PythonCommand {
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        return @{ FileName = "python"; Arguments = @() }
+    }
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        return @{ FileName = "py"; Arguments = @("-3") }
+    }
+    throw "Python was not found in PATH. Install Python or start the layout smoke server separately."
+}
+
+$root = $PSScriptRoot
+if (-not $RepoRoot) {
+    $RepoRoot = (Resolve-Path (Join-Path $root "..\..\..")).Path
+}
+if (-not $BrowserExe) {
+    $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+}
+
+$repo = $RepoRoot
 $serverScript = Join-Path $root "layout_server.py"
 $common = Join-Path $root "LayoutProbeCommon.ps1"
 . $common
@@ -45,8 +73,7 @@ function Find-ColorBoundsInRegion($Path, [scriptblock]$Predicate, [int]$MinX, [i
   }
 }
 
-$port = 8180
-$pageUrl = "http://127.0.0.1:$port/legacy-table.html"
+$pageUrl = "http://$Host`:$Port/legacy-table.html"
 $outPng = Join-Path $root "legacy-table.png"
 $browserOut = Join-Path $root "legacy-table.browser.stdout.txt"
 $browserErr = Join-Path $root "legacy-table.browser.stderr.txt"
@@ -57,17 +84,20 @@ $profileRoot = Join-Path $root "profile-legacy-table"
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 Reset-ProfileRoot $profileRoot
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$server = $null
+$browser = $null
+$python = Resolve-PythonCommand
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port, $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
-  if (-not (Wait-HttpReady $pageUrl)) { throw "layout smoke server did not become ready" }
+  if (-not (Wait-HttpReady $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds)) { throw "layout smoke server did not become ready" }
 
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","960","--window_height","540","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse",$pageUrl,"--window_width","960","--window_height","540","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
   try {
-    if (-not (Wait-Screenshot $outPng)) { throw "legacy table screenshot did not become ready" }
+    if (-not (Wait-Screenshot $outPng -Attempts $WindowReadyAttempts -SleepMs $PollMilliseconds)) { throw "legacy table screenshot did not become ready" }
 
     $logoBounds = Find-ColorBoundsInRegion $outPng { param($c) ($c.R -ge 60 -and $c.R -le 110) -and ($c.G -ge 120 -and $c.G -le 160) -and ($c.B -ge 220 -and $c.B -le 255) } 220 80 760 240
     $shellBounds = Find-ColorBoundsInRegion $outPng { param($c) ($c.R -ge 195 -and $c.R -le 215) -and ($c.G -ge 195 -and $c.G -le 215) -and ($c.B -ge 195 -and $c.B -le 215) } 180 220 780 340
@@ -85,6 +115,9 @@ try {
     if (-not $result.legacy_table_worked) {
       throw "legacy table probe did not observe centered table layout with a right-side cell"
     }
+    $result.page_url = $pageUrl
+    $result.repo_root = $RepoRoot
+    $result.browser_exe = $BrowserExe
     $result | ConvertTo-Json -Depth 6
   }
   finally {
