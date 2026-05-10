@@ -8,7 +8,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$runner = '.\scripts\windows\run_google_input_validation.ps1'
+$runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
 $titleCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase title"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
@@ -24,8 +25,13 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for title readiness, reduced homepage submit, shared submit gates, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, shared submit gates, watch mode, and saved-page localhost follow-up."
     steps = @(
+        [ordered]@{
+            name = "localhost"
+            goal = "Run the reduced localhost Google-style probes before any real-surface homepage pass."
+            command = $localhostCommand
+        }
         [ordered]@{
             name = "title"
             goal = "Check bounded readiness and title updates on the reduced Google-style page."
@@ -53,7 +59,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "full"
-            goal = "Fold the fast title, shared submit gates, and watcher into the broader Google-input validation flow."
+            goal = "Run the localhost-first flow in one pass, then fold in the quick title, shared submit gates, and watcher before the broader Google manual follow-up."
             command = $fullCommand
         }
     )
@@ -69,9 +75,10 @@ $flow = [ordered]@{
         }
     }
     notes = @(
-        "Start with title or quick before the broader homepage pass.",
+        "Start with localhost before title or quick so the reduced Google-style probes stay the first bounded gate.",
         "Use shared before a live Google manual check when input or submit behavior still looks suspicious.",
-        "Use manual only after the closest bounded suite is already green."
+        "Use manual only after the closest bounded suite is already green.",
+        "Use full when you want the runner's built-in localhost-first order plus the extra title, shared, and watch phases in one pass."
     )
 }
 
