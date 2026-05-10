@@ -7,7 +7,7 @@ param(
     [string]$SuiteName,
 
     [Parameter(ParameterSetName = "Change")]
-    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "manual-html")]
+    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-saved-html", "manual-html")]
     [string]$ChangeArea,
 
     [switch]$Json
@@ -294,10 +294,12 @@ $changeRecommendations = @{
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
     "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-home", "google-submit-timing", "google-shared-enter-order", "manual-user")
-    "manual-html" = @("manual-user", "form-controls", "google-investigation-next")
+    "google-saved-html" = @("manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
+    "manual-html" = @("manual-user", "form-controls", "layout-smoke")
 }
 
 $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+$googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 $manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_localhost_html_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 
 function Get-SuiteRecord {
@@ -349,14 +351,18 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
 
     $nextStep = if ($ChangeArea -eq "google-input") {
         "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-home, google-submit-timing, the shared Enter-order wrapper, and the saved-page localhost follow-up before the smallest live Google manual check."
+    } elseif ($ChangeArea -eq "google-saved-html") {
+        "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "manual-html") {
-        "Start with the matching bounded suite, then use the localhost flow helper to summarize, serve, or stage the saved pages before the issue-specific manual runner hand-off."
+        "Start with the matching bounded suite, then use the localhost flow helper to summarize, serve, or stage the saved pages before the manual follow-up."
     } else {
         "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
     }
 
     $flowCommand = if ($ChangeArea -eq "google-input") {
         $googleFlowCommand
+    } elseif ($ChangeArea -eq "google-saved-html") {
+        $googleSavedHtmlFlowCommand
     } elseif ($ChangeArea -eq "manual-html") {
         $manualHtmlFlowCommand
     } else {
@@ -400,6 +406,8 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_localhost_html_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
