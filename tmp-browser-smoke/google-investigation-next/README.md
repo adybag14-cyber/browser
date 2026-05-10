@@ -36,7 +36,11 @@ Use these before the reduced homepage watcher or the live
 
 ## Follow-Up Path
 
-After these probes are green, use `scripts/windows/watch_headed_probe.ps1`
-against `src/browser/tests/page/google_home_title_probe.html` for the reduced
-homepage title stream, then finish with the smallest real headed Google manual
-pass that exercises the same interaction path.
+After these probes are green, run
+`tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1` for the
+bounded real-surface reduced homepage pass. Use
+`scripts/windows/watch_headed_probe.ps1` against
+`src/browser/tests/page/google_home_title_probe.html` only when you need a
+longer interactive title stream on that same fixture, then finish with the
+smallest real headed Google manual pass that exercises the same interaction
+path.
