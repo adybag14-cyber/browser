@@ -19,7 +19,7 @@ Examples:
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
-- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 
 ## Core Rule
 
@@ -64,6 +64,10 @@ Examples:
   Enter-submit, and deferred pending-submit behavior
 - `google-investigation-next/`: reduced Google-style localhost probes for focus
   churn, delayed readiness, correction, and Enter-submit ordering
+- `google-recommended`: the current one-command localhost-first issue #3 runner
+  that folds in the title pass, reduced homepage pass, submit-timing check,
+  shared Enter-order wrapper, and watcher before saved-page or live-site
+  follow-up
 - `google-home/`: reduced homepage watcher and bounded Enter-submit pass on the
   real headed surface after the localhost Google-style probes are green
 - `google-submit-timing`: bounded Google-shaped keydown, keypress, and submit
@@ -125,10 +129,11 @@ Use this order unless a narrower issue demands something more specific first.
 3. Run one nearby shared-behavior suite if the change touched input, rendering,
    navigation, storage, or downloads.
 4. For Google search-box or other real-page typing issues, start with
-   `google-investigation-next/`, then the bounded title or quick pass,
-   then `google-home/`, then `google-submit-timing`, then
-   `google-shared-enter-order`, and only then move on to the saved-page or
-   live-site follow-up.
+   `google-investigation-next/`, then use `google-recommended` for the current
+   one-command bounded pass or `run_google_input_validation.ps1 -Phase quick`
+   when you want the stepwise first pass, then `google-home/`, then
+   `google-submit-timing`, then `google-shared-enter-order`, and only then move
+   on to the saved-page or live-site follow-up.
 5. For saved or attached localhost HTML pages, start with the matching bounded
    suite first and only then move into `manual-user/` for the real page
    follow-up.
@@ -144,10 +149,10 @@ Use this order unless a narrower issue demands something more specific first.
   the closest `inline-flow/` probe, and only then move on to the live-site pass
   when the issue is Google search-box related.
 - Google-style focus churn, delayed readiness, correction, or Enter-submit
-  ordering: run `google-investigation-next/`, then the bounded `title` or
-  `quick` path from `run_google_input_validation.ps1`, then `google-home/`,
-  then `google-submit-timing`, then `google-shared-enter-order`, and finally
-  the saved-page or live-site follow-up.
+  ordering: run `google-investigation-next/`, then `google-recommended` for the
+  current one-command bounded pass, or drop into the stepwise `quick`, `home`,
+  `submit-timing`, and `shared-enter-order` phases when you need to narrow the
+  first failing gate before the saved-page or live-site follow-up.
 - Saved or attached localhost HTML compatibility passes: run the matching
   bounded suite first, then use `manual-user/` and the localhost helper scripts
   for the real follow-up on the saved pages.
@@ -169,11 +174,11 @@ Use this order unless a narrower issue demands something more specific first.
 
 For live-site Google search-box work, start with
 `tmp-browser-smoke/google-investigation-next/`, then use
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
+for the current one-command bounded pass, or use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase quick`
-for the bounded title-plus-watch first pass, then move on to
-`-Phase home`, `-Phase submit-timing`, and `-Phase shared-enter-order` before
-using the saved-page localhost follow-up or the full `https://www.google.com/`
-pass.
+when you want the fast title-plus-watch first pass before moving on to
+`-Phase home`, `-Phase submit-timing`, and `-Phase shared-enter-order`.
 
 Use `src/browser/tests/page/google_home_title_probe.html` when the change
 specifically touches load or readiness ordering, and use
