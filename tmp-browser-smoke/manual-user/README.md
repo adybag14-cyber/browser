@@ -84,16 +84,22 @@ artifact root with:
 - a simple interactive score to help pick the first manual follow-up page
 - lightweight counts for forms, inputs, buttons, textareas, links, scripts,
   iframes, images, canvas, and `contenteditable`
+- `recommended_bounded_suites` for each saved page so you can run the closest
+  `tmp-browser-smoke/` gate before the manual follow-up
+- `overall_recommended_suites` for the full saved-page set when several files
+  or folders should be covered together
+- `manual_follow_up_suite` and `next_step` guidance for the localhost pass
 
 ## Recommended Flow
 
 1. Pick the bounded suite for the subsystem you changed with `scripts/windows/show_headed_validation_suites.ps1`.
 2. Run that suite and one nearby shared-behavior suite if the change crossed subsystems.
 3. If the saved pages are spread across several files or folders, stage them first with `start_staged_localhost_html_validation.ps1`.
-4. Run `summarize_localhost_html_pages.ps1` when you need a quick inventory or a suggested first page.
-5. Start the saved-page localhost pass from this directory's helper flow.
-6. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
-7. Only move to live-site checking after the saved-page pass is stable.
+4. Run `summarize_localhost_html_pages.ps1` when you need a quick inventory, a suggested first page, or a recommended bounded-suite set for the saved HTML pages.
+5. Run one or two of the suggested bounded suites from the summary JSON before you start the localhost manual pass.
+6. Start the saved-page localhost pass from this directory's helper flow.
+7. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
+8. Only move to live-site checking after the saved-page pass is stable.
 
 ## Google-Style Input Work
 
