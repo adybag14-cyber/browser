@@ -68,6 +68,160 @@ function Get-ForwardRelativePath {
         ) -replace "\\", "/")
 }
 
+function Normalize-RelativeHtmlPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = ($Path -replace "\\", "/").Trim()
+    while ($normalized.StartsWith("./")) {
+        $normalized = $normalized.Substring(2)
+    }
+    return $normalized.TrimStart('/')
+}
+
+function Get-RelativeHtmlUrlPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = Normalize-RelativeHtmlPath -Path $Path
+    $encodedSegments = foreach ($segment in ($normalized -split "/")) {
+        if ($segment -ne "") {
+            [System.Uri]::EscapeDataString($segment)
+        }
+    }
+    return ($encodedSegments -join "/")
+}
+
+function Get-HtmlEncodedText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    return [System.Net.WebUtility]::HtmlEncode($Text)
+}
+
+function Write-StagedIndexPage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StageRoot,
+        [Parameter(Mandatory = $true)]
+        [object[]]$Entries,
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestRelativePath
+    )
+
+    $listItems = foreach ($entry in ($Entries | Sort-Object staged_relative_path)) {
+        $relativePath = [string]$entry.staged_relative_path
+        $href = Get-RelativeHtmlUrlPath -Path $relativePath
+        $displayPath = Get-HtmlEncodedText -Text $relativePath
+        $sourceLabel = switch ([string]$entry.source_kind) {
+            "directory_html" { "staged from a directory input" }
+            "standalone_html" { "staged from a standalone file" }
+            default { [string]$entry.source_kind }
+        }
+        $encodedSourceLabel = Get-HtmlEncodedText -Text $sourceLabel
+        $encodedSourcePath = Get-HtmlEncodedText -Text ([string]$entry.source_path)
+@"
+      <li>
+        <a href="$href">$displayPath</a>
+        <p>$encodedSourceLabel</p>
+        <code>$encodedSourcePath</code>
+      </li>
+"@
+    }
+
+    $manifestHref = Get-RelativeHtmlUrlPath -Path $ManifestRelativePath
+    $entryCount = $Entries.Count
+    $manifestLabel = Get-HtmlEncodedText -Text $ManifestRelativePath
+    $listMarkup = $listItems -join "`r`n"
+    $indexContent = @"
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staged localhost HTML validation</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 2rem;
+    }
+    p {
+      line-height: 1.55;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 24px 0;
+      display: grid;
+      gap: 14px;
+    }
+    li {
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 16px 18px;
+    }
+    a {
+      color: #0f4c81;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    code {
+      display: block;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.92rem;
+      color: #374151;
+    }
+    .manifest {
+      margin-top: 20px;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Staged localhost HTML validation</h1>
+    <p>This landing page was generated for the headed saved-page follow-up. It keeps the staged HTML inputs together so you can move through the attached pages in one headed session.</p>
+    <p>Staged pages: $entryCount</p>
+    <ul>
+$listMarkup
+    </ul>
+    <p class="manifest">Manifest: <a href="$manifestHref">$manifestLabel</a></p>
+  </main>
+</body>
+</html>
+"@
+
+    $indexPath = Join-Path $StageRoot "index.html"
+    Set-Content -Path $indexPath -Value $indexContent -Encoding Ascii
+    return "index.html"
+}
+
 $scriptRoot = $PSScriptRoot
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $scriptRoot "..\..")).Path
@@ -152,16 +306,24 @@ if (-not $stagedInitialPage -and $InitialPage) {
     $stagedInitialPage = $InitialPage
 }
 
-$manifestPath = Join-Path $stageRoot "staged-input-manifest.json"
+$manifestRelativePath = "staged-input-manifest.json"
+$generatedIndexPage = Write-StagedIndexPage -StageRoot $stageRoot -Entries $stagedEntries -ManifestRelativePath $manifestRelativePath
+if (-not $stagedInitialPage) {
+    $stagedInitialPage = $generatedIndexPage
+}
+
+$manifestPath = Join-Path $stageRoot $manifestRelativePath
 $manifest = [pscustomobject]@{
     staged_root = $stageRoot
     created_at_utc = (Get-Date).ToUniversalTime().ToString("o")
     entry_count = $stagedEntries.Count
+    generated_index_page = $generatedIndexPage
     entries = $stagedEntries
 }
 $manifest | ConvertTo-Json -Depth 6 | Set-Content -Path $manifestPath -Encoding Ascii
 
 Write-Host ("Staged HTML validation root: {0}" -f $stageRoot)
+Write-Host ("Generated staged index: {0}" -f (Join-Path $stageRoot $generatedIndexPage))
 Write-Host ("Staged input manifest: {0}" -f $manifestPath)
 
 $helperArgs = @{
