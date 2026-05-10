@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Headed Google-style Input Probe</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f5f7fb;
+      color: #1f2937;
+      font: 16px/1.45 sans-serif;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      height: 42px;
+      padding: 0 14px;
+      border: 1px solid #94a3b8;
+      border-radius: 12px;
+      background: #fff;
+      color: #111827;
+      font: inherit;
+    }
+
+    button {
+      height: 42px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 12px;
+      background: #2563eb;
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .panel {
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 13px/1.4 monospace;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <form id="search-form" name="f" action="/search" method="get" autocomplete="off">
+      <div class="search-row">
+        <input id="search-box" name="q" type="text" autofocus spellcheck="false" aria-label="Search">
+        <button id="search-button" type="submit">Search</button>
+      </div>
+      <input id="shadow-box" type="text" value="shadow target">
+    </form>
+
+    <section class="panel">
+      <strong>State</strong>
+      <pre id="state"></pre>
+    </section>
+
+    <section class="panel">
+      <strong>Event Log</strong>
+      <pre id="log"></pre>
+    </section>
+  </main>
+
+  <script>
+    const form = document.f;
+    const input = form.q;
+    const shadow = document.getElementById('shadow-box');
+    const state = document.getElementById('state');
+    const log = document.getElementById('log');
+    const entries = [];
+
+    function activeId() {
+      return document.activeElement ? document.activeElement.id || document.activeElement.tagName : 'none';
+    }
+
+    function renderState(submitValue) {
+      state.textContent = [
+        'active=' + activeId(),
+        'value=' + JSON.stringify(input.value),
+        'submit=' + JSON.stringify(submitValue || ''),
+        'namedForm=' + String(window.f === form),
+        'namedInput=' + String(form.q === input)
+      ].join('\n');
+    }
+
+    function push(label, event) {
+      const line = [
+        label,
+        'target=' + (event.target.id || event.target.tagName),
+        'active=' + activeId(),
+        'value=' + JSON.stringify(input.value),
+        'key=' + JSON.stringify(event.key || ''),
+        'inputType=' + JSON.stringify(event.inputType || ''),
+        'data=' + JSON.stringify(event.data || '')
+      ].join(' | ');
+      entries.push(line);
+      log.textContent = entries.join('\n');
+      renderState();
+    }
+
+    ['focus', 'blur', 'keydown', 'beforeinput', 'input', 'keyup', 'change'].forEach((type) => {
+      input.addEventListener(type, (event) => {
+        push(type, event);
+        if (type === 'keydown' && event.key.length === 1 && input.value.length === 0) {
+          shadow.focus();
+          setTimeout(() => input.focus(), 0);
+        }
+      });
+    });
+
+    shadow.addEventListener('focus', (event) => push('shadow-focus', event));
+    shadow.addEventListener('input', (event) => push('shadow-input', event));
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      push('submit', event);
+      renderState(input.value);
+      document.title = 'submitted:' + input.value;
+    });
+
+    renderState();
+    input.focus();
+  </script>
+</body>
+</html>
