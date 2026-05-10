@@ -226,7 +226,8 @@ function Get-RecommendedFlowCommand {
         [Parameter(Mandatory = $true)]
         [string]$ResolvedPageRoot,
         [Parameter(Mandatory = $true)]
-        [int]$Port
+        [int]$Port,
+        [string]$InitialPage
     )
 
     $helper = if ($GoogleStyle) {
@@ -235,7 +236,12 @@ function Get-RecommendedFlowCommand {
         ".\\scripts\\windows\\show_localhost_html_validation_flow.ps1"
     }
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
-    return "powershell -ExecutionPolicy Bypass -File $helper -PageRoot $quotedPageRoot -Port $Port"
+    $command = "powershell -ExecutionPolicy Bypass -File $helper -PageRoot $quotedPageRoot -Port $Port"
+    if ($InitialPage) {
+        $quotedInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $InitialPage
+        $command += " -PreferredInitialPage $quotedInitialPage"
+    }
+    return $command
 }
 
 function Get-DirectLaunchCommand {
@@ -314,7 +320,7 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
     } else {
         "scripts/windows/show_localhost_html_validation_flow.ps1"
     }
-    $recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $googleStyle -ResolvedPageRoot $resolvedPageRoot -Port $Port
+    $recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $googleStyle -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $relativePath
     $directLaunchCommand = Get-DirectLaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $relativePath
 
     [pscustomobject]@{
@@ -357,7 +363,7 @@ $flowHelper = if ($hasGoogleStylePages) {
 } else {
     "scripts/windows/show_localhost_html_validation_flow.ps1"
 }
-$recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $hasGoogleStylePages -ResolvedPageRoot $resolvedPageRoot -Port $Port
+$recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $hasGoogleStylePages -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $recommendedInitialPage.relative_path
 $recommendedDirectLaunchCommand = Get-DirectLaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $recommendedInitialPage.relative_path
 
 $summary = [pscustomobject]@{
