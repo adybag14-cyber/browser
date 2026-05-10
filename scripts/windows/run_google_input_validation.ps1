@@ -7,6 +7,21 @@ param(
     [switch]$IncludeWatch,
     [switch]$IncludeSharedInput,
     [switch]$IncludeTitleProbe,
+    [string]$Host = "127.0.0.1",
+    [string]$InputText = "QZ",
+    [string]$SharedInputText = "Q",
+    [int]$TitlePort = 9582,
+    [int]$HomePort = 8168,
+    [int]$WatchPort = 9582,
+    [int]$SharedDefaultPort = 8154,
+    [int]$SharedDeferredPort = 8155,
+    [int]$InlineFlowPort = 8148,
+    [int]$ServerReadyTimeoutSeconds = 15,
+    [int]$HomeWindowReadyAttempts = 60,
+    [int]$HomeTitleWaitAttempts = 80,
+    [int]$HomePollMilliseconds = 250,
+    [int]$WatchTimeoutSeconds = 90,
+    [int]$WatchPollMilliseconds = 250,
     [string[]]$ManualInputPath,
     [string]$ManualInitialPage,
     [int]$ManualPort = 8123,
@@ -28,7 +43,6 @@ $probeRoot = Join-Path $RepoRoot "tmp-browser-smoke"
 $googleLocalhostRoot = Join-Path $probeRoot "google-investigation-next"
 $titleProbe = Join-Path $scriptRoot "run_google_home_title_probe.ps1"
 $googleHomeProbe = Join-Path $probeRoot "google-home\chrome-google-home-enter-probe.ps1"
-$deferredEnterProbe = Join-Path $probeRoot "form-controls\deferred-enter-submit-probe.ps1"
 $formControlsEnterProbe = Join-Path $probeRoot "form-controls\enter-submit-probe.ps1"
 $inlineFlowEnterProbe = Join-Path $probeRoot "inline-flow\chrome-inline-break-input-enter-submit-probe.ps1"
 $watchProbe = Join-Path $scriptRoot "run_google_home_watch_probe.ps1"
@@ -54,7 +68,7 @@ function Invoke-ProbeScript {
         throw "Probe script not found: $ScriptPath"
     }
 
-    Write-Host ("")
+    Write-Host ""
     Write-Host ("=== {0} ===" -f $Label)
     Write-Host ("Script: {0}" -f $ScriptPath)
 
@@ -76,6 +90,9 @@ function Invoke-TitleSequence {
     $args = @{
         RepoRoot = $RepoRoot
         BrowserExe = $BrowserExe
+        Host = $Host
+        Port = $TitlePort
+        ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
     }
     Invoke-ProbeScript -Label "google-home-title" -ScriptPath $titleProbe -Arguments $args
 }
@@ -84,6 +101,13 @@ function Invoke-HomeSequence {
     $args = @{
         RepoRoot = $RepoRoot
         BrowserExe = $BrowserExe
+        Host = $Host
+        Port = $HomePort
+        InputText = $InputText
+        ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
+        WindowReadyAttempts = $HomeWindowReadyAttempts
+        TitleWaitAttempts = $HomeTitleWaitAttempts
+        PollMilliseconds = $HomePollMilliseconds
     }
     Invoke-ProbeScript -Label "google-home-enter" -ScriptPath $googleHomeProbe -Arguments $args
 }
@@ -94,39 +118,45 @@ function Invoke-QuickSequence {
 }
 
 function Invoke-SharedInputSequence {
-    $previousRepoRoot = $env:LIGHTPANDA_REPO_ROOT
-    $previousBrowserExe = $env:LIGHTPANDA_BROWSER_EXE
-    try {
-        $env:LIGHTPANDA_REPO_ROOT = $RepoRoot
-        $env:LIGHTPANDA_BROWSER_EXE = $BrowserExe
-        Invoke-ProbeScript -Label "form-controls-deferred-enter-submit" -ScriptPath $deferredEnterProbe
-        Invoke-ProbeScript -Label "form-controls-enter-submit" -ScriptPath $formControlsEnterProbe
-    } finally {
-        if ($null -eq $previousRepoRoot) {
-            Remove-Item Env:LIGHTPANDA_REPO_ROOT -ErrorAction SilentlyContinue
-        } else {
-            $env:LIGHTPANDA_REPO_ROOT = $previousRepoRoot
-        }
-        if ($null -eq $previousBrowserExe) {
-            Remove-Item Env:LIGHTPANDA_BROWSER_EXE -ErrorAction SilentlyContinue
-        } else {
-            $env:LIGHTPANDA_BROWSER_EXE = $previousBrowserExe
-        }
-    }
-
-    $args = @{
+    $commonArgs = @{
         RepoRoot = $RepoRoot
         BrowserExe = $BrowserExe
+        Host = $Host
+        InputText = $SharedInputText
+        ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
+        WindowReadyAttempts = $HomeWindowReadyAttempts
+        TitleWaitAttempts = $HomeTitleWaitAttempts
+        PollMilliseconds = $HomePollMilliseconds
     }
-    Invoke-ProbeScript -Label "inline-flow-enter-submit" -ScriptPath $inlineFlowEnterProbe -Arguments $args
+
+    $defaultArgs = $commonArgs.Clone()
+    $defaultArgs.Port = $SharedDefaultPort
+    Invoke-ProbeScript -Label "form-controls-enter-submit" -ScriptPath $formControlsEnterProbe -Arguments $defaultArgs
+
+    $deferredArgs = $commonArgs.Clone()
+    $deferredArgs.DeferredEnter = $true
+    $deferredArgs.Port = $SharedDeferredPort
+    Invoke-ProbeScript -Label "form-controls-deferred-enter-submit" -ScriptPath $formControlsEnterProbe -Arguments $deferredArgs
+
+    $inlineArgs = @{
+        RepoRoot = $RepoRoot
+        BrowserExe = $BrowserExe
+        Port = $InlineFlowPort
+    }
+    Invoke-ProbeScript -Label "inline-flow-enter-submit" -ScriptPath $inlineFlowEnterProbe -Arguments $inlineArgs
 }
 
 function Invoke-WatchSequence {
     $args = @{
         RepoRoot = $RepoRoot
         BrowserExe = $BrowserExe
-        InputText = "QZ"
+        Host = $Host
+        Port = $WatchPort
+        InputText = $InputText
+        TimeoutSeconds = $WatchTimeoutSeconds
+        PollMilliseconds = $WatchPollMilliseconds
         SendEnter = $true
+        ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
     }
     if ($LeaveOpen) {
         $args.LeaveOpen = $true
@@ -160,6 +190,9 @@ function Invoke-ManualHtmlSequence {
 Write-Host "Google headed-input validation runner"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Phase: {0}" -f $Phase)
+Write-Host ("Host: {0}" -f $Host)
+Write-Host ("Primary input text: {0}" -f $InputText)
+Write-Host ("Shared input text: {0}" -f $SharedInputText)
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     Write-Host ("Manual HTML follow-up: {0}" -f (($ManualInputPath | ForEach-Object { $_ }) -join ", "))
 }
@@ -204,7 +237,7 @@ switch ($Phase) {
     }
 }
 
-Write-Host ("")
+Write-Host ""
 if ($Phase -eq "manual") {
     Write-Host "Next: compare any saved-page failures with the reduced localhost and bounded homepage probes before moving on to the smallest live Google manual pass."
 } elseif ($Phase -eq "shared") {
