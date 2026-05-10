@@ -65,9 +65,9 @@ fixture still reproduces the problem they are meant to capture.
 After the reduced localhost probes are green, keep the next steps on the shared
 runner surface:
 
-1. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase title`
+1. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_validation.ps1`
    Confirms the bounded title fixture reaches the expected focus and typed-text
-   markers.
+   markers through the dedicated wrapper surface.
 2. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick`
    Runs the fast title-plus-watch first pass.
 3. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home`
@@ -78,6 +78,10 @@ runner surface:
    Rechecks the shared label-click baseline, shared submit gates, and the
    stricter localhost keypress-before-submit wrapper before the manual or live
    Google pass.
+
+Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1`
+when you want the bounded title stack printed as its own read-first handoff
+before the wider quick, home, shared, or live Google phases.
 
 ## Follow-Up Path
 
