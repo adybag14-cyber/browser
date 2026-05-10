@@ -26,6 +26,12 @@ Examples:
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile attached-html`
+
+Use the Google validation surface checker when the branch has moved recently and
+you want the issue `#3` or attached-page helper chain to fail fast if a linked
+guide or runner was renamed or removed.
 
 ## Flow Helpers
 
@@ -41,6 +47,7 @@ when you need the same saved-page inputs to stay attached to the next rerun.
 - `show_attached_html_validation_flow.ps1 -GoogleStyle`: prefers a Google-like attached page first when one is present, then prints the Google-style follow-up route for that same input set.
 - `show_google_attached_html_validation_flow.ps1`: prints the Google-style attached-page localhost-first handoff for current-run attached HTML before the broader manual follow-up.
 - `run_localhost_html_validation_recommended.ps1 -Wait`: one-command attached-or-saved localhost runner that forwards into the right helper after the matching bounded suite is green.
+- `check_google_validation_surface.ps1`: verifies that the current issue `#3` or attached-page guide and helper surface still exists before you depend on it.
 
 ## Core Rule
 
