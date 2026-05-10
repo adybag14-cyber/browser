@@ -15,24 +15,100 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
+
+function Get-GoogleAttachedHtmlFlowMetadata {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterSetName,
+        [string]$PageRoot,
+        [string[]]$ResolvedInputPath,
+        [string]$PreferredInitialPage,
+        [string]$ResolvedPreferredInitialPage,
+        [Parameter(Mandatory = $true)]
+        [bool]$LeaveOpen,
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    $parameterMode = switch ($ParameterSetName) {
+        "PageRoot" { "explicit page root" }
+        "InputPath" { "explicit input path" }
+        default { "auto-discovered attached HTML" }
+    }
+
+    $preferredInitialPageMode = if ($PreferredInitialPage) {
+        "explicit"
+    } elseif ($ResolvedPreferredInitialPage) {
+        if ($ParameterSetName -eq "PageRoot") { "page-root-auto" } else { "google-style-auto" }
+    } else {
+        if ($ParameterSetName -eq "PageRoot") { "page-root-default" } else { "saved-page-summary-auto" }
+    }
+
+    return [ordered]@{
+        parameter_mode = $parameterMode
+        page_root = $PageRoot
+        input_count = @($ResolvedInputPath).Count
+        resolved_input_path = @($ResolvedInputPath)
+        preferred_initial_page = $ResolvedPreferredInitialPage
+        preferred_initial_page_mode = $preferredInitialPageMode
+        validation_mode = "google-style"
+        leave_open = $LeaveOpen
+        port = $Port
+        search_roots = if ($ParameterSetName -eq "Auto") { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) } else { @() }
+    }
+}
+
+$repoRoot = Resolve-LightpandaRepoRoot $PSScriptRoot
 $helper = Join-Path $PSScriptRoot "show_saved_page_google_validation_flow.ps1"
 if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
     throw "Google-style attached HTML flow helper not found: $helper"
+}
+
+$resolvedPageRoot = if ($PageRoot) {
+    (Resolve-Path -LiteralPath $PageRoot).Path
+} else {
+    $null
+}
+$resolvedInputPath = switch ($PSCmdlet.ParameterSetName) {
+    "PageRoot" { @() }
+    "InputPath" { @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path }) }
+    default { Get-DefaultAttachedHtmlInputPath -RepoRoot $repoRoot }
+}
+$resolvedPreferredInitialPage = if ($PreferredInitialPage) {
+    if ($PSCmdlet.ParameterSetName -eq "PageRoot") {
+        $PreferredInitialPage
+    } else {
+        Resolve-AttachedPreferredInitialPage -ResolvedInputPath $resolvedInputPath -PreferredInitialPage $PreferredInitialPage
+    }
+} elseif ($PSCmdlet.ParameterSetName -eq "PageRoot") {
+    $null
+} else {
+    Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 }
 
 $arguments = @{
     Port = $Port
     ManualGoogleStyle = $true
 }
-if ($PreferredInitialPage) {
-    $arguments.PreferredInitialPage = $PreferredInitialPage
-}
-if ($Json) {
-    $arguments.Json = $true
+if ($resolvedPreferredInitialPage) {
+    $arguments.PreferredInitialPage = $resolvedPreferredInitialPage
 }
 if ($LeaveOpen) {
     $arguments.LeaveOpen = $true
 }
+
+$googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
+    -RepoRoot $repoRoot `
+    -ParameterSetName $PSCmdlet.ParameterSetName `
+    -PageRoot $resolvedPageRoot `
+    -ResolvedInputPath $resolvedInputPath `
+    -PreferredInitialPage $PreferredInitialPage `
+    -ResolvedPreferredInitialPage $resolvedPreferredInitialPage `
+    -LeaveOpen ([bool]$LeaveOpen) `
+    -Port $Port
 
 if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
@@ -40,30 +116,56 @@ if (-not $Json) {
     Write-Host "Mode: attached HTML auto-discovery with the Google-style localhost follow-up"
     switch ($PSCmdlet.ParameterSetName) {
         "PageRoot" {
-            Write-Host ("Mode detail: explicit page root ({0})" -f $PageRoot)
+            Write-Host ("Mode detail: explicit page root ({0})" -f $resolvedPageRoot)
         }
         "InputPath" {
-            Write-Host ("Mode detail: explicit saved HTML inputs ({0})" -f $InputPath.Count)
+            Write-Host ("Mode detail: explicit saved HTML inputs ({0})" -f $resolvedInputPath.Count)
         }
         default {
-            Write-Host "Mode detail: auto-discover attached HTML under user_files first, then agent_files."
+            Write-Host ("Mode detail: auto-discovered attached HTML inputs ({0}) under user_files first, then agent_files." -f $resolvedInputPath.Count)
         }
     }
-    if ($PreferredInitialPage) {
-        Write-Host ("Preferred initial page override: {0}" -f $PreferredInitialPage)
+    if ($resolvedPreferredInitialPage) {
+        if ($PreferredInitialPage) {
+            Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
+        } else {
+            Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
+        }
     }
     Write-Host "Override: use -PreferredInitialPage to keep one Google-like page first, or pass -PageRoot / -InputPath to skip auto-discovery."
     Write-Host "Helper: .\scripts\windows\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle"
     Write-Host ""
 }
 
+if ($Json) {
+    $arguments.Json = $true
+    switch ($PSCmdlet.ParameterSetName) {
+        "PageRoot" {
+            $helperJson = (& $helper @arguments -PageRoot $resolvedPageRoot) -join [Environment]::NewLine
+        }
+        "InputPath" {
+            $helperJson = (& $helper @arguments -InputPath $resolvedInputPath) -join [Environment]::NewLine
+        }
+        default {
+            $helperJson = (& $helper @arguments) -join [Environment]::NewLine
+        }
+    }
+
+    $result = [ordered]@{
+        google_attached_html = $googleAttachedHtmlMetadata
+        flow = $helperJson | ConvertFrom-Json -Depth 10
+    }
+    $result | ConvertTo-Json -Depth 10
+    exit $LASTEXITCODE
+}
+
 switch ($PSCmdlet.ParameterSetName) {
     "PageRoot" {
-        & $helper @arguments -PageRoot $PageRoot
+        & $helper @arguments -PageRoot $resolvedPageRoot
         exit $LASTEXITCODE
     }
     "InputPath" {
-        & $helper @arguments -InputPath $InputPath
+        & $helper @arguments -InputPath $resolvedInputPath
         exit $LASTEXITCODE
     }
     default {
