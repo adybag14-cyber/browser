@@ -281,6 +281,7 @@ try {
     Wait-HttpReady -Url $probeUrl -TimeoutSeconds $ServerReadyTimeoutSeconds
     $ready = $true
   } else {
+    Wait-HttpReady -Url $probeUrl -TimeoutSeconds $ServerReadyTimeoutSeconds
     $ready = $true
   }
 
