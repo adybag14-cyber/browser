@@ -1,5 +1,5 @@
 param(
-    [string]$RepoRoot = "C:\Users\adyba\src\lightpanda-browser",
+    [string]$RepoRoot = $env:LIGHTPANDA_REPO_ROOT,
     [switch]$CleanBuildCaches,
     [switch]$CleanDependencyCaches,
     [switch]$CleanSliceOutputs
@@ -7,6 +7,24 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Resolve-RepoRoot {
+    param(
+        [string]$Candidate
+    )
+
+    $resolved = $Candidate
+    if ([string]::IsNullOrWhiteSpace($resolved)) {
+        $resolved = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    }
+
+    $resolvedItem = Get-Item -LiteralPath $resolved -ErrorAction Stop
+    if (-not $resolvedItem.PSIsContainer) {
+        throw "RepoRoot must point to the Lightpanda repository directory."
+    }
+
+    return $resolvedItem.FullName
+}
 
 function Get-PathSizeBytes {
     param(
@@ -104,6 +122,8 @@ function Remove-Artifact {
         Remove-Item -LiteralPath $Artifact.Path -Force
     }
 }
+
+$RepoRoot = Resolve-RepoRoot -Candidate $RepoRoot
 
 $artifacts = @(
     (New-ArtifactRecord -Path (Join-Path $RepoRoot ".zig-cache") -Category "Build cache" -DefaultClean $true -Reason "Transient Zig local cache. Safe to delete; next build will be cold." -Kind "directory"),
