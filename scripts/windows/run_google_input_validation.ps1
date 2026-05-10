@@ -50,7 +50,7 @@ if (-not $BrowserExe) {
 $probeRoot = Join-Path $RepoRoot "tmp-browser-smoke"
 $googleLocalhostRoot = Join-Path $probeRoot "google-investigation-next"
 $titleProbe = Join-Path $scriptRoot "run_google_home_title_probe.ps1"
-$googleHomeProbe = Join-Path $probeRoot "google-home\chrome-google-home-probe.ps1"
+$googleHomeProbe = Join-Path $probeRoot "google-home\chrome-google-home-enter-probe.ps1"
 $formControlsLabelProbe = Join-Path $probeRoot "form-controls\label-click-probe.ps1"
 $formControlsEnterProbe = Join-Path $probeRoot "form-controls\enter-submit-probe.ps1"
 $formControlsReducedGoogleProbe = Join-Path $probeRoot "form-controls\chrome-google-home-enter-submit-probe.ps1"
