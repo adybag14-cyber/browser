@@ -148,11 +148,15 @@ fetches:
    - `../boringssl-zig`
    - `../offline-deps/{brotli,zlib,nghttp2,curl}`
    - `.cargo/config.toml` and `vendor/` when html5ever is being validated
-3. Confirm `build.zig.zon` now uses local `.path` dependencies for brotli,
+3. Run `scripts/linux/check_offline_build_prereqs.sh` before `zig build`.
+   - Treat a failing preflight as a setup or toolchain issue, not a code
+     regression.
+   - The active `zig version` must match `build.zig.zon` exactly.
+4. Confirm `build.zig.zon` now uses local `.path` dependencies for brotli,
    zlib, nghttp2, and curl.
-4. Re-run Linux validation with the restored prebuilt V8 archive:
+5. Re-run Linux validation with the restored prebuilt V8 archive:
    - `zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a`
-5. Treat remaining failures after this point as compile or toolchain
+6. Treat remaining failures after this point as compile or toolchain
    compatibility issues, not missing offline inputs.
 
 Use `docs/LINUX_OFFLINE_BUILD_RECOVERY.md` as the detailed Linux runbook.
