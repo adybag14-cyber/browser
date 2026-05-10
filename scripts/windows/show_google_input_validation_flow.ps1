@@ -24,8 +24,9 @@ $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
 $manualGoogleStyleArgument = if ($ManualGoogleStyle) { " -ManualGoogleStyle" } else { "" }
 
 $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$titleRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
-$titleCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase title"
+$titleCommand = "powershell -ExecutionPolicy Bypass -File $titleRunner"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1$leaveOpenArgument"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
 $submitTimingCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
@@ -66,7 +67,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "title"
-            goal = "Check bounded readiness and title updates on the reduced Google-style page."
+            goal = "Run the dedicated title wrapper so the bounded readiness, click-focus, typed-text, and Enter-submit markers stay on a smaller reusable validation surface."
             command = $titleCommand
         }
         [ordered]@{
@@ -153,6 +154,7 @@ $flow = [ordered]@{
     )
     notes = @(
         "Start with localhost before title or quick so the reduced Google-style probes stay the first bounded gate.",
+        "Use .\\scripts\\windows\\show_google_title_validation_flow.ps1 when you want the bounded title stack printed as its own narrower read-first handoff before you run it.",
         "Use submit-timing after the reduced homepage pass when you want one extra Google-shaped headed check before the shared form-controls and inline-flow gates.",
         "Use shared before a live Google manual check when label activation, input, or submit behavior still looks suspicious.",
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
