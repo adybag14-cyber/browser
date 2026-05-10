@@ -129,7 +129,8 @@ function Select-GoogleStyleInitialPage {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
-$resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
+$usingExplicitInputPath = $InputPath -and $InputPath.Count -gt 0
+$resolvedInputPath = if ($usingExplicitInputPath) {
     @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
 } else {
     Get-DefaultAttachedHtmlInputPath -RepoRoot $repoRoot
@@ -154,8 +155,10 @@ if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
 }
 
 $helperArgs = @{
-    InputPath = $resolvedInputPath
     Port = $Port
+}
+if (-not ($GoogleStyle -and -not $usingExplicitInputPath)) {
+    $helperArgs["InputPath"] = $resolvedInputPath
 }
 if ($resolvedPreferredInitialPage) {
     $helperArgs["PreferredInitialPage"] = $resolvedPreferredInitialPage
@@ -163,6 +166,9 @@ if ($resolvedPreferredInitialPage) {
 
 if ($Json) {
     $helperArgs["Json"] = $true
+}
+if ($GoogleStyle) {
+    $helperArgs["ManualGoogleStyle"] = $true
 }
 if ($GoogleStyle -and $LeaveOpen) {
     $helperArgs["LeaveOpen"] = $true
@@ -172,6 +178,7 @@ if (-not $Json) {
     Write-Host "Attached HTML validation flow"
     Write-Host ""
     Write-Host ("Inputs discovered: {0}" -f $resolvedInputPath.Count)
+    Write-Host ("Input mode: {0}" -f $(if ($usingExplicitInputPath) { "explicit" } else { "auto-discovered attached HTML" }))
     if ($resolvedPreferredInitialPage) {
         if ($PreferredInitialPage) {
             Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
