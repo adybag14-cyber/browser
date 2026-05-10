@@ -175,7 +175,7 @@ $suiteCatalog = @(
         Name = "google-submit-timing"
         Category = "input"
         Path = "scripts/windows/run_google_submit_timing_validation.ps1"
-        Purpose = "One-command wrapper for the bounded Google-shaped keydown, keypress, and submit-ordering probe on the real headed surface before the broader shared gates or manual Google pass."
+        Purpose = "One-command wrapper for the bounded Google-shaped keydown, keypress, and submit-ordering probe on the real headed surface before the broader shared gates or manual Google pass. Use the dedicated flow helper when you want that read-first handoff printed before execution."
         RecommendedWith = @("google-title", "google-shared-enter-order")
     }
     [pscustomobject]@{
@@ -308,6 +308,7 @@ $changeRecommendations = @{
 }
 
 $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+$googleSubmitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 $googleAttachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
 $manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
@@ -351,6 +352,9 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     Write-Host ("Path: {0}" -f $suite.Path)
     Write-Host ("Purpose: {0}" -f $suite.Purpose)
     Write-Host ("Recommended with: {0}" -f ($suite.RecommendedWith -join ", "))
+    if ($suite.Name -eq "google-submit-timing") {
+        Write-Host ("Flow helper: {0}" -f $googleSubmitTimingFlowCommand)
+    }
     exit 0
 }
 
@@ -361,7 +365,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-submit-timing, and the shared Enter-order stack. Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that stricter shared stack printed before you execute it."
+        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-submit-timing, and the shared Enter-order stack. Use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 when you want the bounded submit-timing stack printed before you execute it, and use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that stricter shared stack printed before you execute it."
     } elseif ($ChangeArea -eq "google-saved-html") {
         "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "google-attached-html") {
@@ -427,6 +431,7 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
