@@ -36,15 +36,21 @@ That helper:
 ## 2) Recommended order for Google-like attached pages
 
 1. Print the flow with `show_attached_html_validation_flow.ps1 -GoogleStyle`.
-2. Run the bounded issue `#3` pass:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`
-3. Run the attached localhost follow-up:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 -Wait`
+2. Run the bounded issue `#3` pass and keep the same attached-page follow-up on
+   the bundled manual phase:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle`
+3. If you want to reopen the same attached HTML set directly after the bundled
+   pass, rerun the attached localhost helper:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 -GoogleStyle -Wait`
 4. If the bounded phases are green but the attached page still diverges, rerun
    the printed Google-style saved-page flow with the same preferred page and
    manual input set.
 5. Only move to the live Google trace or full homepage pass after the bounded
    localhost-first phases and the attached-page follow-up agree.
+
+The recommended runner already knows how to keep the Google-style attached-page
+follow-up in the same localhost-first order, so you do not need to restate the
+attached file paths just to carry that manual phase along.
 
 ## 3) Override the first page when needed
 
@@ -60,8 +66,17 @@ For a direct attached-page run with the same override:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 `
+  -GoogleStyle `
   -PreferredInitialPage C:\path\to\attached-google-page.html `
   -Wait
+```
+
+For the one-command bounded issue `#3` pass with the same preferred first page:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 `
+  -ManualGoogleStyle `
+  -ManualInitialPage C:\path\to\attached-google-page.html
 ```
 
 ## 4) Switch to explicit saved-page inputs when auto-discovery is not enough
