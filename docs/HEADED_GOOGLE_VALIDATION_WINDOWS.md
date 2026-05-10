@@ -33,16 +33,18 @@ Run the smallest bounded gate first:
 1. `localhost`
 2. `quick`
 3. `google-home`
-4. `shared-enter-order`
-5. `manual`
-6. `trace`
+4. `submit-timing`
+5. `shared-enter-order`
+6. `manual`
+7. `trace`
 
-Use these commands through the main runner:
+Use these commands through the main runner or the bounded probe directly:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase localhost
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-google-submit-timing-probe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order
 ```
 
@@ -56,6 +58,10 @@ Only move to `manual` or `trace` after those bounded phases are green.
   markers without a long manual session.
 - `google-home`: the reduced homepage probe still reaches the headed title
   markers `FOCUSED`, `TYPED:QZ`, and `SUBMIT:QZ`.
+- `submit-timing`: the bounded headed Win32 layout-smoke probe still clicks the
+  Google-shaped shell, types `QZ`, reaches the submitted page, and preserves
+  `keydown,keypress,submit` ordering in the submitted title trace before the
+  broader shared gates.
 - `shared-enter-order`: the shared label baseline, submit gates, and stricter
   keypress-before-submit wrapper still agree with the reduced Google path, and
   the reduced title probe should stay at a `KEYDOWN:<text>|13|13` marker on the
@@ -103,9 +109,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_val
 
 Do not treat a saved-page manual pass as the first evidence for issue `#3`.
 
-Use the bounded localhost, reduced homepage, and shared Enter-order passes
-first, then use the saved-page or live-Google follow-up only when those gates
-already agree.
+Use the bounded localhost, reduced homepage, submit-timing, and shared
+Enter-order passes first, then use the saved-page or live-Google follow-up only
+when those gates already agree.
 
 For Enter-order work, do not accept a reduced-title pass as green unless the
 keydown edge still reads `KEYDOWN:<text>|13|13` before the final
