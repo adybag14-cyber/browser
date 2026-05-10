@@ -131,6 +131,16 @@ powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-home\chrome-
 That probe should reach the title markers `FOCUSED`, `TYPED:QZ`, and
 `SUBMIT:QZ` before you move on to a live Google manual pass.
 
+One-command reduced Google plus nearby shared-input pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase all -IncludeSharedInput
+```
+
+With `-IncludeSharedInput`, the ordered follow-up now includes the reduced
+homepage pass plus the nearby shared input checks for deferred Enter submit,
+basic Enter submit, and inline-flow submit behavior.
+
 Interactive watcher path:
 
 1. Start a local static server from the repo root:
