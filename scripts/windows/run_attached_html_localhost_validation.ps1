@@ -24,7 +24,7 @@ if (-not $RepoRoot) {
 $resolvedInputPath = if ($InputPath -and $InputPath.Count -gt 0) {
     @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
 } else {
-    Get-DefaultAttachedHtmlInputPath -RepoRoot $RepoRoot
+    Get-DefaultAttachedHtmlInputPath -RepoRoot $RepoRoot -GoogleStyle:$GoogleStyle
 }
 
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
