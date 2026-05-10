@@ -9,6 +9,11 @@ param(
   [string]$ProbeDir,
   [string]$ProfileRoot,
   [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$TitleWaitAttempts = 50,
+  [int]$PollMilliseconds = 200,
+  [string]$InputText = "QZ",
+  [switch]$LeaveOpen,
   [switch]$SkipLocalServer
 )
 
@@ -22,11 +27,25 @@ if (-not $BrowserExe) {
   $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 if (-not $ProbeDir) {
-  $ProbeDir = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next"
+  $ProbeDir = Join-Path $RepoRoot "tmp-browser-smoke\page"
 }
 if (-not $ProfileRoot) {
-  $ProfileRoot = Join-Path $ProbeDir "profile"
+  $ProfileRoot = Join-Path $ProbeDir "profile-google-home-title"
 }
+
+$fixtureRelativePath = "src/browser/tests/page/google_home_title_probe.html"
+$probeUrl = "http://$Host`:$Port/$fixtureRelativePath"
+$serverStdout = Join-Path $ProbeDir "google-home-title.server.stdout.txt"
+$serverStderr = Join-Path $ProbeDir "google-home-title.server.stderr.txt"
+$browserStdout = Join-Path $ProbeDir "google-home-title.browser.stdout.txt"
+$browserStderr = Join-Path $ProbeDir "google-home-title.browser.stderr.txt"
+$summaryPath = Join-Path $ProbeDir "google-home-title.summary.json"
+$win32InputPath = Join-Path $RepoRoot "tmp-browser-smoke\common\Win32Input.ps1"
+
+if (-not (Test-Path -LiteralPath $win32InputPath -PathType Leaf)) {
+  throw "Win32 input helper not found: $win32InputPath"
+}
+. $win32InputPath
 
 function Resolve-PythonCommand {
   if (Get-Command python -ErrorAction SilentlyContinue) {
@@ -61,14 +80,14 @@ function Wait-HttpReady {
 
 function Remove-ArtifactIfPresent {
   param([string]$Path)
-  if (Test-Path $Path) {
-    Remove-Item -Path $Path -Force -ErrorAction SilentlyContinue
+  if (Test-Path -LiteralPath $Path) {
+    Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
   }
 }
 
 function Get-ArtifactRecord {
   param([string]$Path)
-  if (-not (Test-Path $Path)) {
+  if (-not (Test-Path -LiteralPath $Path)) {
     return [ordered]@{
       path = $Path
       exists = $false
@@ -76,7 +95,7 @@ function Get-ArtifactRecord {
     }
   }
 
-  $item = Get-Item $Path
+  $item = Get-Item -LiteralPath $Path
   return [ordered]@{
     path = $Path
     exists = $true
@@ -98,7 +117,7 @@ function ConvertTo-ProcessArgumentString {
       continue
     }
     if ($value -match '[\s"]') {
-      '"' + ($value -replace '(\\*)"', '$1$1\"' -replace '(\\+)$', '$1$1') + '"'
+      '"' + ($value -replace '(\\*)"','$1$1\"' -replace '(\\+)$','$1$1') + '"'
       continue
     }
     $value
@@ -134,51 +153,122 @@ function Start-RedirectedProcess {
   $process.StartInfo = $psi
   $process.Start() | Out-Null
 
-  $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-  $stderrTask = $process.StandardError.ReadToEndAsync()
-
   return [ordered]@{
     process = $process
-    stdout_task = $stdoutTask
-    stderr_task = $stderrTask
-    stdout_path = $StdoutPath
-    stderr_path = $StderrPath
+    stdout_task = $process.StandardOutput.ReadToEndAsync()
+    stderr_task = $process.StandardError.ReadToEndAsync()
   }
 }
 
-New-Item -ItemType Directory -Force -Path $ProbeDir, $ProfileRoot | Out-Null
+function Complete-RedirectedProcess {
+  param(
+    $Launch,
+    [string]$StdoutPath,
+    [string]$StderrPath
+  )
 
-$probeUrl = "http://$Host`:$Port/src/browser/tests/page/google_home_title_probe.html"
-$serverStdout = Join-Path $ProbeDir "probe-server.stdout.txt"
-$serverStderr = Join-Path $ProbeDir "probe-server.stderr.txt"
-$browserStdout = Join-Path $ProbeDir "probe-browser.stdout.txt"
-$browserStderr = Join-Path $ProbeDir "probe-browser.stderr.txt"
-$summaryPath = Join-Path $ProbeDir "probe-summary.json"
-$browseRenderLog = Join-Path $ProbeDir "browse-render.log"
-$runtimeRendererLog = Join-Path $ProbeDir "runtime-renderer.log"
-$sessionWaitLog = Join-Path $ProbeDir "session-wait.log"
+  if (-not $Launch) {
+    return
+  }
+  $Launch.stdout_task.Wait()
+  $Launch.stderr_task.Wait()
+  $Launch.stdout_task.Result | Set-Content -Path $StdoutPath -Encoding Ascii
+  $Launch.stderr_task.Result | Set-Content -Path $StderrPath -Encoding Ascii
+}
 
-foreach ($path in @(
-  $serverStdout,
-  $serverStderr,
-  $browserStdout,
-  $browserStderr,
-  $summaryPath,
-  $browseRenderLog,
-  $runtimeRendererLog,
-  $sessionWaitLog
-)) {
+function Wait-ForTitleMatch {
+  param(
+    [IntPtr]$Hwnd,
+    [scriptblock]$Predicate,
+    [int]$Attempts = 40,
+    [int]$SleepMs = 200
+  )
+
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    Start-Sleep -Milliseconds $SleepMs
+    $title = Get-SmokeWindowTitle $Hwnd
+    if (& $Predicate $title) {
+      return $title
+    }
+  }
+  return $null
+}
+
+function Wait-ForTitleLike {
+  param(
+    [IntPtr]$Hwnd,
+    [string]$Pattern,
+    [int]$Attempts = 40,
+    [int]$SleepMs = 200
+  )
+
+  return Wait-ForTitleMatch -Hwnd $Hwnd -Predicate { param($Title) $Title -like $Pattern } -Attempts $Attempts -SleepMs $SleepMs
+}
+
+function Focus-GoogleQuery {
+  param(
+    [IntPtr]$Hwnd,
+    [int]$Attempts,
+    [int]$SleepMs
+  )
+
+  $focusedTitle = Wait-ForTitleMatch -Hwnd $Hwnd -Predicate {
+    param($Title)
+    $Title -match 'A=INPUT:q:[^|]*\|Q=INPUT:q:'
+  } -Attempts 6 -SleepMs ([Math]::Max($SleepMs, 200))
+  if ($focusedTitle) {
+    return $focusedTitle
+  }
+
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    Send-SmokeTab
+    $focusedTitle = Wait-ForTitleMatch -Hwnd $Hwnd -Predicate {
+      param($Title)
+      $Title -match 'A=INPUT:q:[^|]*\|Q=INPUT:q:'
+    } -Attempts 6 -SleepMs ([Math]::Max($SleepMs, 150))
+    if ($focusedTitle) {
+      return $focusedTitle
+    }
+  }
+
+  return $null
+}
+
+New-Item -ItemType Directory -Force -Path $ProbeDir | Out-Null
+foreach ($path in @($serverStdout, $serverStderr, $browserStdout, $browserStderr, $summaryPath)) {
   Remove-ArtifactIfPresent -Path $path
 }
 
-Get-ChildItem -Path $ProbeDir -Filter "runtime-input-backend-*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-Get-ChildItem -Path $ProbeDir -Filter "wndproc-input-*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-
-if (-not (Test-Path $BrowserExe)) {
+if (-not (Test-Path -LiteralPath $BrowserExe -PathType Leaf)) {
   throw "Lightpanda binary not found: $BrowserExe"
 }
 
+if (Test-Path -LiteralPath $ProfileRoot) {
+  Remove-Item -LiteralPath $ProfileRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+$appDataRoot = Join-Path $ProfileRoot "lightpanda"
+New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
+@"
+lightpanda-browse-settings-v1
+restore_previous_session	0
+allow_script_popups	0
+default_zoom_percent	100
+homepage_url	
+"@ | Set-Content -Path (Join-Path $appDataRoot "browse-settings-v1.txt") -NoNewline
+
 $serverLaunch = $null
+$browserLaunch = $null
+$browserProcess = $null
+$ready = $false
+$boundTitle = $null
+$focusedTitle = $null
+$titleAfterType = $null
+$titleAfterSubmit = $null
+$typedWorked = $false
+$submittedWorked = $false
+$submitAfterKeypress = $false
+$failure = $null
+
 try {
   if (-not $SkipLocalServer) {
     $python = Resolve-PythonCommand
@@ -189,6 +279,9 @@ try {
       -StdoutPath $serverStdout `
       -StderrPath $serverStderr
     Wait-HttpReady -Url $probeUrl -TimeoutSeconds $ServerReadyTimeoutSeconds
+    $ready = $true
+  } else {
+    $ready = $true
   }
 
   $browserLaunch = Start-RedirectedProcess `
@@ -209,22 +302,80 @@ try {
     }
   $browserProcess = $browserLaunch.process
 
-  Write-Host ""
-  Write-Host "Google headed probe is live."
-  Write-Host ("URL: {0}" -f $probeUrl)
-  Write-Host ("Browser PID: {0}" -f $browserProcess.Id)
-  Write-Host ("Artifacts: {0}" -f $ProbeDir)
-  Write-Host "Close the browser window when you are done reproducing the issue."
-  Write-Host ""
+  $hwnd = [IntPtr]::Zero
+  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    $proc = Get-Process -Id $browserProcess.Id -ErrorAction SilentlyContinue
+    if ($proc -and $proc.MainWindowHandle -ne 0) {
+      $hwnd = [IntPtr]$proc.MainWindowHandle
+      break
+    }
+  }
+  if ($hwnd -eq [IntPtr]::Zero) {
+    throw "google home title probe window handle not found"
+  }
 
-  Wait-Process -Id $browserProcess.Id
-  $browserLaunch.stdout_task.Wait()
-  $browserLaunch.stderr_task.Wait()
-  $browserLaunch.stdout_task.Result | Set-Content -Path $browserStdout -Encoding Ascii
-  $browserLaunch.stderr_task.Result | Set-Content -Path $browserStderr -Encoding Ascii
+  Show-SmokeWindow $hwnd
+  Start-Sleep -Milliseconds $PollMilliseconds
 
-  $runtimeInputLogs = @(Get-ChildItem -Path $ProbeDir -Filter "runtime-input-backend-*.log" -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object { $_.FullName })
-  $wndprocLogs = @(Get-ChildItem -Path $ProbeDir -Filter "wndproc-input-*.log" -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object { $_.FullName })
+  $boundTitle = Wait-ForTitleMatch -Hwnd $hwnd -Predicate {
+    param($Title)
+    $Title -like "*Q=INPUT:q*"
+  } -Attempts $TitleWaitAttempts -SleepMs $PollMilliseconds
+  if (-not $boundTitle) {
+    throw "google home title probe never bound the query input"
+  }
+
+  $focusedTitle = Focus-GoogleQuery -Hwnd $hwnd -Attempts 6 -SleepMs $PollMilliseconds
+  if (-not $focusedTitle) {
+    throw "google home title probe could not focus the query input"
+  }
+
+  Send-SmokeText $InputText
+  $typePattern = "*|V=$InputText|*"
+  $titleAfterType = Wait-ForTitleMatch -Hwnd $hwnd -Predicate {
+    param($Title)
+    ($Title -like $typePattern) -and ($Title -like "*Q=INPUT:q*")
+  } -Attempts $TitleWaitAttempts -SleepMs $PollMilliseconds
+  $typedWorked = $null -ne $titleAfterType
+  if (-not $typedWorked) {
+    throw "google home title probe did not observe typed query text"
+  }
+
+  Send-SmokeEnter
+  $submitPattern = "SUBMIT:$InputText*|V=$InputText*"
+  $titleAfterSubmit = Wait-ForTitleLike -Hwnd $hwnd -Pattern $submitPattern -Attempts $TitleWaitAttempts -SleepMs $PollMilliseconds
+  $submittedWorked = $null -ne $titleAfterSubmit
+  if (-not $submittedWorked) {
+    throw "google home title probe did not observe query submit"
+  }
+
+  $submitAfterKeypress = $titleAfterSubmit -match '\|E=KP:'
+  if (-not $submitAfterKeypress) {
+    throw "google home title probe submit did not preserve keypress ordering"
+  }
+} catch {
+  $failure = $_.Exception.Message
+} finally {
+  if ($browserProcess -and -not $LeaveOpen) {
+    Stop-Process -Id $browserProcess.Id -Force -ErrorAction SilentlyContinue
+  }
+  if ($browserLaunch) {
+    if ($browserLaunch.process -and -not $browserLaunch.process.HasExited -and -not $LeaveOpen) {
+      $browserLaunch.process.WaitForExit()
+    }
+    if ($browserLaunch.process.HasExited -or -not $LeaveOpen) {
+      Complete-RedirectedProcess -Launch $browserLaunch -StdoutPath $browserStdout -StderrPath $browserStderr
+    }
+  }
+
+  if ($serverLaunch) {
+    if (-not $serverLaunch.process.HasExited) {
+      Stop-Process -Id $serverLaunch.process.Id -Force -ErrorAction SilentlyContinue
+      $serverLaunch.process.WaitForExit()
+    }
+    Complete-RedirectedProcess -Launch $serverLaunch -StdoutPath $serverStdout -StderrPath $serverStderr
+  }
 
   $summary = [ordered]@{
     generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
@@ -233,30 +384,27 @@ try {
     probe_url = $probeUrl
     probe_dir = $ProbeDir
     profile_root = $ProfileRoot
-    browser_exit_code = $browserProcess.ExitCode
     local_server_started = (-not $SkipLocalServer)
-    browser_stdout = (Get-ArtifactRecord -Path $browserStdout)
-    browser_stderr = (Get-ArtifactRecord -Path $browserStderr)
-    server_stdout = (Get-ArtifactRecord -Path $serverStdout)
-    server_stderr = (Get-ArtifactRecord -Path $serverStderr)
-    browse_render_log = (Get-ArtifactRecord -Path $browseRenderLog)
-    runtime_renderer_log = (Get-ArtifactRecord -Path $runtimeRendererLog)
-    session_wait_log = (Get-ArtifactRecord -Path $sessionWaitLog)
-    runtime_input_logs = $runtimeInputLogs
-    wndproc_input_logs = $wndprocLogs
+    left_open = [bool]$LeaveOpen
+    ready = $ready
+    bound_title = $boundTitle
+    focused_title = $focusedTitle
+    title_after_type = $titleAfterType
+    title_after_submit = $titleAfterSubmit
+    typed_worked = $typedWorked
+    submitted_worked = $submittedWorked
+    submit_after_keypress = $submitAfterKeypress
+    browser_stdout = Get-ArtifactRecord -Path $browserStdout
+    browser_stderr = Get-ArtifactRecord -Path $browserStderr
+    server_stdout = Get-ArtifactRecord -Path $serverStdout
+    server_stderr = Get-ArtifactRecord -Path $serverStderr
+    error = $failure
   }
 
   $summary | ConvertTo-Json -Depth 6 | Set-Content -Path $summaryPath -Encoding Ascii
   $summary | ConvertTo-Json -Depth 6
-} finally {
-  if ($serverLaunch) {
-    if (-not $serverLaunch.process.HasExited) {
-      Stop-Process -Id $serverLaunch.process.Id -Force -ErrorAction SilentlyContinue
-      $serverLaunch.process.WaitForExit()
-    }
-    $serverLaunch.stdout_task.Wait()
-    $serverLaunch.stderr_task.Wait()
-    $serverLaunch.stdout_task.Result | Set-Content -Path $serverStdout -Encoding Ascii
-    $serverLaunch.stderr_task.Result | Set-Content -Path $serverStderr -Encoding Ascii
-  }
+}
+
+if ($failure) {
+  exit 1
 }
