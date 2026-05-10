@@ -25,6 +25,7 @@ $manualGoogleStyleArgument = if ($ManualGoogleStyle) { " -ManualGoogleStyle" } e
 
 $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $titleRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
+$titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
 $titleCommand = "powershell -ExecutionPolicy Bypass -File $titleRunner"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1$leaveOpenArgument"
@@ -55,7 +56,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the bounded Google-shaped submit-timing pass through a dedicated wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for reduced localhost probes, the narrower title-flow helper, title readiness, reduced homepage submit, the bounded Google-shaped submit-timing pass through a dedicated wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -64,6 +65,11 @@ $flow = [ordered]@{
             name = "localhost"
             goal = "Run the reduced localhost Google-style probes before any real-surface homepage pass."
             command = $localhostCommand
+        }
+        [ordered]@{
+            name = "title-flow"
+            goal = "Print the narrower dedicated title wrapper flow when you want the bounded readiness, click-focus, typed-text, and Enter-submit path spelled out before you run it."
+            command = $titleFlowCommand
         }
         [ordered]@{
             name = "title"
@@ -153,8 +159,8 @@ $flow = [ordered]@{
         "-WatchPollMilliseconds 250"
     )
     notes = @(
-        "Start with localhost before title or quick so the reduced Google-style probes stay the first bounded gate.",
-        "Use .\\scripts\\windows\\show_google_title_validation_flow.ps1 when you want the bounded title stack printed as its own narrower read-first handoff before you run it.",
+        "Start with localhost before title-flow, title, or quick so the reduced Google-style probes stay the first bounded gate.",
+        "Use the title-flow step when you want the dedicated title wrapper and raw probe handoff printed before you run that narrower slice.",
         "Use submit-timing after the reduced homepage pass when you want one extra Google-shaped headed check before the shared form-controls and inline-flow gates.",
         "Use shared before a live Google manual check when label activation, input, or submit behavior still looks suspicious.",
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
