@@ -4,7 +4,8 @@ param(
     [string[]]$InputPath,
     [string]$PreferredInitialPage,
     [int]$Port = 8123,
-    [switch]$Json
+    [switch]$Json,
+    [switch]$LeaveOpen
 )
 
 Set-StrictMode -Version Latest
@@ -19,6 +20,9 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
+$leaveServerRunningArgument = if ($LeaveOpen) { " -LeaveServerRunning" } else { "" }
+
 $summaryHelper = '.\\scripts\\windows\\summarize_localhost_html_pages.ps1'
 $directHelper = '.\\scripts\\windows\\start_localhost_html_validation.ps1'
 $stagedHelper = '.\\scripts\\windows\\start_staged_localhost_html_validation.ps1'
@@ -27,8 +31,8 @@ $googleRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase home"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
-$fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch"
-$traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase trace"
+$fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$leaveOpenArgument"
+$traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase trace$leaveOpenArgument"
 $preferredInitialPageArgument = ""
 if ($PreferredInitialPage) {
     $quotedPreferredInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $PreferredInitialPage
@@ -48,29 +52,30 @@ $launchInitialPageArgument = if ($PreferredInitialPage) {
 if ($PageRoot) {
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
     $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot -Port $Port"
-    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot $quotedPageRoot -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
+    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot $quotedPageRoot -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
 } else {
     $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port"
-    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '<saved-page-dir>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
+    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '<saved-page-dir>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
 }
 
 if ($InputPath -and $InputPath.Count -gt 0) {
     $quotedPaths = $InputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $joinedPaths = $quotedPaths -join ", "
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
-    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
 } else {
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
-    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
 }
 
 $flow = [ordered]@{
     issue = "Google-style saved page follow-up"
     focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the fast quick pass, the reduced homepage headed pass, the one-shot full pass, and the live trace path when real Google still diverges."
     preferred_initial_page = $PreferredInitialPage
+    leave_open = [bool]$LeaveOpen
     steps = @(
         [ordered]@{
             name = "inventory"
@@ -136,7 +141,8 @@ $flow = [ordered]@{
         "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, shared Enter-order wrapper, and watch phase in one command, and keep the same saved-page manual follow-up attached when InputPath is already supplied.",
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
         "When PreferredInitialPage is set, the direct, staged, Google manual, and broader flow-map commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
-        "When InputPath is provided, the broader flow-map command also preserves the same manual port and saved-page inputs for the next printed handoff.",
+        "When InputPath is provided, the broader flow-map command also preserves the same manual port, initial page, and saved-page inputs for the next printed handoff.",
+        "When LeaveOpen is set, the printed Google manual, Google full, Google trace, direct-headed, and staged-headed commands keep the browser or localhost session open so you can inspect the same headed state after the bounded automation phases finish.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
     )
 }
@@ -152,6 +158,7 @@ Write-Host ("Focus: {0}" -f $flow.focus)
 if ($PreferredInitialPage) {
     Write-Host ("Preferred initial page: {0}" -f $PreferredInitialPage)
 }
+Write-Host ("Leave open after bounded phases: {0}" -f ([bool]$LeaveOpen))
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
