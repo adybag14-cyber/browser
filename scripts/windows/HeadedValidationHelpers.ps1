@@ -23,7 +23,7 @@ function Convert-ToDisplayPath([string]$Path, [string]$RepoRoot) {
   $fullPath = [System.IO.Path]::GetFullPath($Path)
   $fullRoot = [System.IO.Path]::GetFullPath($RepoRoot)
   if ($fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-    return $fullPath.Substring($fullRoot.Length).TrimStart("\", "/")
+    return $fullPath.Substring($fullRoot.Length).TrimStart("\\", "/")
   }
   return $fullPath
 }
@@ -68,18 +68,55 @@ function Get-AttachedHtmlCandidates([string]$RepoRoot) {
   return @($items | Group-Object FullName | ForEach-Object { $_.Group[0] })
 }
 
-function Test-GoogleStyleFixture($Fixture) {
-  $pathText = $Fixture.FullName
-  if ($pathText -match '(?i)(google|safety|search)') {
-    return $true
+function Get-GoogleStyleFixtureScore($Fixture) {
+  $score = 0
+  $pathText = $Fixture.FullName.ToLowerInvariant()
+
+  if ($pathText -match 'google[-_ ]?(home|search|input|query|submit|probe)') {
+    $score += 6
+  } elseif ($pathText -match 'search[-_ ]?(home|input|query|submit|probe|results)') {
+    $score += 4
+  } elseif ($pathText -match 'google') {
+    $score += 1
+  }
+
+  if ($pathText -match '(safety|privacy|policy|account|support)') {
+    $score -= 4
   }
 
   try {
     $raw = Get-Content -LiteralPath $Fixture.FullName -Raw -ErrorAction Stop
-    return $raw -match '(?i)(<title[^>]*>.*google|google safety|search)'
+    $rawLower = $raw.ToLowerInvariant()
+
+    if ($rawLower -match "<title[^>]*>[^<]*google[^<]*(search|home)") {
+      $score += 6
+    } elseif ($rawLower -match "<title[^>]*>[^<]*google[^<]*") {
+      $score += 2
+    }
+
+    if ($rawLower -match "name\s*=\s*['\"]q['\"]") {
+      $score += 7
+    }
+    if ($rawLower -match "aria-label\s*=\s*['\"][^'\"]*search[^'\"]*['\"]") {
+      $score += 4
+    }
+    if ($rawLower -match "<form[^>]+action\s*=\s*['\"][^'\"]*/search" -or
+        $rawLower -match "\b(btnk|apjfqb|glfyf|gsfi)\b") {
+      $score += 6
+    }
+
+    if ($rawLower -match '(google safety|safety centre|privacy)') {
+      $score -= 6
+    }
   } catch {
-    return $false
+    return $score
   }
+
+  return $score
+}
+
+function Test-GoogleStyleFixture($Fixture) {
+  return (Get-GoogleStyleFixtureScore $Fixture) -gt 2
 }
 
 function Resolve-FixtureSelection {
@@ -114,9 +151,13 @@ function Resolve-FixtureSelection {
   }
 
   if ($GoogleStyle) {
-    $preferred = @($fixtures | Where-Object { Test-GoogleStyleFixture $_ })
-    $others = @($fixtures | Where-Object { -not (Test-GoogleStyleFixture $_) })
-    $fixtures = @($preferred + $others)
+    $fixtures = @(
+      $fixtures |
+        Sort-Object @(
+          @{ Expression = { Get-GoogleStyleFixtureScore $_ }; Descending = $true },
+          @{ Expression = { $_.FullName } }
+        )
+    )
   }
 
   if ($MaxCount -gt 0 -and $fixtures.Count -gt $MaxCount) {
