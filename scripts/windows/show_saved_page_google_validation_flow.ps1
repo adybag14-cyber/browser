@@ -5,7 +5,8 @@ param(
     [string]$PreferredInitialPage,
     [int]$Port = 8123,
     [switch]$Json,
-    [switch]$LeaveOpen
+    [switch]$LeaveOpen,
+    [switch]$ManualGoogleStyle
 )
 
 Set-StrictMode -Version Latest
@@ -22,6 +23,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
 
 $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
 $leaveServerRunningArgument = if ($LeaveOpen) { " -LeaveServerRunning" } else { "" }
+$manualGoogleStyleArgument = if ($ManualGoogleStyle) { " -ManualGoogleStyle" } else { "" }
 
 $summaryHelper = '.\scripts\windows\summarize_localhost_html_pages.ps1'
 $directHelper = '.\scripts\windows\start_localhost_html_validation.ps1'
@@ -32,7 +34,7 @@ $quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase q
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase home"
 $submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase submit-timing"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
-$fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$leaveOpenArgument"
+$fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$manualGoogleStyleArgument$leaveOpenArgument"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase trace$leaveOpenArgument"
 $preferredInitialPageArgument = ""
 if ($PreferredInitialPage) {
@@ -64,9 +66,14 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     $joinedPaths = $quotedPaths -join ", "
     $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
-    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
+} elseif ($ManualGoogleStyle) {
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 -Port $Port$preferredInitialPageArgument -GoogleStyle -Wait$leaveServerRunningArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
 } else {
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
@@ -77,6 +84,7 @@ $flow = [ordered]@{
     issue = "Google-style saved page follow-up"
     focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the fast quick pass, the reduced homepage headed pass, the bounded submit-timing pass, the one-shot full pass, and the live trace path when real Google still diverges."
     preferred_initial_page = $PreferredInitialPage
+    manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
     steps = @(
         [ordered]@{
@@ -116,7 +124,11 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "google-manual"
-            goal = "Stage or reuse the saved pages and drive them through the Google runner's manual phase."
+            goal = if ($ManualGoogleStyle) {
+                "Stage or auto-discover attached Google-style pages and drive them through the Google runner's manual phase."
+            } else {
+                "Stage or reuse the saved pages and drive them through the Google runner's manual phase."
+            }
             command = $manualCommand
         }
         [ordered]@{
@@ -131,7 +143,11 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "staged-headed"
-            goal = "Stage mixed standalone HTML files and folders into one localhost session for the same follow-up."
+            goal = if ($ManualGoogleStyle) {
+                "Auto-discover attached Google-style pages for the same localhost follow-up when you want the helper to pick the first Google-like page for you."
+            } else {
+                "Stage mixed standalone HTML files and folders into one localhost session for the same follow-up."
+            }
             command = $stagedCommand
         }
         [ordered]@{
@@ -149,6 +165,7 @@ $flow = [ordered]@{
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
         "When PreferredInitialPage is set, the inventory, direct, staged, Google manual, and broader flow-map commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When InputPath is provided, the broader flow-map command also preserves the same manual port, initial page, and saved-page inputs for the next printed handoff.",
+        "When ManualGoogleStyle is set, the Google manual, Google full, staged-headed, and broader flow-map commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when PreferredInitialPage is not set.",
         "When LeaveOpen is set, the printed Google manual, Google full, Google trace, direct-headed, and staged-headed commands keep the browser or localhost session open so you can inspect the same headed state after the bounded automation phases finish.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
     )
@@ -165,6 +182,7 @@ Write-Host ("Focus: {0}" -f $flow.focus)
 if ($PreferredInitialPage) {
     Write-Host ("Preferred initial page: {0}" -f $PreferredInitialPage)
 }
+Write-Host ("Manual Google-style attached follow-up: {0}" -f ([bool]$ManualGoogleStyle))
 Write-Host ("Leave open after bounded phases: {0}" -f ([bool]$LeaveOpen))
 Write-Host ""
 foreach ($step in $flow.steps) {
