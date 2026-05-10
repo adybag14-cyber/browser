@@ -120,6 +120,40 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\summarize_localhost_h
   -PreferredInitialPage $preferred
 ```
 
+## One-command attached-page runner
+
+When the current attached HTML bundle is already under `agent_files/`, use the
+dedicated wrapper to skip manual helper chaining. It auto-discovers the HTML
+files, prefers the Anthropic application snapshot when present, prints the
+recommended bounded suites, and then launches the existing staged localhost
+validation flow.
+
+Dry-run summary:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 `
+  -SummaryOnly
+```
+
+Launch the headed follow-up directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 `
+  -Wait
+```
+
+Pick a different first page explicitly:
+
+```powershell
+$preferred = Get-ChildItem .\agent_files\*.html | Where-Object { $_.Name -like '*Safety Centre*' } | Select-Object -First 1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 `
+  -PreferredInitialPage $preferred.FullName `
+  -Wait
+```
+
+Use `-InputPath` when the saved-page set lives somewhere other than
+`agent_files/`.
+
 ## Localhost launch flow
 
 Stage the mixed standalone HTML files into one clean localhost run and open the
