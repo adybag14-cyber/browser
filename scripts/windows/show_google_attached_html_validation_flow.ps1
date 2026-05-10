@@ -75,7 +75,7 @@ $resolvedPageRoot = if ($PageRoot) {
 $resolvedInputPath = switch ($PSCmdlet.ParameterSetName) {
     "PageRoot" { @() }
     "InputPath" { @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path }) }
-    default { Get-DefaultAttachedHtmlInputPath -RepoRoot $repoRoot }
+    default { Get-DefaultAttachedHtmlInputPath -RepoRoot $repoRoot -GoogleStyle }
 }
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     if ($PSCmdlet.ParameterSetName -eq "PageRoot") {
