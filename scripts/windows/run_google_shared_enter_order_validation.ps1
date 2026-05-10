@@ -12,6 +12,7 @@ param(
     [int]$SharedLabelPort = 8153,
     [int]$InlineFlowPort = 8148,
     [int]$ReducedHomeKeypressPort = 8167,
+    [int]$TitleProbePort = 8159,
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$HomeWindowReadyAttempts = 60,
     [int]$HomeTitleWaitAttempts = 80,
@@ -30,12 +31,16 @@ if (-not $BrowserExe) {
 }
 
 $sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
+$googleTitleProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1"
 $reducedHomeKeypressProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1"
 $localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
 $formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\google-enter-order-probe.ps1"
 
 if (-not (Test-Path -LiteralPath $sharedRunner -PathType Leaf)) {
     throw "Shared Google validation runner not found: $sharedRunner"
+}
+if (-not (Test-Path -LiteralPath $googleTitleProbe -PathType Leaf)) {
+    throw "Google title probe not found: $googleTitleProbe"
 }
 if (-not (Test-Path -LiteralPath $reducedHomeKeypressProbe -PathType Leaf)) {
     throw "Reduced Google homepage keypress-submit probe not found: $reducedHomeKeypressProbe"
@@ -62,6 +67,18 @@ $sharedArgs = @{
     HomeWindowReadyAttempts = $HomeWindowReadyAttempts
     HomeTitleWaitAttempts = $HomeTitleWaitAttempts
     HomePollMilliseconds = $HomePollMilliseconds
+}
+
+$titleProbeArgs = @{
+    RepoRoot = $RepoRoot
+    BrowserExe = $BrowserExe
+    Host = $Host
+    Port = $TitleProbePort
+    InputText = $SharedInputText
+    ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
+    WindowReadyAttempts = $HomeWindowReadyAttempts
+    TitleWaitAttempts = $HomeTitleWaitAttempts
+    PollMilliseconds = $HomePollMilliseconds
 }
 
 $reducedHomeKeypressArgs = @{
@@ -106,11 +123,17 @@ Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Host: {0}" -f $Host)
 Write-Host ("Shared input text: {0}" -f $SharedInputText)
 Write-Host ("Shared label port: {0}" -f $SharedLabelPort)
+Write-Host ("Google title probe port: {0}" -f $TitleProbePort)
 Write-Host ("Reduced-home keypress port: {0}" -f $ReducedHomeKeypressPort)
 Write-Host ("Shared Enter-order port: {0}" -f $SharedEnterOrderPort)
 Write-Host ""
 
 & $sharedRunner @sharedArgs
+
+Write-Host ""
+Write-Host "=== google-title-localhost ==="
+Write-Host ("Script: {0}" -f $googleTitleProbe)
+& $googleTitleProbe @titleProbeArgs
 
 Write-Host ""
 Write-Host "=== google-home-keypress-submit ==="
@@ -128,4 +151,4 @@ Write-Host ("Script: {0}" -f $formControlsEnterOrderProbe)
 & $formControlsEnterOrderProbe @formControlsEnterOrderArgs
 
 Write-Host ""
-Write-Host "Next: if the shared gates, reduced-home keypress-before-submit probe, dedicated shared form-controls Google enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
+Write-Host "Next: if the shared gates, localhost title probe, reduced-home keypress-before-submit probe, dedicated shared form-controls Google enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
