@@ -1,8 +1,45 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [int]$Port = 8148
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\inline-flow"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$port = 8148
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+
+function Resolve-RepoRoot([string]$StartPath) {
+  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    return $env:LIGHTPANDA_REPO_ROOT
+  }
+
+  $cursor = [System.IO.Path]::GetFullPath($StartPath)
+  while ($true) {
+    if (Test-Path (Join-Path $cursor "build.zig")) {
+      return $cursor
+    }
+
+    $parent = Split-Path $cursor -Parent
+    if ([string]::IsNullOrEmpty($parent) -or $parent -eq $cursor) {
+      throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
+    }
+    $cursor = $parent
+  }
+}
+
+$root = $PSScriptRoot
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
+$browserExe = if ($BrowserExe) {
+  $BrowserExe
+} elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) {
+  $env:LIGHTPANDA_BROWSER_EXE
+} else {
+  Join-Path $repo "zig-out\bin\lightpanda.exe"
+}
+if (-not (Test-Path -LiteralPath $browserExe)) {
+  throw "headed browser binary not found: $browserExe"
+}
+
 $outPng = Join-Path $root "break-input-submit.png"
 $browserOut = Join-Path $root "break-input-submit.browser.stdout.txt"
 $browserErr = Join-Path $root "break-input-submit.browser.stderr.txt"
@@ -162,6 +199,9 @@ finally {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    port = $port
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
