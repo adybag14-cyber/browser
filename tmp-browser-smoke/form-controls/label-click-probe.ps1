@@ -1,5 +1,17 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8153,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$TitleWaitAttempts = 80,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$port = 8154
 
 function Resolve-RepoRoot([string]$StartPath) {
   if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -20,27 +32,44 @@ function Resolve-RepoRoot([string]$StartPath) {
   }
 }
 
+function Resolve-PythonCommand {
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    return @{ FileName = "python"; Arguments = @() }
+  }
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    return @{ FileName = "py"; Arguments = @("-3") }
+  }
+  throw "Python was not found in PATH. Install Python or start the form-controls probe server separately."
+}
+
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
 
-$repo = Resolve-RepoRoot $PSScriptRoot
-$root = Join-Path $repo "tmp-browser-smoke\form-controls"
-$browserExe = if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
-$serverScript = Join-Path $root "form_server.py"
-$browserOut = Join-Path $root "label-click.browser.stdout.txt"
-$browserErr = Join-Path $root "label-click.browser.stderr.txt"
-$serverOut = Join-Path $root "label-click.server.stdout.txt"
-$serverErr = Join-Path $root "label-click.server.stderr.txt"
-$pngPath = Join-Path $root "label-click.before.png"
-Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
+function Wait-HttpReady([string]$Url, [int]$TimeoutSeconds) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  do {
+    try {
+      $resp = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
+      if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) {
+        return
+      }
+    } catch {
+    }
+    Start-Sleep -Milliseconds $PollMilliseconds
+  } while ((Get-Date) -lt $deadline)
 
-$server = $null
-$browser = $null
-$ready = $false
-$pngReady = $false
-$titleBefore = $null
-$titleAfterClick = $null
-$clickedWorked = $false
-$failure = $null
+  throw "label probe server did not become ready at $Url"
+}
+
+function Wait-FileReady([string]$Path, [int]$Attempts) {
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).Length -gt 0)) {
+      return $true
+    }
+  }
+  return $false
+}
 
 function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts = 20, [int]$SleepMs = 200) {
   for ($i = 0; $i -lt $Attempts; $i++) {
@@ -53,33 +82,54 @@ function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts = 20,
   return $null
 }
 
-try {
-  $server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/ping" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
-  if (-not $ready) { throw "label probe server did not become ready" }
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
+$root = Join-Path $repo "tmp-browser-smoke\form-controls"
+$profileRoot = Join-Path $root "profile-label-click"
+$browserExe = if ($BrowserExe) { $BrowserExe } elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
+$serverScript = Join-Path $root "form_server.py"
+$browserOut = Join-Path $root "label-click.browser.stdout.txt"
+$browserErr = Join-Path $root "label-click.browser.stderr.txt"
+$serverOut = Join-Path $root "label-click.server.stdout.txt"
+$serverErr = Join-Path $root "label-click.server.stderr.txt"
+$pngPath = Join-Path $root "label-click.before.png"
+$probeUrl = "http://$Host`:$Port/label.html"
+Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/label.html","--window_width","420","--window_height","520","--screenshot_png",$pngPath -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) { $pngReady = $true; break }
-  }
+if (-not (Test-Path -LiteralPath $browserExe)) {
+  throw "headed browser binary not found: $browserExe"
+}
+if (-not (Test-Path -LiteralPath $serverScript)) {
+  throw "form-controls probe server script not found: $serverScript"
+}
+
+cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
+$originalAppData = $env:APPDATA
+$originalLocalAppData = $env:LOCALAPPDATA
+$probeEnv = Get-TabProbeEnvironment $profileRoot
+$env:APPDATA = $probeEnv.APPDATA
+$env:LOCALAPPDATA = $probeEnv.LOCALAPPDATA
+
+$server = $null
+$browser = $null
+$ready = $false
+$pngReady = $false
+$titleBefore = $null
+$titleAfterClick = $null
+$clickedWorked = $false
+$failure = $null
+
+try {
+  $python = Resolve-PythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port, $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  Wait-HttpReady -Url "http://$Host`:$Port/ping" -TimeoutSeconds $ServerReadyTimeoutSeconds
+  $ready = $true
+
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "420", "--window_height", "520", "--screenshot_png", $pngPath, $probeUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $pngReady = Wait-FileReady -Path $pngPath -Attempts $WindowReadyAttempts
   if (-not $pngReady) { throw "label probe screenshot did not become ready" }
 
-  $hwnd = [IntPtr]::Zero
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
-    if ($proc -and $proc.MainWindowHandle -ne 0) {
-      $hwnd = [IntPtr]$proc.MainWindowHandle
-      break
-    }
-  }
+  $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts
   if ($hwnd -eq [IntPtr]::Zero) { throw "label probe window handle not found" }
 
   Show-SmokeWindow $hwnd
@@ -87,7 +137,7 @@ try {
   $titleBefore = Get-SmokeWindowTitle $hwnd
 
   [void](Invoke-SmokeClientClick $hwnd 316 408)
-  $titleAfterClick = Wait-ForTitleLike $hwnd "Label Smoke true*"
+  $titleAfterClick = Wait-ForTitleLike $hwnd "Label Smoke true*" $TitleWaitAttempts $PollMilliseconds
   if (-not $titleAfterClick) {
     Start-Sleep -Milliseconds 200
     $titleAfterClick = Get-SmokeWindowTitle $hwnd
@@ -97,15 +147,24 @@ try {
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  $serverMeta = if ($server) { Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  $browserMeta = if ($browser) { Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue }
-  if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
+  $serverMeta = Stop-OwnedProbeProcess $server
+  $browserMeta = Stop-OwnedProbeProcess $browser
+  $env:APPDATA = $originalAppData
+  $env:LOCALAPPDATA = $originalLocalAppData
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    host = $Host
+    port = $Port
+    probe_url = $probeUrl
+    server_ready_timeout_seconds = $ServerReadyTimeoutSeconds
+    window_ready_attempts = $WindowReadyAttempts
+    title_wait_attempts = $TitleWaitAttempts
+    poll_milliseconds = $PollMilliseconds
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
