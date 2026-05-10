@@ -61,7 +61,9 @@ Examples:
 ### Input, forms, editing, and Google-style follow-up
 
 - `form-controls/`: label activation, focus, basic typing, immediate
-  Enter-submit, and deferred pending-submit behavior
+  Enter-submit, deferred pending-submit behavior, reduced Google-home submit,
+  and the stricter localhost keypress-before-submit gate through the shared
+  runner
 - `google-investigation-next/`: reduced Google-style localhost probes for focus
   churn, delayed readiness, correction, and Enter-submit ordering
 - `google-recommended`: the current one-command localhost-first issue #3 runner
