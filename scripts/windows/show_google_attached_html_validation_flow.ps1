@@ -122,10 +122,21 @@ if (-not $Json) {
             Write-Host ("Mode detail: explicit saved HTML inputs ({0})" -f $resolvedInputPath.Count)
         }
         default {
-            Write-Host ("Mode detail: auto-discovered attached HTML inputs ({0}) under user_files first, then agent_files." -f $resolvedInputPath.Count)
+            Write-Host ("Mode detail: auto-discovered attached HTML inputs ({0}) locked before the Google-style follow-up." -f $resolvedInputPath.Count)
         }
     }
+    if ($PSCmdlet.ParameterSetName -eq "Auto" -and $googleAttachedHtmlMetadata.search_roots.Count -gt 0) {
+        Write-Host "Search roots:"
+        foreach ($root in $googleAttachedHtmlMetadata.search_roots) {
+            Write-Host ("- {0}" -f (Convert-ToDisplayPath -Path $root -RepoRoot $repoRoot))
+        }
+    }
+    if ($resolvedInputPath.Count -gt 0) {
+        Write-Host ""
+        Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $repoRoot
+    }
     if ($resolvedPreferredInitialPage) {
+        Write-Host ""
         if ($PreferredInitialPage) {
             Write-Host ("Preferred initial page override: {0}" -f $resolvedPreferredInitialPage)
         } else {
@@ -143,11 +154,8 @@ if ($Json) {
         "PageRoot" {
             $helperJson = (& $helper @arguments -PageRoot $resolvedPageRoot) -join [Environment]::NewLine
         }
-        "InputPath" {
-            $helperJson = (& $helper @arguments -InputPath $resolvedInputPath) -join [Environment]::NewLine
-        }
         default {
-            $helperJson = (& $helper @arguments) -join [Environment]::NewLine
+            $helperJson = (& $helper @arguments -InputPath $resolvedInputPath) -join [Environment]::NewLine
         }
     }
 
@@ -164,12 +172,8 @@ switch ($PSCmdlet.ParameterSetName) {
         & $helper @arguments -PageRoot $resolvedPageRoot
         exit $LASTEXITCODE
     }
-    "InputPath" {
-        & $helper @arguments -InputPath $resolvedInputPath
-        exit $LASTEXITCODE
-    }
     default {
-        & $helper @arguments
+        & $helper @arguments -InputPath $resolvedInputPath
         exit $LASTEXITCODE
     }
 }
