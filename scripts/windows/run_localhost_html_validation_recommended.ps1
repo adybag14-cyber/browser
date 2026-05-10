@@ -13,7 +13,8 @@ param(
     [int]$Port = 8123,
     [switch]$SummaryOnly,
     [switch]$Wait,
-    [switch]$LeaveServerRunning
+    [switch]$LeaveServerRunning,
+    [switch]$GoogleStyle
 )
 
 Set-StrictMode -Version Latest
@@ -82,6 +83,11 @@ if ($LeaveServerRunning) {
     $commonArgs.LeaveServerRunning = $true
 }
 
+$attachedArgs = $commonArgs.Clone()
+if ($GoogleStyle) {
+    $attachedArgs.GoogleStyle = $true
+}
+
 switch ($PSCmdlet.ParameterSetName) {
     "PageRoot" {
         Write-Host "Recommended localhost HTML validation"
@@ -97,12 +103,22 @@ switch ($PSCmdlet.ParameterSetName) {
     "InputPath" {
         Write-Host "Recommended localhost HTML validation"
         Write-Host ""
-        Write-Host "Mode: staged saved-page inputs"
-        Write-Host ("Inputs: {0}" -f $InputPath.Count)
-        Write-Host "Runner: .\scripts\windows\run_saved_page_localhost_validation.ps1"
-        Write-Host ""
+        if ($GoogleStyle) {
+            Write-Host "Mode: staged attached HTML inputs"
+            Write-Host ("Inputs: {0}" -f $InputPath.Count)
+            Write-Host "Validation mode: google-style"
+            Write-Host "Runner: .\scripts\windows\run_attached_html_localhost_validation.ps1"
+            Write-Host ""
 
-        & $savedRunner @commonArgs -InputPath $InputPath
+            & $attachedRunner @attachedArgs -InputPath $InputPath
+        } else {
+            Write-Host "Mode: staged saved-page inputs"
+            Write-Host ("Inputs: {0}" -f $InputPath.Count)
+            Write-Host "Runner: .\scripts\windows\run_saved_page_localhost_validation.ps1"
+            Write-Host ""
+
+            & $savedRunner @commonArgs -InputPath $InputPath
+        }
         exit $LASTEXITCODE
     }
     default {
@@ -117,10 +133,13 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host ""
         Write-Host "Mode: auto-discovered attached HTML"
         Write-Host ("Attached HTML inputs: {0}" -f $attachedHtml.Count)
+        if ($GoogleStyle) {
+            Write-Host "Validation mode: google-style"
+        }
         Write-Host "Runner: .\scripts\windows\run_attached_html_localhost_validation.ps1"
         Write-Host ""
 
-        & $attachedRunner @commonArgs -InputPath $attachedHtml
+        & $attachedRunner @attachedArgs -InputPath $attachedHtml
         exit $LASTEXITCODE
     }
 }
