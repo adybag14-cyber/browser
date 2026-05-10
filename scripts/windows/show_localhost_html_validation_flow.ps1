@@ -26,6 +26,7 @@ $stagedHelper = '.\scripts\windows\start_staged_localhost_html_validation.ps1'
 $attachedHelper = '.\scripts\windows\run_attached_html_localhost_validation.ps1'
 $googleRunner = '.\scripts\windows\run_google_input_validation.ps1'
 $googleSavedFlowHelper = '.\scripts\windows\show_saved_page_google_validation_flow.ps1'
+$googleAttachedFlowHelper = '.\scripts\windows\show_google_attached_html_validation_flow.ps1'
 $preferredInitialPageArgument = ""
 if ($PreferredInitialPage) {
     $quotedPreferredInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $PreferredInitialPage
@@ -42,6 +43,7 @@ $launchInitialPageArgument = if ($PreferredInitialPage) {
     ""
 }
 $attachedCommand = "powershell -ExecutionPolicy Bypass -File $attachedHelper -Port $Port$preferredInitialPageArgument -Wait"
+$googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleAttachedFlowHelper -Port $Port$preferredInitialPageArgument"
 
 if ($PageRoot) {
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
@@ -51,7 +53,6 @@ if ($PageRoot) {
 } else {
     $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port -PreferredInitialPage '<preferred-initial-page>'"
     $directCommand = "powershell -ExecutionPolicy Bypass -File $localhostHelper -PageRoot '<saved-page-dir>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
-    $googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleSavedFlowHelper -PageRoot '<saved-page-dir>' -Port $Port -PreferredInitialPage '<preferred-initial-page>'"
 }
 
 if ($InputPath -and $InputPath.Count -gt 0) {
@@ -99,7 +100,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "google-flow"
-            goal = "When the saved-page follow-up belongs to issue #3, print the dedicated Google-style saved-page flow so the reduced localhost, quick, reduced homepage, and shared Enter-order gates run before the manual headed pass and the live trace step stays close at hand when real Google still diverges."
+            goal = "When the saved-page follow-up belongs to issue #3, print the dedicated Google-style flow so the reduced localhost, quick, reduced homepage, and shared Enter-order gates run before the manual headed pass and the live trace step stays close at hand when real Google still diverges."
             command = $googleSavedFlowCommand
         }
         [ordered]@{
@@ -112,7 +113,7 @@ $flow = [ordered]@{
         "Run the matching bounded suite first, then move into direct or staged localhost validation.",
         "Use attached-auto when the current run already has HTML snapshots under agent_files and you want the helper to auto-discover the inputs and preferred first page before the manual headed follow-up.",
         "Use summary before the manual pass when you need help picking the first page or closest bounded suite.",
-        "Use google-flow before google-manual when the saved-page follow-up is part of the Google-style headed typing investigation, especially when the reduced homepage gate should run before the manual pass and the next likely evidence may need to come from the live trace step after the saved-page pass.",
+        "Use google-flow before google-manual when the saved-page follow-up is part of the Google-style headed typing investigation, especially when the run is starting from attached HTML auto-discovery or when the reduced homepage gate should run before the manual pass and the next likely evidence may need to come from the live trace step after the saved-page pass.",
         "When PreferredInitialPage is set, the attached-auto, summary, direct, staged, Google-style flow, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file."
     )
 }
