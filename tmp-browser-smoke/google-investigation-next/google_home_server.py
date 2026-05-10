@@ -20,6 +20,7 @@ def resolve_repo_root(start_path: pathlib.Path) -> pathlib.Path:
             return candidate
     raise RuntimeError(f"Could not resolve the Lightpanda repo root from {start_path}")
 
+
 class GoogleHomeHandler(http.server.BaseHTTPRequestHandler):
     fixture_html = b""
 
@@ -81,13 +82,17 @@ class ReusableTCPServer(socketserver.TCPServer):
 
 
 def main():
+    if len(sys.argv) not in (2, 3):
+        raise SystemExit("usage: google_home_server.py <port> [host]")
+
     port = int(sys.argv[1])
+    host = sys.argv[2] if len(sys.argv) == 3 else "127.0.0.1"
     server_root = pathlib.Path(__file__).resolve().parent
     repo_root = resolve_repo_root(server_root)
     fixture_path = repo_root / FIXTURE_RELATIVE_PATH
     GoogleHomeHandler.fixture_html = fixture_path.read_bytes()
 
-    with ReusableTCPServer(("127.0.0.1", port), GoogleHomeHandler) as server:
+    with ReusableTCPServer((host, port), GoogleHomeHandler) as server:
         server.serve_forever()
 
 
