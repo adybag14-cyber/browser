@@ -15,6 +15,7 @@ $quickCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
+$traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace"
 $watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch"
 $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch"
 
@@ -26,7 +27,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
     steps = @(
         [ordered]@{
             name = "localhost"
@@ -57,6 +58,11 @@ $flow = [ordered]@{
             name = "shared-enter-order"
             goal = "Run the shared label baseline, submit gates, and the stricter localhost keypress-before-submit wrapper through the same main runner entrypoint."
             command = $sharedEnterOrderCommand
+        }
+        [ordered]@{
+            name = "trace"
+            goal = "Capture the live Google homepage trace through the same runner once the bounded localhost phases are green but the real homepage still diverges."
+            command = $traceCommand
         }
         [ordered]@{
             name = "watch"
@@ -95,10 +101,13 @@ $flow = [ordered]@{
         "-ManualPort 8123",
         "-InputText QZ",
         "-SharedInputText Q",
+        "-TraceInputText lightpanda",
         "-ServerReadyTimeoutSeconds 15",
         "-HomeWindowReadyAttempts 60",
         "-HomeTitleWaitAttempts 80",
         "-HomePollMilliseconds 250",
+        "-TraceWindowReadyAttempts 80",
+        "-TracePollMilliseconds 250",
         "-WatchTimeoutSeconds 90",
         "-WatchPollMilliseconds 250"
     )
@@ -106,9 +115,10 @@ $flow = [ordered]@{
         "Start with localhost before title or quick so the reduced Google-style probes stay the first bounded gate.",
         "Use shared before a live Google manual check when label activation, input, or submit behavior still looks suspicious.",
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
+        "Use trace when the bounded localhost, reduced homepage, and shared phases are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
         "Use full when you want the runner's built-in localhost-first order plus the extra title, shared label baseline, shared Enter-order wrapper, and watch phases in one pass.",
-        "Use the common overrides when you need to keep the localhost, title, home, watch, shared, shared-enter-order, and manual probes aligned on the same host, ports, timing budget, or input text."
+        "Use the common overrides when you need to keep the localhost, title, home, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
 
