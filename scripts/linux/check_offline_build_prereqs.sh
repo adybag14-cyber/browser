@@ -7,13 +7,15 @@ usage() {
 Usage:
   scripts/linux/check_offline_build_prereqs.sh \
     [--browser-root /path/to/browser-repo] \
+    [--zig-binary /path/to/zig] \
     [--prebuilt-v8-path /path/to/libc_v8_*.a]
 
 This helper confirms that an offline Linux browser checkout is ready for a real
 build attempt before `zig build` runs. It checks the active Zig version against
 `build.zig.zon`, verifies the restored sibling dependency layout, accepts the
 current offline manifest backup names, and prints the suggested validation
-command.
+command. Use `--zig-binary` or `ZIG=/path/to/zig` when the compatible toolchain
+is installed outside PATH.
 EOF
 }
 
@@ -21,12 +23,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
+ZIG_BINARY="${ZIG:-}"
 PREBUILT_V8_PATH=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --browser-root)
             BROWSER_ROOT="$2"
+            shift 2
+            ;;
+        --zig-binary)
+            ZIG_BINARY="$2"
             shift 2
             ;;
         --prebuilt-v8-path)
@@ -95,11 +102,22 @@ PY
 )"
 
 zig_version=""
-if command -v zig >/dev/null 2>&1; then
-    zig_version="$(zig version | tr -d '\r')"
-    write_status "Zig" true "zig ${zig_version}"
+zig_cmd=""
+if [[ -n "${ZIG_BINARY}" ]]; then
+    if [[ -x "${ZIG_BINARY}" ]]; then
+        zig_cmd="${ZIG_BINARY}"
+    else
+        write_status "Zig" false "configured zig binary is not executable: ${ZIG_BINARY}"
+    fi
+elif command -v zig >/dev/null 2>&1; then
+    zig_cmd="$(command -v zig)"
 else
     write_status "Zig" false "zig not found in PATH"
+fi
+
+if [[ -n "${zig_cmd}" ]]; then
+    zig_version="$(${zig_cmd} version | tr -d '\r')"
+    write_status "Zig" true "${zig_cmd} (${zig_version})"
 fi
 
 if [[ -n "${zig_version}" ]]; then
@@ -201,11 +219,15 @@ fi
 if [[ "${all_ok}" == "true" ]]; then
     echo
     echo "Offline build prerequisites look good."
-    printf "Suggested validation command:\n  zig build --summary all -Dprebuilt_v8_path='%s'\n" "${PREBUILT_V8_PATH}"
+    if [[ -n "${zig_cmd}" ]]; then
+        printf "Suggested validation command:\n  %s build --summary all -Dprebuilt_v8_path='%s'\n" "${zig_cmd}" "${PREBUILT_V8_PATH}"
+    else
+        printf "Suggested validation command:\n  zig build --summary all -Dprebuilt_v8_path='%s'\n" "${PREBUILT_V8_PATH}"
+    fi
     exit 0
 fi
 
 echo
 echo "Offline build prerequisites are not ready yet."
-echo "Run scripts/linux/restore_offline_build_inputs.sh (or scripts/linux/prepare_offline_build_inputs.sh for custom archive locations) and switch to Zig ${MINIMUM_ZIG_VERSION} before retrying zig build."
+echo "Run scripts/linux/restore_offline_build_inputs.sh (or scripts/linux/prepare_offline_build_inputs.sh for custom archive locations) and switch to Zig ${MINIMUM_ZIG_VERSION} before retrying zig build. Use --zig-binary /path/to/zig or ZIG=/path/to/zig when the compatible toolchain is installed outside PATH."
 exit 1
