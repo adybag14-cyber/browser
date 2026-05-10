@@ -105,10 +105,16 @@ artifact root with:
 
 If the issue is headed Google-style typing or Enter-submit behavior:
 
-1. run `google-investigation-next/`
-2. use `scripts/windows/watch_headed_probe.ps1` against the reduced homepage probe
-3. then use `start_localhost_html_validation.ps1` for any saved HTML snapshots
-4. finish with the smallest live-site pass that proves the same behavior
+1. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1` when you want the current reusable issue #3 flow first
+2. run `google-investigation-next/`
+3. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick` for the bounded title-plus-watch first pass
+4. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home`
+5. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing`
+6. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order`
+7. then use `start_localhost_html_validation.ps1` or `start_staged_localhost_html_validation.ps1` for any saved HTML snapshots
+8. finish with the smallest live-site pass that proves the same behavior
+
+Use `-Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch` when you want the runner to execute the localhost-first Google flow in one pass before the saved-page follow-up.
 
 ## Useful Flags
 
