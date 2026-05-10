@@ -8,6 +8,7 @@ param(
     [switch]$IncludeSharedInput,
     [switch]$IncludeTitleProbe,
     [string]$Host = "127.0.0.1",
+    [int]$LocalhostPort = 8176,
     [string]$InputText = "QZ",
     [string]$SharedInputText = "Q",
     [int]$TitlePort = 9582,
@@ -82,7 +83,18 @@ function Invoke-ProbeScript {
 function Invoke-LocalhostSequence {
     foreach ($probeName in $localhostProbes) {
         $scriptPath = Join-Path $googleLocalhostRoot $probeName
-        Invoke-ProbeScript -Label $probeName -ScriptPath $scriptPath
+        $args = @{
+            RepoRoot = $RepoRoot
+            BrowserExe = $BrowserExe
+            Host = $Host
+            Port = $LocalhostPort
+            InputText = $InputText
+            ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
+            WindowReadyAttempts = $HomeWindowReadyAttempts
+            TitleWaitAttempts = $HomeTitleWaitAttempts
+            PollMilliseconds = $HomePollMilliseconds
+        }
+        Invoke-ProbeScript -Label $probeName -ScriptPath $scriptPath -Arguments $args
     }
 }
 
@@ -191,6 +203,7 @@ Write-Host "Google headed-input validation runner"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Phase: {0}" -f $Phase)
 Write-Host ("Host: {0}" -f $Host)
+Write-Host ("Localhost probe port: {0}" -f $LocalhostPort)
 Write-Host ("Primary input text: {0}" -f $InputText)
 Write-Host ("Shared input text: {0}" -f $SharedInputText)
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
