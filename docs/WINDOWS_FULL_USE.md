@@ -63,3 +63,36 @@ Graphical rendering and native input translation are still in-progress:
 
 - frame presentation pipeline
 - IME candidate/composition UI and dead-key edge cases
+
+## 5) Reduced Google homepage probe
+
+Use the reduced Google probe page when issue-driven headed input work needs a
+repeatable local check before moving on to the full live homepage.
+
+1. Start a local static server from the repo root:
+
+```powershell
+python -m http.server 9582
+```
+
+2. In a second shell, watch the headed probe title stream:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\watch_headed_probe.ps1
+```
+
+Defaults:
+
+- URL: `http://127.0.0.1:9582/src/browser/tests/page/google_home_title_probe.html`
+- Expected ready marker: `BOUND|`
+- Trace output: `tmp-browser-smoke\headed-probe\headed-probe-trace.json`
+
+Useful options:
+
+- `-LeaveOpen` keeps the headed browser running after the expected marker is seen so you can click and type manually.
+- `-ExpectedTitleContains "SUBMIT:"` is useful when validating that an Enter path reaches form submission on the reduced probe.
+- `-BrowserExe <path>` lets you point at a custom Windows build output.
+
+The probe mirrors the query box state into the window title so you can track
+focus, keydown, keypress, beforeinput, input, and submit behavior without
+attaching a separate debugger first.
