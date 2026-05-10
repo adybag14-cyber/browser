@@ -62,6 +62,20 @@ Before running `zig build`, confirm that the checkout is actually ready:
 scripts/linux/check_offline_build_prereqs.sh
 ```
 
+If the compatible Zig toolchain is installed outside PATH, point the preflight
+at it directly:
+
+```bash
+scripts/linux/check_offline_build_prereqs.sh \
+  --zig-binary /absolute/path/to/zig
+```
+
+or:
+
+```bash
+ZIG=/absolute/path/to/zig scripts/linux/check_offline_build_prereqs.sh
+```
+
 What it checks:
 
 1. `zig version` exactly matches the `build.zig.zon` minimum (`0.15.2` on the
@@ -82,11 +96,14 @@ stored outside the standard Memory layout.
 ## Validation
 
 After the restore helper completes, run the preflight checker first. When it
-passes, use the printed `-Dprebuilt_v8_path=...` value and run:
+passes, use the printed `-Dprebuilt_v8_path=...` value and run the same Zig
+binary that passed preflight:
 
 ```bash
-zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a
+/absolute/path/to/zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a
 ```
+
+If the compatible toolchain is already on PATH, `zig build` is still fine.
 
 Expected result:
 
