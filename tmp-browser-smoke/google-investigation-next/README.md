@@ -4,8 +4,8 @@ This folder holds the reduced localhost probes for issue-driven headed Google
 search-box work.
 
 Use these as the first bounded gate before the title probe, reduced homepage
-probe, bounded submit-timing pass, shared Enter-order wrapper, or the live
-`https://www.google.com/` trace path.
+probe, bounded submit-timing pass, shared Enter-order wrapper, the dedicated
+live trace flow helper, or the live `https://www.google.com/` trace path.
 
 ## Probe Order
 
@@ -87,6 +87,14 @@ runner surface:
 8. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait`
    Launches the current attached Google-like pages through that same
    Google-style localhost follow-up without restating file paths by hand.
+9. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1`
+   Prints the reduced-home and live Google trace stack before you capture a
+   later-stage divergence on the real headed surface.
+10. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase trace`
+    Captures the live Google homepage trace through the shared runner once the
+    bounded localhost, reduced homepage, submit-timing, shared Enter-order, and
+    attached-page follow-up phases are green but the real homepage still
+    diverges.
 
 Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1`
 when you want the bounded title stack printed as its own read-first handoff
@@ -101,15 +109,22 @@ when the current run already includes attached Google-like HTML pages and you
 want that saved-page replay locked onto the same issue #3 order before another
 live Google trace capture.
 
+Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1`
+when you want the reduced-home trace capture and the live Google trace path
+printed together before you run the real homepage logging step.
+
 ## Follow-Up Path
 
 After the bounded localhost probes are green, run
 `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1` for the
 bounded real-surface reduced homepage pass, or use the shared runner commands
-above when you want the title, submit-timing, shared Enter-order, and attached
-Google-style follow-up steps on one reusable surface.
+above when you want the title, submit-timing, shared Enter-order, attached
+Google-style follow-up, and live trace steps on one reusable surface.
 
 Use
+`powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1`
+when you want the reduced-home trace plus live Google trace stack printed as a
+read-first handoff, then use
 `tmp-browser-smoke/google-investigation-next/chrome-google-home-enter-trace-probe.ps1`
 when you need the reduced homepage on the real headed surface plus the runtime
 trace bundle, then finish with
