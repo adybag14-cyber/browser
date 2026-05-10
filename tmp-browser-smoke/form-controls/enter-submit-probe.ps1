@@ -76,13 +76,14 @@ function Wait-FileReady([string]$Path, [int]$Attempts) {
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $root = Join-Path $repo "tmp-browser-smoke\form-controls"
 $profileRoot = Join-Path $root (if ($DeferredEnter) { "profile-enter-submit-deferred" } else { "profile-enter-submit-default" })
+$artifactStem = if ($DeferredEnter) { "enter-submit.deferred" } else { "enter-submit.default" }
 $browserExe = if ($BrowserExe) { $BrowserExe } elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
 $serverScript = Join-Path $root "form_server.py"
-$browserOut = Join-Path $root "enter-submit.browser.stdout.txt"
-$browserErr = Join-Path $root "enter-submit.browser.stderr.txt"
-$serverOut = Join-Path $root "enter-submit.server.stdout.txt"
-$serverErr = Join-Path $root "enter-submit.server.stderr.txt"
-$pngPath = Join-Path $root "enter-submit.before.png"
+$browserOut = Join-Path $root "$artifactStem.browser.stdout.txt"
+$browserErr = Join-Path $root "$artifactStem.browser.stderr.txt"
+$serverOut = Join-Path $root "$artifactStem.server.stdout.txt"
+$serverErr = Join-Path $root "$artifactStem.server.stderr.txt"
+$pngPath = Join-Path $root "$artifactStem.before.png"
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
 
 if (-not (Test-Path -LiteralPath $browserExe)) {
