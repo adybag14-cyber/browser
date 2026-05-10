@@ -38,6 +38,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 That keeps the localhost-first issue `#3` order intact and only folds in the
 attached-page manual follow-up after the bounded phases are green.
 
+For the fast title-plus-watch pass through its own dedicated helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_quick_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_validation.ps1
+```
+
+Use the printed quick helper when you want the bounded title markers and the
+watch handoff spelled out before you execute the faster wrapper.
+
 For attached HTML snapshots that should stay on the same Google-style follow-up
 route without manually restating each file path first:
 
@@ -75,18 +85,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 Run the stepwise flow when you want to narrow the failure one phase at a time:
 
 1. `localhost`
-2. `quick`
-3. `google-home`
-4. `submit-timing`
-5. `shared-enter-order`
-6. `manual`
-7. `trace`
+2. `title`
+3. `quick-flow`
+4. `quick`
+5. `google-home`
+6. `submit-timing`
+7. `shared-enter-order`
+8. `manual`
+9. `trace`
 
-Use these commands through the main runner or the bounded probe directly:
+Use these commands through the main runner or the bounded helpers directly:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase localhost
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_quick_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-google-submit-timing-probe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order
@@ -111,6 +125,8 @@ Only move to `manual` or `trace` after those bounded phases are green.
 
 - `localhost`: the reduced Google-style probes still cover focus churn, typing,
   delayed readiness, and submit ordering on deterministic local fixtures.
+- `quick-flow`: the dedicated helper still prints the bounded title-plus-watch
+  order before you launch the faster wrapper.
 - `quick`: the fast title-plus-watch path still reaches the reduced ready
   markers without a long manual session.
 - `google-home`: the reduced homepage probe still reaches the headed title
@@ -209,6 +225,9 @@ Use `run_google_issue3_recommended_validation.ps1` when you want the current
 bounded issue `#3` flow in one reusable command. Drop back to the stepwise
 `run_google_input_validation.ps1` phases when you need to narrow the exact step
 that regressed.
+
+Use `show_google_quick_validation_flow.ps1` when you want the fast title-plus-watch
+stack spelled out before you run the quicker wrapper entrypoint.
 
 For attached HTML snapshots that already live under `agent_files/`, start with
 `show_google_attached_html_validation_flow.ps1` so the same pages route through
