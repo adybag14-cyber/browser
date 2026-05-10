@@ -6,6 +6,7 @@ param(
     [string]$Phase = "all",
     [switch]$IncludeWatch,
     [switch]$IncludeSharedInput,
+    [switch]$IncludeSharedEnterOrder,
     [switch]$IncludeTitleProbe,
     [string]$Host = "127.0.0.1",
     [int]$LocalhostPort = 8176,
@@ -268,7 +269,9 @@ switch ($Phase) {
             Invoke-TitleSequence
         }
         Invoke-HomeSequence
-        if ($IncludeSharedInput) {
+        if ($IncludeSharedEnterOrder) {
+            Invoke-SharedEnterOrderSequence
+        } elseif ($IncludeSharedInput) {
             Invoke-SharedInputSequence
         }
         if ($IncludeWatch) {
@@ -299,12 +302,16 @@ if ($Phase -eq "manual") {
     }
 } elseif ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced Google and shared-input probes before the smallest live Google manual pass."
+} elseif ($IncludeSharedEnterOrder -and $IncludeTitleProbe) {
+    Write-Host "Next: if the quick title probe, reduced Google pass, shared submit gates, stricter enter-order wrapper, and watcher stay green, move on to the smallest live Google manual pass."
+} elseif ($IncludeSharedEnterOrder) {
+    Write-Host "Next: if the reduced Google pass, shared submit gates, and stricter enter-order wrapper stay green, move on to the smallest live Google manual pass."
 } elseif ($IncludeSharedInput -and $IncludeTitleProbe) {
     Write-Host "Next: if the quick title probe, reduced Google pass, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, move on to the smallest live Google manual pass."
 } elseif ($IncludeSharedInput) {
-    Write-Host "Next: if the reduced Google, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, use -Phase shared-enter-order for the stricter wrapper or move on to the smallest live Google manual pass."
+    Write-Host "Next: if the reduced Google, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, use -IncludeSharedEnterOrder or move on to the smallest live Google manual pass."
 } elseif ($IncludeTitleProbe) {
-    Write-Host "Next: if the quick title probe and reduced Google pass stay green, add -IncludeSharedInput or move on to the smallest live Google manual pass."
+    Write-Host "Next: if the quick title probe and reduced Google pass stay green, add -IncludeSharedEnterOrder or -IncludeSharedInput, or move on to the smallest live Google manual pass."
 } else {
-    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus reduced Google-home and inline-flow checks, -Phase shared-enter-order for the stricter wrapper, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
+    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus reduced Google-home and inline-flow checks, -IncludeSharedEnterOrder to fold the stricter wrapper into the one-shot flow, -Phase shared-enter-order for the stricter wrapper by itself, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
 }
