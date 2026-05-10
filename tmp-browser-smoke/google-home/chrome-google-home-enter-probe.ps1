@@ -39,6 +39,7 @@ $server = $null
 $browser = $null
 $ready = $false
 $pngReady = $false
+$windowReadyFallbackUsed = $false
 $boundTitle = $null
 $focusedTitle = $null
 $typedTitle = $null
@@ -85,9 +86,11 @@ try {
   $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse",$browserUrl,"--window_width","1280","--window_height","900","--screenshot_png",$pngPath -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
     Start-Sleep -Milliseconds $PollMilliseconds
-    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) { $pngReady = $true; break }
+    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) {
+      $pngReady = $true
+      break
+    }
   }
-  if (-not $pngReady) { throw "google reduced probe screenshot did not become ready" }
 
   $hwnd = [IntPtr]::Zero
   for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
@@ -99,6 +102,7 @@ try {
     }
   }
   if ($hwnd -eq [IntPtr]::Zero) { throw "google reduced probe window handle not found" }
+  if (-not $pngReady) { $windowReadyFallbackUsed = $true }
 
   Show-SmokeWindow $hwnd
   Start-Sleep -Milliseconds $PollMilliseconds
@@ -146,6 +150,7 @@ try {
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
     screenshot_ready = $pngReady
+    window_ready_fallback_used = $windowReadyFallbackUsed
     bound_title = $boundTitle
     focused_title = $focusedTitle
     typed_title = $typedTitle
