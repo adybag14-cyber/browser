@@ -32,18 +32,34 @@ function Format-PowerShellLiteral([string]$Value) {
   return "'" + $Value.Replace("'", "''") + "'"
 }
 
-function Get-AttachedHtmlCandidates([string]$RepoRoot) {
-  $roots = @(
-    (Join-Path $RepoRoot "user_files"),
-    (Join-Path $RepoRoot "agent_files")
-  )
+function Get-AttachedHtmlSearchRoots([string]$RepoRoot) {
+  $roots = New-Object System.Collections.Generic.List[string]
+  $roots.Add((Join-Path $RepoRoot "user_files"))
+  $roots.Add((Join-Path $RepoRoot "agent_files"))
 
+  $repoParent = Split-Path $RepoRoot -Parent
+  if (-not [string]::IsNullOrWhiteSpace($repoParent) -and $repoParent -ne $RepoRoot) {
+    $roots.Add((Join-Path $repoParent "user_files"))
+    $roots.Add((Join-Path $repoParent "agent_files"))
+  }
+
+  $currentRoot = (Get-Location).Path
+  if (-not [string]::IsNullOrWhiteSpace($currentRoot)) {
+    $roots.Add((Join-Path $currentRoot "user_files"))
+    $roots.Add((Join-Path $currentRoot "agent_files"))
+  }
+
+  return @(
+    $roots |
+      Where-Object { Test-Path -LiteralPath $_ -PathType Container } |
+      Select-Object -Unique
+  )
+}
+
+function Get-AttachedHtmlCandidates([string]$RepoRoot) {
+  $roots = Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot
   $items = @()
   foreach ($root in $roots) {
-    if (-not (Test-Path -LiteralPath $root -PathType Container)) {
-      continue
-    }
-
     $items += Get-ChildItem -LiteralPath $root -Recurse -File |
       Where-Object { $_.Extension -in @(".html", ".htm") } |
       Sort-Object FullName
