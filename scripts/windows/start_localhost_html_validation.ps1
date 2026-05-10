@@ -36,6 +36,60 @@ function Test-UrlReady {
     return $false
 }
 
+function Resolve-TcpBindAddress {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Host
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Host)) {
+        return [System.Net.IPAddress]::Loopback
+    }
+
+    if ($Host -eq "0.0.0.0") {
+        return [System.Net.IPAddress]::Any
+    }
+
+    if ($Host -eq "::") {
+        return [System.Net.IPAddress]::IPv6Any
+    }
+
+    $parsedAddress = $null
+    if ([System.Net.IPAddress]::TryParse($Host, [ref]$parsedAddress)) {
+        return $parsedAddress
+    }
+
+    $resolvedAddresses = @(
+        [System.Net.Dns]::GetHostAddresses($Host) |
+            Where-Object {
+                $_.AddressFamily -in @(
+                    [System.Net.Sockets.AddressFamily]::InterNetwork,
+                    [System.Net.Sockets.AddressFamily]::InterNetworkV6
+                )
+            }
+    )
+    if ($resolvedAddresses.Count -eq 0) {
+        throw "could not resolve a TCP bind address for host '$Host'"
+    }
+
+    return $resolvedAddresses[0]
+}
+
+function Get-AvailableTcpPort {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Host
+    )
+
+    $listener = [System.Net.Sockets.TcpListener]::new((Resolve-TcpBindAddress -Host $Host), 0)
+    try {
+        $listener.Start()
+        return ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
+    } finally {
+        $listener.Stop()
+    }
+}
+
 function Get-RelativeHtmlPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -131,6 +185,16 @@ if ($LaunchBrowser -and -not (Test-Path -LiteralPath $BrowserExe)) {
     throw "headed browser binary not found: $BrowserExe"
 }
 
+if ($Port -lt 0 -or $Port -gt 65535) {
+    throw "port must be between 0 and 65535"
+}
+
+$selectedPort = if ($Port -eq 0) {
+    Get-AvailableTcpPort -Host $Host
+} else {
+    $Port
+}
+
 $artifactRoot = Join-Path $RepoRoot "tmp-browser-smoke\manual-user\localhost-html-validation"
 New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
 
@@ -186,9 +250,9 @@ if ($relativePages -notcontains $InitialPage) {
 }
 
 $initialUrlPath = Get-RelativeHtmlUrlPath -Path $InitialPage
-$initialUrl = "http://{0}:{1}/{2}" -f $Host, $Port, $initialUrlPath
+$initialUrl = "http://{0}:{1}/{2}" -f $Host, $selectedPort, $initialUrlPath
 $server = Start-Process -FilePath "python" `
-    -ArgumentList "-m", "http.server", "$Port", "--bind", $Host `
+    -ArgumentList "-m", "http.server", "$selectedPort", "--bind", $Host `
     -WorkingDirectory $resolvedPageRoot `
     -PassThru `
     -RedirectStandardOutput $serverOut `
@@ -217,7 +281,7 @@ $pageRecords = @($relativePages | ForEach-Object {
     [pscustomobject]@{
         relative_path = $relativePath
         url_path = $urlPath
-        url = "http://{0}:{1}/{2}" -f $Host, $Port, $urlPath
+        url = "http://{0}:{1}/{2}" -f $Host, $selectedPort, $urlPath
     }
 })
 $pageUrls = @($pageRecords | ForEach-Object { $_.url })
@@ -226,7 +290,8 @@ $result = [pscustomobject]@{
     page_root = $resolvedPageRoot
     repo_root = $RepoRoot
     host = $Host
-    port = $Port
+    requested_port = $Port
+    port = $selectedPort
     initial_page = $InitialPage
     initial_url_path = $initialUrlPath
     initial_url = $initialUrl
@@ -245,6 +310,11 @@ $result | ConvertTo-Json -Depth 6 | Set-Content -Path $sessionPath -Encoding Asc
 
 Write-Host ("Serving {0} HTML page(s) from {1}" -f $relativePages.Count, $resolvedPageRoot)
 Write-Host ("Initial URL: {0}" -f $initialUrl)
+if ($Port -eq 0) {
+    Write-Host ("Selected port: {0} (auto)" -f $selectedPort)
+} else {
+    Write-Host ("Port: {0}" -f $selectedPort)
+}
 Write-Host ("Server PID: {0}" -f $server.Id)
 if ($browserPid) {
     Write-Host ("Browser PID: {0}" -f $browserPid)
