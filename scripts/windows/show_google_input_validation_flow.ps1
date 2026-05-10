@@ -156,6 +156,7 @@ $flow = [ordered]@{
         "Use submit-timing after the reduced homepage pass when you want one extra Google-shaped headed check before the shared form-controls and inline-flow gates.",
         "Use shared before a live Google manual check when label activation, input, or submit behavior still looks suspicious.",
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
+        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that shared Enter-order stack printed as its own narrower read-first handoff before you run it.",
         "Use trace when the bounded localhost, reduced homepage, submit-timing, and shared phases are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
         "Use full when you want the runner's built-in localhost-first order plus the extra title, bounded submit-timing, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
