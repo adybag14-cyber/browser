@@ -49,6 +49,7 @@ $profiles = @{
         (New-ValidationReference -Path "tmp-browser-smoke/form-controls/enter-submit-probe.ps1" -Kind "file" -Purpose "Shared headed form-controls submit probe with the reduced Google-style mode."),
         (New-ValidationReference -Path "tmp-browser-smoke/form-controls/google-enter-order-probe.ps1" -Kind "file" -Purpose "Direct reduced Google-style Enter-order headed probe."),
         (New-ValidationReference -Path "tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1" -Kind "file" -Purpose "Chrome-prefixed wrapper for the reduced Google-style Enter-order headed probe."),
+        (New-ValidationReference -Path "tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1" -Kind "file" -Purpose "Bounded Google-shaped submit-timing headed probe referenced by the main Windows guide."),
         (New-ValidationReference -Path "scripts/windows/HeadedValidationHelpers.ps1" -Kind "file" -Purpose "Shared helper layer for attached and Google validation scripts."),
         (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router."),
         (New-ValidationReference -Path "scripts/windows/show_google_suite_validation_flow.ps1" -Kind "file" -Purpose "Compact issue #3 read-first helper."),
@@ -65,6 +66,7 @@ $profiles = @{
         (New-ValidationReference -Path "scripts/windows/run_form_controls_validation.ps1" -Kind "file" -Purpose "One-command shared form-controls runner that keeps the reduced Google-style probes in the baseline ladder."),
         (New-ValidationReference -Path "scripts/windows/run_google_form_controls_enter_order_validation.ps1" -Kind "file" -Purpose "Dedicated one-command runner for the reduced Google-style form-controls Enter-order gate."),
         (New-ValidationReference -Path "scripts/windows/run_google_issue3_recommended_validation.ps1" -Kind "file" -Purpose "One-command issue #3 validation runner."),
+        (New-ValidationReference -Path "scripts/windows/run_google_input_validation.ps1" -Kind "file" -Purpose "Stepwise issue #3 phase runner used throughout the main Windows guide."),
         (New-ValidationReference -Path "scripts/windows/run_google_quick_validation.ps1" -Kind "file" -Purpose "Fast bounded title-plus-watch issue #3 runner."),
         (New-ValidationReference -Path "scripts/windows/run_google_title_validation.ps1" -Kind "file" -Purpose "Dedicated reduced title-wrapper runner."),
         (New-ValidationReference -Path "scripts/windows/run_google_home_title_probe.ps1" -Kind "file" -Purpose "Reduced Google-home title marker probe runner."),
@@ -74,7 +76,9 @@ $profiles = @{
         (New-ValidationReference -Path "scripts/windows/run_google_attached_html_validation.ps1" -Kind "file" -Purpose "One-command Google attached HTML runner."),
         (New-ValidationReference -Path "scripts/windows/run_localhost_html_validation_recommended.ps1" -Kind "file" -Purpose "Shared localhost validation router used by the Google follow-up."),
         (New-ValidationReference -Path "scripts/windows/run_attached_html_localhost_validation.ps1" -Kind "file" -Purpose "General attached HTML localhost runner."),
-        (New-ValidationReference -Path "scripts/windows/run_saved_page_localhost_validation.ps1" -Kind "file" -Purpose "Saved-page localhost runner used underneath the Google flow.")
+        (New-ValidationReference -Path "scripts/windows/run_saved_page_localhost_validation.ps1" -Kind "file" -Purpose "Saved-page localhost runner used underneath the Google flow."),
+        (New-ValidationReference -Path "scripts/windows/start_localhost_html_validation.ps1" -Kind "file" -Purpose "Direct directory-backed localhost HTML launcher used by the saved-page follow-up commands in the main guide."),
+        (New-ValidationReference -Path "scripts/windows/start_staged_localhost_html_validation.ps1" -Kind "file" -Purpose "Staged multi-input localhost HTML launcher used by the saved-page follow-up commands in the main guide.")
     )
     "attached-html" = @(
         (New-ValidationReference -Path "docs/HEADED_ATTACHED_HTML_VALIDATION.md" -Kind "file" -Purpose "Attached HTML validation guide."),
