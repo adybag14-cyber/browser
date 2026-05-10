@@ -132,8 +132,8 @@ $suiteCatalog = @(
     [pscustomobject]@{
         Name = "form-controls"
         Category = "input"
-        Path = "tmp-browser-smoke/form-controls"
-        Purpose = "Label activation, focus, basic typing, immediate Enter-submit, and deferred pending-submit behavior."
+        Path = "scripts/windows/run_form_controls_validation.ps1"
+        Purpose = "One-command shared label-click, immediate Enter-submit, and deferred Enter-submit localhost validation runner for the headed input baseline."
         RecommendedWith = @("inline-flow", "find")
     }
     [pscustomobject]@{
@@ -406,6 +406,7 @@ Write-Host ""
 Write-Host (Format-SuiteList -Items $suiteCatalog)
 Write-Host "Examples:"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName form-controls"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-title"
