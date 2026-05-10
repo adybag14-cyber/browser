@@ -1,16 +1,30 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$Host = "127.0.0.1",
+    [int]$Port = 8181,
+    [string]$InputText = "QZ"
+)
+
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\layout-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+$root = $PSScriptRoot
+if (-not $RepoRoot) {
+  $RepoRoot = (Resolve-Path (Join-Path $root "..\..\..")).Path
+}
+if (-not $BrowserExe) {
+  $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+}
+
+$repo = $RepoRoot
 $serverScript = Join-Path $root "layout_server.py"
 $common = Join-Path $root "LayoutProbeCommon.ps1"
 $win32Common = Join-Path $root "..\common\Win32Input.ps1"
 . $common
 . $win32Common
 
-$port = 8181
-$pageUrl = "http://127.0.0.1:$port/google-submit-timing.html"
+$pageUrl = "http://$Host`:$Port/google-submit-timing.html"
 $outPng = Join-Path $root "google-submit-timing.png"
 $browserOut = Join-Path $root "google-submit-timing.browser.stdout.txt"
 $browserErr = Join-Path $root "google-submit-timing.browser.stderr.txt"
@@ -21,7 +35,7 @@ $profileRoot = Join-Path $root "profile-google-submit-timing"
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 Reset-ProfileRoot $profileRoot
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$Port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 $browser = $null
 $hwnd = [IntPtr]::Zero
 $shellBounds = $null
@@ -34,13 +48,15 @@ $clickClientX = $null
 $clickClientY = $null
 $clickPoint = $null
 $failure = $null
+$titleAfterTypePattern = "Google Timing Input $InputText*"
+$titleAfterEnterPattern = "Google Timing Submitted*$InputText*"
 
 try {
   if (-not (Wait-HttpReady $pageUrl)) { throw "layout smoke server did not become ready" }
 
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","960","--window_height","540","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse",$pageUrl,"--window_width","960","--window_height","540","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
   if (-not (Wait-Screenshot $outPng)) { throw "google submit timing screenshot did not become ready" }
 
@@ -63,23 +79,23 @@ try {
   $titleBefore = Get-SmokeWindowTitle $hwnd
   $clickPoint = Invoke-SmokeClientClick $hwnd $clickClientX $clickClientY
   Start-Sleep -Milliseconds 120
-  Send-SmokeText "QZ"
+  Send-SmokeText $InputText
 
   $titleAfterType = $titleBefore
   for ($i = 0; $i -lt 40; $i++) {
     Start-Sleep -Milliseconds 150
     $titleAfterType = Get-SmokeWindowTitle $hwnd
-    if ($titleAfterType -like "Google Timing Input QZ*") { break }
+    if ($titleAfterType -like $titleAfterTypePattern) { break }
   }
-  if ($titleAfterType -notlike "Google Timing Input QZ*") { throw "google submit timing probe did not observe text input after typing" }
+  if ($titleAfterType -notlike $titleAfterTypePattern) { throw "google submit timing probe did not observe text input after typing" }
 
   Send-SmokeEnter
   for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Milliseconds 150
     $titleAfterEnter = Get-SmokeWindowTitle $hwnd
-    if ($titleAfterEnter -like "Google Timing Submitted*QZ*") {
+    if ($titleAfterEnter -like $titleAfterEnterPattern) {
       $submitWorked = $true
-      $keypressBeforeSubmit = $titleAfterEnter -like "*keydown,keypress,submit*QZ*"
+      $keypressBeforeSubmit = $titleAfterEnter -like "*keydown,keypress,submit*$InputText*"
       break
     }
   }
@@ -87,6 +103,8 @@ try {
   if (-not $keypressBeforeSubmit) { throw "google submit timing probe did not preserve keypress before submit" }
 
   [ordered]@{
+    page_url = $pageUrl
+    input_text = $InputText
     shell_bounds = $shellBounds
     click_client = if ($null -ne $clickClientX) { [ordered]@{ x = $clickClientX; y = $clickClientY } } else { $null }
     click_screen = if ($null -ne $clickPoint) { [ordered]@{ x = $clickPoint.X; y = $clickPoint.Y } } else { $null }
