@@ -1,7 +1,30 @@
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\form-controls"
 $port = 8154
-$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
+
+function Resolve-RepoRoot([string]$StartPath) {
+  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    return $env:LIGHTPANDA_REPO_ROOT
+  }
+
+  $cursor = [System.IO.Path]::GetFullPath($StartPath)
+  while ($true) {
+    if (Test-Path (Join-Path $cursor "build.zig")) {
+      return $cursor
+    }
+
+    $parent = Split-Path $cursor -Parent
+    if ([string]::IsNullOrEmpty($parent) -or $parent -eq $cursor) {
+      throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
+    }
+    $cursor = $parent
+  }
+}
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+
+$repo = Resolve-RepoRoot $PSScriptRoot
+$root = Join-Path $repo "tmp-browser-smoke\form-controls"
+$browserExe = if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
 $serverScript = Join-Path $root "form_server.py"
 $browserOut = Join-Path $root "label-click.browser.stdout.txt"
 $browserErr = Join-Path $root "label-click.browser.stderr.txt"
@@ -9,8 +32,6 @@ $serverOut = Join-Path $root "label-click.server.stdout.txt"
 $serverErr = Join-Path $root "label-click.server.stderr.txt"
 $pngPath = Join-Path $root "label-click.before.png"
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
-
-. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
 
 $server = $null
 $browser = $null
