@@ -34,6 +34,7 @@ param(
     [string[]]$ManualInputPath,
     [string]$ManualInitialPage,
     [int]$ManualPort = 8123,
+    [switch]$ManualGoogleStyle,
     [switch]$LeaveOpen
 )
 
@@ -59,6 +60,7 @@ $formControlsReducedGoogleProbe = Join-Path $probeRoot "form-controls\chrome-goo
 $inlineFlowEnterProbe = Join-Path $probeRoot "inline-flow\chrome-inline-break-input-enter-submit-probe.ps1"
 $watchProbe = Join-Path $scriptRoot "run_google_home_watch_probe.ps1"
 $manualHtmlHelper = Join-Path $scriptRoot "start_staged_localhost_html_validation.ps1"
+$attachedHtmlHelper = Join-Path $scriptRoot "run_attached_html_localhost_validation.ps1"
 $sharedEnterOrderRunner = Join-Path $scriptRoot "run_google_shared_enter_order_validation.ps1"
 $liveGoogleTraceProbe = Join-Path $googleLocalhostRoot "chrome-google-home-input-probe.ps1"
 
@@ -251,6 +253,29 @@ function Invoke-WatchSequence {
 }
 
 function Invoke-ManualHtmlSequence {
+    if ($ManualGoogleStyle) {
+        $args = @{
+            RepoRoot = $RepoRoot
+            BrowserExe = $BrowserExe
+            Host = $Host
+            Port = $ManualPort
+            Wait = $true
+            GoogleStyle = $true
+        }
+        if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
+            $args.InputPath = $ManualInputPath
+        }
+        if ($ManualInitialPage) {
+            $args.PreferredInitialPage = $ManualInitialPage
+        }
+        if ($LeaveOpen) {
+            $args.LeaveServerRunning = $true
+        }
+
+        Invoke-ProbeScript -Label "manual-localhost-html-google-style" -ScriptPath $attachedHtmlHelper -Arguments $args
+        return
+    }
+
     if (-not $ManualInputPath -or $ManualInputPath.Count -eq 0) {
         throw "ManualInputPath is required when running the manual localhost HTML follow-up."
     }
@@ -288,6 +313,9 @@ Write-Host ("Shared enter-order port: {0}" -f $SharedEnterOrderPort)
 Write-Host ("Submit timing port: {0}" -f $SubmitTimingPort)
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     Write-Host ("Manual HTML follow-up: {0}" -f (($ManualInputPath | ForEach-Object { $_ }) -join ", "))
+}
+if ($ManualGoogleStyle) {
+    Write-Host "Manual HTML mode: google-style attached follow-up"
 }
 
 switch ($Phase) {
@@ -336,7 +364,7 @@ switch ($Phase) {
         if ($IncludeWatch) {
             Invoke-WatchSequence
         }
-        if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
+        if (($ManualInputPath -and $ManualInputPath.Count -gt 0) -or $ManualGoogleStyle) {
             Invoke-ManualHtmlSequence
         }
     }
@@ -344,7 +372,7 @@ switch ($Phase) {
 
 Write-Host ""
 if ($Phase -eq "manual") {
-    Write-Host "Next: compare any saved-page failures with the reduced localhost, reduced homepage, and submit-timing probes before moving on to the smallest live Google manual pass."
+    Write-Host "Next: compare the attached or saved-page failures with the reduced localhost, reduced homepage, and submit-timing probes before moving on to the smallest live Google manual pass."
 } elseif ($Phase -eq "trace") {
     Write-Host "Next: inspect the captured real-Google trace tails, then compare them with the nearest bounded localhost, reduced-homepage, or submit-timing phase before changing the headed input path."
 } elseif ($Phase -eq "shared-enter-order") {
@@ -358,12 +386,12 @@ if ($Phase -eq "manual") {
 } elseif ($Phase -eq "quick") {
     Write-Host "Next: use -Phase home for the reduced homepage Enter pass, use -Phase submit-timing for the bounded Google-shaped keypress-before-submit check, use -Phase trace when the bounded passes are green but real Google still diverges, or run -Phase all -IncludeTitleProbe -IncludeWatch to fold the same fast first pass into the broader validation flow."
 } elseif ($Phase -eq "watch" -or $IncludeWatch) {
-    if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
+    if (($ManualInputPath -and $ManualInputPath.Count -gt 0) -or $ManualGoogleStyle) {
         Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced homepage and submit-timing probes before the smallest live Google manual pass."
     } else {
         Write-Host "Next: move on to the smallest live Google manual pass once the self-starting watcher confirms SUBMIT:QZ, or use -Phase submit-timing or -Phase trace if the live homepage still needs bounded timing confirmation or trace capture."
     }
-} elseif ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
+} elseif (($ManualInputPath -and $ManualInputPath.Count -gt 0) -or $ManualGoogleStyle) {
     Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced Google, submit-timing, and shared-input probes before the smallest live Google manual pass."
 } elseif ($IncludeSharedEnterOrder -and $IncludeTitleProbe) {
     Write-Host "Next: if the quick title probe, reduced Google pass, submit-timing check, shared label baseline, shared submit gates, stricter enter-order wrapper, and watcher stay green, move on to the smallest live Google manual pass or use -Phase trace for real-Google divergence capture."
@@ -376,5 +404,5 @@ if ($Phase -eq "manual") {
 } elseif ($IncludeTitleProbe) {
     Write-Host "Next: if the quick title probe, reduced Google pass, and submit-timing check stay green, add -IncludeSharedEnterOrder or -IncludeSharedInput, or move on to the smallest live Google manual pass and -Phase trace if needed."
 } else {
-    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -Phase submit-timing for the bounded Google-shaped keypress-before-submit check, -IncludeSharedInput for the label baseline plus deferred/basic form-controls, reduced Google-home, and inline-flow checks, -IncludeSharedEnterOrder to fold the stricter wrapper into the one-shot flow, -Phase shared-enter-order for the stricter wrapper by itself, -Phase trace for live Google trace capture after the bounded phases, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
+    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -Phase submit-timing for the bounded Google-shaped keypress-before-submit check, -IncludeSharedInput for the label baseline plus deferred/basic form-controls, reduced Google-home, and inline-flow checks, -IncludeSharedEnterOrder to fold the stricter wrapper into the one-shot flow, -Phase shared-enter-order for the stricter wrapper by itself, -Phase trace for live Google trace capture after the bounded phases, -IncludeWatch for the self-starting title-stream pass, -ManualGoogleStyle for the attached Google-style localhost follow-up, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
 }
