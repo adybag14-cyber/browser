@@ -29,6 +29,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_va
 
 That helper:
 - auto-discovers nested `.html` files anywhere under `user_files/` first and then `agent_files/`
+- checks both the repo-root copies of those folders and the same folders one level above the repo when the checkout lives inside a larger workspace
+- falls back to the current working directory when those attached-file folders are staged there instead
 - prefers a Google-like page first when `-GoogleStyle` is used
 - forwards the same input set into the saved-page Google flow helper instead of
   making you restate each file path by hand
