@@ -19,6 +19,8 @@ Examples:
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
@@ -31,9 +33,11 @@ when you need the same saved-page inputs to stay attached to the next rerun.
 
 - `show_headed_validation_suites.ps1`: quick suite index by subsystem, issue path, or change area.
 - `show_google_input_validation_flow.ps1`: prints the issue `#3` localhost-first order from reduced Google probes through saved-page and live Google follow-up.
+- `show_google_submit_timing_validation_flow.ps1`: prints the bounded Google-shaped keydown, keypress, and submit-ordering slice before you run the dedicated wrapper or raw probe.
 - `show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'`: keeps the saved-page Google follow-up in the same bounded order while preserving the manual input set and preferred first page.
 - `show_attached_html_validation_flow.ps1`: auto-discovers nested attached HTML under `agent_files/` and routes it into the general localhost follow-up flow.
 - `show_attached_html_validation_flow.ps1 -GoogleStyle`: prefers a Google-like attached page first when one is present, then prints the Google-style follow-up route for that same input set.
+- `show_google_attached_html_validation_flow.ps1`: prints the Google-style attached-page localhost-first handoff for current-run attached HTML before the broader manual follow-up.
 - `run_localhost_html_validation_recommended.ps1 -Wait`: one-command attached-or-saved localhost runner that forwards into the right helper after the matching bounded suite is green.
 
 ## Core Rule
@@ -152,6 +156,9 @@ when you need the same saved-page inputs to stay attached to the next rerun.
 - `scripts/windows/show_saved_page_google_validation_flow.ps1`: saved-page
   issue #3 flow map that keeps the localhost Google phases ahead of the manual
   headed pass
+- `scripts/windows/show_google_attached_html_validation_flow.ps1`: attached-page
+  Google-style flow map that keeps the auto-discovered current-run HTML handoff
+  in the same localhost-first issue #3 order before the broader manual pass
 
 ### Shared helpers
 
@@ -172,14 +179,20 @@ Use this order unless a narrower issue demands something more specific first.
    when you want the shared watcher flow bundled in, then
    `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`,
    then `google-submit-timing`, then `google-shared-enter-order`, and only then move
-   on to the saved-page or live-site follow-up.
+   on to the saved-page or live-site follow-up. When you want the bounded timing
+   slice printed before execution, run
+   `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1`
+   between the reduced homepage step and the dedicated submit-timing runner.
 5. For saved or attached localhost HTML pages, start with the matching bounded
    suite first and only then move into
    `run_localhost_html_validation_recommended.ps1`, `manual-user/`,
    `run_saved_page_localhost_validation.ps1`, or
    `run_attached_html_localhost_validation.ps1` for the real page follow-up.
-   The attached-HTML helpers now scan nested `agent_files/` content instead of
-   only top-level files.
+   Use `show_google_attached_html_validation_flow.ps1` when the next handoff is
+   issue `#3` Google-style attached HTML and you want the auto-discovered
+   current-run pages printed in the same localhost-first order before the
+   broader manual pass. The attached-HTML helpers now scan nested `agent_files/`
+   content instead of only top-level files.
 6. Finish with the smallest real headed manual pass that exercises the same
    user flow.
 
@@ -197,14 +210,18 @@ Use this order unless a narrower issue demands something more specific first.
   title-plus-watch first pass, then `google-recommended` for the current
   one-command bounded pass, then
   `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`,
+  then use `show_google_submit_timing_validation_flow.ps1` when you want the
+  bounded timing wrapper printed before execution, then use `google-submit-timing`,
   or drop into the stepwise `submit-timing` and `shared-enter-order` phases when you need to
-  narrow the first failing gate before the saved-page or live-site follow-up.
+  narrow the first failing gate before the saved-page, attached-page, or live-site follow-up.
 - Saved or attached localhost HTML compatibility passes: run the matching
   bounded suite first, then use `run_localhost_html_validation_recommended.ps1`,
   `manual-user/`, `run_saved_page_localhost_validation.ps1`,
-  `run_attached_html_localhost_validation.ps1`, and
-  `show_saved_page_google_validation_flow.ps1` when the saved-page follow-up is
-  part of the Google-style headed typing investigation.
+  `run_attached_html_localhost_validation.ps1`,
+  `show_saved_page_google_validation_flow.ps1`, and
+  `show_google_attached_html_validation_flow.ps1` when the saved-page or
+  attached-page follow-up is part of the Google-style headed typing
+  investigation.
 - Layout, painter, screenshots, clipping, or hit testing: run `layout-smoke/`,
   `flow-layout/`, `rendered-link-dom/`, and the nearest `inline-flow/` case.
 - Font, text metrics, or zoom behavior: run `font-render/`, `font-smoke/`, and
@@ -231,17 +248,23 @@ focus, typing, and Enter-submit markers. Then use
 for the fast title-plus-watch first pass, then
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`
 for the reduced-homepage focus, typing, keydown, and Enter-submit gate, then
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1`
+when you want the bounded timing wrapper printed before execution, then
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 for the current one-command bounded pass, or move through
 `-Phase submit-timing` and `-Phase shared-enter-order` when you want to isolate
-another failing gate before the saved-page or live-site follow-up.
+another failing gate before the saved-page, attached-page, or live-site follow-up.
 
 Use `src/browser/tests/page/google_home_title_probe.html` when the change
 specifically touches load or readiness ordering, and use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
 when you want the current issue #3 validation order printed as reusable
-commands. These probes are narrowing and regression helpers, not replacements
-for the core `form-controls/` and `inline-flow/` gates.
+commands. Use
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1`
+when the next follow-up is the auto-discovered current-run attached HTML path in
+that same localhost-first issue `#3` order. These probes are narrowing and
+regression helpers, not replacements for the core `form-controls/` and
+`inline-flow/` gates.
 
 For attached or saved HTML page follow-up, use
 `tmp-browser-smoke/manual-user/README.md`,
@@ -249,6 +272,7 @@ For attached or saved HTML page follow-up, use
 `run_saved_page_localhost_validation.ps1`,
 `run_attached_html_localhost_validation.ps1`,
 `show_saved_page_google_validation_flow.ps1`,
+`show_google_attached_html_validation_flow.ps1`,
 `start_localhost_html_validation.ps1`,
 `start_staged_localhost_html_validation.ps1`, and
 `summarize_localhost_html_pages.ps1` after the matching bounded suite is green.
