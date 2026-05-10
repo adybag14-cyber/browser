@@ -2,11 +2,21 @@
 param(
     [switch]$Json,
     [string[]]$ManualInputPath,
+    [string]$ManualInitialPage,
     [int]$ManualPort = 8123
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
 
 $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
@@ -19,15 +29,22 @@ $traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace"
 $watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch"
 $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch"
 
+$manualInitialPageArgument = ""
+if ($ManualInitialPage) {
+    $quotedManualInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $ManualInitialPage
+    $manualInitialPageArgument = " -ManualInitialPage $quotedManualInitialPage"
+}
+
 $manualCommand = $null
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
-    $quotedPaths = $ManualInputPath | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInputPath " + ($quotedPaths -join ", ")
+    $quotedPaths = $ManualInputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument -ManualInputPath " + ($quotedPaths -join ", ")
 }
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
     focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    manual_initial_page = $ManualInitialPage
     steps = @(
         [ordered]@{
             name = "localhost"
@@ -83,7 +100,7 @@ $flow = [ordered]@{
     } else {
         [ordered]@{
             goal = "After the matching bounded suite is green, rerun with -ManualInputPath to stage the saved or attached localhost pages."
-            command = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInputPath '<saved-html-or-folder>'"
+            command = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
         }
     }
     common_overrides = @(
@@ -118,6 +135,7 @@ $flow = [ordered]@{
         "Use trace when the bounded localhost, reduced homepage, and shared phases are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
         "Use full when you want the runner's built-in localhost-first order plus the extra title, shared label baseline, shared Enter-order wrapper, and watch phases in one pass.",
+        "When ManualInitialPage is set, the printed manual follow-up command keeps that saved page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "Use the common overrides when you need to keep the localhost, title, home, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
@@ -130,6 +148,9 @@ if ($Json) {
 Write-Host "Headed Windows Google input validation flow"
 Write-Host ""
 Write-Host ("Focus: {0}" -f $flow.focus)
+if ($ManualInitialPage) {
+    Write-Host ("Manual initial page: {0}" -f $ManualInitialPage)
+}
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
