@@ -147,7 +147,7 @@ $suiteCatalog = @(
         Name = "google-recommended"
         Category = "input"
         Path = "scripts/windows/run_google_issue3_recommended_validation.ps1"
-        Purpose = "One-command localhost-first issue #3 runner that includes the bounded title pass, reduced homepage pass, submit-timing check, shared Enter-order wrapper, watch phase, and optional saved-page follow-up."
+        Purpose = "One-command localhost-first issue #3 runner that includes the bounded title pass, reduced homepage pass, submit-timing check, the shared Enter-order wrapper with the reduced-home keypress-before-submit probe, the watch phase, and optional saved-page follow-up."
         RecommendedWith = @("google-investigation-next", "manual-user")
     }
     [pscustomobject]@{
@@ -182,7 +182,7 @@ $suiteCatalog = @(
         Name = "google-shared-enter-order"
         Category = "input"
         Path = "scripts/windows/run_google_shared_enter_order_validation.ps1"
-        Purpose = "Shared label-click baseline plus shared submit gates, reduced Google-home form coverage, inline-flow submit coverage, and the stricter localhost keypress-before-submit wrapper through one runner entrypoint."
+        Purpose = "Shared label-click baseline plus shared submit gates, reduced Google-home form coverage, the reusable reduced-home keypress-before-submit probe, inline-flow submit coverage, and the stricter localhost keypress-before-submit wrapper through one runner entrypoint."
         RecommendedWith = @("google-submit-timing", "manual-user")
     }
     [pscustomobject]@{
