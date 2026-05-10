@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$root = Join-Path $repo "tmp-browser-smoke\zoom"
+$root = $PSScriptRoot
+$repo = (Resolve-Path (Join-Path $root "..\..")).ProviderPath
 $port = 8145
 $browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $beforePng = Join-Path $root "zoom-before.png"
