@@ -30,7 +30,7 @@ if (-not $BrowserExe) {
 
 $sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
 $localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
-$formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\google-enter-order-probe.ps1"
+$formControlsEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\enter-submit-probe.ps1"
 
 if (-not (Test-Path -LiteralPath $sharedRunner -PathType Leaf)) {
     throw "Shared Google validation runner not found: $sharedRunner"
@@ -78,6 +78,7 @@ $formControlsEnterOrderArgs = @{
     Host = $Host
     Port = $SharedEnterOrderPort
     InputText = $SharedInputText
+    GoogleEnterOrder = $true
     ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
     WindowReadyAttempts = $HomeWindowReadyAttempts
     TitleWaitAttempts = $HomeTitleWaitAttempts
