@@ -72,9 +72,12 @@ runner surface:
    Runs the fast title-plus-watch first pass.
 3. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home`
    Exercises the reduced homepage Enter-submit path on the real headed surface.
-4. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing`
+4. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1`
+   Prints the bounded submit-timing wrapper flow before you execute that
+   Google-shaped keydown,keypress,submit slice.
+5. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing`
    Verifies the bounded Google-shaped keydown, keypress, and submit ordering.
-5. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order`
+6. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order`
    Rechecks the shared label-click baseline, shared submit gates, and the
    stricter localhost keypress-before-submit wrapper before the manual or live
    Google pass.
@@ -82,6 +85,10 @@ runner surface:
 Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1`
 when you want the bounded title stack printed as its own read-first handoff
 before the wider quick, home, shared, or live Google phases.
+
+Use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1`
+when you want the bounded Google-shaped timing stack printed as its own
+read-first handoff before the shared Enter-order or live Google phases.
 
 ## Follow-Up Path
 
