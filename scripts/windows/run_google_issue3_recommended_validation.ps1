@@ -43,18 +43,40 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
+function Get-AttachedHtmlSearchRoots {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    $candidateRoots = New-Object System.Collections.Generic.List[string]
+    $candidateRoots.Add((Join-Path $RepoRoot "user_files"))
+    $candidateRoots.Add((Join-Path $RepoRoot "agent_files"))
+
+    $repoParent = Split-Path $RepoRoot -Parent
+    if (-not [string]::IsNullOrWhiteSpace($repoParent) -and $repoParent -ne $RepoRoot) {
+        $candidateRoots.Add((Join-Path $repoParent "user_files"))
+        $candidateRoots.Add((Join-Path $repoParent "agent_files"))
+    }
+
+    $currentRoot = (Get-Location).Path
+    if (-not [string]::IsNullOrWhiteSpace($currentRoot)) {
+        $candidateRoots.Add((Join-Path $currentRoot "user_files"))
+        $candidateRoots.Add((Join-Path $currentRoot "agent_files"))
+    }
+
+    return $candidateRoots |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Container } |
+        Select-Object -Unique
+}
+
 function Test-AttachedHtmlAvailable {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepoRoot
     )
 
-    $searchRoots = @(
-        (Join-Path $RepoRoot "user_files"),
-        (Join-Path $RepoRoot "agent_files")
-    ) | Where-Object {
-        Test-Path -LiteralPath $_ -PathType Container
-    }
+    $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
 
     foreach ($root in $searchRoots) {
         $match = Get-ChildItem -LiteralPath $root -Recurse -File |
@@ -125,7 +147,7 @@ if ($LeaveOpen) {
 }
 
 if ($autoAttachedHtml) {
-    Write-Host "Issue #3 recommended runner: attached HTML files were detected under user_files or agent_files, so the Google-style manual localhost follow-up will run automatically."
+    Write-Host "Issue #3 recommended runner: attached HTML files were detected in the current search roots, so the Google-style manual localhost follow-up will run automatically."
 }
 
 & $runner @arguments
