@@ -1,36 +1,62 @@
-$ErrorActionPreference = "Stop"
-
+[CmdletBinding(DefaultParameterSetName = "ByPaths")]
 param(
-  [Parameter(Mandatory = $true)]
+  [Parameter(Mandatory = $true, ParameterSetName = "ByPaths")]
   [string[]]$FixturePaths,
-  [string]$RepoRoot = "C:\Users\adyba\src\lightpanda-browser",
-  [string]$BrowserExe = "",
+  [Parameter(Mandatory = $true, ParameterSetName = "ByRoot")]
+  [string]$FixtureRoot,
+  [Parameter(ParameterSetName = "ByRoot")]
+  [string]$PreferredInitialPage,
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
   [int]$Port = 8168,
   [int]$WindowWidth = 1366,
-  [int]$WindowHeight = 900
+  [int]$WindowHeight = 900,
+  [int]$ServerReadyAttempts = 40,
+  [int]$WindowReadyAttempts = 80,
+  [int]$PollMilliseconds = 250
 )
 
-$root = Join-Path $RepoRoot "tmp-browser-smoke\local-html-fixtures"
-$stageRoot = Join-Path $root "staged-fixtures"
-$outputRoot = Join-Path $root "output"
-$serverOut = Join-Path $outputRoot "server.stdout.txt"
-$serverErr = Join-Path $outputRoot "server.stderr.txt"
-$resultPath = Join-Path $outputRoot "fixture-results.json"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
-if ([string]::IsNullOrWhiteSpace($BrowserExe)) {
-  $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+function Resolve-RepoRoot([string]$StartPath) {
+  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    return $env:LIGHTPANDA_REPO_ROOT
+  }
+
+  $cursor = [System.IO.Path]::GetFullPath($StartPath)
+  while ($true) {
+    if (Test-Path (Join-Path $cursor "build.zig")) {
+      return $cursor
+    }
+
+    $parent = Split-Path $cursor -Parent
+    if ([string]::IsNullOrEmpty($parent) -or $parent -eq $cursor) {
+      throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
+    }
+    $cursor = $parent
+  }
 }
 
-. (Join-Path $RepoRoot "tmp-browser-smoke\common\Win32Input.ps1")
+function Resolve-PythonCommand {
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    return @{ FileName = "python"; Arguments = @() }
+  }
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    return @{ FileName = "py"; Arguments = @("-3") }
+  }
+  throw "Python was not found in PATH. Install Python or start a local Python launcher before running the local HTML fixture probe."
+}
 
 function Remove-TreeIfPresent([string]$Path) {
-  if (Test-Path $Path) {
+  if (Test-Path -LiteralPath $Path) {
     cmd /c "rmdir /s /q `"$Path`"" | Out-Null
   }
 }
 
 function Get-HtmlTitle([string]$Path) {
-  $raw = Get-Content -Path $Path -Raw
+  $raw = Get-Content -LiteralPath $Path -Raw
   $match = [regex]::Match($raw, '(?is)<title[^>]*>(.*?)</title>')
   if (-not $match.Success) {
     return ""
@@ -38,75 +64,111 @@ function Get-HtmlTitle([string]$Path) {
   return ([regex]::Replace($match.Groups[1].Value, '\s+', ' ')).Trim()
 }
 
-function Wait-HttpReady([string]$Url, [int]$Attempts = 40, [int]$SleepMs = 250) {
+function Wait-HttpReady([string]$Url, [int]$Attempts, [int]$SleepMs) {
   for ($i = 0; $i -lt $Attempts; $i++) {
     Start-Sleep -Milliseconds $SleepMs
     try {
       $resp = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) {
+      if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) {
         return $true
       }
-    } catch {}
+    } catch {
+    }
   }
   return $false
 }
 
-function Wait-ForMainWindow([int]$Pid, [int]$Attempts = 60, [int]$SleepMs = 250) {
+function Wait-ForScreenshot([string]$Path, [int]$Attempts, [int]$SleepMs) {
   for ($i = 0; $i -lt $Attempts; $i++) {
     Start-Sleep -Milliseconds $SleepMs
-    $proc = Get-Process -Id $Pid -ErrorAction SilentlyContinue
-    if ($proc -and $proc.MainWindowHandle -ne 0) {
-      return [IntPtr]$proc.MainWindowHandle
-    }
-  }
-  return [IntPtr]::Zero
-}
-
-function Wait-ForScreenshot([string]$Path, [int]$Attempts = 80, [int]$SleepMs = 250) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $SleepMs
-    if ((Test-Path $Path) -and ((Get-Item $Path).Length -gt 0)) {
+    if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).Length -gt 0)) {
       return $true
     }
   }
   return $false
 }
 
-function Stop-TrackedProcess($Process) {
-  if (-not $Process) {
-    return
-  }
-  $meta = Get-CimInstance Win32_Process -Filter "ProcessId=$($Process.Id)" -ErrorAction SilentlyContinue | Select-Object Name,ProcessId,CommandLine,CreationDate
-  if ($meta -and $meta.CommandLine -and $meta.CommandLine -notmatch "codex\.js|@openai/codex") {
-    Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
-  }
-}
-
-function Copy-FixtureAssets($Fixture, [string]$TargetDir) {
+function Copy-FixtureAssets([System.IO.FileInfo]$Fixture, [string]$TargetDir) {
   $assetDir = Join-Path $Fixture.DirectoryName ($Fixture.BaseName + "_files")
-  if (Test-Path $assetDir) {
+  if (Test-Path -LiteralPath $assetDir) {
     Copy-Item -Recurse -Force -Path $assetDir -Destination (Join-Path $TargetDir (Split-Path $assetDir -Leaf))
   }
 }
+
+function Resolve-FixtureFiles {
+  if ($PSCmdlet.ParameterSetName -eq "ByPaths") {
+    $resolved = @()
+    foreach ($path in $FixturePaths) {
+      if (-not (Test-Path -LiteralPath $path)) {
+        throw "fixture path not found: $path"
+      }
+      $item = Get-Item -LiteralPath $path
+      if ($item.PSIsContainer) {
+        $resolved += Get-ChildItem -LiteralPath $item.FullName -Recurse -File -Filter *.html | Sort-Object FullName
+      } else {
+        $resolved += $item
+      }
+    }
+    return @($resolved)
+  }
+
+  $root = [System.IO.Path]::GetFullPath($FixtureRoot)
+  if (-not (Test-Path -LiteralPath $root)) {
+    throw "fixture root not found: $root"
+  }
+  $resolved = @(Get-ChildItem -LiteralPath $root -Recurse -File -Filter *.html | Sort-Object FullName)
+  if (-not $resolved) {
+    throw "fixture root does not contain any .html files: $root"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
+    $preferredFullPath = [System.IO.Path]::GetFullPath((Join-Path $root $PreferredInitialPage))
+    $preferred = $resolved | Where-Object { $_.FullName -eq $preferredFullPath } | Select-Object -First 1
+    if (-not $preferred) {
+      throw "preferred initial page was not found under fixture root: $PreferredInitialPage"
+    }
+    $remaining = $resolved | Where-Object { $_.FullName -ne $preferredFullPath }
+    return @($preferred) + @($remaining)
+  }
+  return $resolved
+}
+
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
+$browserExe = if ($BrowserExe) {
+  $BrowserExe
+} elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) {
+  $env:LIGHTPANDA_BROWSER_EXE
+} else {
+  Join-Path $repo "zig-out\bin\lightpanda.exe"
+}
+
+if (-not (Test-Path -LiteralPath $browserExe)) {
+  throw "headed browser binary not found: $browserExe"
+}
+
+. (Join-Path $repo "tmp-browser-smoke\common\Win32Input.ps1")
+. (Join-Path $repo "tmp-browser-smoke\tabs\TabProbeCommon.ps1")
+
+$root = Join-Path $repo "tmp-browser-smoke\local-html-fixtures"
+$stageRoot = Join-Path $root "staged-fixtures"
+$outputRoot = Join-Path $root "output"
+$serverOut = Join-Path $outputRoot "server.stdout.txt"
+$serverErr = Join-Path $outputRoot "server.stderr.txt"
+$resultPath = Join-Path $outputRoot "fixture-results.json"
 
 Remove-TreeIfPresent $stageRoot
 Remove-TreeIfPresent $outputRoot
 New-Item -ItemType Directory -Force -Path $stageRoot | Out-Null
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
-Remove-Item $serverOut,$serverErr,$resultPath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $serverOut,$serverErr,$resultPath -Force -ErrorAction SilentlyContinue
 
+$fixtureFiles = Resolve-FixtureFiles
 $fixtureSpecs = @()
-for ($i = 0; $i -lt $FixturePaths.Count; $i++) {
-  $fixturePath = $FixturePaths[$i]
-  if (-not (Test-Path $fixturePath)) {
-    throw "fixture path not found: $fixturePath"
-  }
-
-  $fixture = Get-Item $fixturePath
+for ($i = 0; $i -lt $fixtureFiles.Count; $i++) {
+  $fixture = $fixtureFiles[$i]
   $slug = "fixture-{0:d2}" -f ($i + 1)
   $fixtureDir = Join-Path $stageRoot $slug
   New-Item -ItemType Directory -Force -Path $fixtureDir | Out-Null
-  Copy-Item -Force -Path $fixture.FullName -Destination (Join-Path $fixtureDir "index.html")
+  Copy-Item -Force -LiteralPath $fixture.FullName -Destination (Join-Path $fixtureDir "index.html")
   Copy-FixtureAssets $fixture $fixtureDir
 
   $fixtureSpecs += [ordered]@{
@@ -114,47 +176,47 @@ for ($i = 0; $i -lt $FixturePaths.Count; $i++) {
     slug = $slug
     source_path = $fixture.FullName
     expected_title = Get-HtmlTitle $fixture.FullName
-    url = "http://127.0.0.1:$Port/$slug/index.html"
+    url = "http://$Host`:$Port/$slug/index.html"
     screenshot_path = Join-Path $outputRoot ($slug + ".png")
   }
 }
 
 $server = $null
 $results = @()
+$python = Resolve-PythonCommand
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$Port,"--bind","127.0.0.1" -WorkingDirectory $stageRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  if (-not (Wait-HttpReady "http://127.0.0.1:$Port/")) {
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m", "http.server", $Port, "--bind", $Host)) -WorkingDirectory $stageRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  if (-not (Wait-HttpReady -Url "http://$Host`:$Port/" -Attempts $ServerReadyAttempts -SleepMs $PollMilliseconds)) {
     throw "local fixture probe server did not become ready"
   }
 
   foreach ($fixture in $fixtureSpecs) {
-    Remove-Item $fixture.screenshot_path -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $fixture.screenshot_path -Force -ErrorAction SilentlyContinue
     $browserOut = Join-Path $outputRoot ($fixture.slug + ".browser.stdout.txt")
     $browserErr = Join-Path $outputRoot ($fixture.slug + ".browser.stderr.txt")
-    Remove-Item $browserOut,$browserErr -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $browserOut,$browserErr -Force -ErrorAction SilentlyContinue
 
     $browser = $null
     $failure = $null
-    $hwnd = [IntPtr]::Zero
     $windowTitle = $null
     $titleMatched = $false
     $screenshotReady = $false
 
     try {
-      $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse",$fixture.url,"--window_width",$WindowWidth,"--window_height",$WindowHeight,"--screenshot_png",$fixture.screenshot_path -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-      $screenshotReady = Wait-ForScreenshot $fixture.screenshot_path
+      $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", $WindowWidth, "--window_height", $WindowHeight, "--screenshot_png", $fixture.screenshot_path, $fixture.url) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+      $screenshotReady = Wait-ForScreenshot -Path $fixture.screenshot_path -Attempts $WindowReadyAttempts -SleepMs $PollMilliseconds
       if (-not $screenshotReady) {
         throw "screenshot did not become ready"
       }
 
-      $hwnd = Wait-ForMainWindow $browser.Id
+      $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts
       if ($hwnd -eq [IntPtr]::Zero) {
         throw "browser window handle not found"
       }
 
       Show-SmokeWindow $hwnd
-      Start-Sleep -Milliseconds 250
+      Start-Sleep -Milliseconds $PollMilliseconds
       $windowTitle = Get-SmokeWindowTitle $hwnd
       if ([string]::IsNullOrWhiteSpace($fixture.expected_title)) {
         $titleMatched = -not [string]::IsNullOrWhiteSpace($windowTitle)
@@ -167,36 +229,43 @@ try {
     } catch {
       $failure = $_.Exception.Message
     } finally {
-      Stop-TrackedProcess $browser
-      Start-Sleep -Milliseconds 200
-    }
-
-    $results += [ordered]@{
-      name = $fixture.name
-      source_path = $fixture.source_path
-      url = $fixture.url
-      expected_title = $fixture.expected_title
-      window_title = $windowTitle
-      screenshot_path = $fixture.screenshot_path
-      screenshot_ready = $screenshotReady
-      title_matched = $titleMatched
-      error = $failure
+      $browserMeta = Stop-OwnedProbeProcess $browser
+      Start-Sleep -Milliseconds $PollMilliseconds
+      $results += [ordered]@{
+        name = $fixture.name
+        source_path = $fixture.source_path
+        url = $fixture.url
+        expected_title = $fixture.expected_title
+        window_title = $windowTitle
+        screenshot_path = $fixture.screenshot_path
+        screenshot_ready = $screenshotReady
+        title_matched = $titleMatched
+        error = $failure
+        browser_meta = $browserMeta
+      }
     }
   }
 } finally {
-  Stop-TrackedProcess $server
+  $serverMeta = Stop-OwnedProbeProcess $server
 }
 
 $summary = [ordered]@{
+  parameter_set = $PSCmdlet.ParameterSetName
+  repo_root = $repo
+  browser_exe = $browserExe
+  host = $Host
   port = $Port
-  browser_exe = $BrowserExe
   stage_root = $stageRoot
   output_root = $outputRoot
+  server_stdout = $serverOut
+  server_stderr = $serverErr
   fixtures = $results
+  fixture_count = $results.Count
+  server_meta = $serverMeta
 }
 
-$summary | ConvertTo-Json -Depth 6 | Set-Content -Path $resultPath -NoNewline
-$summary | ConvertTo-Json -Depth 6
+$summary | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath $resultPath -NoNewline
+$summary | ConvertTo-Json -Depth 7
 
 if ($results | Where-Object { -not $_.screenshot_ready -or -not $_.title_matched -or $_.error }) {
   exit 1
