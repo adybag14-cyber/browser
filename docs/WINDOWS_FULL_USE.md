@@ -77,6 +77,14 @@ Start with:
 3. the issue-specific reduced Google or manual real-site pass only after the
    bounded local suite is green
 
+Command-line helper:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName layout-smoke
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input -Json
+```
+
 Primary suite families:
 
 - shell and browser pages: `tabs/`, `browser-pages/`, `settings/`, `popup/`,
