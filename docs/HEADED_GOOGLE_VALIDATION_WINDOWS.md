@@ -150,3 +150,33 @@ that regressed.
 For Enter-order work, do not accept a reduced-title pass as green unless the
 keydown edge still reads `KEYDOWN:<text>|13|13` before the final
 `SUBMIT:<text>` marker.
+
+## 6) Reduced title probe signals
+
+Use the dedicated reduced-fixture title probe when you want one fast headed pass
+that exposes where the Google-style interaction stopped drifting:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_title_probe.ps1
+```
+
+Read the title markers in this order:
+
+- `Q=INPUT:q`: the reduced page bound the query input and named-form access is alive.
+- `A=INPUT:q...`: the query field became the active element.
+- `V=<text>`: visible text landed in the input value.
+- `KEYDOWN:<text>|13|13`: the Enter keydown edge still arrived before submit.
+- `SUBMIT:<text>`: the reduced form submit completed.
+- `|E=KP:` inside the final submit title: submit still happened after the matching keypress path.
+
+Use those markers to narrow failures quickly:
+
+- Missing `Q=INPUT:q` points at fixture bootstrap, legacy named access, or early page-state setup.
+- Missing `A=INPUT:q...` after bind points at startup focus or activation ordering.
+- Missing `V=<text>` after focus points at headed text delivery or duplicate suppression.
+- Reaching `SUBMIT:<text>` without `|E=KP:` points at Enter ordering drift even if submit still happened.
+
+This probe is not the final acceptance target for issue `#3`, but it is the
+fastest bounded headed check when you need to decide whether the regression is
+in focus, typing, or Enter sequencing before moving back to the broader manual
+or live-Google passes.
