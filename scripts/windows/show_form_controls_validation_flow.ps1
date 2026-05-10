@@ -1,84 +1,115 @@
 [CmdletBinding()]
 param(
     [switch]$Json,
-    [string]$InputText = "Q",
+    [string]$RepoRoot,
+    [string]$BrowserExe,
     [string]$Host = "127.0.0.1",
-    [int]$LabelPort = 8153,
-    [int]$DefaultEnterPort = 8154,
-    [int]$DeferredEnterPort = 8155,
-    [int]$ReducedGoogleHomePort = 8156,
-    [int]$GoogleEnterOrderPort = 8157,
-    [int]$ServerReadyTimeoutSeconds = 15,
-    [int]$WindowReadyAttempts = 60,
-    [int]$TitleWaitAttempts = 80,
-    [int]$PollMilliseconds = 250
+    [switch]$SkipBaseline,
+    [switch]$KeepGoing
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function New-FlowStep {
+function ConvertTo-PowerShellSingleQuotedLiteral {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$Name,
-        [Parameter(Mandatory = $true)]
-        [string]$Goal,
-        [Parameter(Mandatory = $true)]
-        [string]$Command
+        [string]$Value
     )
 
-    return [ordered]@{
-        name = $Name
-        goal = $Goal
-        command = $Command
-    }
+    return "'" + ($Value -replace "'", "''") + "'"
 }
 
-$runner = '.\\scripts\\windows\\run_form_controls_validation.ps1'
-$commonArguments = @(
-    "-Host $Host",
-    "-InputText $InputText",
-    "-LabelPort $LabelPort",
-    "-DefaultEnterPort $DefaultEnterPort",
-    "-DeferredEnterPort $DeferredEnterPort",
-    "-ReducedGoogleHomePort $ReducedGoogleHomePort",
-    "-GoogleEnterOrderPort $GoogleEnterOrderPort",
-    "-ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds",
-    "-WindowReadyAttempts $WindowReadyAttempts",
-    "-TitleWaitAttempts $TitleWaitAttempts",
-    "-PollMilliseconds $PollMilliseconds"
-)
-$commonSuffix = $commonArguments -join ' '
+$recommendedRunner = '.\\scripts\\windows\\run_form_controls_validation_recommended.ps1'
+$probeRunner = '.\\scripts\\windows\\run_form_controls_validation.ps1'
+
+$recommendedCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner"
+if ($RepoRoot) {
+    $recommendedCommand += " -RepoRoot " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot)
+}
+if ($BrowserExe) {
+    $recommendedCommand += " -BrowserExe " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe)
+}
+if ($Host) {
+    $recommendedCommand += " -Host " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $Host)
+}
+if ($SkipBaseline) {
+    $recommendedCommand += " -SkipBaseline"
+}
+if ($KeepGoing) {
+    $recommendedCommand += " -KeepGoing"
+}
+
+$commonProbeArguments = ""
+if ($RepoRoot) {
+    $commonProbeArguments += " -RepoRoot " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot)
+}
+if ($BrowserExe) {
+    $commonProbeArguments += " -BrowserExe " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe)
+}
+if ($Host) {
+    $commonProbeArguments += " -Host " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $Host)
+}
 
 $flow = [ordered]@{
-    title = "Shared form-controls headed validation flow"
-    focus = "Run the smallest shared label, Enter-submit, reduced Google-home, and keypress-before-submit localhost gates in the right order before broader inline-flow or live Google follow-up."
-    input_text = $InputText
-    host = $Host
+    issue = "Headed Windows form-controls validation flow"
+    focus = "Shared label-click, immediate Enter-submit, deferred Enter-submit, reduced Google-home submit, and stricter keypress-before-submit gates for the headed input baseline."
+    skip_baseline = [bool]$SkipBaseline
+    keep_going = [bool]$KeepGoing
     steps = @(
-        (New-FlowStep -Name "label" -Goal "Confirm the shared label-click baseline before any Enter-submit investigation." -Command "powershell -ExecutionPolicy Bypass -File $runner -Probe label $commonSuffix"),
-        (New-FlowStep -Name "default-enter" -Goal "Check that the immediate shared Enter-submit path still works on the headed surface." -Command "powershell -ExecutionPolicy Bypass -File $runner -Probe default-enter $commonSuffix"),
-        (New-FlowStep -Name "deferred-enter" -Goal "Check the pending-submit localhost gate that waits through the deferred Enter path." -Command "powershell -ExecutionPolicy Bypass -File $runner -Probe deferred-enter $commonSuffix"),
-        (New-FlowStep -Name "reduced-google-home" -Goal "Run the reduced Google-home shared submit gate before the stricter Enter-order pass." -Command "powershell -ExecutionPolicy Bypass -File $runner -Probe reduced-google-home $commonSuffix"),
-        (New-FlowStep -Name "google-enter-order" -Goal "Run the stricter shared keydown, keypress, and submit-order localhost gate." -Command "powershell -ExecutionPolicy Bypass -File $runner -Probe google-enter-order $commonSuffix"),
-        (New-FlowStep -Name "all" -Goal "Run the whole shared form-controls baseline in one pass when you want the complete localhost gate before broader issue #3 validation." -Command "powershell -ExecutionPolicy Bypass -File $runner -Probe all $commonSuffix")
+        [ordered]@{
+            name = "recommended"
+            goal = "Run the one-command shared baseline and collect one JSON summary before moving into inline-flow, Google shared Enter-order, or attached HTML follow-up."
+            command = $recommendedCommand
+        }
+        [ordered]@{
+            name = "label"
+            goal = "Narrow failures to label activation only when the full recommended runner reports a baseline problem."
+            command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe label$commonProbeArguments"
+        }
+        [ordered]@{
+            name = "default-enter"
+            goal = "Check the immediate Enter-submit path in isolation after label activation is green."
+            command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe default-enter$commonProbeArguments"
+        }
+        [ordered]@{
+            name = "deferred-enter"
+            goal = "Check the deferred pending-submit path after the immediate Enter gate is green."
+            command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe deferred-enter$commonProbeArguments"
+        }
+        [ordered]@{
+            name = "reduced-google-home"
+            goal = "Run the reduced Google-home submit gate after the shared baseline Enter checks are stable."
+            command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe reduced-google-home$commonProbeArguments"
+        }
+        [ordered]@{
+            name = "google-enter-order"
+            goal = "Run the stricter localhost keypress-before-submit gate before the broader Google shared runner or live manual follow-up."
+            command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe google-enter-order$commonProbeArguments"
+        }
     )
     next_steps = @(
-        "After these shared localhost gates are green, move on to .\\scripts\\windows\\run_google_submit_timing_validation.ps1 or .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1.",
-        "Use the shared flow before inline-flow or live Google manual work when the problem still looks like headed input delivery rather than shell navigation."
+        "Use .\\scripts\\windows\\run_google_shared_enter_order_validation.ps1 after the recommended runner is green and the issue #3 path still needs the stricter shared Enter-order stack.",
+        "Use .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1 when you want the localhost-first issue #3 order that folds these shared gates into the broader Google-specific flow.",
+        "Use .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait only after the closest bounded form-controls or Google flow is already green."
+    )
+    notes = @(
+        "Start with the recommended runner unless you are already narrowing an existing regression.",
+        "Use SkipBaseline only when the label-click plus immediate Enter gate already passed elsewhere and you need a faster deferred or Google-shaped rerun.",
+        "Use KeepGoing when you want one failing summary that still attempts later steps for comparison instead of stopping at the first broken gate."
     )
 }
 
 if ($Json) {
-    $flow | ConvertTo-Json -Depth 5
+    $flow | ConvertTo-Json -Depth 6
     exit 0
 }
 
-Write-Host $flow.title
+Write-Host "Headed Windows form-controls validation flow"
 Write-Host ""
 Write-Host ("Focus: {0}" -f $flow.focus)
-Write-Host ("Host: {0}" -f $flow.host)
-Write-Host ("Input text: {0}" -f $flow.input_text)
+Write-Host ("Skip baseline in recommended runner: {0}" -f $flow.skip_baseline)
+Write-Host ("Keep going after failures: {0}" -f $flow.keep_going)
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
@@ -86,6 +117,11 @@ foreach ($step in $flow.steps) {
     Write-Host ""
 }
 Write-Host "Next steps:"
-foreach ($note in $flow.next_steps) {
+foreach ($step in $flow.next_steps) {
+    Write-Host ("- {0}" -f $step)
+}
+Write-Host ""
+Write-Host "Notes:"
+foreach ($note in $flow.notes) {
     Write-Host ("- {0}" -f $note)
 }
