@@ -119,6 +119,7 @@ if (-not (Test-Path -LiteralPath $serverScript)) {
 }
 
 $probeUrl = "http://$Host`:$Port/google-enter-order.html"
+$focusTitleNeedle = "Google Enter Focused"
 $typedTitleNeedle = "Google Enter VALUE:$InputText"
 $submittedTitleNeedle = "Submitted $InputText"
 
@@ -135,8 +136,10 @@ $browser = $null
 $ready = $false
 $pngReady = $false
 $titleBefore = $null
+$titleAfterClick = $null
 $titleAfterType = $null
 $titleAfterSubmit = $null
+$clickedWorked = $false
 $typedWorked = $false
 $submittedWorked = $false
 $submitPhase = $null
@@ -162,10 +165,15 @@ try {
   Show-SmokeWindow $hwnd
   $titleBefore = Get-SmokeWindowTitle $hwnd
 
+  [void](Invoke-SmokeClientClick $hwnd 170 98)
+  $titleAfterClick = Wait-TabTitle -ProcessId $browser.Id -Needle $focusTitleNeedle -Attempts $TitleWaitAttempts
+  $clickedWorked = $null -ne $titleAfterClick
+  if (-not $clickedWorked) { throw "clicking the Google-style field did not focus it" }
+
   Send-SmokeText $InputText
   $titleAfterType = Wait-TabTitle -ProcessId $browser.Id -Needle $typedTitleNeedle -Attempts $TitleWaitAttempts
   $typedWorked = $null -ne $titleAfterType
-  if (-not $typedWorked) { throw "Google-style search input did not receive typed text" }
+  if (-not $typedWorked) { throw "Google-style search input did not receive typed text after click focus" }
 
   Send-SmokeEnter
   $titleAfterSubmit = Wait-TabTitle -ProcessId $browser.Id -Needle $submittedTitleNeedle -Attempts $TitleWaitAttempts
@@ -182,9 +190,11 @@ try {
   if ($submitPhase -ne "keypress") { throw "expected submit phase keypress, got '$submitPhase'" }
   if ([string]::IsNullOrWhiteSpace($eventLog)) { throw "probe server did not capture the Enter event log" }
 
+  $focusIndex = $eventLog.IndexOf("FOCUS")
   $keydownIndex = $eventLog.IndexOf("KD:Enter:$InputText")
   $keypressIndex = $eventLog.IndexOf("KP:Enter:$InputText")
   $submitIndex = $eventLog.IndexOf("SUBMIT:$InputText")
+  if ($focusIndex -lt 0) { throw "event log did not capture click focus" }
   if ($keydownIndex -lt 0) { throw "event log did not capture Enter keydown" }
   if ($keypressIndex -lt 0) { throw "event log did not capture Enter keypress" }
   if ($submitIndex -lt 0) { throw "event log did not capture form submit" }
@@ -219,8 +229,10 @@ try {
     ready = $ready
     screenshot_ready = $pngReady
     title_before = $titleBefore
+    title_after_click = $titleAfterClick
     title_after_type = $titleAfterType
     title_after_submit = $titleAfterSubmit
+    clicked_worked = $clickedWorked
     typed_worked = $typedWorked
     submitted_worked = $submittedWorked
     submit_phase = $submitPhase
