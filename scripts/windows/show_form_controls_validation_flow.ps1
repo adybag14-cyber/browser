@@ -89,7 +89,7 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
-        "Use .\\scripts\\windows\\run_google_shared_enter_order_validation.ps1 after the recommended runner is green and the issue #3 path still needs the stricter shared Enter-order stack.",
+        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when the recommended runner is green and you want the stricter shared Enter-order stack printed in the intended order before you execute it with .\\scripts\\windows\\run_google_shared_enter_order_validation.ps1.",
         "Use .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1 when you want the localhost-first issue #3 order that folds these shared gates into the broader Google-specific flow.",
         "Use .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait only after the closest bounded form-controls or Google flow is already green."
     )
