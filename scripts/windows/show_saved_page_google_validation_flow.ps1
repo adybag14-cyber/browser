@@ -23,11 +23,11 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
 $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
 $leaveServerRunningArgument = if ($LeaveOpen) { " -LeaveServerRunning" } else { "" }
 
-$summaryHelper = '.\\scripts\\windows\\summarize_localhost_html_pages.ps1'
-$directHelper = '.\\scripts\\windows\\start_localhost_html_validation.ps1'
-$stagedHelper = '.\\scripts\\windows\\start_staged_localhost_html_validation.ps1'
-$googleFlowHelper = '.\\scripts\\windows\\show_google_input_validation_flow.ps1'
-$googleRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$summaryHelper = '.\scripts\windows\summarize_localhost_html_pages.ps1'
+$directHelper = '.\scripts\windows\start_localhost_html_validation.ps1'
+$stagedHelper = '.\scripts\windows\start_staged_localhost_html_validation.ps1'
+$googleFlowHelper = '.\scripts\windows\show_google_input_validation_flow.ps1'
+$googleRunner = '.\scripts\windows\run_google_input_validation.ps1'
 $quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase home"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
@@ -51,16 +51,17 @@ $launchInitialPageArgument = if ($PreferredInitialPage) {
 
 if ($PageRoot) {
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot -Port $Port"
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot -Port $Port$preferredInitialPageArgument"
     $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot $quotedPageRoot -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
 } else {
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port"
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port -PreferredInitialPage '<preferred-initial-page>'"
     $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '<saved-page-dir>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
 }
 
 if ($InputPath -and $InputPath.Count -gt 0) {
     $quotedPaths = $InputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $joinedPaths = $quotedPaths -join ", "
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
     $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$leaveOpenArgument"
@@ -140,7 +141,7 @@ $flow = [ordered]@{
         "Use google-shared for the stricter Enter-order wrapper when you want the shared label-click baseline and shared submit gates ahead of the saved-page manual pass.",
         "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, shared Enter-order wrapper, and watch phase in one command, and keep the same saved-page manual follow-up attached when InputPath is already supplied.",
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
-        "When PreferredInitialPage is set, the direct, staged, Google manual, and broader flow-map commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
+        "When PreferredInitialPage is set, the inventory, direct, staged, Google manual, and broader flow-map commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When InputPath is provided, the broader flow-map command also preserves the same manual port, initial page, and saved-page inputs for the next printed handoff.",
         "When LeaveOpen is set, the printed Google manual, Google full, Google trace, direct-headed, and staged-headed commands keep the browser or localhost session open so you can inspect the same headed state after the bounded automation phases finish.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
