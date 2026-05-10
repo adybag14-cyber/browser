@@ -106,10 +106,42 @@ function Add-UniqueString {
     }
 }
 
+function Test-GoogleStyleHtml {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath,
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+        [Parameter(Mandatory = $true)]
+        [string]$Content
+    )
+
+    $lowerPath = $RelativePath.ToLowerInvariant()
+    $lowerTitle = $Title.ToLowerInvariant()
+    $lowerContent = $Content.ToLowerInvariant()
+
+    if ($lowerPath -match "google|search|query") {
+        return $true
+    }
+    if ($lowerTitle -match "google|search") {
+        return $true
+    }
+    if ($lowerContent -match 'name\s*=\s*["'']q["'']') {
+        return $true
+    }
+    if ($lowerContent -match 'id\s*=\s*["'']search') {
+        return $true
+    }
+
+    return $false
+}
+
 function Get-RecommendedProbeSuites {
     param(
         [Parameter(Mandatory = $true)]
-        [hashtable]$Counts
+        [hashtable]$Counts,
+        [Parameter(Mandatory = $true)]
+        [bool]$GoogleStyle
     )
 
     $result = [System.Collections.Generic.List[string]]::new()
@@ -146,11 +178,36 @@ function Get-RecommendedProbeSuites {
         Add-UniqueString -List $result -Value "layout-smoke"
     }
 
+    if ($GoogleStyle) {
+        Add-UniqueString -List $result -Value "google-investigation-next"
+        if ($hasInteractiveControls) {
+            Add-UniqueString -List $result -Value "google-home"
+        }
+    }
+
     if ($result.Count -eq 0) {
         Add-UniqueString -List $result -Value "layout-smoke"
     }
 
     return @($result)
+}
+
+function Get-PageNextStep {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$GoogleStyle,
+        [Parameter(Mandatory = $true)]
+        [string[]]$RecommendedSuites
+    )
+
+    if ($GoogleStyle) {
+        return "Use scripts/windows/show_saved_page_google_validation_flow.ps1 so the reduced Google-style localhost and shared Enter-order phases run before the saved-page manual pass."
+    }
+    if ($RecommendedSuites.Count -gt 0) {
+        return "Run the closest recommended bounded suite before the saved-page localhost follow-up."
+    }
+
+    return "Use scripts/windows/show_localhost_html_validation_flow.ps1 for the general saved-page follow-up."
 }
 
 if (-not $RepoRoot) {
@@ -186,6 +243,8 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
     $content = Get-Content -LiteralPath $_.FullName -Raw
     $relativePath = Get-ForwardRelativePath -Root $resolvedPageRoot -Path $_.FullName
     $urlPath = Get-RelativeHtmlUrlPath -Path $relativePath
+    $title = Get-HtmlTitle -Content $content
+    $googleStyle = Test-GoogleStyleHtml -RelativePath $relativePath -Title $title -Content $content
     $counts = [ordered]@{
         forms = Get-RegexMatchCount -Content $content -Pattern "<form\b"
         inputs = Get-RegexMatchCount -Content $content -Pattern "<input\b"
@@ -196,7 +255,7 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         iframes = Get-RegexMatchCount -Content $content -Pattern "<iframe\b"
         images = Get-RegexMatchCount -Content $content -Pattern "<img\b"
         canvas = Get-RegexMatchCount -Content $content -Pattern "<canvas\b"
-        contenteditable = Get-RegexMatchCount -Content $content -Pattern "contenteditable\s*="
+        contenteditable = Get-RegexMatchCount -Content $content -Pattern "contenteditable(\s*=\s*[\"']?(true|plaintext-only)[\"']?)?"
     }
     $interactiveScore =
         ($counts.forms * 3) +
@@ -205,18 +264,21 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         ($counts.buttons * 2) +
         ($counts.contenteditable * 4) +
         $counts.anchors
-    $recommendedSuites = Get-RecommendedProbeSuites -Counts $counts
+    $recommendedSuites = Get-RecommendedProbeSuites -Counts $counts -GoogleStyle $googleStyle
+    $nextStep = Get-PageNextStep -GoogleStyle $googleStyle -RecommendedSuites $recommendedSuites
 
     [pscustomobject]@{
         relative_path = $relativePath
         url_path = $urlPath
         url = "http://{0}:{1}/{2}" -f $Host, $Port, $urlPath
-        title = Get-HtmlTitle -Content $content
+        title = $title
         file_size_bytes = $_.Length
         interactive_score = $interactiveScore
+        google_style = $googleStyle
         counts = [pscustomobject]$counts
         recommended_bounded_suites = $recommendedSuites
         manual_follow_up_suite = "manual-user"
+        next_step = $nextStep
     }
 })
 
@@ -231,6 +293,18 @@ foreach ($page in $pageSummaries) {
     }
 }
 
+$hasGoogleStylePages = @($pageSummaries | Where-Object { $_.google_style }).Count -gt 0
+$overallNextStep = if ($hasGoogleStylePages) {
+    "Use scripts/windows/show_saved_page_google_validation_flow.ps1 so Google-style saved pages run through the dedicated localhost and shared Enter-order issue #3 flow before the manual headed pass."
+} else {
+    "Run one or two of the recommended bounded suites first, then use scripts/windows/show_localhost_html_validation_flow.ps1 for the saved-page localhost follow-up."
+}
+$flowHelper = if ($hasGoogleStylePages) {
+    "scripts/windows/show_saved_page_google_validation_flow.ps1"
+} else {
+    "scripts/windows/show_localhost_html_validation_flow.ps1"
+}
+
 $summary = [pscustomobject]@{
     page_root = $resolvedPageRoot
     repo_root = $RepoRoot
@@ -241,7 +315,9 @@ $summary = [pscustomobject]@{
     recommended_initial_url = $recommendedInitialPage.url
     overall_recommended_suites = @($overallRecommendedSuites)
     manual_follow_up_suite = "manual-user"
-    next_step = "Run one or two of the recommended bounded suites first, then use manual-user for the saved-page localhost follow-up."
+    recommended_flow_helper = $flowHelper
+    overall_google_style = $hasGoogleStylePages
+    next_step = $overallNextStep
     generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
     pages = $pageSummaries
 }
@@ -252,6 +328,8 @@ Write-Host ("Saved HTML summary: {0}" -f $OutputPath)
 Write-Host ("Recommended initial page: {0}" -f $recommendedInitialPage.relative_path)
 Write-Host ("Suggested bounded suites: {0}" -f ($summary.overall_recommended_suites -join ", "))
 Write-Host ("Manual follow-up suite: {0}" -f $summary.manual_follow_up_suite)
+Write-Host ("Flow helper: {0}" -f $summary.recommended_flow_helper)
+Write-Host ("Next step: {0}" -f $summary.next_step)
 Write-Host ""
 
 foreach ($page in $pageSummaries) {
@@ -271,8 +349,10 @@ foreach ($page in $pageSummaries) {
             $page.counts.anchors,
             $page.counts.scripts
         ))
+    Write-Host ("  google-style: {0}" -f $page.google_style.ToString().ToLowerInvariant())
     Write-Host ("  bounded suites: {0}" -f ($page.recommended_bounded_suites -join ", "))
     Write-Host ("  url: {0}" -f $page.url)
+    Write-Host ("  next: {0}" -f $page.next_step)
 }
 
 $summary | ConvertTo-Json -Depth 6
