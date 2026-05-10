@@ -129,7 +129,8 @@ class FormHandler(http.server.BaseHTTPRequestHandler):
 
 def main():
     port = int(sys.argv[1])
-    with socketserver.TCPServer(("127.0.0.1", port), FormHandler) as server:
+    host = sys.argv[2] if len(sys.argv) > 2 else "127.0.0.1"
+    with socketserver.TCPServer((host, port), FormHandler) as server:
         server.serve_forever()
 
 
