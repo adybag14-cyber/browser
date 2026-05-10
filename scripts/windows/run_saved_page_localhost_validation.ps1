@@ -62,11 +62,7 @@ if ($SummaryOnly) {
     exit 0
 }
 
-$initialPage = if ($PreferredInitialPage) {
-    $PreferredInitialPage
-} else {
-    [string]$summary.recommended_initial_page
-}
+$initialPage = [string]$summary.recommended_initial_page
 
 $launchHelper = if ($InputPath -and $InputPath.Count -gt 0) {
     $stagedHelper
