@@ -176,6 +176,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_localhost_html_
   -Wait
 ```
 
+When the saved pages live across several standalone HTML files or folders,
+stage them into one clean localhost run first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_staged_localhost_html_validation.ps1 `
+  -InputPath C:\path\to\saved-page.html, C:\path\to\saved-folder `
+  -LaunchBrowser `
+  -Wait
+```
+
+That wrapper copies the provided inputs into a timestamped validation root,
+writes `staged-input-manifest.json`, and then hands off to
+`start_localhost_html_validation.ps1`.
+
 What the helper does:
 
 - serves every `.html` and `.htm` file under `-PageRoot` on `http://127.0.0.1:<port>/`
@@ -186,6 +200,7 @@ What the helper does:
 Useful options:
 
 - `-InitialPage subdir/page.html` opens a specific saved page first
+- `-InitialPage C:\path\to\saved-page.html` also works with `start_staged_localhost_html_validation.ps1` when you want to open one staged source file first
 - `-Port 8124` moves the local server when another harness is already bound
 - `-Host 0.0.0.0` exposes the same pages to other machines on the LAN when needed
 - `-LeaveServerRunning` keeps the server alive after the `-Wait` prompt completes
