@@ -361,7 +361,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-submit-timing, the shared Enter-order wrapper, and the saved-page localhost follow-up before the smallest live Google manual check."
+        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-submit-timing, and the shared Enter-order stack. Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that stricter shared stack printed before you execute it."
     } elseif ($ChangeArea -eq "google-saved-html") {
         "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "google-attached-html") {
@@ -435,6 +435,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
