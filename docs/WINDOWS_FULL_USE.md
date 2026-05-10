@@ -83,6 +83,7 @@ Command-line helper:
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
 .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName layout-smoke
 .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-home
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input -Json
 ```
 
@@ -101,6 +102,10 @@ Primary suite families:
 - reduced Google homepage surface: `google-home/` for the bounded real-window
   Enter-submit probe and title-stream watcher path against
   `google_home_title_probe.html`
+- reduced Google wrapper-first pass: `google-recommended` for the current
+  one-command localhost-first issue #3 flow that bundles the title pass,
+  reduced homepage pass, submit-timing check, shared Enter-order wrapper, and
+  watcher before any saved-page or live-site follow-up
 - persistence and runtime: `cookie-persistence/`,
   `localstorage-persistence/`, `indexeddb-persistence/`,
   `sessionstorage-scope/`, `fetch-abort/`, `fetch-credentials/`,
@@ -131,15 +136,25 @@ powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-home\chrome-
 That probe should reach the title markers `FOCUSED`, `TYPED:QZ`, and
 `SUBMIT:QZ` before you move on to a live Google manual pass.
 
-One-command reduced Google plus nearby shared-input pass:
+Preferred one-command bounded Google validation pass:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase all -IncludeSharedInput
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
 ```
 
-With `-IncludeSharedInput`, the ordered follow-up now includes the reduced
-homepage pass plus the nearby shared input checks for deferred Enter submit,
-basic Enter submit, and inline-flow submit behavior.
+That wrapper keeps the current localhost-first issue `#3` flow together:
+`localhost`, `title`, reduced `home`, `submit-timing`, `shared-enter-order`,
+and `watch`, with the same optional saved-page follow-up parameters.
+
+Broader shared-input follow-up through the main runner:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared
+```
+
+Use that narrower shared-input phase when the wrapper points at a regression in
+label activation, deferred submit, reduced Google-home form coverage, or the
+nearby inline-flow submit gates and you want the shared checks by themselves.
 
 Interactive watcher path:
 
