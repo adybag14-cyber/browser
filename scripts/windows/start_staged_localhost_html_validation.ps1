@@ -121,6 +121,7 @@ function Write-StagedIndexPage {
         $displayPath = Get-HtmlEncodedText -Text $relativePath
         $sourceLabel = switch ([string]$entry.source_kind) {
             "directory_html" { "staged from a directory input" }
+            "standalone_html_with_siblings" { "staged from a standalone file with sibling assets" }
             "standalone_html" { "staged from a standalone file" }
             default { [string]$entry.source_kind }
         }
@@ -245,6 +246,7 @@ if ($InitialPage -and (Test-Path -LiteralPath $InitialPage -PathType Leaf)) {
 
 $stagedInitialPage = $null
 $stagedEntries = @()
+$standaloneSiblingAssetRoots = @()
 
 foreach ($input in $InputPath) {
     $resolvedInput = (Resolve-Path -LiteralPath $input).Path
@@ -283,15 +285,30 @@ foreach ($input in $InputPath) {
         throw "standalone inputs must be .html or .htm files: $resolvedInput"
     }
 
-    $targetFile = Get-UniqueChildPath -Parent $stageRoot -LeafName $item.Name
-    Copy-Item -LiteralPath $item.FullName -Destination $targetFile -Force
+    $standaloneRootName = [System.IO.Path]::GetFileNameWithoutExtension($item.Name)
+    if ([string]::IsNullOrWhiteSpace($standaloneRootName)) {
+        $standaloneRootName = $item.Name
+    }
+    $targetDir = Get-UniqueChildPath -Parent $stageRoot -LeafName $standaloneRootName
+    New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
 
-    $stagedRelativePath = Split-Path -Leaf $targetFile
+    $standaloneSourceDir = Split-Path -Parent $item.FullName
+    Get-ChildItem -LiteralPath $standaloneSourceDir -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $targetDir -Recurse -Force
+    }
+
+    $targetFile = Join-Path $targetDir $item.Name
+    if (-not (Test-Path -LiteralPath $targetFile -PathType Leaf)) {
+        Copy-Item -LiteralPath $item.FullName -Destination $targetFile -Force
+    }
+
+    $stagedRelativePath = ((Join-Path (Split-Path -Leaf $targetDir) $item.Name) -replace "\\", "/")
     $stagedEntries += [pscustomobject]@{
         source_path = $item.FullName
         staged_relative_path = $stagedRelativePath
-        source_kind = "standalone_html"
+        source_kind = "standalone_html_with_siblings"
     }
+    $standaloneSiblingAssetRoots += $standaloneSourceDir
 
     if ($resolvedInitialSource -and [string]::Equals($item.FullName, $resolvedInitialSource, [System.StringComparison]::OrdinalIgnoreCase)) {
         $stagedInitialPage = $stagedRelativePath
@@ -325,6 +342,10 @@ $manifest | ConvertTo-Json -Depth 6 | Set-Content -Path $manifestPath -Encoding 
 Write-Host ("Staged HTML validation root: {0}" -f $stageRoot)
 Write-Host ("Generated staged index: {0}" -f (Join-Path $stageRoot $generatedIndexPage))
 Write-Host ("Staged input manifest: {0}" -f $manifestPath)
+if ($standaloneSiblingAssetRoots.Count -gt 0) {
+    $uniqueStandaloneRoots = $standaloneSiblingAssetRoots | Sort-Object -Unique
+    Write-Host ("Standalone HTML inputs were staged with sibling assets from: {0}" -f ($uniqueStandaloneRoots -join "; "))
+}
 
 $helperArgs = @{
     PageRoot = $stageRoot
