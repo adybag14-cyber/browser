@@ -1,4 +1,8 @@
 $ErrorActionPreference = "Stop"
+param(
+  [switch]$DeferredEnter
+)
+
 $port = 8154
 
 function Resolve-RepoRoot([string]$StartPath) {
@@ -33,14 +37,21 @@ $serverErr = Join-Path $root "enter-submit.server.stderr.txt"
 $pngPath = Join-Path $root "enter-submit.before.png"
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
 
+$pagePath = if ($DeferredEnter) { "/deferred-submit.html" } else { "/submit.html" }
+$typedTitlePattern = if ($DeferredEnter) { "Deferred Enter Typed Q*" } else { "Enter Submit Q*" }
+$pendingTitlePattern = if ($DeferredEnter) { "Deferred Enter Pending Q*" } else { $null }
+$serverSubmitPattern = if ($DeferredEnter) { 'FORM_SUBMIT /submitted\.html\?q=Q' } else { 'FORM_SUBMIT /submitted\.html\?name=Q' }
+
 $server = $null
 $browser = $null
 $ready = $false
 $pngReady = $false
 $titleBefore = $null
 $titleAfterType = $null
+$titleAfterPending = $null
 $titleAfterSubmit = $null
 $typedWorked = $false
+$pendingWorked = $false
 $submittedWorked = $false
 $serverSawSubmit = $false
 $failure = $null
@@ -67,7 +78,7 @@ try {
   }
   if (-not $ready) { throw "enter submit probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/submit.html","--window_width","420","--window_height","520","--screenshot_png",$pngPath -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port$pagePath","--window_width","420","--window_height","520","--screenshot_png",$pngPath -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Milliseconds 250
     if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) { $pngReady = $true; break }
@@ -90,15 +101,19 @@ try {
   $titleBefore = Get-SmokeWindowTitle $hwnd
 
   Send-SmokeText "Q"
-  $titleAfterType = Wait-ForTitleLike $hwnd "Enter Submit Q*"
+  $titleAfterType = Wait-ForTitleLike $hwnd $typedTitlePattern
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "autofocus input did not receive typed text" }
 
   Send-SmokeEnter
+  if ($pendingTitlePattern) {
+    $titleAfterPending = Wait-ForTitleLike $hwnd $pendingTitlePattern
+    $pendingWorked = $null -ne $titleAfterPending
+  }
   $titleAfterSubmit = Wait-ForTitleLike $hwnd "Submitted Q*"
   if (Test-Path $serverErr) {
     $serverLog = Get-Content $serverErr -Raw
-    $serverSawSubmit = $serverLog -match 'FORM_SUBMIT /submitted\.html\?name=Q'
+    $serverSawSubmit = $serverLog -match $serverSubmitPattern
   }
   $submittedWorked = ($null -ne $titleAfterSubmit) -or $serverSawSubmit
   if (-not $submittedWorked) { throw "pressing Enter did not submit the form" }
@@ -114,14 +129,17 @@ try {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    mode = if ($DeferredEnter) { "deferred-enter" } else { "default-enter" }
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
     screenshot_ready = $pngReady
     title_before = $titleBefore
     title_after_type = $titleAfterType
+    title_after_pending = $titleAfterPending
     title_after_submit = $titleAfterSubmit
     typed_worked = $typedWorked
+    pending_title_seen = $pendingWorked
     submitted_worked = $submittedWorked
     server_saw_submit = $serverSawSubmit
     error = $failure
