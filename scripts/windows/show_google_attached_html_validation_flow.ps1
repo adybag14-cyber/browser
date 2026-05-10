@@ -89,6 +89,20 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 }
 
+$autoGoogleStyleFixture = if ($PSCmdlet.ParameterSetName -eq "Auto") {
+    $resolvedInputPath |
+        ForEach-Object { Get-Item -LiteralPath $_ -ErrorAction SilentlyContinue } |
+        Where-Object { $_ -and (Test-GoogleStyleFixture $_) } |
+        Select-Object -First 1
+} else {
+    $null
+}
+
+if ($PSCmdlet.ParameterSetName -eq "Auto" -and -not $autoGoogleStyleFixture) {
+    $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $repoRoot)
+    throw "No Google-style attached HTML files were found under: $($searchRoots -join '; '). Use .\scripts\windows\show_attached_html_validation_flow.ps1 for the general attached-page flow, or pass -InputPath / -PageRoot to override auto-discovery."
+}
+
 $arguments = @{
     Port = $Port
     ManualGoogleStyle = $true
