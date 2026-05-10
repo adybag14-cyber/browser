@@ -3,6 +3,10 @@
 This folder holds the smallest headed Win32 smoke probes for label activation,
 text entry, and Enter-submit behavior.
 
+Use `scripts/windows/show_form_controls_validation_flow.ps1` when you want the
+read-first handoff for the shared form-controls stack before running the
+recommended runner or dropping down to the single-probe scripts.
+
 ## Primary Probes
 
 - `label-click-probe.ps1`
@@ -36,16 +40,19 @@ shared headed path did not submit early at keydown.
 
 1. Run the reduced localhost probes in `tmp-browser-smoke/google-investigation-next/`.
 2. Run the reduced headed homepage probe in `tmp-browser-smoke/google-home/`.
-3. Run `deferred-enter-submit-probe.ps1`, `google-enter-order-probe.ps1`, and `enter-submit-probe.ps1`.
-4. Run the nearby inline-flow submit probe when the change also touched broader layout or focus behavior.
-5. Move on to the smallest live Google manual pass only after the bounded probes stay green.
+3. Print the ordered shared form-controls handoff with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_form_controls_validation_flow.ps1`.
+4. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation_recommended.ps1`, or narrow with `deferred-enter-submit-probe.ps1`, `google-enter-order-probe.ps1`, and `enter-submit-probe.ps1` when you already know which shared gate needs attention.
+5. Run the nearby inline-flow submit probe when the change also touched broader layout or focus behavior.
+6. Move on to the smallest live Google manual pass only after the bounded probes stay green.
 
-## One-Command Runners
+## Read-First And One-Command Helpers
 
 Use the helpers below when you want the reduced Google localhost probes, the
 bounded homepage pass, and these form-controls checks in one ordered sequence:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase all -IncludeSharedInput
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_form_controls_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation_recommended.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 ```
