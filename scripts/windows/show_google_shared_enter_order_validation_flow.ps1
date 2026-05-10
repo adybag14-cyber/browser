@@ -62,7 +62,7 @@ $sharedRunner = '.\scripts\windows\run_google_input_validation.ps1'
 $googleTitleProbe = '.\tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1'
 $reducedHomeProbe = '.\tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1'
 $localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1'
-$formControlsProbe = '.\tmp-browser-smoke\form-controls\google-enter-order-probe.ps1'
+$formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
 
 $runnerArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $runnerArgs -Name RepoRoot -Value $RepoRoot
@@ -144,7 +144,7 @@ $flow = [ordered]@{
         [ordered]@{
             name = "form-controls-enter-order"
             goal = "Verify the dedicated shared form-controls Google-style gate still records submit after Enter keypress on the headed surface."
-            command = ("powershell -ExecutionPolicy Bypass -File {0} -InputText {1} -Port {2}{3}" -f $formControlsProbe, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $SharedEnterOrderPort, $(if ($commonProbeArgs.Count -gt 0) { " " + ($commonProbeArgs -join " ") } else { "" }))
+            command = ("powershell -ExecutionPolicy Bypass -File {0} -SharedInputText {1} -SharedEnterOrderPort {2} -Host {3} -ServerReadyTimeoutSeconds {4} -HomeWindowReadyAttempts {5} -HomeTitleWaitAttempts {6} -HomePollMilliseconds {7}{8}" -f $formControlsRunner, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $SharedEnterOrderPort, (ConvertTo-PowerShellSingleQuotedLiteral -Value $Host), $ServerReadyTimeoutSeconds, $HomeWindowReadyAttempts, $HomeTitleWaitAttempts, $HomePollMilliseconds, $(if ($RepoRoot) { " -RepoRoot " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot) } else { "" }) + $(if ($BrowserExe) { " -BrowserExe " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe) } else { "" }))
         }
     )
     next_steps = @(
