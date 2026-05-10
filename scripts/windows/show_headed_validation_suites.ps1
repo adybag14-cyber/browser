@@ -144,6 +144,13 @@ $suiteCatalog = @(
         RecommendedWith = @("form-controls", "inline-flow")
     }
     [pscustomobject]@{
+        Name = "google-home"
+        Category = "input"
+        Path = "tmp-browser-smoke/google-home"
+        Purpose = "Reduced homepage watcher and Enter-submit probe on the real headed surface after the localhost Google-style probes are green."
+        RecommendedWith = @("google-investigation-next", "form-controls")
+    }
+    [pscustomobject]@{
         Name = "find"
         Category = "input"
         Path = "tmp-browser-smoke/find"
@@ -258,7 +265,7 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("google-investigation-next", "form-controls", "inline-flow")
+    "google-input" = @("google-investigation-next", "google-home", "form-controls")
     "manual-html" = @("manual-user", "form-controls", "google-investigation-next")
 }
 
@@ -314,7 +321,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
             change_area = $ChangeArea
             suites = $items
             next_step = if ($ChangeArea -eq "google-input") {
-                "Start with google-investigation-next, then run form-controls and inline-flow, and only then use the reduced homepage watcher or the smallest real Google manual check."
+                "Start with google-investigation-next, then run google-home, then run form-controls and inline-flow, and only then use the smallest real Google manual check."
             } elseif ($ChangeArea -eq "manual-html") {
                 "Start with manual-user only after the matching bounded suite is green, then use start_localhost_html_validation.ps1 to serve the saved pages and capture the localhost follow-up." 
             } else {
@@ -328,7 +335,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     Write-Host ("Recommended suites for change area '{0}':" -f $ChangeArea)
     Write-Host (Format-SuiteList -Items $items)
     if ($ChangeArea -eq "google-input") {
-        Write-Host "Next step: start with google-investigation-next, then run form-controls and inline-flow before the reduced homepage watcher or the smallest real Google manual pass."
+        Write-Host "Next step: start with google-investigation-next, then run google-home, then run form-controls and inline-flow before the smallest real Google manual pass."
     } elseif ($ChangeArea -eq "manual-html") {
         Write-Host "Next step: start with the matching bounded suite, then use manual-user with start_localhost_html_validation.ps1 for the saved-page localhost follow-up."
     } else {
