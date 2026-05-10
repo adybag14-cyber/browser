@@ -147,6 +147,11 @@ function Resolve-FixtureSelection {
   }
 
   if ($GoogleStyle) {
+    $googleStyleFixtures = @($fixtures | Where-Object { Test-GoogleStyleFixture $_ })
+    if ($googleStyleFixtures.Count -gt 0) {
+      $fixtures = $googleStyleFixtures
+    }
+
     $fixtures = @(
       $fixtures |
         Sort-Object @(
@@ -166,7 +171,8 @@ function Resolve-FixtureSelection {
 function Get-DefaultAttachedHtmlInputPath {
   param(
     [Parameter(Mandatory = $true)]
-    [string]$RepoRoot
+    [string]$RepoRoot,
+    [switch]$GoogleStyle
   )
 
   $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
@@ -174,7 +180,7 @@ function Get-DefaultAttachedHtmlInputPath {
     throw "attached HTML directories not found under the repo root, its parent workspace, or the current working directory"
   }
 
-  $htmlFiles = @(Resolve-FixtureSelection -RepoRoot $RepoRoot -MaxCount 0)
+  $htmlFiles = @(Resolve-FixtureSelection -RepoRoot $RepoRoot -GoogleStyle:$GoogleStyle -MaxCount 0)
   if ($htmlFiles.Count -eq 0) {
     throw "no attached HTML files were found anywhere under $($searchRoots -join '; ')"
   }
