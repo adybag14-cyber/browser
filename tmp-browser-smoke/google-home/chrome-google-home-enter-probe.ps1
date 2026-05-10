@@ -39,7 +39,9 @@ $server = $null
 $browser = $null
 $ready = $false
 $pngReady = $false
+$windowHandleReady = $false
 $windowReadyFallbackUsed = $false
+$startupReadySignal = "none"
 $boundTitle = $null
 $focusedTitle = $null
 $typedTitle = $null
@@ -84,20 +86,27 @@ try {
   if (-not $ready) { throw "google reduced probe server did not become ready" }
 
   $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse",$browserUrl,"--window_width","1280","--window_height","900","--screenshot_png",$pngPath -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
-    Start-Sleep -Milliseconds $PollMilliseconds
-    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) {
-      $pngReady = $true
-      break
-    }
-  }
-
   $hwnd = [IntPtr]::Zero
   for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
     Start-Sleep -Milliseconds $PollMilliseconds
+
+    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) {
+      $pngReady = $true
+    }
+
     $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
     if ($proc -and $proc.MainWindowHandle -ne 0) {
       $hwnd = [IntPtr]$proc.MainWindowHandle
+      $windowHandleReady = $true
+    }
+
+    if ($pngReady -or $windowHandleReady) {
+      if ($pngReady) {
+        $startupReadySignal = "screenshot"
+      } else {
+        $startupReadySignal = "window-handle"
+        $windowReadyFallbackUsed = $true
+      }
       break
     }
   }
@@ -150,7 +159,9 @@ try {
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
     screenshot_ready = $pngReady
+    window_handle_ready = $windowHandleReady
     window_ready_fallback_used = $windowReadyFallbackUsed
+    startup_ready_signal = $startupReadySignal
     bound_title = $boundTitle
     focused_title = $focusedTitle
     typed_title = $typedTitle
