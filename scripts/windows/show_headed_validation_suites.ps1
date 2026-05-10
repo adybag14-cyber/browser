@@ -133,8 +133,8 @@ $suiteCatalog = @(
         Name = "form-controls"
         Category = "input"
         Path = "scripts/windows/run_form_controls_validation.ps1"
-        Purpose = "One-command shared label-click, immediate Enter-submit, and deferred Enter-submit localhost validation runner for the headed input baseline."
-        RecommendedWith = @("inline-flow", "find")
+        Purpose = "One-command shared label-click, immediate Enter-submit, deferred Enter-submit, reduced Google-home submit, and stricter localhost enter-order validation runner for the headed input baseline."
+        RecommendedWith = @("inline-flow", "google-shared-enter-order")
     }
     [pscustomobject]@{
         Name = "google-investigation-next"
