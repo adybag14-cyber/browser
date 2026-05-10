@@ -1,177 +1,119 @@
-[CmdletBinding()]
-param(
-    [string]$RepoRoot,
-    [string]$BrowserExe,
-    [string]$Host = "127.0.0.1",
-    [int]$Port = 8168,
-    [string]$ProbePagePath = "/src/browser/tests/page/google_home_title_probe.html",
-    [string]$InputText = "QZ",
-    [int]$ServerReadyTimeoutSeconds = 15,
-    [int]$WindowReadyAttempts = 60,
-    [int]$TitleWaitAttempts = 80,
-    [int]$PollMilliseconds = 250
-)
-
-Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$root = $PSScriptRoot
+$repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$port = 8155
+$browserExe = Join-Path $repoRoot "zig-out\bin\lightpanda.exe"
+$serverScript = Join-Path $root "google_probe_server.py"
+$browserOut = Join-Path $root "google-home-enter.browser.stdout.txt"
+$browserErr = Join-Path $root "google-home-enter.browser.stderr.txt"
+$serverOut = Join-Path $root "google-home-enter.server.stdout.txt"
+$serverErr = Join-Path $root "google-home-enter.server.stderr.txt"
+$pngPath = Join-Path $root "google-home-enter.before.png"
+Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
 
-$scriptRoot = $PSScriptRoot
-if (-not $RepoRoot) {
-    $RepoRoot = (Resolve-Path (Join-Path $scriptRoot "..\..\..")).Path
-}
-if (-not $BrowserExe) {
-    $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
-}
-if (-not (Test-Path -LiteralPath $BrowserExe)) {
-    throw "headed browser binary not found: $BrowserExe"
-}
-
-$root = $scriptRoot
-$profileRoot = Join-Path $root "profile-google-home-enter"
-$browserOut = Join-Path $root "chrome-google-home-enter.browser.stdout.txt"
-$browserErr = Join-Path $root "chrome-google-home-enter.browser.stderr.txt"
-$serverOut = Join-Path $root "chrome-google-home-enter.server.stdout.txt"
-$serverErr = Join-Path $root "chrome-google-home-enter.server.stderr.txt"
-$probeUrl = "http://$Host`:$Port$ProbePagePath"
-
-cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
-New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
-Remove-Item $browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-
-$env:APPDATA = $profileRoot
-$env:LOCALAPPDATA = $profileRoot
-
-. "$PSScriptRoot\..\tabs\TabProbeCommon.ps1"
-
-function Resolve-PythonCommand {
-  if (Get-Command python -ErrorAction SilentlyContinue) {
-    return @{ FileName = "python"; Arguments = @("-m", "http.server") }
-  }
-  if (Get-Command py -ErrorAction SilentlyContinue) {
-    return @{ FileName = "py"; Arguments = @("-3", "-m", "http.server") }
-  }
-  throw "Python was not found in PATH. Install Python or start the localhost server separately."
-}
-
-function Wait-HttpReady {
-  param(
-    [string]$Url,
-    [int]$TimeoutSeconds
-  )
-
-  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-  do {
-    try {
-      $response = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
-      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
-        return
-      }
-    } catch {
-    }
-    Start-Sleep -Milliseconds $PollMilliseconds
-  } while ((Get-Date) -lt $deadline)
-
-  throw "google home enter probe server did not become ready at $Url"
-}
-
-function Wait-ProbeWindowHandle {
-  param(
-    [int]$ProcessId,
-    [int]$Attempts
-  )
-
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $PollMilliseconds
-    $hwnd = Get-TabWindowHandle $ProcessId
-    if ($hwnd -ne [IntPtr]::Zero) {
-      return $hwnd
-    }
-  }
-
-  return [IntPtr]::Zero
-}
-
-function Wait-ProbeTitle {
-  param(
-    [int]$ProcessId,
-    [string]$Needle,
-    [int]$Attempts
-  )
-
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $PollMilliseconds
-    $proc = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
-    if (-not $proc -or $proc.MainWindowHandle -eq 0) {
-      continue
-    }
-    $title = Get-SmokeWindowTitle ([IntPtr]$proc.MainWindowHandle)
-    if ($title -like "*$Needle*") {
-      return $title
-    }
-  }
-
-  return $null
-}
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
 
 $server = $null
 $browser = $null
 $ready = $false
+$pngReady = $false
+$boundTitle = $null
 $focusedTitle = $null
 $typedTitle = $null
+$keydownTitle = $null
 $submitTitle = $null
-$submitWorked = $false
+$typedWorked = $false
+$keydownWorked = $false
+$submittedWorked = $false
 $failure = $null
 
+function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts = 20, [int]$SleepMs = 200) {
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    Start-Sleep -Milliseconds $SleepMs
+    $title = Get-SmokeWindowTitle $Hwnd
+    if ($title -like $Pattern) {
+      return $title
+    }
+  }
+  return $null
+}
+
 try {
-  $python = Resolve-PythonCommand
-  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($Port, "--bind", $Host)) -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  Wait-HttpReady -Url $probeUrl -TimeoutSeconds $ServerReadyTimeoutSeconds
-  $ready = $true
+  $server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $repoRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  for ($i = 0; $i -lt 30; $i++) {
+    Start-Sleep -Milliseconds 250
+    try {
+      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/ping" -TimeoutSec 2
+      if ($resp.StatusCode -eq 200) { $ready = $true; break }
+    } catch {}
+  }
+  if (-not $ready) { throw "google reduced probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $BrowserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "960", "--window_height", "640", $probeUrl) -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  $hwnd = Wait-ProbeWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts
-  if ($hwnd -eq [IntPtr]::Zero) { throw "google home enter probe window handle not found" }
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/google_home_title_probe.html","--window_width","1280","--window_height","900","--screenshot_png",$pngPath -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  for ($i = 0; $i -lt 60; $i++) {
+    Start-Sleep -Milliseconds 250
+    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) { $pngReady = $true; break }
+  }
+  if (-not $pngReady) { throw "google reduced probe screenshot did not become ready" }
+
+  $hwnd = [IntPtr]::Zero
+  for ($i = 0; $i -lt 60; $i++) {
+    Start-Sleep -Milliseconds 250
+    $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
+    if ($proc -and $proc.MainWindowHandle -ne 0) {
+      $hwnd = [IntPtr]$proc.MainWindowHandle
+      break
+    }
+  }
+  if ($hwnd -eq [IntPtr]::Zero) { throw "google reduced probe window handle not found" }
+
   Show-SmokeWindow $hwnd
+  Start-Sleep -Milliseconds 250
 
-  $focusedTitle = Wait-ProbeTitle -ProcessId $browser.Id -Needle "FOCUSED" -Attempts $TitleWaitAttempts
-  if (-not $focusedTitle) { throw "google home enter probe did not focus the query input" }
+  $boundTitle = Wait-ForTitleLike $hwnd "BOUND*"
+  if ($null -eq $boundTitle) { throw "reduced Google fixture never bound the query input" }
 
-  Send-SmokeText $InputText
-  $typedTitle = Wait-ProbeTitle -ProcessId $browser.Id -Needle "TYPED:$InputText" -Attempts $TitleWaitAttempts
-  if (-not $typedTitle) { throw "google home enter probe did not record typed query text" }
+  Invoke-SmokeClientClick -Hwnd $hwnd -X 620 -Y 318 | Out-Null
+  $focusedTitle = Wait-ForTitleLike $hwnd "FOCUSED*"
+  if ($null -eq $focusedTitle) { throw "query input did not focus after click" }
+
+  Send-SmokeText "n"
+  $typedTitle = Wait-ForTitleLike $hwnd "TYPED:n*"
+  $typedWorked = $null -ne $typedTitle
+  if (-not $typedWorked) { throw "query input did not receive typed text" }
 
   Send-SmokeEnter
-  $submitTitle = Wait-ProbeTitle -ProcessId $browser.Id -Needle "SUBMIT:$InputText" -Attempts $TitleWaitAttempts
-  $submitWorked = [bool]$submitTitle
-  if (-not $submitWorked) { throw "google home enter probe did not submit after Enter" }
+  $keydownTitle = Wait-ForTitleLike $hwnd "KEYDOWN:n*"
+  $keydownWorked = $null -ne $keydownTitle
+  if (-not $keydownWorked) { throw "Enter did not leave the reduced Google fixture in KEYDOWN before submit" }
+
+  $submitTitle = Wait-ForTitleLike $hwnd "SUBMIT:n*"
+  $submittedWorked = $null -ne $submitTitle
+  if (-not $submittedWorked) { throw "Enter did not submit after keypress on the reduced Google fixture" }
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  $serverMeta = Stop-OwnedProbeProcess $server
-  $browserMeta = Stop-OwnedProbeProcess $browser
+  $serverMeta = if ($server) { Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
+  $browserMeta = if ($browser) { Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
+  if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue }
+  if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
-    repo_root = $RepoRoot
-    browser_exe = $BrowserExe
-    host = $Host
-    port = $Port
-    probe_page_path = $ProbePagePath
-    probe_url = $probeUrl
-    input_text = $InputText
-    server_ready_timeout_seconds = $ServerReadyTimeoutSeconds
-    window_ready_attempts = $WindowReadyAttempts
-    title_wait_attempts = $TitleWaitAttempts
-    poll_milliseconds = $PollMilliseconds
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
+    screenshot_ready = $pngReady
+    bound_title = $boundTitle
     focused_title = $focusedTitle
     typed_title = $typedTitle
+    keydown_title = $keydownTitle
     submit_title = $submitTitle
-    submit_worked = $submitWorked
+    typed_worked = $typedWorked
+    keydown_worked = $keydownWorked
+    submitted_worked = $submittedWorked
     error = $failure
     server_meta = $serverMeta
     browser_meta = $browserMeta
