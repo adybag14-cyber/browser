@@ -3,9 +3,9 @@
 This guide is the shortest route from attached HTML snapshots to a headed
 localhost follow-up on `fork/headed-mode-foundation`.
 
-Use it when the current run already has saved `.html` pages under `agent_files/`
-or when issue `#3` follow-up should start from attached Google-like pages
-instead of manually enumerated saved-page paths.
+Use it when the current run already has saved `.html` pages under `user_files/`
+or `agent_files/`, or when issue `#3` follow-up should start from attached
+Google-like pages instead of manually enumerated saved-page paths.
 
 Read this with:
 - `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md`
@@ -28,7 +28,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_va
 ```
 
 That helper:
-- auto-discovers nested `.html` files anywhere under `agent_files/`
+- auto-discovers nested `.html` files anywhere under `user_files/` first and then `agent_files/`
 - prefers a Google-like page first when `-GoogleStyle` is used
 - forwards the same input set into the saved-page Google flow helper instead of
   making you restate each file path by hand
@@ -66,8 +66,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_loc
 
 ## 4) Switch to explicit saved-page inputs when auto-discovery is not enough
 
-If the HTML pages live outside `agent_files/`, or the run should use a precise
-mix of standalone files and folders, switch to the saved-page Google helper:
+If the HTML pages live outside `user_files/` and `agent_files/`, or the run
+should use a precise mix of standalone files and folders, switch to the
+saved-page Google helper:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 `
