@@ -7,7 +7,7 @@ param(
     [string]$SuiteName,
 
     [Parameter(ParameterSetName = "Change")]
-    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-saved-html", "manual-html", "attached-html")]
+    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-saved-html", "google-attached-html", "manual-html", "attached-html")]
     [string]$ChangeArea,
 
     [switch]$Json
@@ -302,12 +302,14 @@ $changeRecommendations = @{
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
     "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-submit-timing", "google-shared-enter-order", "manual-user")
     "google-saved-html" = @("manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
+    "google-attached-html" = @("manual-user", "google-recommended", "google-shared-enter-order")
     "manual-html" = @("manual-user", "form-controls", "layout-smoke")
     "attached-html" = @("manual-user", "form-controls", "layout-smoke")
 }
 
 $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
+$googleAttachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
 $manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
 $attachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
 
@@ -362,6 +364,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-submit-timing, the shared Enter-order wrapper, and the saved-page localhost follow-up before the smallest live Google manual check."
     } elseif ($ChangeArea -eq "google-saved-html") {
         "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
+    } elseif ($ChangeArea -eq "google-attached-html") {
+        "Start with the dedicated attached-HTML Google flow helper so auto-discovered saved pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest."
     } elseif ($ChangeArea -eq "manual-html") {
         "Start with the matching bounded suite, then use the one-command recommended localhost HTML runner to auto-route attached or saved pages into the right helper before dropping to the printed flow map."
     } elseif ($ChangeArea -eq "attached-html") {
@@ -374,6 +378,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         $googleFlowCommand
     } elseif ($ChangeArea -eq "google-saved-html") {
         $googleSavedHtmlFlowCommand
+    } elseif ($ChangeArea -eq "google-attached-html") {
+        $googleAttachedHtmlFlowCommand
     } elseif ($ChangeArea -eq "manual-html") {
         $manualHtmlFlowCommand
     } elseif ($ChangeArea -eq "attached-html") {
@@ -425,9 +431,12 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-saved-html"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
