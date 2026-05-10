@@ -134,6 +134,29 @@ Timeout budgets:
 - warm rebuild: about 5 minutes
 - cold/fresh-cache build: 15 to 20 minutes
 
+### Linux Offline Restore Routine
+
+If Linux validation is running from saved archives instead of live package
+fetches:
+
+1. Restore the sibling dependency layout first.
+   - Run `scripts/linux/prepare_offline_build_inputs.sh`.
+   - Pass the saved browser dependency bundle, the saved `boringssl-zig`
+     archive, and the saved html5ever vendor bundle when available.
+2. Confirm the restore created:
+   - `../zig-v8-fork`
+   - `../boringssl-zig`
+   - `../offline-deps/{brotli,zlib,nghttp2,curl}`
+   - `.cargo/config.toml` and `vendor/` when html5ever is being validated
+3. Confirm `build.zig.zon` now uses local `.path` dependencies for brotli,
+   zlib, nghttp2, and curl.
+4. Re-run Linux validation with the restored prebuilt V8 archive:
+   - `zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a`
+5. Treat remaining failures after this point as compile or toolchain
+   compatibility issues, not missing offline inputs.
+
+Use `docs/LINUX_OFFLINE_BUILD_RECOVERY.md` as the detailed Linux runbook.
+
 ## Definite Execution Order
 
 Do the remaining work in this order. Do not jump ahead to packaging before the
