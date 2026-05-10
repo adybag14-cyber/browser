@@ -38,7 +38,9 @@ if ($ManualInitialPage) {
 $manualCommand = $null
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     $quotedPaths = $ManualInputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument -ManualInputPath " + ($quotedPaths -join ", ")
+    $manualPathsArgument = " -ManualInputPath " + ($quotedPaths -join ", ")
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument"
 }
 
 $flow = [ordered]@{
@@ -134,8 +136,9 @@ $flow = [ordered]@{
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
         "Use trace when the bounded localhost, reduced homepage, and shared phases are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
-        "Use full when you want the runner's built-in localhost-first order plus the extra title, shared label baseline, shared Enter-order wrapper, and watch phases in one pass.",
+        "Use full when you want the runner's built-in localhost-first order plus the extra title, shared label baseline, shared Enter-order wrapper, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed manual follow-up command keeps that saved page as the first headed target instead of falling back to a generated index or another arbitrary file.",
+        "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
         "Use the common overrides when you need to keep the localhost, title, home, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
