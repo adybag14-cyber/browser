@@ -31,7 +31,7 @@ $googleHomeProbe = Join-Path $probeRoot "google-home\chrome-google-home-enter-pr
 $deferredEnterProbe = Join-Path $probeRoot "form-controls\deferred-enter-submit-probe.ps1"
 $formControlsEnterProbe = Join-Path $probeRoot "form-controls\enter-submit-probe.ps1"
 $inlineFlowEnterProbe = Join-Path $probeRoot "inline-flow\chrome-inline-break-input-enter-submit-probe.ps1"
-$watchProbe = Join-Path $scriptRoot "watch_headed_probe.ps1"
+$watchProbe = Join-Path $scriptRoot "run_google_home_watch_probe.ps1"
 $manualHtmlHelper = Join-Path $scriptRoot "start_staged_localhost_html_validation.ps1"
 
 $localhostProbes = @(
@@ -121,9 +121,7 @@ function Invoke-WatchSequence {
         RepoRoot = $RepoRoot
         BrowserExe = $BrowserExe
         InputText = "QZ"
-        ExpectedTypedTitleContains = "TYPED:QZ"
         SendEnter = $true
-        ExpectedEnterTitleContains = "SUBMIT:QZ"
     }
     if ($LeaveOpen) {
         $args.LeaveOpen = $true
@@ -209,7 +207,7 @@ if ($Phase -eq "manual") {
     if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
         Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced homepage watcher before the smallest live Google manual pass."
     } else {
-        Write-Host "Next: move on to the smallest live Google manual pass once the watcher confirms SUBMIT:QZ."
+        Write-Host "Next: move on to the smallest live Google manual pass once the self-starting watcher confirms SUBMIT:QZ."
     }
 } elseif ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced Google and shared-input probes before the smallest live Google manual pass."
@@ -220,5 +218,5 @@ if ($Phase -eq "manual") {
 } elseif ($IncludeTitleProbe) {
     Write-Host "Next: if the quick title probe and reduced Google pass stay green, add -IncludeSharedInput or move on to the smallest live Google manual pass."
 } else {
-    Write-Host "Next: use -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus inline-flow checks, -IncludeWatch for the longer title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
+    Write-Host "Next: use -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus inline-flow checks, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
 }
