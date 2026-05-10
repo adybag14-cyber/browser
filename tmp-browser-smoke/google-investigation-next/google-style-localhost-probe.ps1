@@ -1,17 +1,49 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8176,
+  [string]$InputText = "Q",
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$TitleWaitAttempts = 25,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
+. (Join-Path $PSScriptRoot "GoogleProbeCommon.ps1")
+
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-GoogleProbeRepoRoot $PSScriptRoot }
 $root = $PSScriptRoot
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
-$port = 8176
+$browserExe = if ($BrowserExe) { $BrowserExe } elseif (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $repo "zig-out\bin\lightpanda.exe" }
 $serverScript = Join-Path $root "google_style_probe_server.py"
+$profileRoot = Join-Path $root "profile-google-style"
 $browserOut = Join-Path $root "google-style.browser.stdout.txt"
 $browserErr = Join-Path $root "google-style.browser.stderr.txt"
 $serverOut = Join-Path $root "google-style.server.stdout.txt"
 $serverErr = Join-Path $root "google-style.server.stderr.txt"
 $pngPath = Join-Path $root "google-style.before.png"
+$probeUrl = "http://$Host`:$Port/headed_google_style_input_probe.html"
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$pngPath -Force -ErrorAction SilentlyContinue
 
-. (Join-Path (Split-Path $root -Parent) "common\Win32Input.ps1")
+if (-not (Test-Path -LiteralPath $browserExe)) {
+  throw "headed browser binary not found: $browserExe"
+}
+if (-not (Test-Path -LiteralPath $serverScript)) {
+  throw "Google style probe server script not found: $serverScript"
+}
+
+cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
+$originalAppData = $env:APPDATA
+$originalLocalAppData = $env:LOCALAPPDATA
+$probeEnv = Get-TabProbeEnvironment $profileRoot
+$env:APPDATA = $probeEnv.APPDATA
+$env:LOCALAPPDATA = $probeEnv.LOCALAPPDATA
 
 $server = $null
 $browser = $null
@@ -23,69 +55,53 @@ $titleAfterType = $null
 $titleAfterSubmit = $null
 $failure = $null
 
-function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts = 25, [int]$SleepMs = 200) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $SleepMs
-    $title = Get-SmokeWindowTitle $Hwnd
-    if ($title -like $Pattern) {
-      return $title
-    }
-  }
-  return $null
-}
-
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/ping" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
-  if (-not $ready) { throw "google style probe server did not become ready" }
+  $python = Resolve-GoogleProbePythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port, $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  Wait-GoogleProbeHttpReady -Url "http://$Host`:$Port/ping" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
+  $ready = $true
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/headed_google_style_input_probe.html","--window_width","900","--window_height","760","--screenshot_png",$pngPath -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $pngPath) -and ((Get-Item $pngPath).Length -gt 0)) { $pngReady = $true; break }
-  }
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "900", "--window_height", "760", "--screenshot_png", $pngPath, $probeUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $pngReady = Wait-GoogleProbeFileReady -Path $pngPath -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $pngReady) { throw "google style probe screenshot did not become ready" }
 
-  $hwnd = [IntPtr]::Zero
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
-    if ($proc -and $proc.MainWindowHandle -ne 0) {
-      $hwnd = [IntPtr]$proc.MainWindowHandle
-      break
-    }
-  }
+  $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts
   if ($hwnd -eq [IntPtr]::Zero) { throw "google style probe window handle not found" }
 
   Show-SmokeWindow $hwnd
   Start-Sleep -Milliseconds 300
-  Send-SmokeText "Q"
-  $titleAfterType = Wait-ForTitleLike $hwnd "typed:Q"
+  Send-SmokeText $InputText
+  $titleAfterType = Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern "typed:$InputText" -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "google style probe did not commit typed text after focus churn" }
 
   Send-SmokeEnter
-  $titleAfterSubmit = Wait-ForTitleLike $hwnd "submitted:Q"
+  $titleAfterSubmit = Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern "submitted:$InputText" -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
   $submittedWorked = $null -ne $titleAfterSubmit
   if (-not $submittedWorked) { throw "google style probe did not submit on Enter" }
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  $serverMeta = if ($server) { Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  $browserMeta = if ($browser) { Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue }
-  if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
+  $serverMeta = Stop-OwnedProbeProcess $server
+  $browserMeta = Stop-OwnedProbeProcess $browser
+  $env:APPDATA = $originalAppData
+  $env:LOCALAPPDATA = $originalLocalAppData
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    mode = "google-style-localhost"
+    repo_root = $repo
+    browser_exe = $browserExe
+    host = $Host
+    port = $Port
+    probe_url = $probeUrl
+    input_text = $InputText
+    server_ready_timeout_seconds = $ServerReadyTimeoutSeconds
+    window_ready_attempts = $WindowReadyAttempts
+    title_wait_attempts = $TitleWaitAttempts
+    poll_milliseconds = $PollMilliseconds
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
