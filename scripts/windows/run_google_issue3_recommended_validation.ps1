@@ -9,6 +9,7 @@ param(
     [string]$TraceInputText = "lightpanda",
     [int]$TitlePort = 9582,
     [int]$HomePort = 8168,
+    [int]$HomepageFixturePort = 8155,
     [int]$WatchPort = 9582,
     [int]$SharedLabelPort = 8153,
     [int]$SharedDefaultPort = 8154,
@@ -86,6 +87,11 @@ if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
 }
 
+$homepageFixtureRunner = Join-Path $PSScriptRoot "run_google_homepage_fixture_validation.ps1"
+if (-not (Test-Path -LiteralPath $homepageFixtureRunner -PathType Leaf)) {
+    throw "Google homepage fixture validation runner not found: $homepageFixtureRunner"
+}
+
 $autoAttachedHtml = $false
 $autoAttachedSelection = $null
 if (-not $SkipAutoAttachedHtml -and -not $ManualGoogleStyle -and -not ($ManualInputPath -and $ManualInputPath.Count -gt 0)) {
@@ -95,13 +101,9 @@ if (-not $SkipAutoAttachedHtml -and -not $ManualGoogleStyle -and -not ($ManualIn
     }
 }
 
-$arguments = @{
+$basePhaseArguments = @{
     RepoRoot = $RepoRoot
     BrowserExe = $BrowserExe
-    Phase = "all"
-    IncludeTitleProbe = $true
-    IncludeSharedEnterOrder = $true
-    IncludeWatch = $true
     Host = $Host
     LocalhostPort = $LocalhostPort
     InputText = $InputText
@@ -127,24 +129,62 @@ $arguments = @{
     WatchPollMilliseconds = $WatchPollMilliseconds
     ManualPort = $ManualPort
 }
-
-if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
-    $arguments.ManualInputPath = $ManualInputPath
-}
-if ($ManualInitialPage) {
-    $arguments.ManualInitialPage = $ManualInitialPage
-}
-if ($ManualGoogleStyle -or $autoAttachedHtml) {
-    $arguments.ManualGoogleStyle = $true
-}
-if ($autoAttachedSelection) {
-    $arguments.ManualInputPath = $autoAttachedSelection.InputPath
-    if (-not $ManualInitialPage -and $autoAttachedSelection.InitialPage) {
-        $arguments.ManualInitialPage = $autoAttachedSelection.InitialPage
-    }
-}
 if ($LeaveOpen) {
-    $arguments.LeaveOpen = $true
+    $basePhaseArguments.LeaveOpen = $true
+}
+
+$manualPhaseEnabled = ($ManualInputPath -and $ManualInputPath.Count -gt 0) -or $ManualGoogleStyle -or [bool]$autoAttachedSelection
+$resolvedManualInputPath = $ManualInputPath
+$resolvedManualInitialPage = $ManualInitialPage
+$resolvedManualGoogleStyle = [bool]$ManualGoogleStyle
+if ($autoAttachedSelection) {
+    $resolvedManualInputPath = $autoAttachedSelection.InputPath
+    if (-not $resolvedManualInitialPage -and $autoAttachedSelection.InitialPage) {
+        $resolvedManualInitialPage = $autoAttachedSelection.InitialPage
+    }
+    $resolvedManualGoogleStyle = $true
+}
+
+function Invoke-RecommendedPhase {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Phase
+    )
+
+    $phaseArguments = $basePhaseArguments.Clone()
+    $phaseArguments.Phase = $Phase
+    if ($Phase -eq "manual") {
+        if ($resolvedManualInputPath -and $resolvedManualInputPath.Count -gt 0) {
+            $phaseArguments.ManualInputPath = $resolvedManualInputPath
+        }
+        if ($resolvedManualInitialPage) {
+            $phaseArguments.ManualInitialPage = $resolvedManualInitialPage
+        }
+        if ($resolvedManualGoogleStyle) {
+            $phaseArguments.ManualGoogleStyle = $true
+        }
+    }
+
+    & $runner @phaseArguments
+}
+
+function Invoke-HomepageFixturePhase {
+    $fixtureArguments = @{
+        RepoRoot = $RepoRoot
+        BrowserExe = $BrowserExe
+        Host = $Host
+        FixturePort = $HomepageFixturePort
+        InputText = $SharedInputText
+        ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
+        HomeWindowReadyAttempts = $HomeWindowReadyAttempts
+        HomeTitleWaitAttempts = $HomeTitleWaitAttempts
+        HomePollMilliseconds = $HomePollMilliseconds
+    }
+    if ($LeaveOpen) {
+        $fixtureArguments.LeaveOpen = $true
+    }
+
+    & $homepageFixtureRunner @fixtureArguments
 }
 
 if ($autoAttachedSelection) {
@@ -154,4 +194,13 @@ if ($autoAttachedSelection) {
     }
 }
 
-& $runner @arguments
+Invoke-RecommendedPhase -Phase "localhost"
+Invoke-RecommendedPhase -Phase "title"
+Invoke-RecommendedPhase -Phase "home"
+Invoke-HomepageFixturePhase
+Invoke-RecommendedPhase -Phase "submit-timing"
+Invoke-RecommendedPhase -Phase "shared-enter-order"
+Invoke-RecommendedPhase -Phase "watch"
+if ($manualPhaseEnabled) {
+    Invoke-RecommendedPhase -Phase "manual"
+}
