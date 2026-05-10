@@ -31,7 +31,7 @@ function Get-AttachedHtmlInputPath {
     }
 
     return @(
-        Get-ChildItem -LiteralPath $agentFilesRoot -File |
+        Get-ChildItem -LiteralPath $agentFilesRoot -Recurse -File |
             Where-Object { $_.Extension -in @(".html", ".htm") } |
             Sort-Object FullName |
             ForEach-Object { $_.FullName }
@@ -98,7 +98,7 @@ switch ($PSCmdlet.ParameterSetName) {
         $attachedHtml = Get-AttachedHtmlInputPath -RepoRoot $RepoRoot
         if ($attachedHtml.Count -eq 0) {
             $agentFilesRoot = Join-Path $RepoRoot "agent_files"
-            throw "No PageRoot or InputPath was provided, and no attached HTML files were found under $agentFilesRoot. Pass -PageRoot for one saved-page directory or -InputPath for staged HTML inputs."
+            throw "No PageRoot or InputPath was provided, and no attached HTML files were found anywhere under $agentFilesRoot. Pass -PageRoot for one saved-page directory or -InputPath for staged HTML inputs."
         }
 
         Write-Host "Recommended localhost HTML validation"
