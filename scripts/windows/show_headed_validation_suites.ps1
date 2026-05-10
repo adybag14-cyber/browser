@@ -269,6 +269,9 @@ $changeRecommendations = @{
     "manual-html" = @("manual-user", "form-controls", "google-investigation-next")
 }
 
+$googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+$manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_localhost_html_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
+
 function Get-SuiteRecord {
     param(
         [Parameter(Mandatory = $true)]
@@ -316,17 +319,28 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Get-SuiteRecord -Name $name
     }
 
+    $nextStep = if ($ChangeArea -eq "google-input") {
+        "Start with the dedicated Google-input flow helper, then run google-investigation-next, google-home, form-controls (including deferred-enter-submit), and inline-flow before the smallest live Google manual check."
+    } elseif ($ChangeArea -eq "manual-html") {
+        "Start with the matching bounded suite, then use the localhost flow helper to summarize, serve, or stage the saved pages before the issue-specific manual runner hand-off."
+    } else {
+        "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
+    }
+
+    $flowCommand = if ($ChangeArea -eq "google-input") {
+        $googleFlowCommand
+    } elseif ($ChangeArea -eq "manual-html") {
+        $manualHtmlFlowCommand
+    } else {
+        $null
+    }
+
     if ($Json) {
         $result = [pscustomobject]@{
             change_area = $ChangeArea
             suites = $items
-            next_step = if ($ChangeArea -eq "google-input") {
-                "Start with google-investigation-next, then run google-home, then run form-controls (including deferred-enter-submit) and inline-flow, and only then use the smallest real Google manual check."
-            } elseif ($ChangeArea -eq "manual-html") {
-                "Start with manual-user only after the matching bounded suite is green, then use start_localhost_html_validation.ps1 to serve the saved pages and capture the localhost follow-up." 
-            } else {
-                "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
-            }
+            next_step = $nextStep
+            flow_command = $flowCommand
         }
         $result | ConvertTo-Json -Depth 6
         exit 0
@@ -334,12 +348,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
 
     Write-Host ("Recommended suites for change area '{0}':" -f $ChangeArea)
     Write-Host (Format-SuiteList -Items $items)
-    if ($ChangeArea -eq "google-input") {
-        Write-Host "Next step: start with google-investigation-next, then run google-home, then run form-controls (including deferred-enter-submit) and inline-flow before the smallest real Google manual pass."
-    } elseif ($ChangeArea -eq "manual-html") {
-        Write-Host "Next step: start with the matching bounded suite, then use manual-user with start_localhost_html_validation.ps1 for the saved-page localhost follow-up."
-    } else {
-        Write-Host "Next step: start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
+    Write-Host ("Next step: {0}" -f $nextStep)
+    if ($flowCommand) {
+        Write-Host ("Flow helper: {0}" -f $flowCommand)
     }
     exit 0
 }
@@ -358,3 +369,5 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_localhost_html_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
