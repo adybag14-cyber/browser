@@ -10,6 +10,11 @@ Use `docs/HEADED_ATTACHED_HTML_VALIDATION.md` when the next follow-up
 should start from attached HTML snapshots under `agent_files/` instead of a
 manually enumerated saved-page list.
 
+Use `docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md` when the reduced title,
+reduced homepage, or submit-timing probes are already green and the next
+question is whether the shared headed Enter path still waits for keypress
+before submit.
+
 ## 1) Start with the printed flow map
 
 For the general reduced-Google flow:
@@ -87,6 +92,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_f
 That slice keeps the saved homepage fixture on the same issue `#3` route as the
 reduced title, reduced home, submit-timing, and shared Enter-order checks.
 
+When the next question is specifically shared Enter ordering, print and run the
+smaller dedicated ladder before you widen back out to manual or live Google:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
+```
+
+Those helpers keep the shared baseline, reduced title probe, reduced homepage
+keypress probe, localhost Enter-order wrapper, and dedicated form-controls
+Enter-order gate in one place, and `docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md`
+spells out the same ladder in note form.
+
 ## 2) Recommended validation order
 
 Preferred one-command bounded pass:
@@ -119,21 +137,27 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_vali
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-google-submit-timing-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order
 ```
 
 When the question is whether the shared Enter path already agrees with the
-reduced Google probes, use the form-controls wrapper before the broader manual
-follow-up:
+reduced Google probes, use the dedicated shared Enter-order helpers first and
+then drop into the lower-level wrappers only when you need the last failing
+sub-step:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation.ps1 -Probe google-enter-order
 ```
 
-That wrapper keeps the shared label-click, immediate Enter, deferred Enter,
-reduced Google-home submit, and stricter localhost Enter-order gates on one
-command surface.
+That wrapper stack keeps the shared label-click, immediate Enter, deferred
+Enter, reduced Google-home submit, localhost Enter-order, and stricter shared
+keypress-before-submit gates on one command surface.
 
 Only move to `manual` or `trace` after those bounded phases are green.
 
@@ -154,11 +178,12 @@ Only move to `manual` or `trace` after those bounded phases are green.
   Google-shaped shell, types `QZ`, reaches the submitted page, and preserves
   `keydown,keypress,submit` ordering in the submitted title trace before the
   broader shared gates.
-- `shared-enter-order`: the shared label baseline, submit gates, and stricter
-  keypress-before-submit wrapper still agree with the reduced Google path, and
-  the reduced title probe should stay at a `KEYDOWN:<text>|13|13` marker on the
-  Enter keydown edge before it finally advances to `SUBMIT:<text>` after the
-  matching keypress path.
+- `shared-enter-order`: the dedicated helper note, printed flow, one-command
+  runner, shared label baseline, submit gates, and stricter keypress-before-
+  submit wrapper still agree with the reduced Google path, and the reduced
+  title probe should stay at a `KEYDOWN:<text>|13|13` marker on the Enter
+  keydown edge before it finally advances to `SUBMIT:<text>` after the matching
+  keypress path.
 - `manual`: the saved or attached localhost HTML pages can now be compared
   against the bounded passes under the same manual port and preferred initial
   page.
@@ -247,6 +272,14 @@ that regressed.
 
 Use `show_google_quick_validation_flow.ps1` when you want the fast title-plus-watch
 stack spelled out before you run the quicker wrapper entrypoint.
+
+For shared Enter-order work, start with
+`show_google_shared_enter_order_validation_flow.ps1`,
+`run_google_shared_enter_order_validation.ps1`, and
+`docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md` before you widen back out to the
+saved-page, attached-page, or live-homepage follow-up. Use the dedicated
+`run_google_form_controls_enter_order_validation.ps1` gate only when you need
+the last shared form-controls check in isolation.
 
 For attached HTML snapshots that already live under `agent_files/`, start with
 `show_google_attached_html_validation_flow.ps1` so the same pages route through
