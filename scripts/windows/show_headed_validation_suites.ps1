@@ -172,6 +172,13 @@ $suiteCatalog = @(
         RecommendedWith = @("google-title", "google-submit-timing")
     }
     [pscustomobject]@{
+        Name = "google-homepage-fixture"
+        Category = "input"
+        Path = "scripts/windows/run_google_homepage_fixture_validation.ps1"
+        Purpose = "One-command bounded saved Google homepage fixture probe that serves the saved localhost page and separately checks focus, typed text, and Enter submit on the real headed surface."
+        RecommendedWith = @("google-home", "google-submit-timing")
+    }
+    [pscustomobject]@{
         Name = "google-submit-timing"
         Category = "input"
         Path = "scripts/windows/run_google_submit_timing_validation.ps1"
@@ -321,7 +328,7 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
+    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-homepage-fixture", "google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
     "google-live-trace" = @("google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
     "google-saved-html" = @("manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
     "google-attached-html" = @("manual-user", "google-recommended", "google-shared-enter-order")
@@ -330,6 +337,7 @@ $changeRecommendations = @{
 }
 
 $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+$googleHomepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
 $googleSubmitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $googleLiveTraceFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
@@ -375,6 +383,9 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     Write-Host ("Path: {0}" -f $suite.Path)
     Write-Host ("Purpose: {0}" -f $suite.Purpose)
     Write-Host ("Recommended with: {0}" -f ($suite.RecommendedWith -join ", "))
+    if ($suite.Name -eq "google-homepage-fixture") {
+        Write-Host ("Flow helper: {0}" -f $googleHomepageFixtureFlowCommand)
+    }
     if ($suite.Name -eq "google-submit-timing") {
         Write-Host ("Flow helper: {0}" -f $googleSubmitTimingFlowCommand)
     }
@@ -397,7 +408,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-submit-timing, the shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 when you want the bounded submit-timing stack printed before you execute it, use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that stricter shared stack printed before you execute it, and use .\\scripts\\windows\\show_google_trace_validation_flow.ps1 when the bounded phases are green but the real homepage still needs a later-stage trace handoff."
+        "Start with the dedicated Google-input flow helper or the one-command recommended runner, then narrow further with google-investigation-next, google-title, google-quick, google-home, google-homepage-fixture, google-submit-timing, the shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1 when you want the saved homepage fixture stack printed before you execute it, use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 when you want the bounded submit-timing stack printed before you execute it, use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that stricter shared stack printed before you execute it, and use .\\scripts\\windows\\show_google_trace_validation_flow.ps1 when the bounded phases are green but the real homepage still needs a later-stage trace handoff."
     } elseif ($ChangeArea -eq "google-live-trace") {
         "Start with the dedicated live trace flow helper so the reduced-home and live Google capture path stays ordered after the bounded localhost, submit-timing, and shared Enter-order gates, then keep manual follow-up scoped to the smallest remaining divergence."
     } elseif ($ChangeArea -eq "google-saved-html") {
@@ -466,6 +477,9 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-homepage-fixture"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
@@ -481,6 +495,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
