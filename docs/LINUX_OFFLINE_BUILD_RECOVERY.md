@@ -49,10 +49,31 @@ What it does:
 6. rewrites `build.zig.zon` from remote URL dependencies to local `.path`
    dependencies
 
+## Preflight Check
+
+Before running `zig build`, confirm that the checkout is actually ready:
+
+```bash
+scripts/linux/check_offline_build_prereqs.sh
+```
+
+What it checks:
+
+1. `zig version` exactly matches the `build.zig.zon` minimum (`0.15.2` on the
+   current branch)
+2. `build.zig.zon.before-offline` exists
+3. `build.zig.zon` points brotli, zlib, nghttp2, and curl at `../offline-deps`
+4. the sibling `zig-v8-fork` and `boringssl-zig` directories exist
+5. the extracted offline dependency directories, `.cargo/config.toml`,
+   `vendor/`, and a prebuilt `libc_v8_*.a` archive are present
+
+If the preflight fails, rerun `scripts/linux/prepare_offline_build_inputs.sh`
+or switch to the repo-compatible Zig toolchain before retrying the build.
+
 ## Validation
 
-After the restore helper completes, use the printed `-Dprebuilt_v8_path=...`
-value and run:
+After the restore helper completes, run the preflight checker first. When it
+passes, use the printed `-Dprebuilt_v8_path=...` value and run:
 
 ```bash
 zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a
