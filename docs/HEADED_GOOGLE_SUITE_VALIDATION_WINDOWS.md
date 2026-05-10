@@ -15,6 +15,18 @@ Print the compact suite flow:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_suite_validation_flow.ps1
 ```
 
+Check that the compact issue `#3` validation surface is still present on the
+current checkout before you rely on the broader flow:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile attached-html
+```
+
+Use the default profile for the main issue `#3` guides and helpers. Use the
+`attached-html` profile when the next follow-up depends on the saved-page or
+attached-page localhost handoff.
+
 Print the same flow with the manual follow-up flags that will be passed through
 to the one-command recommended runner:
 
@@ -57,6 +69,9 @@ question is often still "which one should I read or run first?"
 
 `show_google_suite_validation_flow.ps1` answers that without making the next
 Windows headed run reconstruct the ordering from multiple guides.
+
+`check_google_validation_surface.ps1` complements it by failing fast when a
+future edit removes or renames one of the linked guides or helper scripts.
 
 ## Working Rule
 
