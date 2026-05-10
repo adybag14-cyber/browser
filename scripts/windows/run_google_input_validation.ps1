@@ -184,6 +184,7 @@ function Invoke-SharedEnterOrderSequence {
         BrowserExe = $BrowserExe
         Host = $Host
         SharedInputText = $SharedInputText
+        SharedLabelPort = $SharedLabelPort
         SharedDefaultPort = $SharedDefaultPort
         SharedDeferredPort = $SharedDeferredPort
         SharedReducedGooglePort = $SharedReducedGooglePort
