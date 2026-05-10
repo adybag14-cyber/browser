@@ -109,6 +109,9 @@ order:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
@@ -136,6 +139,9 @@ Routing rules:
 
 - Start with the smallest bounded localhost suite before a saved-page or live-site pass.
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
+- Use `show_google_title_validation_flow.ps1` when you want only the narrower bounded title-wrapper order printed before you run that slice.
+- Use `show_google_title_probe_trace_guide.ps1` when you want the title markers translated into focus, text-commit, and Enter-submit stages without opening the saved markdown guide by hand.
+- Use `run_google_title_validation.ps1` when you want the bounded title wrapper by itself before the faster quick pass, reduced homepage pass, or shared Enter-order follow-up.
 - Use `run_google_issue3_recommended_validation.ps1` when you want the one-command issue `#3` flow to include the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
 - Use `show_google_form_controls_enter_order_validation_flow.ps1` when you want only the dedicated shared form-controls Enter-order gate printed and parameterized before you run it.
 - Use `run_google_form_controls_enter_order_validation.ps1` when you want the dedicated shared form-controls Enter-order gate by itself after the broader shared Enter-order ladder or when narrowing the last shared keypress-before-submit check.
