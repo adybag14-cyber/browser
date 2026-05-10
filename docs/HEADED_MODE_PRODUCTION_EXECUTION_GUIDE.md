@@ -191,6 +191,54 @@ Use `docs/HEADED_MODE_VALIDATION_GATES.md` as the suite-routing map and
 `tmp-browser-smoke/README.md` as the directory-level index for the current
 probe families.
 
+Validation routing cheat sheet:
+- build recovery, startup discipline, or Windows bring-up scripts:
+  `scripts/windows/check_lightpanda_windows_prereqs.ps1`,
+  `tmp-browser-smoke/browser-pages/chrome-browser-pages-start-shell-probe.ps1`,
+  `tmp-browser-smoke/browser-pages/chrome-browser-pages-home-restore-probe.ps1`
+- shell chrome, internal browser pages, tabs, settings, or address bar flows:
+  `tmp-browser-smoke/browser-pages/`, `tmp-browser-smoke/tabs/`,
+  `tmp-browser-smoke/settings/`, `tmp-browser-smoke/wrapped-link/`
+- navigation lifecycle, reload, stop, or committed-state recovery:
+  `tmp-browser-smoke/wrapped-link/probe.ps1`,
+  `tmp-browser-smoke/wrapped-link/chrome-reload-probe.ps1`,
+  `tmp-browser-smoke/stop-loading/chrome-stop-probe.ps1`,
+  `tmp-browser-smoke/stop-loading/chrome-stop-input-probe.ps1`
+- focus, typing, Enter submit, clipboard, caret, or keyboard interaction:
+  `tmp-browser-smoke/form-controls/`, `tmp-browser-smoke/find/`,
+  `tmp-browser-smoke/zoom/`, `tmp-browser-smoke/inline-flow/`
+- layout boxes, inline flow, hit-testing, or control placement:
+  `tmp-browser-smoke/layout-smoke/`, `tmp-browser-smoke/flow-layout/`,
+  `tmp-browser-smoke/inline-flow/`, `tmp-browser-smoke/rendered-link-dom/`
+- shared painter, images, stylesheets, fonts, or screenshot fidelity:
+  `tmp-browser-smoke/image-smoke/`, `tmp-browser-smoke/stylesheet-smoke/`,
+  `tmp-browser-smoke/font-smoke/`, `tmp-browser-smoke/font-render/`,
+  `tmp-browser-smoke/rendered-link-dom/`
+- canvas and WebGL slices:
+  `tmp-browser-smoke/canvas-smoke/`
+- downloads, uploads, file chooser, or attachment promotion:
+  `tmp-browser-smoke/file-upload/`, `tmp-browser-smoke/downloads/`,
+  `tmp-browser-smoke/attachment-downloads/`, and
+  `tmp-browser-smoke/browser-pages/` when the download manager UI also changed
+- cookies, localStorage, sessionStorage, IndexedDB, bookmarks, settings, or
+  restart persistence:
+  `tmp-browser-smoke/cookie-persistence/`,
+  `tmp-browser-smoke/localstorage-persistence/`,
+  `tmp-browser-smoke/sessionstorage-scope/`,
+  `tmp-browser-smoke/indexeddb-persistence/`, `tmp-browser-smoke/bookmarks/`,
+  `tmp-browser-smoke/settings/`, `tmp-browser-smoke/tabs/`
+- request policy, credentialed fetch, abort behavior, or WebSocket runtime:
+  `tmp-browser-smoke/fetch-abort/`,
+  `tmp-browser-smoke/fetch-credentials/`,
+  `tmp-browser-smoke/websocket-smoke/`,
+  `tmp-browser-smoke/stylesheet-smoke/`, `tmp-browser-smoke/image-smoke/`
+
+For the Google homepage regression tracked in issue `#3`, do not stop at
+localhost probes alone. After the bounded form-controls and inline-flow checks
+are green, manually retest `https://www.google.com/` on the real headed Win32
+surface and confirm visible focus, typed query text, and Enter-driven results
+navigation.
+
 Exit criteria:
 - a future assistant can recover from corrupted `.zig-cache` without guessing
 - every major subsystem has a known bounded probe entry point
@@ -587,7 +635,7 @@ Acceptance:
 Exit criteria:
 - the browser no longer assumes desktop process semantics in core code
 
-#### Phase 10: Boot and Presentation
+### Phase 10: Boot and Presentation
 
 Objective:
 - get pixels and input on screen with the same shared display-list path
