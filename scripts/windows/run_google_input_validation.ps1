@@ -17,6 +17,7 @@ param(
     [int]$SharedDefaultPort = 8154,
     [int]$SharedDeferredPort = 8155,
     [int]$InlineFlowPort = 8148,
+    [int]$SharedReducedGooglePort = 8156,
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$HomeWindowReadyAttempts = 60,
     [int]$HomeTitleWaitAttempts = 80,
@@ -45,6 +46,7 @@ $googleLocalhostRoot = Join-Path $probeRoot "google-investigation-next"
 $titleProbe = Join-Path $scriptRoot "run_google_home_title_probe.ps1"
 $googleHomeProbe = Join-Path $probeRoot "google-home\chrome-google-home-enter-probe.ps1"
 $formControlsEnterProbe = Join-Path $probeRoot "form-controls\enter-submit-probe.ps1"
+$formControlsReducedGoogleProbe = Join-Path $probeRoot "form-controls\chrome-google-home-enter-submit-probe.ps1"
 $inlineFlowEnterProbe = Join-Path $probeRoot "inline-flow\chrome-inline-break-input-enter-submit-probe.ps1"
 $watchProbe = Join-Path $scriptRoot "run_google_home_watch_probe.ps1"
 $manualHtmlHelper = Join-Path $scriptRoot "start_staged_localhost_html_validation.ps1"
@@ -150,6 +152,10 @@ function Invoke-SharedInputSequence {
     $deferredArgs.Port = $SharedDeferredPort
     Invoke-ProbeScript -Label "form-controls-deferred-enter-submit" -ScriptPath $formControlsEnterProbe -Arguments $deferredArgs
 
+    $reducedGoogleArgs = $commonArgs.Clone()
+    $reducedGoogleArgs.Port = $SharedReducedGooglePort
+    Invoke-ProbeScript -Label "form-controls-google-home-enter-submit" -ScriptPath $formControlsReducedGoogleProbe -Arguments $reducedGoogleArgs
+
     $inlineArgs = $commonArgs.Clone()
     $inlineArgs.Port = $InlineFlowPort
     Invoke-ProbeScript -Label "inline-flow-enter-submit" -ScriptPath $inlineFlowEnterProbe -Arguments $inlineArgs
@@ -252,7 +258,7 @@ Write-Host ""
 if ($Phase -eq "manual") {
     Write-Host "Next: compare any saved-page failures with the reduced localhost and bounded homepage probes before moving on to the smallest live Google manual pass."
 } elseif ($Phase -eq "shared") {
-    Write-Host "Next: return to -Phase home or -Phase watch once the deferred/basic form-controls and inline-flow probes are green."
+    Write-Host "Next: return to -Phase home or -Phase watch once the deferred/basic form-controls, reduced Google-home, and inline-flow probes are green."
 } elseif ($Phase -eq "title") {
     Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, use -Phase home for the reduced homepage Enter pass, or run -Phase all -IncludeTitleProbe to put the quick headed title check at the front of the shared flow."
 } elseif ($Phase -eq "quick") {
@@ -266,11 +272,11 @@ if ($Phase -eq "manual") {
 } elseif ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     Write-Host "Next: use the saved-page localhost session to compare attached-page behavior with the reduced Google and shared-input probes before the smallest live Google manual pass."
 } elseif ($IncludeSharedInput -and $IncludeTitleProbe) {
-    Write-Host "Next: if the quick title probe, reduced Google pass, deferred/basic form-controls, and inline-flow probes stay green, move on to the smallest live Google manual pass."
+    Write-Host "Next: if the quick title probe, reduced Google pass, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, move on to the smallest live Google manual pass."
 } elseif ($IncludeSharedInput) {
-    Write-Host "Next: if the reduced Google, deferred/basic form-controls, and inline-flow probes stay green, move on to the smallest live Google manual pass."
+    Write-Host "Next: if the reduced Google, deferred/basic form-controls, reduced Google-home, and inline-flow probes stay green, move on to the smallest live Google manual pass."
 } elseif ($IncludeTitleProbe) {
     Write-Host "Next: if the quick title probe and reduced Google pass stay green, add -IncludeSharedInput or move on to the smallest live Google manual pass."
 } else {
-    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus inline-flow checks, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
+    Write-Host "Next: use -Phase quick for the fast title-plus-watch first pass, -IncludeTitleProbe for the quick headed title pass, -IncludeSharedInput for the deferred/basic form-controls plus reduced Google-home and inline-flow checks, -IncludeWatch for the self-starting title-stream pass, or -ManualInputPath for the saved localhost HTML follow-up before the smallest live Google manual check."
 }
