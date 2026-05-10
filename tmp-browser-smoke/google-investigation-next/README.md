@@ -20,14 +20,19 @@ Use these before the reduced homepage watcher or the live
 4. `google-style-delayed-ready-localhost-probe.ps1`
    Verifies the headed path can wait through a delayed readiness gate before
    typing and submitting.
-5. `chrome-google-home-input-probe.ps1`
+5. `chrome-google-home-enter-trace-probe.ps1`
+   Launches the reduced localhost Google homepage probe, clicks the live query
+   box on the real headed Win32 surface, types a query, presses `Enter`, and
+   captures the same Google-specific runtime trace logs used for the live-site
+   investigation path.
+6. `chrome-google-home-input-probe.ps1`
    Launches the real headed browser on `https://www.google.com/`, types a live
    query, presses `Enter`, and captures the Google-specific runtime trace logs
    that the headed input path already emits.
 
 ## Shared Helper
 
-- `google_style_probe_server.py` serves the matching pages from
+- `google_home_server.py` serves the matching pages from
   `src/browser/tests/page/` and provides a `/ping` readiness endpoint for the
   Windows scripts.
 
@@ -37,11 +42,12 @@ Use these before the reduced homepage watcher or the live
 - `headed_google_style_input_correction_probe.html`
 - `headed_google_style_input_delayed_ready_probe.html`
 - `headed_google_enter_order_probe.html`
+- `google_home_title_probe.html`
 
 ## Live Trace Capture Outputs
 
-The live Google probe collects or tails these files when the runtime creates
-them:
+The reduced and live Google trace probes collect or tail these files when the
+runtime creates them:
 
 - `browse-render.log`
 - `runtime-renderer.log`
@@ -49,19 +55,17 @@ them:
 - `runtime-input-backend-<pid>.log`
 - `wndproc-input-<pid>.log`
 
-It intentionally treats typed-text or submit failure as investigation data.
-The script exits nonzero only when setup fails, such as when the headed browser
-binary is missing or the Win32 window never appears.
+Both probes intentionally treat typed-text, event-order, or submit failure as
+investigation data. They exit nonzero only when setup fails or when the reduced
+fixture still reproduces the problem they are meant to capture.
 
 ## Follow-Up Path
 
 After the reduced localhost probes are green, run
 `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1` for the
 bounded real-surface reduced homepage pass. Use
+`tmp-browser-smoke/google-investigation-next/chrome-google-home-enter-trace-probe.ps1`
+when you need the reduced homepage on the real headed surface plus the runtime
+trace bundle, then finish with
 `tmp-browser-smoke/google-investigation-next/chrome-google-home-input-probe.ps1`
-when the real Google homepage still diverges and you need trace evidence from
-that exact headed input path. Use `scripts/windows/watch_headed_probe.ps1`
-against `src/browser/tests/page/google_home_title_probe.html` only when you need
-a longer interactive title stream on that same fixture, then finish with the
-smallest real headed Google manual pass that exercises the same interaction
-path.
+for the live Google homepage if the reduced page still is not enough.
