@@ -20,38 +20,22 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
+
 function Get-AttachedHtmlInputPath {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepoRoot
     )
 
-    $searchRoots = @(
-        (Join-Path $RepoRoot "user_files"),
-        (Join-Path $RepoRoot "agent_files")
-    )
-    $existingRoots = @(
-        $searchRoots | Where-Object {
-            Test-Path -LiteralPath $_ -PathType Container
-        }
-    )
-
-    if ($existingRoots.Count -eq 0) {
-        return @()
-    }
-
     return @(
-        foreach ($root in $existingRoots) {
-            Get-ChildItem -LiteralPath $root -Recurse -File |
-                Where-Object { $_.Extension -in @(".html", ".htm") } |
-                Sort-Object FullName |
-                ForEach-Object { $_.FullName }
-        }
+        Get-AttachedHtmlCandidates -RepoRoot $RepoRoot |
+            ForEach-Object { $_.FullName }
     ) | Select-Object -Unique
 }
 
 if (-not $RepoRoot) {
-    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+    $RepoRoot = Resolve-LightpandaRepoRoot $PSScriptRoot
 }
 
 $savedRunner = Join-Path $PSScriptRoot "run_saved_page_localhost_validation.ps1"
@@ -124,9 +108,8 @@ switch ($PSCmdlet.ParameterSetName) {
     default {
         $attachedHtml = Get-AttachedHtmlInputPath -RepoRoot $RepoRoot
         if ($attachedHtml.Count -eq 0) {
-            $userFilesRoot = Join-Path $RepoRoot "user_files"
-            $agentFilesRoot = Join-Path $RepoRoot "agent_files"
-            throw "No PageRoot or InputPath was provided, and no attached HTML files were found anywhere under $userFilesRoot or $agentFilesRoot. Pass -PageRoot for one saved-page directory or -InputPath for staged HTML inputs."
+            $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
+            throw "No PageRoot or InputPath was provided, and no attached HTML files were found under: $($searchRoots -join '; '). Pass -PageRoot for one saved-page directory or -InputPath for staged HTML inputs."
         }
 
         Write-Host "Recommended localhost HTML validation"
