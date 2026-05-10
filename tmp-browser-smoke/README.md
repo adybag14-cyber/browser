@@ -13,10 +13,11 @@ change area.
 
 Examples:
 
-- `.\scripts\windows\show_headed_validation_suites.ps1`
-- `.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName layout-smoke`
-- `.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input`
-- `.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
 
 ## Core Rule
 
@@ -90,6 +91,12 @@ Examples:
 
 - `bare-metal-release/`: packaged-image and bare-metal release probes
 
+### Manual real-page follow-up
+
+- `manual-user/`: manual headed validation helpers for saved or attached
+  localhost HTML pages after the bounded suite for the changed subsystem is
+  green
+
 ### Shared helpers
 
 - `common/`: shared Windows input helpers used by multiple suites
@@ -124,6 +131,10 @@ Use this order unless a narrower issue demands something more specific first.
   `tabs/` or `browser-pages/` when shell state also changed.
 - File chooser or download manager changes: run `file-upload/`, `downloads/`,
   and `attachment-downloads/`.
+- Saved or attached HTML compatibility passes: run the matching bounded suite
+  first, then use `manual-user/` with
+  `scripts/windows/start_localhost_html_validation.ps1` for the real-page
+  localhost follow-up.
 
 ## Issue-Specific Note
 
