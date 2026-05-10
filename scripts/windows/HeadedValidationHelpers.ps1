@@ -90,13 +90,13 @@ function Get-GoogleStyleFixtureScore($Fixture) {
       $score += 6
     }
 
-    if ($rawLower -match "name\s*=\s*['\"]q['\"]") {
+    if ($rawLower -match "name\s*=\s*['`"]q['`"]") {
       $score += 7
     }
-    if ($rawLower -match "aria-label\s*=\s*['\"][^'\"]*search[^'\"]*['\"]") {
+    if ($rawLower -match "aria-label\s*=\s*['`"][^'`"]*search[^'`"]*['`"]") {
       $score += 2
     }
-    if ($rawLower -match "<form[^>]+action\s*=\s*['\"][^'\"]*/search" -or
+    if ($rawLower -match "<form[^>]+action\s*=\s*['`"][^'`"]*/search" -or
         $rawLower -match "\b(btnk|apjfqb|glfyf|gsfi)\b") {
       $score += 6
     }
@@ -237,11 +237,28 @@ function Select-GoogleStyleInitialPage {
     [string[]]$ResolvedInputPath
   )
 
+  $bestFixture = $null
+  $bestScore = [int]::MinValue
+
   foreach ($path in $ResolvedInputPath) {
     $fixture = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
-    if ($fixture -and (Test-GoogleStyleFixture $fixture)) {
-      return $fixture.FullName
+    if (-not $fixture) {
+      continue
     }
+
+    $score = Get-GoogleStyleFixtureScore $fixture
+    if ($score -le 4) {
+      continue
+    }
+
+    if ($bestFixture -eq $null -or $score -gt $bestScore -or ($score -eq $bestScore -and $fixture.FullName -lt $bestFixture.FullName)) {
+      $bestFixture = $fixture
+      $bestScore = $score
+    }
+  }
+
+  if ($bestFixture) {
+    return $bestFixture.FullName
   }
 
   return $null
