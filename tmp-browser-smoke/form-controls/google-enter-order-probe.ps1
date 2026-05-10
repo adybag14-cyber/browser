@@ -170,7 +170,7 @@ try {
   $clickedWorked = $null -ne $titleAfterClick
   if (-not $clickedWorked) { throw "clicking the Google-style field did not focus it" }
 
-  Send-SmokeText $InputText
+  Send-SmokeAsciiText $InputText
   $titleAfterType = Wait-TabTitle -ProcessId $browser.Id -Needle $typedTitleNeedle -Attempts $TitleWaitAttempts
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "Google-style search input did not receive typed text after click focus" }
