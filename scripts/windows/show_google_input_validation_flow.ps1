@@ -14,6 +14,7 @@ $titleCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase title"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
+$sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
 $watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch"
 $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedInput -IncludeWatch"
 
@@ -25,7 +26,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, shared submit gates, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for reduced localhost probes, title readiness, reduced homepage submit, shared submit gates, the stricter shared Enter-order wrapper, watch mode, and saved-page localhost follow-up."
     steps = @(
         [ordered]@{
             name = "localhost"
@@ -49,8 +50,13 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "shared"
-            goal = "Run the nearest shared submit gates before the live Google manual pass."
+            goal = "Run the nearest shared submit gates before the stricter Enter-order wrapper or any live Google manual pass."
             command = $sharedCommand
+        }
+        [ordered]@{
+            name = "shared-enter-order"
+            goal = "Run the shared submit gates plus the stricter localhost keypress-before-submit wrapper through the same main runner entrypoint."
+            command = $sharedEnterOrderCommand
         }
         [ordered]@{
             name = "watch"
@@ -82,6 +88,8 @@ $flow = [ordered]@{
         "-WatchPort 9582",
         "-SharedDefaultPort 8154",
         "-SharedDeferredPort 8155",
+        "-SharedReducedGooglePort 8156",
+        "-SharedEnterOrderPort 8157",
         "-InlineFlowPort 8148",
         "-ManualPort 8123",
         "-InputText QZ",
@@ -96,9 +104,10 @@ $flow = [ordered]@{
     notes = @(
         "Start with localhost before title or quick so the reduced Google-style probes stay the first bounded gate.",
         "Use shared before a live Google manual check when input or submit behavior still looks suspicious.",
+        "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
         "Use manual only after the closest bounded suite is already green.",
         "Use full when you want the runner's built-in localhost-first order plus the extra title, shared, and watch phases in one pass.",
-        "Use the common overrides when you need to keep the localhost, title, home, watch, shared, and manual probes aligned on the same host, ports, timing budget, or input text."
+        "Use the common overrides when you need to keep the localhost, title, home, watch, shared, shared-enter-order, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
 
