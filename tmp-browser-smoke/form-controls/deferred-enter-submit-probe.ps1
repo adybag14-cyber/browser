@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$port = 8154
+$port = 8155
 
 function Resolve-RepoRoot([string]$StartPath) {
   if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -39,9 +39,10 @@ $ready = $false
 $pngReady = $false
 $titleBefore = $null
 $titleAfterType = $null
-$titleAfterEnter = $null
+$titleAfterPending = $null
 $titleAfterSubmit = $null
 $typedWorked = $false
+$pendingWorked = $false
 $submittedWorked = $false
 $serverSawSubmit = $false
 $failure = $null
@@ -93,17 +94,20 @@ try {
   Send-SmokeText "Q"
   $titleAfterType = Wait-ForTitleLike $hwnd "Deferred Enter Typed Q*"
   $typedWorked = $null -ne $titleAfterType
-  if (-not $typedWorked) { throw "deferred submit input did not receive typed text" }
+  if (-not $typedWorked) { throw "deferred enter input did not receive typed text" }
 
   Send-SmokeEnter
-  $titleAfterEnter = Wait-ForTitleLike $hwnd "Deferred Enter Pending Q*" 10 150
+  $titleAfterPending = Wait-ForTitleLike $hwnd "Deferred Enter Pending Q*"
+  $pendingWorked = $null -ne $titleAfterPending
+  if (-not $pendingWorked) { throw "keydown Enter did not reach the deferred pending state" }
+
   $titleAfterSubmit = Wait-ForTitleLike $hwnd "Submitted Q*"
   if (Test-Path $serverErr) {
     $serverLog = Get-Content $serverErr -Raw
     $serverSawSubmit = $serverLog -match 'FORM_SUBMIT /submitted\.html\?q=Q'
   }
   $submittedWorked = ($null -ne $titleAfterSubmit) -or $serverSawSubmit
-  if (-not $submittedWorked) { throw "pressing Enter did not trigger the deferred submit path" }
+  if (-not $submittedWorked) { throw "deferred Enter did not submit the form after keydown" }
 } catch {
   $failure = $_.Exception.Message
 } finally {
@@ -122,9 +126,10 @@ try {
     screenshot_ready = $pngReady
     title_before = $titleBefore
     title_after_type = $titleAfterType
-    title_after_enter = $titleAfterEnter
+    title_after_pending = $titleAfterPending
     title_after_submit = $titleAfterSubmit
     typed_worked = $typedWorked
+    pending_worked = $pendingWorked
     submitted_worked = $submittedWorked
     server_saw_submit = $serverSawSubmit
     error = $failure
