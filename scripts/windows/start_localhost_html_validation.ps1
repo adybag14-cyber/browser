@@ -36,6 +36,17 @@ function Test-UrlReady {
     return $false
 }
 
+function Resolve-PythonCommand {
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        return @{ FileName = "python"; Arguments = @() }
+    }
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        return @{ FileName = "py"; Arguments = @("-3") }
+    }
+
+    throw "Python was not found in PATH. Install Python or the Python Launcher, or start the localhost HTML server separately."
+}
+
 function Resolve-TcpBindAddress {
     param(
         [Parameter(Mandatory = $true)]
@@ -251,8 +262,9 @@ if ($relativePages -notcontains $InitialPage) {
 
 $initialUrlPath = Get-RelativeHtmlUrlPath -Path $InitialPage
 $initialUrl = "http://{0}:{1}/{2}" -f $Host, $selectedPort, $initialUrlPath
-$server = Start-Process -FilePath "python" `
-    -ArgumentList "-m", "http.server", "$selectedPort", "--bind", $Host `
+$python = Resolve-PythonCommand
+$server = Start-Process -FilePath $python.FileName `
+    -ArgumentList ($python.Arguments + @("-m", "http.server", "$selectedPort", "--bind", $Host)) `
     -WorkingDirectory $resolvedPageRoot `
     -PassThru `
     -RedirectStandardOutput $serverOut `
