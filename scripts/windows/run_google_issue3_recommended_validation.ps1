@@ -36,6 +36,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
+
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 }
@@ -43,51 +45,22 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
-function Get-AttachedHtmlSearchRoots {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$RepoRoot
-    )
-
-    $candidateRoots = New-Object System.Collections.Generic.List[string]
-    $candidateRoots.Add((Join-Path $RepoRoot "user_files"))
-    $candidateRoots.Add((Join-Path $RepoRoot "agent_files"))
-
-    $repoParent = Split-Path $RepoRoot -Parent
-    if (-not [string]::IsNullOrWhiteSpace($repoParent) -and $repoParent -ne $RepoRoot) {
-        $candidateRoots.Add((Join-Path $repoParent "user_files"))
-        $candidateRoots.Add((Join-Path $repoParent "agent_files"))
-    }
-
-    $currentRoot = (Get-Location).Path
-    if (-not [string]::IsNullOrWhiteSpace($currentRoot)) {
-        $candidateRoots.Add((Join-Path $currentRoot "user_files"))
-        $candidateRoots.Add((Join-Path $currentRoot "agent_files"))
-    }
-
-    return $candidateRoots |
-        Where-Object { Test-Path -LiteralPath $_ -PathType Container } |
-        Select-Object -Unique
-}
-
-function Test-AttachedHtmlAvailable {
+function Test-GoogleStyleAttachedHtmlAvailable {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepoRoot
     )
 
     $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
-
-    foreach ($root in $searchRoots) {
-        $match = Get-ChildItem -LiteralPath $root -Recurse -File |
-            Where-Object { $_.Extension -in @(".html", ".htm") } |
-            Select-Object -First 1
-        if ($match) {
-            return $true
-        }
+    if ($searchRoots.Count -eq 0) {
+        return $false
     }
 
-    return $false
+    $googleFixture = Get-AttachedHtmlCandidates -RepoRoot $RepoRoot |
+        Where-Object { Test-GoogleStyleFixture $_ } |
+        Select-Object -First 1
+
+    return [bool]$googleFixture
 }
 
 $runner = Join-Path $PSScriptRoot "run_google_input_validation.ps1"
@@ -97,7 +70,7 @@ if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
 
 $autoAttachedHtml = $false
 if (-not $SkipAutoAttachedHtml -and -not $ManualGoogleStyle -and -not ($ManualInputPath -and $ManualInputPath.Count -gt 0)) {
-    $autoAttachedHtml = Test-AttachedHtmlAvailable -RepoRoot $RepoRoot
+    $autoAttachedHtml = Test-GoogleStyleAttachedHtmlAvailable -RepoRoot $RepoRoot
 }
 
 $arguments = @{
@@ -147,7 +120,7 @@ if ($LeaveOpen) {
 }
 
 if ($autoAttachedHtml) {
-    Write-Host "Issue #3 recommended runner: attached HTML files were detected in the current search roots, so the Google-style manual localhost follow-up will run automatically."
+    Write-Host "Issue #3 recommended runner: Google-style attached HTML files were detected in the current search roots, so the Google-style manual localhost follow-up will run automatically."
 }
 
 & $runner @arguments
