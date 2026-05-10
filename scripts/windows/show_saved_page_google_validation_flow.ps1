@@ -14,6 +14,7 @@ $directHelper = '.\\scripts\\windows\\start_localhost_html_validation.ps1'
 $stagedHelper = '.\\scripts\\windows\\start_staged_localhost_html_validation.ps1'
 $googleFlowHelper = '.\\scripts\\windows\\show_google_input_validation_flow.ps1'
 $googleRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase trace"
 
 if ($PageRoot) {
     $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '$PageRoot' -Port $Port"
@@ -35,7 +36,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Google-style saved page follow-up"
-    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass."
+    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the live trace path when real Google still diverges."
     steps = @(
         [ordered]@{
             name = "inventory"
@@ -58,6 +59,11 @@ $flow = [ordered]@{
             command = $manualCommand
         }
         [ordered]@{
+            name = "google-trace"
+            goal = "Capture the live Google homepage trace after the saved-page manual pass when the bounded phases are green but the real homepage still diverges."
+            command = $traceCommand
+        }
+        [ordered]@{
             name = "direct-headed"
             goal = "Open a single saved-page directory directly in the headed browser when you want a plain manual browse after the bounded gates are green."
             command = $directCommand
@@ -76,6 +82,7 @@ $flow = [ordered]@{
     notes = @(
         "Use this helper when the saved or attached HTML pages look like search-box, delayed-readiness, or Enter-submit investigations related to headed Google-style behavior.",
         "Run the reduced localhost and shared Enter-order phases before treating a saved-page manual pass as evidence for issue #3.",
+        "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
     )
 }
