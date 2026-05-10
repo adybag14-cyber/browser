@@ -7,6 +7,7 @@ Read this with:
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
 - `docs/FULL_BROWSER_MASTER_TRACKER.md`
 - `docs/WINDOWS_FULL_USE.md`
+- `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md`
 - `tmp-browser-smoke/README.md`
 
 ## How To Use This File
@@ -72,12 +73,16 @@ traversal, text measurement, fonts, or zoom-sensitive editing behavior.
 
 Directories:
 - `tmp-browser-smoke/form-controls`
+- `tmp-browser-smoke/google-investigation-next`
+- `tmp-browser-smoke/google-home`
 - `tmp-browser-smoke/font-smoke`
 - `tmp-browser-smoke/font-render`
 - `tmp-browser-smoke/find`
 - `tmp-browser-smoke/zoom`
 
 Good first probes:
+- `tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1`
+- `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1`
 - `tmp-browser-smoke/form-controls/label-click-probe.ps1`
 - `tmp-browser-smoke/form-controls/enter-submit-probe.ps1`
 - `tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`
@@ -172,7 +177,22 @@ only as needed.
 - auth/cookie/subresource changes: start with one targeted `image-smoke`, `stylesheet-smoke`, `fetch-credentials`, `websocket-smoke`, or `attachment-downloads` probe
 - restart or persistence changes: start with the restart-oriented probe in the matching persistence directory
 - shell-state changes: start with one `browser-pages`, `tabs`, `settings`, `bookmarks`, or `stop-loading` probe that exercises the changed action directly
-- live-site Google search-box work: start with `tmp-browser-smoke/form-controls/enter-submit-probe.ps1`, then the closest `inline-flow` Enter-submit case, and use `src/browser/tests/page/google_home_title_probe.html` only when load/readiness ordering changed before moving to the full live-site pass
+- live-site Google search-box work: start with `tmp-browser-smoke/google-investigation-next/`, then `tmp-browser-smoke/google-home/`, then the closest shared submit gates such as `tmp-browser-smoke/form-controls/enter-submit-probe.ps1` and `tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`; use `src/browser/tests/page/google_home_title_probe.html` when the change specifically touches load or readiness ordering before moving to the full live-site pass
+
+## Issue #3 Flow
+
+For issue `#3`, keep the bounded follow-up order consistent across the branch:
+
+1. `google-investigation-next`
+2. `quick` or the matching title-readiness probe when needed
+3. `google-home`
+4. the nearest shared Enter-order gates
+5. saved-page manual follow-up
+6. live Google trace or full homepage follow-up
+
+Use `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md` and
+`scripts/windows/show_google_input_validation_flow.ps1` when you need the
+exact command map for that sequence.
 
 ## Expected Artifacts
 
