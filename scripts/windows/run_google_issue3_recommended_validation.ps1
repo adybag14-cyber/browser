@@ -29,7 +29,8 @@ param(
     [string]$ManualInitialPage,
     [int]$ManualPort = 8123,
     [switch]$ManualGoogleStyle,
-    [switch]$LeaveOpen
+    [switch]$LeaveOpen,
+    [switch]$SkipAutoAttachedHtml
 )
 
 Set-StrictMode -Version Latest
@@ -42,9 +43,39 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
+function Test-AttachedHtmlAvailable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    $searchRoots = @(
+        (Join-Path $RepoRoot "user_files"),
+        (Join-Path $RepoRoot "agent_files")
+    ) | Where-Object {
+        Test-Path -LiteralPath $_ -PathType Container
+    }
+
+    foreach ($root in $searchRoots) {
+        $match = Get-ChildItem -LiteralPath $root -Recurse -File |
+            Where-Object { $_.Extension -in @(".html", ".htm") } |
+            Select-Object -First 1
+        if ($match) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 $runner = Join-Path $PSScriptRoot "run_google_input_validation.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
+}
+
+$autoAttachedHtml = $false
+if (-not $SkipAutoAttachedHtml -and -not $ManualGoogleStyle -and -not ($ManualInputPath -and $ManualInputPath.Count -gt 0)) {
+    $autoAttachedHtml = Test-AttachedHtmlAvailable -RepoRoot $RepoRoot
 }
 
 $arguments = @{
@@ -86,11 +117,15 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 if ($ManualInitialPage) {
     $arguments.ManualInitialPage = $ManualInitialPage
 }
-if ($ManualGoogleStyle) {
+if ($ManualGoogleStyle -or $autoAttachedHtml) {
     $arguments.ManualGoogleStyle = $true
 }
 if ($LeaveOpen) {
     $arguments.LeaveOpen = $true
+}
+
+if ($autoAttachedHtml) {
+    Write-Host "Issue #3 recommended runner: attached HTML files were detected under user_files or agent_files, so the Google-style manual localhost follow-up will run automatically."
 }
 
 & $runner @arguments
