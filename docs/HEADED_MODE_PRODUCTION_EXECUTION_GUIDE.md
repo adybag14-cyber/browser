@@ -549,6 +549,10 @@ Also require:
 - successful default-cache Windows build
 - successful fresh-cache Windows build
 - one long manual session run on a non-trivial real-site mix
+- when that session is based on saved HTML exports, use
+  `tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1`
+  so screenshots and page-title checks are captured in a repeatable localhost
+  pass
 
 Treat `docs/HEADED_MODE_VALIDATION_GATES.md` as the canonical quick route into
 the release-gate suites when choosing the first bounded validation step for a
