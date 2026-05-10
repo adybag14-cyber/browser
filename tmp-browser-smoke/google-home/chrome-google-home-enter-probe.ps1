@@ -1,8 +1,26 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$root = Join-Path $repo "tmp-browser-smoke\google-home"
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [int]$Port = 8168
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$scriptRoot = $PSScriptRoot
+if (-not $RepoRoot) {
+    $RepoRoot = (Resolve-Path (Join-Path $scriptRoot "..\..")).Path
+}
+if (-not $BrowserExe) {
+    $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+}
+if (-not (Test-Path -LiteralPath $BrowserExe)) {
+    throw "headed browser binary not found: $BrowserExe"
+}
+
+$root = $scriptRoot
 $profileRoot = Join-Path $root "profile-google-home-enter"
-$port = 8168
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $browserOut = Join-Path $root "chrome-google-home-enter.browser.stdout.txt"
 $browserErr = Join-Path $root "chrome-google-home-enter.browser.stderr.txt"
 $serverOut = Join-Path $root "chrome-google-home-enter.server.stdout.txt"
@@ -28,17 +46,17 @@ $submitWorked = $false
 $failure = $null
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$Port,"--bind","127.0.0.1" -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
   for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Milliseconds 250
     try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port$pagePath" -TimeoutSec 2
+      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port$pagePath" -TimeoutSec 2
       if ($resp.StatusCode -eq 200) { $ready = $true; break }
     } catch {}
   }
   if (-not $ready) { throw "google home enter probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port$pagePath","--window_width","960","--window_height","640" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $BrowserExe -ArgumentList "browse","http://127.0.0.1:$Port$pagePath","--window_width","960","--window_height","640" -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $hwnd = Wait-TabWindowHandle $browser.Id
   if ($hwnd -eq [IntPtr]::Zero) { throw "google home enter probe window handle not found" }
   Show-SmokeWindow $hwnd
@@ -64,6 +82,9 @@ try {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $RepoRoot
+    browser_exe = $BrowserExe
+    port = $Port
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
