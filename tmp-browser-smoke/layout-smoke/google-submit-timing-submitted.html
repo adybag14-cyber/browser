@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Google Timing Submitted</title>
+</head>
+<body>
+  <h1 id="summary">Submitted</h1>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get("q") || "";
+    const trace = params.get("trace") || "";
+    document.title = "Google Timing Submitted " + trace + " " + query;
+    document.getElementById("summary").textContent = "Submitted " + query + " [" + trace + "]";
+  </script>
+</body>
+</html>
