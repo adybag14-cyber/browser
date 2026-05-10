@@ -20,7 +20,7 @@ Examples:
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1`
-- `powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\form-controls\\google-home-enter-probe.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait`
 
@@ -79,9 +79,9 @@ Examples:
 - `google-quick`: one-command fast title-plus-watch first pass on the real
   headed surface before the reduced homepage, submit-timing, shared
   Enter-order, or wrapper passes
-- `google-home`: portable reduced homepage watcher and bounded Enter-submit
-  probe at `tmp-browser-smoke/form-controls/google-home-enter-probe.ps1` for
-  the real headed surface after the localhost Google-style probes are green
+- `google-home`: one-command reduced homepage focus, typing, keydown, and
+  Enter-submit probe at `scripts/windows/run_google_home_validation.ps1`, which
+  wraps the real headed probe under `tmp-browser-smoke/google-home/`
 - `google-submit-timing`: bounded Google-shaped keydown, keypress, and submit
   ordering on the real headed surface before broader shared gates or a manual
   Google pass
@@ -158,8 +158,8 @@ Use this order unless a narrower issue demands something more specific first.
    real-surface title/focus gate or `google-quick` for the fast title-plus-watch
    first pass, then use `google-recommended` for the one-command bounded pass
    when you want the shared watcher flow bundled in, then
-   `tmp-browser-smoke/form-controls/google-home-enter-probe.ps1`, then
-   `google-submit-timing`, then `google-shared-enter-order`, and only then move
+   `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`,
+   then `google-submit-timing`, then `google-shared-enter-order`, and only then move
    on to the saved-page or live-site follow-up.
 5. For saved or attached localhost HTML pages, start with the matching bounded
    suite first and only then move into
@@ -183,9 +183,9 @@ Use this order unless a narrower issue demands something more specific first.
   ordering: run `google-investigation-next/`, then `google-title` for the
   narrow real-surface title/focus gate, then `google-quick` for the fast
   title-plus-watch first pass, then `google-recommended` for the current
-  one-command bounded pass, then the portable
-  `tmp-browser-smoke/form-controls/google-home-enter-probe.ps1`, or drop into
-  the stepwise `submit-timing` and `shared-enter-order` phases when you need to
+  one-command bounded pass, then
+  `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`,
+  or drop into the stepwise `submit-timing` and `shared-enter-order` phases when you need to
   narrow the first failing gate before the saved-page or live-site follow-up.
 - Saved or attached localhost HTML compatibility passes: run the matching
   bounded suite first, then use `run_localhost_html_validation_recommended.ps1`,
@@ -217,8 +217,8 @@ question is whether the reduced headed surface is reaching the expected title,
 focus, typing, and Enter-submit markers. Then use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1`
 for the fast title-plus-watch first pass, then
-`powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\form-controls\\google-home-enter-probe.ps1`
-for the portable reduced-homepage Enter-submit gate, then
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`
+for the reduced-homepage focus, typing, keydown, and Enter-submit gate, then
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1`
 for the current one-command bounded pass, or move through
 `-Phase submit-timing` and `-Phase shared-enter-order` when you want to isolate
