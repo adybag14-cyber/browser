@@ -59,9 +59,11 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     $joinedPaths = $quotedPaths -join ", "
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
 } else {
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait"
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'"
 }
 
 $flow = [ordered]@{
@@ -122,7 +124,7 @@ $flow = [ordered]@{
         [ordered]@{
             name = "flow-map"
             goal = "Print the broader Google validation flow when you need the full localhost, reduced-homepage, watch, and trace sequence."
-            command = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper"
+            command = $flowMapCommand
         }
     )
     notes = @(
@@ -132,7 +134,8 @@ $flow = [ordered]@{
         "Use google-shared for the stricter Enter-order wrapper when you want the shared label-click baseline and shared submit gates ahead of the saved-page manual pass.",
         "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, shared Enter-order wrapper, and watch phase in one command before the saved-page manual pass.",
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
-        "When PreferredInitialPage is set, the direct, staged, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
+        "When PreferredInitialPage is set, the direct, staged, Google manual, and broader flow-map commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
+        "When InputPath is provided, the broader flow-map command also preserves the same manual port and saved-page inputs for the next printed handoff.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
     )
 }
