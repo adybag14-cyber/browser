@@ -9,6 +9,7 @@ param(
     [int]$SharedDeferredPort = 8155,
     [int]$SharedReducedGooglePort = 8156,
     [int]$SharedEnterOrderPort = 8157,
+    [int]$SharedLabelPort = 8153,
     [int]$InlineFlowPort = 8148,
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$HomeWindowReadyAttempts = 60,
@@ -43,6 +44,7 @@ $sharedArgs = @{
     Phase = "shared"
     Host = $Host
     SharedInputText = $SharedInputText
+    SharedLabelPort = $SharedLabelPort
     SharedDefaultPort = $SharedDefaultPort
     SharedDeferredPort = $SharedDeferredPort
     SharedReducedGooglePort = $SharedReducedGooglePort
@@ -70,6 +72,7 @@ Write-Host "Google shared Enter-order validation"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Host: {0}" -f $Host)
 Write-Host ("Shared input text: {0}" -f $SharedInputText)
+Write-Host ("Shared label port: {0}" -f $SharedLabelPort)
 Write-Host ("Shared enter-order port: {0}" -f $SharedEnterOrderPort)
 Write-Host ""
 
