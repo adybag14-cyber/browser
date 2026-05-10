@@ -3,7 +3,7 @@ param(
   [string]$RepoRoot,
   [string]$BrowserExe,
   [string]$Host = "127.0.0.1",
-  [int]$Port = 8155,
+  [int]$Port = 8157,
   [string]$InputText = "QZ",
   [int]$ServerReadyTimeoutSeconds = 15,
   [int]$WindowReadyAttempts = 60,
