@@ -25,13 +25,11 @@ $ErrorActionPreference = "Stop"
 function Get-AttachedHtmlInputPath {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$RepoRoot
+        [string]$RepoRoot,
+        [switch]$GoogleStyle
     )
 
-    return @(
-        Get-AttachedHtmlCandidates -RepoRoot $RepoRoot |
-            ForEach-Object { $_.FullName }
-    ) | Select-Object -Unique
+    return @(Get-DefaultAttachedHtmlInputPath -RepoRoot $RepoRoot -GoogleStyle:$GoogleStyle)
 }
 
 if (-not $RepoRoot) {
@@ -106,7 +104,7 @@ switch ($PSCmdlet.ParameterSetName) {
         exit $LASTEXITCODE
     }
     default {
-        $attachedHtml = Get-AttachedHtmlInputPath -RepoRoot $RepoRoot
+        $attachedHtml = Get-AttachedHtmlInputPath -RepoRoot $RepoRoot -GoogleStyle:$GoogleStyle
         if ($attachedHtml.Count -eq 0) {
             $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot)
             throw "No PageRoot or InputPath was provided, and no attached HTML files were found under: $($searchRoots -join '; '). Pass -PageRoot for one saved-page directory or -InputPath for staged HTML inputs."
