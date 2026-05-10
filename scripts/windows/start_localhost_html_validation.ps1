@@ -50,6 +50,33 @@ function Get-RelativeHtmlPath {
     return ($relative -replace "\\", "/")
 }
 
+function Normalize-RelativeHtmlPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalized = ($Path -replace "\\", "/").Trim()
+    while ($normalized.StartsWith("./")) {
+        $normalized = $normalized.Substring(2)
+    }
+    return $normalized.TrimStart('/')
+}
+
+function Test-PathUnderRoot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $resolvedRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+    $resolvedPath = [System.IO.Path]::GetFullPath($Path)
+    return $resolvedPath.StartsWith($resolvedRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $resolvedPath.StartsWith($resolvedRoot + [System.IO.Path]::AltDirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 $scriptRoot = $PSScriptRoot
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $scriptRoot "..\..")).Path
@@ -94,6 +121,22 @@ $relativePages = @($htmlFiles | ForEach-Object {
 
 if (-not $InitialPage) {
     $InitialPage = $relativePages[0]
+} else {
+    $resolvedInitialPath = $null
+    if (Test-Path -LiteralPath $InitialPage -PathType Leaf) {
+        $resolvedInitialPath = (Resolve-Path -LiteralPath $InitialPage).Path
+    } elseif ([System.IO.Path]::IsPathRooted($InitialPage)) {
+        throw "initial page '$InitialPage' was not found as a file path"
+    }
+
+    if ($resolvedInitialPath) {
+        if (-not (Test-PathUnderRoot -Root $resolvedPageRoot -Path $resolvedInitialPath)) {
+            throw "initial page '$resolvedInitialPath' must live under page root '$resolvedPageRoot'"
+        }
+        $InitialPage = Get-RelativeHtmlPath -Root $resolvedPageRoot -Path $resolvedInitialPath
+    } else {
+        $InitialPage = Normalize-RelativeHtmlPath -Path $InitialPage
+    }
 }
 
 if ($relativePages -notcontains $InitialPage) {
