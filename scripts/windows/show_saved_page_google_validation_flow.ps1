@@ -25,13 +25,16 @@ $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
 $leaveServerRunningArgument = if ($LeaveOpen) { " -LeaveServerRunning" } else { "" }
 $manualGoogleStyleArgument = if ($ManualGoogleStyle) { " -ManualGoogleStyle" } else { "" }
 
-$summaryHelper = '.\scripts\windows\summarize_localhost_html_pages.ps1'
-$directHelper = '.\scripts\windows\start_localhost_html_validation.ps1'
-$stagedHelper = '.\scripts\windows\start_staged_localhost_html_validation.ps1'
-$googleFlowHelper = '.\scripts\windows\show_google_input_validation_flow.ps1'
-$googleRunner = '.\scripts\windows\run_google_input_validation.ps1'
+$summaryHelper = '.\\scripts\\windows\\summarize_localhost_html_pages.ps1'
+$directHelper = '.\\scripts\\windows\\start_localhost_html_validation.ps1'
+$stagedHelper = '.\\scripts\\windows\\start_staged_localhost_html_validation.ps1'
+$googleFlowHelper = '.\\scripts\\windows\\show_google_input_validation_flow.ps1'
+$googleRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
+$titleCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_title_validation.ps1"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase quick"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase home"
+$submitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase submit-timing"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
 $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$manualGoogleStyleArgument$leaveOpenArgument"
@@ -70,7 +73,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
     $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
 } elseif ($ManualGoogleStyle) {
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1 -Port $Port$preferredInitialPageArgument -GoogleStyle -Wait$leaveServerRunningArgument"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_localhost_validation.ps1 -Port $Port$preferredInitialPageArgument -GoogleStyle -Wait$leaveServerRunningArgument"
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
     $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
     $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
@@ -82,7 +85,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Google-style saved page follow-up"
-    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the fast quick pass, the reduced homepage headed pass, the bounded submit-timing pass, the one-shot full pass, and the live trace path when real Google still diverges."
+    focus = "Route saved or attached localhost HTML pages through the bounded Google headed-input gates before the manual headed pass, then expose the dedicated title flow, bounded title wrapper, fast quick pass, reduced homepage headed pass, read-first submit-timing flow, bounded submit-timing pass, one-shot full pass, and live trace path when real Google still diverges."
     preferred_initial_page = $PreferredInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -98,6 +101,16 @@ $flow = [ordered]@{
             command = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase localhost"
         }
         [ordered]@{
+            name = "google-title-flow"
+            goal = "Print the dedicated title wrapper flow when you want the bounded readiness, click-focus, typed-text, and Enter-submit path spelled out before you run it."
+            command = $titleFlowCommand
+        }
+        [ordered]@{
+            name = "google-title"
+            goal = "Run the dedicated title wrapper so the bounded readiness, click-focus, typed-text, and Enter-submit markers stay on a smaller reusable validation surface before the reduced homepage or saved-page manual follow-up."
+            command = $titleCommand
+        }
+        [ordered]@{
             name = "google-quick"
             goal = "Run the fast title-plus-watch first pass before the reduced homepage or saved-page manual follow-up."
             command = $quickCommand
@@ -106,6 +119,11 @@ $flow = [ordered]@{
             name = "google-home"
             goal = "Run the reduced headed homepage Enter-submit pass before the shared or saved-page manual follow-up."
             command = $homeCommand
+        }
+        [ordered]@{
+            name = "google-submit-timing-flow"
+            goal = "Print the bounded Google-shaped submit-timing wrapper flow when you want that keydown, keypress, and submit-ordering slice spelled out before execution."
+            command = $submitTimingFlowCommand
         }
         [ordered]@{
             name = "google-submit-timing"
@@ -152,14 +170,16 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "flow-map"
-            goal = "Print the broader Google validation flow when you need the full localhost, reduced-homepage, submit-timing, watch, and trace sequence."
+            goal = "Print the broader Google validation flow when you need the full localhost, title, reduced-homepage, submit-timing, watch, and trace sequence."
             command = $flowMapCommand
         }
     )
     notes = @(
         "Use this helper when the saved or attached HTML pages look like search-box, delayed-readiness, or Enter-submit investigations related to headed Google-style behavior.",
-        "Run the reduced localhost, quick, reduced homepage, and bounded submit-timing phases before treating a saved-page manual pass as evidence for issue #3.",
+        "Run the reduced localhost, title, quick, reduced homepage, and bounded submit-timing phases before treating a saved-page manual pass as evidence for issue #3.",
+        "Use google-title-flow when you want the dedicated title wrapper and raw probe handoff printed before you run that narrower slice.",
         "Use google-home after google-quick when you want the bounded real-surface Enter path before the submit-timing pass, shared gates, or saved-page manual pass.",
+        "Use google-submit-timing-flow when you want the bounded Google-shaped keydown, keypress, and submit-ordering wrapper printed before the shared or saved-page manual follow-up.",
         "Use google-shared for the stricter Enter-order wrapper when you want the shared label-click baseline and shared submit gates ahead of the saved-page manual pass.",
         "Use google-full when you want the runner's built-in localhost-first order, quick title pass, reduced homepage pass, bounded submit-timing pass, shared Enter-order wrapper, and watch phase in one command, and keep the same saved-page manual follow-up attached when InputPath is already supplied.",
         "Use google-trace after google-manual when the saved pages behave but the real Google homepage still diverges, so the next evidence comes from the live headed path instead of another saved-page rerun.",
