@@ -182,6 +182,7 @@ function Invoke-ManualHtmlSequence {
         InputPath = $ManualInputPath
         RepoRoot = $RepoRoot
         BrowserExe = $BrowserExe
+        Host = $Host
         Port = $ManualPort
         LaunchBrowser = $true
         Wait = $true
