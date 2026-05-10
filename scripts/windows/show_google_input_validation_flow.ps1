@@ -24,6 +24,7 @@ $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
 $manualGoogleStyleArgument = if ($ManualGoogleStyle) { " -ManualGoogleStyle" } else { "" }
 
 $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$recommendedRunner = '.\\scripts\\windows\\run_google_issue3_recommended_validation.ps1'
 $titleRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
 $surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1"
 $surfaceCheckAttachedCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile attached-html"
@@ -33,13 +34,15 @@ $titleCommand = "powershell -ExecutionPolicy Bypass -File $titleRunner"
 $quickFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_quick_validation_flow.ps1$leaveOpenArgument"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1$leaveOpenArgument"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
+$homepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1$leaveOpenArgument"
+$homepageFixtureCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1$leaveOpenArgument"
 $submitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $submitTimingCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace$leaveOpenArgument"
 $watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch$leaveOpenArgument"
-$fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$manualGoogleStyleArgument$leaveOpenArgument"
+$fullCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner$manualGoogleStyleArgument$leaveOpenArgument"
 
 $quotedManualInitialPage = $null
 $manualInitialPageArgument = ""
@@ -58,15 +61,15 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     $quotedPaths = $ManualInputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $manualPathsArgument = " -ManualInputPath " + ($quotedPaths -join ", ")
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$manualGoogleStyleArgument$leaveOpenArgument"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$manualGoogleStyleArgument$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$manualGoogleStyleArgument$leaveOpenArgument"
 } elseif ($ManualGoogleStyle) {
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $ManualPort$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner -ManualPort $ManualPort$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
 }
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the saved homepage fixture checkpoint, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -105,6 +108,16 @@ $flow = [ordered]@{
             name = "home"
             goal = "Run the reduced homepage Enter-submit pass on the headed surface."
             command = $homeCommand
+        }
+        [ordered]@{
+            name = "homepage-fixture-flow"
+            goal = "Print the saved homepage fixture helper flow when you want the bounded localhost Google snapshot, focus, typed-text, and Enter-submit checkpoint spelled out before you run it."
+            command = $homepageFixtureFlowCommand
+        }
+        [ordered]@{
+            name = "homepage-fixture"
+            goal = "Run the bounded saved Google homepage fixture wrapper so the recommended issue #3 flow gains one more controlled checkpoint between the reduced homepage pass and the broader submit-timing slice."
+            command = $homepageFixtureCommand
         }
         [ordered]@{
             name = "submit-timing-flow"
@@ -148,7 +161,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "full"
-            goal = "Run the localhost-first flow in one pass, then fold in the quick title, reduced homepage submit, bounded submit-timing, shared label baseline, shared submit gates, stricter Enter-order wrapper, attached Google helper handoff, and watcher before the broader Google manual follow-up."
+            goal = "Run the localhost-first issue #3 recommended runner in one pass so the reduced title phase, reduced homepage pass, saved homepage fixture checkpoint, bounded submit-timing slice, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watcher stay on one reusable command surface before the broader manual follow-up."
             command = $fullCommand
         }
     )
@@ -172,6 +185,7 @@ $flow = [ordered]@{
         "-LocalhostPort 8176",
         "-TitlePort 9582",
         "-HomePort 8168",
+        "-HomepageFixturePort 8155",
         "-WatchPort 9582",
         "-SharedLabelPort 8153",
         "-SharedDefaultPort 8154",
@@ -199,21 +213,23 @@ $flow = [ordered]@{
         "Start with localhost before title-flow, title, quick-flow, or quick so the reduced Google-style probes stay the first bounded gate.",
         "Use the title-flow step when you want the dedicated title wrapper and raw probe handoff printed before you run that narrower slice.",
         "Use the quick-flow step when you want the fast title-plus-watch stack printed before you execute the quick wrapper.",
-        "Use submit-timing-flow after the reduced homepage pass when you want the bounded Google-shaped timing wrapper printed before you execute it.",
-        "Use submit-timing after the reduced homepage pass when you want one extra Google-shaped headed check before the shared form-controls and inline-flow gates.",
+        "Use the homepage-fixture-flow step after the reduced homepage pass when you want the saved homepage fixture checkpoint printed before execution.",
+        "Use the homepage-fixture step after the reduced homepage pass when you want one extra bounded saved-page checkpoint before the submit-timing slice or the shared Enter-order stack.",
+        "Use submit-timing-flow after the homepage-fixture pass when you want the bounded Google-shaped timing wrapper printed before you execute it.",
+        "Use submit-timing after the homepage-fixture pass when you want one extra Google-shaped headed check before the shared form-controls and inline-flow gates.",
         "Use shared before a live Google manual check when label activation, input, or submit behavior still looks suspicious.",
         "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
         "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that shared Enter-order stack printed as its own narrower read-first handoff before you run it.",
         "Use attached-google-flow when you want the current run's attached Google-like HTML pages auto-discovered and the matching localhost-first issue #3 sequence printed before the broader manual follow-up.",
         "Use attached-google when you want the helper to auto-discover current-run attached Google-like HTML pages instead of restating ManualInputPath by hand.",
-        "Use trace when the bounded localhost, reduced homepage, submit-timing, shared phases, and attached Google follow-up are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
+        "Use trace when the bounded localhost, reduced homepage, saved homepage fixture, submit-timing, shared phases, and attached Google follow-up are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
-        "Use full when you want the runner's built-in localhost-first order plus the extra title, bounded submit-timing, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
+        "Use full when you want the recommended localhost-first issue #3 flow plus the extra title, saved homepage fixture, bounded submit-timing, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed attached-google-flow and attached-google commands keep that page preferred for the auto-discovered attached-page path, and the manual follow-up command keeps the same saved page first instead of falling back to a generated index or another arbitrary file.",
         "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
         "When ManualGoogleStyle is set, the printed manual and full commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when ManualInitialPage is not set.",
-        "When LeaveOpen is set, the printed quick-flow, quick, watch, trace, manual, full, and attached-google-flow commands keep the headed follow-up state easier to inspect after the bounded automation phases finish.",
-        "Use the common overrides when you need to keep the localhost, title, home, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
+        "When LeaveOpen is set, the printed quick-flow, quick, homepage-fixture-flow, homepage-fixture, watch, trace, manual, full, and attached-google-flow commands keep the headed follow-up state easier to inspect after the bounded automation phases finish.",
+        "Use the common overrides when you need to keep the localhost, title, home, homepage fixture, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
     )
 }
 
