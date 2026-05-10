@@ -186,6 +186,20 @@ $suiteCatalog = @(
         RecommendedWith = @("google-submit-timing", "manual-user")
     }
     [pscustomobject]@{
+        Name = "google-saved-html"
+        Category = "input"
+        Path = "scripts/windows/show_saved_page_google_validation_flow.ps1"
+        Purpose = "Saved-page Google-style localhost follow-up that keeps the localhost, title, reduced homepage, bounded submit-timing, shared Enter-order, and manual issue #3 flow on one printed path."
+        RecommendedWith = @("google-recommended", "manual-user")
+    }
+    [pscustomobject]@{
+        Name = "google-attached-html"
+        Category = "input"
+        Path = "scripts/windows/show_google_attached_html_validation_flow.ps1"
+        Purpose = "Attached-page Google-style localhost follow-up that auto-discovers current-run HTML and routes it through the same issue #3 bounded flow before manual headed replay."
+        RecommendedWith = @("google-saved-html", "manual-user")
+    }
+    [pscustomobject]@{
         Name = "find"
         Category = "input"
         Path = "tmp-browser-smoke/find"
@@ -355,6 +369,12 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     if ($suite.Name -eq "google-submit-timing") {
         Write-Host ("Flow helper: {0}" -f $googleSubmitTimingFlowCommand)
     }
+    if ($suite.Name -eq "google-saved-html") {
+        Write-Host ("Flow helper: {0}" -f $googleSavedHtmlFlowCommand)
+    }
+    if ($suite.Name -eq "google-attached-html") {
+        Write-Host ("Flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
+    }
     exit 0
 }
 
@@ -434,6 +454,8 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-saved-html"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-attached-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html"
