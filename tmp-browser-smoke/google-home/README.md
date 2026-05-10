@@ -40,11 +40,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_vali
 
 Add `-IncludeWatch` when you also want the longer interactive watcher on the
 same reduced homepage fixture before the smallest live Google manual check.
+With `-IncludeSharedInput`, the ordered follow-up now includes the deferred
+Enter form-controls pass, the baseline form-controls Enter-submit pass, and the
+nearby inline-flow submit probe.
 
 ## Recommended Order
 
 1. Run the reduced localhost probes in `tmp-browser-smoke/google-investigation-next/`.
 2. Run `chrome-google-home-enter-probe.ps1`.
-3. Run the nearby shared input checks in `tmp-browser-smoke/form-controls/` and `tmp-browser-smoke/inline-flow/` when the change touched broader submit or focus behavior.
+3. Run `deferred-enter-submit-probe.ps1`, `enter-submit-probe.ps1`, and the nearby inline-flow probe when the change touched broader submit or focus behavior.
 4. Use `scripts/windows/watch_headed_probe.ps1` only when you need a longer interactive watcher on the same fixture.
 5. Move on to the smallest live Google manual pass only after the bounded reduced homepage probe is green.
