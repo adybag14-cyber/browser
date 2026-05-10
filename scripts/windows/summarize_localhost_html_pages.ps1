@@ -238,6 +238,21 @@ function Get-RecommendedFlowCommand {
     return "powershell -ExecutionPolicy Bypass -File $helper -PageRoot $quotedPageRoot -Port $Port"
 }
 
+function Get-DirectLaunchCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedPageRoot,
+        [Parameter(Mandatory = $true)]
+        [int]$Port,
+        [Parameter(Mandatory = $true)]
+        [string]$InitialPage
+    )
+
+    $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
+    $quotedInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $InitialPage
+    return "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_localhost_html_validation.ps1 -PageRoot $quotedPageRoot -Port $Port -InitialPage $quotedInitialPage -LaunchBrowser -Wait"
+}
+
 if (-not $RepoRoot) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 }
@@ -300,6 +315,7 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         "scripts/windows/show_localhost_html_validation_flow.ps1"
     }
     $recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $googleStyle -ResolvedPageRoot $resolvedPageRoot -Port $Port
+    $directLaunchCommand = Get-DirectLaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $relativePath
 
     [pscustomobject]@{
         relative_path = $relativePath
@@ -314,6 +330,7 @@ $pageSummaries = @($htmlFiles | ForEach-Object {
         manual_follow_up_suite = "manual-user"
         recommended_flow_helper = $recommendedFlowHelper
         recommended_flow_command = $recommendedFlowCommand
+        direct_launch_command = $directLaunchCommand
         next_step = $nextStep
     }
 })
@@ -341,6 +358,7 @@ $flowHelper = if ($hasGoogleStylePages) {
     "scripts/windows/show_localhost_html_validation_flow.ps1"
 }
 $recommendedFlowCommand = Get-RecommendedFlowCommand -GoogleStyle $hasGoogleStylePages -ResolvedPageRoot $resolvedPageRoot -Port $Port
+$recommendedDirectLaunchCommand = Get-DirectLaunchCommand -ResolvedPageRoot $resolvedPageRoot -Port $Port -InitialPage $recommendedInitialPage.relative_path
 
 $summary = [pscustomobject]@{
     page_root = $resolvedPageRoot
@@ -354,6 +372,7 @@ $summary = [pscustomobject]@{
     manual_follow_up_suite = "manual-user"
     recommended_flow_helper = $flowHelper
     recommended_flow_command = $recommendedFlowCommand
+    recommended_direct_launch_command = $recommendedDirectLaunchCommand
     overall_google_style = $hasGoogleStylePages
     next_step = $overallNextStep
     generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
@@ -368,6 +387,7 @@ Write-Host ("Suggested bounded suites: {0}" -f ($summary.overall_recommended_sui
 Write-Host ("Manual follow-up suite: {0}" -f $summary.manual_follow_up_suite)
 Write-Host ("Flow helper: {0}" -f $summary.recommended_flow_helper)
 Write-Host ("Flow command: {0}" -f $summary.recommended_flow_command)
+Write-Host ("Direct launch command: {0}" -f $summary.recommended_direct_launch_command)
 Write-Host ("Next step: {0}" -f $summary.next_step)
 Write-Host ""
 
@@ -392,6 +412,7 @@ foreach ($page in $pageSummaries) {
     Write-Host ("  bounded suites: {0}" -f ($page.recommended_bounded_suites -join ", "))
     Write-Host ("  flow helper: {0}" -f $page.recommended_flow_helper)
     Write-Host ("  flow command: {0}" -f $page.recommended_flow_command)
+    Write-Host ("  direct launch command: {0}" -f $page.direct_launch_command)
     Write-Host ("  url: {0}" -f $page.url)
     Write-Host ("  next: {0}" -f $page.next_step)
 }
