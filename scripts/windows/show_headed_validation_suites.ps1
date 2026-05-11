@@ -383,8 +383,12 @@ $googleFormControlsEnterOrderSurfaceCheckCommand = "powershell -ExecutionPolicy 
 $googleFormControlsEnterOrderGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1"
 $googleFormControlsEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
 $googleFormControlsEnterOrderRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1"
+$googleSharedEnterOrderSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_shared_enter_order_validation_surface.ps1"
 $googleSharedEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
+$googleSharedEnterOrderRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_shared_enter_order_validation.ps1"
 $googleTraceSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_trace_validation_surface.ps1"
+$googleInvestigationNextSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_investigation_next_validation_surface.ps1"
+$googleInvestigationNextFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_investigation_next_validation_flow.ps1"
 $googleLiveTraceFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
 $savedPageLocalhostSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_saved_page_localhost_validation_surface.ps1"
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
@@ -436,6 +440,10 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     Write-Host ("Path: {0}" -f $suite.Path)
     Write-Host ("Purpose: {0}" -f $suite.Purpose)
     Write-Host ("Recommended with: {0}" -f ($suite.RecommendedWith -join ", "))
+    if ($suite.Name -eq "google-investigation-next") {
+        Write-Host ("Surface checker: {0}" -f $googleInvestigationNextSurfaceCheckCommand)
+        Write-Host ("Flow helper: {0}" -f $googleInvestigationNextFlowCommand)
+    }
     if ($suite.Name -eq "google-recommended") {
         Write-Host ("Flow helper: {0}" -f $googleFlowCommand)
     }
@@ -464,7 +472,9 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Runner: {0}" -f $googleFormControlsEnterOrderRunnerCommand)
     }
     if ($suite.Name -eq "google-shared-enter-order") {
+        Write-Host ("Surface checker: {0}" -f $googleSharedEnterOrderSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleSharedEnterOrderFlowCommand)
+        Write-Host ("Runner: {0}" -f $googleSharedEnterOrderRunnerCommand)
     }
     if ($suite.Name -eq "google-live-trace") {
         Write-Host ("Surface checker: {0}" -f $googleTraceSurfaceCheckCommand)
@@ -559,6 +569,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     Write-Host (Format-SuiteList -Items $items)
     Write-Host ("Next step: {0}" -f $nextStep)
     if ($ChangeArea -eq "google-input") {
+        Write-Host ("Investigation surface checker: {0}" -f $googleInvestigationNextSurfaceCheckCommand)
+        Write-Host ("Investigation flow helper: {0}" -f $googleInvestigationNextFlowCommand)
         Write-Host ("Title surface checker: {0}" -f $googleTitleSurfaceCheckCommand)
         Write-Host ("Homepage fixture surface checker: {0}" -f $googleHomepageFixtureSurfaceCheckCommand)
     }
@@ -604,8 +616,11 @@ Write-Host "Examples:"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName form-controls"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-investigation-next"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_investigation_next_validation_surface.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_investigation_next_validation_flow.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-title"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_title_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_probe_trace_guide.ps1"
@@ -633,7 +648,9 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_shared_enter_order_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_shared_enter_order_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-live-trace"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_trace_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
