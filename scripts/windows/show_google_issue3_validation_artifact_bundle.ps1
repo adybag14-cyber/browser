@@ -124,6 +124,7 @@ $phaseRoot = if (-not [string]::IsNullOrWhiteSpace($summary.phase_artifact_root)
 } else {
     Join-Path $artifactRoot "google-issue3-recommended-validation-phases"
 }
+$summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path)
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
@@ -223,6 +224,8 @@ foreach ($phaseRecord in $phaseHealth) {
 $firstFailedPhaseHealth = @($phaseHealth | Where-Object { $_.name -eq $summary.first_failed_phase } | Select-Object -First 1)
 $nextArtifactToOpen = if ($staleCrossReferenceDetected) {
     $SummaryPath
+} elseif (-not $summaryRecordsHandoffArtifactPath -and $handoffRef.exists) {
+    $handoffPath
 } elseif (-not $handoffRef.exists) {
     $SummaryPath
 } elseif ($handoffRecord -and $handoffRecord.next_artifact_to_open) {
@@ -273,6 +276,8 @@ $recommendedGuideCommand = if ($staleCrossReferenceDetected) {
 }
 $nextFocus = if ($staleCrossReferenceDetected) {
     'Refresh the saved issue #3 handoff chain so the handoff, manifest, guide, and boundary helpers all point at the current recommended-validation summary before trusting the next replay handoff.'
+} elseif (-not $summaryRecordsHandoffArtifactPath) {
+    'The summary artifact does not record its handoff JSON path yet, so open the saved handoff artifact directly and keep the refresh-chain helper ready until the runner catches up.'
 } elseif ($coreMissingLabels -contains 'handoff') {
     'Regenerate the saved handoff artifact so the next Windows replay can reopen the current bounded checkpoint without guessing which helper artifact to trust first.'
 } elseif ($handoffRecord -and $handoffRecord.next_focus) {
@@ -328,6 +333,9 @@ $bundle = [ordered]@{
     stale_cross_reference_repair_commands = @($staleCrossReferenceRepairCommands)
     handoff_artifact_path = $handoffPath
     handoff_artifact_exists = [bool]$handoffRef.exists
+    summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
+    summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $summary.handoff_artifact_path } else { $null }
+    summary_missing_handoff_pointer = [bool](-not $summaryRecordsHandoffArtifactPath)
     refresh_chain_command = $refreshChainCommand
     next_artifact_to_open = $nextArtifactToOpen
     boundary_last_passed_phase = if ($boundaryRecord) { $boundaryRecord.last_passed_phase } else { $null }
@@ -344,6 +352,8 @@ $bundle = [ordered]@{
         $recommendedRunnerCommand
     }
     phase_boundary_command = if ($guideRecord) { $guideRecord.phase_boundary_command } else { $boundaryGuideCommand }
+    summary_guide_command = $summaryGuideCommand
+    manifest_guide_command = $manifestGuideCommand
     handoff_guide_command = $handoffGuideCommand
     next_focus = $nextFocus
     first_missing_path = if ($coreArtifactMissingPaths.Count -gt 0) {
@@ -410,6 +420,10 @@ Write-Host ("Phase JSON missing: {0}" -f $bundle.phase_json_missing_count)
 Write-Host ("Phase artifact gaps: {0}" -f $bundle.phase_missing_artifact_count)
 Write-Host ("Stale refs: {0}" -f $bundle.stale_cross_reference_count)
 Write-Host ("Handoff exists: {0}" -f $bundle.handoff_artifact_exists)
+Write-Host ("Summary handoff path recorded: {0}" -f $bundle.summary_records_handoff_artifact_path)
+if ($bundle.summary_handoff_artifact_path) {
+    Write-Host ("Summary handoff path: {0}" -f $bundle.summary_handoff_artifact_path)
+}
 if ($bundle.guide_artifact_error) {
     Write-Host ("Guide error: {0}" -f $bundle.guide_artifact_error)
 }
@@ -429,6 +443,12 @@ if ($bundle.stale_cross_reference_detected) {
         Write-Host ("  Recorded summary: {0}" -f $mismatch.recorded_summary_path)
         Write-Host ("  Refresh: {0}" -f $mismatch.repair_command)
     }
+}
+if (-not $bundle.summary_records_handoff_artifact_path) {
+    Write-Host ''
+    Write-Host 'Summary pointer gap:'
+    Write-Host ("- The current summary did not record a handoff artifact path, so this audit is using the fallback handoff location: {0}" -f $bundle.handoff_artifact_path)
+    Write-Host ("- Open the handoff JSON directly or refresh the helper chain before trusting older cached cross-links: {0}" -f $bundle.refresh_chain_command)
 }
 if ($bundle.first_missing_path) {
     Write-Host ''
@@ -454,6 +474,12 @@ if ($bundle.recommended_guide_command) {
 }
 if ($bundle.handoff_guide_command) {
     Write-Host ("Handoff: {0}" -f $bundle.handoff_guide_command)
+}
+if ($bundle.summary_guide_command) {
+    Write-Host ("Summary guide: {0}" -f $bundle.summary_guide_command)
+}
+if ($bundle.manifest_guide_command) {
+    Write-Host ("Manifest guide: {0}" -f $bundle.manifest_guide_command)
 }
 if ($bundle.phase_boundary_command) {
     Write-Host ("Phase boundary: {0}" -f $bundle.phase_boundary_command)
