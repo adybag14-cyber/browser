@@ -30,6 +30,42 @@ function Convert-ToQuotedPowerShellArgument([string]$Value) {
     return "'" + $Value.Replace("'", "''") + "'"
 }
 
+function Get-PhaseReplayCommand([string]$PhaseName) {
+    if ([string]::IsNullOrWhiteSpace($PhaseName)) {
+        return $null
+    }
+
+    switch ($PhaseName) {
+        'localhost' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase localhost'
+        }
+        'quick' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick'
+        }
+        'home' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home'
+        }
+        'homepage-fixture' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1'
+        }
+        'input-phase-localhost' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase input-phase-localhost'
+        }
+        'submit-timing' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing'
+        }
+        'shared-enter-order' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order'
+        }
+        'manual' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1'
+        }
+        default {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+        }
+    }
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -183,6 +219,8 @@ $phaseResults = @($summary.phase_results)
 $passedPhaseResults = @($phaseResults | Where-Object { $_.status -eq 'passed' })
 $lastPassedPhaseResult = if ($passedPhaseResults.Count -gt 0) { $passedPhaseResults[-1] } else { $null }
 $failedPhaseResult = @($phaseResults | Where-Object { $_.name -eq $firstFailedPhase } | Select-Object -First 1)
+$lastPassedPhaseReplayCommand = if ($lastPassedPhaseResult) { Get-PhaseReplayCommand $lastPassedPhaseResult.name } else { $null }
+$firstFailedPhaseReplayCommand = if ($failedPhaseResult.Count -gt 0) { Get-PhaseReplayCommand $failedPhaseResult[0].name } else { $null }
 $guideArtifactPath = if ($summary.guide_artifact_path) {
     $summary.guide_artifact_path
 } else {
@@ -228,7 +266,13 @@ $guide = [ordered]@{
     first_failed_phase_log_path = $summary.first_failed_phase_log_path
     first_failed_phase_primary_json_artifact_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].primary_json_artifact_path } else { $summary.first_failed_phase_primary_json_artifact_path }
     first_failed_phase_artifact_paths = if ($failedPhaseResult.Count -gt 0) { @($failedPhaseResult[0].artifact_paths) } else { @() }
+    first_failed_phase_replay_command = $firstFailedPhaseReplayCommand
     failed_phase_log_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].log_path } else { $null }
+    last_passed_phase = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.name } else { $null }
+    last_passed_phase_log_path = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.log_path } else { $null }
+    last_passed_phase_primary_json_artifact_path = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.primary_json_artifact_path } else { $null }
+    last_passed_phase_artifact_paths = if ($lastPassedPhaseResult) { @($lastPassedPhaseResult.artifact_paths) } else { @() }
+    last_passed_phase_replay_command = $lastPassedPhaseReplayCommand
     boundary_last_passed_phase = if ($boundaryRecord) { $boundaryRecord.last_passed_phase } else { $null }
     boundary_first_failed_phase = if ($boundaryRecord) { $boundaryRecord.first_failed_phase } else { $null }
     boundary_next_artifact_to_open = if ($boundaryRecord) { $boundaryRecord.next_artifact_to_open } else { $null }
@@ -369,6 +413,9 @@ if ($guide.first_failed_phase_log_path) {
 if ($guide.first_failed_phase_primary_json_artifact_path) {
     Write-Host ("JSON:      {0}" -f $guide.first_failed_phase_primary_json_artifact_path)
 }
+if ($guide.first_failed_phase_replay_command) {
+    Write-Host ("Replay:    {0}" -f $guide.first_failed_phase_replay_command)
+}
 if ($guide.first_failed_phase_artifact_paths.Count -gt 0) {
     Write-Host 'Artifacts:'
     foreach ($artifactPath in $guide.first_failed_phase_artifact_paths) {
@@ -377,6 +424,18 @@ if ($guide.first_failed_phase_artifact_paths.Count -gt 0) {
 }
 if ($guide.first_failed_phase_error) {
     Write-Host ("Error:     {0}" -f $guide.first_failed_phase_error)
+}
+if ($guide.last_passed_phase) {
+    Write-Host ("Last pass: {0}" -f $guide.last_passed_phase)
+    if ($guide.last_passed_phase_log_path) {
+        Write-Host ("Last log:  {0}" -f $guide.last_passed_phase_log_path)
+    }
+    if ($guide.last_passed_phase_primary_json_artifact_path) {
+        Write-Host ("Last JSON: {0}" -f $guide.last_passed_phase_primary_json_artifact_path)
+    }
+    if ($guide.last_passed_phase_replay_command) {
+        Write-Host ("Last replay: {0}" -f $guide.last_passed_phase_replay_command)
+    }
 }
 if ($guide.boundary_artifact_exists) {
     Write-Host ("Boundary last pass: {0}" -f $(if ($guide.boundary_last_passed_phase) { $guide.boundary_last_passed_phase } else { 'none' }))
