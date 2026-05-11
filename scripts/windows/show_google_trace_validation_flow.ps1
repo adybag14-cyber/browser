@@ -21,6 +21,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$suiteRouterEntry = '.\\scripts\\windows\\show_headed_validation_suites.ps1'
 $surfaceCheck = '.\\scripts\\windows\\check_google_trace_validation_surface.ps1'
 $reducedTraceProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-home-enter-trace-probe.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
@@ -69,6 +70,11 @@ $flow = [ordered]@{
     leave_open = [bool]$LeaveOpen
     steps = @(
         [ordered]@{
+            name = "suite-router"
+            goal = "Print the shared headed validation suite entry for the live-trace handoff before you narrow into the dedicated checker or later trace commands."
+            command = ("powershell -ExecutionPolicy Bypass -File {0} -SuiteName google-live-trace" -f $suiteRouterEntry)
+        }
+        [ordered]@{
             name = "surface-check"
             goal = "Fail fast if the later issue #3 trace handoff drifted before you trust a reduced-home or live Google capture."
             command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $surfaceCheck)
@@ -95,6 +101,7 @@ $flow = [ordered]@{
         "Use .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 when the next question is whether the current attached or saved Google-like HTML pages diverge before the live Google homepage does."
     )
     notes = @(
+        "Start with the shared suite-router entry when you need the live-trace lane, its neighboring suites, and the dedicated helper surface reintroduced before you dive into raw trace commands.",
         "Run the trace surface checker first so missing guides, runner wiring, or probe files fail before the later-stage capture looks trustworthy.",
         "Treat this helper as a later-stage investigation handoff, not the first gate. Start with the reduced localhost probes and shared input stacks first.",
         "Use the wrapper unless you already know you need the raw direct probe outputs from tmp-browser-smoke/google-investigation-next.",
