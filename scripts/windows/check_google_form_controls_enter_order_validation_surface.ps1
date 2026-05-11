@@ -37,6 +37,10 @@ $references = @(
     (New-ValidationReference -Path "docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the dedicated shared form-controls Enter-order gate."),
     (New-ValidationReference -Path "docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md" -Kind "file" -Purpose "Broader shared Enter-order note that widens out from the dedicated gate."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the dedicated form-controls Enter-order helpers."),
+    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router that should keep the dedicated form-controls Enter-order gate discoverable."),
+    (New-ValidationReference -Path "scripts/windows/show_google_input_validation_flow.ps1" -Kind "file" -Purpose "Main issue #3 flow helper that should still point at the dedicated form-controls Enter-order gate."),
+    (New-ValidationReference -Path "scripts/windows/show_google_shared_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Broader shared Enter-order flow helper that should still widen into the dedicated gate."),
+    (New-ValidationReference -Path "scripts/windows/run_form_controls_validation.ps1" -Kind "file" -Purpose "Shared form-controls runner that should still expose the dedicated google-enter-order probe slice."),
     (New-ValidationReference -Path "scripts/windows/show_google_form_controls_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the dedicated form-controls Enter-order gate."),
     (New-ValidationReference -Path "scripts/windows/show_google_form_controls_enter_order_trace_guide.ps1" -Kind "file" -Purpose "Quick diagnosis helper for interpreting the dedicated Enter-order probe markers."),
     (New-ValidationReference -Path "scripts/windows/run_google_form_controls_enter_order_validation.ps1" -Kind "file" -Purpose "Dedicated form-controls Enter-order runner."),
@@ -96,5 +100,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} dedicated form-controls Enter-order validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, or probe before trusting the dedicated form-controls Enter-order gate."
+Write-Host "Repair the missing guide, helper, router, or probe before trusting the dedicated form-controls Enter-order gate."
 exit 1
