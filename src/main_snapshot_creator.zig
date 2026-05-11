@@ -19,7 +19,7 @@
 const std = @import("std");
 const lp = @import("lightpanda");
 
-pub fn main() !void {
+pub fn main(process: std.process.Init) !void {
     const allocator = std.heap.c_allocator;
 
     var platform = try lp.js.Platform.init();
@@ -30,7 +30,7 @@ pub fn main() !void {
 
     var is_stdout = true;
     var file = std.fs.File.stdout();
-    var args = try std.process.argsWithAllocator(allocator);
+    var args = try std.process.Args.Iterator.initAllocator(process.minimal.args, allocator);
     _ = args.next(); // executable name
     if (args.next()) |n| {
         is_stdout = false;
