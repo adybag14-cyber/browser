@@ -12,6 +12,7 @@ param(
     [int]$TitleProbePort = 8159,
     [int]$HomePort = 8168,
     [int]$HomepageFixturePort = 8155,
+    [int]$InputPhasePort = 8178,
     [int]$WatchPort = 9582,
     [int]$SharedLabelPort = 8153,
     [int]$SharedDefaultPort = 8154,
@@ -120,6 +121,7 @@ $basePhaseArguments = @{
     TitlePort = $TitlePort
     TitleProbePort = $TitleProbePort
     HomePort = $HomePort
+    InputPhasePort = $InputPhasePort
     WatchPort = $WatchPort
     SharedLabelPort = $SharedLabelPort
     SharedDefaultPort = $SharedDefaultPort
@@ -231,6 +233,7 @@ Invoke-RecommendedPhase -Phase "localhost"
 Invoke-RecommendedPhase -Phase "title"
 Invoke-RecommendedPhase -Phase "home"
 Invoke-HomepageFixturePhase
+Invoke-RecommendedPhase -Phase "input-phase-localhost"
 Invoke-RecommendedPhase -Phase "submit-timing"
 Invoke-RecommendedPhase -Phase "shared-enter-order"
 Invoke-RecommendedPhase -Phase "watch"
