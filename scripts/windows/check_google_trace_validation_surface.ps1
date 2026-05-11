@@ -34,8 +34,10 @@ $resolvedRepoRoot = if ($RepoRoot) {
 }
 
 $references = @(
+    (New-ValidationReference -Path "docs/GOOGLE_TRACE_VALIDATION.md" -Kind "file" -Purpose "Dedicated read-first note for the later issue #3 trace handoff."),
     (New-ValidationReference -Path "docs/GOOGLE_SUBMIT_PATH_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the later issue #3 submit-path ladder that should already be green before live trace capture."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the trace handoff after the bounded issue #3 gates."),
+    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router that should keep the live trace handoff discoverable."),
     (New-ValidationReference -Path "scripts/windows/show_google_input_validation_flow.ps1" -Kind "file" -Purpose "Main issue #3 flow helper that points at the trace handoff."),
     (New-ValidationReference -Path "scripts/windows/show_google_submit_path_validation_flow.ps1" -Kind "file" -Purpose "Printed later-stage submit-path handoff that precedes the live trace slice."),
     (New-ValidationReference -Path "scripts/windows/run_google_issue3_submit_path_validation.ps1" -Kind "file" -Purpose "One-command later-stage submit-path runner used before live trace capture."),
