@@ -56,9 +56,13 @@ New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $artifactRoot "google-issue3-recommended-validation-summary.json"
 }
+$surfaceCheckArtifactPath = Join-Path $artifactRoot "google-issue3-recommended-validation-surface.json"
 $phaseArtifactRoot = Join-Path $artifactRoot "google-issue3-recommended-validation-phases"
 if (Test-Path -LiteralPath $SummaryPath) {
     Remove-Item -LiteralPath $SummaryPath -Force
+}
+if (Test-Path -LiteralPath $surfaceCheckArtifactPath) {
+    Remove-Item -LiteralPath $surfaceCheckArtifactPath -Force
 }
 if (Test-Path -LiteralPath $phaseArtifactRoot) {
     Remove-Item -LiteralPath $phaseArtifactRoot -Recurse -Force
@@ -282,7 +286,9 @@ function Invoke-RecommendedStep {
 function Show-RecommendedSummary {
     param(
         [Parameter(Mandatory = $true)]
-        [object[]]$PhaseResults
+        [object[]]$PhaseResults,
+        [Parameter(Mandatory = $true)]
+        [string]$SurfaceCheckArtifactPath
     )
 
     Write-Host ""
@@ -298,6 +304,7 @@ function Show-RecommendedSummary {
             Write-Host ("  {0}" -f $result.error)
         }
     }
+    Write-Host ("Surface JSON: {0}" -f $SurfaceCheckArtifactPath)
     Write-Host ("Summary JSON: {0}" -f $SummaryPath)
 }
 
@@ -307,7 +314,10 @@ function Write-RecommendedSummaryArtifact {
         [object[]]$PhaseResults,
         [Parameter(Mandatory = $true)]
         [string]$SurfaceCheckStatus,
-        [string]$SurfaceCheckError
+        [string]$SurfaceCheckError,
+        [Parameter(Mandatory = $true)]
+        [string]$SurfaceCheckArtifactPath,
+        $SurfaceCheckRecord
     )
 
     $failedPhase = @($PhaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
@@ -326,6 +336,15 @@ function Write-RecommendedSummaryArtifact {
         surface_check_script = $surfaceCheck
         surface_check_status = $SurfaceCheckStatus
         surface_check_error = $SurfaceCheckError
+        surface_check_artifact_path = $SurfaceCheckArtifactPath
+        surface_check_profile = if ($SurfaceCheckRecord) { $SurfaceCheckRecord.profile } else { $null }
+        surface_check_checked_count = if ($SurfaceCheckRecord) { $SurfaceCheckRecord.checked_count } else { $null }
+        surface_check_missing_count = if ($SurfaceCheckRecord) { $SurfaceCheckRecord.missing_count } else { $null }
+        surface_check_missing_paths = if ($SurfaceCheckRecord) {
+            @($SurfaceCheckRecord.references | Where-Object { -not $_.Exists } | ForEach-Object { $_.Path })
+        } else {
+            @()
+        }
         manual_phase_enabled = [bool]$manualPhaseEnabled
         manual_phase_google_style = [bool]$resolvedManualGoogleStyle
         manual_phase_uses_fixture_selection = [bool]$manualPhaseUsesFixtureSelection
@@ -345,6 +364,40 @@ function Write-RecommendedSummaryArtifact {
     $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $SummaryPath -Encoding Ascii
 }
 
+function Save-SurfaceCheckArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SurfaceCheckScript,
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactPath
+    )
+
+    $surfaceCheckOutput = @(
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $SurfaceCheckScript -RepoRoot $RepoRoot -Json 2>&1
+    )
+    $surfaceCheckExitCode = $LASTEXITCODE
+    $surfaceCheckText = ($surfaceCheckOutput | ForEach-Object { "$_" }) -join [Environment]::NewLine
+    if ([string]::IsNullOrWhiteSpace($surfaceCheckText)) {
+        throw "Google issue #3 recommended validation surface checker produced no JSON output."
+    }
+
+    $surfaceCheckText | Set-Content -Path $ArtifactPath -Encoding Ascii
+
+    try {
+        $surfaceCheckRecord = $surfaceCheckText | ConvertFrom-Json
+    } catch {
+        throw ("Google issue #3 recommended validation surface checker returned non-JSON output. Artifact: {0}" -f $ArtifactPath)
+    }
+
+    return [pscustomobject]@{
+        status = if ($surfaceCheckExitCode -eq 0) { "passed" } else { "failed" }
+        exit_code = $surfaceCheckExitCode
+        record = $surfaceCheckRecord
+    }
+}
+
 $phasePlan = [System.Collections.Generic.List[object]]::new()
 $phasePlan.Add([pscustomobject]@{ Name = "localhost"; Action = { Invoke-RecommendedPhase -Phase "localhost" } }) | Out-Null
 $phasePlan.Add([pscustomobject]@{ Name = "quick"; Action = { Invoke-RecommendedPhase -Phase "quick" } }) | Out-Null
@@ -361,6 +414,7 @@ Write-Host "Google issue #3 recommended validation"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Host: {0}" -f $Host)
 Write-Host ("Phase artifacts: {0}" -f $phaseArtifactRoot)
+Write-Host ("Surface JSON: {0}" -f $surfaceCheckArtifactPath)
 Write-Host ("Summary JSON: {0}" -f $SummaryPath)
 Write-Host ""
 Write-Host "=== google-issue3-recommended-surface ==="
@@ -368,14 +422,26 @@ Write-Host ("Script: {0}" -f $surfaceCheck)
 
 $surfaceCheckStatus = "passed"
 $surfaceCheckError = $null
+$surfaceCheckRecord = $null
 $phaseResults = [System.Collections.Generic.List[object]]::new()
 try {
-    & $surfaceCheck -RepoRoot $RepoRoot
+    $surfaceCheckResult = Save-SurfaceCheckArtifact -SurfaceCheckScript $surfaceCheck -RepoRoot $RepoRoot -ArtifactPath $surfaceCheckArtifactPath
+    $surfaceCheckStatus = $surfaceCheckResult.status
+    $surfaceCheckRecord = $surfaceCheckResult.record
+    if ($surfaceCheckStatus -ne "passed") {
+        if ($surfaceCheckRecord -and $surfaceCheckRecord.missing_count -ne $null) {
+            $surfaceCheckError = ("Missing {0} recommended-validation path(s)." -f $surfaceCheckRecord.missing_count)
+        } else {
+            $surfaceCheckError = ("Surface checker returned exit code {0}." -f $surfaceCheckResult.exit_code)
+        }
+    }
 } catch {
     $surfaceCheckStatus = "failed"
     $surfaceCheckError = $_.Exception.Message
-    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError
-    throw ("Google issue #3 recommended validation surface check failed: {0}. Summary JSON: {1}" -f $surfaceCheckError, $SummaryPath)
+}
+if ($surfaceCheckStatus -ne "passed") {
+    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord
+    throw ("Google issue #3 recommended validation surface check failed: {0}. Surface JSON: {1}. Summary JSON: {2}" -f $surfaceCheckError, $surfaceCheckArtifactPath, $SummaryPath)
 }
 Write-Host ""
 
@@ -401,10 +467,10 @@ foreach ($step in $phasePlan) {
     }
 }
 
-Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError
-Show-RecommendedSummary -PhaseResults @($phaseResults)
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord
+Show-RecommendedSummary -PhaseResults @($phaseResults) -SurfaceCheckArtifactPath $surfaceCheckArtifactPath
 
 $failedPhase = @($phaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
 if ($failedPhase.Count -gt 0) {
-    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Summary JSON: {2}" -f $failedPhase[0].name, $failedPhase[0].error, $SummaryPath)
+    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Surface JSON: {2}. Summary JSON: {3}" -f $failedPhase[0].name, $failedPhase[0].error, $surfaceCheckArtifactPath, $SummaryPath)
 }
