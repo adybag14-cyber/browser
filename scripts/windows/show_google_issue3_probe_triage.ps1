@@ -6,6 +6,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
@@ -19,7 +20,8 @@ $sharedEnterRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\
 
 $guide = [ordered]@{
     issue = 'Google issue #3 probe triage'
-    purpose = 'Route the newer issue #3 handoff, manifest, artifact-bundle audit, title, reduced-home submit-path, and shared Enter-order outputs into the next smallest headed validation step before widening back out to attached HTML or live Google replay.'
+    purpose = 'Route the newer issue #3 refresh-status, handoff, manifest, artifact-bundle audit, title, reduced-home submit-path, and shared Enter-order outputs into the next smallest headed validation step before widening back out to attached HTML or live Google replay.'
+    refresh_status_command = $refreshStatusCommand
     handoff_guide_command = $handoffGuideCommand
     manifest_guide_command = $manifestGuideCommand
     artifact_bundle_command = $artifactBundleCommand
@@ -31,16 +33,19 @@ $guide = [ordered]@{
     submit_path_runner_command = $submitRunnerCommand
     shared_enter_runner_command = $sharedEnterRunnerCommand
     triage_order = @(
-        '1. Start with the saved handoff helper after a recommended runner replay so one bundle-first artifact tells you whether to trust the current narrow replay guidance yet or repair the saved helper chain first.',
-        '2. If the handoff says the saved bundle or surface is incomplete, follow its recommended command before trusting the older manifest, guide, or boundary helpers.',
-        '3. Use the saved manifest helper once the handoff says the helper chain is coherent and you want the richest artifact index for the current replay.',
-        '4. Read the saved phase-boundary helper when you need the exact last-pass / first-fail handoff after the manifest points at a failing checkpoint.',
-        '5. Start with the title wrapper when the failure point is still unclear and you need the earliest bounded real-surface markers.',
-        '6. Move to the reduced-home submit-path ladder only after focus and typed text look stable.',
-        '7. Use the shared Enter-order gate when Google-shaped probes look green but keydown, keypress, and submit ordering still needs proof.',
-        '8. Widen to attached HTML or live Google replay only after the bounded slices and saved artifact handoff agree on the failing stage.'
+        '1. Start with the saved refresh-status helper after a recommended runner replay so you know whether the current issue #3 guide, boundary, bundle, and handoff artifacts are fresh enough to trust.',
+        '2. If the refresh-status helper recommends a refresh, run that command before trusting the saved handoff, manifest, guide, or boundary helpers.',
+        '3. Once the refresh-status helper says the chain is ready, open the saved handoff helper so one bundle-first artifact can point at the best current narrow replay step.',
+        '4. Use the saved manifest helper once the handoff says the helper chain is coherent and you want the richest artifact index for the current replay.',
+        '5. Read the saved phase-boundary helper when you need the exact last-pass / first-fail handoff after the manifest points at a failing checkpoint.',
+        '6. Start with the title wrapper when the failure point is still unclear and you need the earliest bounded real-surface markers.',
+        '7. Move to the reduced-home submit-path ladder only after focus and typed text look stable.',
+        '8. Use the shared Enter-order gate when Google-shaped probes look green but keydown, keypress, and submit ordering still needs proof.',
+        '9. Widen to attached HTML or live Google replay only after the bounded slices and the saved helper chain agree on the failing stage.'
     )
     quick_diagnosis = @(
+        'If the refresh-status helper reports refresh-recommended, rebuild the helper chain before trusting older handoff, manifest, guide, or boundary output.',
+        'If the refresh-status helper reports stale cross-references or stale summary helpers, refresh the current helper chain before rerunning broader issue #3 probes.',
         'If the handoff helper reports a non-passed surface_check_status, restore the recommended validation surface before rerunning later issue #3 phases.',
         'If the handoff helper reports an artifact_bundle_status other than complete, refresh the current helper chain before trusting older manifest, guide, or boundary output.',
         'If the manifest or boundary helper already names the next JSON artifact to open, read that file before scanning the broader logs or rerunning a larger wrapper.',
@@ -50,7 +55,7 @@ $guide = [ordered]@{
         'If keydown_observed_at_utc appears without keypress_observed_at_utc or doc_keypress_observed_at_utc, Enter reached the page too early in the chain; keep the investigation on the reduced-home or shared Enter-order checkpoints.',
         'If the reduced-home submit-path and shared Enter-order outputs both stay green, stop re-running the same bounded slices and move on to attached HTML or live Google replay to capture the next divergence.'
     )
-    next_step = 'Run the handoff helper first. If it points to an incomplete or stale saved handoff, follow its recommended repair command; otherwise open its next_artifact_to_open path and rerun only the narrower bounded helper or phase that matches that saved boundary.'
+    next_step = 'Run the refresh-status helper first. If it recommends refreshing the saved helper chain, do that before opening the handoff helper; otherwise open the handoff helper and rerun only the narrower bounded helper or phase that matches its next_artifact_to_open guidance.'
 }
 
 if ($Json) {
@@ -61,6 +66,7 @@ if ($Json) {
 Write-Host 'Google issue #3 probe triage'
 Write-Host ''
 Write-Host ("Purpose: {0}" -f $guide.purpose)
+Write-Host ("Refresh:  {0}" -f $guide.refresh_status_command)
 Write-Host ("Handoff:  {0}" -f $guide.handoff_guide_command)
 Write-Host ("Manifest: {0}" -f $guide.manifest_guide_command)
 Write-Host ("Bundle:   {0}" -f $guide.artifact_bundle_command)
