@@ -122,7 +122,51 @@ pub const SettingsState = struct {
     homepage_url: []const u8,
 };
 
-const BareMetalBackend = @import("baremetal_backend.zig").BareMetalBackend;
+const BareMetalBackend = if (build_config.target_class == .bare_metal) @import("baremetal_backend.zig").BareMetalBackend else struct {
+    page_count: u32 = 0,
+
+    pub fn init(_: anytype, _: anytype, _: u32, _: u32) @This() {
+        return .{};
+    }
+
+    pub fn onPageCreated(_: *@This()) bool {
+        return false;
+    }
+    pub fn onPageRemoved(_: *@This()) bool {
+        return false;
+    }
+    pub fn onViewportChanged(_: *@This(), _: u32, _: u32) void {}
+    pub fn setNavigationState(_: *@This(), _: bool, _: bool, _: bool, _: i32) void {}
+    pub fn setHistoryEntries(_: *@This(), _: []const []const u8, _: usize) void {}
+    pub fn setDownloadEntries(_: *@This(), _: []const DownloadEntry) void {}
+    pub fn setTabEntries(_: *@This(), _: []const TabEntry, _: usize) void {}
+    pub fn setSettingsState(_: *@This(), _: SettingsState) void {}
+    pub fn setAppDataPath(_: *@This(), _: ?[]const u8) void {}
+    pub fn setHttpRuntime(_: *@This(), _: *Http) void {}
+    pub fn setImageRequestCookieJar(_: *@This(), _: ?*CookieJar) void {}
+    pub fn dispatchInput(_: *@This(), _: anytype) !void {}
+    pub fn hasPendingInput(_: *const @This()) bool {
+        return false;
+    }
+    pub fn presentDocument(_: *@This(), _: []const u8, _: []const u8, _: []const u8) !void {}
+    pub fn presentPageView(_: *@This(), _: []const u8, _: []const u8, _: []const u8, _: ?*const DisplayList) !void {}
+    pub fn saveBitmap(_: *@This(), _: []const u8) bool {
+        return false;
+    }
+    pub fn savePng(_: *@This(), _: []const u8) bool {
+        return false;
+    }
+    pub fn chooseFiles(_: *@This(), _: []const u8, _: bool) ?ChosenFiles {
+        return null;
+    }
+    pub fn nextBrowserCommand(_: *@This()) ?BrowserCommand {
+        return null;
+    }
+    pub fn userClosed(_: *const @This()) bool {
+        return false;
+    }
+    pub fn deinit(_: *@This()) void {}
+};
 
 pub const Backend = union(enum) {
     headless: HeadlessBackend,
@@ -737,6 +781,8 @@ test "unsupported headed fallback uses headless backend" {
 }
 
 test "display deinit releases bare metal backend state" {
+    if (build_config.target_class != .bare_metal) return error.SkipZigTest;
+
     var host = Host.initMock(std.testing.allocator);
     defer host.deinit();
 
