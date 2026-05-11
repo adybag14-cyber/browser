@@ -119,11 +119,15 @@ $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
 } else {
     'missing'
 }
+$refreshMatchesSummary = $false
+if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
 
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path)
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path)
 $refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and $refreshExists
-$refreshReady = ($refreshStatus -eq 'refreshed')
+$refreshReady = ($refreshStatus -eq 'refreshed') -and $refreshMatchesSummary
 $refreshNeeded = -not $refreshReady
 $staleCrossReferenceDetected = if ($bundleRecord) { [bool]$bundleRecord.stale_cross_reference_detected } else { $false }
 $staleSummaryArtifactDetected = if ($bundleRecord) { [bool]$bundleRecord.stale_summary_artifact_detected } else { $false }
@@ -152,6 +156,8 @@ $reason = if ($refreshReady) {
     'The saved refresh artifact already reports a stable helper chain for the current issue #3 summary, so the handoff guidance is ready to trust.'
 } elseif ($refreshError) {
     'The saved refresh artifact exists but could not be read cleanly, so rerun the refresh helper before trusting the narrower handoff.'
+} elseif ($refreshRecord -and -not $refreshMatchesSummary) {
+    'The saved refresh artifact points at a different recommended-validation summary, so regenerate the helper chain from the current summary before trusting the narrower handoff.'
 } elseif ($refreshStatus -eq 'helper-failures') {
     'The saved refresh artifact says one or more summary-derived helpers still failed during the last repair pass.'
 } elseif ($refreshStatus -eq 'manifest-missing') {
@@ -182,6 +188,8 @@ $reason = if ($refreshReady) {
 
 $nextFocus = if ($refreshReady) {
     'Open the handoff helper and follow its next_artifact_to_open guidance for the narrowest current replay step.'
+} elseif ($refreshRecord -and -not $refreshMatchesSummary) {
+    'Refresh the saved issue #3 helper chain from the current summary first, then reopen the handoff artifact once the refresh record matches the same summary path.'
 } elseif ($refreshExists) {
     'Inspect the saved refresh artifact first, then rerun the refresh helper if the helper chain still is not settled for the current summary.'
 } elseif (-not $summaryRecordsRefreshArtifactPath) {
@@ -220,6 +228,8 @@ $report = [ordered]@{
     refresh_artifact_path = $refreshPath
     refresh_artifact_exists = [bool]$refreshExists
     refresh_status = $refreshStatus
+    refresh_matches_summary = [bool]$refreshMatchesSummary
+    refresh_summary_path = if ($refreshRecord) { $refreshRecord.summary_path } else { $null }
     refresh_reason = if ($refreshRecord) { $refreshRecord.reason } else { $null }
     refresh_failed_step_count = if ($refreshRecord -and $null -ne $refreshRecord.failed_step_count) { [int]$refreshRecord.failed_step_count } else { $null }
     refresh_failed_step_names = if ($refreshRecord) { @($refreshRecord.failed_step_names) } else { @() }
@@ -265,6 +275,10 @@ Write-Host ("Status:   {0}" -f $report.status)
 Write-Host ("Surface:  {0}" -f $report.surface_check_status)
 Write-Host ("First fail:{0}" -f $(if ($report.first_failed_phase) { ' ' + $report.first_failed_phase } else { ' none' }))
 Write-Host ("Refresh status: {0}" -f $report.refresh_status)
+Write-Host ("Refresh matches summary: {0}" -f $report.refresh_matches_summary)
+if ($report.refresh_summary_path) {
+    Write-Host ("Refresh summary path: {0}" -f $report.refresh_summary_path)
+}
 Write-Host ("Bundle status: {0}" -f $report.bundle_status)
 Write-Host ("Summary handoff path recorded: {0}" -f $report.summary_records_handoff_artifact_path)
 Write-Host ("Summary refresh path recorded: {0}" -f $report.summary_records_refresh_artifact_path)
