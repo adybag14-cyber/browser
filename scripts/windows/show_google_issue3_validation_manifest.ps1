@@ -69,6 +69,8 @@ $summaryGuideCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $probeTriageCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1"
 $phaseBoundaryCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1"
 $handoffGuideCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1"
+$refreshStatusCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1"
+$refreshChainCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1"
 $recommendedRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1"
 $artifactBundleCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1"
 $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($manifest.artifact_root)) {
@@ -78,8 +80,23 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($manifest.artifact_root)) 
 } else {
     Split-Path -Parent $ManifestPath
 }
+$summaryPath = $manifest.summary_path
+$summaryRecord = $null
+$summaryArtifactError = $null
+if (-not [string]::IsNullOrWhiteSpace($summaryPath) -and (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
+    try {
+        $summaryRecord = Read-ArtifactJson $summaryPath
+    } catch {
+        $summaryArtifactError = $_.Exception.Message
+    }
+} elseif (-not [string]::IsNullOrWhiteSpace($summaryPath)) {
+    $summaryArtifactError = "Summary artifact not found: $summaryPath"
+}
 $artifactBundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifest.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-artifact-bundle.json"
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifest.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
+$configuredRefreshPath = if ($summaryRecord) { $summaryRecord.refresh_chain_artifact_path } else { $null }
+$summaryRecordsRefreshArtifactPath = ($summaryRecord -and -not [string]::IsNullOrWhiteSpace($configuredRefreshPath))
+$refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff-chain-refresh.json"
 $artifactBundleExists = Test-Path -LiteralPath $artifactBundlePath -PathType Leaf
 $artifactBundleRecord = $null
 $artifactBundleError = if ($manifest.artifact_bundle_error) { $manifest.artifact_bundle_error } else { $null }
@@ -119,6 +136,40 @@ $artifactBundleReason = if ($artifactBundleError) {
 } else {
     "The auto-saved artifact bundle is the saved completeness audit across the summary, manifest, guide, boundary, and per-phase artifacts."
 }
+$refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
+$refreshRecord = $null
+$refreshArtifactError = if ($summaryRecord -and $summaryRecord.refresh_chain_artifact_error) { $summaryRecord.refresh_chain_artifact_error } else { $null }
+if ($refreshExists) {
+    try {
+        $refreshRecord = Read-ArtifactJson $refreshPath
+    } catch {
+        $refreshArtifactError = $_.Exception.Message
+    }
+}
+$refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
+    $refreshRecord.status
+} elseif ($refreshArtifactError) {
+    "helper-error"
+} elseif ($refreshExists) {
+    "present-unreadable"
+} else {
+    "missing"
+}
+$refreshNeedsRepair = $refreshStatus -ne "refreshed"
+$refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and $refreshExists
+$refreshReason = if ($refreshRecord -and $refreshRecord.reason) {
+    $refreshRecord.reason
+} elseif ($refreshArtifactError) {
+    "The saved refresh artifact could not be read cleanly, so refresh the helper chain before trusting the handoff or manifest guidance."
+} elseif ($refreshStatus -eq "missing") {
+    "The saved refresh artifact is missing for the current summary, so generate it before trusting older handoff output."
+} elseif ($refreshStatus -ne "refreshed") {
+    "The saved refresh artifact reports '$refreshStatus', so the helper chain still needs repair before the narrower handoff is trustworthy."
+} elseif ($refreshPointerUsesFallback) {
+    "The current summary does not record its refresh artifact path yet, so this manifest is using the fallback refresh location while keeping the helper chain aligned."
+} else {
+    "The saved refresh artifact already reports a stable helper chain for the current issue #3 summary."
+}
 $handoffExists = Test-Path -LiteralPath $handoffPath -PathType Leaf
 $handoffRecord = $null
 $handoffArtifactError = if ($manifest.handoff_artifact_error) { $manifest.handoff_artifact_error } else { $null }
@@ -132,7 +183,9 @@ if ($handoffExists) {
     $handoffArtifactError = "Handoff artifact not found: $handoffPath"
 }
 $handoffReady = $handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open)
-$handoffReason = if ($handoffArtifactError) {
+$handoffReason = if ($refreshNeedsRepair) {
+    "The saved handoff artifact should not be trusted yet because the refresh artifact still says the helper chain needs repair."
+} elseif ($handoffArtifactError) {
     "The saved handoff artifact could not be read, so fall back to the manifest and boundary outputs until the handoff helper is refreshed."
 } elseif ($handoffReady) {
     "The saved handoff artifact already points at the current next artifact, so prefer its narrower replay guidance before widening back out."
@@ -155,6 +208,17 @@ $openNextReason = $null
 $openNext = if ($surfaceCheckFailed -and $manifest.surface_check_artifact_path) {
     $openNextReason = "surface-check-failed"
     $manifest.surface_check_artifact_path
+} elseif ($refreshNeedsRepair) {
+    $openNextReason = "refresh-artifact"
+    if ($refreshExists) {
+        $refreshPath
+    } elseif ($artifactBundleRecord -and $artifactBundleRecord.next_artifact_to_open) {
+        $artifactBundleRecord.next_artifact_to_open
+    } elseif ($summaryPath) {
+        $summaryPath
+    } else {
+        $ManifestPath
+    }
 } elseif ($artifactBundleNeedsRepair -and $manifest.summary_path) {
     $openNextReason = "artifact-bundle-needs-repair"
     $manifest.summary_path
@@ -183,6 +247,16 @@ $openNext = if ($surfaceCheckFailed -and $manifest.surface_check_artifact_path) 
 
 $nextFocus = if ($surfaceCheckFailed) {
     "Resolve the recommended-validation surface mismatch before replaying later issue #3 phases."
+} elseif ($refreshNeedsRepair) {
+    if ($refreshRecord -and $refreshRecord.next_focus) {
+        $refreshRecord.next_focus
+    } elseif ($refreshArtifactError) {
+        "Repair or regenerate the saved refresh artifact before trusting the handoff or manifest guidance."
+    } elseif ($refreshStatus -eq "missing") {
+        "Generate the saved refresh artifact for the current summary before trusting older handoff output."
+    } else {
+        "Refresh the saved issue #3 helper chain before trusting handoff, manifest, or boundary guidance."
+    }
 } elseif ($artifactBundleNeedsRepair) {
     if ($artifactBundleRecord -and $artifactBundleRecord.next_focus) {
         $artifactBundleRecord.next_focus
@@ -197,6 +271,12 @@ $nextFocus = if ($surfaceCheckFailed) {
 
 $recommendedCommand = if ($surfaceCheckFailed) {
     $surfaceCheckCommand
+} elseif ($refreshNeedsRepair) {
+    if ($refreshRecord -and $refreshRecord.recommended_command) {
+        $refreshRecord.recommended_command
+    } else {
+        $refreshChainCommand
+    }
 } elseif ($artifactBundleNeedsRepair) {
     $artifactBundleRecommendedCommand
 } elseif ($handoffReady -and $handoffRecord.recommended_command) {
@@ -207,6 +287,8 @@ $recommendedCommand = if ($surfaceCheckFailed) {
 
 $recommendedGuideCommand = if ($surfaceCheckFailed) {
     $summaryGuideCommand
+} elseif ($refreshNeedsRepair) {
+    $refreshStatusCommand
 } elseif ($artifactBundleNeedsRepair) {
     $artifactBundleGuideCommand
 } elseif ($handoffReady -and $handoffRecord.recommended_guide_command) {
@@ -217,7 +299,7 @@ $recommendedGuideCommand = if ($surfaceCheckFailed) {
 
 $report = [ordered]@{
     issue = "Google issue #3 validation manifest guide"
-    purpose = "Open the saved manifest first, prefer the newer handoff artifact when it is available, and fall back to boundary or summary guidance only when the handoff chain still needs repair."
+    purpose = "Open the saved manifest first, prefer the refresh artifact while the helper chain still needs repair, and only trust the narrower handoff output once the saved refresh state is coherent."
     manifest_path = $ManifestPath
     generated_at_utc = $manifest.generated_at_utc
     completed = [bool]$manifest.completed
@@ -228,13 +310,28 @@ $report = [ordered]@{
     probe_triage_command = $probeTriageCommand
     phase_boundary_command = $phaseBoundaryCommand
     handoff_guide_command = $handoffGuideCommand
+    refresh_status_command = $refreshStatusCommand
+    refresh_chain_command = $refreshChainCommand
     broader_runner_command = $recommendedRunnerCommand
     surface_check_artifact_path = $manifest.surface_check_artifact_path
     surface_check_missing_count = $manifest.surface_check_missing_count
     surface_check_missing_paths = @($manifest.surface_check_missing_paths)
     summary_path = $manifest.summary_path
+    summary_artifact_error = $summaryArtifactError
     guide_artifact_path = $manifest.guide_artifact_path
     boundary_artifact_path = $manifest.boundary_artifact_path
+    summary_records_refresh_artifact_path = [bool]$summaryRecordsRefreshArtifactPath
+    summary_refresh_artifact_path = if ($summaryRecordsRefreshArtifactPath) { $configuredRefreshPath } else { $null }
+    refresh_pointer_uses_fallback = [bool]$refreshPointerUsesFallback
+    refresh_artifact_path = $refreshPath
+    refresh_artifact_exists = [bool]$refreshExists
+    refresh_artifact_error = $refreshArtifactError
+    refresh_status = $refreshStatus
+    refresh_reason = $refreshReason
+    refresh_next_artifact_to_open = if ($refreshRecord) { $refreshRecord.next_artifact_to_open } else { $null }
+    refresh_recommended_command = if ($refreshRecord) { $refreshRecord.recommended_command } else { $null }
+    refresh_failed_step_count = if ($refreshRecord -and $null -ne $refreshRecord.failed_step_count) { [int]$refreshRecord.failed_step_count } else { $null }
+    refresh_failed_step_names = if ($refreshRecord) { @($refreshRecord.failed_step_names) } else { @() }
     handoff_artifact_path = $handoffPath
     handoff_artifact_exists = [bool]$handoffExists
     handoff_artifact_error = $handoffArtifactError
@@ -297,6 +394,9 @@ if ($report.surface_check_missing_count -gt 0) {
 if ($report.summary_path) {
     Write-Host ("Summary JSON: {0}" -f $report.summary_path)
 }
+if ($report.summary_artifact_error) {
+    Write-Host ("Summary error: {0}" -f $report.summary_artifact_error)
+}
 if ($report.guide_artifact_path) {
     Write-Host ("Guide JSON: {0}" -f $report.guide_artifact_path)
 }
@@ -306,6 +406,8 @@ if ($report.boundary_artifact_path) {
 Write-Host ("Summary cmd: {0}" -f $report.summary_guide_command)
 Write-Host ("Triage cmd: {0}" -f $report.probe_triage_command)
 Write-Host ("Boundary cmd: {0}" -f $report.phase_boundary_command)
+Write-Host ("Refresh cmd: {0}" -f $report.refresh_status_command)
+Write-Host ("Refresh run: {0}" -f $report.refresh_chain_command)
 Write-Host ("Handoff cmd: {0}" -f $report.handoff_guide_command)
 Write-Host ("Broader cmd: {0}" -f $report.broader_runner_command)
 Write-Host ("Bundle cmd: {0}" -f $report.artifact_bundle_command)
@@ -320,6 +422,31 @@ if ($report.artifact_bundle_next_artifact_to_open) {
 }
 if ($report.artifact_bundle_first_missing_path) {
     Write-Host ("Bundle first missing: {0}" -f $report.artifact_bundle_first_missing_path)
+}
+Write-Host ("Refresh target: {0}" -f $report.refresh_artifact_path)
+Write-Host ("Refresh exists: {0}" -f $report.refresh_artifact_exists)
+Write-Host ("Refresh status: {0}" -f $report.refresh_status)
+Write-Host ("Summary refresh path recorded: {0}" -f $report.summary_records_refresh_artifact_path)
+if ($report.summary_refresh_artifact_path) {
+    Write-Host ("Summary refresh path: {0}" -f $report.summary_refresh_artifact_path)
+}
+if ($report.refresh_pointer_uses_fallback) {
+    Write-Host "Refresh pointer fallback: True"
+}
+if ($report.refresh_artifact_error) {
+    Write-Host ("Refresh error: {0}" -f $report.refresh_artifact_error)
+}
+if ($report.refresh_reason) {
+    Write-Host ("Refresh note: {0}" -f $report.refresh_reason)
+}
+if ($null -ne $report.refresh_failed_step_count -and $report.refresh_failed_step_count -gt 0) {
+    Write-Host ("Refresh failed steps: {0}" -f ($report.refresh_failed_step_names -join ', '))
+}
+if ($report.refresh_next_artifact_to_open) {
+    Write-Host ("Refresh open: {0}" -f $report.refresh_next_artifact_to_open)
+}
+if ($report.refresh_recommended_command) {
+    Write-Host ("Refresh run next: {0}" -f $report.refresh_recommended_command)
 }
 Write-Host ("Handoff target: {0}" -f $report.handoff_artifact_path)
 Write-Host ("Handoff exists: {0}" -f $report.handoff_artifact_exists)
