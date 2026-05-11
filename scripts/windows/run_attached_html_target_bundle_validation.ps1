@@ -2,12 +2,14 @@
 param(
     [string]$RepoRoot,
     [string[]]$InputPath,
+    [string]$PreferredInitialPage,
     [string]$BrowserExe,
     [string]$Host = "127.0.0.1",
     [int]$Port = 8123,
     [switch]$SummaryOnly,
     [switch]$Wait,
-    [switch]$LeaveServerRunning
+    [switch]$LeaveServerRunning,
+    [switch]$AllowMissingLocalAssets
 )
 
 Set-StrictMode -Version Latest
@@ -60,7 +62,8 @@ function Invoke-BundleChecker {
 function Resolve-BundleRunnerMetadata {
     param(
         [Parameter(Mandatory = $true)]
-        $Bundle
+        $Bundle,
+        [string]$PreferredInitialPage
     )
 
     $overall = $Bundle.overall_recommendation
@@ -77,7 +80,9 @@ function Resolve-BundleRunnerMetadata {
     }
 
     $resolvedInputPath = @($resolvedTargets | ForEach-Object { $_.path })
-    $preferredInitialPage = if ($overall.preferred_initial_page) {
+    $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
+        Resolve-AttachedPreferredInitialPage -ResolvedInputPath $resolvedInputPath -PreferredInitialPage $PreferredInitialPage
+    } elseif ($overall.preferred_initial_page) {
         $overall.preferred_initial_page
     } else {
         $null
@@ -94,7 +99,7 @@ function Resolve-BundleRunnerMetadata {
     return [pscustomobject]@{
         validation_profile = $overall.bundle_validation_profile
         summary = $overall.bundle_summary
-        preferred_initial_page = $preferredInitialPage
+        preferred_initial_page = $resolvedPreferredInitialPage
         resolved_input_path = $resolvedInputPath
         runner_leaf = $runnerLeaf
     }
@@ -112,7 +117,7 @@ if (-not (Test-Path -LiteralPath $bundleCheckerPath -PathType Leaf)) {
 
 Invoke-BundleSurfaceCheck -SurfaceCheckPath $bundleSurfaceCheckPath -RepoRoot $RepoRoot
 $bundle = Invoke-BundleChecker -CheckerPath $bundleCheckerPath -RepoRoot $RepoRoot -InputPath $InputPath
-$runnerMetadata = Resolve-BundleRunnerMetadata -Bundle $bundle
+$runnerMetadata = Resolve-BundleRunnerMetadata -Bundle $bundle -PreferredInitialPage $PreferredInitialPage
 $runnerPath = Join-Path $PSScriptRoot $runnerMetadata.runner_leaf
 if (-not (Test-Path -LiteralPath $runnerPath -PathType Leaf)) {
     throw "Attached HTML bundle runner target not found: $runnerPath"
@@ -145,6 +150,9 @@ if ($Wait) {
 if ($LeaveServerRunning) {
     $runnerArgs.LeaveServerRunning = $true
 }
+if ($AllowMissingLocalAssets) {
+    $runnerArgs.AllowMissingLocalAssets = $true
+}
 
 if (-not $SummaryOnly) {
     Write-Host "Attached HTML target bundle validation"
@@ -155,7 +163,10 @@ if (-not $SummaryOnly) {
         Write-Host ("Preferred initial page: {0}" -f (Convert-ToDisplayPath -Path $runnerMetadata.preferred_initial_page -RepoRoot $resolvedRepoRoot))
     }
     Write-Host ("Bundle summary: {0}" -f $runnerMetadata.summary)
-    Write-Host ("Delegated runner: .\\scripts\\windows\\{0}" -f $runnerMetadata.runner_leaf)
+    Write-Host ("Delegated runner: .\scripts\windows\{0}" -f $runnerMetadata.runner_leaf)
+    if ($AllowMissingLocalAssets) {
+        Write-Host "Attached asset policy: degraded mode allowed"
+    }
     Write-Host ""
     Show-FixtureSelectionSummary -FixturePaths $runnerMetadata.resolved_input_path -RepoRoot $resolvedRepoRoot -GoogleStyle:($runnerMetadata.validation_profile -eq "google-attached-html")
     Write-Host ""
