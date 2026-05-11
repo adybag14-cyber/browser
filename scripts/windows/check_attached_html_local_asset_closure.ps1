@@ -19,6 +19,11 @@ function Get-DeepLocalReferenceCandidates([string]$Content) {
         '@import\s+(?:url\()?\s*["'']?([^"'')\s;]+)',
         'url\(\s*["'']?([^"'')]+)["'']?\s*\)'
     )
+    $modulePatterns = @(
+        '\bimport\s+(?:[^;''"]*?\s+from\s+)?["'']([^"'']+)["'']',
+        '\bexport\s+[^;''"]*?\s+from\s+["'']([^"'']+)["'']',
+        '(?<![\w$])import\s*\(\s*["'']([^"'']+)["'']\s*\)'
+    )
 
     foreach ($pattern in $patterns) {
         foreach ($match in [System.Text.RegularExpressions.Regex]::Matches($Content, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
@@ -36,6 +41,15 @@ function Get-DeepLocalReferenceCandidates([string]$Content) {
         }
     }
 
+    foreach ($pattern in $modulePatterns) {
+        foreach ($match in [System.Text.RegularExpressions.Regex]::Matches($Content, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+            $value = $match.Groups[1].Value
+            if (-not [string]::IsNullOrWhiteSpace($value) -and $value -match '^\.\.?/') {
+                Add-UniqueString -List $candidates -Value $value
+            }
+        }
+    }
+
     return @($candidates)
 }
 
@@ -43,6 +57,7 @@ function Get-DeepMissingLocalFixtureAssets([string]$FixturePath) {
     $pending = [System.Collections.Generic.Queue[string]]::new()
     $visited = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $seenCss = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $seenModuleScripts = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $missing = [System.Collections.Generic.List[string]]::new()
     $inspected = [System.Collections.Generic.List[string]]::new()
 
@@ -73,9 +88,14 @@ function Get-DeepMissingLocalFixtureAssets([string]$FixturePath) {
             }
 
             $extension = [System.IO.Path]::GetExtension($resolved.full_path)
+            $fullResolvedPath = [System.IO.Path]::GetFullPath($resolved.full_path)
             if ([string]::Equals($extension, ".css", [System.StringComparison]::OrdinalIgnoreCase)) {
-                $fullResolvedPath = [System.IO.Path]::GetFullPath($resolved.full_path)
                 if ($seenCss.Add($fullResolvedPath) -and -not $visited.Contains($fullResolvedPath)) {
+                    $null = $visited.Add($fullResolvedPath)
+                    $pending.Enqueue($fullResolvedPath)
+                }
+            } elseif ([string]::Equals($extension, ".js", [System.StringComparison]::OrdinalIgnoreCase) -or [string]::Equals($extension, ".mjs", [System.StringComparison]::OrdinalIgnoreCase)) {
+                if ($seenModuleScripts.Add($fullResolvedPath) -and -not $visited.Contains($fullResolvedPath)) {
                     $null = $visited.Add($fullResolvedPath)
                     $pending.Enqueue($fullResolvedPath)
                 }
@@ -90,6 +110,8 @@ function Get-DeepMissingLocalFixtureAssets([string]$FixturePath) {
         inspected_file_count = $inspected.Count
         inspected_css_files = @($seenCss)
         inspected_css_file_count = $seenCss.Count
+        inspected_module_script_files = @($seenModuleScripts)
+        inspected_module_script_file_count = $seenModuleScripts.Count
     }
 }
 
@@ -114,6 +136,8 @@ $audit = @(
             inspected_files = $result.inspected_files | ForEach-Object { Convert-ToDisplayPath -Path $_ -RepoRoot $RepoRoot }
             inspected_file_count = $result.inspected_file_count
             inspected_css_file_count = $result.inspected_css_file_count
+            inspected_module_script_files = $result.inspected_module_script_files | ForEach-Object { Convert-ToDisplayPath -Path $_ -RepoRoot $RepoRoot }
+            inspected_module_script_file_count = $result.inspected_module_script_file_count
         }
     }
 )
@@ -135,6 +159,7 @@ if ($Json) {
         Write-Host ("Fixture: {0}" -f $fixture.display_path)
         Write-Host ("Inspected files: {0}" -f $fixture.inspected_file_count)
         Write-Host ("Inspected CSS files: {0}" -f $fixture.inspected_css_file_count)
+        Write-Host ("Inspected module script files: {0}" -f $fixture.inspected_module_script_file_count)
         if ($fixture.missing_asset_count -eq 0) {
             Write-Host "Missing assets: none"
         } else {
