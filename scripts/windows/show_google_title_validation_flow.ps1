@@ -24,6 +24,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$surfaceCheck = '.\\scripts\\windows\\check_google_title_validation_surface.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
 $traceGuide = '.\\scripts\\windows\\show_google_title_probe_trace_guide.ps1'
 $directProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-title-probe.ps1'
@@ -74,9 +75,14 @@ if ($HomePollMilliseconds) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google title validation flow"
-    focus = "Bounded localhost readiness, click-focus, typed-text, and Enter-submit markers on the Google-style title probe before wider homepage or shared Enter-order passes."
+    focus = "Bounded localhost readiness, click-focus, typed-text, and Enter-submit markers on the Google-style title probe, with a dedicated fail-fast surface check before wider homepage or shared Enter-order passes."
     read_first_guide = $traceGuidePath
     steps = @(
+        [ordered]@{
+            name = "surface-check"
+            goal = "Fail fast if the bounded title-validation guide, helper, direct probe, or fixture drifted out of sync before you trust the narrower issue #3 title flow."
+            command = "powershell -ExecutionPolicy Bypass -File $surfaceCheck"
+        }
         [ordered]@{
             name = "read-first"
             goal = "Print the dedicated marker guide so the bounded title string maps cleanly to focus, text commit, and Enter-submit stages before you run the wrapper."
@@ -99,6 +105,8 @@ $flow = [ordered]@{
         "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when the title wrapper is green and you want the stricter shared Enter-order stack printed before you run it."
     )
     notes = @(
+        "Start with the surface-check when you want the bounded title slice to fail fast on missing guide, helper, direct-probe, or fixture drift before the broader issue #3 ladder.",
+        "Use .\\scripts\\windows\\check_google_validation_surface.ps1 when you want the whole issue #3 validation surface checked instead of only the narrower title slice.",
         "Start with the read-first guide when you want the marker meanings without opening the markdown note by hand.",
         "The printed guide mirrors $traceGuidePath so the command output and the saved note stay aligned.",
         "Start with the wrapper unless you already know you need the direct probe output files from tmp-browser-smoke/google-investigation-next.",
