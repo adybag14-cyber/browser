@@ -118,6 +118,7 @@ $surfacePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.surface_ch
 $guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.guide_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-guide.json"
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
 $boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.boundary_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-phase-boundary.json"
+$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
 $phaseRoot = if (-not [string]::IsNullOrWhiteSpace($summary.phase_artifact_root)) {
     $summary.phase_artifact_root
 } else {
@@ -127,41 +128,43 @@ $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $boundaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
+$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
+$refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 
 $summaryRef = New-ArtifactReference -Label "summary" -Path $SummaryPath
 $surfaceRef = New-ArtifactReference -Label "surface" -Path $surfacePath
 $guideRef = New-ArtifactReference -Label "guide" -Path $guidePath
 $manifestRef = New-ArtifactReference -Label "manifest" -Path $manifestPath
 $boundaryRef = New-ArtifactReference -Label "boundary" -Path $boundaryPath
-$coreRefs = @($summaryRef, $surfaceRef, $guideRef, $manifestRef, $boundaryRef)
+$handoffRef = New-ArtifactReference -Label "handoff" -Path $handoffPath
+$coreRefs = @($summaryRef, $surfaceRef, $guideRef, $manifestRef, $boundaryRef, $handoffRef)
 $coreMissing = @($coreRefs | Where-Object { -not $_.exists })
+$coreMissingLabels = @($coreMissing | ForEach-Object { $_.label })
 
 $guideRecord = Read-ArtifactJson $guidePath
 $boundaryRecord = Read-ArtifactJson $boundaryPath
 $manifestRecord = Read-ArtifactJson $manifestPath
+$handoffRecord = Read-ArtifactJson $handoffPath
 
 $crossReferenceMismatches = [System.Collections.Generic.List[object]]::new()
 if ($manifestRecord -and $manifestRecord.summary_path -and $manifestRecord.summary_path -ne $SummaryPath) {
-    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'manifest' -Path $manifestPath -RecordedSummaryPath $manifestRecord.summary_path -RepairCommand $recommendedRunnerCommand)) | Out-Null
+    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'manifest' -Path $manifestPath -RecordedSummaryPath $manifestRecord.summary_path -RepairCommand $refreshChainCommand)) | Out-Null
 }
 if ($guideRecord -and $guideRecord.summary_path -and $guideRecord.summary_path -ne $SummaryPath) {
-    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'guide' -Path $guidePath -RecordedSummaryPath $guideRecord.summary_path -RepairCommand $summaryGuideCommand)) | Out-Null
+    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'guide' -Path $guidePath -RecordedSummaryPath $guideRecord.summary_path -RepairCommand $refreshChainCommand)) | Out-Null
 }
 if ($boundaryRecord -and $boundaryRecord.summary_path -and $boundaryRecord.summary_path -ne $SummaryPath) {
-    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'boundary' -Path $boundaryPath -RecordedSummaryPath $boundaryRecord.summary_path -RepairCommand $boundaryGuideCommand)) | Out-Null
+    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'boundary' -Path $boundaryPath -RecordedSummaryPath $boundaryRecord.summary_path -RepairCommand $refreshChainCommand)) | Out-Null
+}
+if ($handoffRecord -and $handoffRecord.summary_path -and $handoffRecord.summary_path -ne $SummaryPath) {
+    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'handoff' -Path $handoffPath -RecordedSummaryPath $handoffRecord.summary_path -RepairCommand $refreshChainCommand)) | Out-Null
 }
 $staleCrossReferenceDetected = $crossReferenceMismatches.Count -gt 0
 $staleCrossReferenceLabels = @($crossReferenceMismatches | ForEach-Object { $_.label })
 $staleCrossReferencePaths = @($crossReferenceMismatches | ForEach-Object { $_.path })
 $staleCrossReferenceRepairCommands = @($crossReferenceMismatches | ForEach-Object { $_.repair_command } | Select-Object -Unique)
-$preferredStaleRepairCommand = if ($staleCrossReferenceLabels -contains 'manifest') {
-    $recommendedRunnerCommand
-} elseif ($staleCrossReferenceLabels -contains 'guide') {
-    $summaryGuideCommand
-} elseif ($staleCrossReferenceLabels -contains 'boundary') {
-    $boundaryGuideCommand
-} elseif ($staleCrossReferenceDetected) {
-    $manifestGuideCommand
+$preferredStaleRepairCommand = if ($staleCrossReferenceDetected) {
+    $refreshChainCommand
 } else {
     $null
 }
@@ -220,6 +223,12 @@ foreach ($phaseRecord in $phaseHealth) {
 $firstFailedPhaseHealth = @($phaseHealth | Where-Object { $_.name -eq $summary.first_failed_phase } | Select-Object -First 1)
 $nextArtifactToOpen = if ($staleCrossReferenceDetected) {
     $SummaryPath
+} elseif (-not $handoffRef.exists) {
+    $SummaryPath
+} elseif ($handoffRecord -and $handoffRecord.next_artifact_to_open) {
+    $handoffRecord.next_artifact_to_open
+} elseif ($handoffRef.exists) {
+    $handoffPath
 } elseif ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
     $boundaryRecord.next_artifact_to_open
 } elseif ($guideRecord -and $guideRecord.first_failed_phase_primary_json_artifact_path) {
@@ -238,6 +247,10 @@ $nextArtifactToOpen = if ($staleCrossReferenceDetected) {
 
 $recommendedCommand = if ($staleCrossReferenceDetected) {
     $preferredStaleRepairCommand
+} elseif ($coreMissingLabels -contains 'handoff') {
+    $refreshChainCommand
+} elseif ($handoffRecord -and $handoffRecord.recommended_command) {
+    $handoffRecord.recommended_command
 } elseif ($boundaryRecord -and $boundaryRecord.recommended_command) {
     $boundaryRecord.recommended_command
 } elseif ($guideRecord -and $guideRecord.recommended_command) {
@@ -246,7 +259,11 @@ $recommendedCommand = if ($staleCrossReferenceDetected) {
     $null
 }
 $recommendedGuideCommand = if ($staleCrossReferenceDetected) {
-    $manifestGuideCommand
+    $handoffGuideCommand
+} elseif ($coreMissingLabels -contains 'handoff') {
+    $handoffGuideCommand
+} elseif ($handoffRecord -and $handoffRecord.recommended_guide_command) {
+    $handoffRecord.recommended_guide_command
 } elseif ($boundaryRecord -and $boundaryRecord.recommended_guide_command) {
     $boundaryRecord.recommended_guide_command
 } elseif ($guideRecord -and $guideRecord.recommended_guide_command) {
@@ -255,7 +272,11 @@ $recommendedGuideCommand = if ($staleCrossReferenceDetected) {
     $null
 }
 $nextFocus = if ($staleCrossReferenceDetected) {
-    'Refresh the saved issue #3 manifest, guide, or boundary artifacts so every helper points at the current recommended-validation summary before trusting the next replay handoff.'
+    'Refresh the saved issue #3 handoff chain so the handoff, manifest, guide, and boundary helpers all point at the current recommended-validation summary before trusting the next replay handoff.'
+} elseif ($coreMissingLabels -contains 'handoff') {
+    'Regenerate the saved handoff artifact so the next Windows replay can reopen the current bounded checkpoint without guessing which helper artifact to trust first.'
+} elseif ($handoffRecord -and $handoffRecord.next_focus) {
+    $handoffRecord.next_focus
 } elseif ($boundaryRecord -and $boundaryRecord.next_focus) {
     $boundaryRecord.next_focus
 } elseif ($guideRecord -and $guideRecord.next_focus) {
@@ -278,7 +299,7 @@ $status = if ($coreMissing.Count -eq 0 -and $totalPhaseMissingCount -eq 0 -and -
 
 $bundle = [ordered]@{
     issue = 'Google issue #3 validation artifact bundle'
-    purpose = 'Check whether the saved recommended-validation artifact family is complete, call out stale cross-references between the summary and helper artifacts, and point the next Windows headed replay at the best artifact to open first.'
+    purpose = 'Check whether the saved recommended-validation artifact family is complete, including the handoff artifact, call out stale cross-references between the summary and helper artifacts, and point the next Windows headed replay at the best artifact to open first.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_generated_at_utc = $summary.generated_at_utc
     artifact_bundle_path = $ArtifactPath
@@ -294,7 +315,7 @@ $bundle = [ordered]@{
     boundary_artifact_error = if ($summary.boundary_artifact_error) { $summary.boundary_artifact_error } else { $null }
     phase_result_count = $phaseResults.Count
     core_missing_count = $coreMissing.Count
-    core_missing_labels = @($coreMissing | ForEach-Object { $_.label })
+    core_missing_labels = @($coreMissingLabels)
     core_missing_paths = @($coreArtifactMissingPaths)
     phase_log_missing_count = $phaseLogMissingCount
     phase_json_missing_count = $phaseJsonMissingCount
@@ -305,6 +326,9 @@ $bundle = [ordered]@{
     stale_cross_reference_paths = @($staleCrossReferencePaths)
     stale_cross_reference_details = @($crossReferenceMismatches)
     stale_cross_reference_repair_commands = @($staleCrossReferenceRepairCommands)
+    handoff_artifact_path = $handoffPath
+    handoff_artifact_exists = [bool]$handoffRef.exists
+    refresh_chain_command = $refreshChainCommand
     next_artifact_to_open = $nextArtifactToOpen
     boundary_last_passed_phase = if ($boundaryRecord) { $boundaryRecord.last_passed_phase } else { $null }
     boundary_first_failed_phase = if ($boundaryRecord) { $boundaryRecord.first_failed_phase } else { $null }
@@ -312,12 +336,15 @@ $bundle = [ordered]@{
     boundary_reason = if ($boundaryRecord) { $boundaryRecord.reason } else { $null }
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
-    recommended_runner_command = if ($guideRecord -and $guideRecord.broader_runner_command) {
+    recommended_runner_command = if ($handoffRecord -and $handoffRecord.broader_runner_command) {
+        $handoffRecord.broader_runner_command
+    } elseif ($guideRecord -and $guideRecord.broader_runner_command) {
         $guideRecord.broader_runner_command
     } else {
         $recommendedRunnerCommand
     }
     phase_boundary_command = if ($guideRecord) { $guideRecord.phase_boundary_command } else { $boundaryGuideCommand }
+    handoff_guide_command = $handoffGuideCommand
     next_focus = $nextFocus
     first_missing_path = if ($coreArtifactMissingPaths.Count -gt 0) {
         $coreArtifactMissingPaths[0]
@@ -351,6 +378,11 @@ $bundle = [ordered]@{
     } else {
         $null
     }
+    handoff_summary_path_matches = if ($handoffRecord -and $handoffRecord.summary_path) {
+        $handoffRecord.summary_path -eq $SummaryPath
+    } else {
+        $null
+    }
     phase_statuses = $phaseStatuses
 }
 
@@ -377,6 +409,7 @@ Write-Host ("Phase log missing: {0}" -f $bundle.phase_log_missing_count)
 Write-Host ("Phase JSON missing: {0}" -f $bundle.phase_json_missing_count)
 Write-Host ("Phase artifact gaps: {0}" -f $bundle.phase_missing_artifact_count)
 Write-Host ("Stale refs: {0}" -f $bundle.stale_cross_reference_count)
+Write-Host ("Handoff exists: {0}" -f $bundle.handoff_artifact_exists)
 if ($bundle.guide_artifact_error) {
     Write-Host ("Guide error: {0}" -f $bundle.guide_artifact_error)
 }
@@ -419,11 +452,17 @@ if ($bundle.recommended_command) {
 if ($bundle.recommended_guide_command) {
     Write-Host ("Guide: {0}" -f $bundle.recommended_guide_command)
 }
+if ($bundle.handoff_guide_command) {
+    Write-Host ("Handoff: {0}" -f $bundle.handoff_guide_command)
+}
 if ($bundle.phase_boundary_command) {
     Write-Host ("Phase boundary: {0}" -f $bundle.phase_boundary_command)
 }
 if ($bundle.recommended_runner_command) {
     Write-Host ("Broader runner: {0}" -f $bundle.recommended_runner_command)
+}
+if ($bundle.refresh_chain_command) {
+    Write-Host ("Refresh chain: {0}" -f $bundle.refresh_chain_command)
 }
 if ($bundle.stale_cross_reference_detected -and $bundle.stale_cross_reference_repair_commands.Count -gt 0) {
     Write-Host 'Refresh order:'
