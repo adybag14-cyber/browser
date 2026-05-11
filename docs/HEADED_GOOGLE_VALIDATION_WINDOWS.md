@@ -92,6 +92,17 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_f
 That slice keeps the saved homepage fixture on the same issue `#3` route as the
 reduced title, reduced home, submit-timing, and shared Enter-order checks.
 
+When the earlier title gates are already green and you want the narrower saved
+homepage fixture, submit-timing, and shared Enter-order stack in one command
+before broader manual or live replay, use the dedicated submit-path runner:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
+```
+
+That runner jumps straight into the later bounded issue `#3` slices without
+repeating the earlier localhost title gates.
+
 When the next question is specifically shared Enter ordering, print and run the
 smaller dedicated ladder before you widen back out to manual or live Google:
 
@@ -121,10 +132,11 @@ Run the stepwise flow when you want to narrow the failure one phase at a time:
 4. `quick`
 5. `google-home`
 6. `google-homepage-fixture`
-7. `submit-timing`
-8. `shared-enter-order`
-9. `manual`
-10. `trace`
+7. `submit-path`
+8. `submit-timing`
+9. `shared-enter-order`
+10. `manual`
+11. `trace`
 
 Use these commands through the main runner or the bounded helpers directly:
 
@@ -136,6 +148,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_vali
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-google-submit-timing-probe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
@@ -174,6 +189,10 @@ Only move to `manual` or `trace` after those bounded phases are green.
 - `google-homepage-fixture`: the bounded saved homepage fixture still proves the
   localhost copy reaches focus, typed text, and Enter submit before the broader
   saved-page or attached-page manual follow-up.
+- `submit-path`: the dedicated issue `#3` submit-path runner still bundles the
+  saved homepage fixture, bounded submit-timing check, and shared Enter-order
+  ladder into one later-stage command surface after the earlier title gates are
+  already green.
 - `submit-timing`: the bounded headed Win32 layout-smoke probe still clicks the
   Google-shaped shell, types `QZ`, reaches the submitted page, and preserves
   `keydown,keypress,submit` ordering in the submitted title trace before the
@@ -262,8 +281,8 @@ attached-page command map, override patterns, and staging rules in one place.
 Do not treat a saved-page manual pass as the first evidence for issue `#3`.
 
 Use the bounded localhost, reduced homepage, saved homepage fixture,
-submit-timing, and shared Enter-order passes first, then use the saved-page or
-live-Google follow-up only when those gates already agree.
+submit-path, submit-timing, and shared Enter-order passes first, then use the
+saved-page or live-Google follow-up only when those gates already agree.
 
 Use `run_google_issue3_recommended_validation.ps1` when you want the current
 bounded issue `#3` flow in one reusable command. Drop back to the stepwise
@@ -272,6 +291,11 @@ that regressed.
 
 Use `show_google_quick_validation_flow.ps1` when you want the fast title-plus-watch
 stack spelled out before you run the quicker wrapper entrypoint.
+
+Use `run_google_issue3_submit_path_validation.ps1` when the earlier title and
+reduced homepage gates are already green and you want one later-stage command
+surface that stays focused on the saved homepage fixture, submit-timing, and
+shared Enter-order slices before you widen into manual or live Google replay.
 
 For shared Enter-order work, start with
 `show_google_shared_enter_order_validation_flow.ps1`,
