@@ -121,6 +121,8 @@ $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
 }
 
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path)
+$summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path)
+$refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and $refreshExists
 $refreshReady = ($refreshStatus -eq 'refreshed')
 $refreshNeeded = if ($refreshReady) {
     $false
@@ -162,6 +164,8 @@ $reason = if ($refreshReady) {
     'The saved refresh artifact says the helper chain reran, but the bundle audit still reports missing or stale artifacts.'
 } elseif ($refreshStatus -eq 'handoff-incomplete') {
     'The saved refresh artifact says the helper chain reran, but the handoff artifact still lacks the next-artifact pointer needed for narrow replay.'
+} elseif (-not $summaryRecordsRefreshArtifactPath -and $refreshExists) {
+    'The current summary does not record its refresh artifact path yet, so this helper is using the fallback refresh location while keeping the runner and helper chain aligned.'
 } elseif (-not $summaryRecordsHandoffArtifactPath) {
     'The current summary does not record its handoff artifact path yet, so refresh the saved helper chain before trusting older handoff links.'
 } elseif ($bundleError) {
@@ -184,6 +188,8 @@ $nextFocus = if ($refreshReady) {
     'Open the handoff helper and follow its next_artifact_to_open guidance for the narrowest current replay step.'
 } elseif ($refreshExists) {
     'Inspect the saved refresh artifact first, then rerun the refresh helper if the helper chain still is not settled for the current summary.'
+} elseif (-not $summaryRecordsRefreshArtifactPath) {
+    'Keep the recommended runner and refresh-status helper aligned on the same saved refresh artifact before trusting older summary links.'
 } elseif ($refreshNeeded) {
     'Repair or refresh the saved issue #3 helper chain first, then reopen the handoff artifact once the current summary, bundle, guide, boundary, and handoff outputs agree.'
 } else {
@@ -211,6 +217,10 @@ $report = [ordered]@{
     first_failed_phase = $summary.first_failed_phase
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
     summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $summary.handoff_artifact_path } else { $null }
+    summary_records_refresh_artifact_path = [bool]$summaryRecordsRefreshArtifactPath
+    summary_refresh_artifact_path = if ($summaryRecordsRefreshArtifactPath) { $summary.refresh_chain_artifact_path } else { $null }
+    summary_missing_refresh_pointer = [bool](-not $summaryRecordsRefreshArtifactPath)
+    refresh_pointer_uses_fallback = [bool]$refreshPointerUsesFallback
     refresh_artifact_path = $refreshPath
     refresh_artifact_exists = [bool]$refreshExists
     refresh_status = $refreshStatus
@@ -261,6 +271,10 @@ Write-Host ("First fail:{0}" -f $(if ($report.first_failed_phase) { ' ' + $repor
 Write-Host ("Refresh status: {0}" -f $report.refresh_status)
 Write-Host ("Bundle status: {0}" -f $report.bundle_status)
 Write-Host ("Summary handoff path recorded: {0}" -f $report.summary_records_handoff_artifact_path)
+Write-Host ("Summary refresh path recorded: {0}" -f $report.summary_records_refresh_artifact_path)
+if ($report.summary_refresh_artifact_path) {
+    Write-Host ("Summary refresh path: {0}" -f $report.summary_refresh_artifact_path)
+}
 if ($report.refresh_reason) {
     Write-Host ("Refresh reason: {0}" -f $report.refresh_reason)
 }
