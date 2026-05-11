@@ -47,6 +47,7 @@ when you need the same saved-page inputs to stay attached to the next rerun.
 - `show_attached_html_validation_flow.ps1 -GoogleStyle`: prefers a Google-like attached page first when one is present, then prints the Google-style follow-up route for that same input set.
 - `show_google_attached_html_validation_flow.ps1`: prints the Google-style attached-page localhost-first handoff for current-run attached HTML before the broader manual follow-up.
 - `run_localhost_html_validation_recommended.ps1 -Wait`: one-command attached-or-saved localhost runner that forwards into the right helper after the matching bounded suite is green.
+- `check_local_html_fixture_validation_surface.ps1`: verifies that the reusable fixed-list local HTML fixture probe and its shared helpers still exist before you restage saved exports into the same localhost flow.
 - `check_google_validation_surface.ps1`: verifies that the current issue `#3` or attached-page guide and helper surface still exists before you depend on it.
 
 ## Core Rule
@@ -155,6 +156,13 @@ when you need the same saved-page inputs to stay attached to the next rerun.
 
 - `manual-user/`: manual headed validation helpers for saved or attached
   localhost HTML pages after the matching bounded suite is green
+- `local-html-fixtures/`: reusable staged localhost replay surface for a fixed
+  list of saved HTML exports plus sibling `*_files` asset bundles
+- `scripts/windows/check_local_html_fixture_validation_surface.ps1`: fail-fast
+  checker for the reusable fixed-list local HTML fixture replay path
+- `tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1`:
+  direct staged localhost runner for a small fixed set of saved exports when
+  you want screenshot-plus-title proof before the broader manual flow
 - `scripts/windows/run_localhost_html_validation_recommended.ps1`: one-command
   attached-or-saved localhost runner that auto-picks the attached HTML helper
   when `agent_files/` already has page snapshots anywhere under that tree and
@@ -166,11 +174,11 @@ when you need the same saved-page inputs to stay attached to the next rerun.
   attached HTML discovery, including nested files under `agent_files/`, plus
   summary and localhost launch helper for the current workspace snapshots
 - `scripts/windows/show_saved_page_google_validation_flow.ps1`: saved-page
-  issue #3 flow map that keeps the localhost Google phases ahead of the manual
+  issue `#3` flow map that keeps the localhost Google phases ahead of the manual
   headed pass
 - `scripts/windows/show_google_attached_html_validation_flow.ps1`: attached-page
   Google-style flow map that keeps the auto-discovered current-run HTML handoff
-  in the same localhost-first issue #3 order before the broader manual pass
+  in the same localhost-first issue `#3` order before the broader manual pass
 
 ### Shared helpers
 
@@ -196,10 +204,13 @@ Use this order unless a narrower issue demands something more specific first.
    later-stage real-homepage logging step, and only then move on to the
    saved-page or live-site follow-up.
 5. For saved or attached localhost HTML pages, start with the matching bounded
-   suite first and only then move into
+   suite first and only then run
+   `check_saved_page_localhost_validation_surface.ps1` or
+   `check_local_html_fixture_validation_surface.ps1`, then move into
    `run_localhost_html_validation_recommended.ps1`, `manual-user/`,
-   `run_saved_page_localhost_validation.ps1`, or
-   `run_attached_html_localhost_validation.ps1` for the real page follow-up.
+   `run_saved_page_localhost_validation.ps1`,
+   `tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1`,
+   or `run_attached_html_localhost_validation.ps1` for the real page follow-up.
    Use `show_google_attached_html_validation_flow.ps1` when the next handoff is
    issue `#3` Google-style attached HTML and you want the auto-discovered
    current-run pages printed in the same localhost-first order before the
@@ -229,8 +240,11 @@ Use this order unless a narrower issue demands something more specific first.
   stepwise `submit-timing` and `shared-enter-order` phases when you need to
   narrow the first failing gate before the saved-page, attached-page, or live-site follow-up.
 - Saved or attached localhost HTML compatibility passes: run the matching
-  bounded suite first, then use `run_localhost_html_validation_recommended.ps1`,
-  `manual-user/`, `run_saved_page_localhost_validation.ps1`,
+  bounded suite first, then use `check_saved_page_localhost_validation_surface.ps1`,
+  `check_local_html_fixture_validation_surface.ps1`,
+  `run_localhost_html_validation_recommended.ps1`, `manual-user/`,
+  `tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1`,
+  `run_saved_page_localhost_validation.ps1`,
   `run_attached_html_localhost_validation.ps1`,
   `show_saved_page_google_validation_flow.ps1`, and
   `show_google_attached_html_validation_flow.ps1` when the saved-page or
@@ -288,6 +302,7 @@ narrowing and regression helpers, not replacements for the core
 
 For attached or saved HTML page follow-up, use
 `tmp-browser-smoke/manual-user/README.md`,
+`check_local_html_fixture_validation_surface.ps1`,
 `run_localhost_html_validation_recommended.ps1`,
 `run_saved_page_localhost_validation.ps1`,
 `run_attached_html_localhost_validation.ps1`,
