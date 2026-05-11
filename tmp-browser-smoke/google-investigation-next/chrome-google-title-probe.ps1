@@ -117,7 +117,7 @@ try {
   $focusedWorked = $null -ne $titleFocused
   if (-not $focusedWorked) { throw "google title probe did not focus the query input after click" }
 
-  Send-SmokeText $InputText
+  Send-SmokeAsciiText $InputText
   $escapedInputText = [WildcardPattern]::Escape($InputText)
   $titleTyped = Wait-ForGoogleProbeTitle $hwnd @("*TYPED:$escapedInputText*","*|V=$escapedInputText|*")
   $typedWorked = $null -ne $titleTyped
