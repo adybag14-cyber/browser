@@ -110,6 +110,7 @@ if (-not $ArtifactPath) {
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
+$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $boundaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
@@ -479,6 +480,7 @@ $handoff = [ordered]@{
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     handoff_artifact_path = $ArtifactPath
+    handoff_artifact_exists = [bool]$handoffExists
     summary_generated_at_utc = $summary.generated_at_utc
     completed = [bool]$summary.completed
     surface_check_status = $summary.surface_check_status
