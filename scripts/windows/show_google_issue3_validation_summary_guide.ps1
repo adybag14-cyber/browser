@@ -123,6 +123,7 @@ $guide = [ordered]@{
     completed = [bool]$summary.completed
     surface_check_status = $summary.surface_check_status
     surface_check_error = $summary.surface_check_error
+    surface_check_artifact_path = $summary.surface_check_artifact_path
     first_failed_phase = $firstFailedPhase
     first_failed_phase_error = $summary.first_failed_phase_error
     first_failed_phase_log_path = $summary.first_failed_phase_log_path
@@ -151,6 +152,9 @@ Write-Host ("Summary:   {0}" -f $guide.summary_path)
 Write-Host ("Generated: {0}" -f $guide.generated_at_utc)
 Write-Host ("Completed: {0}" -f $guide.completed)
 Write-Host ("Surface:   {0}" -f $guide.surface_check_status)
+if ($guide.surface_check_artifact_path) {
+    Write-Host ("Surface JSON: {0}" -f $guide.surface_check_artifact_path)
+}
 Write-Host ("First fail:{0}" -f $(if ($guide.first_failed_phase) { ' ' + $guide.first_failed_phase } else { ' none' }))
 if ($guide.first_failed_phase_log_path) {
     Write-Host ("Log:       {0}" -f $guide.first_failed_phase_log_path)
