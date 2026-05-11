@@ -49,8 +49,12 @@ function Add-SharedArgument {
     }
 }
 
+$surfaceCheck = '.\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1'
 $runner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
 $rawProbe = '.\tmp-browser-smoke\form-controls\google-enter-order-probe.ps1'
+
+$surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
 
 $runnerArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $runnerArgs -Name RepoRoot -Value $RepoRoot
@@ -82,6 +86,11 @@ $flow = [ordered]@{
     host = $Host
     steps = @(
         [ordered]@{
+            name = "surface-check"
+            goal = "Run the dedicated fail-fast checker first so missing docs, helper scripts, or the raw form-controls probe are caught before the smallest shared Enter-order gate starts."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $surfaceCheck, $(if ($surfaceCheckArgs.Count -gt 0) { " " + ($surfaceCheckArgs -join " ") } else { "" }))
+        }
+        [ordered]@{
             name = "recommended"
             goal = "Run the dedicated wrapper so the Google-style shared form-controls Enter-order gate stays on one stable command surface."
             command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $runner, $(if ($runnerArgs.Count -gt 0) { " " + ($runnerArgs -join " ") } else { "" }))
@@ -98,12 +107,13 @@ $flow = [ordered]@{
         }
     )
     notes = @(
+        "Run the dedicated surface check before the wrapper when you want missing docs, scripts, or raw probe drift to fail fast.",
         "Keep SharedInputText aligned with the broader issue #3 shared probes so the dedicated form-controls gate reports the same expected query string.",
         "Port 8157 is shared on purpose with the broader Enter-order helpers, so one override keeps the dedicated gate and the wider stack in sync.",
         "Use the raw probe command only when you need the direct script surface; otherwise prefer the dedicated wrapper so the runbook and issue comments stay consistent."
     )
     next_steps = @(
-        "Use .\scripts\windows\run_google_form_controls_enter_order_validation.ps1 when you want to execute the dedicated gate directly after reading this flow.",
+        "Use .\scripts\windows\run_google_form_controls_enter_order_validation.ps1 when you want to execute the dedicated gate directly after the surface check passes.",
         "Use .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1 when the dedicated gate is green and you want the reduced homepage, localhost wrapper, and shared Enter-order ladder printed together.",
         "Move on to the smallest live Google manual pass only after the dedicated form-controls gate and the broader shared Enter-order stack stay green together."
     )
