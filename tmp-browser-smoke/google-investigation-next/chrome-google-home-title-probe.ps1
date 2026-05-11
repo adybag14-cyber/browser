@@ -57,6 +57,23 @@ function Get-TraceSummary([string]$Path) {
     return (($lines[-6..-1]) -join "`n")
 }
 
+function Get-TraceArtifactPaths([string]$Root) {
+    $artifacts = @()
+    $patterns = @(
+        "browse-render.log",
+        "runtime-renderer.log",
+        "session-wait.log",
+        "runtime-input-backend-*.log",
+        "wndproc-input-*.log"
+    )
+    foreach ($pattern in $patterns) {
+        $artifacts += Get-ChildItem -Path $Root -Filter $pattern -File -ErrorAction SilentlyContinue |
+            Sort-Object FullName |
+            Select-Object -ExpandProperty FullName
+    }
+    return $artifacts
+}
+
 try {
     $server = Start-Process -FilePath "python" -ArgumentList "-m", "http.server", $Port, "--bind", "127.0.0.1" -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
     for ($i = 0; $i -lt 40; $i++) {
@@ -104,16 +121,45 @@ try {
         }
     }
 
+    $helperOutcome = if ($helperFailure -or $helperExitCode -ne 0) {
+        if ($helperResult -and $helperResult.failure_stage) {
+            "failed:{0}" -f $helperResult.failure_stage
+        } else {
+            "failed"
+        }
+    } else {
+        "completed"
+    }
+
     $result = [pscustomobject]@{
         probe_url = $probeUrl
         helper_exit_code = $helperExitCode
         helper_failure = $helperFailure
+        helper_outcome = $helperOutcome
+        helper_failure_stage = if ($helperResult) { $helperResult.failure_stage } else { $null }
+        helper_matched_ready_marker = if ($helperResult) { $helperResult.matched_ready_marker } else { $null }
+        helper_ready_observed_at_utc = if ($helperResult) { $helperResult.ready_observed_at_utc } else { $null }
+        helper_typed_observed_at_utc = if ($helperResult) { $helperResult.typed_observed_at_utc } else { $null }
+        helper_enter_observed_at_utc = if ($helperResult) { $helperResult.enter_observed_at_utc } else { $null }
+        helper_input_sent_at_utc = if ($helperResult) { $helperResult.input_sent_at_utc } else { $null }
+        helper_enter_sent_at_utc = if ($helperResult) { $helperResult.enter_sent_at_utc } else { $null }
+        helper_ready_title = if ($helperResult) { $helperResult.ready_title } else { $null }
+        helper_ready_title_state = if ($helperResult) { $helperResult.ready_title_state } else { $null }
+        helper_typed_title = if ($helperResult) { $helperResult.typed_title } else { $null }
+        helper_typed_title_state = if ($helperResult) { $helperResult.typed_title_state } else { $null }
+        helper_enter_title = if ($helperResult) { $helperResult.enter_title } else { $null }
+        helper_enter_title_state = if ($helperResult) { $helperResult.enter_title_state } else { $null }
+        helper_last_title = if ($helperResult) { $helperResult.last_title } else { $null }
+        helper_last_title_state = if ($helperResult) { $helperResult.last_title_state } else { $null }
+        helper_trace_path = if ($helperResult) { $helperResult.trace_path } else { $null }
+        helper_trace_count = if ($helperResult -and $helperResult.trace) { @($helperResult.trace).Count } else { 0 }
         helper = $helperResult
         browse_trace = Get-TraceSummary $browseTrace
         renderer_trace = Get-TraceSummary $rendererTrace
         session_trace = Get-TraceSummary $sessionTrace
-        backend_trace_files = @(Get-ChildItem -Path $scriptRoot -Filter "runtime-input-backend-*.log" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
-        wndproc_trace_files = @(Get-ChildItem -Path $scriptRoot -Filter "wndproc-input-*.log" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
+        trace_artifacts = @(Get-TraceArtifactPaths $scriptRoot)
+        backend_trace_files = @(Get-ChildItem -Path $scriptRoot -Filter "runtime-input-backend-*.log" -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -ExpandProperty Name)
+        wndproc_trace_files = @(Get-ChildItem -Path $scriptRoot -Filter "wndproc-input-*.log" -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -ExpandProperty Name)
         server_stdout = if (Test-Path -LiteralPath $serverOut) { Get-Content -LiteralPath $serverOut -Raw } else { $null }
         server_stderr = if (Test-Path -LiteralPath $serverErr) { Get-Content -LiteralPath $serverErr -Raw } else { $null }
     }
