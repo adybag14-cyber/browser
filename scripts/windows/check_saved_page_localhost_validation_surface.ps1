@@ -36,8 +36,11 @@ $resolvedRepoRoot = if ($RepoRoot) {
 $references = @(
     (New-ValidationReference -Path "docs/HEADED_ATTACHED_HTML_VALIDATION.md" -Kind "file" -Purpose "Attached-HTML guide that routes general saved-page follow-up."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that lists the saved-page localhost helpers."),
+    (New-ValidationReference -Path "scripts/windows/check_local_html_fixture_validation_surface.ps1" -Kind "file" -Purpose "Reusable local HTML fixture surface checker for saved export replays."),
     (New-ValidationReference -Path "tmp-browser-smoke/README.md" -Kind "file" -Purpose "Top-level probe-suite index for bounded headed validation."),
     (New-ValidationReference -Path "tmp-browser-smoke/manual-user/README.md" -Kind "file" -Purpose "Manual saved-page and attached-page follow-up guide."),
+    (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures" -Kind "directory" -Purpose "Reusable staged localhost fixture workspace for saved HTML validation."),
+    (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1" -Kind "file" -Purpose "Reusable local HTML fixture probe runner for fixed saved-page sets."),
     (New-ValidationReference -Path "scripts/windows/show_localhost_html_validation_flow.ps1" -Kind "file" -Purpose "General saved-page localhost flow helper."),
     (New-ValidationReference -Path "scripts/windows/run_localhost_html_validation_recommended.ps1" -Kind "file" -Purpose "Shared localhost validation router used by the saved-page helpers."),
     (New-ValidationReference -Path "scripts/windows/run_saved_page_localhost_validation.ps1" -Kind "file" -Purpose "Saved-page localhost runner for direct directory inputs."),
