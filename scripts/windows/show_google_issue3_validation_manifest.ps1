@@ -94,8 +94,17 @@ if (-not [string]::IsNullOrWhiteSpace($summaryPath) -and (Test-Path -LiteralPath
 }
 $artifactBundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifest.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-artifact-bundle.json"
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifest.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
-$configuredRefreshPath = if ($summaryRecord) { $summaryRecord.refresh_chain_artifact_path } else { $null }
-$summaryRecordsRefreshArtifactPath = ($summaryRecord -and -not [string]::IsNullOrWhiteSpace($configuredRefreshPath))
+$configuredSummaryRefreshPath = if ($summaryRecord) { $summaryRecord.refresh_chain_artifact_path } else { $null }
+$configuredManifestRefreshPath = $manifest.refresh_chain_artifact_path
+$summaryRecordsRefreshArtifactPath = ($summaryRecord -and -not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath))
+$manifestRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)
+$configuredRefreshPath = if ($summaryRecordsRefreshArtifactPath) {
+    $configuredSummaryRefreshPath
+} elseif ($manifestRecordsRefreshArtifactPath) {
+    $configuredManifestRefreshPath
+} else {
+    $null
+}
 $refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff-chain-refresh.json"
 $artifactBundleExists = Test-Path -LiteralPath $artifactBundlePath -PathType Leaf
 $artifactBundleRecord = $null
@@ -138,7 +147,13 @@ $artifactBundleReason = if ($artifactBundleError) {
 }
 $refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
 $refreshRecord = $null
-$refreshArtifactError = if ($summaryRecord -and $summaryRecord.refresh_chain_artifact_error) { $summaryRecord.refresh_chain_artifact_error } else { $null }
+$refreshArtifactError = if ($summaryRecord -and $summaryRecord.refresh_chain_artifact_error) {
+    $summaryRecord.refresh_chain_artifact_error
+} elseif ($manifest.refresh_chain_artifact_error) {
+    $manifest.refresh_chain_artifact_error
+} else {
+    $null
+}
 if ($refreshExists) {
     try {
         $refreshRecord = Read-ArtifactJson $refreshPath
@@ -156,7 +171,8 @@ $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
     "missing"
 }
 $refreshNeedsRepair = $refreshStatus -ne "refreshed"
-$refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and $refreshExists
+$refreshPointerUsesManifest = (-not $summaryRecordsRefreshArtifactPath) -and $manifestRecordsRefreshArtifactPath
+$refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and (-not $manifestRecordsRefreshArtifactPath) -and $refreshExists
 $refreshReason = if ($refreshRecord -and $refreshRecord.reason) {
     $refreshRecord.reason
 } elseif ($refreshArtifactError) {
@@ -165,6 +181,8 @@ $refreshReason = if ($refreshRecord -and $refreshRecord.reason) {
     "The saved refresh artifact is missing for the current summary, so generate it before trusting older handoff output."
 } elseif ($refreshStatus -ne "refreshed") {
     "The saved refresh artifact reports '$refreshStatus', so the helper chain still needs repair before the narrower handoff is trustworthy."
+} elseif ($refreshPointerUsesManifest) {
+    "The current summary does not record its refresh artifact path yet, but this manifest already does, so this guide is using the saved manifest-backed refresh path while keeping the helper chain aligned."
 } elseif ($refreshPointerUsesFallback) {
     "The current summary does not record its refresh artifact path yet, so this manifest is using the fallback refresh location while keeping the helper chain aligned."
 } else {
@@ -299,7 +317,7 @@ $recommendedGuideCommand = if ($surfaceCheckFailed) {
 
 $report = [ordered]@{
     issue = "Google issue #3 validation manifest guide"
-    purpose = "Open the saved manifest first, prefer the refresh artifact while the helper chain still needs repair, and only trust the narrower handoff output once the saved refresh state is coherent."
+    purpose = "Open the saved manifest first, prefer manifest-backed or summary-backed refresh artifacts while the helper chain still needs repair, and only trust the narrower handoff output once the saved refresh state is coherent."
     manifest_path = $ManifestPath
     generated_at_utc = $manifest.generated_at_utc
     completed = [bool]$manifest.completed
@@ -321,7 +339,10 @@ $report = [ordered]@{
     guide_artifact_path = $manifest.guide_artifact_path
     boundary_artifact_path = $manifest.boundary_artifact_path
     summary_records_refresh_artifact_path = [bool]$summaryRecordsRefreshArtifactPath
-    summary_refresh_artifact_path = if ($summaryRecordsRefreshArtifactPath) { $configuredRefreshPath } else { $null }
+    summary_refresh_artifact_path = if ($summaryRecordsRefreshArtifactPath) { $configuredSummaryRefreshPath } else { $null }
+    manifest_records_refresh_artifact_path = [bool]$manifestRecordsRefreshArtifactPath
+    manifest_refresh_artifact_path = if ($manifestRecordsRefreshArtifactPath) { $configuredManifestRefreshPath } else { $null }
+    refresh_pointer_uses_manifest = [bool]$refreshPointerUsesManifest
     refresh_pointer_uses_fallback = [bool]$refreshPointerUsesFallback
     refresh_artifact_path = $refreshPath
     refresh_artifact_exists = [bool]$refreshExists
@@ -427,8 +448,15 @@ Write-Host ("Refresh target: {0}" -f $report.refresh_artifact_path)
 Write-Host ("Refresh exists: {0}" -f $report.refresh_artifact_exists)
 Write-Host ("Refresh status: {0}" -f $report.refresh_status)
 Write-Host ("Summary refresh path recorded: {0}" -f $report.summary_records_refresh_artifact_path)
+Write-Host ("Manifest refresh path recorded: {0}" -f $report.manifest_records_refresh_artifact_path)
 if ($report.summary_refresh_artifact_path) {
     Write-Host ("Summary refresh path: {0}" -f $report.summary_refresh_artifact_path)
+}
+if ($report.manifest_refresh_artifact_path) {
+    Write-Host ("Manifest refresh path: {0}" -f $report.manifest_refresh_artifact_path)
+}
+if ($report.refresh_pointer_uses_manifest) {
+    Write-Host "Refresh pointer source: Manifest"
 }
 if ($report.refresh_pointer_uses_fallback) {
     Write-Host "Refresh pointer fallback: True"
