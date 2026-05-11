@@ -3,7 +3,8 @@ param(
     [string[]]$InputPath,
     [string]$RepoRoot,
     [switch]$GoogleStyle,
-    [switch]$Json
+    [switch]$Json,
+    [switch]$AllowMissingAssets
 )
 
 Set-StrictMode -Version Latest
@@ -145,6 +146,7 @@ $audit = @(
 $summary = [ordered]@{
     repo_root = $RepoRoot
     google_style = [bool]$GoogleStyle
+    allow_missing_assets = [bool]$AllowMissingAssets
     fixture_count = $audit.Count
     fixtures = $audit
     fixtures_with_missing_assets = @($audit | Where-Object { $_.missing_asset_count -gt 0 }).Count
@@ -176,5 +178,11 @@ if ($Json) {
 }
 
 if ($summary.fixtures_with_missing_assets -gt 0) {
+    if ($AllowMissingAssets) {
+        if (-not $Json) {
+            Write-Warning "Missing attached-page assets were detected, but AllowMissingAssets is set so the caller may continue in degraded localhost validation mode."
+        }
+        exit 0
+    }
     exit 1
 }
