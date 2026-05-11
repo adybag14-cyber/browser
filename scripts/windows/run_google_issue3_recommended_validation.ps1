@@ -68,6 +68,14 @@ if (Test-Path -LiteralPath $phaseArtifactRoot) {
     Remove-Item -LiteralPath $phaseArtifactRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path $phaseArtifactRoot | Out-Null
+$artifactScanRoots = @(
+    $artifactRoot,
+    (Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next"),
+    (Join-Path $RepoRoot "tmp-browser-smoke\google-home"),
+    (Join-Path $RepoRoot "tmp-browser-smoke\form-controls"),
+    (Join-Path $RepoRoot "tmp-browser-smoke\layout-smoke"),
+    (Join-Path $RepoRoot "tmp-browser-smoke\inline-flow")
+)
 
 function Test-GoogleStyleAttachedHtmlAvailable {
     param(
@@ -117,6 +125,69 @@ function Convert-ToPhaseArtifactSlug {
         return "phase"
     }
     return $slug
+}
+
+function Convert-ToRepoRelativeArtifactPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\', '/')
+    $normalizedPath = [System.IO.Path]::GetFullPath($Path)
+    if ($normalizedPath.StartsWith($normalizedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\', '/')
+        if (-not [string]::IsNullOrWhiteSpace($relative)) {
+            return $relative -replace '\\', '/'
+        }
+    }
+
+    return $normalizedPath
+}
+
+function Get-PhaseArtifactSnapshot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Roots
+    )
+
+    $snapshot = @{}
+    foreach ($root in $Roots) {
+        if (-not (Test-Path -LiteralPath $root)) {
+            continue
+        }
+
+        Get-ChildItem -LiteralPath $root -File -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            $snapshot[$_.FullName] = "{0}:{1}" -f $_.Length, $_.LastWriteTimeUtc.Ticks
+        }
+    }
+
+    return $snapshot
+}
+
+function Get-PhaseArtifactChanges {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Before,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Roots
+    )
+
+    $artifactPaths = New-Object System.Collections.Generic.List[string]
+    foreach ($root in $Roots) {
+        if (-not (Test-Path -LiteralPath $root)) {
+            continue
+        }
+
+        Get-ChildItem -LiteralPath $root -File -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            $signature = "{0}:{1}" -f $_.Length, $_.LastWriteTimeUtc.Ticks
+            if (-not $Before.ContainsKey($_.FullName) -or $Before[$_.FullName] -ne $signature) {
+                $artifactPaths.Add((Convert-ToRepoRelativeArtifactPath -Path $_.FullName)) | Out-Null
+            }
+        }
+    }
+
+    return @($artifactPaths | Sort-Object -Unique)
 }
 
 $surfaceCheck = Join-Path $PSScriptRoot "check_google_issue3_recommended_validation_surface.ps1"
@@ -254,8 +325,12 @@ function Invoke-RecommendedStep {
     }
 
     $startedAt = (Get-Date).ToUniversalTime().ToString("o")
+    $artifactSnapshot = Get-PhaseArtifactSnapshot -Roots $artifactScanRoots
     try {
         & $Action *>&1 | Tee-Object -FilePath $phaseLogPath -Append
+        $artifactPaths = @(Get-PhaseArtifactChanges -Before $artifactSnapshot -Roots $artifactScanRoots)
+        $jsonArtifactPaths = @($artifactPaths | Where-Object { $_ -like '*.json' })
+        $primaryJsonArtifactPath = $jsonArtifactPaths | Select-Object -First 1
         return [pscustomobject]@{
             name = $Name
             status = "passed"
@@ -263,6 +338,10 @@ function Invoke-RecommendedStep {
             completed_at_utc = (Get-Date).ToUniversalTime().ToString("o")
             error = $null
             log_path = $phaseLogPath
+            artifact_count = $artifactPaths.Count
+            artifact_paths = @($artifactPaths)
+            json_artifact_paths = @($jsonArtifactPaths)
+            primary_json_artifact_path = $primaryJsonArtifactPath
         }
     } catch {
         $errorMessage = $_.Exception.Message
@@ -272,6 +351,9 @@ function Invoke-RecommendedStep {
             Add-Content -Path $phaseLogPath -Value $errorRecordText
         }
 
+        $artifactPaths = @(Get-PhaseArtifactChanges -Before $artifactSnapshot -Roots $artifactScanRoots)
+        $jsonArtifactPaths = @($artifactPaths | Where-Object { $_ -like '*.json' })
+        $primaryJsonArtifactPath = $jsonArtifactPaths | Select-Object -First 1
         return [pscustomobject]@{
             name = $Name
             status = "failed"
@@ -279,6 +361,10 @@ function Invoke-RecommendedStep {
             completed_at_utc = (Get-Date).ToUniversalTime().ToString("o")
             error = $errorMessage
             log_path = $phaseLogPath
+            artifact_count = $artifactPaths.Count
+            artifact_paths = @($artifactPaths)
+            json_artifact_paths = @($jsonArtifactPaths)
+            primary_json_artifact_path = $primaryJsonArtifactPath
         }
     }
 }
@@ -299,6 +385,11 @@ function Show-RecommendedSummary {
         Write-Host ("[{0}] {1}" -f $status, $result.name)
         if ($result.log_path) {
             Write-Host ("  Log: {0}" -f $result.log_path)
+        }
+        if ($result.primary_json_artifact_path) {
+            Write-Host ("  JSON: {0}" -f $result.primary_json_artifact_path)
+        } elseif ($result.artifact_count -gt 0) {
+            Write-Host ("  Artifacts: {0}" -f $result.artifact_count)
         }
         if ($result.error) {
             Write-Host ("  {0}" -f $result.error)
@@ -358,6 +449,7 @@ function Write-RecommendedSummaryArtifact {
         first_failed_phase = if ($failedPhase.Count -gt 0) { $failedPhase[0].name } else { $null }
         first_failed_phase_error = if ($failedPhase.Count -gt 0) { $failedPhase[0].error } else { $null }
         first_failed_phase_log_path = if ($failedPhase.Count -gt 0) { $failedPhase[0].log_path } else { $null }
+        first_failed_phase_primary_json_artifact_path = if ($failedPhase.Count -gt 0) { $failedPhase[0].primary_json_artifact_path } else { $null }
         completed = ($failedPhase.Count -eq 0 -and $SurfaceCheckStatus -eq "passed")
     }
 
