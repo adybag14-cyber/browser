@@ -32,8 +32,9 @@ For the Google search-box investigation, keep this order:
    only need the later saved-homepage-fixture, submit-timing, and shared
    Enter-order slices, jump to:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1`
-3. Print the attached-page flow so the next pass uses the same current-run input
-   set:
+3. Run the dedicated Google attached-page surface check, then print the
+   attached-page flow so the next pass uses the same current-run input set:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1`
 4. Run the dedicated Google attached-page localhost helper so the same attached
    set stays on the issue `#3` bounded order instead of falling back to the
