@@ -37,9 +37,9 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
 
 $attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
 
-$runnerPath = Join-Path $RepoRoot "scripts/windows/run_saved_page_localhost_validation.ps1"
+$runnerPath = Join-Path $RepoRoot "scripts/windows/run_sanitized_saved_page_localhost_validation.ps1"
 if (-not (Test-Path -LiteralPath $runnerPath -PathType Leaf)) {
-    throw "saved-page localhost validation runner not found: $runnerPath"
+    throw "sanitized saved-page localhost validation runner not found: $runnerPath"
 }
 
 $runnerArgs = @{
@@ -79,7 +79,8 @@ if (-not $SummaryOnly) {
         Write-Host "Preferred initial page: auto (from saved-page summary)"
     }
     Write-Host ("Validation mode: {0}" -f $(if ($GoogleStyle) { "google-style" } else { "general" }))
-    Write-Host "Runner: .\\scripts\\windows\\run_saved_page_localhost_validation.ps1"
+    Write-Host "Staging mode: sanitized attached HTML inputs"
+    Write-Host "Runner: .\\scripts\\windows\\run_sanitized_saved_page_localhost_validation.ps1"
     Write-Host ""
 }
 
