@@ -210,7 +210,7 @@ $suiteCatalog = @(
         Name = "google-live-trace"
         Category = "input"
         Path = "scripts/windows/show_google_trace_validation_flow.ps1"
-        Purpose = "Read-first reduced-home and live Google trace-capture handoff after the bounded localhost, submit-timing, shared Enter-order, and attached-page phases are green."
+        Purpose = "Read-first reduced-home and live Google trace-capture handoff after the bounded localhost, submit-timing, and shared Enter-order gates are green."
         RecommendedWith = @("google-submit-timing", "google-shared-enter-order")
     }
     [pscustomobject]@{
@@ -361,6 +361,7 @@ $googleSubmitPathSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File
 $googleSubmitPathFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 $googleSubmitPathRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
 $googleSubmitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
+$googleFormControlsEnterOrderSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_form_controls_enter_order_validation_surface.ps1"
 $googleFormControlsEnterOrderGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1"
 $googleFormControlsEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
 $googleFormControlsEnterOrderRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1"
@@ -429,6 +430,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Flow helper: {0}" -f $googleSubmitTimingFlowCommand)
     }
     if ($suite.Name -eq "google-form-controls-enter-order") {
+        Write-Host ("Surface checker: {0}" -f $googleFormControlsEnterOrderSurfaceCheckCommand)
         Write-Host ("Marker guide: {0}" -f $googleFormControlsEnterOrderGuideCommand)
         Write-Host ("Flow helper: {0}" -f $googleFormControlsEnterOrderFlowCommand)
         Write-Host ("Runner: {0}" -f $googleFormControlsEnterOrderRunnerCommand)
@@ -459,7 +461,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     } elseif ($ChangeArea -eq "google-submit-path") {
         "Start with the dedicated submit-path surface checker so the later note, helper, and bounded probes fail fast if one was renamed or removed, then print the flow helper so the saved homepage fixture, submit-timing slice, the dedicated form-controls Enter-order gate, and the shared Enter-order ladder stay in order before you decide whether to run the one-command submit-path runner or isolate one later-stage slice by itself."
     } elseif ($ChangeArea -eq "google-form-controls-enter-order") {
-        "Start with the dedicated form-controls Enter-order flow helper so the narrowest shared keypress-before-submit gate is printed in order before you run the dedicated wrapper, inspect the dedicated marker guide, or widen into the broader shared Enter-order ladder."
+        "Start with the dedicated form-controls Enter-order surface checker so the smallest shared keypress-before-submit note, helper, and raw probe chain fail fast, then print the dedicated flow helper so the narrowest shared Enter-order gate is spelled out before you run the dedicated wrapper, inspect the marker guide, or widen into the broader shared Enter-order ladder."
     } elseif ($ChangeArea -eq "google-live-trace") {
         "Start with the dedicated live trace flow helper so the reduced-home and live Google capture path stays ordered after the bounded localhost, submit-timing, and shared Enter-order gates, then keep manual follow-up scoped to the smallest remaining divergence."
     } elseif ($ChangeArea -eq "google-saved-html") {
@@ -514,6 +516,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     if ($ChangeArea -eq "google-submit-path") {
         Write-Host ("Surface checker: {0}" -f $googleSubmitPathSurfaceCheckCommand)
     }
+    if ($ChangeArea -eq "google-form-controls-enter-order") {
+        Write-Host ("Surface checker: {0}" -f $googleFormControlsEnterOrderSurfaceCheckCommand)
+    }
     if ($flowCommand) {
         Write-Host ("Flow helper: {0}" -f $flowCommand)
     }
@@ -554,6 +559,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-form-controls-enter-order"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_form_controls_enter_order_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1"
