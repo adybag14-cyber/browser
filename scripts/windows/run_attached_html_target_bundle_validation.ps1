@@ -15,6 +15,24 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
 
+function Invoke-BundleSurfaceCheck {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SurfaceCheckPath,
+        [string]$RepoRoot
+    )
+
+    $surfaceCheckArgs = @{}
+    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        $surfaceCheckArgs.RepoRoot = $RepoRoot
+    }
+
+    & $SurfaceCheckPath @surfaceCheckArgs
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
 function Invoke-BundleChecker {
     param(
         [Parameter(Mandatory = $true)]
@@ -82,11 +100,17 @@ function Resolve-BundleRunnerMetadata {
     }
 }
 
+$bundleSurfaceCheckPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle_validation_surface.ps1"
+if (-not (Test-Path -LiteralPath $bundleSurfaceCheckPath -PathType Leaf)) {
+    throw "Attached HTML target-bundle validation surface checker not found: $bundleSurfaceCheckPath"
+}
+
 $bundleCheckerPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle.ps1"
 if (-not (Test-Path -LiteralPath $bundleCheckerPath -PathType Leaf)) {
     throw "Attached HTML target bundle checker not found: $bundleCheckerPath"
 }
 
+Invoke-BundleSurfaceCheck -SurfaceCheckPath $bundleSurfaceCheckPath -RepoRoot $RepoRoot
 $bundle = Invoke-BundleChecker -CheckerPath $bundleCheckerPath -RepoRoot $RepoRoot -InputPath $InputPath
 $runnerMetadata = Resolve-BundleRunnerMetadata -Bundle $bundle
 $runnerPath = Join-Path $PSScriptRoot $runnerMetadata.runner_leaf
