@@ -17,7 +17,8 @@ Arguments:
 This script:
   - extracts ../zig-v8-fork from 04-zig-browser-depo.tar.zip
   - extracts ../boringssl-zig from 03-boringssl-zig-main.zip
-  - extracts brotli/zlib/nghttp2/curl and the saved prebuilt V8 archive into ../offline-deps
+  - extracts brotli/zlib/nghttp2/curl into ../offline-deps/{brotli,zlib,nghttp2,curl}
+  - restores the saved prebuilt V8 archive into ../offline-deps
   - copies .cargo/config.toml and vendor/ from the saved html5ever archive
   - rewrites build.zig.zon to use local .path dependencies with a backup
 EOF
@@ -47,6 +48,10 @@ parent_dir="$(cd "${repo_root}/.." && pwd)"
 offline_deps_dir="${parent_dir}/offline-deps"
 zig_v8_dir="${parent_dir}/zig-v8-fork"
 boringssl_dir="${parent_dir}/boringssl-zig"
+brotli_dir="${offline_deps_dir}/brotli"
+zlib_dir="${offline_deps_dir}/zlib"
+nghttp2_dir="${offline_deps_dir}/nghttp2"
+curl_dir="${offline_deps_dir}/curl"
 vendor_extract_root="${offline_deps_dir}/html5ever-vendor"
 build_zon_path="${repo_root}/build.zig.zon"
 build_zon_backup="${repo_root}/build.zig.zon.remote-sources.bak"
@@ -105,31 +110,15 @@ extract_tree_from_zip() {
     rm -rf "${temp_dir}"
 }
 
-extract_tarball_member_into_dir() {
-    local archive_path="$1"
-    local member_path="$2"
-    local output_dir="$3"
-    local marker_path="$4"
-    if [[ -e "${marker_path}" ]]; then
-        return
-    fi
-
-    local temp_tarball
-    temp_tarball="$(mktemp)"
-    unzip -p "${archive_path}" "${member_path}" > "${temp_tarball}"
-    tar -xzf "${temp_tarball}" -C "${output_dir}"
-    rm -f "${temp_tarball}"
-}
-
 echo "Restoring sibling dependency trees..."
 extract_tree_from_tarball_member "${depo_zip}" "zig-v8-fork-0.3.1.tar.gz" "${zig_v8_dir}" "${zig_v8_dir}/build.zig"
 extract_tree_from_zip "${boringssl_zip}" "${boringssl_dir}" "${boringssl_dir}/build.zig"
 
 echo "Restoring offline tarball dependencies..."
-extract_tarball_member_into_dir "${depo_zip}" "brotli-028fb5a23661f123017c060daa546b55cf4bde29.tar.gz" "${offline_deps_dir}" "${offline_deps_dir}/brotli-028fb5a23661f123017c060daa546b55cf4bde29"
-extract_tarball_member_into_dir "${depo_zip}" "zlib-1.3.2.tar.gz" "${offline_deps_dir}" "${offline_deps_dir}/zlib-1.3.2"
-extract_tarball_member_into_dir "${depo_zip}" "nghttp2-1.68.0.tar.gz" "${offline_deps_dir}" "${offline_deps_dir}/nghttp2-1.68.0"
-extract_tarball_member_into_dir "${depo_zip}" "curl-8.18.0.tar.gz" "${offline_deps_dir}" "${offline_deps_dir}/curl-8.18.0"
+extract_tree_from_tarball_member "${depo_zip}" "brotli-028fb5a23661f123017c060daa546b55cf4bde29.tar.gz" "${brotli_dir}" "${brotli_dir}/c/include/brotli/decode.h"
+extract_tree_from_tarball_member "${depo_zip}" "zlib-1.3.2.tar.gz" "${zlib_dir}" "${zlib_dir}/zlib.h"
+extract_tree_from_tarball_member "${depo_zip}" "nghttp2-1.68.0.tar.gz" "${nghttp2_dir}" "${nghttp2_dir}/lib/includes/nghttp2/nghttp2.h"
+extract_tree_from_tarball_member "${depo_zip}" "curl-8.18.0.tar.gz" "${curl_dir}" "${curl_dir}/include/curl/curl.h"
 if [[ ! -e "${prebuilt_v8_output}" ]]; then
     unzip -p "${depo_zip}" "libc_v8_14.0.365.4_linux_x86_64 (1).a" > "${prebuilt_v8_output}"
 fi
@@ -160,13 +149,13 @@ path = Path(sys.argv[1])
 text = path.read_text()
 replacements = {
     '.url = "https://github.com/google/brotli/archive/028fb5a23661f123017c060daa546b55cf4bde29.tar.gz",\n            .hash = "N-V-__8AAJudKgCQCuIiH6MJjAiIJHfg_tT_Ew-0vZwVkCo_",':
-    '.path = "../offline-deps/brotli-028fb5a23661f123017c060daa546b55cf4bde29",',
+    '.path = "../offline-deps/brotli",',
     '.url = "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz",\n            .hash = "N-V-__8AAJ2cNgAgfBtAw33Bxfu1IWISDeKKSr3DAqoAysIJ",':
-    '.path = "../offline-deps/zlib-1.3.2",',
+    '.path = "../offline-deps/zlib",',
     '.url = "https://github.com/nghttp2/nghttp2/releases/download/v1.68.0/nghttp2-1.68.0.tar.gz",\n            .hash = "N-V-__8AAL15vQCI63ZL6Zaz5hJg6JTEgYXGbLnMFSnf7FT3",':
-    '.path = "../offline-deps/nghttp2-1.68.0",',
+    '.path = "../offline-deps/nghttp2",',
     '.url = "https://github.com/curl/curl/releases/download/curl-8_18_0/curl-8.18.0.tar.gz",\n            .hash = "N-V-__8AALp9QAGn6CCHZ6fK_FfMyGtG824LSHYHHasM3w-y",':
-    '.path = "../offline-deps/curl-8.18.0",',
+    '.path = "../offline-deps/curl",',
 }
 
 updated = text
@@ -214,6 +203,11 @@ echo "Repo root: ${repo_root}"
 echo "Sibling V8 path: ${zig_v8_dir}"
 echo "Sibling BoringSSL path: ${boringssl_dir}"
 echo "Offline deps path: ${offline_deps_dir}"
+echo "Restored tarball roots:"
+echo "  brotli -> ${brotli_dir}"
+echo "  zlib -> ${zlib_dir}"
+echo "  nghttp2 -> ${nghttp2_dir}"
+echo "  curl -> ${curl_dir}"
 echo "Prebuilt V8 archive: ${prebuilt_v8_output}"
 echo "Next step:"
 echo "  zig build -Dprebuilt_v8_path='../offline-deps/libc_v8_14.0.365.4_linux_x86_64 (1).a' --summary all"
