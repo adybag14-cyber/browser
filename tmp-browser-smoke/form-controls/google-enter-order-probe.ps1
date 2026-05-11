@@ -99,6 +99,90 @@ function Get-SubmitEventRecord([string]$LogPath, [string]$ExpectedText) {
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
 
+if (-not ("SmokeProbeEnterEdge" -as [type])) {
+  Add-Type @"
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
+public static class SmokeProbeEnterEdge {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct INPUT {
+        public uint type;
+        public InputUnion U;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputUnion {
+        [FieldOffset(0)]
+        public KEYBDINPUT ki;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    private const uint INPUT_KEYBOARD = 1;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const ushort VK_RETURN = 0x0D;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    private static void EnsureSent(uint sent, int expected, string label) {
+        if (sent == (uint)expected) {
+            return;
+        }
+        throw new Win32Exception(Marshal.GetLastWin32Error(), label + " sent " + sent + " of " + expected);
+    }
+
+    public static void SendEnterDown() {
+        var inputs = new INPUT[1];
+        inputs[0].type = INPUT_KEYBOARD;
+        inputs[0].U.ki.wVk = VK_RETURN;
+        EnsureSent(SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))), inputs.Length, "SendEnterDown");
+    }
+
+    public static void SendEnterUp() {
+        var inputs = new INPUT[1];
+        inputs[0].type = INPUT_KEYBOARD;
+        inputs[0].U.ki.wVk = VK_RETURN;
+        inputs[0].U.ki.dwFlags = KEYEVENTF_KEYUP;
+        EnsureSent(SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))), inputs.Length, "SendEnterUp");
+    }
+}
+"@
+}
+
+function Send-GoogleProbeEnterDown {
+  if (Use-HeadedMailboxInput) {
+    [void](Write-HeadedMailboxLine "key|13|1|0")
+    return
+  }
+  if (Use-BareMetalInput) {
+    [void](Write-BareMetalInputLine "key|13|1|0")
+    return
+  }
+  [SmokeProbeEnterEdge]::SendEnterDown()
+}
+
+function Send-GoogleProbeEnterUp {
+  if (Use-HeadedMailboxInput) {
+    [void](Write-HeadedMailboxLine "key|13|0|0")
+    return
+  }
+  if (Use-BareMetalInput) {
+    [void](Write-BareMetalInputLine "key|13|0|0")
+    return
+  }
+  [SmokeProbeEnterEdge]::SendEnterUp()
+}
+
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $root = Join-Path $repo "tmp-browser-smoke\form-controls"
 $profileRoot = Join-Path $root "profile-google-enter-order"
@@ -138,15 +222,18 @@ $pngReady = $false
 $titleBefore = $null
 $titleAfterClick = $null
 $titleAfterType = $null
+$titleAfterKeyDown = $null
 $titleAfterSubmit = $null
 $clickedWorked = $false
 $typedWorked = $false
+$keydownHeldWithoutSubmit = $false
 $submittedWorked = $false
 $submitPhase = $null
 $eventLog = $null
-$submitAfterKeypress = $false
 $submitAfterKeydown = $false
+$submitAfterKeypress = $false
 $submitRecord = $null
+$submitRecordAfterKeyDown = $null
 $failure = $null
 
 try {
@@ -175,7 +262,14 @@ try {
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "Google-style search input did not receive typed text after click focus" }
 
-  Send-SmokeEnter
+  Send-GoogleProbeEnterDown
+  Start-Sleep -Milliseconds $PollMilliseconds
+  $titleAfterKeyDown = Get-SmokeWindowTitle $hwnd
+  $submitRecordAfterKeyDown = Get-SubmitEventRecord -LogPath $serverErr -ExpectedText $InputText
+  $keydownHeldWithoutSubmit = ($titleAfterKeyDown -notlike "$submittedTitleNeedle*") -and ($null -eq $submitRecordAfterKeyDown)
+  if (-not $keydownHeldWithoutSubmit) { throw "holding Enter keydown submitted before the later phase arrived" }
+
+  Send-GoogleProbeEnterUp
   $titleAfterSubmit = Wait-TabTitle -ProcessId $browser.Id -Needle $submittedTitleNeedle -Attempts $TitleWaitAttempts
   $submitRecord = Get-SubmitEventRecord -LogPath $serverErr -ExpectedText $InputText
   if ($submitRecord) {
@@ -183,7 +277,7 @@ try {
     $eventLog = $submitRecord.Events
   }
   $submittedWorked = ($null -ne $titleAfterSubmit) -and ($null -ne $submitRecord)
-  if (-not $submittedWorked) { throw "pressing Enter did not submit the Google-style form" }
+  if (-not $submittedWorked) { throw "releasing Enter did not submit the Google-style form" }
   if ($null -eq $titleAfterSubmit) { throw "Google-style Enter submit did not navigate to the submitted page" }
   if ($null -eq $submitRecord) { throw "probe server did not capture the Google-style submit log" }
   if ($submitRecord.Query -ne $InputText) { throw "probe server captured the wrong submitted query text" }
@@ -231,9 +325,11 @@ try {
     title_before = $titleBefore
     title_after_click = $titleAfterClick
     title_after_type = $titleAfterType
+    title_after_keydown = $titleAfterKeyDown
     title_after_submit = $titleAfterSubmit
     clicked_worked = $clickedWorked
     typed_worked = $typedWorked
+    keydown_held_without_submit = $keydownHeldWithoutSubmit
     submitted_worked = $submittedWorked
     submit_phase = $submitPhase
     event_log = $eventLog
