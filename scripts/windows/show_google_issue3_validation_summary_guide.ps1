@@ -98,6 +98,10 @@ $submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\window
 $formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
 $probeTriageCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1'
 $manualFixtureReplayCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1'
+$manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
+$artifactBundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
+$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
+$refreshStatusGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 
 $surfaceCheckMissingPaths = @($summary.surface_check_missing_paths)
 $surfaceCheckMissingCount = if ($null -ne $summary.surface_check_missing_count) {
@@ -234,10 +238,30 @@ $lastPassedPhaseResult = if ($passedPhaseResults.Count -gt 0) { $passedPhaseResu
 $failedPhaseResult = @($phaseResults | Where-Object { $_.name -eq $firstFailedPhase } | Select-Object -First 1)
 $lastPassedPhaseReplayCommand = if ($lastPassedPhaseResult) { Get-PhaseReplayCommand $lastPassedPhaseResult.name } else { $null }
 $firstFailedPhaseReplayCommand = if ($failedPhaseResult.Count -gt 0) { Get-PhaseReplayCommand $failedPhaseResult[0].name } else { $null }
+$manifestArtifactPath = if ($summary.manifest_artifact_path) {
+    $summary.manifest_artifact_path
+} else {
+    Join-Path $artifactRoot 'google-issue3-recommended-validation-manifest.json'
+}
 $boundaryArtifactPath = if ($summary.boundary_artifact_path) {
     $summary.boundary_artifact_path
 } else {
     Join-Path $artifactRoot 'google-issue3-phase-boundary.json'
+}
+$artifactBundlePath = if ($summary.artifact_bundle_path) {
+    $summary.artifact_bundle_path
+} else {
+    Join-Path $artifactRoot 'google-issue3-validation-artifact-bundle.json'
+}
+$handoffArtifactPath = if ($summary.handoff_artifact_path) {
+    $summary.handoff_artifact_path
+} else {
+    Join-Path $artifactRoot 'google-issue3-validation-handoff.json'
+}
+$refreshChainArtifactPath = if ($summary.refresh_chain_artifact_path) {
+    $summary.refresh_chain_artifact_path
+} else {
+    Join-Path $artifactRoot 'google-issue3-validation-handoff-chain-refresh.json'
 }
 $boundaryRecord = $null
 $boundaryArtifactError = $null
@@ -259,11 +283,18 @@ $guide = [ordered]@{
     surface_check_status = $summary.surface_check_status
     surface_check_error = $summary.surface_check_error
     surface_check_artifact_path = $summary.surface_check_artifact_path
-    manifest_artifact_path = $summary.manifest_artifact_path
+    manifest_artifact_path = $manifestArtifactPath
+    manifest_artifact_exists = [bool](-not [string]::IsNullOrWhiteSpace($manifestArtifactPath) -and (Test-Path -LiteralPath $manifestArtifactPath -PathType Leaf))
     guide_artifact_path = $guideArtifactPath
     boundary_artifact_path = $boundaryArtifactPath
     boundary_artifact_error = $boundaryArtifactError
     boundary_artifact_exists = [bool]$boundaryRecord
+    artifact_bundle_path = $artifactBundlePath
+    artifact_bundle_exists = [bool](-not [string]::IsNullOrWhiteSpace($artifactBundlePath) -and (Test-Path -LiteralPath $artifactBundlePath -PathType Leaf))
+    handoff_artifact_path = $handoffArtifactPath
+    handoff_artifact_exists = [bool](-not [string]::IsNullOrWhiteSpace($handoffArtifactPath) -and (Test-Path -LiteralPath $handoffArtifactPath -PathType Leaf))
+    refresh_chain_artifact_path = $refreshChainArtifactPath
+    refresh_chain_artifact_exists = [bool](-not [string]::IsNullOrWhiteSpace($refreshChainArtifactPath) -and (Test-Path -LiteralPath $refreshChainArtifactPath -PathType Leaf))
     surface_check_profile = $summary.surface_check_profile
     surface_check_checked_count = $surfaceCheckCheckedCount
     surface_check_missing_count = $surfaceCheckMissingCount
@@ -302,6 +333,10 @@ $guide = [ordered]@{
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     phase_boundary_command = $phaseBoundaryCommand
+    manifest_guide_command = $manifestGuideCommand
+    artifact_bundle_guide_command = $artifactBundleGuideCommand
+    handoff_guide_command = $handoffGuideCommand
+    refresh_status_guide_command = $refreshStatusGuideCommand
     broader_runner_command = $recommendedRunnerCommand
     reason = $reason
     next_focus = $nextFocus
@@ -323,8 +358,11 @@ $boundaryArtifact = [ordered]@{
     passed_phase_count = @($passedPhaseResults).Count
     failed_phase_count = @(@($phaseResults | Where-Object { $_.status -ne 'passed' })).Count
     phase_artifact_root = $summary.phase_artifact_root
-    manifest_artifact_path = $summary.manifest_artifact_path
+    manifest_artifact_path = $manifestArtifactPath
     guide_artifact_path = $guideArtifactPath
+    artifact_bundle_path = $artifactBundlePath
+    handoff_artifact_path = $handoffArtifactPath
+    refresh_chain_artifact_path = $refreshChainArtifactPath
     last_passed_phase = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.name } else { $null }
     last_passed_phase_log_path = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.log_path } else { $null }
     last_passed_phase_primary_json_artifact_path = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.primary_json_artifact_path } else { $null }
@@ -396,6 +434,15 @@ if ($guide.guide_artifact_path) {
 }
 if ($guide.boundary_artifact_path) {
     Write-Host ("Boundary JSON: {0}" -f $guide.boundary_artifact_path)
+}
+if ($guide.artifact_bundle_path) {
+    Write-Host ("Bundle JSON: {0}" -f $guide.artifact_bundle_path)
+}
+if ($guide.handoff_artifact_path) {
+    Write-Host ("Handoff JSON: {0}" -f $guide.handoff_artifact_path)
+}
+if ($guide.refresh_chain_artifact_path) {
+    Write-Host ("Refresh JSON: {0}" -f $guide.refresh_chain_artifact_path)
 }
 if ($guide.boundary_artifact_error) {
     Write-Host ("Boundary error: {0}" -f $guide.boundary_artifact_error)
@@ -473,6 +520,10 @@ if ($guide.recommended_guide_command) {
     Write-Host ("Guide:     {0}" -f $guide.recommended_guide_command)
 }
 Write-Host ("Boundary cmd:  {0}" -f $guide.phase_boundary_command)
+Write-Host ("Manifest cmd:  {0}" -f $guide.manifest_guide_command)
+Write-Host ("Bundle cmd:    {0}" -f $guide.artifact_bundle_guide_command)
+Write-Host ("Handoff cmd:   {0}" -f $guide.handoff_guide_command)
+Write-Host ("Refresh cmd:   {0}" -f $guide.refresh_status_guide_command)
 if ($guide.manual_fixture_replay_command) {
     Write-Host ("Manual replay: {0}" -f $guide.manual_fixture_replay_command)
 }
