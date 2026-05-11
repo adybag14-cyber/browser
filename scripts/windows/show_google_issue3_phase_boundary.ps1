@@ -27,6 +27,42 @@ function Resolve-RepoRoot([string]$StartPath) {
     }
 }
 
+function Get-PhaseReplayCommand([string]$PhaseName) {
+    if ([string]::IsNullOrWhiteSpace($PhaseName)) {
+        return $null
+    }
+
+    switch ($PhaseName) {
+        'localhost' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase localhost'
+        }
+        'quick' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick'
+        }
+        'home' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home'
+        }
+        'homepage-fixture' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1'
+        }
+        'input-phase-localhost' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase input-phase-localhost'
+        }
+        'submit-timing' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing'
+        }
+        'shared-enter-order' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order'
+        }
+        'manual' {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1'
+        }
+        default {
+            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+        }
+    }
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -46,6 +82,8 @@ $passedPhases = @($phaseResults | Where-Object { $_.status -eq 'passed' })
 $failedPhases = @($phaseResults | Where-Object { $_.status -ne 'passed' })
 $lastPassed = if ($passedPhases.Count -gt 0) { $passedPhases[-1] } else { $null }
 $firstFailed = if ($failedPhases.Count -gt 0) { $failedPhases[0] } else { $null }
+$lastPassedReplayCommand = if ($lastPassed) { Get-PhaseReplayCommand $lastPassed.name } else { $null }
+$firstFailedReplayCommand = if ($firstFailed) { Get-PhaseReplayCommand $firstFailed.name } else { $null }
 
 $guideRecord = $null
 $guideArtifactError = $null
@@ -70,7 +108,7 @@ $boundaryFocus = if ($firstFailed) {
 
 $boundary = [ordered]@{
     issue = 'Google issue #3 phase boundary'
-    purpose = 'Persist the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, and surface the next rerun command from the saved guide artifact when available.'
+    purpose = 'Persist the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, surface the next rerun command from the saved guide artifact when available, and expose direct replay commands for the boundary phases.'
     summary_path = $SummaryPath
     boundary_artifact_path = $ArtifactPath
     generated_at_utc = $summary.generated_at_utc
@@ -86,11 +124,13 @@ $boundary = [ordered]@{
     last_passed_phase_log_path = if ($lastPassed) { $lastPassed.log_path } else { $null }
     last_passed_phase_primary_json_artifact_path = if ($lastPassed) { $lastPassed.primary_json_artifact_path } else { $null }
     last_passed_phase_artifact_paths = if ($lastPassed) { @($lastPassed.artifact_paths) } else { @() }
+    last_passed_phase_replay_command = $lastPassedReplayCommand
     first_failed_phase = if ($firstFailed) { $firstFailed.name } else { $null }
     first_failed_phase_error = if ($firstFailed) { $firstFailed.error } else { $null }
     first_failed_phase_log_path = if ($firstFailed) { $firstFailed.log_path } else { $null }
     first_failed_phase_primary_json_artifact_path = if ($firstFailed) { $firstFailed.primary_json_artifact_path } else { $null }
     first_failed_phase_artifact_paths = if ($firstFailed) { @($firstFailed.artifact_paths) } else { @() }
+    first_failed_phase_replay_command = $firstFailedReplayCommand
     boundary_focus = $boundaryFocus
     next_focus = if ($guideRecord -and $guideRecord.next_focus) {
         $guideRecord.next_focus
@@ -146,12 +186,18 @@ if ($boundary.last_passed_phase_log_path) {
 if ($boundary.last_passed_phase_primary_json_artifact_path) {
     Write-Host ("  JSON: {0}" -f $boundary.last_passed_phase_primary_json_artifact_path)
 }
+if ($boundary.last_passed_phase_replay_command) {
+    Write-Host ("  Replay: {0}" -f $boundary.last_passed_phase_replay_command)
+}
 Write-Host ("First fail: {0}" -f $(if ($boundary.first_failed_phase) { $boundary.first_failed_phase } else { 'none' }))
 if ($boundary.first_failed_phase_log_path) {
     Write-Host ("  Log:  {0}" -f $boundary.first_failed_phase_log_path)
 }
 if ($boundary.first_failed_phase_primary_json_artifact_path) {
     Write-Host ("  JSON: {0}" -f $boundary.first_failed_phase_primary_json_artifact_path)
+}
+if ($boundary.first_failed_phase_replay_command) {
+    Write-Host ("  Replay: {0}" -f $boundary.first_failed_phase_replay_command)
 }
 if ($boundary.first_failed_phase_error) {
     Write-Host ("  Error: {0}" -f $boundary.first_failed_phase_error)
