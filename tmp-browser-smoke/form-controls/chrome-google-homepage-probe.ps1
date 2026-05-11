@@ -96,7 +96,7 @@ function Try-FocusGoogleQuery([IntPtr]$Hwnd, [int]$Attempts, [int]$SleepMs) {
 function Try-TypeGoogleQuery([IntPtr]$Hwnd, [string]$Text, [int]$Attempts, [int]$SleepMs) {
   $typedPattern = Get-LikePrefixPattern -Prefix "TYPED:" -Value $Text
 
-  Send-SmokeText $Text
+  Send-SmokeAsciiText $Text
   $title = Wait-ForTitleLike $Hwnd $typedPattern $Attempts $SleepMs
   if ($title) {
     return [ordered]@{ title = $title; click = $false; tab = $false }
@@ -104,7 +104,7 @@ function Try-TypeGoogleQuery([IntPtr]$Hwnd, [string]$Text, [int]$Attempts, [int]
 
   [void](Invoke-SmokeClientClick $Hwnd 480 245)
   Start-Sleep -Milliseconds 120
-  Send-SmokeText $Text
+  Send-SmokeAsciiText $Text
   $title = Wait-ForTitleLike $Hwnd $typedPattern $Attempts $SleepMs
   if ($title) {
     return [ordered]@{ title = $title; click = $true; tab = $false }
@@ -112,7 +112,7 @@ function Try-TypeGoogleQuery([IntPtr]$Hwnd, [string]$Text, [int]$Attempts, [int]
 
   Send-SmokeTab
   Start-Sleep -Milliseconds 120
-  Send-SmokeText $Text
+  Send-SmokeAsciiText $Text
   $title = Wait-ForTitleLike $Hwnd $typedPattern $Attempts $SleepMs
   if ($title) {
     return [ordered]@{ title = $title; click = $false; tab = $true }
