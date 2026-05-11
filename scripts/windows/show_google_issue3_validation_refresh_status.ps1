@@ -124,11 +124,7 @@ $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path)
 $refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and $refreshExists
 $refreshReady = ($refreshStatus -eq 'refreshed')
-$refreshNeeded = if ($refreshReady) {
-    $false
-} else {
-    (-not $summaryRecordsHandoffArtifactPath) -or ($bundleStatus -ne 'complete')
-}
+$refreshNeeded = -not $refreshReady
 $staleCrossReferenceDetected = if ($bundleRecord) { [bool]$bundleRecord.stale_cross_reference_detected } else { $false }
 $staleSummaryArtifactDetected = if ($bundleRecord) { [bool]$bundleRecord.stale_summary_artifact_detected } else { $false }
 $coreMissingCount = if ($bundleRecord -and $null -ne $bundleRecord.core_missing_count) { [int]$bundleRecord.core_missing_count } else { $null }
