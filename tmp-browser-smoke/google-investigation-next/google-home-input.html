@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Google Home Base</title>
+  <style>
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: #202124;
+      font: 16px/1.4 Arial, sans-serif;
+    }
+
+    main {
+      width: 720px;
+      margin: 96px auto 0;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 28px;
+      font-size: 72px;
+      font-weight: 700;
+      letter-spacing: -2px;
+      color: #4285f4;
+    }
+
+    form {
+      display: block;
+      margin: 0 auto;
+      width: 640px;
+    }
+
+    input[type="text"] {
+      display: block;
+      width: 100%;
+      height: 54px;
+      padding: 0 18px;
+      border: 1px solid #dfe1e5;
+      border-radius: 27px;
+      font-size: 20px;
+      box-sizing: border-box;
+    }
+
+    .status {
+      margin-top: 22px;
+      color: #5f6368;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Google</h1>
+    <form id="search-form" action="/submitted.html" method="get">
+      <input id="search-box" name="q" type="text" autocomplete="off" autofocus />
+      <input id="submit-phase" name="submit_phase" type="hidden" value="none" />
+    </form>
+    <div id="status" class="status">ready</div>
+  </main>
+  <script>
+    window.__lpEarlyEvents = [];
+
+    const form = document.getElementById("search-form");
+    const input = document.getElementById("search-box");
+    const submitPhase = document.getElementById("submit-phase");
+    const status = document.getElementById("status");
+    const phaseState = {
+      sawEnterKeydown: false,
+      sawEnterKeypress: false,
+      sawBeforeInput: false,
+      sawInput: false,
+    };
+
+    function syncStatus(label) {
+      const value = input.value || "";
+      status.textContent = label + (value ? " " + value : "");
+      document.title = status.textContent;
+    }
+
+    input.addEventListener("focus", function () {
+      syncStatus("Google Home Focus");
+    });
+
+    input.addEventListener("beforeinput", function (event) {
+      phaseState.sawBeforeInput = true;
+      window.__lpEarlyEvents.push("BI:" + (event.data || ""));
+    }, true);
+
+    input.addEventListener("input", function () {
+      phaseState.sawInput = true;
+      window.__lpEarlyEvents.push("IN:" + input.value);
+      syncStatus("Google Home Typed");
+    }, true);
+
+    input.addEventListener("keydown", function (event) {
+      window.__lpEarlyEvents.push("KD:" + event.key);
+      if (event.key === "Enter") {
+        phaseState.sawEnterKeydown = true;
+        syncStatus("Google Home Keydown");
+      }
+    }, true);
+
+    input.addEventListener("keypress", function (event) {
+      window.__lpEarlyEvents.push("KP:" + event.key);
+      if (event.key === "Enter") {
+        phaseState.sawEnterKeypress = true;
+        syncStatus("Google Home Keypress");
+      }
+    }, true);
+
+    form.addEventListener("submit", function () {
+      let phase = "direct";
+      if (phaseState.sawEnterKeypress) {
+        phase = "keypress";
+      } else if (phaseState.sawEnterKeydown) {
+        phase = "keydown";
+      }
+      submitPhase.value = phase;
+      window.__lpEarlyEvents.push("SUBMIT:" + phase);
+      syncStatus("Google Home Submitted " + phase);
+    }, true);
+  </script>
+</body>
+</html>
