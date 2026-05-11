@@ -20,8 +20,14 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$surfaceCheck = '.\\scripts\\windows\\check_form_controls_validation_surface.ps1'
 $recommendedRunner = '.\\scripts\\windows\\run_form_controls_validation_recommended.ps1'
 $probeRunner = '.\\scripts\\windows\\run_form_controls_validation.ps1'
+
+$surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File $surfaceCheck"
+if ($RepoRoot) {
+    $surfaceCheckCommand += " -RepoRoot " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot)
+}
 
 $recommendedCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner"
 if ($RepoRoot) {
@@ -53,10 +59,15 @@ if ($Host) {
 
 $flow = [ordered]@{
     issue = "Headed Windows form-controls validation flow"
-    focus = "Shared label-click, immediate Enter-submit, deferred Enter-submit, bounded reduced Google title, reduced Google-home submit, and stricter keypress-before-submit gates for the headed input baseline."
+    focus = "Fail fast on missing helper surfaces, then run the shared label-click, immediate Enter-submit, deferred Enter-submit, bounded reduced Google title, reduced Google-home submit, and stricter keypress-before-submit gates for the headed input baseline."
     skip_baseline = [bool]$SkipBaseline
     keep_going = [bool]$KeepGoing
     steps = @(
+        [ordered]@{
+            name = "surface-check"
+            goal = "Run the shared fail-fast checker first so missing notes, runners, wrappers, or probe scripts are caught before the headed form-controls ladder starts."
+            command = $surfaceCheckCommand
+        }
         [ordered]@{
             name = "recommended"
             goal = "Run the one-command shared baseline, reduced Google title, reduced Google-home submit, and Enter-order stack before moving into inline-flow, Google shared Enter-order, or attached HTML follow-up."
@@ -94,15 +105,17 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
-        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when the recommended runner is green and you want the stricter shared Enter-order stack printed in the intended order before you execute it with .\\scripts\\windows\\run_google_shared_enter_order_validation.ps1.",
+        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when the surface check and recommended runner are green and you want the stricter shared Enter-order stack printed in the intended order before you execute it with .\\scripts\\windows\\run_google_shared_enter_order_validation.ps1.",
         "Use .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1 when you want the localhost-first issue #3 order that folds these shared gates into the broader Google-specific flow.",
         "Use .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait only after the closest bounded form-controls or Google flow is already green."
     )
     notes = @(
+        "Run the surface check first whenever you want missing notes, runners, wrappers, or probes to fail before the headed window launches.",
         "Start with the recommended runner unless you are already narrowing an existing regression.",
         "Use SkipBaseline only when the label-click plus immediate Enter gate already passed elsewhere and you need a faster deferred or Google-shaped rerun.",
         "Use KeepGoing when you want one failing summary that still attempts later steps for comparison instead of stopping at the first broken gate.",
-        "Treat the reduced Google title step as the smaller gateway into the reduced-home submit and shared Enter-order checks, not as a separate side path."
+        "Treat the reduced Google title step as the smaller gateway into the reduced-home submit and shared Enter-order checks, not as a separate side path.",
+        "The recommended runner now reruns the same surface check before it starts the baseline and Google-shaped probes."
     )
 }
 
