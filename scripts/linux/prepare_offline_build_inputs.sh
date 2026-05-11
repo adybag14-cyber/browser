@@ -9,7 +9,8 @@ Usage:
     --browser-deps-archive /path/to/zig-browser-depo.tar.zip \
     --boringssl-archive /path/to/boringssl-zig-main.zip \
     [--html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip] \
-    [--browser-root /path/to/browser-repo]
+    [--browser-root /path/to/browser-repo] \
+    [--check-only]
 
 This helper restores the sibling dependency layout that build.zig.zon expects
 for offline Linux validation:
@@ -22,6 +23,9 @@ dependencies, optionally restores .cargo/config.toml plus vendor/ from the
 saved html5ever dependency bundle, and when a prebuilt V8 archive is available
 it rewrites ../zig-v8-fork/build.zig.zon to skip the unused depot_tools fetch
 that would otherwise block offline validation.
+
+Use --check-only to validate the supplied paths and print the derived restore
+layout without mutating the repo or extracting any archives.
 EOF
 }
 
@@ -32,6 +36,7 @@ BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 BROWSER_DEPS_ARCHIVE=""
 BORINGSSL_ARCHIVE=""
 HTML5EVER_ARCHIVE=""
+CHECK_ONLY=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -50,6 +55,10 @@ while [[ $# -gt 0 ]]; do
         --html5ever-archive)
             HTML5EVER_ARCHIVE="$2"
             shift 2
+            ;;
+        --check-only)
+            CHECK_ONLY=1
+            shift
             ;;
         -h|--help)
             usage
@@ -93,6 +102,12 @@ trap 'rm -rf "${TMP_DIR}"' EXIT
 
 mkdir -p "${OFFLINE_DEPS_ROOT}"
 
+find_zip_match() {
+    local archive_path="$1"
+    local match_pattern="$2"
+    zipinfo -1 "${archive_path}" | grep -E "${match_pattern}" | head -n 1 || true
+}
+
 extract_nested_tarball() {
     local archive_path="$1"
     local match_pattern="$2"
@@ -100,7 +115,7 @@ extract_nested_tarball() {
     local strip_components="${4:-1}"
 
     local nested_path
-    nested_path="$(zipinfo -1 "${archive_path}" | grep -E "${match_pattern}" | head -n 1 || true)"
+    nested_path="$(find_zip_match "${archive_path}" "${match_pattern}")"
     if [[ -z "${nested_path}" ]]; then
         echo "Could not find ${match_pattern} inside ${archive_path}" >&2
         exit 1
@@ -118,7 +133,7 @@ extract_nested_file() {
     local output_path="$3"
 
     local nested_path
-    nested_path="$(zipinfo -1 "${archive_path}" | grep -E "${match_pattern}" | head -n 1 || true)"
+    nested_path="$(find_zip_match "${archive_path}" "${match_pattern}")"
     if [[ -z "${nested_path}" ]]; then
         echo "Could not find ${match_pattern} inside ${archive_path}" >&2
         exit 1
@@ -126,6 +141,48 @@ extract_nested_file() {
 
     unzip -p "${archive_path}" "${nested_path}" > "${output_path}"
 }
+
+ZIG_V8_ARCHIVE_PATH="$(find_zip_match "${BROWSER_DEPS_ARCHIVE}" '^zig-v8-fork-.*\.tar\.gz$')"
+BROTLI_ARCHIVE_PATH="$(find_zip_match "${BROWSER_DEPS_ARCHIVE}" '^brotli-.*\.tar\.gz$')"
+ZLIB_ARCHIVE_PATH="$(find_zip_match "${BROWSER_DEPS_ARCHIVE}" '^zlib-.*\.tar\.gz$')"
+NGHTTP2_ARCHIVE_PATH="$(find_zip_match "${BROWSER_DEPS_ARCHIVE}" '^nghttp2-.*\.tar\.gz$')"
+CURL_ARCHIVE_PATH="$(find_zip_match "${BROWSER_DEPS_ARCHIVE}" '^curl-.*\.tar\.gz$')"
+PREBUILT_V8_ARCHIVE="$(find_zip_match "${BROWSER_DEPS_ARCHIVE}" 'libc_v8_.*\.a$')"
+
+if [[ -z "${ZIG_V8_ARCHIVE_PATH}" || -z "${BROTLI_ARCHIVE_PATH}" || -z "${ZLIB_ARCHIVE_PATH}" || -z "${NGHTTP2_ARCHIVE_PATH}" || -z "${CURL_ARCHIVE_PATH}" ]]; then
+    echo "Browser dependency archive is missing one or more expected offline inputs." >&2
+    echo "Expected: zig-v8-fork tarball, brotli tarball, zlib tarball, nghttp2 tarball, and curl tarball." >&2
+    exit 1
+fi
+
+if [[ "${CHECK_ONLY}" -eq 1 ]]; then
+    echo "Offline dependency surface check passed."
+    echo "Browser root: ${BROWSER_ROOT}"
+    echo "Workspace root: ${WORKSPACE_ROOT}"
+    echo "Resolved restore targets:"
+    echo "  zig-v8-fork -> ${WORKSPACE_ROOT}/zig-v8-fork"
+    echo "  boringssl-zig -> ${WORKSPACE_ROOT}/boringssl-zig"
+    echo "  offline deps -> ${OFFLINE_DEPS_ROOT}"
+    echo "Archive contents:"
+    echo "  zig-v8-fork tarball -> ${ZIG_V8_ARCHIVE_PATH}"
+    echo "  brotli tarball -> ${BROTLI_ARCHIVE_PATH}"
+    echo "  zlib tarball -> ${ZLIB_ARCHIVE_PATH}"
+    echo "  nghttp2 tarball -> ${NGHTTP2_ARCHIVE_PATH}"
+    echo "  curl tarball -> ${CURL_ARCHIVE_PATH}"
+    if [[ -n "${PREBUILT_V8_ARCHIVE}" ]]; then
+        echo "  prebuilt V8 archive -> ${PREBUILT_V8_ARCHIVE}"
+        echo "Suggested validation command:"
+        printf "  zig build --summary all -Dprebuilt_v8_path='%s/%s'\n" "${OFFLINE_DEPS_ROOT}" "$(basename "${PREBUILT_V8_ARCHIVE}")"
+    else
+        echo "  prebuilt V8 archive -> not present"
+    fi
+    if [[ -n "${HTML5EVER_ARCHIVE}" ]]; then
+        echo "  html5ever archive -> ${HTML5EVER_ARCHIVE}"
+    else
+        echo "  html5ever archive -> not supplied"
+    fi
+    exit 0
+fi
 
 echo "Restoring zig-v8-fork under ${WORKSPACE_ROOT}/zig-v8-fork"
 extract_nested_tarball "${BROWSER_DEPS_ARCHIVE}" '^zig-v8-fork-.*\.tar\.gz$' "${WORKSPACE_ROOT}/zig-v8-fork"
@@ -156,7 +213,6 @@ for dep_name in brotli zlib nghttp2 curl; do
     esac
 done
 
-PREBUILT_V8_ARCHIVE="$(zipinfo -1 "${BROWSER_DEPS_ARCHIVE}" | grep -E 'libc_v8_.*\.a$' | head -n 1 || true)"
 if [[ -n "${PREBUILT_V8_ARCHIVE}" ]]; then
     PREBUILT_V8_PATH="${OFFLINE_DEPS_ROOT}/$(basename "${PREBUILT_V8_ARCHIVE}")"
     echo "Restoring prebuilt V8 archive under ${PREBUILT_V8_PATH}"
