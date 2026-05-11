@@ -33,15 +33,15 @@ pub noinline fn crash(
                 panic_mutex.lock();
                 defer panic_mutex.unlock();
 
-                var writer_w = std.fs.File.stderr().writerStreaming(&.{});
+                var writer_w = std.Io.File.stderr().writerStreaming(std.Options.debug_io, &.{});
                 const writer = &writer_w.interface;
 
                 writer.writeAll(
-                    \\
+                    \
                     \\Lightpanda has crashed. Please report the issue:
                     \\https://github.com/lightpanda-io/browser/issues
                     \\or let us know on discord: https://discord.gg/g24PtgD6
-                    \\
+                    \
                 ) catch abort();
 
                 writer.print("\nreason: {s}\n", .{reason}) catch abort();
@@ -61,7 +61,7 @@ pub noinline fn crash(
         },
         1 => {
             panic_level = 2;
-            var stderr_w = std.fs.File.stderr().writerStreaming(&.{});
+            var stderr_w = std.Io.File.stderr().writerStreaming(std.Options.debug_io, &.{});
             const stderr = &stderr_w.interface;
             stderr.writeAll("panicked during a panic. Aborting.\n") catch abort();
         },
