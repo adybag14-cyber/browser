@@ -68,6 +68,7 @@ $surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $summaryGuideCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1"
 $probeTriageCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1"
 $phaseBoundaryCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1"
+$handoffGuideCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1"
 $recommendedRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1"
 $artifactBundleCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1"
 $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($manifest.artifact_root)) {
@@ -78,6 +79,7 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($manifest.artifact_root)) 
     Split-Path -Parent $ManifestPath
 }
 $artifactBundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifest.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-artifact-bundle.json"
+$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifest.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
 $artifactBundleExists = Test-Path -LiteralPath $artifactBundlePath -PathType Leaf
 $artifactBundleRecord = $null
 $artifactBundleError = if ($manifest.artifact_bundle_error) { $manifest.artifact_bundle_error } else { $null }
@@ -117,6 +119,26 @@ $artifactBundleReason = if ($artifactBundleError) {
 } else {
     "The auto-saved artifact bundle is the saved completeness audit across the summary, manifest, guide, boundary, and per-phase artifacts."
 }
+$handoffExists = Test-Path -LiteralPath $handoffPath -PathType Leaf
+$handoffRecord = $null
+$handoffArtifactError = if ($manifest.handoff_artifact_error) { $manifest.handoff_artifact_error } else { $null }
+if ($handoffExists) {
+    try {
+        $handoffRecord = Read-ArtifactJson $handoffPath
+    } catch {
+        $handoffArtifactError = $_.Exception.Message
+    }
+} elseif (-not $handoffArtifactError) {
+    $handoffArtifactError = "Handoff artifact not found: $handoffPath"
+}
+$handoffReady = $handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open)
+$handoffReason = if ($handoffArtifactError) {
+    "The saved handoff artifact could not be read, so fall back to the manifest and boundary outputs until the handoff helper is refreshed."
+} elseif ($handoffReady) {
+    "The saved handoff artifact already points at the current next artifact, so prefer its narrower replay guidance before widening back out."
+} else {
+    "The handoff helper has not produced a reusable next-artifact pointer yet, so keep using the manifest and boundary outputs for this replay."
+}
 $boundaryRecord = $null
 $boundaryArtifactError = $null
 if (-not [string]::IsNullOrWhiteSpace($manifest.boundary_artifact_path) -and (Test-Path -LiteralPath $manifest.boundary_artifact_path -PathType Leaf)) {
@@ -136,12 +158,18 @@ $openNext = if ($surfaceCheckFailed -and $manifest.surface_check_artifact_path) 
 } elseif ($artifactBundleNeedsRepair -and $manifest.summary_path) {
     $openNextReason = "artifact-bundle-needs-repair"
     $manifest.summary_path
+} elseif ($handoffReady) {
+    $openNextReason = "handoff-artifact"
+    $handoffRecord.next_artifact_to_open
 } elseif ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
     $openNextReason = "phase-boundary-artifact"
     $boundaryRecord.next_artifact_to_open
 } elseif ($manifest.first_failed_phase_primary_json_artifact_path) {
     $openNextReason = "first-failed-phase-artifact"
     $manifest.first_failed_phase_primary_json_artifact_path
+} elseif ($handoffExists) {
+    $openNextReason = "handoff-fallback"
+    $handoffPath
 } elseif ($manifest.boundary_artifact_path) {
     $openNextReason = "phase-boundary-fallback"
     $manifest.boundary_artifact_path
@@ -161,6 +189,8 @@ $nextFocus = if ($surfaceCheckFailed) {
     } else {
         "Refresh the saved artifact-bundle handoff so the manifest, guide, boundary, and per-phase artifacts all point at the current summary before widening back out."
     }
+} elseif ($handoffReady -and $handoffRecord.next_focus) {
+    $handoffRecord.next_focus
 } else {
     $manifest.next_focus
 }
@@ -169,6 +199,8 @@ $recommendedCommand = if ($surfaceCheckFailed) {
     $surfaceCheckCommand
 } elseif ($artifactBundleNeedsRepair) {
     $artifactBundleRecommendedCommand
+} elseif ($handoffReady -and $handoffRecord.recommended_command) {
+    $handoffRecord.recommended_command
 } else {
     $manifest.recommended_command
 }
@@ -177,13 +209,15 @@ $recommendedGuideCommand = if ($surfaceCheckFailed) {
     $summaryGuideCommand
 } elseif ($artifactBundleNeedsRepair) {
     $artifactBundleGuideCommand
+} elseif ($handoffReady -and $handoffRecord.recommended_guide_command) {
+    $handoffRecord.recommended_guide_command
 } else {
     $manifest.recommended_guide_command
 }
 
 $report = [ordered]@{
     issue = "Google issue #3 validation manifest guide"
-    purpose = "Open the saved manifest first, summarize the current boundary, and surface the auto-saved artifact-bundle audit when you need to verify the saved replay handoff set."
+    purpose = "Open the saved manifest first, prefer the newer handoff artifact when it is available, and fall back to boundary or summary guidance only when the handoff chain still needs repair."
     manifest_path = $ManifestPath
     generated_at_utc = $manifest.generated_at_utc
     completed = [bool]$manifest.completed
@@ -193,6 +227,7 @@ $report = [ordered]@{
     summary_guide_command = $summaryGuideCommand
     probe_triage_command = $probeTriageCommand
     phase_boundary_command = $phaseBoundaryCommand
+    handoff_guide_command = $handoffGuideCommand
     broader_runner_command = $recommendedRunnerCommand
     surface_check_artifact_path = $manifest.surface_check_artifact_path
     surface_check_missing_count = $manifest.surface_check_missing_count
@@ -200,6 +235,14 @@ $report = [ordered]@{
     summary_path = $manifest.summary_path
     guide_artifact_path = $manifest.guide_artifact_path
     boundary_artifact_path = $manifest.boundary_artifact_path
+    handoff_artifact_path = $handoffPath
+    handoff_artifact_exists = [bool]$handoffExists
+    handoff_artifact_error = $handoffArtifactError
+    handoff_reason = $handoffReason
+    handoff_next_artifact_to_open = if ($handoffRecord) { $handoffRecord.next_artifact_to_open } else { $null }
+    handoff_next_focus = if ($handoffRecord) { $handoffRecord.next_focus } else { $null }
+    handoff_recommended_command = if ($handoffRecord) { $handoffRecord.recommended_command } else { $null }
+    handoff_recommended_guide_command = if ($handoffRecord) { $handoffRecord.recommended_guide_command } else { $null }
     artifact_bundle_command = $artifactBundleCommand
     artifact_bundle_path = $artifactBundlePath
     artifact_bundle_exists = [bool]$artifactBundleExists
@@ -263,6 +306,7 @@ if ($report.boundary_artifact_path) {
 Write-Host ("Summary cmd: {0}" -f $report.summary_guide_command)
 Write-Host ("Triage cmd: {0}" -f $report.probe_triage_command)
 Write-Host ("Boundary cmd: {0}" -f $report.phase_boundary_command)
+Write-Host ("Handoff cmd: {0}" -f $report.handoff_guide_command)
 Write-Host ("Broader cmd: {0}" -f $report.broader_runner_command)
 Write-Host ("Bundle cmd: {0}" -f $report.artifact_bundle_command)
 Write-Host ("Bundle target: {0}" -f $report.artifact_bundle_path)
@@ -276,6 +320,23 @@ if ($report.artifact_bundle_next_artifact_to_open) {
 }
 if ($report.artifact_bundle_first_missing_path) {
     Write-Host ("Bundle first missing: {0}" -f $report.artifact_bundle_first_missing_path)
+}
+Write-Host ("Handoff target: {0}" -f $report.handoff_artifact_path)
+Write-Host ("Handoff exists: {0}" -f $report.handoff_artifact_exists)
+if ($report.handoff_artifact_error) {
+    Write-Host ("Handoff error: {0}" -f $report.handoff_artifact_error)
+}
+if ($report.handoff_next_artifact_to_open) {
+    Write-Host ("Handoff open: {0}" -f $report.handoff_next_artifact_to_open)
+}
+if ($report.handoff_recommended_command) {
+    Write-Host ("Handoff run: {0}" -f $report.handoff_recommended_command)
+}
+if ($report.handoff_recommended_guide_command) {
+    Write-Host ("Handoff guide: {0}" -f $report.handoff_recommended_guide_command)
+}
+if ($report.handoff_next_focus) {
+    Write-Host ("Handoff focus: {0}" -f $report.handoff_next_focus)
 }
 if ($report.boundary_artifact_error) {
     Write-Host ("Boundary error: {0}" -f $report.boundary_artifact_error)
@@ -305,6 +366,7 @@ Write-Host ("Open next: {0}" -f $report.next_artifact_to_open)
 Write-Host ("Reason:    {0}" -f $report.next_artifact_reason)
 Write-Host ("Focus:     {0}" -f $report.next_focus)
 Write-Host ("Bundle note: {0}" -f $report.artifact_bundle_reason)
+Write-Host ("Handoff note: {0}" -f $report.handoff_reason)
 if ($report.surface_check_command) {
     Write-Host ("Surface cmd: {0}" -f $report.surface_check_command)
 }
