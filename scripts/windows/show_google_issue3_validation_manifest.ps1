@@ -39,6 +39,15 @@ $phaseResults = @($manifest.phase_results)
 $failedPhase = @($phaseResults | Where-Object { $_.name -eq $manifest.first_failed_phase } | Select-Object -First 1)
 $surfaceCheckFailed = $manifest.surface_check_status -ne "passed"
 $surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1"
+$artifactBundleCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1"
+$artifactRoot = if ($manifest.summary_path) {
+    Split-Path -Parent $manifest.summary_path
+} else {
+    Split-Path -Parent $ManifestPath
+}
+$artifactBundlePath = Join-Path $artifactRoot "google-issue3-validation-artifact-bundle.json"
+$artifactBundleExists = Test-Path -LiteralPath $artifactBundlePath -PathType Leaf
+$artifactBundleReason = "Run the artifact-bundle helper when you want one saved completeness audit across the summary, manifest, guide, boundary, and per-phase artifacts."
 $boundaryRecord = $null
 $boundaryArtifactError = $null
 if (-not [string]::IsNullOrWhiteSpace($manifest.boundary_artifact_path) -and (Test-Path -LiteralPath $manifest.boundary_artifact_path -PathType Leaf)) {
@@ -86,7 +95,7 @@ $recommendedCommand = if ($surfaceCheckFailed) {
 
 $report = [ordered]@{
     issue = "Google issue #3 validation manifest guide"
-    purpose = "Open the saved manifest first, summarize the current boundary, and point the next Windows headed replay at the earliest failing checkpoint."
+    purpose = "Open the saved manifest first, summarize the current boundary, and surface the optional artifact-bundle audit when you need to verify the saved replay handoff set."
     manifest_path = $ManifestPath
     generated_at_utc = $manifest.generated_at_utc
     completed = [bool]$manifest.completed
@@ -99,6 +108,10 @@ $report = [ordered]@{
     summary_path = $manifest.summary_path
     guide_artifact_path = $manifest.guide_artifact_path
     boundary_artifact_path = $manifest.boundary_artifact_path
+    artifact_bundle_command = $artifactBundleCommand
+    artifact_bundle_path = $artifactBundlePath
+    artifact_bundle_exists = [bool]$artifactBundleExists
+    artifact_bundle_reason = $artifactBundleReason
     boundary_artifact_error = $boundaryArtifactError
     phase_artifact_root = $manifest.phase_artifact_root
     first_failed_phase = $manifest.first_failed_phase
@@ -149,6 +162,9 @@ if ($report.guide_artifact_path) {
 if ($report.boundary_artifact_path) {
     Write-Host ("Boundary JSON: {0}" -f $report.boundary_artifact_path)
 }
+Write-Host ("Bundle cmd: {0}" -f $report.artifact_bundle_command)
+Write-Host ("Bundle target: {0}" -f $report.artifact_bundle_path)
+Write-Host ("Bundle exists: {0}" -f $report.artifact_bundle_exists)
 if ($report.boundary_artifact_error) {
     Write-Host ("Boundary error: {0}" -f $report.boundary_artifact_error)
 }
@@ -176,6 +192,7 @@ Write-Host ""
 Write-Host ("Open next: {0}" -f $report.next_artifact_to_open)
 Write-Host ("Reason:    {0}" -f $report.next_artifact_reason)
 Write-Host ("Focus:     {0}" -f $report.next_focus)
+Write-Host ("Bundle note: {0}" -f $report.artifact_bundle_reason)
 if ($report.surface_check_command) {
     Write-Host ("Surface cmd: {0}" -f $report.surface_check_command)
 }
