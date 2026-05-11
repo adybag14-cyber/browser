@@ -40,6 +40,18 @@ shallow missing-asset counts. It does not replace the deeper asset-closure
 check; it just makes sure the expected compatibility bundle is actually present
 before the broader replay path starts.
 
+The checker now also prints bundle-pinned routing metadata for the currently
+resolved set, including:
+
+- the preferred initial page to keep first
+- the validation profile that best matches the current bundle
+- exact surface-check, asset-closure, printed-flow, and runner commands with
+  the resolved `-InputPath` set already locked in
+
+Use those bundle-pinned commands when you want the same saved-page set to stay
+stable across the surface check, printed flow, and headed localhost launch
+without retyping paths by hand.
+
 ## Issue #3 Order
 
 For the Google search-box investigation, keep this order:
@@ -52,17 +64,21 @@ For the Google search-box investigation, keep this order:
    only need the later saved-homepage-fixture, submit-timing, and shared
    Enter-order slices, jump to:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1`
-3. Run the dedicated Google attached-page surface check and the deep local
-   asset-closure audit, then print the attached-page flow so the next pass uses
-   the same current-run input set:
+3. Run `check_attached_html_target_bundle.ps1` and reuse the printed
+   bundle-pinned Google commands when the current saved-page set is still the
+   known compatibility bundle.
+4. If you are not using the bundle-pinned output directly, run the dedicated
+   Google attached-page surface check and the deep local asset-closure audit,
+   then print the attached-page flow so the next pass uses the same current-run
+   input set:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1`
-4. Run the dedicated Google attached-page localhost helper so the same attached
+5. Run the dedicated Google attached-page localhost helper so the same attached
    set stays on the issue `#3` bounded order instead of falling back to the
    generic manual router:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait`
-5. Only after the attached localhost pass is understood, move to the reduced
+6. Only after the attached localhost pass is understood, move to the reduced
    trace or live Google follow-up.
 
 The dedicated Google attached-page runner now reruns the deep asset-closure
@@ -77,15 +93,18 @@ When the task is not specifically the Google homepage issue, keep this order:
 1. Run the narrowest bounded suite for the changed subsystem.
 2. Confirm the known target bundle or the intended attached-page set is present:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1`
-3. Run the dedicated general attached-page surface check and the deep local
-   asset-closure audit before printing or launching the broader localhost flow:
+3. Reuse the printed bundle-pinned attached-page commands when the checker has
+   already resolved the exact saved-page set you want to replay.
+4. If you are not using the bundle-pinned output directly, run the dedicated
+   general attached-page surface check and the deep local asset-closure audit
+   before printing or launching the broader localhost flow:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_validation_surface.ps1`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1`
-4. Print the attached-page flow:
+5. Print the attached-page flow:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1`
-5. Run the attached localhost helper:
+6. Run the attached localhost helper:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1`
-6. If a saved folder is being replayed instead of current-run attached files,
+7. If a saved folder is being replayed instead of current-run attached files,
    use:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_saved_page_localhost_validation.ps1 -InputPath '<saved-html-or-folder>'`
 
