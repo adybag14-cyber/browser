@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$SummaryPath,
+    [string]$ArtifactPath,
     [switch]$Json
 )
 
@@ -35,6 +36,11 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
+if (-not $ArtifactPath) {
+    $ArtifactRoot = Split-Path -Parent $SummaryPath
+    $ArtifactPath = Join-Path $ArtifactRoot "google-issue3-phase-boundary.json"
+}
+
 $phaseResults = @($summary.phase_results)
 $passedPhases = @($phaseResults | Where-Object { $_.status -eq 'passed' })
 $failedPhases = @($phaseResults | Where-Object { $_.status -ne 'passed' })
@@ -64,8 +70,9 @@ $boundaryFocus = if ($firstFailed) {
 
 $boundary = [ordered]@{
     issue = 'Google issue #3 phase boundary'
-    purpose = 'Show the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, and surface the next rerun command from the saved guide artifact when available.'
+    purpose = 'Persist the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, and surface the next rerun command from the saved guide artifact when available.'
     summary_path = $SummaryPath
+    boundary_artifact_path = $ArtifactPath
     generated_at_utc = $summary.generated_at_utc
     completed = [bool]$summary.completed
     phase_count = @($phaseResults).Count
@@ -105,6 +112,8 @@ $boundary = [ordered]@{
     }
 }
 
+$boundary | ConvertTo-Json -Depth 6 | Set-Content -Path $ArtifactPath -Encoding Ascii
+
 if ($Json) {
     $boundary | ConvertTo-Json -Depth 6
     exit 0
@@ -113,6 +122,7 @@ if ($Json) {
 Write-Host 'Google issue #3 phase boundary'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $boundary.summary_path)
+Write-Host ("Boundary:  {0}" -f $boundary.boundary_artifact_path)
 Write-Host ("Generated: {0}" -f $boundary.generated_at_utc)
 Write-Host ("Completed: {0}" -f $boundary.completed)
 Write-Host ("Phases:    {0} total / {1} passed / {2} failed" -f $boundary.phase_count, $boundary.passed_phase_count, $boundary.failed_phase_count)
