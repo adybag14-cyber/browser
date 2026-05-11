@@ -353,8 +353,8 @@ $changeRecommendations = @{
     "google-submit-path" = @("google-homepage-fixture", "google-submit-path", "google-submit-timing", "google-form-controls-enter-order", "google-shared-enter-order", "google-live-trace")
     "google-form-controls-enter-order" = @("google-form-controls-enter-order", "google-shared-enter-order", "google-submit-timing")
     "google-live-trace" = @("google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
-    "google-saved-html" = @("manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
-    "google-attached-html" = @("manual-user", "google-recommended", "google-shared-enter-order")
+    "google-saved-html" = @("google-saved-html", "manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
+    "google-attached-html" = @("google-attached-html", "manual-user", "google-recommended", "google-shared-enter-order")
     "local-html-fixtures" = @("local-html-fixtures", "manual-user", "form-controls")
     "manual-html" = @("manual-user", "form-controls", "layout-smoke")
     "attached-html" = @("manual-user", "form-controls", "layout-smoke")
@@ -378,7 +378,9 @@ $googleFormControlsEnterOrderRunnerCommand = "powershell -ExecutionPolicy Bypass
 $googleSharedEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
 $googleTraceSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_trace_validation_surface.ps1"
 $googleLiveTraceFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
+$savedPageLocalhostSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_saved_page_localhost_validation_surface.ps1"
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
+$googleAttachedHtmlSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
 $googleAttachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
 $manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
 $attachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
@@ -458,9 +460,11 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Flow helper: {0}" -f $googleLiveTraceFlowCommand)
     }
     if ($suite.Name -eq "google-saved-html") {
+        Write-Host ("Surface checker: {0}" -f $savedPageLocalhostSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleSavedHtmlFlowCommand)
     }
     if ($suite.Name -eq "google-attached-html") {
+        Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
     }
     if ($suite.Name -eq "local-html-fixtures") {
@@ -485,9 +489,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     } elseif ($ChangeArea -eq "google-live-trace") {
         "Start with the dedicated live trace surface checker so the note, suite-router entry, flow helper, wrapper runner, and reduced-home/live probes fail fast before you trust a later-stage capture, then print the live trace flow helper so the reduced-home and real Google handoff stays ordered after the bounded localhost, submit-timing, and shared Enter-order gates."
     } elseif ($ChangeArea -eq "google-saved-html") {
-        "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
+        "Start with the saved-page localhost surface checker so the saved-page helper chain fails fast after branch moves, then print the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "google-attached-html") {
-        "Start with the dedicated attached-HTML Google flow helper so auto-discovered saved pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest."
+        "Start with the dedicated attached-HTML Google surface checker so the guide, helper, runner, and asset-audit chain fail fast, then print the dedicated attached-HTML Google flow helper so auto-discovered current-run pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest."
     } elseif ($ChangeArea -eq "local-html-fixtures") {
         "Start with the dedicated local fixture surface checker so the reusable saved-export replay path fails fast if a guide, helper, or shared probe dependency moved, then run the fixed-list localhost fixture probe for screenshot and page-title proof before widening back out to the broader attached-page or manual headed follow-up."
     } elseif ($ChangeArea -eq "manual-html") {
@@ -547,6 +551,12 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     if ($ChangeArea -eq "google-live-trace") {
         Write-Host ("Surface checker: {0}" -f $googleTraceSurfaceCheckCommand)
     }
+    if ($ChangeArea -eq "google-saved-html") {
+        Write-Host ("Surface checker: {0}" -f $savedPageLocalhostSurfaceCheckCommand)
+    }
+    if ($ChangeArea -eq "google-attached-html") {
+        Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
+    }
     if ($ChangeArea -eq "local-html-fixtures") {
         Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
     }
@@ -602,7 +612,9 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_trace_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-saved-html"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_saved_page_localhost_validation_surface.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-attached-html"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName local-html-fixtures"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-submit-path"
