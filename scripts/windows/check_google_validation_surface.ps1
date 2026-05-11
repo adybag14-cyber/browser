@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("issue3", "title", "homepage-fixture", "submit-path", "shared-enter-order", "trace", "attached-html", "all")]
+    [ValidateSet("issue3", "title", "input-phase-localhost", "homepage-fixture", "submit-path", "shared-enter-order", "trace", "attached-html", "all")]
     [string]$Profile = "issue3",
     [string]$RepoRoot,
     [switch]$Json
@@ -12,6 +12,7 @@ $ErrorActionPreference = "Stop"
 $profileToScript = @{
     issue3 = "check_headed_validation_surface.ps1"
     title = "check_google_title_validation_surface.ps1"
+    "input-phase-localhost" = "check_google_home_input_phase_localhost_validation_surface.ps1"
     "homepage-fixture" = "check_google_homepage_fixture_validation_surface.ps1"
     "submit-path" = "check_google_submit_path_validation_surface.ps1"
     "shared-enter-order" = "check_google_shared_enter_order_validation_surface.ps1"
