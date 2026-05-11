@@ -56,6 +56,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-title
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-homepage-fixture
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-submit-path
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
@@ -63,6 +66,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_val
 
 That keeps the compact suite guide aligned with the shared validation index
 instead of making future runs choose between two separate routing surfaces.
+
+Use `docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md` when the only
+question left is the smallest shared form-controls end-state proof before you
+widen back out to the broader shared ladder or the submit-path note.
 
 ## What It Covers
 
@@ -72,7 +79,7 @@ The helper keeps these checks in one printed order:
 2. Read the reduced title marker guide.
 3. Read the narrower bounded title flow.
 4. Read the saved homepage fixture flow when the next follow-up is itself a captured Google homepage.
-5. Read the dedicated shared form-controls Enter-order flow.
+5. Read the dedicated shared form-controls Enter-order flow or the dedicated note for that smallest shared end-state proof.
 6. Run the current one-command localhost-first issue `#3` validation pass.
 7. Run the dedicated submit-path runner when the earlier title gates are already green and you want the saved homepage fixture, submit-timing, and shared Enter-order stack without replaying the earlier localhost title phases.
 8. Only after those bounded passes are green, widen into attached or saved-page follow-up.
@@ -100,5 +107,7 @@ issue `#3`.
 
 Run `check_google_validation_surface.ps1` first after guide or helper edits,
 keep the localhost, title, homepage-fixture, submit-path, submit-order, and
-shared Enter-order gates aligned first, and treat `KEYDOWN:<text>|13|13` before
-`SUBMIT:<text>` as the bounded acceptance edge for Enter-order work.
+shared Enter-order gates aligned first, use the dedicated form-controls note
+when you only need the smallest shared end-state proof, and treat
+`KEYDOWN:<text>|13|13` before `SUBMIT:<text>` as the bounded acceptance edge for
+Enter-order work.
