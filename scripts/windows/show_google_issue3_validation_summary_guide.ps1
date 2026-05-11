@@ -1,0 +1,180 @@
+[CmdletBinding()]
+param(
+    [string]$SummaryPath,
+    [switch]$Json
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Resolve-RepoRoot([string]$StartPath) {
+    if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+        return $env:LIGHTPANDA_REPO_ROOT
+    }
+
+    $cursor = [System.IO.Path]::GetFullPath($StartPath)
+    while ($true) {
+        if (Test-Path (Join-Path $cursor "build.zig")) {
+            return $cursor
+        }
+
+        $parent = Split-Path $cursor -Parent
+        if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $cursor) {
+            throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
+        }
+        $cursor = $parent
+    }
+}
+
+$repoRoot = Resolve-RepoRoot $PSScriptRoot
+if (-not $SummaryPath) {
+    $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
+}
+if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
+    throw "Issue #3 recommended validation summary not found: $SummaryPath"
+}
+
+$summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
+$surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1'
+$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$phaseRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1'
+$homepageFixtureRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1'
+$titleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1'
+$submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1'
+$formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
+$probeTriageCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1'
+
+$firstFailedPhase = $summary.first_failed_phase
+$recommendedCommand = $recommendedRunnerCommand
+$recommendedGuideCommand = $probeTriageCommand
+$nextFocus = 'Rerun the bounded issue #3 ladder and use the first failing phase to decide whether to stay on localhost probes or widen back out to attached HTML or live Google.'
+$reason = 'The summary artifact did not record a single failing phase, so the safest next step is to keep the normal recommended runner as the source of truth.'
+
+if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed') {
+    $recommendedCommand = $surfaceCheckCommand
+    $recommendedGuideCommand = $null
+    $nextFocus = 'Fix the preflight validation surface before spending time on headed runtime behavior.'
+    $reason = 'The summary says the recommended issue #3 surface check failed before the phase ladder could run.'
+} elseif ($summary.completed) {
+    $recommendedCommand = $recommendedRunnerCommand
+    $recommendedGuideCommand = $probeTriageCommand
+    $nextFocus = 'The bounded localhost ladder completed, so the next replay can widen to attached HTML or live Google evidence gathering.'
+    $reason = 'The summary says every recommended phase passed.'
+} else {
+    switch ($firstFailedPhase) {
+        'localhost' {
+            $recommendedCommand = $phaseRunnerCommand + ' -Phase localhost'
+            $recommendedGuideCommand = $null
+            $nextFocus = 'Restore the localhost fixture baseline before looking at the more Google-shaped phases.'
+            $reason = 'The earliest failure happened before the issue #3 Google-shaped ladder moved past the plain localhost checkpoint.'
+        }
+        'quick' {
+            $recommendedCommand = $phaseRunnerCommand + ' -Phase quick'
+            $recommendedGuideCommand = $titleGuideCommand
+            $nextFocus = 'Stay on the quick bounded title probe until focus and typed markers are stable.'
+            $reason = 'The quick title-marker stage is the first failing checkpoint, so the smaller title-focused loop is still the sharpest repro.'
+        }
+        'home' {
+            $recommendedCommand = $phaseRunnerCommand + ' -Phase home'
+            $recommendedGuideCommand = $titleGuideCommand
+            $nextFocus = 'Keep the investigation on the saved-home title path before widening to submit ordering or attached HTML.'
+            $reason = 'The home checkpoint failed before the later submit-order phases had a chance to run.'
+        }
+        'homepage-fixture' {
+            $recommendedCommand = $homepageFixtureRunnerCommand
+            $recommendedGuideCommand = $titleGuideCommand
+            $nextFocus = 'Fix the localhost homepage fixture behavior before trusting later Google-style checkpoints.'
+            $reason = 'The dedicated homepage fixture phase is the first failing step in the recorded ladder.'
+        }
+        'input-phase-localhost' {
+            $recommendedCommand = $phaseRunnerCommand + ' -Phase input-phase-localhost'
+            $recommendedGuideCommand = $titleGuideCommand
+            $nextFocus = 'Keep the replay on the bounded localhost input phase until typed text and focus stay stable.'
+            $reason = 'The summary says the failure happened at the localhost input phase before the Enter-order checks.'
+        }
+        'submit-timing' {
+            $recommendedCommand = $phaseRunnerCommand + ' -Phase submit-timing'
+            $recommendedGuideCommand = $submitGuideCommand
+            $nextFocus = 'Inspect the reduced-home submit timing path before reopening broader headed input changes.'
+            $reason = 'The reduced-home submit timing phase is the first failing checkpoint in the saved summary.'
+        }
+        'shared-enter-order' {
+            $recommendedCommand = $phaseRunnerCommand + ' -Phase shared-enter-order'
+            $recommendedGuideCommand = $formGuideCommand
+            $nextFocus = 'Stay on the shared Enter-order checkpoint until keydown, keypress, and submit ordering are proven.'
+            $reason = 'The bounded shared Enter-order phase failed, so the next replay should stay on that ordering proof instead of widening back out.'
+        }
+        'manual' {
+            $recommendedCommand = $recommendedRunnerCommand
+            $recommendedGuideCommand = $probeTriageCommand
+            $nextFocus = 'The bounded phases passed and the attached HTML or Google-style manual follow-up is now the narrowest failing step.'
+            $reason = 'The manual follow-up was the first failing phase, so the next replay should preserve the saved fixture selection and rerun the full recommended command.'
+        }
+    }
+}
+
+$phaseResults = @($summary.phase_results)
+$failedPhaseResult = @($phaseResults | Where-Object { $_.name -eq $firstFailedPhase } | Select-Object -First 1)
+$guide = [ordered]@{
+    issue = 'Google issue #3 validation summary guide'
+    purpose = 'Read the saved recommended-validation summary artifact and point the next Windows headed replay at the earliest failing checkpoint.'
+    summary_path = $SummaryPath
+    generated_at_utc = $summary.generated_at_utc
+    completed = [bool]$summary.completed
+    surface_check_status = $summary.surface_check_status
+    surface_check_error = $summary.surface_check_error
+    first_failed_phase = $firstFailedPhase
+    first_failed_phase_error = $summary.first_failed_phase_error
+    first_failed_phase_log_path = $summary.first_failed_phase_log_path
+    failed_phase_log_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].log_path } else { $null }
+    manual_phase_enabled = [bool]$summary.manual_phase_enabled
+    manual_phase_google_style = [bool]$summary.manual_phase_google_style
+    manual_phase_uses_fixture_selection = [bool]$summary.manual_phase_uses_fixture_selection
+    manual_initial_page = $summary.manual_initial_page
+    manual_input_path = @($summary.manual_input_path)
+    recommended_command = $recommendedCommand
+    recommended_guide_command = $recommendedGuideCommand
+    broader_runner_command = $recommendedRunnerCommand
+    reason = $reason
+    next_focus = $nextFocus
+    reminder = 'Keep the next replay on the earliest failing checkpoint first. Only widen back out to the full recommended runner, attached HTML, or live Google after that bounded step agrees with the rest of the ladder.'
+}
+
+if ($Json) {
+    $guide | ConvertTo-Json -Depth 6
+    exit 0
+}
+
+Write-Host 'Google issue #3 validation summary guide'
+Write-Host ''
+Write-Host ("Summary:   {0}" -f $guide.summary_path)
+Write-Host ("Generated: {0}" -f $guide.generated_at_utc)
+Write-Host ("Completed: {0}" -f $guide.completed)
+Write-Host ("Surface:   {0}" -f $guide.surface_check_status)
+Write-Host ("First fail:{0}" -f $(if ($guide.first_failed_phase) { ' ' + $guide.first_failed_phase } else { ' none' }))
+if ($guide.first_failed_phase_log_path) {
+    Write-Host ("Log:       {0}" -f $guide.first_failed_phase_log_path)
+}
+if ($guide.first_failed_phase_error) {
+    Write-Host ("Error:     {0}" -f $guide.first_failed_phase_error)
+}
+Write-Host ''
+Write-Host ("Reason:    {0}" -f $guide.reason)
+Write-Host ("Focus:     {0}" -f $guide.next_focus)
+Write-Host ("Run next:  {0}" -f $guide.recommended_command)
+if ($guide.recommended_guide_command) {
+    Write-Host ("Guide:     {0}" -f $guide.recommended_guide_command)
+}
+Write-Host ("Broader:   {0}" -f $guide.broader_runner_command)
+if ($guide.manual_phase_uses_fixture_selection -and $guide.manual_input_path.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Saved fixture selection:'
+    foreach ($fixturePath in $guide.manual_input_path) {
+        Write-Host ("- {0}" -f $fixturePath)
+    }
+    if ($guide.manual_initial_page) {
+        Write-Host ("Initial page: {0}" -f $guide.manual_initial_page)
+    }
+}
+Write-Host ''
+Write-Host ("Reminder:  {0}" -f $guide.reminder)
