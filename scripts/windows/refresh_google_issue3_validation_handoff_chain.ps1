@@ -128,10 +128,12 @@ $bundleScript = Join-Path $PSScriptRoot "show_google_issue3_validation_artifact_
 $handoffScript = Join-Path $PSScriptRoot "show_google_issue3_validation_handoff.ps1"
 $manifestScript = Join-Path $PSScriptRoot "show_google_issue3_validation_manifest.ps1"
 $repairRefreshPointerScript = Join-Path $PSScriptRoot "repair_google_issue3_validation_refresh_pointer.ps1"
+$repairHandoffPointerScript = Join-Path $PSScriptRoot "repair_google_issue3_validation_handoff_pointer.ps1"
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $repairPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_refresh_pointer.ps1'
+$repairHandoffPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_handoff_pointer.ps1'
 
-$requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript, $manifestScript, $repairRefreshPointerScript)
+$requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript, $manifestScript, $repairRefreshPointerScript, $repairHandoffPointerScript)
 foreach ($helperPath in $requiredHelpers) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
@@ -241,6 +243,7 @@ $preRepairReport = [ordered]@{
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
     repair_pointer_command = $repairPointerCommand
+    repair_handoff_pointer_command = $repairHandoffPointerCommand
     reason = $reason
     steps = @($steps)
 }
@@ -249,6 +252,9 @@ $preRepairReport | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -En
 
 $repairStep = Invoke-RefreshStep -Name 'repair-refresh-pointer' -ScriptPath $repairRefreshPointerScript -Arguments @('-SummaryPath', $SummaryPath, '-ManifestPath', $manifestPath, '-RefreshPath', $ArtifactPath, '-Json') -ArtifactPath $SummaryPath
 $steps.Add($repairStep) | Out-Null
+$repairHandoffStep = Invoke-RefreshStep -Name 'repair-handoff-pointer' -ScriptPath $repairHandoffPointerScript -Arguments @('-SummaryPath', $SummaryPath, '-ManifestPath', $manifestPath, '-HandoffPath', $handoffPath, '-Json') -ArtifactPath $SummaryPath
+$steps.Add($repairHandoffStep) | Out-Null
+
 $updatedSummary = Read-ArtifactJson $SummaryPath
 $updatedManifest = Read-ArtifactJson $manifestPath
 $summaryRefreshArtifactPath = if ($updatedSummary) { $updatedSummary.refresh_chain_artifact_path } else { $null }
@@ -263,6 +269,18 @@ $manifestRefreshPointerMatches = $false
 if ($manifestRefreshPointerRecorded) {
     $manifestRefreshPointerMatches = ([System.IO.Path]::GetFullPath($manifestRefreshArtifactPath)).Equals([System.IO.Path]::GetFullPath($ArtifactPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
+$summaryHandoffArtifactPath = if ($updatedSummary) { $updatedSummary.handoff_artifact_path } else { $null }
+$manifestHandoffArtifactPath = if ($updatedManifest) { $updatedManifest.handoff_artifact_path } else { $null }
+$summaryHandoffPointerRecorded = -not [string]::IsNullOrWhiteSpace($summaryHandoffArtifactPath)
+$manifestHandoffPointerRecorded = -not [string]::IsNullOrWhiteSpace($manifestHandoffArtifactPath)
+$summaryHandoffPointerMatches = $false
+if ($summaryHandoffPointerRecorded) {
+    $summaryHandoffPointerMatches = ([System.IO.Path]::GetFullPath($summaryHandoffArtifactPath)).Equals([System.IO.Path]::GetFullPath($handoffPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
+$manifestHandoffPointerMatches = $false
+if ($manifestHandoffPointerRecorded) {
+    $manifestHandoffPointerMatches = ([System.IO.Path]::GetFullPath($manifestHandoffArtifactPath)).Equals([System.IO.Path]::GetFullPath($handoffPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
 if (-not $repairStep.success) {
     $status = 'refresh-pointer-repair-failed'
     $reason = 'The helper chain report was written, but the follow-up refresh-pointer repair step failed, so later helpers may still depend on fallback refresh-location guesses.'
@@ -270,6 +288,13 @@ if (-not $repairStep.success) {
     $recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
     $nextArtifactToOpen = $SummaryPath
     $nextFocus = 'Repair the saved summary and manifest refresh-pointer fields before trusting downstream helper-chain guidance for the next Windows replay.'
+} elseif (-not $repairHandoffStep.success) {
+    $status = 'handoff-pointer-repair-failed'
+    $reason = 'The helper chain report was written, but the follow-up handoff-pointer repair step failed, so later helpers may still depend on the fallback handoff location.'
+    $recommendedCommand = $repairHandoffPointerCommand
+    $recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
+    $nextArtifactToOpen = $SummaryPath
+    $nextFocus = 'Repair the saved summary and manifest handoff-pointer fields before trusting downstream handoff guidance for the next Windows replay.'
 }
 
 $report = [ordered]@{
@@ -308,6 +333,17 @@ $report = [ordered]@{
     manifest_records_refresh_artifact_path = [bool]$manifestRefreshPointerRecorded
     manifest_refresh_artifact_path = $manifestRefreshArtifactPath
     manifest_refresh_artifact_matches = [bool]$manifestRefreshPointerMatches
+    repair_handoff_pointer_command = $repairHandoffPointerCommand
+    repair_handoff_pointer_status = if ($repairHandoffStep.success) { 'repaired' } else { 'failed' }
+    repair_handoff_pointer_exit_code = $repairHandoffStep.exit_code
+    repair_handoff_pointer_error = $repairHandoffStep.error
+    repair_handoff_pointer_output_preview = @($repairHandoffStep.output_preview)
+    summary_records_handoff_artifact_path = [bool]$summaryHandoffPointerRecorded
+    summary_handoff_artifact_path = $summaryHandoffArtifactPath
+    summary_handoff_artifact_matches = [bool]$summaryHandoffPointerMatches
+    manifest_records_handoff_artifact_path = [bool]$manifestHandoffPointerRecorded
+    manifest_handoff_artifact_path = $manifestHandoffArtifactPath
+    manifest_handoff_artifact_matches = [bool]$manifestHandoffPointerMatches
     reason = $reason
     steps = @($steps)
 }
@@ -333,8 +369,11 @@ Write-Host ("First fail:{0}" -f $(if ($report.first_failed_phase) { ' ' + $repor
 Write-Host ("Bundle:    {0}" -f $report.bundle_status)
 Write-Host ("Handoff:   {0}" -f $report.handoff_ready)
 Write-Host ("Repair:    {0}" -f $report.repair_pointer_status)
+Write-Host ("Handoff repair: {0}" -f $report.repair_handoff_pointer_status)
 Write-Host ("Summary refresh recorded: {0}" -f $report.summary_records_refresh_artifact_path)
 Write-Host ("Manifest refresh recorded: {0}" -f $report.manifest_records_refresh_artifact_path)
+Write-Host ("Summary handoff recorded: {0}" -f $report.summary_records_handoff_artifact_path)
+Write-Host ("Manifest handoff recorded: {0}" -f $report.manifest_records_handoff_artifact_path)
 Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
@@ -353,6 +392,7 @@ Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
 Write-Host ("Repair:  {0}" -f $report.repair_pointer_command)
+Write-Host ("Handoff repair: {0}" -f $report.repair_handoff_pointer_command)
 Write-Host ("Broader: {0}" -f $report.broader_runner_command)
 
 if ($report.status -ne 'refreshed') {
