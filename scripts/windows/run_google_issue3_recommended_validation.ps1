@@ -62,6 +62,7 @@ $manifestArtifactPath = Join-Path $artifactRoot "google-issue3-recommended-valid
 $phaseBoundaryArtifactPath = Join-Path $artifactRoot "google-issue3-phase-boundary.json"
 $artifactBundlePath = Join-Path $artifactRoot "google-issue3-validation-artifact-bundle.json"
 $handoffArtifactPath = Join-Path $artifactRoot "google-issue3-validation-handoff.json"
+$refreshChainArtifactPath = Join-Path $artifactRoot "google-issue3-validation-handoff-chain-refresh.json"
 $phaseArtifactRoot = Join-Path $artifactRoot "google-issue3-recommended-validation-phases"
 if (Test-Path -LiteralPath $SummaryPath) {
     Remove-Item -LiteralPath $SummaryPath -Force
@@ -83,6 +84,9 @@ if (Test-Path -LiteralPath $artifactBundlePath) {
 }
 if (Test-Path -LiteralPath $handoffArtifactPath) {
     Remove-Item -LiteralPath $handoffArtifactPath -Force
+}
+if (Test-Path -LiteralPath $refreshChainArtifactPath) {
+    Remove-Item -LiteralPath $refreshChainArtifactPath -Force
 }
 if (Test-Path -LiteralPath $phaseArtifactRoot) {
     Remove-Item -LiteralPath $phaseArtifactRoot -Recurse -Force
@@ -216,6 +220,7 @@ $summaryGuide = Join-Path $PSScriptRoot "show_google_issue3_validation_summary_g
 $phaseBoundaryHelper = Join-Path $PSScriptRoot "show_google_issue3_phase_boundary.ps1"
 $artifactBundleHelper = Join-Path $PSScriptRoot "show_google_issue3_validation_artifact_bundle.ps1"
 $handoffHelper = Join-Path $PSScriptRoot "show_google_issue3_validation_handoff.ps1"
+$refreshChainHelper = Join-Path $PSScriptRoot "refresh_google_issue3_validation_handoff_chain.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
 }
@@ -233,6 +238,9 @@ if (-not (Test-Path -LiteralPath $artifactBundleHelper -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $handoffHelper -PathType Leaf)) {
     throw "Google issue #3 validation handoff helper not found: $handoffHelper"
+}
+if (-not (Test-Path -LiteralPath $refreshChainHelper -PathType Leaf)) {
+    throw "Google issue #3 validation handoff-chain refresh helper not found: $refreshChainHelper"
 }
 
 $homepageFixtureRunner = Join-Path $PSScriptRoot "run_google_homepage_fixture_validation.ps1"
@@ -421,10 +429,13 @@ function Show-RecommendedSummary {
         [string]$ArtifactBundlePath,
         [Parameter(Mandatory = $true)]
         [string]$HandoffArtifactPath,
+        [Parameter(Mandatory = $true)]
+        [string]$RefreshChainArtifactPath,
         [string]$GuideArtifactError,
         [string]$BoundaryArtifactError,
         [string]$ArtifactBundleError,
         [string]$HandoffArtifactError,
+        [string]$RefreshChainArtifactError,
         $GuideRecord
     )
 
@@ -456,6 +467,7 @@ function Show-RecommendedSummary {
     Write-Host ("Manifest JSON: {0}" -f $ManifestArtifactPath)
     Write-Host ("Bundle JSON: {0}" -f $ArtifactBundlePath)
     Write-Host ("Handoff JSON: {0}" -f $HandoffArtifactPath)
+    Write-Host ("Refresh JSON: {0}" -f $RefreshChainArtifactPath)
     if ($GuideArtifactError) {
         Write-Host ("Guide error: {0}" -f $GuideArtifactError)
     }
@@ -464,6 +476,9 @@ function Show-RecommendedSummary {
     }
     if ($HandoffArtifactError) {
         Write-Host ("Handoff error: {0}" -f $HandoffArtifactError)
+    }
+    if ($RefreshChainArtifactError) {
+        Write-Host ("Refresh error: {0}" -f $RefreshChainArtifactError)
     }
     if ($GuideRecord) {
         if ($GuideRecord.first_failed_phase) {
@@ -768,6 +783,31 @@ function Save-RecommendedHandoffArtifact {
     }
 }
 
+function Save-HandoffChainRefreshArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RefreshChainScript,
+        [Parameter(Mandatory = $true)]
+        [string]$SummaryPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactPath
+    )
+
+    $refreshOutput = @(
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $RefreshChainScript -SummaryPath $SummaryPath -ArtifactPath $ArtifactPath -Json 2>&1
+    )
+    $refreshText = ($refreshOutput | ForEach-Object { "${_}" }) -join [Environment]::NewLine
+    if ([string]::IsNullOrWhiteSpace($refreshText)) {
+        throw "Google issue #3 validation handoff-chain refresh helper produced no JSON output."
+    }
+
+    try {
+        return ($refreshText | ConvertFrom-Json)
+    } catch {
+        throw ("Google issue #3 validation handoff-chain refresh helper returned non-JSON output. Artifact: {0}" -f $ArtifactPath)
+    }
+}
+
 $phasePlan = [System.Collections.Generic.List[object]]::new()
 $phasePlan.Add([pscustomobject]@{ Name = "localhost"; Action = { Invoke-RecommendedPhase -Phase "localhost" } }) | Out-Null
 $phasePlan.Add([pscustomobject]@{ Name = "quick"; Action = { Invoke-RecommendedPhase -Phase "quick" } }) | Out-Null
@@ -791,6 +831,7 @@ Write-Host ("Boundary JSON: {0}" -f $phaseBoundaryArtifactPath)
 Write-Host ("Manifest JSON: {0}" -f $manifestArtifactPath)
 Write-Host ("Bundle JSON: {0}" -f $artifactBundlePath)
 Write-Host ("Handoff JSON: {0}" -f $handoffArtifactPath)
+Write-Host ("Refresh JSON: {0}" -f $refreshChainArtifactPath)
 Write-Host ""
 Write-Host "=== google-issue3-recommended-surface ==="
 Write-Host ("Script: {0}" -f $surfaceCheck)
@@ -804,6 +845,7 @@ $guideArtifactError = $null
 $boundaryArtifactError = $null
 $artifactBundleError = $null
 $handoffArtifactError = $null
+$refreshChainArtifactError = $null
 try {
     $surfaceCheckResult = Save-SurfaceCheckArtifact -SurfaceCheckScript $surfaceCheck -RepoRoot $RepoRoot -ArtifactPath $surfaceCheckArtifactPath
     $surfaceCheckStatus = $surfaceCheckResult.status
@@ -843,6 +885,11 @@ if ($surfaceCheckStatus -ne "passed") {
     } catch {
         $handoffArtifactError = $_.Exception.Message
     }
+    try {
+        $null = Save-HandoffChainRefreshArtifact -RefreshChainScript $refreshChainHelper -SummaryPath $SummaryPath -ArtifactPath $refreshChainArtifactPath
+    } catch {
+        $refreshChainArtifactError = $_.Exception.Message
+    }
     Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
     Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
     $guideMessage = if ($guideArtifactError) {
@@ -865,7 +912,12 @@ if ($surfaceCheckStatus -ne "passed") {
     } else {
         " Handoff JSON: $handoffArtifactPath"
     }
-    throw ("Google issue #3 recommended validation surface check failed: {0}. Surface JSON: {1}. Summary JSON: {2}. Manifest JSON: {3}.{4}{5}{6}{7}" -f $surfaceCheckError, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage, $handoffMessage)
+    $refreshMessage = if ($refreshChainArtifactError) {
+        " Refresh artifact error: $refreshChainArtifactError"
+    } else {
+        " Refresh JSON: $refreshChainArtifactPath"
+    }
+    throw ("Google issue #3 recommended validation surface check failed: {0}. Surface JSON: {1}. Summary JSON: {2}. Manifest JSON: {3}.{4}{5}{6}{7}{8}" -f $surfaceCheckError, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage, $handoffMessage, $refreshMessage)
 }
 Write-Host ""
 
@@ -914,9 +966,14 @@ try {
 } catch {
     $handoffArtifactError = $_.Exception.Message
 }
+try {
+    $null = Save-HandoffChainRefreshArtifact -RefreshChainScript $refreshChainHelper -SummaryPath $SummaryPath -ArtifactPath $refreshChainArtifactPath
+} catch {
+    $refreshChainArtifactError = $_.Exception.Message
+}
 Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
 Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
-Show-RecommendedSummary -PhaseResults @($phaseResults) -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -ManifestArtifactPath $manifestArtifactPath -ArtifactBundlePath $artifactBundlePath -HandoffArtifactPath $handoffArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundleError $artifactBundleError -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
+Show-RecommendedSummary -PhaseResults @($phaseResults) -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -ManifestArtifactPath $manifestArtifactPath -ArtifactBundlePath $artifactBundlePath -HandoffArtifactPath $handoffArtifactPath -RefreshChainArtifactPath $refreshChainArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundleError $artifactBundleError -HandoffArtifactError $handoffArtifactError -RefreshChainArtifactError $refreshChainArtifactError -GuideRecord $guideRecord
 
 $failedPhase = @($phaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
 if ($failedPhase.Count -gt 0) {
@@ -940,7 +997,12 @@ if ($failedPhase.Count -gt 0) {
     } else {
         " Handoff JSON: $handoffArtifactPath"
     }
-    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Surface JSON: {2}. Summary JSON: {3}. Manifest JSON: {4}.{5}{6}{7}{8}" -f $failedPhase[0].name, $failedPhase[0].error, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage, $handoffMessage)
+    $refreshMessage = if ($refreshChainArtifactError) {
+        " Refresh artifact error: $refreshChainArtifactError"
+    } else {
+        " Refresh JSON: $refreshChainArtifactPath"
+    }
+    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Surface JSON: {2}. Summary JSON: {3}. Manifest JSON: {4}.{5}{6}{7}{8}{9}" -f $failedPhase[0].name, $failedPhase[0].error, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage, $handoffMessage, $refreshMessage)
 }
 if ($guideArtifactError) {
     Write-Warning ("Google issue #3 validation guide artifact could not be generated: {0}" -f $guideArtifactError)
@@ -953,4 +1015,7 @@ if ($artifactBundleError) {
 }
 if ($handoffArtifactError) {
     Write-Warning ("Google issue #3 validation handoff artifact could not be generated: {0}" -f $handoffArtifactError)
+}
+if ($refreshChainArtifactError) {
+    Write-Warning ("Google issue #3 validation handoff-chain refresh artifact could not be generated: {0}" -f $refreshChainArtifactError)
 }
