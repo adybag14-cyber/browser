@@ -84,21 +84,40 @@ if ($summaryExists) {
     }
 }
 
-$refreshArtifactPath = if ($summaryExists) {
-    Resolve-ArtifactCandidatePath -ConfiguredPath $summary.refresh_chain_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
-} else {
-    Join-Path $artifactRoot 'google-issue3-validation-handoff-chain-refresh.json'
-}
-$handoffArtifactPath = if ($summaryExists) {
-    Resolve-ArtifactCandidatePath -ConfiguredPath $summary.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
-} else {
-    Join-Path $artifactRoot 'google-issue3-validation-handoff.json'
-}
 $manifestArtifactPath = if ($summaryExists) {
     Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 } else {
     Join-Path $artifactRoot 'google-issue3-recommended-validation-manifest.json'
 }
+$manifestArtifactExists = Test-Path -LiteralPath $manifestArtifactPath -PathType Leaf
+$manifestRecord = Read-ArtifactJson $manifestArtifactPath
+
+$configuredSummaryRefreshArtifactPath = if ($summaryExists) { $summary.refresh_chain_artifact_path } else { $null }
+$configuredManifestRefreshArtifactPath = if ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }
+$summaryRecordsRefreshArtifactPath = [bool]($summaryExists -and -not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshArtifactPath))
+$manifestRecordsRefreshArtifactPath = [bool](-not [string]::IsNullOrWhiteSpace($configuredManifestRefreshArtifactPath))
+$configuredRefreshArtifactPath = if ($summaryRecordsRefreshArtifactPath) {
+    $configuredSummaryRefreshArtifactPath
+} elseif ($manifestRecordsRefreshArtifactPath) {
+    $configuredManifestRefreshArtifactPath
+} else {
+    $null
+}
+$refreshArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshArtifactPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
+
+$configuredSummaryHandoffArtifactPath = if ($summaryExists) { $summary.handoff_artifact_path } else { $null }
+$configuredManifestHandoffArtifactPath = if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }
+$summaryRecordsHandoffArtifactPath = [bool]($summaryExists -and -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffArtifactPath))
+$manifestRecordsHandoffArtifactPath = [bool](-not [string]::IsNullOrWhiteSpace($configuredManifestHandoffArtifactPath))
+$configuredHandoffArtifactPath = if ($summaryRecordsHandoffArtifactPath) {
+    $configuredSummaryHandoffArtifactPath
+} elseif ($manifestRecordsHandoffArtifactPath) {
+    $configuredManifestHandoffArtifactPath
+} else {
+    $null
+}
+$handoffArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffArtifactPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+
 $bundleArtifactPath = if ($summaryExists) {
     Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
 } else {
@@ -115,14 +134,12 @@ $guideArtifactPath = if ($summaryExists) {
     Join-Path $artifactRoot 'google-issue3-recommended-validation-guide.json'
 }
 
-$summaryRecordsRefreshArtifactPath = [bool]($summaryExists -and -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path))
-$summaryRecordsHandoffArtifactPath = [bool]($summaryExists -and -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path))
 $refreshArtifactExists = Test-Path -LiteralPath $refreshArtifactPath -PathType Leaf
 $handoffArtifactExists = Test-Path -LiteralPath $handoffArtifactPath -PathType Leaf
-$manifestArtifactExists = Test-Path -LiteralPath $manifestArtifactPath -PathType Leaf
 $bundleArtifactExists = Test-Path -LiteralPath $bundleArtifactPath -PathType Leaf
 $boundaryArtifactExists = Test-Path -LiteralPath $boundaryArtifactPath -PathType Leaf
 $guideArtifactExists = Test-Path -LiteralPath $guideArtifactPath -PathType Leaf
+
 $refreshRecord = Read-ArtifactJson $refreshArtifactPath
 $refreshSummaryPath = if ($refreshRecord -and $refreshRecord.summary_path) {
     $refreshRecord.summary_path
@@ -140,6 +157,9 @@ $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
 } else {
     'missing'
 }
+$refreshPointerUsesManifest = (-not $summaryRecordsRefreshArtifactPath) -and $manifestRecordsRefreshArtifactPath
+$refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and (-not $manifestRecordsRefreshArtifactPath) -and $refreshArtifactExists
+
 $bundleRecord = Read-ArtifactJson $bundleArtifactPath
 $artifactBundleStatus = if ($bundleRecord -and $bundleRecord.status) {
     $bundleRecord.status
@@ -148,6 +168,7 @@ $artifactBundleStatus = if ($bundleRecord -and $bundleRecord.status) {
 } else {
     'missing'
 }
+
 $handoffRecord = Read-ArtifactJson $handoffArtifactPath
 $handoffSummaryPath = if ($handoffRecord -and $handoffRecord.summary_path) {
     $handoffRecord.summary_path
@@ -159,8 +180,11 @@ if ($summaryExists -and -not [string]::IsNullOrWhiteSpace($handoffSummaryPath)) 
     $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 $handoffReady = [bool]($handoffRecord -and $handoffMatchesSummary -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open))
-$refreshPointerTrusted = [bool]($summaryRecordsRefreshArtifactPath -or $refreshMatchesSummary)
-$handoffPointerTrusted = [bool]($summaryRecordsHandoffArtifactPath -or $handoffMatchesSummary)
+$handoffPointerUsesManifest = (-not $summaryRecordsHandoffArtifactPath) -and $manifestRecordsHandoffArtifactPath
+$handoffPointerUsesFallback = (-not $summaryRecordsHandoffArtifactPath) -and (-not $manifestRecordsHandoffArtifactPath) -and $handoffArtifactExists
+
+$refreshPointerTrusted = [bool]($summaryRecordsRefreshArtifactPath -or $manifestRecordsRefreshArtifactPath -or $refreshMatchesSummary)
+$handoffPointerTrusted = [bool]($summaryRecordsHandoffArtifactPath -or $manifestRecordsHandoffArtifactPath -or $handoffMatchesSummary)
 
 $triageOrder = @()
 $quickDiagnosis = @()
@@ -198,7 +222,13 @@ if (-not $summaryExists) {
         $reason = 'The saved handoff artifact exists, but it points at a different recommended-validation summary, so refresh the helper chain from the current summary before trusting handoff-first replay.'
     } elseif ($handoffReady) {
         $nextStep = $handoffGuideCommand
-        if (-not $summaryRecordsRefreshArtifactPath -and -not $summaryRecordsHandoffArtifactPath) {
+        if ($refreshPointerUsesManifest -and $handoffPointerUsesManifest) {
+            $reason = 'The current summary omitted both refresh and handoff pointers, but the saved manifest already records both matching artifacts for this summary, so start with the handoff helper and keep the next replay on the narrower saved path.'
+        } elseif ($refreshPointerUsesManifest) {
+            $reason = 'The saved refresh and handoff artifacts both match the current recommended-validation summary, and the saved manifest already records the matching refresh artifact, so start with the handoff helper and treat the missing summary refresh pointer as follow-up cleanup instead of a blocker.'
+        } elseif ($handoffPointerUsesManifest) {
+            $reason = 'The saved refresh and handoff artifacts both match the current recommended-validation summary, and the saved manifest already records the matching handoff artifact, so start with the handoff helper and treat the missing summary handoff pointer as follow-up cleanup instead of a blocker.'
+        } elseif (-not $summaryRecordsRefreshArtifactPath -and -not $summaryRecordsHandoffArtifactPath) {
             $reason = 'The saved refresh and handoff artifacts both match the current recommended-validation summary even though the summary omitted both pointers, so start with the handoff helper and treat pointer repair as follow-up cleanup instead of a blocking prerequisite.'
         } elseif (-not $summaryRecordsRefreshArtifactPath) {
             $reason = 'The saved refresh and handoff artifacts both match the current recommended-validation summary, and only the summary refresh pointer is missing, so start with the handoff helper and treat refresh-pointer repair as follow-up cleanup instead of a blocking prerequisite.'
@@ -213,7 +243,7 @@ if (-not $summaryExists) {
     }
 
     $triageOrder = @(
-        '1. Start with the handoff helper when the saved refresh and artifact-bundle state are healthy and the saved refresh and handoff artifacts still match the current summary, even if the summary omitted one of those explicit pointers; otherwise start with refresh status for the current summary.',
+        '1. Start with the handoff helper when the saved refresh and artifact-bundle state are healthy and the saved refresh and handoff artifacts still match the current summary, even if the summary omitted one of those explicit pointers and the saved manifest is carrying the matching path; otherwise start with refresh status for the current summary.',
         '2. If refresh status or the artifact-bundle helper says the chain is stale or incomplete, run the refresh-chain helper before trusting the saved handoff, manifest, guide, or boundary outputs.',
         '3. Once the helper chain is coherent, open the handoff helper and follow its next_artifact_to_open guidance.',
         '4. Use the manifest helper when you want the richest artifact index for the current replay, and use the boundary helper when you need the exact last-pass / first-fail split.',
@@ -226,11 +256,15 @@ if (-not $summaryExists) {
         ('Refresh status: {0}' -f $refreshStatus),
         ('Refresh matches summary: {0}' -f $refreshMatchesSummary),
         ('Refresh pointer trusted: {0}' -f $refreshPointerTrusted),
+        ('Refresh pointer source: {0}' -f $(if ($summaryRecordsRefreshArtifactPath) { 'summary' } elseif ($manifestRecordsRefreshArtifactPath) { 'manifest' } elseif ($refreshArtifactExists) { 'fallback' } else { 'missing' })),
         ('Handoff ready: {0}' -f $handoffReady),
         ('Handoff matches summary: {0}' -f $handoffMatchesSummary),
         ('Handoff pointer trusted: {0}' -f $handoffPointerTrusted),
+        ('Handoff pointer source: {0}' -f $(if ($summaryRecordsHandoffArtifactPath) { 'summary' } elseif ($manifestRecordsHandoffArtifactPath) { 'manifest' } elseif ($handoffArtifactExists) { 'fallback' } else { 'missing' })),
         ('Summary records refresh pointer: {0}' -f $summaryRecordsRefreshArtifactPath),
+        ('Manifest records refresh pointer: {0}' -f $manifestRecordsRefreshArtifactPath),
         ('Summary records handoff pointer: {0}' -f $summaryRecordsHandoffArtifactPath),
+        ('Manifest records handoff pointer: {0}' -f $manifestRecordsHandoffArtifactPath),
         ('Refresh artifact exists: {0}' -f $refreshArtifactExists),
         ('Handoff artifact exists: {0}' -f $handoffArtifactExists),
         ('Manifest artifact exists: {0}' -f $manifestArtifactExists),
@@ -282,7 +316,17 @@ $guide = [ordered]@{
     submit_path_runner_command = $submitRunnerCommand
     shared_enter_runner_command = $sharedEnterRunnerCommand
     summary_records_refresh_artifact_path = [bool]$summaryRecordsRefreshArtifactPath
+    summary_refresh_artifact_path = if ($summaryRecordsRefreshArtifactPath) { $configuredSummaryRefreshArtifactPath } else { $null }
+    manifest_records_refresh_artifact_path = [bool]$manifestRecordsRefreshArtifactPath
+    manifest_refresh_artifact_path = if ($manifestRecordsRefreshArtifactPath) { $configuredManifestRefreshArtifactPath } else { $null }
+    refresh_pointer_uses_manifest = [bool]$refreshPointerUsesManifest
+    refresh_pointer_uses_fallback = [bool]$refreshPointerUsesFallback
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
+    summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $configuredSummaryHandoffArtifactPath } else { $null }
+    manifest_records_handoff_artifact_path = [bool]$manifestRecordsHandoffArtifactPath
+    manifest_handoff_artifact_path = if ($manifestRecordsHandoffArtifactPath) { $configuredManifestHandoffArtifactPath } else { $null }
+    handoff_pointer_uses_manifest = [bool]$handoffPointerUsesManifest
+    handoff_pointer_uses_fallback = [bool]$handoffPointerUsesFallback
     refresh_pointer_trusted = [bool]$refreshPointerTrusted
     handoff_pointer_trusted = [bool]$handoffPointerTrusted
     artifact_chain_coherent = [bool]$artifactChainCoherent
@@ -333,9 +377,11 @@ if ($summaryExists) {
     Write-Host ("Refresh:   {0}" -f $guide.refresh_status)
     Write-Host ("Refresh matches summary: {0}" -f $guide.refresh_matches_summary)
     Write-Host ("Refresh pointer trusted: {0}" -f $guide.refresh_pointer_trusted)
+    Write-Host ("Refresh pointer source: {0}" -f $(if ($guide.summary_records_refresh_artifact_path) { 'summary' } elseif ($guide.manifest_records_refresh_artifact_path) { 'manifest' } elseif ($guide.refresh_artifact_exists) { 'fallback' } else { 'missing' }))
     Write-Host ("Handoff ready: {0}" -f $guide.handoff_ready)
     Write-Host ("Handoff matches summary: {0}" -f $guide.handoff_matches_summary)
     Write-Host ("Handoff pointer trusted: {0}" -f $guide.handoff_pointer_trusted)
+    Write-Host ("Handoff pointer source: {0}" -f $(if ($guide.summary_records_handoff_artifact_path) { 'summary' } elseif ($guide.manifest_records_handoff_artifact_path) { 'manifest' } elseif ($guide.handoff_artifact_exists) { 'fallback' } else { 'missing' }))
     Write-Host ("Artifact chain coherent: {0}" -f $guide.artifact_chain_coherent)
     Write-Host ("Pointer repair needed: {0}" -f $guide.pointer_repair_needed)
     Write-Host ("Preferred helper: {0}" -f $guide.preferred_start_helper)
@@ -355,11 +401,23 @@ Write-Host ("Shared:         {0}" -f $guide.form_controls_trace_guide_command)
 Write-Host ''
 Write-Host ("Refresh artifact: {0}" -f $guide.refresh_artifact_path)
 Write-Host ("Refresh exists:   {0}" -f $guide.refresh_artifact_exists)
+if ($guide.summary_refresh_artifact_path) {
+    Write-Host ("Summary refresh path:  {0}" -f $guide.summary_refresh_artifact_path)
+}
+if ($guide.manifest_refresh_artifact_path) {
+    Write-Host ("Manifest refresh path: {0}" -f $guide.manifest_refresh_artifact_path)
+}
 if ($guide.refresh_summary_path) {
     Write-Host ("Refresh summary:  {0}" -f $guide.refresh_summary_path)
 }
 Write-Host ("Handoff artifact: {0}" -f $guide.handoff_artifact_path)
 Write-Host ("Handoff exists:   {0}" -f $guide.handoff_artifact_exists)
+if ($guide.summary_handoff_artifact_path) {
+    Write-Host ("Summary handoff path:  {0}" -f $guide.summary_handoff_artifact_path)
+}
+if ($guide.manifest_handoff_artifact_path) {
+    Write-Host ("Manifest handoff path: {0}" -f $guide.manifest_handoff_artifact_path)
+}
 if ($guide.handoff_summary_path) {
     Write-Host ("Handoff summary:  {0}" -f $guide.handoff_summary_path)
 }
