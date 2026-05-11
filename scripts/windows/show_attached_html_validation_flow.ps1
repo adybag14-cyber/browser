@@ -5,7 +5,8 @@ param(
     [int]$Port = 8123,
     [switch]$GoogleStyle,
     [switch]$Json,
-    [switch]$LeaveOpen
+    [switch]$LeaveOpen,
+    [switch]$AllowMissingLocalAssets
 )
 
 Set-StrictMode -Version Latest
@@ -28,7 +29,9 @@ function Get-AttachedHtmlFlowMetadata {
         [Parameter(Mandatory = $true)]
         [bool]$LeaveOpen,
         [Parameter(Mandatory = $true)]
-        [int]$Port
+        [int]$Port,
+        [Parameter(Mandatory = $true)]
+        [bool]$AllowMissingLocalAssets
     )
 
     $preferredInitialPageMode = if ($PreferredInitialPage) {
@@ -48,6 +51,7 @@ function Get-AttachedHtmlFlowMetadata {
         validation_mode = if ($GoogleStyle) { "google-style" } else { "general" }
         leave_open = $LeaveOpen
         port = $Port
+        allow_missing_local_assets = $AllowMissingLocalAssets
         search_roots = if ($UsingExplicitInputPath) { @() } else { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) }
     }
 }
@@ -205,6 +209,9 @@ $assetClosureArgs = @{
 if ($GoogleStyle) {
     $assetClosureArgs["GoogleStyle"] = $true
 }
+if ($AllowMissingLocalAssets) {
+    $assetClosureArgs["AllowMissingAssets"] = $true
+}
 $assetClosureArgs["Json"] = $true
 $assetClosureJson = (& $assetClosureChecker @assetClosureArgs) -join [Environment]::NewLine
 if ($LASTEXITCODE -ne 0) {
@@ -246,7 +253,8 @@ $attachedHtmlMetadata = Get-AttachedHtmlFlowMetadata `
     -UsingExplicitInputPath ([bool]$usingExplicitInputPath) `
     -GoogleStyle ([bool]$GoogleStyle) `
     -LeaveOpen ([bool]$LeaveOpen) `
-    -Port $Port
+    -Port $Port `
+    -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 
 if ($Json) {
     $helperArgs["Json"] = $true
@@ -277,6 +285,9 @@ if ($resolvedPreferredInitialPage) {
     Write-Host "Preferred initial page: auto (from saved-page summary)"
 }
 Write-Host ("Validation mode: {0}" -f $attachedHtmlMetadata.validation_mode)
+if ($AllowMissingLocalAssets) {
+    Write-Host "Attached asset policy: degraded mode allowed"
+}
 Write-Host ""
 Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $repoRoot
 Write-Host "Deep attached-asset closure audit:"
