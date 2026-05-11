@@ -27,12 +27,16 @@ if (-not $BrowserExe) {
 }
 
 $submitPathSurfaceCheck = Join-Path $PSScriptRoot "check_google_submit_path_validation_surface.ps1"
+$submitPathTraceGuide = Join-Path $PSScriptRoot "show_google_submit_path_trace_guide.ps1"
 $homepageFixtureRunner = Join-Path $PSScriptRoot "run_google_homepage_fixture_validation.ps1"
 $submitTimingRunner = Join-Path $PSScriptRoot "run_google_submit_timing_validation.ps1"
 $sharedEnterOrderRunner = Join-Path $PSScriptRoot "run_google_shared_enter_order_validation.ps1"
 
 if (-not (Test-Path -LiteralPath $submitPathSurfaceCheck -PathType Leaf)) {
     throw "Google submit-path validation surface checker not found: $submitPathSurfaceCheck"
+}
+if (-not (Test-Path -LiteralPath $submitPathTraceGuide -PathType Leaf)) {
+    throw "Google submit-path trace guide not found: $submitPathTraceGuide"
 }
 if (-not (Test-Path -LiteralPath $homepageFixtureRunner -PathType Leaf)) {
     throw "Google homepage fixture validation runner not found: $homepageFixtureRunner"
@@ -95,6 +99,7 @@ Write-Host ("Shared Enter-order port: {0}" -f $SharedEnterOrderPort)
 Write-Host ""
 Write-Host "This runner is for the stage after the bounded localhost title gates are already green."
 Write-Host "It keeps the issue #3 focus on the real submit path: saved homepage fixture, submit timing, and shared Enter-order."
+Write-Host ("If one bounded step fails, use the read-first trace guide at {0} before widening back out." -f $submitPathTraceGuide)
 Write-Host ""
 
 Write-Host "=== google-submit-path-surface ==="
@@ -117,4 +122,4 @@ Write-Host ("Script: {0}" -f $sharedEnterOrderRunner)
 & $sharedEnterOrderRunner @sharedEnterOrderArgs
 
 Write-Host ""
-Write-Host "Next: if the saved homepage fixture, submit-timing, and shared Enter-order slices stay green together, move on to the smallest live Google manual pass or trace capture."
+Write-Host ("Next: if the saved homepage fixture, submit-timing, and shared Enter-order slices stay green together, move on to the smallest live Google manual pass or trace capture. If they diverge, print {0} before the next rerun." -f $submitPathTraceGuide)
