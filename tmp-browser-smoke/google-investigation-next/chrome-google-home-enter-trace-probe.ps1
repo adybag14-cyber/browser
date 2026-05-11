@@ -76,6 +76,47 @@ function Wait-TitleLike([int]$ProcessId, [string]$Needle, [int]$Attempts) {
   return Wait-TabTitle -ProcessId $ProcessId -Needle $Needle -Attempts $Attempts
 }
 
+function Convert-TitleState {
+  param(
+    [string]$Title
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Title)) {
+    return $null
+  }
+
+  $parts = $Title -split '\|'
+  $state = [ordered]@{
+    raw_title = $Title
+    marker = if ($parts.Count -gt 0) { $parts[0] } else { $Title }
+  }
+
+  for ($i = 1; $i -lt $parts.Count; $i++) {
+    $segment = $parts[$i]
+    if ([string]::IsNullOrWhiteSpace($segment)) {
+      continue
+    }
+
+    $pair = $segment -split '=', 2
+    if ($pair.Count -ne 2) {
+      $state[("extra_{0}" -f $i)] = $segment
+      continue
+    }
+
+    $name = switch ($pair[0]) {
+      'A' { 'active_element' }
+      'Q' { 'query_element' }
+      'V' { 'query_value' }
+      'S' { 'selection' }
+      'E' { 'last_event' }
+      default { $pair[0].ToLowerInvariant() }
+    }
+    $state[$name] = $pair[1]
+  }
+
+  return [pscustomobject]$state
+}
+
 function Get-TraceArtifactPaths([string]$Root) {
   $artifacts = @()
   $patterns = @(
@@ -136,12 +177,19 @@ $typedWorked = $false
 $submittedWorked = $false
 $serverSawSubmit = $false
 $titleBefore = $null
+$titleBeforeState = $null
 $titleAfterFocus = $null
+$titleAfterFocusState = $null
 $titleAfterType = $null
+$titleAfterTypeState = $null
 $titleAfterKeydown = $null
+$titleAfterKeydownState = $null
 $titleAfterKeypress = $null
+$titleAfterKeypressState = $null
 $titleAfterDocKeypress = $null
+$titleAfterDocKeypressState = $null
 $titleAfterSubmit = $null
+$titleAfterSubmitState = $null
 $serverReadyAtUtc = $null
 $screenshotReadyAtUtc = $null
 $windowReadyAtUtc = $null
@@ -154,7 +202,9 @@ $keypressObservedAtUtc = $null
 $docKeypressObservedAtUtc = $null
 $submitObservedAtUtc = $null
 $titleAtInputSend = $null
+$titleAtInputSendState = $null
 $titleAtEnterSend = $null
+$titleAtEnterSendState = $null
 $failureStage = "server_ready"
 $failure = $null
 
@@ -179,9 +229,11 @@ try {
 
   Show-SmokeWindow $hwnd
   $titleBefore = Get-SmokeWindowTitle $hwnd
+  $titleBeforeState = Convert-TitleState $titleBefore
 
   Invoke-SmokeClientClick -Hwnd $hwnd -X 520 -Y 408 | Out-Null
   $titleAfterFocus = Wait-TitleLike -ProcessId $browser.Id -Needle "FOCUSED|" -Attempts $TitleWaitAttempts
+  $titleAfterFocusState = Convert-TitleState $titleAfterFocus
   $focusedWorked = $null -ne $titleAfterFocus
   if (-not $focusedWorked) { throw "google trace probe did not focus the search input" }
   $focusObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
@@ -190,7 +242,9 @@ try {
   Send-SmokeAsciiText $InputText
   $inputSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
   $titleAtInputSend = $titleAfterFocus
+  $titleAtInputSendState = $titleAfterFocusState
   $titleAfterType = Wait-TitleLike -ProcessId $browser.Id -Needle "TYPED:$inputEscaped" -Attempts $TitleWaitAttempts
+  $titleAfterTypeState = Convert-TitleState $titleAfterType
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "google trace probe did not observe typed input text" }
   $typedObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
@@ -199,19 +253,24 @@ try {
   Send-SmokeEnter
   $enterSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
   $titleAtEnterSend = $titleAfterType
+  $titleAtEnterSendState = $titleAfterTypeState
   $titleAfterKeydown = Wait-TitleLike -ProcessId $browser.Id -Needle "KEYDOWN:$inputEscaped:13:13" -Attempts 20
+  $titleAfterKeydownState = Convert-TitleState $titleAfterKeydown
   if ($null -ne $titleAfterKeydown) {
     $keydownObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
   }
   $titleAfterKeypress = Wait-TitleLike -ProcessId $browser.Id -Needle "KEYPRESS:Enter:$inputEscaped" -Attempts 20
+  $titleAfterKeypressState = Convert-TitleState $titleAfterKeypress
   if ($null -ne $titleAfterKeypress) {
     $keypressObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
   }
   $titleAfterDocKeypress = Wait-TitleLike -ProcessId $browser.Id -Needle "DOC-KP:" -Attempts 5
+  $titleAfterDocKeypressState = Convert-TitleState $titleAfterDocKeypress
   if ($null -ne $titleAfterDocKeypress) {
     $docKeypressObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
   }
   $titleAfterSubmit = Wait-TitleLike -ProcessId $browser.Id -Needle "SUBMIT:$inputEscaped" -Attempts $TitleWaitAttempts
+  $titleAfterSubmitState = Convert-TitleState $titleAfterSubmit
   if ($null -ne $titleAfterSubmit) {
     $submitObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
   }
@@ -268,14 +327,23 @@ try {
     submit_observed_at_utc = $submitObservedAtUtc
     failure_stage = $failureStage
     title_before = $titleBefore
+    title_before_state = $titleBeforeState
     title_after_focus = $titleAfterFocus
+    title_after_focus_state = $titleAfterFocusState
     title_at_input_send = $titleAtInputSend
+    title_at_input_send_state = $titleAtInputSendState
     title_after_type = $titleAfterType
+    title_after_type_state = $titleAfterTypeState
     title_at_enter_send = $titleAtEnterSend
+    title_at_enter_send_state = $titleAtEnterSendState
     title_after_keydown = $titleAfterKeydown
+    title_after_keydown_state = $titleAfterKeydownState
     title_after_keypress = $titleAfterKeypress
+    title_after_keypress_state = $titleAfterKeypressState
     title_after_doc_keypress = $titleAfterDocKeypress
+    title_after_doc_keypress_state = $titleAfterDocKeypressState
     title_after_submit = $titleAfterSubmit
+    title_after_submit_state = $titleAfterSubmitState
     browser_stdout = $browserOut
     browser_stderr = $browserErr
     server_stdout = $serverOut
