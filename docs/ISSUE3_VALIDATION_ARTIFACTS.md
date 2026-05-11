@@ -24,8 +24,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_va
 That helper prints:
 
 - whether the validation ladder completed
+- whether the run failed before the first phase even started
 - the first failing phase
 - the most relevant JSON artifact to open next
+- why that artifact was chosen
+- the direct surface-check replay command when the failure happened before phase execution
 - the next recommended rerun command
 - the matching guide command
 - the saved manual fixture replay command when the failure moved into the attached-HTML follow-up
@@ -48,9 +51,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_ph
 
 1. Run the recommended validation runner.
 2. Open the manifest helper output first.
-3. Inspect the `Open next` JSON path before reading broader logs.
-4. Replay only the command shown under `Run next`.
-5. Use the summary guide or phase-boundary helper only when you need extra context around that boundary.
+3. If `Surface` is not `passed`, open the `Surface JSON` artifact first and rerun the `Surface cmd` command before looking at later phase helpers.
+4. Otherwise inspect the `Open next` JSON path before reading broader logs.
+5. Replay only the command shown under `Run next`.
+6. Use the summary guide or phase-boundary helper only when you need extra context around that boundary.
 
 ## Why this matters
 
