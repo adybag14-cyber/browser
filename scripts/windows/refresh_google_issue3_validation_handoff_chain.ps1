@@ -127,9 +127,11 @@ $boundaryScript = Join-Path $PSScriptRoot "show_google_issue3_phase_boundary.ps1
 $bundleScript = Join-Path $PSScriptRoot "show_google_issue3_validation_artifact_bundle.ps1"
 $handoffScript = Join-Path $PSScriptRoot "show_google_issue3_validation_handoff.ps1"
 $manifestScript = Join-Path $PSScriptRoot "show_google_issue3_validation_manifest.ps1"
+$repairRefreshPointerScript = Join-Path $PSScriptRoot "repair_google_issue3_validation_refresh_pointer.ps1"
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$repairPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_refresh_pointer.ps1'
 
-$requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript, $manifestScript)
+$requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript, $manifestScript, $repairRefreshPointerScript)
 foreach ($helperPath in $requiredHelpers) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
@@ -213,7 +215,7 @@ $reason = if ($failedSteps.Count -gt 0) {
     'The saved summary-derived guide, boundary, bundle, and handoff artifacts were refreshed to a stable final state from the current issue #3 summary.'
 }
 
-$report = [ordered]@{
+$preRepairReport = [ordered]@{
     issue = 'Google issue #3 validation handoff-chain refresh'
     purpose = 'Refresh the saved summary-derived issue #3 helper artifacts until the guide, boundary, bundle, and handoff outputs reach a stable final state for the next Windows headed replay.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
@@ -238,6 +240,74 @@ $report = [ordered]@{
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
+    repair_pointer_command = $repairPointerCommand
+    reason = $reason
+    steps = @($steps)
+}
+
+$preRepairReport | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding Ascii
+
+$repairStep = Invoke-RefreshStep -Name 'repair-refresh-pointer' -ScriptPath $repairRefreshPointerScript -Arguments @('-SummaryPath', $SummaryPath, '-ManifestPath', $manifestPath, '-RefreshPath', $ArtifactPath, '-Json') -ArtifactPath $SummaryPath
+$steps.Add($repairStep) | Out-Null
+$updatedSummary = Read-ArtifactJson $SummaryPath
+$updatedManifest = Read-ArtifactJson $manifestPath
+$summaryRefreshArtifactPath = if ($updatedSummary) { $updatedSummary.refresh_chain_artifact_path } else { $null }
+$manifestRefreshArtifactPath = if ($updatedManifest) { $updatedManifest.refresh_chain_artifact_path } else { $null }
+$summaryRefreshPointerRecorded = -not [string]::IsNullOrWhiteSpace($summaryRefreshArtifactPath)
+$manifestRefreshPointerRecorded = -not [string]::IsNullOrWhiteSpace($manifestRefreshArtifactPath)
+$summaryRefreshPointerMatches = $false
+if ($summaryRefreshPointerRecorded) {
+    $summaryRefreshPointerMatches = ([System.IO.Path]::GetFullPath($summaryRefreshArtifactPath)).Equals([System.IO.Path]::GetFullPath($ArtifactPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
+$manifestRefreshPointerMatches = $false
+if ($manifestRefreshPointerRecorded) {
+    $manifestRefreshPointerMatches = ([System.IO.Path]::GetFullPath($manifestRefreshArtifactPath)).Equals([System.IO.Path]::GetFullPath($ArtifactPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
+if (-not $repairStep.success) {
+    $status = 'refresh-pointer-repair-failed'
+    $reason = 'The helper chain report was written, but the follow-up refresh-pointer repair step failed, so later helpers may still depend on fallback refresh-location guesses.'
+    $recommendedCommand = $repairPointerCommand
+    $recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+    $nextArtifactToOpen = $SummaryPath
+    $nextFocus = 'Repair the saved summary and manifest refresh-pointer fields before trusting downstream helper-chain guidance for the next Windows replay.'
+}
+
+$report = [ordered]@{
+    issue = 'Google issue #3 validation handoff-chain refresh'
+    purpose = 'Refresh the saved summary-derived issue #3 helper artifacts until the guide, boundary, bundle, and handoff outputs reach a stable final state for the next Windows headed replay.'
+    generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
+    summary_path = $SummaryPath
+    refresh_artifact_path = $ArtifactPath
+    manifest_artifact_path = $manifestPath
+    manifest_exists = [bool]$manifestExists
+    guide_artifact_path = $guidePath
+    boundary_artifact_path = $boundaryPath
+    artifact_bundle_path = $bundlePath
+    handoff_artifact_path = $handoffPath
+    status = $status
+    surface_check_status = $summary.surface_check_status
+    first_failed_phase = $summary.first_failed_phase
+    failed_step_count = @($steps | Where-Object { -not $_.success }).Count
+    failed_step_names = @($steps | Where-Object { -not $_.success } | ForEach-Object { $_.name })
+    bundle_status = $bundleStatus
+    handoff_ready = [bool]$handoffReady
+    next_artifact_to_open = $nextArtifactToOpen
+    next_focus = $nextFocus
+    recommended_command = $recommendedCommand
+    recommended_guide_command = $recommendedGuideCommand
+    broader_runner_command = $recommendedRunnerCommand
+    repair_pointer_command = $repairPointerCommand
+    repair_pointer_status = if ($repairStep.success) { 'repaired' } else { 'failed' }
+    repair_pointer_exit_code = $repairStep.exit_code
+    repair_pointer_error = $repairStep.error
+    repair_pointer_output_preview = @($repairStep.output_preview)
+    summary_records_refresh_artifact_path = [bool]$summaryRefreshPointerRecorded
+    summary_refresh_artifact_path = $summaryRefreshArtifactPath
+    summary_refresh_artifact_matches = [bool]$summaryRefreshPointerMatches
+    manifest_records_refresh_artifact_path = [bool]$manifestRefreshPointerRecorded
+    manifest_refresh_artifact_path = $manifestRefreshArtifactPath
+    manifest_refresh_artifact_matches = [bool]$manifestRefreshPointerMatches
     reason = $reason
     steps = @($steps)
 }
@@ -262,6 +332,9 @@ Write-Host ("Surface:   {0}" -f $report.surface_check_status)
 Write-Host ("First fail:{0}" -f $(if ($report.first_failed_phase) { ' ' + $report.first_failed_phase } else { ' none' }))
 Write-Host ("Bundle:    {0}" -f $report.bundle_status)
 Write-Host ("Handoff:   {0}" -f $report.handoff_ready)
+Write-Host ("Repair:    {0}" -f $report.repair_pointer_status)
+Write-Host ("Summary refresh recorded: {0}" -f $report.summary_records_refresh_artifact_path)
+Write-Host ("Manifest refresh recorded: {0}" -f $report.manifest_records_refresh_artifact_path)
 Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
@@ -279,6 +352,7 @@ Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Repair:  {0}" -f $report.repair_pointer_command)
 Write-Host ("Broader: {0}" -f $report.broader_runner_command)
 
 if ($report.status -ne 'refreshed') {
