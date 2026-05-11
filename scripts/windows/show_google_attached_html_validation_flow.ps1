@@ -17,6 +17,36 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
 
+function Get-AssetClosureCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterSetName,
+        [string[]]$ResolvedInputPath
+    )
+
+    $base = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle"
+    switch ($ParameterSetName) {
+        "InputPath" {
+            if (-not $ResolvedInputPath -or $ResolvedInputPath.Count -eq 0) {
+                return $base
+            }
+
+            $quotedPathArgs = @(
+                $ResolvedInputPath | ForEach-Object {
+                    "'" + ($_.Replace("'", "''")) + "'"
+                }
+            )
+            return ($base + " -InputPath " + ($quotedPathArgs -join " "))
+        }
+        "Auto" {
+            return $base
+        }
+        default {
+            return $null
+        }
+    }
+}
+
 function Get-GoogleAttachedHtmlFlowMetadata {
     param(
         [Parameter(Mandatory = $true)]
@@ -34,7 +64,8 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [Parameter(Mandatory = $true)]
         [object[]]$MissingAssetAudit,
         [Parameter(Mandatory = $true)]
-        [string]$SurfaceCheckCommand
+        [string]$SurfaceCheckCommand,
+        [string]$AssetClosureCommand
     )
 
     $parameterMode = switch ($ParameterSetName) {
@@ -72,6 +103,7 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         leave_open = $LeaveOpen
         port = $Port
         surface_check_command = $SurfaceCheckCommand
+        asset_closure_command = $AssetClosureCommand
         missing_asset_audit = $normalizedAssetAudit
         search_roots = if ($ParameterSetName -eq "Auto") { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) } else { @() }
     }
@@ -79,7 +111,7 @@ function Get-GoogleAttachedHtmlFlowMetadata {
 
 $repoRoot = Resolve-LightpandaRepoRoot $PSScriptRoot
 $helper = Join-Path $PSScriptRoot "show_saved_page_google_validation_flow.ps1"
-$surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1"
+$surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
 if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
     throw "Google-style attached HTML flow helper not found: $helper"
 }
@@ -105,6 +137,7 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
 } else {
     Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 }
+$assetClosureCommand = Get-AssetClosureCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedInputPath $resolvedInputPath
 
 $autoGoogleStyleFixture = if ($PSCmdlet.ParameterSetName -eq "Auto") {
     $resolvedInputPath |
@@ -117,7 +150,7 @@ $autoGoogleStyleFixture = if ($PSCmdlet.ParameterSetName -eq "Auto") {
 
 if ($PSCmdlet.ParameterSetName -eq "Auto" -and -not $autoGoogleStyleFixture) {
     $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $repoRoot)
-    throw "No Google-style attached HTML files were found under: $($searchRoots -join '; '). Use .\scripts\windows\show_attached_html_validation_flow.ps1 for the general attached-page flow, or pass -InputPath / -PageRoot to override auto-discovery."
+    throw "No Google-style attached HTML files were found under: $($searchRoots -join '; '). Use .\\scripts\\windows\\show_attached_html_validation_flow.ps1 for the general attached-page flow, or pass -InputPath / -PageRoot to override auto-discovery."
 }
 
 $attachedAssetAudit = if ($PSCmdlet.ParameterSetName -eq "PageRoot") {
@@ -147,7 +180,8 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -LeaveOpen ([bool]$LeaveOpen) `
     -Port $Port `
     -MissingAssetAudit $attachedAssetAudit `
-    -SurfaceCheckCommand $surfaceCheckCommand
+    -SurfaceCheckCommand $surfaceCheckCommand `
+    -AssetClosureCommand $assetClosureCommand
 
 if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
@@ -171,8 +205,15 @@ if (-not $Json) {
         }
     }
     Write-Host ""
-    Write-Host "Start with the dedicated surface check before the printed flow or runner:"
-    Write-Host ("- {0}" -f $surfaceCheckCommand)
+    if ($assetClosureCommand) {
+        Write-Host "Start with the dedicated surface check and deep asset-closure audit before the printed flow or runner:"
+        Write-Host ("- {0}" -f $surfaceCheckCommand)
+        Write-Host ("- {0}" -f $assetClosureCommand)
+    } else {
+        Write-Host "Start with the dedicated surface check before the printed flow or runner:"
+        Write-Host ("- {0}" -f $surfaceCheckCommand)
+        Write-Host "- Deep asset-closure audit is skipped in explicit page-root mode."
+    }
     if ($resolvedInputPath.Count -gt 0) {
         Write-Host ""
         Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $repoRoot
@@ -187,8 +228,8 @@ if (-not $Json) {
         }
     }
     Write-Host "Override: use -PreferredInitialPage to keep one Google-like page first, or pass -PageRoot / -InputPath to skip auto-discovery."
-    Write-Host "Helper: .\scripts\windows\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle"
-    Write-Host "Runner: .\scripts\windows\run_google_attached_html_validation.ps1 -Wait"
+    Write-Host "Helper: .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle"
+    Write-Host "Runner: .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
     Write-Host ""
 }
 
