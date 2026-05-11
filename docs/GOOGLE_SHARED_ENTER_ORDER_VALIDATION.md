@@ -11,16 +11,30 @@ localhost Google probes and the later manual or live-Google follow-up.
 Use `docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md` when you only need
 the last shared form-controls end-state proof without printing the wider ladder.
 
+## Start with the validation surface check
+
+Use the dedicated checker first so missing docs, wrapper scripts, or probes fail
+before you trust this narrower issue `#3` ladder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_shared_enter_order_validation_surface.ps1
+```
+
+That checker verifies the shared Enter-order note, the dedicated form-controls
+note, the shared and dedicated runners, and the reduced localhost probes that
+this ladder depends on.
+
 ## Start with the printed flow
 
-Use the dedicated flow helper first when you want the current command order
-printed with the active ports and shared text value:
+Use the dedicated flow helper after the surface check when you want the current
+command order printed with the active ports and shared text value:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 ```
 
 That helper prints the intended order for:
+- the fail-fast shared Enter-order surface check
 - the recommended shared Enter-order runner
 - the shared-only baseline
 - the reduced localhost Google title probe
