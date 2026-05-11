@@ -32,7 +32,9 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [Parameter(Mandatory = $true)]
         [int]$Port,
         [Parameter(Mandatory = $true)]
-        [object[]]$MissingAssetAudit
+        [object[]]$MissingAssetAudit,
+        [Parameter(Mandatory = $true)]
+        [string]$SurfaceCheckCommand
     )
 
     $parameterMode = switch ($ParameterSetName) {
@@ -69,6 +71,7 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         validation_mode = "google-style"
         leave_open = $LeaveOpen
         port = $Port
+        surface_check_command = $SurfaceCheckCommand
         missing_asset_audit = $normalizedAssetAudit
         search_roots = if ($ParameterSetName -eq "Auto") { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) } else { @() }
     }
@@ -76,6 +79,7 @@ function Get-GoogleAttachedHtmlFlowMetadata {
 
 $repoRoot = Resolve-LightpandaRepoRoot $PSScriptRoot
 $helper = Join-Path $PSScriptRoot "show_saved_page_google_validation_flow.ps1"
+$surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1"
 if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
     throw "Google-style attached HTML flow helper not found: $helper"
 }
@@ -142,7 +146,8 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -ResolvedPreferredInitialPage $resolvedPreferredInitialPage `
     -LeaveOpen ([bool]$LeaveOpen) `
     -Port $Port `
-    -MissingAssetAudit $attachedAssetAudit
+    -MissingAssetAudit $attachedAssetAudit `
+    -SurfaceCheckCommand $surfaceCheckCommand
 
 if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
@@ -165,6 +170,9 @@ if (-not $Json) {
             Write-Host ("- {0}" -f (Convert-ToDisplayPath -Path $root -RepoRoot $repoRoot))
         }
     }
+    Write-Host ""
+    Write-Host "Start with the dedicated surface check before the printed flow or runner:"
+    Write-Host ("- {0}" -f $surfaceCheckCommand)
     if ($resolvedInputPath.Count -gt 0) {
         Write-Host ""
         Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $repoRoot
@@ -180,6 +188,7 @@ if (-not $Json) {
     }
     Write-Host "Override: use -PreferredInitialPage to keep one Google-like page first, or pass -PageRoot / -InputPath to skip auto-discovery."
     Write-Host "Helper: .\scripts\windows\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle"
+    Write-Host "Runner: .\scripts\windows\run_google_attached_html_validation.ps1 -Wait"
     Write-Host ""
 }
 
