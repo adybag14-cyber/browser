@@ -7,7 +7,7 @@ param(
     [string]$SuiteName,
 
     [Parameter(ParameterSetName = "Change")]
-    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-live-trace", "google-saved-html", "google-attached-html", "manual-html", "attached-html")]
+    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-submit-path", "google-live-trace", "google-saved-html", "google-attached-html", "manual-html", "attached-html")]
     [string]$ChangeArea,
 
     [switch]$Json
@@ -179,6 +179,13 @@ $suiteCatalog = @(
         RecommendedWith = @("google-home", "google-submit-timing")
     }
     [pscustomobject]@{
+        Name = "google-submit-path"
+        Category = "input"
+        Path = "scripts/windows/run_google_issue3_submit_path_validation.ps1"
+        Purpose = "One-command issue #3 submit-path runner that jumps straight from the earlier title gates into the saved homepage fixture, submit-timing, and shared Enter-order slices."
+        RecommendedWith = @("google-homepage-fixture", "google-submit-timing")
+    }
+    [pscustomobject]@{
         Name = "google-submit-timing"
         Category = "input"
         Path = "scripts/windows/run_google_submit_timing_validation.ps1"
@@ -328,7 +335,8 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-homepage-fixture", "google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
+    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-homepage-fixture", "google-submit-path", "google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
+    "google-submit-path" = @("google-homepage-fixture", "google-submit-path", "google-submit-timing", "google-shared-enter-order", "google-live-trace")
     "google-live-trace" = @("google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
     "google-saved-html" = @("manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
     "google-attached-html" = @("manual-user", "google-recommended", "google-shared-enter-order")
@@ -340,6 +348,7 @@ $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windo
 $googleTitleGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_probe_trace_guide.ps1"
 $googleTitleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
 $googleHomepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
+$googleSubmitPathRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
 $googleSubmitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $googleSharedEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
 $googleLiveTraceFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
@@ -396,6 +405,9 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     if ($suite.Name -eq "google-homepage-fixture") {
         Write-Host ("Flow helper: {0}" -f $googleHomepageFixtureFlowCommand)
     }
+    if ($suite.Name -eq "google-submit-path") {
+        Write-Host ("Runner: {0}" -f $googleSubmitPathRunnerCommand)
+    }
     if ($suite.Name -eq "google-submit-timing") {
         Write-Host ("Flow helper: {0}" -f $googleSubmitTimingFlowCommand)
     }
@@ -421,7 +433,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper, then read the reduced title marker guide and title flow helper before widening into google-investigation-next, google-title, google-quick, google-home, google-homepage-fixture, google-submit-timing, the shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1 when you want the saved homepage fixture stack printed before you execute it, use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 when you want the bounded submit-timing stack printed before you execute it, use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that stricter shared stack printed before you execute it, and use .\\scripts\\windows\\show_google_trace_validation_flow.ps1 when the bounded phases are green but the real homepage still needs a later-stage trace handoff."
+        "Start with the dedicated Google-input flow helper, then read the reduced title marker guide and title flow helper before widening into google-investigation-next, google-title, google-quick, google-home, google-homepage-fixture, google-submit-path, google-submit-timing, the shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1 when the earlier title gates are already green and you want the later saved-homepage-fixture, submit-timing, and shared Enter-order slices in one narrower command before the live trace helper."
+    } elseif ($ChangeArea -eq "google-submit-path") {
+        "Start with the dedicated submit-path runner when the earlier title and reduced-homepage gates are already green and you want one later-stage command surface for the saved homepage fixture, submit-timing, and shared Enter-order slices before manual or live Google replay."
     } elseif ($ChangeArea -eq "google-live-trace") {
         "Start with the dedicated live trace flow helper so the reduced-home and live Google capture path stays ordered after the bounded localhost, submit-timing, and shared Enter-order gates, then keep manual follow-up scoped to the smallest remaining divergence."
     } elseif ($ChangeArea -eq "google-saved-html") {
@@ -438,6 +452,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
 
     $flowCommand = if ($ChangeArea -eq "google-input") {
         $googleFlowCommand
+    } elseif ($ChangeArea -eq "google-submit-path") {
+        $googleSubmitPathRunnerCommand
     } elseif ($ChangeArea -eq "google-live-trace") {
         $googleLiveTraceFlowCommand
     } elseif ($ChangeArea -eq "google-saved-html") {
@@ -497,6 +513,8 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-homepage-fixture"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-path"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
@@ -507,6 +525,7 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-attached-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-submit-path"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-live-trace"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html"
