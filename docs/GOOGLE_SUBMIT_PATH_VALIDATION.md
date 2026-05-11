@@ -21,10 +21,24 @@ Reach for this note when all of these are true:
 - you still want one more controlled checkpoint before attached HTML or live
   Google replay
 
+## Start with the fail-fast surface check
+
+Before you lean on the later submit-path ladder, verify that the read-first note,
+flow helper, runners, and bounded probe files are all still present on the
+branch:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_path_validation_surface.ps1
+```
+
+Use this first when the branch has moved recently and you want the later issue
+`#3` checkpoint chain to fail fast before you depend on the saved homepage
+fixture, submit-timing, or shared Enter-order slices.
+
 ## Start with the printed flow
 
-Use the dedicated helper first when you want the current command order printed
-before you run it:
+After the surface check is green, use the dedicated helper first when you want
+the current command order printed before you run it:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
@@ -50,49 +64,55 @@ entire earlier issue `#3` stack.
 
 If the later submit path still needs isolation, use this smaller order:
 
-1. Saved homepage fixture flow helper
+1. Submit-path surface checker
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_path_validation_surface.ps1
+```
+
+2. Saved homepage fixture flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 ```
 
-2. Saved homepage fixture runner
+3. Saved homepage fixture runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 ```
 
-3. Submit-path flow helper
+4. Submit-path flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
 ```
 
-4. Submit-timing flow helper
+5. Submit-timing flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1
 ```
 
-5. Submit-timing runner
+6. Submit-timing runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
 ```
 
-6. Shared Enter-order flow helper
+7. Shared Enter-order flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 ```
 
-7. Shared Enter-order runner
+8. Shared Enter-order runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 ```
 
-8. Dedicated shared form-controls Enter-order gate when you need the smallest
+9. Dedicated shared form-controls Enter-order gate when you need the smallest
 shared end-state proof
 
 ```powershell
