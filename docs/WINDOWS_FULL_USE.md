@@ -66,9 +66,11 @@ Graphical rendering and native input translation are still in-progress:
 
 ## 5) Run saved local HTML fixtures in headed mode
 
-For richer localhost validation, use the reusable local-fixture probe:
+For richer localhost validation, check the reusable fixture probe surface first,
+then run the reusable local-fixture probe:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 `
   -FixturePaths `
     "C:\path\to\Control your online safety and privacy – Google Safety Centre.html",`
@@ -83,10 +85,15 @@ What it does:
 - opens each page in headed `browse`
 - captures a screenshot for each fixture
 - checks that the native window title matches the page `<title>`
+- fails fast if the reusable probe chain or its shared dependencies were renamed or removed
 
 Results are written under:
 
 - `tmp-browser-smoke\local-html-fixtures\output\`
+
+Use `check_local_html_fixture_validation_surface.ps1 -Json` after branch updates
+or helper renames when you want the reusable saved-page replay path to fail fast
+before you spend time staging exports or opening a headed window.
 
 This is a good first-pass validation path for exported real-site pages before
 moving into a narrower bug investigation or adding a dedicated bounded probe.
@@ -128,6 +135,7 @@ is green, use these entry points:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_saved_page_localhost_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_localhost_html_validation_flow.ps1
@@ -158,6 +166,7 @@ Routing rules:
 - Use `check_attached_html_local_asset_closure.ps1 -GoogleStyle` before the Google attached-page flow when the saved page set might have nested CSS, image, or font dependencies that were not copied beside the HTML export.
 - Use `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` when you want the shared validation router to point directly at the dedicated attached-HTML Google follow-up helper.
 - Use `check_saved_page_localhost_validation_surface.ps1` before manual saved-page follow-up when the branch has moved recently and you want the general localhost helper chain to fail fast if a guide, runner, or summary helper was renamed or removed.
+- Use `check_local_html_fixture_validation_surface.ps1` before the reusable fixed-list fixture replay when you want the staged localhost probe and its shared helpers to fail fast after the branch has moved.
 - Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
 - Use `run_sanitized_saved_page_localhost_validation.ps1` when the saved inputs have Unicode-heavy filenames, were exported as standalone HTML files with sibling `*_files` assets, or need one ASCII-safe staged localhost root before headed launch.
 - Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
