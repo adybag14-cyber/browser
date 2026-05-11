@@ -54,7 +54,9 @@ function Add-SharedArgument {
     }
 }
 
+$surfaceCheck = '.\\scripts\\windows\\check_google_submit_path_validation_surface.ps1'
 $runner = '.\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1'
+$traceGuide = '.\\scripts\\windows\\show_google_submit_path_trace_guide.ps1'
 $homepageFixtureFlow = '.\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1'
 $homepageFixtureRunner = '.\\scripts\\windows\\run_google_homepage_fixture_validation.ps1'
 $submitTimingFlow = '.\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1'
@@ -115,7 +117,7 @@ Add-SharedArgument -Arguments $sharedEnterOrderArgs -Name HomePollMilliseconds -
 
 $flow = [ordered]@{
     issue = "Headed Windows Google submit-path validation flow"
-    focus = "Print the later-stage issue #3 command ladder in one place once the earlier title and reduced-homepage gates are already green: saved homepage fixture, bounded submit timing, and the stricter shared Enter-order stack."
+    focus = "Print the later-stage issue #3 command ladder in one place once the earlier title and reduced-homepage gates are already green: saved homepage fixture, bounded submit timing, the stricter shared Enter-order stack, and the read-first trace helper that explains where the later submit path diverged."
     host = $Host
     shared_input_text = $SharedInputText
     submit_timing_input_text = $SubmitTimingInputText
@@ -125,9 +127,19 @@ $flow = [ordered]@{
     shared_enter_order_port = $SharedEnterOrderPort
     steps = @(
         [ordered]@{
+            name = "surface-check"
+            goal = "Fail fast if the submit-path note, trace guide, runners, or bounded probe files drifted before you trust this later issue #3 ladder."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $surfaceCheck)
+        }
+        [ordered]@{
             name = "submit-path-runner"
             goal = "Run the one-command issue #3 submit-path runner when you want the saved homepage fixture, submit-timing, and shared Enter-order slices executed in the intended order."
             command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $runner, $(if ($runnerArgs.Count -gt 0) { " " + ($runnerArgs -join " ") } else { "" }))
+        }
+        [ordered]@{
+            name = "trace-guide"
+            goal = "Translate the saved homepage fixture, submit-timing, and shared Enter-order outputs into the next narrowing step before you widen back out again."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $traceGuide)
         }
         [ordered]@{
             name = "homepage-fixture-flow"
@@ -161,13 +173,16 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
+        "Use .\\scripts\\windows\\show_google_submit_path_trace_guide.ps1 after a failing bounded step when you want the later submit-path outputs translated into the next smaller checkpoint before you rerun anything.",
         "Use .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1 when the earlier title or reduced-homepage gates are not green yet and you want the full localhost-first issue #3 ladder.",
         "Use .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 after this slice is green when the current run has Google-like attached HTML snapshots to replay.",
         "Use .\\scripts\\windows\\show_google_trace_validation_flow.ps1 only after the saved homepage fixture, submit-timing, and shared Enter-order slices stay green together but the live homepage still diverges."
     )
     notes = @(
+        "Start with the submit-path surface check so missing notes, trace helpers, wrappers, or probes fail fast before the later issue #3 ladder looks trustworthy.",
         "Start with the one-command submit-path runner unless you already know which later-stage slice is diverging.",
         "Keep the same host, shared input text, submit-timing input text, and port overrides here when you want the later submit-path checkpoints aligned with the broader issue #3 flow.",
+        "Use the trace guide after a failing bounded slice when you need the quickest explanation of whether the remaining gap stayed in the saved homepage fixture, the Google-shaped submit-timing probe, or the stricter shared Enter-order ladder.",
         "Use -LeaveOpen only on the saved homepage fixture slice or the one-command runner when you want the headed browser left open for live inspection after the bounded phases finish."
     )
 }
