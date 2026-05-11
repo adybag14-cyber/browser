@@ -41,6 +41,7 @@ function Resolve-PowerShellCommand {
 
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $probeRoot = Join-Path $repo "tmp-browser-smoke\form-controls"
+$scriptRoot = Join-Path $repo "scripts\windows"
 $powerShellExe = Resolve-PowerShellCommand
 
 $sharedArgs = @()
@@ -59,6 +60,16 @@ if (-not $SkipBaseline) {
 $steps += [pscustomobject]@{
   Name = "deferred-enter-submit"
   Script = Join-Path $probeRoot "deferred-enter-submit-probe.ps1"
+  Arguments = @() + $sharedArgs
+}
+$steps += [pscustomobject]@{
+  Name = "google-title"
+  Script = Join-Path $scriptRoot "run_google_home_title_probe.ps1"
+  Arguments = @() + $sharedArgs
+}
+$steps += [pscustomobject]@{
+  Name = "reduced-google-home"
+  Script = Join-Path $probeRoot "chrome-google-home-enter-submit-probe.ps1"
   Arguments = @() + $sharedArgs
 }
 $steps += [pscustomobject]@{
