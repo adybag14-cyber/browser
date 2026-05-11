@@ -7,7 +7,7 @@ param(
     [string]$SuiteName,
 
     [Parameter(ParameterSetName = "Change")]
-    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-submit-path", "google-form-controls-enter-order", "google-live-trace", "google-saved-html", "google-attached-html", "manual-html", "attached-html")]
+    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-submit-path", "google-form-controls-enter-order", "google-live-trace", "google-saved-html", "google-attached-html", "manual-html", "attached-html", "local-html-fixtures")]
     [string]$ChangeArea,
 
     [switch]$Json
@@ -332,6 +332,13 @@ $suiteCatalog = @(
         Purpose = "Manual headed validation helpers for saved or attached localhost HTML pages after the bounded suite is green, including attached-page discovery and flow printing helpers."
         RecommendedWith = @("form-controls", "google-investigation-next")
     }
+    [pscustomobject]@{
+        Name = "local-html-fixtures"
+        Category = "manual-html"
+        Path = "tmp-browser-smoke/local-html-fixtures"
+        Purpose = "Reusable fixed-list localhost replay for saved HTML fixtures with screenshot and page-title proof."
+        RecommendedWith = @("manual-user", "form-controls")
+    }
 )
 
 $changeRecommendations = @{
@@ -348,6 +355,7 @@ $changeRecommendations = @{
     "google-live-trace" = @("google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
     "google-saved-html" = @("manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
     "google-attached-html" = @("manual-user", "google-recommended", "google-shared-enter-order")
+    "local-html-fixtures" = @("local-html-fixtures", "manual-user", "form-controls")
     "manual-html" = @("manual-user", "form-controls", "layout-smoke")
     "attached-html" = @("manual-user", "form-controls", "layout-smoke")
 }
@@ -372,6 +380,8 @@ $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scrip
 $googleAttachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
 $manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
 $attachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
+$localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_local_html_fixture_validation_surface.ps1"
+$localHtmlFixtureProbeCommand = "powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\local-html-fixtures\\chrome-local-html-fixture-probe.ps1 -FixturePaths '<saved-html-or-folder>'"
 
 function Get-SuiteRecord {
     param(
@@ -449,6 +459,10 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     if ($suite.Name -eq "google-attached-html") {
         Write-Host ("Flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
     }
+    if ($suite.Name -eq "local-html-fixtures") {
+        Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
+        Write-Host ("Runner: {0}" -f $localHtmlFixtureProbeCommand)
+    }
     exit 0
 }
 
@@ -470,6 +484,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "google-attached-html") {
         "Start with the dedicated attached-HTML Google flow helper so auto-discovered saved pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest."
+    } elseif ($ChangeArea -eq "local-html-fixtures") {
+        "Start with the dedicated local fixture surface checker so the reusable saved-export replay path fails fast if a guide, helper, or shared probe dependency moved, then run the fixed-list localhost fixture probe for screenshot and page-title proof before widening back out to the broader attached-page or manual headed follow-up."
     } elseif ($ChangeArea -eq "manual-html") {
         "Start with the matching bounded suite, then use the one-command recommended localhost HTML runner to auto-route attached or saved pages into the right helper before dropping to the printed flow map."
     } elseif ($ChangeArea -eq "attached-html") {
@@ -490,6 +506,8 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         $googleSavedHtmlFlowCommand
     } elseif ($ChangeArea -eq "google-attached-html") {
         $googleAttachedHtmlFlowCommand
+    } elseif ($ChangeArea -eq "local-html-fixtures") {
+        $localHtmlFixtureProbeCommand
     } elseif ($ChangeArea -eq "manual-html") {
         $manualHtmlFlowCommand
     } elseif ($ChangeArea -eq "attached-html") {
@@ -520,6 +538,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
     if ($ChangeArea -eq "google-form-controls-enter-order") {
         Write-Host ("Surface checker: {0}" -f $googleFormControlsEnterOrderSurfaceCheckCommand)
+    }
+    if ($ChangeArea -eq "local-html-fixtures") {
+        Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
     }
     if ($flowCommand) {
         Write-Host ("Flow helper: {0}" -f $flowCommand)
@@ -572,12 +593,14 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-attached-html"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName local-html-fixtures"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-submit-path"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-live-trace"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea local-html-fixtures"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
@@ -585,6 +608,8 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_local_html_fixture_validation_surface.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\local-html-fixtures\\chrome-local-html-fixture-probe.ps1 -FixturePaths '<saved-html-or-folder>'"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
