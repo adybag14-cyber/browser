@@ -21,7 +21,7 @@ const builtin = @import("builtin");
 
 const Allocator = std.mem.Allocator;
 
-const BORDER = "="**80;
+const BORDER = "=" * *80;
 
 // use in custom panic handler
 var current_test: ?[]const u8 = null;
