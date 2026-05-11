@@ -11,6 +11,18 @@ localhost Google probes and the later manual or live-Google follow-up.
 Use `docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md` when you only need
 the last shared form-controls end-state proof without printing the wider ladder.
 
+## Route from the headed suite catalog
+
+When you want to enter this bounded slice from the shared Windows validation
+router first, use:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order
+```
+
+That suite entry should point back to the shared Enter-order flow helper and the
+same fail-fast surface checker described below.
+
 ## Start with the validation surface check
 
 Use the dedicated checker first so missing docs, wrapper scripts, or probes fail
@@ -21,8 +33,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_shared_e
 ```
 
 That checker verifies the shared Enter-order note, the dedicated form-controls
-note, the dedicated form-controls surface checker, the shared and dedicated
-runners, and the reduced localhost probes that this ladder depends on.
+note, the shared suite router entrypoint, the dedicated form-controls surface
+checker, the shared and dedicated runners, and the reduced localhost probes that
+this ladder depends on.
 
 ## Start with the printed flow
 
