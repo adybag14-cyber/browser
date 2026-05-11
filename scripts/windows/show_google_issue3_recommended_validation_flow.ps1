@@ -82,6 +82,7 @@ function Add-ArgumentText {
 $surfaceCheck = '.\scripts\windows\check_google_issue3_recommended_validation_surface.ps1'
 $recommendedRunner = '.\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $titleFlow = '.\scripts\windows\show_google_title_validation_flow.ps1'
+$quickFlow = '.\scripts\windows\show_google_quick_validation_flow.ps1'
 $homepageFixtureFlow = '.\scripts\windows\show_google_homepage_fixture_validation_flow.ps1'
 $submitTimingFlow = '.\scripts\windows\show_google_submit_timing_validation_flow.ps1'
 $sharedEnterOrderFlow = '.\scripts\windows\show_google_shared_enter_order_validation_flow.ps1'
@@ -138,7 +139,7 @@ if ($LeaveOpen) { $manualFlowArgs.Add("-LeaveOpen") }
 
 $flow = [ordered]@{
     issue = "Headed Windows issue #3 recommended validation flow"
-    focus = "Read-first helper for the one-command localhost-first runner that chains the bounded localhost, title, reduced home, saved-homepage fixture, submit-timing, shared Enter-order, watch, and optional attached-HTML follow-up before any live Google trace work."
+    focus = "Read-first helper for the one-command localhost-first runner that chains the bounded localhost, quick title-plus-watch, reduced home, saved-homepage fixture, reduced-home input-phase, submit-timing, shared Enter-order, and optional attached-HTML follow-up before any live Google trace work."
     host = $Host
     input_text = $InputText
     shared_input_text = $SharedInputText
@@ -154,13 +155,18 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "recommended"
-            goal = "Run the full localhost-first issue #3 stack in the intended order, including the optional attached-HTML manual follow-up when fixtures are supplied or auto-discovered."
+            goal = "Run the full localhost-first issue #3 stack in the intended order, including the quick title-plus-watch gate before the reduced homepage ladder and the optional attached-HTML manual follow-up when fixtures are supplied or auto-discovered."
             command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $recommendedRunner, $(if ($runnerArgs.Count -gt 0) { " " + ($runnerArgs -join " ") } else { "" }))
         }
         [ordered]@{
             name = "title-flow"
-            goal = "Print the narrower title flow first when you only need the bounded readiness, click-focus, typed-text, and Enter-submit slice explained before the full stack."
+            goal = "Print the narrower title flow first when you only need the bounded readiness, click-focus, typed-text, and Enter-submit slice explained before the quick or full recommended stack."
             command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $titleFlow)
+        }
+        [ordered]@{
+            name = "quick-flow"
+            goal = "Print the bounded title-plus-watch gate when you want the fast first pass spelled out before the reduced homepage ladder or the full recommended runner."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $quickFlow)
         }
         [ordered]@{
             name = "homepage-fixture-flow"
@@ -190,12 +196,13 @@ $flow = [ordered]@{
     )
     next_steps = @(
         "Start with the recommended runner when you want one command to prove the bounded localhost-first issue #3 ladder before any real Google capture.",
+        "Use the quick flow after the surface check when you want the early title-plus-watch gate spelled out before the reduced homepage pass.",
         "Use the attached-HTML flow after the recommended runner is green when the next question is whether the current saved or attached pages diverge before live Google does.",
-        "Use the trace flow only after the bounded localhost, saved-homepage fixture, submit-timing, shared Enter-order, and watch slices are all green together."
+        "Use the trace flow only after the bounded localhost, quick, saved-homepage fixture, reduced-home input-phase, submit-timing, and shared Enter-order slices are all green together."
     )
     notes = @(
         "This helper exists to make the one-command recommended runner inspectable before execution, not to replace the narrower flow helpers.",
-        "The recommended runner now begins with its own dedicated surface-check so missing flow helpers or follow-up scripts fail before the longer ladder starts.",
+        "The recommended runner now begins with its own dedicated surface-check and then folds the quick title-plus-watch gate in before the reduced homepage pass so the scripted sequence matches the surrounding docs and helper text.",
         "Keep SharedInputText aligned across the reduced home, shared Enter-order, and saved-homepage fixture slices so the manual follow-up has the same expectation.",
         "ManualInputPath and ManualInitialPage are forwarded into the printed attached-HTML flow when they are already known, so the saved-page handoff stays reproducible.",
         "LeaveOpen is only for the phases where visual inspection after automation matters; keep it off for routine preflight checks."
