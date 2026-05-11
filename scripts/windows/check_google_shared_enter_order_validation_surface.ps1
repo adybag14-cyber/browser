@@ -37,6 +37,7 @@ $references = @(
     (New-ValidationReference -Path "docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the shared Enter-order ladder."),
     (New-ValidationReference -Path "docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the final shared form-controls gate."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the shared Enter-order helpers."),
+    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared headed validation suite router that should keep the google-shared-enter-order slice reachable from the broader catalog."),
     (New-ValidationReference -Path "scripts/windows/show_google_shared_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the shared Enter-order slice."),
     (New-ValidationReference -Path "scripts/windows/run_google_shared_enter_order_validation.ps1" -Kind "file" -Purpose "One-command shared Enter-order runner."),
     (New-ValidationReference -Path "scripts/windows/check_google_form_controls_enter_order_validation_surface.ps1" -Kind "file" -Purpose "Dedicated fail-fast checker for the final shared form-controls gate."),
@@ -102,5 +103,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} shared Enter-order validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, or probe before trusting the shared Enter-order ladder."
+Write-Host "Repair the missing guide, helper, probe, or suite-router entrypoint before trusting the shared Enter-order ladder."
 exit 1
