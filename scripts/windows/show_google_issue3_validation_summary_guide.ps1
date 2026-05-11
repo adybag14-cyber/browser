@@ -43,6 +43,7 @@ $surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $phaseRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1'
 $homepageFixtureRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1'
+$phaseBoundaryCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
 $titleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1'
 $submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1'
 $formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
@@ -218,10 +219,11 @@ $guide = [ordered]@{
     manual_saved_page_flow_command = $manualSavedPageFlowCommand
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
+    phase_boundary_command = $phaseBoundaryCommand
     broader_runner_command = $recommendedRunnerCommand
     reason = $reason
     next_focus = $nextFocus
-    reminder = 'Keep the next replay on the earliest failing checkpoint first. Only widen back out to the full recommended runner, attached HTML, or live Google after that bounded step agrees with the rest of the ladder.'
+    reminder = 'Keep the next replay on the earliest failing checkpoint first. Read the saved phase-boundary helper to compare the last passing checkpoint with the first failing one before widening back out to the full recommended runner, attached HTML, or live Google.'
 }
 
 if ($Json) {
@@ -291,6 +293,7 @@ Write-Host ("Run next:  {0}" -f $guide.recommended_command)
 if ($guide.recommended_guide_command) {
     Write-Host ("Guide:     {0}" -f $guide.recommended_guide_command)
 }
+Write-Host ("Boundary:  {0}" -f $guide.phase_boundary_command)
 if ($guide.manual_fixture_replay_command) {
     Write-Host ("Manual replay: {0}" -f $guide.manual_fixture_replay_command)
 }
@@ -316,7 +319,7 @@ if ($guide.manual_phase_uses_fixture_selection -and $guide.manual_input_path.Cou
     if ($guide.manual_attached_html_runner_command) {
         Write-Host ("Runner:     {0}" -f $guide.manual_attached_html_runner_command)
     }
-    if ($guide.manual_saved_page_flow_command) {
+    if ($guide.manual_saved_page_flowCommand) {
         Write-Host ("Saved-page: {0}" -f $guide.manual_saved_page_flow_command)
     }
 }
