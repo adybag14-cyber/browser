@@ -33,6 +33,7 @@ param(
     [string[]]$ManualInputPath,
     [string]$ManualInitialPage,
     [int]$ManualPort = 8123,
+    [string]$SummaryPath,
     [switch]$ManualGoogleStyle,
     [switch]$LeaveOpen,
     [switch]$SkipAutoAttachedHtml
@@ -52,9 +53,11 @@ if (-not $BrowserExe) {
 
 $artifactRoot = Join-Path $RepoRoot "tmp-browser-smoke\headed-probe"
 New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
-$summaryPath = Join-Path $artifactRoot "google-issue3-recommended-validation-summary.json"
-if (Test-Path -LiteralPath $summaryPath) {
-    Remove-Item -LiteralPath $summaryPath -Force
+if (-not $SummaryPath) {
+    $SummaryPath = Join-Path $artifactRoot "google-issue3-recommended-validation-summary.json"
+}
+if (Test-Path -LiteralPath $SummaryPath) {
+    Remove-Item -LiteralPath $SummaryPath -Force
 }
 
 function Test-GoogleStyleAttachedHtmlAvailable {
@@ -257,46 +260,81 @@ function Show-RecommendedSummary {
             Write-Host ("  {0}" -f $result.error)
         }
     }
-    Write-Host ("Summary JSON: {0}" -f $summaryPath)
+    Write-Host ("Summary JSON: {0}" -f $SummaryPath)
 }
 
 function Write-RecommendedSummaryArtifact {
     param(
         [Parameter(Mandatory = $true)]
-        [object[]]$PhaseResults
+        [object[]]$PhaseResults,
+        [Parameter(Mandatory = $true)]
+        [string]$SurfaceCheckStatus,
+        [string]$SurfaceCheckError
     )
 
     $failedPhase = @($PhaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
+    $passedPhaseCount = @($PhaseResults | Where-Object { $_.status -eq "passed" }).Count
     $summary = [pscustomobject]@{
         generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
         repo_root = $RepoRoot
         browser_exe = $BrowserExe
         host = $Host
-        summary_path = $summaryPath
+        summary_path = $SummaryPath
         leave_open = [bool]$LeaveOpen
         skip_auto_attached_html = [bool]$SkipAutoAttachedHtml
         auto_attached_html_detected = [bool]$autoAttachedHtml
+        surface_check_script = $surfaceCheck
+        surface_check_status = $SurfaceCheckStatus
+        surface_check_error = $SurfaceCheckError
         manual_phase_enabled = [bool]$manualPhaseEnabled
         manual_phase_google_style = [bool]$resolvedManualGoogleStyle
         manual_phase_uses_fixture_selection = [bool]$manualPhaseUsesFixtureSelection
         manual_initial_page = $resolvedManualInitialPage
         manual_input_path = @($resolvedManualInputPath)
         missing_fixture_asset_audit = @($manualPhaseAssetAudit)
+        phase_plan = @($phasePlan | ForEach-Object { $_.Name })
+        phase_count = @($PhaseResults).Count
+        passed_phase_count = $passedPhaseCount
         phase_results = @($PhaseResults)
         first_failed_phase = if ($failedPhase.Count -gt 0) { $failedPhase[0].name } else { $null }
-        completed = ($failedPhase.Count -eq 0)
+        first_failed_phase_error = if ($failedPhase.Count -gt 0) { $failedPhase[0].error } else { $null }
+        completed = ($failedPhase.Count -eq 0 -and $SurfaceCheckStatus -eq "passed")
     }
 
-    $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPath -Encoding Ascii
+    $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $SummaryPath -Encoding Ascii
+}
+
+$phasePlan = [System.Collections.Generic.List[object]]::new()
+$phasePlan.Add([pscustomobject]@{ Name = "localhost"; Action = { Invoke-RecommendedPhase -Phase "localhost" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "quick"; Action = { Invoke-RecommendedPhase -Phase "quick" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "home"; Action = { Invoke-RecommendedPhase -Phase "home" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "homepage-fixture"; Action = { Invoke-HomepageFixturePhase } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "input-phase-localhost"; Action = { Invoke-RecommendedPhase -Phase "input-phase-localhost" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "submit-timing"; Action = { Invoke-RecommendedPhase -Phase "submit-timing" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "shared-enter-order"; Action = { Invoke-RecommendedPhase -Phase "shared-enter-order" } }) | Out-Null
+if ($manualPhaseEnabled) {
+    $phasePlan.Add([pscustomobject]@{ Name = "manual"; Action = { Invoke-RecommendedPhase -Phase "manual" } }) | Out-Null
 }
 
 Write-Host "Google issue #3 recommended validation"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Host: {0}" -f $Host)
+Write-Host ("Summary JSON: {0}" -f $SummaryPath)
 Write-Host ""
 Write-Host "=== google-issue3-recommended-surface ==="
 Write-Host ("Script: {0}" -f $surfaceCheck)
-& $surfaceCheck -RepoRoot $RepoRoot
+
+$surfaceCheckStatus = "passed"
+$surfaceCheckError = $null
+$phaseResults = [System.Collections.Generic.List[object]]::new()
+try {
+    & $surfaceCheck -RepoRoot $RepoRoot
+} catch {
+    $surfaceCheckStatus = "failed"
+    $surfaceCheckError = $_.Exception.Message
+    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError
+    throw ("Google issue #3 recommended validation surface check failed: {0}. Summary JSON: {1}" -f $surfaceCheckError, $SummaryPath)
+}
 Write-Host ""
 
 if ($manualPhaseUsesFixtureSelection) {
@@ -313,19 +351,6 @@ if ($manualPhaseUsesFixtureSelection) {
     Show-MissingLocalFixtureAssetWarnings -AssetAudit $manualPhaseAssetAudit -RepoRoot $RepoRoot
 }
 
-$phasePlan = [System.Collections.Generic.List[object]]::new()
-$phasePlan.Add([pscustomobject]@{ Name = "localhost"; Action = { Invoke-RecommendedPhase -Phase "localhost" } }) | Out-Null
-$phasePlan.Add([pscustomobject]@{ Name = "quick"; Action = { Invoke-RecommendedPhase -Phase "quick" } }) | Out-Null
-$phasePlan.Add([pscustomobject]@{ Name = "home"; Action = { Invoke-RecommendedPhase -Phase "home" } }) | Out-Null
-$phasePlan.Add([pscustomobject]@{ Name = "homepage-fixture"; Action = { Invoke-HomepageFixturePhase } }) | Out-Null
-$phasePlan.Add([pscustomobject]@{ Name = "input-phase-localhost"; Action = { Invoke-RecommendedPhase -Phase "input-phase-localhost" } }) | Out-Null
-$phasePlan.Add([pscustomobject]@{ Name = "submit-timing"; Action = { Invoke-RecommendedPhase -Phase "submit-timing" } }) | Out-Null
-$phasePlan.Add([pscustomobject]@{ Name = "shared-enter-order"; Action = { Invoke-RecommendedPhase -Phase "shared-enter-order" } }) | Out-Null
-if ($manualPhaseEnabled) {
-    $phasePlan.Add([pscustomobject]@{ Name = "manual"; Action = { Invoke-RecommendedPhase -Phase "manual" } }) | Out-Null
-}
-
-$phaseResults = [System.Collections.Generic.List[object]]::new()
 foreach ($step in $phasePlan) {
     $stepResult = Invoke-RecommendedStep -Name $step.Name -Action $step.Action
     $phaseResults.Add($stepResult) | Out-Null
@@ -334,10 +359,10 @@ foreach ($step in $phasePlan) {
     }
 }
 
-Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults)
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError
 Show-RecommendedSummary -PhaseResults @($phaseResults)
 
 $failedPhase = @($phaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
 if ($failedPhase.Count -gt 0) {
-    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}" -f $failedPhase[0].name, $failedPhase[0].error)
+    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Summary JSON: {2}" -f $failedPhase[0].name, $failedPhase[0].error, $SummaryPath)
 }
