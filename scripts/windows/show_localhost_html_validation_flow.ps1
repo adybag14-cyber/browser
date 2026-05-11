@@ -23,6 +23,7 @@ $suiteHelper = '.\scripts\windows\show_headed_validation_suites.ps1'
 $summaryHelper = '.\scripts\windows\summarize_localhost_html_pages.ps1'
 $localhostHelper = '.\scripts\windows\start_localhost_html_validation.ps1'
 $stagedHelper = '.\scripts\windows\start_staged_localhost_html_validation.ps1'
+$sanitizedHelper = '.\scripts\windows\run_sanitized_saved_page_localhost_validation.ps1'
 $attachedHelper = '.\scripts\windows\run_attached_html_localhost_validation.ps1'
 $googleRunner = '.\scripts\windows\run_google_input_validation.ps1'
 $googleSavedFlowHelper = '.\scripts\windows\show_saved_page_google_validation_flow.ps1'
@@ -44,6 +45,7 @@ $launchInitialPageArgument = if ($PreferredInitialPage) {
 }
 $attachedCommand = "powershell -ExecutionPolicy Bypass -File $attachedHelper -Port $Port$preferredInitialPageArgument -Wait"
 $googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleAttachedFlowHelper -Port $Port$preferredInitialPageArgument"
+$sanitizedCommand = "powershell -ExecutionPolicy Bypass -File $sanitizedHelper -InputPath '<saved-html-or-folder>' -Port $Port$preferredInitialPageArgument -Wait"
 
 if ($PageRoot) {
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
@@ -60,6 +62,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     $joinedPaths = $quotedPaths -join ", "
     $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
     $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait"
+    $sanitizedCommand = "powershell -ExecutionPolicy Bypass -File $sanitizedHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument -Wait"
     $googleManualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths"
     $googleSavedFlowCommand = "powershell -ExecutionPolicy Bypass -File $googleSavedFlowHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
     $attachedCommand = "powershell -ExecutionPolicy Bypass -File $attachedHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument -Wait"
@@ -99,6 +102,11 @@ $flow = [ordered]@{
             command = $stagedCommand
         }
         [ordered]@{
+            name = "sanitized"
+            goal = "Stage Unicode-heavy or exported standalone saved pages into ASCII-safe localhost inputs while preserving sibling *_files assets and the preferred first page."
+            command = $sanitizedCommand
+        }
+        [ordered]@{
             name = "google-flow"
             goal = "When the saved-page follow-up belongs to issue #3, print the dedicated Google-style flow so the reduced localhost, quick, reduced homepage, and shared Enter-order gates run before the manual headed pass and the live trace step stays close at hand when real Google still diverges."
             command = $googleSavedFlowCommand
@@ -113,8 +121,9 @@ $flow = [ordered]@{
         "Run the matching bounded suite first, then move into direct or staged localhost validation.",
         "Use attached-auto when the current run already has HTML snapshots under agent_files and you want the helper to auto-discover the inputs and preferred first page before the manual headed follow-up.",
         "Use summary before the manual pass when you need help picking the first page or closest bounded suite.",
+        "Use sanitized when the saved inputs have Unicode-heavy filenames, were exported as standalone HTML files with sibling *_files assets, or need to be staged into one ASCII-safe localhost root before the headed browser starts.",
         "Use google-flow before google-manual when the saved-page follow-up is part of the Google-style headed typing investigation, especially when the run is starting from attached HTML auto-discovery or when the reduced homepage gate should run before the manual pass and the next likely evidence may need to come from the live trace step after the saved-page pass.",
-        "When PreferredInitialPage is set, the attached-auto, summary, direct, staged, Google-style flow, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file."
+        "When PreferredInitialPage is set, the attached-auto, summary, direct, staged, sanitized, Google-style flow, and Google manual commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file."
     )
 }
 
