@@ -79,6 +79,23 @@ function Read-ArtifactJson {
     }
 }
 
+function New-CrossReferenceMismatch {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Label,
+        [string]$Path,
+        [string]$RecordedSummaryPath,
+        [string]$RepairCommand
+    )
+
+    [pscustomobject]@{
+        label = $Label
+        path = $Path
+        recorded_summary_path = $RecordedSummaryPath
+        repair_command = $RepairCommand
+    }
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -106,6 +123,10 @@ $phaseRoot = if (-not [string]::IsNullOrWhiteSpace($summary.phase_artifact_root)
 } else {
     Join-Path $artifactRoot "google-issue3-recommended-validation-phases"
 }
+$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
+$boundaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
 
 $summaryRef = New-ArtifactReference -Label "summary" -Path $SummaryPath
 $surfaceRef = New-ArtifactReference -Label "surface" -Path $surfacePath
@@ -118,6 +139,32 @@ $coreMissing = @($coreRefs | Where-Object { -not $_.exists })
 $guideRecord = Read-ArtifactJson $guidePath
 $boundaryRecord = Read-ArtifactJson $boundaryPath
 $manifestRecord = Read-ArtifactJson $manifestPath
+
+$crossReferenceMismatches = [System.Collections.Generic.List[object]]::new()
+if ($manifestRecord -and $manifestRecord.summary_path -and $manifestRecord.summary_path -ne $SummaryPath) {
+    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'manifest' -Path $manifestPath -RecordedSummaryPath $manifestRecord.summary_path -RepairCommand $recommendedRunnerCommand)) | Out-Null
+}
+if ($guideRecord -and $guideRecord.summary_path -and $guideRecord.summary_path -ne $SummaryPath) {
+    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'guide' -Path $guidePath -RecordedSummaryPath $guideRecord.summary_path -RepairCommand $summaryGuideCommand)) | Out-Null
+}
+if ($boundaryRecord -and $boundaryRecord.summary_path -and $boundaryRecord.summary_path -ne $SummaryPath) {
+    $crossReferenceMismatches.Add((New-CrossReferenceMismatch -Label 'boundary' -Path $boundaryPath -RecordedSummaryPath $boundaryRecord.summary_path -RepairCommand $boundaryGuideCommand)) | Out-Null
+}
+$staleCrossReferenceDetected = $crossReferenceMismatches.Count -gt 0
+$staleCrossReferenceLabels = @($crossReferenceMismatches | ForEach-Object { $_.label })
+$staleCrossReferencePaths = @($crossReferenceMismatches | ForEach-Object { $_.path })
+$staleCrossReferenceRepairCommands = @($crossReferenceMismatches | ForEach-Object { $_.repair_command } | Select-Object -Unique)
+$preferredStaleRepairCommand = if ($staleCrossReferenceLabels -contains 'manifest') {
+    $recommendedRunnerCommand
+} elseif ($staleCrossReferenceLabels -contains 'guide') {
+    $summaryGuideCommand
+} elseif ($staleCrossReferenceLabels -contains 'boundary') {
+    $boundaryGuideCommand
+} elseif ($staleCrossReferenceDetected) {
+    $manifestGuideCommand
+} else {
+    $null
+}
 
 $phaseResults = @($summary.phase_results)
 $phaseStatuses = [ordered]@{}
@@ -171,59 +218,68 @@ foreach ($phaseRecord in $phaseHealth) {
 }
 
 $firstFailedPhaseHealth = @($phaseHealth | Where-Object { $_.name -eq $summary.first_failed_phase } | Select-Object -First 1)
-$nextArtifactToOpen = $null
-if ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
-    $nextArtifactToOpen = $boundaryRecord.next_artifact_to_open
+$nextArtifactToOpen = if ($staleCrossReferenceDetected) {
+    $SummaryPath
+} elseif ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
+    $boundaryRecord.next_artifact_to_open
 } elseif ($guideRecord -and $guideRecord.first_failed_phase_primary_json_artifact_path) {
-    $nextArtifactToOpen = $guideRecord.first_failed_phase_primary_json_artifact_path
+    $guideRecord.first_failed_phase_primary_json_artifact_path
 } elseif ($boundaryRef.exists) {
-    $nextArtifactToOpen = $boundaryPath
+    $boundaryPath
 } elseif ($guideRef.exists) {
-    $nextArtifactToOpen = $guidePath
+    $guidePath
 } elseif ($manifestRef.exists) {
-    $nextArtifactToOpen = $manifestPath
+    $manifestPath
 } elseif ($surfaceRef.exists) {
-    $nextArtifactToOpen = $surfacePath
+    $surfacePath
 } else {
-    $nextArtifactToOpen = $SummaryPath
+    $SummaryPath
 }
 
-$recommendedCommand = if ($boundaryRecord -and $boundaryRecord.recommended_command) {
+$recommendedCommand = if ($staleCrossReferenceDetected) {
+    $preferredStaleRepairCommand
+} elseif ($boundaryRecord -and $boundaryRecord.recommended_command) {
     $boundaryRecord.recommended_command
 } elseif ($guideRecord -and $guideRecord.recommended_command) {
     $guideRecord.recommended_command
 } else {
     $null
 }
-$recommendedGuideCommand = if ($boundaryRecord -and $boundaryRecord.recommended_guide_command) {
+$recommendedGuideCommand = if ($staleCrossReferenceDetected) {
+    $manifestGuideCommand
+} elseif ($boundaryRecord -and $boundaryRecord.recommended_guide_command) {
     $boundaryRecord.recommended_guide_command
 } elseif ($guideRecord -and $guideRecord.recommended_guide_command) {
     $guideRecord.recommended_guide_command
 } else {
     $null
 }
-$nextFocus = if ($boundaryRecord -and $boundaryRecord.next_focus) {
+$nextFocus = if ($staleCrossReferenceDetected) {
+    'Refresh the saved issue #3 manifest, guide, or boundary artifacts so every helper points at the current recommended-validation summary before trusting the next replay handoff.'
+} elseif ($boundaryRecord -and $boundaryRecord.next_focus) {
     $boundaryRecord.next_focus
 } elseif ($guideRecord -and $guideRecord.next_focus) {
     $guideRecord.next_focus
 } else {
-    "Open the first failing phase artifact before widening back out to the full issue #3 replay."
+    'Open the first failing phase artifact before widening back out to the full issue #3 replay.'
 }
 
-$status = if ($coreMissing.Count -eq 0 -and $totalPhaseMissingCount -eq 0) {
-    "complete"
+$status = if ($coreMissing.Count -eq 0 -and $totalPhaseMissingCount -eq 0 -and -not $staleCrossReferenceDetected) {
+    'complete'
 } elseif (-not $summaryRef.exists) {
-    "missing-summary"
+    'missing-summary'
 } elseif ($coreMissing.Count -gt 0) {
-    "missing-core-artifacts"
+    'missing-core-artifacts'
+} elseif ($staleCrossReferenceDetected) {
+    'stale-cross-references'
 } else {
-    "missing-phase-artifacts"
+    'missing-phase-artifacts'
 }
 
 $bundle = [ordered]@{
-    issue = "Google issue #3 validation artifact bundle"
-    purpose = "Check whether the saved recommended-validation artifact family is complete and point the next Windows headed replay at the best artifact to open first."
-    generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+    issue = 'Google issue #3 validation artifact bundle'
+    purpose = 'Check whether the saved recommended-validation artifact family is complete, call out stale cross-references between the summary and helper artifacts, and point the next Windows headed replay at the best artifact to open first.'
+    generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_generated_at_utc = $summary.generated_at_utc
     artifact_bundle_path = $ArtifactPath
     repo_root = $repoRoot
@@ -243,6 +299,12 @@ $bundle = [ordered]@{
     phase_log_missing_count = $phaseLogMissingCount
     phase_json_missing_count = $phaseJsonMissingCount
     phase_missing_artifact_count = $totalPhaseMissingCount
+    stale_cross_reference_detected = [bool]$staleCrossReferenceDetected
+    stale_cross_reference_count = $crossReferenceMismatches.Count
+    stale_cross_reference_labels = @($staleCrossReferenceLabels)
+    stale_cross_reference_paths = @($staleCrossReferencePaths)
+    stale_cross_reference_details = @($crossReferenceMismatches)
+    stale_cross_reference_repair_commands = @($staleCrossReferenceRepairCommands)
     next_artifact_to_open = $nextArtifactToOpen
     boundary_last_passed_phase = if ($boundaryRecord) { $boundaryRecord.last_passed_phase } else { $null }
     boundary_first_failed_phase = if ($boundaryRecord) { $boundaryRecord.first_failed_phase } else { $null }
@@ -253,14 +315,16 @@ $bundle = [ordered]@{
     recommended_runner_command = if ($guideRecord -and $guideRecord.broader_runner_command) {
         $guideRecord.broader_runner_command
     } else {
-        $recommendedCommand
+        $recommendedRunnerCommand
     }
-    phase_boundary_command = if ($guideRecord) { $guideRecord.phase_boundary_command } else { $null }
+    phase_boundary_command = if ($guideRecord) { $guideRecord.phase_boundary_command } else { $boundaryGuideCommand }
     next_focus = $nextFocus
     first_missing_path = if ($coreArtifactMissingPaths.Count -gt 0) {
         $coreArtifactMissingPaths[0]
     } elseif ($firstFailedPhaseHealth.Count -gt 0 -and $firstFailedPhaseHealth[0].missing_count -gt 0) {
         $firstFailedPhaseHealth[0].missing_paths[0]
+    } elseif ($staleCrossReferenceDetected) {
+        $staleCrossReferencePaths[0]
     } else {
         $null
     }
@@ -294,14 +358,14 @@ $bundle | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding As
 
 if ($Json) {
     $bundle | ConvertTo-Json -Depth 8
-    if ($status -ne "complete") {
+    if ($status -ne 'complete') {
         exit 1
     }
     exit 0
 }
 
-Write-Host "Google issue #3 validation artifact bundle"
-Write-Host ""
+Write-Host 'Google issue #3 validation artifact bundle'
+Write-Host ''
 Write-Host ("Summary:   {0}" -f $SummaryPath)
 Write-Host ("Bundle:    {0}" -f $ArtifactPath)
 Write-Host ("Status:    {0}" -f $status)
@@ -312,22 +376,32 @@ Write-Host ("Core missing: {0}" -f $bundle.core_missing_count)
 Write-Host ("Phase log missing: {0}" -f $bundle.phase_log_missing_count)
 Write-Host ("Phase JSON missing: {0}" -f $bundle.phase_json_missing_count)
 Write-Host ("Phase artifact gaps: {0}" -f $bundle.phase_missing_artifact_count)
+Write-Host ("Stale refs: {0}" -f $bundle.stale_cross_reference_count)
 if ($bundle.guide_artifact_error) {
     Write-Host ("Guide error: {0}" -f $bundle.guide_artifact_error)
 }
 if ($bundle.boundary_artifact_error) {
     Write-Host ("Boundary error: {0}" -f $bundle.boundary_artifact_error)
 }
-Write-Host ""
+Write-Host ''
 foreach ($reference in $coreRefs) {
-    $marker = if ($reference.exists) { "OK" } else { "MISSING" }
+    $marker = if ($reference.exists) { 'OK' } else { 'MISSING' }
     Write-Host ("[{0}] {1}: {2}" -f $marker, $reference.label, $reference.path)
 }
+if ($bundle.stale_cross_reference_detected) {
+    Write-Host ''
+    Write-Host 'Stale cross-references:'
+    foreach ($mismatch in $bundle.stale_cross_reference_details) {
+        Write-Host ("- {0}: {1}" -f $mismatch.label, $mismatch.path)
+        Write-Host ("  Recorded summary: {0}" -f $mismatch.recorded_summary_path)
+        Write-Host ("  Refresh: {0}" -f $mismatch.repair_command)
+    }
+}
 if ($bundle.first_missing_path) {
-    Write-Host ""
+    Write-Host ''
     Write-Host ("First missing path: {0}" -f $bundle.first_missing_path)
 }
-Write-Host ""
+Write-Host ''
 Write-Host ("Open:  {0}" -f $bundle.next_artifact_to_open)
 if ($bundle.boundary_last_passed_phase -or $bundle.boundary_first_failed_phase) {
     Write-Host ("Boundary last pass: {0}" -f $(if ($bundle.boundary_last_passed_phase) { $bundle.boundary_last_passed_phase } else { 'none' }))
@@ -351,6 +425,12 @@ if ($bundle.phase_boundary_command) {
 if ($bundle.recommended_runner_command) {
     Write-Host ("Broader runner: {0}" -f $bundle.recommended_runner_command)
 }
+if ($bundle.stale_cross_reference_detected -and $bundle.stale_cross_reference_repair_commands.Count -gt 0) {
+    Write-Host 'Refresh order:'
+    foreach ($repairCommand in $bundle.stale_cross_reference_repair_commands) {
+        Write-Host ("- {0}" -f $repairCommand)
+    }
+}
 Write-Host ("Focus: {0}" -f $bundle.next_focus)
 if ($bundle.manual_fixture_replay_command) {
     Write-Host ("Manual replay: {0}" -f $bundle.manual_fixture_replay_command)
@@ -368,6 +448,6 @@ if ($bundle.manual_saved_page_flow_command) {
     Write-Host ("Saved-page flow: {0}" -f $bundle.manual_saved_page_flow_command)
 }
 
-if ($status -ne "complete") {
+if ($status -ne 'complete') {
     exit 1
 }
