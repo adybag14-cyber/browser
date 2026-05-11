@@ -53,6 +53,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_sanitized_saved_p
   -Wait
 ```
 
+Fail fast on the general attached-page validation surface before auto-discovery
+or launch:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_validation_surface.ps1
+```
+
 Auto-discover attached HTML files already present in the current workspace,
 prefer `user_files/` before `agent_files/`, and launch the preferred page in
 headed mode:
@@ -150,14 +157,15 @@ artifact root with:
 
 1. Pick the bounded suite for the subsystem you changed with `scripts/windows/show_headed_validation_suites.ps1`.
 2. Run that suite and one nearby shared-behavior suite if the change crossed subsystems.
-3. If the run already has attached HTML files under `user_files/` or `agent_files/`, use `run_attached_html_localhost_validation.ps1` first so the helper can discover the inputs and choose a preferred initial page automatically.
-4. If the same attached HTML set is part of the issue `#3` Google-style follow-up, use `show_google_attached_html_validation_flow.ps1` to print the localhost-first order or `run_google_attached_html_validation.ps1` to execute that same route directly.
-5. If the saved pages are spread across several files or folders, stage them first with `start_staged_localhost_html_validation.ps1`. If those exports have Unicode-heavy filenames or standalone `*_files` siblings, prefer `run_sanitized_saved_page_localhost_validation.ps1` so the headed launch uses one ASCII-safe localhost root.
-6. Run `summarize_localhost_html_pages.ps1` when you need a quick inventory, a suggested first page, or a recommended bounded-suite set for the saved HTML pages.
-7. Run one or two of the suggested bounded suites from the summary JSON before you start the localhost manual pass.
-8. Start the saved-page localhost pass from this directory's helper flow.
-9. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
-10. Only move to live-site checking after the saved-page pass is stable.
+3. If the run already has attached HTML files under `user_files/` or `agent_files/`, run `check_attached_html_validation_surface.ps1` first so the helper chain fails fast on missing docs, wrappers, or asset-audit scripts.
+4. Use `run_attached_html_localhost_validation.ps1` next so the helper can discover the inputs, choose a preferred initial page automatically, and rerun the deep attached-asset closure audit before launch.
+5. If the same attached HTML set is part of the issue `#3` Google-style follow-up, use `show_google_attached_html_validation_flow.ps1` to print the localhost-first order or `run_google_attached_html_validation.ps1` to execute that same route directly.
+6. If the saved pages are spread across several files or folders, stage them first with `start_staged_localhost_html_validation.ps1`. If those exports have Unicode-heavy filenames or standalone `*_files` siblings, prefer `run_sanitized_saved_page_localhost_validation.ps1` so the headed launch uses one ASCII-safe localhost root.
+7. Run `summarize_localhost_html_pages.ps1` when you need a quick inventory, a suggested first page, or a recommended bounded-suite set for the saved HTML pages.
+8. Run one or two of the suggested bounded suites from the summary JSON before you start the localhost manual pass.
+9. Start the saved-page localhost pass from this directory's helper flow.
+10. Keep notes about which attached pages still fail and whether the failure looks like input, rendering, navigation, or storage.
+11. Only move to live-site checking after the saved-page pass is stable.
 
 ## Google-Style Input Work
 
