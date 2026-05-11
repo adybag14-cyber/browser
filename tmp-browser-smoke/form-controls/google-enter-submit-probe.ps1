@@ -22,6 +22,7 @@ $titleAfterType = $null
 $titleAfterSubmit = $null
 $typedWorked = $false
 $submittedWorked = $false
+$submitAfterKeypress = $false
 $failure = $null
 
 function Wait-ForTitleLike([IntPtr]$Hwnd, [string]$Pattern, [int]$Attempts = 30, [int]$SleepMs = 200) {
@@ -39,6 +40,26 @@ function Require-Substring([string]$Haystack, [string]$Needle, [string]$Label) {
   if ($null -eq $Haystack -or $Haystack.IndexOf($Needle, [System.StringComparison]::Ordinal) -lt 0) {
     throw "$Label missing substring: $Needle"
   }
+}
+
+function Get-TitleEvents([string]$Title) {
+  if ($null -eq $Title) {
+    return @()
+  }
+  $parts = $Title.Split('|', 2)
+  if ($parts.Length -lt 2) {
+    return @()
+  }
+  return $parts[1].Split(',') | Where-Object { $_ -ne "" }
+}
+
+function Find-EventIndex([object[]]$Events, [string]$Prefix) {
+  for ($i = 0; $i -lt $Events.Length; $i++) {
+    if ([string]$Events[$i] -like "$Prefix*") {
+      return $i
+    }
+  }
+  return -1
 }
 
 try {
@@ -84,8 +105,19 @@ try {
   $titleAfterSubmit = Wait-ForTitleLike $hwnd "SUBMIT:n*"
   $submittedWorked = $null -ne $titleAfterSubmit
   if (-not $submittedWorked) { throw "google-like probe Enter did not submit the form" }
-  Require-Substring $titleAfterSubmit "KD:Enter|" "submit title"
-  Require-Substring $titleAfterSubmit "SU:n|1" "submit title"
+
+  $titleEvents = @(Get-TitleEvents $titleAfterSubmit)
+  $keydownIndex = Find-EventIndex $titleEvents "KD:Enter|"
+  $keypressIndex = Find-EventIndex $titleEvents "KP:Enter|"
+  $submitIndex = Find-EventIndex $titleEvents "SU:n|1"
+
+  if ($keydownIndex -lt 0) { throw "submit title missing Enter keydown event" }
+  if ($keypressIndex -lt 0) { throw "submit title missing Enter keypress event" }
+  if ($submitIndex -lt 0) { throw "submit title missing submit event marker" }
+  if ($keypressIndex -le $keydownIndex) { throw "submit title recorded keypress before keydown ordering settled" }
+  if ($submitIndex -le $keypressIndex) { throw "submit title recorded submit before Enter keypress completed" }
+
+  $submitAfterKeypress = $true
 } catch {
   $failure = $_.Exception.Message
 } finally {
@@ -107,6 +139,7 @@ try {
     title_after_submit = $titleAfterSubmit
     typed_worked = $typedWorked
     submitted_worked = $submittedWorked
+    submit_after_keypress = $submitAfterKeypress
     error = $failure
     server_meta = $serverMeta
     browser_meta = $browserMeta
