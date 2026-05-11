@@ -71,7 +71,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_investiga
 3. Run the smallest real-surface title and reduced-home gates.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_title_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile title
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_validation.ps1
@@ -81,19 +81,25 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_valid
 4. Move into the saved homepage fixture and later submit-path slices.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_homepage_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile homepage-fixture
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_path_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile submit-path
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
 ```
+
+If the saved homepage fixture is already green and you only need the narrower
+keydown, keypress, and submit-order slice before the shared Enter-order ladder,
+use `show_google_submit_timing_validation_flow.ps1` or
+`run_google_submit_timing_validation.ps1` inside this later submit-path phase
+instead of jumping back to the earlier title gates.
 
 5. Finish with the dedicated shared Enter-order gate before the broader shared
    ladder.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile shared-enter-order
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
@@ -105,6 +111,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_ent
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
 ```
