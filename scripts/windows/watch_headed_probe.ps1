@@ -77,6 +77,15 @@ $inputSent = [string]::IsNullOrEmpty($InputText)
 $enterSent = -not $SendEnter
 $preparedWindow = $false
 $trace = New-Object System.Collections.Generic.List[object]
+$readyMarkerMatched = $null
+$readyObservedAtUtc = $null
+$inputSentAtUtc = $null
+$titleAtInputSend = $null
+$typedObservedAtUtc = $null
+$enterSentAtUtc = $null
+$titleAtEnterSend = $null
+$enterObservedAtUtc = $null
+$failureStage = "window_handle"
 
 Write-Host ("Watching headed probe at {0}" -f $Url)
 if ($readyMarkers.Count -gt 0) {
@@ -108,6 +117,13 @@ while ((Get-Date) -lt $deadline) {
     if (-not $preparedWindow) {
         Show-SmokeWindow ([IntPtr]$process.MainWindowHandle)
         $preparedWindow = $true
+        if (-not $matchedReady) {
+            $failureStage = "ready_marker"
+        } elseif (-not $matchedTyped) {
+            $failureStage = "typed_marker"
+        } elseif (-not $matchedEnter) {
+            $failureStage = "enter_marker"
+        }
     }
 
     $title = Get-SmokeWindowTitle ([IntPtr]$process.MainWindowHandle)
@@ -126,6 +142,15 @@ while ((Get-Date) -lt $deadline) {
         foreach ($marker in $readyMarkers) {
             if ($title.Contains($marker)) {
                 $matchedReady = $true
+                $readyMarkerMatched = $marker
+                $readyObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+                if (-not $matchedTyped) {
+                    $failureStage = "typed_marker"
+                } elseif (-not $matchedEnter) {
+                    $failureStage = "enter_marker"
+                } else {
+                    $failureStage = $null
+                }
                 break
             }
         }
@@ -134,25 +159,45 @@ while ((Get-Date) -lt $deadline) {
     if ($matchedReady -and -not $inputSent) {
         Send-SmokeAsciiText $InputText
         $inputSent = $true
+        $inputSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        $titleAtInputSend = $title
         if ([string]::IsNullOrWhiteSpace($ExpectedTypedTitleContains)) {
             $matchedTyped = $true
+            $typedObservedAtUtc = $inputSentAtUtc
+            if (-not $matchedEnter) {
+                $failureStage = "enter_marker"
+            } else {
+                $failureStage = $null
+            }
         }
     }
 
     if ($inputSent -and -not $matchedTyped -and $title -and $title.Contains($ExpectedTypedTitleContains)) {
         $matchedTyped = $true
+        $typedObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        if (-not $matchedEnter) {
+            $failureStage = "enter_marker"
+        } else {
+            $failureStage = $null
+        }
     }
 
     if ($matchedReady -and $matchedTyped -and -not $enterSent) {
         Send-SmokeEnter
         $enterSent = $true
+        $enterSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        $titleAtEnterSend = $title
         if ([string]::IsNullOrWhiteSpace($ExpectedEnterTitleContains)) {
             $matchedEnter = $true
+            $enterObservedAtUtc = $enterSentAtUtc
+            $failureStage = $null
         }
     }
 
     if ($enterSent -and -not $matchedEnter -and $title -and $title.Contains($ExpectedEnterTitleContains)) {
         $matchedEnter = $true
+        $enterObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        $failureStage = $null
     }
 
     if ($matchedReady -and $matchedTyped -and $matchedEnter -and -not $LeaveOpen) {
@@ -160,6 +205,10 @@ while ((Get-Date) -lt $deadline) {
     }
 
     Start-Sleep -Milliseconds $PollMilliseconds
+}
+
+if ($process.HasExited -and -not ($matchedReady -and $matchedTyped -and $matchedEnter)) {
+    $failureStage = "process_exit"
 }
 
 if (-not $LeaveOpen -and -not $process.HasExited) {
@@ -182,8 +231,17 @@ $result = [pscustomobject]@{
     matched_ready = $matchedReady
     matched_typed = $matchedTyped
     matched_enter = $matchedEnter
+    matched_ready_marker = $readyMarkerMatched
+    ready_observed_at_utc = $readyObservedAtUtc
+    typed_observed_at_utc = $typedObservedAtUtc
+    enter_observed_at_utc = $enterObservedAtUtc
     input_sent = $inputSent
+    input_sent_at_utc = $inputSentAtUtc
+    title_at_input_send = $titleAtInputSend
     enter_sent = $enterSent
+    enter_sent_at_utc = $enterSentAtUtc
+    title_at_enter_send = $titleAtEnterSend
+    failure_stage = $failureStage
     last_title = $lastTitle
     leave_open = [bool]$LeaveOpen
     process_exited = $process.HasExited
