@@ -26,10 +26,14 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
+$submitPathSurfaceCheck = Join-Path $PSScriptRoot "check_google_submit_path_validation_surface.ps1"
 $homepageFixtureRunner = Join-Path $PSScriptRoot "run_google_homepage_fixture_validation.ps1"
 $submitTimingRunner = Join-Path $PSScriptRoot "run_google_submit_timing_validation.ps1"
 $sharedEnterOrderRunner = Join-Path $PSScriptRoot "run_google_shared_enter_order_validation.ps1"
 
+if (-not (Test-Path -LiteralPath $submitPathSurfaceCheck -PathType Leaf)) {
+    throw "Google submit-path validation surface checker not found: $submitPathSurfaceCheck"
+}
 if (-not (Test-Path -LiteralPath $homepageFixtureRunner -PathType Leaf)) {
     throw "Google homepage fixture validation runner not found: $homepageFixtureRunner"
 }
@@ -38,6 +42,10 @@ if (-not (Test-Path -LiteralPath $submitTimingRunner -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $sharedEnterOrderRunner -PathType Leaf)) {
     throw "Google shared Enter-order validation runner not found: $sharedEnterOrderRunner"
+}
+
+$submitPathSurfaceCheckArgs = @{
+    RepoRoot = $RepoRoot
 }
 
 $homepageFixtureArgs = @{
@@ -89,6 +97,11 @@ Write-Host "This runner is for the stage after the bounded localhost title gates
 Write-Host "It keeps the issue #3 focus on the real submit path: saved homepage fixture, submit timing, and shared Enter-order."
 Write-Host ""
 
+Write-Host "=== google-submit-path-surface ==="
+Write-Host ("Script: {0}" -f $submitPathSurfaceCheck)
+& $submitPathSurfaceCheck @submitPathSurfaceCheckArgs
+
+Write-Host ""
 Write-Host "=== google-homepage-fixture ==="
 Write-Host ("Script: {0}" -f $homepageFixtureRunner)
 & $homepageFixtureRunner @homepageFixtureArgs
