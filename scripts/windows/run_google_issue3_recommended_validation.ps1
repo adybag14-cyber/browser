@@ -230,13 +230,12 @@ if ($manualPhaseUsesFixtureSelection) {
 }
 
 Invoke-RecommendedPhase -Phase "localhost"
-Invoke-RecommendedPhase -Phase "title"
+Invoke-RecommendedPhase -Phase "quick"
 Invoke-RecommendedPhase -Phase "home"
 Invoke-HomepageFixturePhase
 Invoke-RecommendedPhase -Phase "input-phase-localhost"
 Invoke-RecommendedPhase -Phase "submit-timing"
 Invoke-RecommendedPhase -Phase "shared-enter-order"
-Invoke-RecommendedPhase -Phase "watch"
 if ($manualPhaseEnabled) {
     Invoke-RecommendedPhase -Phase "manual"
 }
