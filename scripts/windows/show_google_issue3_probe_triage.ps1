@@ -124,6 +124,15 @@ $bundleArtifactExists = Test-Path -LiteralPath $bundleArtifactPath -PathType Lea
 $boundaryArtifactExists = Test-Path -LiteralPath $boundaryArtifactPath -PathType Leaf
 $guideArtifactExists = Test-Path -LiteralPath $guideArtifactPath -PathType Leaf
 $refreshRecord = Read-ArtifactJson $refreshArtifactPath
+$refreshSummaryPath = if ($refreshRecord -and $refreshRecord.summary_path) {
+    $refreshRecord.summary_path
+} else {
+    $null
+}
+$refreshMatchesSummary = $false
+if ($summaryExists -and -not [string]::IsNullOrWhiteSpace($refreshSummaryPath)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
 $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
     $refreshRecord.status
 } elseif ($refreshArtifactExists) {
@@ -140,7 +149,16 @@ $artifactBundleStatus = if ($bundleRecord -and $bundleRecord.status) {
     'missing'
 }
 $handoffRecord = Read-ArtifactJson $handoffArtifactPath
-$handoffReady = [bool]($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open))
+$handoffSummaryPath = if ($handoffRecord -and $handoffRecord.summary_path) {
+    $handoffRecord.summary_path
+} else {
+    $null
+}
+$handoffMatchesSummary = $false
+if ($summaryExists -and -not [string]::IsNullOrWhiteSpace($handoffSummaryPath)) {
+    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
+$handoffReady = [bool]($handoffRecord -and $handoffMatchesSummary -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open))
 
 $triageOrder = @()
 $quickDiagnosis = @()
@@ -170,12 +188,18 @@ if (-not $summaryExists) {
     } elseif (-not $summaryRecordsRefreshArtifactPath) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved summary exists and the refresh artifact exists, but the summary does not record that pointer yet, so start with refresh status to keep the helper chain aligned.'
+    } elseif (-not $refreshMatchesSummary) {
+        $nextStep = $refreshStatusCommand
+        $reason = 'The saved refresh artifact exists, but it points at a different recommended-validation summary, so refresh the helper chain from the current summary before trusting narrower guidance.'
     } elseif (-not $handoffArtifactExists) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved summary exists, but the handoff artifact is missing, so refresh status should repair the helper chain before narrower replay.'
     } elseif (-not $summaryRecordsHandoffArtifactPath) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved summary exists and the handoff artifact exists, but the summary does not record that pointer yet, so refresh status should keep the helper chain aligned before narrower replay.'
+    } elseif (-not $handoffMatchesSummary) {
+        $nextStep = $refreshStatusCommand
+        $reason = 'The saved handoff artifact exists, but it points at a different recommended-validation summary, so refresh the helper chain from the current summary before trusting handoff-first replay.'
     } elseif ($handoffReady) {
         $nextStep = $handoffGuideCommand
         $reason = 'The saved summary, refresh artifact, bundle audit, and handoff artifact are already coherent, so start with the handoff helper and follow its next_artifact_to_open guidance.'
@@ -185,7 +209,7 @@ if (-not $summaryExists) {
     }
 
     $triageOrder = @(
-        '1. Start with the handoff helper when the saved refresh and artifact-bundle state are healthy; otherwise start with refresh status for the current summary.',
+        '1. Start with the handoff helper when the saved refresh and artifact-bundle state are healthy and both saved artifacts still match the current summary; otherwise start with refresh status for the current summary.',
         '2. If refresh status or the artifact-bundle helper says the chain is stale or incomplete, run the refresh-chain helper before trusting the saved handoff, manifest, guide, or boundary outputs.',
         '3. Once the helper chain is coherent, open the handoff helper and follow its next_artifact_to_open guidance.',
         '4. Use the manifest helper when you want the richest artifact index for the current replay, and use the boundary helper when you need the exact last-pass / first-fail split.',
@@ -196,7 +220,9 @@ if (-not $summaryExists) {
         ('Saved summary surface_check_status: {0}' -f $(if ($summary.surface_check_status) { $summary.surface_check_status } else { 'unknown' })),
         ('Artifact bundle status: {0}' -f $artifactBundleStatus),
         ('Refresh status: {0}' -f $refreshStatus),
+        ('Refresh matches summary: {0}' -f $refreshMatchesSummary),
         ('Handoff ready: {0}' -f $handoffReady),
+        ('Handoff matches summary: {0}' -f $handoffMatchesSummary),
         ('Summary records refresh pointer: {0}' -f $summaryRecordsRefreshArtifactPath),
         ('Summary records handoff pointer: {0}' -f $summaryRecordsHandoffArtifactPath),
         ('Refresh artifact exists: {0}' -f $refreshArtifactExists),
@@ -236,8 +262,12 @@ $guide = [ordered]@{
     refresh_artifact_path = $refreshArtifactPath
     refresh_artifact_exists = [bool]$refreshArtifactExists
     refresh_status = $refreshStatus
+    refresh_summary_path = $refreshSummaryPath
+    refresh_matches_summary = [bool]$refreshMatchesSummary
     handoff_artifact_path = $handoffArtifactPath
     handoff_artifact_exists = [bool]$handoffArtifactExists
+    handoff_summary_path = $handoffSummaryPath
+    handoff_matches_summary = [bool]$handoffMatchesSummary
     handoff_ready = [bool]$handoffReady
     manifest_artifact_path = $manifestArtifactPath
     manifest_artifact_exists = [bool]$manifestArtifactExists
@@ -272,7 +302,9 @@ if ($summaryExists) {
     Write-Host ("Surface:   {0}" -f $guide.surface_check_status)
     Write-Host ("Bundle:    {0}" -f $guide.artifact_bundle_status)
     Write-Host ("Refresh:   {0}" -f $guide.refresh_status)
+    Write-Host ("Refresh matches summary: {0}" -f $guide.refresh_matches_summary)
     Write-Host ("Handoff ready: {0}" -f $guide.handoff_ready)
+    Write-Host ("Handoff matches summary: {0}" -f $guide.handoff_matches_summary)
     Write-Host ("First fail:{0}" -f $(if ($guide.first_failed_phase) { ' ' + $guide.first_failed_phase } else { ' none' }))
 }
 Write-Host ''
@@ -289,8 +321,14 @@ Write-Host ("Shared:         {0}" -f $guide.form_controls_trace_guide_command)
 Write-Host ''
 Write-Host ("Refresh artifact: {0}" -f $guide.refresh_artifact_path)
 Write-Host ("Refresh exists:   {0}" -f $guide.refresh_artifact_exists)
+if ($guide.refresh_summary_path) {
+    Write-Host ("Refresh summary:  {0}" -f $guide.refresh_summary_path)
+}
 Write-Host ("Handoff artifact: {0}" -f $guide.handoff_artifact_path)
 Write-Host ("Handoff exists:   {0}" -f $guide.handoff_artifact_exists)
+if ($guide.handoff_summary_path) {
+    Write-Host ("Handoff summary:  {0}" -f $guide.handoff_summary_path)
+}
 Write-Host ("Manifest artifact: {0}" -f $guide.manifest_artifact_path)
 Write-Host ("Manifest exists:   {0}" -f $guide.manifest_artifact_exists)
 Write-Host ("Bundle artifact:   {0}" -f $guide.artifact_bundle_path)
