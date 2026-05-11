@@ -68,6 +68,7 @@ $profiles = @{
         (New-ValidationReference -Path "scripts/windows/run_form_controls_validation.ps1" -Kind "file" -Purpose "One-command shared form-controls runner that keeps the reduced Google-style probes in the baseline ladder."),
         (New-ValidationReference -Path "scripts/windows/run_google_form_controls_enter_order_validation.ps1" -Kind "file" -Purpose "Dedicated one-command runner for the reduced Google-style form-controls Enter-order gate."),
         (New-ValidationReference -Path "scripts/windows/run_google_issue3_recommended_validation.ps1" -Kind "file" -Purpose "One-command issue #3 validation runner."),
+        (New-ValidationReference -Path "scripts/windows/run_google_issue3_submit_path_validation.ps1" -Kind "file" -Purpose "Narrower one-command issue #3 submit-path runner that bundles the saved homepage fixture, submit-timing, and shared Enter-order slices once the earlier title gates are green."),
         (New-ValidationReference -Path "scripts/windows/run_google_input_validation.ps1" -Kind "file" -Purpose "Stepwise issue #3 phase runner used throughout the main Windows guide."),
         (New-ValidationReference -Path "scripts/windows/run_google_quick_validation.ps1" -Kind "file" -Purpose "Fast bounded title-plus-watch issue #3 runner."),
         (New-ValidationReference -Path "scripts/windows/run_google_title_validation.ps1" -Kind "file" -Purpose "Dedicated reduced title-wrapper runner."),
