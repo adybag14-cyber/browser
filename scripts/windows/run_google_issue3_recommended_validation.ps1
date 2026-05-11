@@ -50,6 +50,13 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
+$artifactRoot = Join-Path $RepoRoot "tmp-browser-smoke\headed-probe"
+New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+$summaryPath = Join-Path $artifactRoot "google-issue3-recommended-validation-summary.json"
+if (Test-Path -LiteralPath $summaryPath) {
+    Remove-Item -LiteralPath $summaryPath -Force
+}
+
 function Test-GoogleStyleAttachedHtmlAvailable {
     param(
         [Parameter(Mandatory = $true)]
@@ -250,6 +257,37 @@ function Show-RecommendedSummary {
             Write-Host ("  {0}" -f $result.error)
         }
     }
+    Write-Host ("Summary JSON: {0}" -f $summaryPath)
+}
+
+function Write-RecommendedSummaryArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$PhaseResults
+    )
+
+    $failedPhase = @($PhaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
+    $summary = [pscustomobject]@{
+        generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+        repo_root = $RepoRoot
+        browser_exe = $BrowserExe
+        host = $Host
+        summary_path = $summaryPath
+        leave_open = [bool]$LeaveOpen
+        skip_auto_attached_html = [bool]$SkipAutoAttachedHtml
+        auto_attached_html_detected = [bool]$autoAttachedHtml
+        manual_phase_enabled = [bool]$manualPhaseEnabled
+        manual_phase_google_style = [bool]$resolvedManualGoogleStyle
+        manual_phase_uses_fixture_selection = [bool]$manualPhaseUsesFixtureSelection
+        manual_initial_page = $resolvedManualInitialPage
+        manual_input_path = @($resolvedManualInputPath)
+        missing_fixture_asset_audit = @($manualPhaseAssetAudit)
+        phase_results = @($PhaseResults)
+        first_failed_phase = if ($failedPhase.Count -gt 0) { $failedPhase[0].name } else { $null }
+        completed = ($failedPhase.Count -eq 0)
+    }
+
+    $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPath -Encoding Ascii
 }
 
 Write-Host "Google issue #3 recommended validation"
@@ -296,6 +334,7 @@ foreach ($step in $phasePlan) {
     }
 }
 
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults)
 Show-RecommendedSummary -PhaseResults @($phaseResults)
 
 $failedPhase = @($phaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
