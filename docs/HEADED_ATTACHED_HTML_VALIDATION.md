@@ -20,6 +20,26 @@ Use this flow when all of these are true:
 Do not start here for a fresh issue. First run the narrowest bounded suite for
 the subsystem that changed.
 
+## Known Compatibility Bundle
+
+The current attached-page compatibility target bundle is the three-page set that
+ships with this workspace context:
+
+- `Control your online safety and privacy – Google Safety Centre`
+- `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic`
+- `Presidential Unsealing and Reporting System for UAP Encounters`
+
+Before you rely on an attached-page localhost pass as proof for those saved-page
+targets, confirm the bundle is still discoverable:
+
+- `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1`
+
+This checker verifies that all three known targets can still be found under the
+attached HTML search roots and reports their current paths, page titles, and
+shallow missing-asset counts. It does not replace the deeper asset-closure
+check; it just makes sure the expected compatibility bundle is actually present
+before the broader replay path starts.
+
 ## Issue #3 Order
 
 For the Google search-box investigation, keep this order:
@@ -55,14 +75,16 @@ and font assets obvious before the headed window starts.
 When the task is not specifically the Google homepage issue, keep this order:
 
 1. Run the narrowest bounded suite for the changed subsystem.
-2. Print the attached-page flow:
+2. Confirm the known target bundle or the intended attached-page set is present:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1`
+3. Print the attached-page flow:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1`
-3. Run the deep attached-page asset audit when saved files are part of the
+4. Run the deep attached-page asset audit when saved files are part of the
    replay:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1`
-4. Run the attached localhost helper:
+5. Run the attached localhost helper:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1`
-5. If a saved folder is being replayed instead of current-run attached files,
+6. If a saved folder is being replayed instead of current-run attached files,
    use:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_saved_page_localhost_validation.ps1 -InputPath '<saved-html-or-folder>'`
 
