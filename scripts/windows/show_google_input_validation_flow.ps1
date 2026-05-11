@@ -27,7 +27,7 @@ $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $recommendedRunner = '.\\scripts\\windows\\run_google_issue3_recommended_validation.ps1'
 $titleRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
 $surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1"
-$titleSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile title"
+$titleSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_title_validation_surface.ps1"
 $surfaceCheckAttachedCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile attached-html"
 $titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
@@ -37,11 +37,17 @@ $quickCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\r
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
 $homepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1$leaveOpenArgument"
 $homepageFixtureCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1$leaveOpenArgument"
+$submitPathSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_path_validation_surface.ps1"
+$submitPathFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 $submitPathCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
 $submitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $submitTimingCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 $sharedCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared"
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase shared-enter-order"
+$formControlsEnterOrderSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_form_controls_enter_order_validation_surface.ps1"
+$formControlsEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
+$formControlsEnterOrderTraceGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1"
+$formControlsEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1"
 $traceCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase trace$leaveOpenArgument"
 $watchCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase watch$leaveOpenArgument"
 $fullCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner$manualGoogleStyleArgument$leaveOpenArgument"
@@ -71,7 +77,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the saved homepage fixture checkpoint, the dedicated later-stage submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the saved homepage fixture checkpoint, the dedicated later-stage submit-path surface checker and flow helper, the dedicated submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated form-controls Enter-order surface checker, flow helper, trace guide, and runner, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -127,6 +133,16 @@ $flow = [ordered]@{
             command = $homepageFixtureCommand
         }
         [ordered]@{
+            name = "submit-path-surface-check"
+            goal = "Fail fast if the later issue #3 submit-path note, helper, trace guide, or bounded probes drifted out of sync before you depend on that later-stage ladder."
+            command = $submitPathSurfaceCheckCommand
+        }
+        [ordered]@{
+            name = "submit-path-flow"
+            goal = "Print the later-stage saved homepage fixture, submit-timing, and shared Enter-order ladder when you want that narrower issue #3 slice spelled out before you run it."
+            command = $submitPathFlowCommand
+        }
+        [ordered]@{
             name = "submit-path"
             goal = "Run the dedicated later-stage issue #3 wrapper when the earlier title and reduced-homepage gates are already green and you want the saved homepage fixture, bounded submit-timing, and shared Enter-order slices on one narrower command surface."
             command = $submitPathCommand
@@ -152,6 +168,26 @@ $flow = [ordered]@{
             command = $sharedEnterOrderCommand
         }
         [ordered]@{
+            name = "form-controls-enter-order-surface-check"
+            goal = "Fail fast if the dedicated shared form-controls Enter-order note, helper, trace guide, or smallest bounded probe drifted out of sync before you depend on that last shared checkpoint."
+            command = $formControlsEnterOrderSurfaceCheckCommand
+        }
+        [ordered]@{
+            name = "form-controls-enter-order-flow"
+            goal = "Print the dedicated shared form-controls Enter-order ladder when you want the smallest real-surface keypress-before-submit gate spelled out before you run it."
+            command = $formControlsEnterOrderFlowCommand
+        }
+        [ordered]@{
+            name = "form-controls-enter-order-trace-guide"
+            goal = "Read the dedicated shared form-controls Enter-order marker guide when you want the smallest later-stage shared checkpoint translated into the next narrowing step before rerunning it."
+            command = $formControlsEnterOrderTraceGuideCommand
+        }
+        [ordered]@{
+            name = "form-controls-enter-order"
+            goal = "Run the dedicated shared form-controls Enter-order gate when you want the smallest later-stage keypress-before-submit proof before attached HTML or live Google replay."
+            command = $formControlsEnterOrderCommand
+        }
+        [ordered]@{
             name = "attached-google-flow"
             goal = "Print the attached Google-style helper flow when you want the current run's attached HTML pages auto-discovered and mapped onto the same localhost-first issue #3 order before the broader manual follow-up."
             command = $attachedGoogleFlowCommand
@@ -173,7 +209,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "full"
-            goal = "Run the localhost-first issue #3 recommended runner in one pass so the reduced title phase, reduced homepage pass, saved homepage fixture checkpoint, dedicated submit-path stage, bounded submit-timing slice, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watch phases stay on one reusable command surface before the broader manual follow-up."
+            goal = "Run the localhost-first issue #3 recommended runner in one pass so the reduced title phase, reduced homepage pass, saved homepage fixture checkpoint, dedicated submit-path stage, bounded submit-timing slice, shared label baseline, shared Enter-order wrapper, dedicated form-controls Enter-order gate, attached Google helper handoff, and watch phases stay on one reusable command surface before the broader manual follow-up."
             command = $fullCommand
         }
     )
@@ -223,22 +259,27 @@ $flow = [ordered]@{
         "Start with the validation-surface checker so guide or helper drift fails fast before localhost, title-surface-check, title-flow, title, quick-flow, or quick.",
         "Use .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile attached-html before attached or saved-page follow-up when the next slice depends on the saved-page or attached-page handoff staying intact.",
         "Start with localhost before title-surface-check, title-flow, title, quick-flow, or quick so the reduced Google-style probes stay the first bounded gate.",
-        "Use .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile title before the title-flow or title steps when you want the narrower title guide, helper, direct-probe, and fixture chain to fail fast before you depend on that smaller issue #3 ladder.",
+        "Use the title-surface-check step before title-flow or title when you want the narrower title guide, helper, direct-probe, and fixture chain to fail fast before you depend on that smaller issue #3 ladder.",
         "Use the title-flow step when you want the dedicated title wrapper and raw probe handoff printed before you run that narrower slice.",
         "Use the quick-flow step when you want the fast title-plus-watch stack printed before you execute the quick wrapper.",
         "Use the homepage-fixture-flow step after the reduced homepage pass when you want the saved homepage fixture checkpoint printed before execution.",
-        "Use the homepage-fixture step after the reduced homepage pass when you want one extra bounded saved-page checkpoint before the submit-path runner, submit-timing slice, or the shared Enter-order stack.",
+        "Use the homepage-fixture step after the reduced homepage pass when you want one extra bounded saved-page checkpoint before the submit-path surface-check, submit-path flow, submit-timing slice, or the shared Enter-order stack.",
+        "Use the submit-path-surface-check step before submit-path-flow or submit-path when you want the later issue #3 note, helper, trace guide, and bounded probes to fail fast before you depend on that narrower ladder.",
+        "Use the submit-path-flow step when the earlier title and reduced-homepage gates are already green and you want the later-stage saved homepage fixture, submit-timing, and shared Enter-order ladder printed before you run it.",
         "Use the submit-path step when the earlier title and reduced-homepage gates are already green and you want one later-stage command surface for the saved homepage fixture, submit-timing, and shared Enter-order slices before attached-page, manual, or live Google replay.",
         "Use submit-timing-flow after the homepage-fixture or submit-path pass when you want the bounded Google-shaped timing wrapper printed before you execute it.",
         "Use submit-timing after the homepage-fixture or submit-path pass when you want one extra Google-shaped headed check before the shared form-controls and inline-flow gates.",
         "Use shared before a live Google manual check when label activation, input, or submit behavior still looks suspicious.",
-        "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the manual Google pass.",
-        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when you want that shared Enter-order stack printed as its own narrower read-first handoff before you run it.",
+        "Use shared-enter-order when the shared gates are green and you want the stricter keypress-before-submit wrapper before the dedicated form-controls gate or the manual Google pass.",
+        "Use the form-controls-enter-order-surface-check step before the dedicated form-controls flow, trace guide, or runner when you want the smallest shared later-stage note, helper, and bounded probe chain to fail fast.",
+        "Use the form-controls-enter-order-flow step when you want that smallest shared keypress-before-submit gate printed as its own narrower handoff before you run it.",
+        "Use the form-controls-enter-order-trace-guide step when you want the dedicated form-controls probe markers translated into quick failure stages without reopening the longer read-first markdown note.",
+        "Use the form-controls-enter-order step when you want the smallest later-stage shared keypress-before-submit proof before attached-page, manual, or live Google replay.",
         "Use attached-google-flow when you want the current run's attached Google-like HTML pages auto-discovered and the matching localhost-first issue #3 sequence printed before the broader manual follow-up.",
         "Use attached-google when you want the helper to auto-discover current-run attached Google-like HTML pages instead of restating ManualInputPath by hand.",
-        "Use trace when the bounded localhost, reduced homepage, saved homepage fixture, submit-path, submit-timing, shared phases, and attached Google follow-up are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
+        "Use trace when the bounded localhost, reduced homepage, saved homepage fixture, submit-path, submit-timing, shared phases, dedicated form-controls gate, and attached Google follow-up are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
-        "Use full when you want the recommended localhost-first issue #3 flow plus the extra title, saved homepage fixture, dedicated submit-path stage, bounded submit-timing, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
+        "Use full when you want the recommended localhost-first issue #3 flow plus the extra title, saved homepage fixture, dedicated submit-path stage, bounded submit-timing, shared label baseline, shared Enter-order wrapper, dedicated form-controls Enter-order gate, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed attached-google-flow and attached-google commands keep that page preferred for the auto-discovered attached-page path, and the manual follow-up command keeps the same saved page first instead of falling back to a generated index or another arbitrary file.",
         "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
         "When ManualGoogleStyle is set, the printed manual and full commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when ManualInitialPage is not set.",
