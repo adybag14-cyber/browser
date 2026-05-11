@@ -332,7 +332,7 @@ try {
     throw "google home title probe could not focus the query input"
   }
 
-  Send-SmokeText $InputText
+  Send-SmokeAsciiText $InputText
   $typePattern = "*|V=$InputText|*"
   $titleAfterType = Wait-ForTitleMatch -Hwnd $hwnd -Predicate {
     param($Title)
