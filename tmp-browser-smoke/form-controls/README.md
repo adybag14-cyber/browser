@@ -42,10 +42,11 @@ shared headed path did not submit early at keydown.
 2. Run the reduced headed homepage probe in `tmp-browser-smoke/google-home/`.
 3. Print the ordered shared form-controls handoff with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_form_controls_validation_flow.ps1`.
 4. Print the dedicated Google-style shared Enter-order handoff with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1` when the next question is specifically whether submit waited until keypress.
-5. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation_recommended.ps1`, or narrow with `deferred-enter-submit-probe.ps1`, `google-enter-order-probe.ps1`, and `enter-submit-probe.ps1` when you already know which shared gate needs attention.
-6. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1` when you want only the dedicated Google-style keypress-before-submit gate without rerunning the broader form-controls ladder.
-7. Run the nearby inline-flow submit probe when the change also touched broader layout or focus behavior.
-8. Move on to the smallest live Google manual pass only after the bounded probes stay green.
+5. Print the dedicated trace helper with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1` when you want the smallest gate's focus, typed-text, keypress, and submit markers translated before or after a rerun.
+6. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation_recommended.ps1`, or narrow with `deferred-enter-submit-probe.ps1`, `google-enter-order-probe.ps1`, and `enter-submit-probe.ps1` when you already know which shared gate needs attention.
+7. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1` when you want only the dedicated Google-style keypress-before-submit gate without rerunning the broader form-controls ladder.
+8. Run the nearby inline-flow submit probe when the change also touched broader layout or focus behavior.
+9. Move on to the smallest live Google manual pass only after the bounded probes stay green.
 
 ## Read-First And One-Command Helpers
 
@@ -56,6 +57,7 @@ bounded homepage pass, and these form-controls checks in one ordered sequence:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_form_controls_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation_recommended.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
