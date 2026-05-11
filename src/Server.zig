@@ -1008,4 +1008,4 @@ const TestClient = struct {
             }
         }
     }
-};
+}
