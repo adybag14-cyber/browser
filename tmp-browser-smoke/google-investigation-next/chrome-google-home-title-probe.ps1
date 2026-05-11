@@ -74,6 +74,49 @@ function Get-TraceArtifactPaths([string]$Root) {
     return $artifacts
 }
 
+function Get-StateField($State, [string]$Name) {
+    if ($null -eq $State) {
+        return $null
+    }
+
+    $property = $State.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+
+    return $property.Value
+}
+
+function Get-TraceTailSummary($Trace) {
+    if ($null -eq $Trace) {
+        return @()
+    }
+
+    $entries = @($Trace)
+    if ($entries.Count -eq 0) {
+        return @()
+    }
+
+    $start = [Math]::Max(0, $entries.Count - 5)
+    $tail = @()
+    for ($i = $start; $i -lt $entries.Count; $i++) {
+        $entry = $entries[$i]
+        $state = if ($entry) { $entry.state } else { $null }
+        $tail += [pscustomobject]@{
+            observed_at_utc = if ($entry) { $entry.observed_at_utc } else { $null }
+            marker = Get-StateField $state "marker"
+            active_element = Get-StateField $state "active_element"
+            query_element = Get-StateField $state "query_element"
+            query_value = Get-StateField $state "query_value"
+            selection = Get-StateField $state "selection"
+            last_event = Get-StateField $state "last_event"
+            title = if ($entry) { $entry.title } else { $null }
+        }
+    }
+
+    return $tail
+}
+
 try {
     $server = Start-Process -FilePath "python" -ArgumentList "-m", "http.server", $Port, "--bind", "127.0.0.1" -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
     for ($i = 0; $i -lt 40; $i++) {
@@ -131,6 +174,12 @@ try {
         "completed"
     }
 
+    $readyState = if ($helperResult) { $helperResult.ready_title_state } else { $null }
+    $typedState = if ($helperResult) { $helperResult.typed_title_state } else { $null }
+    $enterState = if ($helperResult) { $helperResult.enter_title_state } else { $null }
+    $lastState = if ($helperResult) { $helperResult.last_title_state } else { $null }
+    $helperTraceTail = if ($helperResult) { @(Get-TraceTailSummary $helperResult.trace) } else { @() }
+
     $result = [pscustomobject]@{
         probe_url = $probeUrl
         helper_exit_code = $helperExitCode
@@ -144,15 +193,42 @@ try {
         helper_input_sent_at_utc = if ($helperResult) { $helperResult.input_sent_at_utc } else { $null }
         helper_enter_sent_at_utc = if ($helperResult) { $helperResult.enter_sent_at_utc } else { $null }
         helper_ready_title = if ($helperResult) { $helperResult.ready_title } else { $null }
-        helper_ready_title_state = if ($helperResult) { $helperResult.ready_title_state } else { $null }
+        helper_ready_title_state = $readyState
+        helper_ready_marker = Get-StateField $readyState "marker"
+        helper_ready_active_element = Get-StateField $readyState "active_element"
+        helper_ready_query_element = Get-StateField $readyState "query_element"
+        helper_ready_query_value = Get-StateField $readyState "query_value"
+        helper_ready_selection = Get-StateField $readyState "selection"
+        helper_ready_last_event = Get-StateField $readyState "last_event"
         helper_typed_title = if ($helperResult) { $helperResult.typed_title } else { $null }
-        helper_typed_title_state = if ($helperResult) { $helperResult.typed_title_state } else { $null }
+        helper_typed_title_state = $typedState
+        helper_typed_marker = Get-StateField $typedState "marker"
+        helper_typed_active_element = Get-StateField $typedState "active_element"
+        helper_typed_query_element = Get-StateField $typedState "query_element"
+        helper_typed_query_value = Get-StateField $typedState "query_value"
+        helper_typed_selection = Get-StateField $typedState "selection"
+        helper_typed_last_event = Get-StateField $typedState "last_event"
         helper_enter_title = if ($helperResult) { $helperResult.enter_title } else { $null }
-        helper_enter_title_state = if ($helperResult) { $helperResult.enter_title_state } else { $null }
+        helper_enter_title_state = $enterState
+        helper_enter_marker = Get-StateField $enterState "marker"
+        helper_enter_active_element = Get-StateField $enterState "active_element"
+        helper_enter_query_element = Get-StateField $enterState "query_element"
+        helper_enter_query_value = Get-StateField $enterState "query_value"
+        helper_enter_selection = Get-StateField $enterState "selection"
+        helper_enter_last_event = Get-StateField $enterState "last_event"
         helper_last_title = if ($helperResult) { $helperResult.last_title } else { $null }
-        helper_last_title_state = if ($helperResult) { $helperResult.last_title_state } else { $null }
+        helper_last_title_state = $lastState
+        helper_last_marker = Get-StateField $lastState "marker"
+        helper_last_active_element = Get-StateField $lastState "active_element"
+        helper_last_query_element = Get-StateField $lastState "query_element"
+        helper_last_query_value = Get-StateField $lastState "query_value"
+        helper_last_selection = Get-StateField $lastState "selection"
+        helper_last_event = Get-StateField $lastState "last_event"
         helper_trace_path = if ($helperResult) { $helperResult.trace_path } else { $null }
         helper_trace_count = if ($helperResult -and $helperResult.trace) { @($helperResult.trace).Count } else { 0 }
+        helper_trace_tail = $helperTraceTail
+        helper_trace_tail_markers = @($helperTraceTail | ForEach-Object { $_.marker })
+        helper_trace_tail_query_values = @($helperTraceTail | ForEach-Object { $_.query_value })
         helper = $helperResult
         browse_trace = Get-TraceSummary $browseTrace
         renderer_trace = Get-TraceSummary $rendererTrace
