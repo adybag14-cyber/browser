@@ -9,7 +9,8 @@ param(
     [string]$PreferredInitialPage,
     [int]$Port = 8123,
     [switch]$Json,
-    [switch]$LeaveOpen
+    [switch]$LeaveOpen,
+    [switch]$AllowMissingLocalAssets
 )
 
 Set-StrictMode -Version Latest
@@ -21,10 +22,15 @@ function Get-AssetClosureCommand {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ParameterSetName,
-        [string[]]$ResolvedInputPath
+        [string[]]$ResolvedInputPath,
+        [Parameter(Mandatory = $true)]
+        [bool]$AllowMissingLocalAssets
     )
 
     $base = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle"
+    if ($AllowMissingLocalAssets) {
+        $base += " -AllowMissingAssets"
+    }
     switch ($ParameterSetName) {
         "InputPath" {
             if (-not $ResolvedInputPath -or $ResolvedInputPath.Count -eq 0) {
@@ -65,7 +71,9 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [object[]]$MissingAssetAudit,
         [Parameter(Mandatory = $true)]
         [string]$SurfaceCheckCommand,
-        [string]$AssetClosureCommand
+        [string]$AssetClosureCommand,
+        [Parameter(Mandatory = $true)]
+        [bool]$AllowMissingLocalAssets
     )
 
     $parameterMode = switch ($ParameterSetName) {
@@ -100,6 +108,7 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         preferred_initial_page = $ResolvedPreferredInitialPage
         preferred_initial_page_mode = $preferredInitialPageMode
         validation_mode = "google-style"
+        allow_missing_local_assets = $AllowMissingLocalAssets
         leave_open = $LeaveOpen
         port = $Port
         surface_check_command = $SurfaceCheckCommand
@@ -137,7 +146,7 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
 } else {
     Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 }
-$assetClosureCommand = Get-AssetClosureCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedInputPath $resolvedInputPath
+$assetClosureCommand = Get-AssetClosureCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedInputPath $resolvedInputPath -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 
 $autoGoogleStyleFixture = if ($PSCmdlet.ParameterSetName -eq "Auto") {
     $resolvedInputPath |
@@ -181,7 +190,8 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -Port $Port `
     -MissingAssetAudit $attachedAssetAudit `
     -SurfaceCheckCommand $surfaceCheckCommand `
-    -AssetClosureCommand $assetClosureCommand
+    -AssetClosureCommand $assetClosureCommand `
+    -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 
 if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
@@ -226,6 +236,9 @@ if (-not $Json) {
         } else {
             Write-Host ("Preferred initial page: {0}" -f $resolvedPreferredInitialPage)
         }
+    }
+    if ($AllowMissingLocalAssets) {
+        Write-Host "Attached asset policy: degraded mode allowed"
     }
     Write-Host "Override: use -PreferredInitialPage to keep one Google-like page first, or pass -PageRoot / -InputPath to skip auto-discovery."
     Write-Host "Helper: .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle"
