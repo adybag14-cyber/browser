@@ -35,6 +35,8 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     $null
 }
 
+$attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
+
 $runnerPath = Join-Path $RepoRoot "scripts/windows/run_saved_page_localhost_validation.ps1"
 if (-not (Test-Path -LiteralPath $runnerPath -PathType Leaf)) {
     throw "saved-page localhost validation runner not found: $runnerPath"
@@ -80,5 +82,7 @@ if (-not $SummaryOnly) {
     Write-Host "Runner: .\\scripts\\windows\\run_saved_page_localhost_validation.ps1"
     Write-Host ""
 }
+
+Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $RepoRoot
 
 & $runnerPath @runnerArgs
