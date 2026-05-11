@@ -124,6 +124,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validati
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1
@@ -165,6 +166,7 @@ Routing rules:
 - Use `run_google_issue3_recommended_validation.ps1` when you want the one-command issue `#3` flow to include the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
 - Use `check_google_validation_surface.ps1 -Profile submit-path` before `show_google_submit_path_validation_flow.ps1` or `run_google_issue3_submit_path_validation.ps1` so missing guides, helpers, or bounded probes fail fast before you depend on the later issue `#3` submit-path ladder.
 - Use `show_google_submit_path_validation_flow.ps1` when you want only the later-stage saved homepage fixture, submit-timing, and shared Enter-order ladder printed after the title gates are already green.
+- Use `show_google_submit_path_trace_guide.ps1` when you want the saved homepage fixture, submit-timing, and shared Enter-order outputs translated into the next smaller checkpoint before you rerun anything or widen back out to attached HTML or the live headed homepage.
 - Use `run_google_issue3_submit_path_validation.ps1` when the title or reduced-homepage gates are already green and you want the saved homepage fixture, submit-timing, and shared Enter-order slices in one narrower command before the trace or live Google follow-up.
 - Use `check_google_form_controls_enter_order_validation_surface.ps1` before `show_google_form_controls_enter_order_validation_flow.ps1` or `run_google_form_controls_enter_order_validation.ps1` so missing docs, helper scripts, or the raw dedicated probe fail fast.
 - Use `show_google_form_controls_enter_order_validation_flow.ps1` when you want only the dedicated shared form-controls Enter-order gate printed and parameterized before you run it.
