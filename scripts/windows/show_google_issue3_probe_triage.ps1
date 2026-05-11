@@ -240,6 +240,24 @@ if (-not $summaryExists) {
     )
 }
 
+$pointerRepairNeeded = [bool]($summaryExists -and (($refreshMatchesSummary -and -not $summaryRecordsRefreshArtifactPath) -or ($handoffMatchesSummary -and -not $summaryRecordsHandoffArtifactPath)))
+$artifactChainCoherent = [bool]($summaryExists -and $artifactBundleStatus -eq 'complete' -and $refreshStatus -eq 'refreshed' -and $refreshMatchesSummary -and $handoffMatchesSummary)
+$preferredStartHelper = if ($nextStep -eq $handoffGuideCommand) {
+    'handoff'
+} elseif ($nextStep -eq $refreshStatusCommand) {
+    'refresh-status'
+} else {
+    'recommended-runner'
+}
+
+if ($summaryExists) {
+    $quickDiagnosis += @(
+        ('Artifact chain coherent: {0}' -f $artifactChainCoherent),
+        ('Pointer repair needed: {0}' -f $pointerRepairNeeded),
+        ('Preferred start helper: {0}' -f $preferredStartHelper)
+    )
+}
+
 $guide = [ordered]@{
     issue = 'Google issue #3 probe triage'
     purpose = 'Use the current recommended-validation summary to surface the exact refresh, handoff, manifest, bundle, guide, and boundary artifact paths, and prefer the saved handoff helper once the helper chain is coherent.'
@@ -267,6 +285,9 @@ $guide = [ordered]@{
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
     refresh_pointer_trusted = [bool]$refreshPointerTrusted
     handoff_pointer_trusted = [bool]$handoffPointerTrusted
+    artifact_chain_coherent = [bool]$artifactChainCoherent
+    pointer_repair_needed = [bool]$pointerRepairNeeded
+    preferred_start_helper = $preferredStartHelper
     refresh_artifact_path = $refreshArtifactPath
     refresh_artifact_exists = [bool]$refreshArtifactExists
     refresh_status = $refreshStatus
@@ -315,6 +336,9 @@ if ($summaryExists) {
     Write-Host ("Handoff ready: {0}" -f $guide.handoff_ready)
     Write-Host ("Handoff matches summary: {0}" -f $guide.handoff_matches_summary)
     Write-Host ("Handoff pointer trusted: {0}" -f $guide.handoff_pointer_trusted)
+    Write-Host ("Artifact chain coherent: {0}" -f $guide.artifact_chain_coherent)
+    Write-Host ("Pointer repair needed: {0}" -f $guide.pointer_repair_needed)
+    Write-Host ("Preferred helper: {0}" -f $guide.preferred_start_helper)
     Write-Host ("First fail:{0}" -f $(if ($guide.first_failed_phase) { ' ' + $guide.first_failed_phase } else { ' none' }))
 }
 Write-Host ''
