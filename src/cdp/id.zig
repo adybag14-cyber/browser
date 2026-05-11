@@ -77,7 +77,7 @@ pub fn Incrementing(comptime T: type, comptime prefix: []const u8) type {
     };
 
     const buffer = blk: {
-        var b = [_]u8{0} * *MAX_BYTES;
+        var b = [_]u8{0}**MAX_BYTES;
         @memcpy(b[0..prefix.len], prefix);
         b[prefix.len] = '-';
         break :blk b;
