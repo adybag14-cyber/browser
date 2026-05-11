@@ -28,7 +28,7 @@ const Host = lp.sys.Host;
 const SigHandler = @import("Sighandler.zig");
 pub const panic = lp.crash_handler.panic;
 
-pub fn main() !void {
+pub fn main(process: std.process.Init) !void {
     // allocator
     // - in Debug mode we use the General Purpose Allocator to detect memory leaks
     // - in Release mode we use the c allocator
@@ -44,14 +44,14 @@ pub fn main() !void {
     const main_arena = main_arena_instance.allocator();
     defer main_arena_instance.deinit();
 
-    run(gpa, main_arena) catch |err| {
+    run(gpa, main_arena, process.minimal.args) catch |err| {
         log.fatal(.app, "exit", .{ .err = err });
         std.posix.exit(1);
     };
 }
 
-fn run(allocator: Allocator, main_arena: Allocator) !void {
-    const args = try Config.parseArgs(main_arena);
+fn run(allocator: Allocator, main_arena: Allocator, argv: std.process.Args) !void {
+    const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
 
     switch (args.mode) {
