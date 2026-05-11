@@ -1,227 +1,154 @@
 # Headed Mode Validation Gates
 
-This document turns the existing headed smoke directories into named gate
-suites so future work can pick the right bounded validation path quickly.
+This is the quick-route map for choosing the first bounded headed validation
+step after a change on `fork/headed-mode-foundation`.
 
-Read this with:
+Use it together with:
+
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
-- `docs/FULL_BROWSER_MASTER_TRACKER.md`
-- `docs/WINDOWS_FULL_USE.md`
-- `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md`
-- `tmp-browser-smoke/README.md`
+- `scripts/windows/show_headed_validation_suites.ps1`
+- the suite-specific flow helpers under `scripts/windows/`
 
-## How To Use This File
+The goal is simple: pick the smallest real validation family first, prove that
+surface, then widen only when the change crosses into a shared behavior area.
 
-When a change touches one subsystem, run the smallest matching gate suite first.
-If that passes, move outward only when the changed behavior crosses into another
-shared subsystem.
+## Core rule
 
-Keep these rules:
-- run the narrowest matching suite before broader regression sweeps
-- prefer the probe family that exercises the real headed Win32 surface
-- treat saved artifacts and logs as part of the validation result, not optional
-- do not mark a slice complete unless the primary matching suite is green or the
-  failure is captured with a specific blocker note
+Start with one bounded suite that matches the code you changed.
+Only widen to the neighboring suite family after the first gate is green or the
+symptom clearly spans both surfaces.
 
-## Gate Suites
+Use the shared router first when you are not sure where a change belongs:
 
-### 1. Shell And Navigation
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -List
+```
 
-Use when changes touch browser chrome, internal pages, tab lifecycle, popup
-policy, address-bar behavior, restore, bookmarks, stop/loading recovery, or
-navigation recovery.
+## Quick routing table
 
-Directories:
-- `tmp-browser-smoke/tabs`
-- `tmp-browser-smoke/browser-pages`
-- `tmp-browser-smoke/settings`
-- `tmp-browser-smoke/wrapped-link`
-- `tmp-browser-smoke/popup`
-- `tmp-browser-smoke/stop-loading`
-- `tmp-browser-smoke/bookmarks`
+| Change area | First gate | Add next when needed |
+| --- | --- | --- |
+| Shell, browser pages, tabs, startup restore | `tabs` or `browser-pages` | `settings`, `stop-loading` |
+| Layout, visual placement, screenshots, clipping | `layout-smoke` | `flow-layout`, `rendered-link-dom` |
+| Wrapped inline controls, focus travel, mixed submit behavior | `inline-flow` | `form-controls`, `layout-smoke` |
+| Text entry, label click, Enter submit, caret, keyboard behavior | `form-controls` | `inline-flow`, `find` |
+| Fonts, text metrics, authored font fallback | `font-render` | `font-smoke`, `zoom` |
+| Images, stylesheets, script/module request policy | `image-smoke` or `stylesheet-smoke` | the sibling request-policy suite |
+| Canvas or WebGL | `canvas-smoke` | `layout-smoke` |
+| Downloads or file upload | `downloads` or `file-upload` | `attachment-downloads`, `browser-pages` |
+| Cookies, localStorage, IndexedDB, session scope | matching persistence suite | `tabs`, `browser-pages` |
+| Fetch abort, credentials, WebSocket runtime | matching network suite | the sibling network suite |
+| Saved or attached localhost HTML replay | `local-html-fixtures` or `attached-html-target-bundle` | `manual-user` |
 
-Good first probes:
-- `tmp-browser-smoke/tabs/chrome-tabs-probe.ps1`
-- `tmp-browser-smoke/browser-pages/chrome-browser-pages-start-shell-probe.ps1`
-- `tmp-browser-smoke/settings/chrome-settings-home-probe.ps1`
-- `tmp-browser-smoke/wrapped-link/addressbar-probe.ps1`
-- `tmp-browser-smoke/popup/chrome-popup-script-policy-probe.ps1`
-- `tmp-browser-smoke/stop-loading/chrome-stop-probe.ps1`
-- `tmp-browser-smoke/bookmarks/bookmark-toggle-probe.ps1`
+When you already know the broad area, print the router recommendation directly:
 
-### 2. Rendering And Layout
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+```
 
-Use when changes touch paint ordering, layout geometry, hit-testing parity,
-screenshots, clipping, transforms, overflow, or visual composition.
+## Issue #3 gate ladder
 
-Directories:
-- `tmp-browser-smoke/layout-smoke`
-- `tmp-browser-smoke/inline-flow`
-- `tmp-browser-smoke/flow-layout`
-- `tmp-browser-smoke/rendered-link-dom`
+Issue `#3` is the headed Windows Google input and submit reliability track.
+Do not jump straight from localhost probes to a manual Google homepage retest.
+Use the bounded gates in this order.
 
-Good first probes:
-- `tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1`
-- `tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1`
-- `tmp-browser-smoke/inline-flow/probe.ps1`
-- `tmp-browser-smoke/flow-layout/probe.ps1`
-- `tmp-browser-smoke/rendered-link-dom/chrome-rendered-link-dom-probe.ps1`
+1. Print the current issue `#3` routing set.
 
-### 3. Text, Fonts, Editing, And Focus
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+```
 
-Use when changes touch input delivery, caret behavior, clipboard, IME, focus
-traversal, text measurement, fonts, zoom-sensitive editing behavior, or the
-issue `#3` Google search-box narrowing path.
+2. Fail fast on the reduced localhost Google-style suite.
 
-Directories and runner entry points:
-- `tmp-browser-smoke/form-controls`
-- `tmp-browser-smoke/google-investigation-next`
-- `tmp-browser-smoke/google-home`
-- `tmp-browser-smoke/font-smoke`
-- `tmp-browser-smoke/font-render`
-- `tmp-browser-smoke/find`
-- `tmp-browser-smoke/zoom`
-- `scripts/windows/run_google_home_title_probe.ps1`
-- `scripts/windows/run_google_quick_validation.ps1`
-- `scripts/windows/run_google_homepage_fixture_validation.ps1`
-- `scripts/windows/run_google_issue3_submit_path_validation.ps1`
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_investigation_next_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_investigation_next_validation_flow.ps1
+```
 
-Good first probes:
-- `tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1`
-- `scripts/windows/run_google_home_title_probe.ps1`
-- `scripts/windows/run_google_quick_validation.ps1`
-- `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1`
-- `scripts/windows/run_google_homepage_fixture_validation.ps1`
-- `scripts/windows/run_google_issue3_submit_path_validation.ps1`
-- `tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1`
-- `tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1`
-- `tmp-browser-smoke/form-controls/label-click-probe.ps1`
-- `tmp-browser-smoke/form-controls/enter-submit-probe.ps1`
-- `tmp-browser-smoke/inline-flow/chrome-inline-break-input-enter-submit-probe.ps1`
-- `tmp-browser-smoke/font-render/chrome-font-render-probe.ps1`
-- `tmp-browser-smoke/find/chrome-find-probe.ps1`
-- `tmp-browser-smoke/zoom/chrome-zoom-probe.ps1`
+3. Run the smallest real-surface title and reduced-home gates.
 
-### 4. Graphics And Canvas
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_validation.ps1
+```
 
-Use when changes touch canvas 2D, WebGL, image compositing inside canvas, or
-screenshot parity for graphics-heavy surfaces.
+4. Move into the saved homepage fixture and submit-timing slices.
 
-Directories:
-- `tmp-browser-smoke/canvas-smoke`
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
+```
 
-Good first probes:
-- `tmp-browser-smoke/canvas-smoke/chrome-canvas-render-probe.ps1`
-- `tmp-browser-smoke/canvas-smoke/chrome-canvas-text-probe.ps1`
-- `tmp-browser-smoke/canvas-smoke/chrome-canvas-webgl-triangle-probe.ps1`
+5. Finish with the smallest shared Enter-order gate before the broader shared
+   ladder.
 
-### 5. Network, Downloads, And Resource Policy
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
+```
 
-Use when changes touch shared `Http` runtime behavior, cookies, auth, fetch,
-websockets, downloads, attachments, stylesheets, scripts, or image loading.
+6. Only after the bounded gates are green, use the live-trace and manual follow
+   ups.
 
-Directories:
-- `tmp-browser-smoke/image-smoke`
-- `tmp-browser-smoke/stylesheet-smoke`
-- `tmp-browser-smoke/fetch-abort`
-- `tmp-browser-smoke/fetch-credentials`
-- `tmp-browser-smoke/websocket-smoke`
-- `tmp-browser-smoke/downloads`
-- `tmp-browser-smoke/attachment-downloads`
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+```
 
-Good first probes:
-- `tmp-browser-smoke/image-smoke/chrome-http-runtime-image-probe.ps1`
-- `tmp-browser-smoke/stylesheet-smoke/chrome-stylesheet-auth-probe.ps1`
-- `tmp-browser-smoke/fetch-abort/chrome-fetch-abort-probe.ps1`
-- `tmp-browser-smoke/fetch-credentials/chrome-fetch-credentials-probe.ps1`
-- `tmp-browser-smoke/websocket-smoke/chrome-websocket-echo-probe.ps1`
-- `tmp-browser-smoke/downloads/chrome-download-probe.ps1`
-- `tmp-browser-smoke/attachment-downloads/chrome-attachment-link-probe.ps1`
+Read this focused note when the issue `#3` ladder has already been narrowed to
+just the quick and reduced-home stage:
 
-### 6. Storage And Session
+- `docs/GOOGLE_QUICK_AND_REDUCED_HOME_VALIDATION.md`
 
-Use when changes touch cookies, localStorage, sessionStorage, IndexedDB,
-restart restore, or shared profile behavior across tabs.
+## Attached HTML bundle gate
 
-Directories:
-- `tmp-browser-smoke/cookie-persistence`
-- `tmp-browser-smoke/localstorage-persistence`
-- `tmp-browser-smoke/indexeddb-persistence`
-- `tmp-browser-smoke/sessionstorage-scope`
-- `tmp-browser-smoke/bare-metal-release`
+When the current task is specifically about the saved three-page attached HTML
+compatibility bundle, use the bundle-aware path instead of the broader attached
+HTML helper first.
 
-Good first probes:
-- `tmp-browser-smoke/cookie-persistence/chrome-cookie-restart-probe.ps1`
-- `tmp-browser-smoke/localstorage-persistence/chrome-localstorage-restart-probe.ps1`
-- `tmp-browser-smoke/indexeddb-persistence/chrome-indexeddb-restart-probe.ps1`
-- `tmp-browser-smoke/sessionstorage-scope/chrome-sessionstorage-same-tab-probe.ps1`
-- `tmp-browser-smoke/bare-metal-release/chrome-bare-metal-persistence-probe.ps1`
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
 
-### 7. Product Polish And Long-Session Checks
+If the current pages are not the known three-page bundle, fall back to the more
+open-ended attached-page flow:
 
-Use when changes touch release packaging, manual headed sessions, internal page
-ergonomics, or end-to-end readiness instead of a single engine subsystem.
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+```
 
-Directories:
-- `tmp-browser-smoke/bare-metal-release`
+## Minimal widening rule
 
-Good first probes:
-- `tmp-browser-smoke/bare-metal-release/chrome-bare-metal-start-shell-probe.ps1`
-- `tmp-browser-smoke/bare-metal-release/chrome-bare-metal-tabs-session-restore-probe.ps1`
+Use this order whenever a gate fails:
 
-## Subsystem-To-Suite Map
+1. Re-run the matching surface checker.
+2. Re-read the suite flow helper.
+3. Run the smallest wrapper again.
+4. Widen to the neighboring shared suite only if the failure crosses that
+   boundary.
 
-- `src/display/win32_backend.zig`: start with Text, Fonts, Editing, And Focus; add Shell And Navigation when window chrome or shell commands changed
-- `src/render/DocumentPainter.zig` and `src/render/DisplayList.zig`: start with Rendering And Layout; add Graphics And Canvas when canvas paint paths changed
-- `src/browser/Page.zig` and `src/browser/EventManager.zig`: choose between Rendering And Layout, Text, or Shell based on whether the change affects geometry, input, or navigation lifecycle
-- `src/browser/webapi/canvas/`: start with Graphics And Canvas
-- `src/browser/webapi/net/`, `src/http/`, resource elements, and downloads flows: start with Network, Downloads, And Resource Policy
-- persistent stores and profile wiring: start with Storage And Session
-- browser pages, tab strip, settings, popup policy, address bar, bookmarks, and stop/reload flows: start with Shell And Navigation
+Examples:
 
-## Probe Selection Rules
+- `form-controls` failure that only affects wrapped later-row controls: widen to
+  `inline-flow`.
+- `google-home` failure that only appears after the saved homepage fixture:
+  widen to `google-homepage-fixture`, not straight to live trace.
+- attached HTML bundle failure on just one page script path: keep the bundle
+  runner, then widen to `manual-user` only after the pinned bundle route is
+  understood.
 
-Pick the first probe that matches the specific behavior you changed, then widen
-only as needed.
+## Done signal
 
-- single control or text-entry changes: start with one `form-controls` probe; when submit timing changed, also run the closest `inline-flow` Enter-submit probe before broader sweeps
-- screenshot or visual regressions: start with one `layout-smoke` or `rendered-link-dom` probe that proves the visible surface
-- auth/cookie/subresource changes: start with one targeted `image-smoke`, `stylesheet-smoke`, `fetch-credentials`, `websocket-smoke`, or `attachment-downloads` probe
-- restart or persistence changes: start with the restart-oriented probe in the matching persistence directory
-- shell-state changes: start with one `browser-pages`, `tabs`, `settings`, `bookmarks`, or `stop-loading` probe that exercises the changed action directly
-- live-site Google search-box work: start with `scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-input` or `tmp-browser-smoke/google-investigation-next/`, then use the title or quick gate, then the reduced-homepage pass, then the saved-homepage-fixture or submit-path helper when the typed-text-versus-submit handoff needs narrower focus, then `scripts/windows/show_google_submit_timing_validation_flow.ps1` before the bounded timing slice, then the shared Enter-order stack, then `scripts/windows/show_google_attached_html_validation_flow.ps1` when current-run attached HTML exists, and only then move to the saved-page or live trace follow-up; use `src/browser/tests/page/google_home_title_probe.html` when the change specifically touches load or readiness ordering before moving to the full live-site pass
+A validation slice is ready to hand off when all of these are true:
 
-## Issue #3 Flow
-
-For issue `#3`, keep the bounded follow-up order consistent across the branch:
-
-1. `google-investigation-next`
-2. `google-title` or `google-quick` when the next question is title, readiness, focus, or the first real-surface text marker
-3. `google-home` or `google-recommended` when you want the reduced-homepage pass bundled with the current bounded runner
-4. `google-homepage-fixture` or `google-submit-path` when you need a narrower saved-homepage-fixture handoff before the later shared gates
-5. `scripts/windows/show_google_submit_timing_validation_flow.ps1`, then the bounded submit-timing slice
-6. the shared Enter-order stack, including `scripts/windows/show_google_shared_enter_order_validation_flow.ps1` when you want the stricter localhost-first ordering printed before execution
-7. `scripts/windows/show_google_attached_html_validation_flow.ps1` plus attached-page follow-up when the current run already has Google-like HTML snapshots, otherwise the saved-page follow-up
-8. `scripts/windows/show_google_trace_validation_flow.ps1`
-9. live Google trace or the full homepage follow-up
-
-Use `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md`,
-`scripts/windows/show_google_input_validation_flow.ps1`,
-`scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-input`,
-and `scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-submit-path`
-when you need the exact command map for that sequence.
-
-## Expected Artifacts
-
-For Windows headed runs, keep:
-- the exact probe script name that was run
-- the browser build command, if the slice required a rebuild
-- screenshots, logs, or downloaded artifacts produced by the probe
-- the first failing observable if the suite is red
-
-If a probe cannot be run from the current environment, record:
-- which suite should have been run
-- which exact script would be the first validation step
-- what environment constraint prevented it
-
-That keeps the gate decision explicit instead of implied.
+- the first bounded suite is green
+- the next neighboring suite is either green or clearly not needed
+- the chosen flow helper still matches the scripts present on the branch
+- any later manual or real-site step has an explicit bounded gate in front of it
