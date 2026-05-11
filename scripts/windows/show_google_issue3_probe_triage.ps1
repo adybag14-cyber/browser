@@ -159,6 +159,8 @@ if ($summaryExists -and -not [string]::IsNullOrWhiteSpace($handoffSummaryPath)) 
     $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 $handoffReady = [bool]($handoffRecord -and $handoffMatchesSummary -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open))
+$refreshPointerTrusted = [bool]($summaryRecordsRefreshArtifactPath -or $refreshMatchesSummary)
+$handoffPointerTrusted = [bool]($summaryRecordsHandoffArtifactPath -or $handoffMatchesSummary)
 
 $triageOrder = @()
 $quickDiagnosis = @()
@@ -185,31 +187,33 @@ if (-not $summaryExists) {
     } elseif (-not $refreshArtifactExists) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved summary exists, but the refresh artifact is missing, so the next replay should start by checking refresh status and then regenerating the helper chain if needed.'
-    } elseif (-not $summaryRecordsRefreshArtifactPath) {
-        $nextStep = $refreshStatusCommand
-        $reason = 'The saved summary exists and the refresh artifact exists, but the summary does not record that pointer yet, so start with refresh status to keep the helper chain aligned.'
     } elseif (-not $refreshMatchesSummary) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved refresh artifact exists, but it points at a different recommended-validation summary, so refresh the helper chain from the current summary before trusting narrower guidance.'
     } elseif (-not $handoffArtifactExists) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved summary exists, but the handoff artifact is missing, so refresh status should repair the helper chain before narrower replay.'
-    } elseif (-not $summaryRecordsHandoffArtifactPath) {
-        $nextStep = $refreshStatusCommand
-        $reason = 'The saved summary exists and the handoff artifact exists, but the summary does not record that pointer yet, so refresh status should keep the helper chain aligned before narrower replay.'
     } elseif (-not $handoffMatchesSummary) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved handoff artifact exists, but it points at a different recommended-validation summary, so refresh the helper chain from the current summary before trusting handoff-first replay.'
     } elseif ($handoffReady) {
         $nextStep = $handoffGuideCommand
-        $reason = 'The saved summary, refresh artifact, bundle audit, and handoff artifact are already coherent, so start with the handoff helper and follow its next_artifact_to_open guidance.'
+        if (-not $summaryRecordsRefreshArtifactPath -and -not $summaryRecordsHandoffArtifactPath) {
+            $reason = 'The saved refresh and handoff artifacts both match the current recommended-validation summary even though the summary omitted both pointers, so start with the handoff helper and treat pointer repair as follow-up cleanup instead of a blocking prerequisite.'
+        } elseif (-not $summaryRecordsRefreshArtifactPath) {
+            $reason = 'The saved refresh and handoff artifacts both match the current recommended-validation summary, and only the summary refresh pointer is missing, so start with the handoff helper and treat refresh-pointer repair as follow-up cleanup instead of a blocking prerequisite.'
+        } elseif (-not $summaryRecordsHandoffArtifactPath) {
+            $reason = 'The saved refresh and handoff artifacts both match the current recommended-validation summary, and only the summary handoff pointer is missing, so start with the handoff helper and treat pointer repair as follow-up cleanup instead of a blocking prerequisite.'
+        } else {
+            $reason = 'The saved summary, refresh artifact, bundle audit, and handoff artifact are already coherent, so start with the handoff helper and follow its next_artifact_to_open guidance.'
+        }
     } else {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved handoff artifact exists but does not yet point at a reusable next artifact, so start with refresh status and then repair the helper chain if needed.'
     }
 
     $triageOrder = @(
-        '1. Start with the handoff helper when the saved refresh and artifact-bundle state are healthy and both saved artifacts still match the current summary; otherwise start with refresh status for the current summary.',
+        '1. Start with the handoff helper when the saved refresh and artifact-bundle state are healthy and the saved refresh and handoff artifacts still match the current summary, even if the summary omitted one of those explicit pointers; otherwise start with refresh status for the current summary.',
         '2. If refresh status or the artifact-bundle helper says the chain is stale or incomplete, run the refresh-chain helper before trusting the saved handoff, manifest, guide, or boundary outputs.',
         '3. Once the helper chain is coherent, open the handoff helper and follow its next_artifact_to_open guidance.',
         '4. Use the manifest helper when you want the richest artifact index for the current replay, and use the boundary helper when you need the exact last-pass / first-fail split.',
@@ -221,8 +225,10 @@ if (-not $summaryExists) {
         ('Artifact bundle status: {0}' -f $artifactBundleStatus),
         ('Refresh status: {0}' -f $refreshStatus),
         ('Refresh matches summary: {0}' -f $refreshMatchesSummary),
+        ('Refresh pointer trusted: {0}' -f $refreshPointerTrusted),
         ('Handoff ready: {0}' -f $handoffReady),
         ('Handoff matches summary: {0}' -f $handoffMatchesSummary),
+        ('Handoff pointer trusted: {0}' -f $handoffPointerTrusted),
         ('Summary records refresh pointer: {0}' -f $summaryRecordsRefreshArtifactPath),
         ('Summary records handoff pointer: {0}' -f $summaryRecordsHandoffArtifactPath),
         ('Refresh artifact exists: {0}' -f $refreshArtifactExists),
@@ -259,6 +265,8 @@ $guide = [ordered]@{
     shared_enter_runner_command = $sharedEnterRunnerCommand
     summary_records_refresh_artifact_path = [bool]$summaryRecordsRefreshArtifactPath
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
+    refresh_pointer_trusted = [bool]$refreshPointerTrusted
+    handoff_pointer_trusted = [bool]$handoffPointerTrusted
     refresh_artifact_path = $refreshArtifactPath
     refresh_artifact_exists = [bool]$refreshArtifactExists
     refresh_status = $refreshStatus
@@ -303,8 +311,10 @@ if ($summaryExists) {
     Write-Host ("Bundle:    {0}" -f $guide.artifact_bundle_status)
     Write-Host ("Refresh:   {0}" -f $guide.refresh_status)
     Write-Host ("Refresh matches summary: {0}" -f $guide.refresh_matches_summary)
+    Write-Host ("Refresh pointer trusted: {0}" -f $guide.refresh_pointer_trusted)
     Write-Host ("Handoff ready: {0}" -f $guide.handoff_ready)
     Write-Host ("Handoff matches summary: {0}" -f $guide.handoff_matches_summary)
+    Write-Host ("Handoff pointer trusted: {0}" -f $guide.handoff_pointer_trusted)
     Write-Host ("First fail:{0}" -f $(if ($guide.first_failed_phase) { ' ' + $guide.first_failed_phase } else { ' none' }))
 }
 Write-Host ''
