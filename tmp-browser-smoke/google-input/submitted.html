@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Google Probe Submitted</title>
+</head>
+<body>
+  <p id="status">Submitted.</p>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    var entry = params.get("entry") || "";
+    document.title = "SUBMIT:" + entry;
+    document.getElementById("status").textContent = "Submitted: " + entry;
+  </script>
+</body>
+</html>
