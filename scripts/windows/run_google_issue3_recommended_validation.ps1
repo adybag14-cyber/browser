@@ -150,7 +150,7 @@ function Convert-ToRepoRelativeArtifactPath {
     if ($normalizedPath.StartsWith($normalizedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
         $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\', '/')
         if (-not [string]::IsNullOrWhiteSpace($relative)) {
-            return $relative -replace '\\', '/'
+            return $relative -replace '\', '/'
         }
     }
 
