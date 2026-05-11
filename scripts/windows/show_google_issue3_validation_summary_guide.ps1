@@ -26,6 +26,10 @@ function Resolve-RepoRoot([string]$StartPath) {
     }
 }
 
+function Convert-ToQuotedPowerShellArgument([string]$Value) {
+    return "'" + $Value.Replace("'", "''") + "'"
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -60,6 +64,41 @@ $missingFixtureAssetAudit = @($summary.missing_fixture_asset_audit)
 $fixturesWithMissingAssets = @($missingFixtureAssetAudit | Where-Object { $_ -and $_.missing_asset_count -gt 0 })
 $fixtureAssetsMissing = $fixturesWithMissingAssets.Count -gt 0
 $manualFixtureReplayAvailable = [bool]$summary.manual_phase_uses_fixture_selection -and (@($summary.manual_input_path).Count -gt 0)
+$manualQuotedInputPath = if ($manualFixtureReplayAvailable) {
+    @($summary.manual_input_path | ForEach-Object { Convert-ToQuotedPowerShellArgument $_ })
+} else {
+    @()
+}
+$manualInputPathArguments = if ($manualQuotedInputPath.Count -gt 0) {
+    $manualQuotedInputPath -join ' '
+} else {
+    $null
+}
+$manualPreferredInitialPageArgument = if ($manualFixtureReplayAvailable -and $summary.manual_initial_page) {
+    " -PreferredInitialPage " + (Convert-ToQuotedPowerShellArgument $summary.manual_initial_page)
+} else {
+    ""
+}
+$manualAssetClosureCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -InputPath $manualInputPathArguments"
+} else {
+    $null
+}
+$manualAttachedHtmlFlowCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -InputPath $manualInputPathArguments$manualPreferredInitialPageArgument"
+} else {
+    $null
+}
+$manualAttachedHtmlRunnerCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait -InputPath $manualInputPathArguments$manualPreferredInitialPageArgument"
+} else {
+    $null
+}
+$manualSavedPageFlowCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath $manualInputPathArguments"
+} else {
+    $null
+}
 
 $firstFailedPhase = $summary.first_failed_phase
 $recommendedCommand = $recommendedRunnerCommand
@@ -173,6 +212,10 @@ $guide = [ordered]@{
     manual_fixture_replay_available = [bool]$manualFixtureReplayAvailable
     manual_fixture_replay_command = if ($manualFixtureReplayAvailable) { $manualFixtureReplayCommand } else { $null }
     manual_fixture_replay_reason = if ($manualFixtureReplayAvailable) { 'Use this helper to print the exact asset-check, flow, and runner commands for the saved attached-HTML fixture bundle.' } else { $null }
+    manual_asset_closure_command = $manualAssetClosureCommand
+    manual_attached_html_flow_command = $manualAttachedHtmlFlowCommand
+    manual_attached_html_runner_command = $manualAttachedHtmlRunnerCommand
+    manual_saved_page_flow_command = $manualSavedPageFlowCommand
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
@@ -263,6 +306,18 @@ if ($guide.manual_phase_uses_fixture_selection -and $guide.manual_input_path.Cou
     }
     if ($guide.manual_fixture_replay_reason) {
         Write-Host ("Replay hint: {0}" -f $guide.manual_fixture_replay_reason)
+    }
+    if ($guide.manual_asset_closure_command) {
+        Write-Host ("Asset check: {0}" -f $guide.manual_asset_closure_command)
+    }
+    if ($guide.manual_attached_html_flow_command) {
+        Write-Host ("Flow:       {0}" -f $guide.manual_attached_html_flow_command)
+    }
+    if ($guide.manual_attached_html_runner_command) {
+        Write-Host ("Runner:     {0}" -f $guide.manual_attached_html_runner_command)
+    }
+    if ($guide.manual_saved_page_flow_command) {
+        Write-Host ("Saved-page: {0}" -f $guide.manual_saved_page_flow_command)
     }
 }
 Write-Host ''
