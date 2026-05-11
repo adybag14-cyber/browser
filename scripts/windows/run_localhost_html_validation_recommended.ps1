@@ -14,7 +14,8 @@ param(
     [switch]$SummaryOnly,
     [switch]$Wait,
     [switch]$LeaveServerRunning,
-    [switch]$GoogleStyle
+    [switch]$GoogleStyle,
+    [switch]$AllowMissingLocalAssets
 )
 
 Set-StrictMode -Version Latest
@@ -70,6 +71,9 @@ $attachedArgs = $commonArgs.Clone()
 if ($GoogleStyle) {
     $attachedArgs.GoogleStyle = $true
 }
+if ($AllowMissingLocalAssets) {
+    $attachedArgs.AllowMissingLocalAssets = $true
+}
 
 switch ($PSCmdlet.ParameterSetName) {
     "PageRoot" {
@@ -91,6 +95,9 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host ("Inputs: {0}" -f $InputPath.Count)
             Write-Host "Validation mode: google-style"
             Write-Host "Runner: .\scripts\windows\run_attached_html_localhost_validation.ps1"
+            if ($AllowMissingLocalAssets) {
+                Write-Host "Attached asset policy: degraded mode allowed"
+            }
             Write-Host ""
 
             & $attachedRunner @attachedArgs -InputPath $InputPath
@@ -117,6 +124,9 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host ("Attached HTML inputs: {0}" -f $attachedHtml.Count)
         if ($GoogleStyle) {
             Write-Host "Validation mode: google-style"
+        }
+        if ($AllowMissingLocalAssets) {
+            Write-Host "Attached asset policy: degraded mode allowed"
         }
         Write-Host "Runner: .\scripts\windows\run_attached_html_localhost_validation.ps1"
         Write-Host ""
