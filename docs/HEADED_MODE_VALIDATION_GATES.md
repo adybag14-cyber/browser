@@ -38,7 +38,7 @@ Use the shared router first when you are not sure where a change belongs:
 | Downloads or file upload | `downloads` or `file-upload` | `attachment-downloads`, `browser-pages` |
 | Cookies, localStorage, IndexedDB, session scope | matching persistence suite | `tabs`, `browser-pages` |
 | Fetch abort, credentials, WebSocket runtime | matching network suite | the sibling network suite |
-| Saved or attached localhost HTML replay | `local-html-fixtures` or `attached-html-target-bundle` | `manual-user` |
+| Saved or attached localhost HTML replay | `local-html-fixtures`, `attached-html-target-bundle`, or `google-attached-html` | `manual-user`, `run_localhost_html_validation_recommended.ps1` |
 
 When you already know the broad area, print the router recommendation directly:
 
@@ -54,10 +54,11 @@ Issue `#3` is the headed Windows Google input and submit reliability track.
 Do not jump straight from localhost probes to a manual Google homepage retest.
 Use the bounded gates in this order.
 
-1. Print the current issue `#3` routing set.
+1. Print the current issue `#3` routing set and full reusable ladder.
 
 ```powershell
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 ```
 
 2. Fail fast on the reduced localhost Google-style suite.
@@ -70,32 +71,42 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_investiga
 3. Run the smallest real-surface title and reduced-home gates.
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_title_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_validation.ps1
 ```
 
-4. Move into the saved homepage fixture and submit-timing slices.
+4. Move into the saved homepage fixture and later submit-path slices.
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_homepage_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_path_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
 ```
 
-5. Finish with the smallest shared Enter-order gate before the broader shared
+5. Finish with the dedicated shared Enter-order gate before the broader shared
    ladder.
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 ```
 
-6. Only after the bounded gates are green, use the live-trace and manual follow
-   ups.
+6. Only after the bounded gates are green, use the live-trace and attached or
+   saved-page follow-ups.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
 ```
 
 Read this focused note when the issue `#3` ladder has already been narrowed to
@@ -123,6 +134,18 @@ open-ended attached-page flow:
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 ```
+
+If you want one command that auto-selects the pinned bundle route when the
+current inputs match it, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
+```
+
+Use the `-GoogleStyle` form when the next attached-page pass should prefer the
+Google-like page first and stay on the issue `#3` bounded ladder before the
+manual headed replay.
 
 ## Minimal widening rule
 
