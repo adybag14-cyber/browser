@@ -55,6 +55,9 @@ $surfaceCheckCheckedCount = if ($null -ne $summary.surface_check_checked_count) 
 } else {
     $null
 }
+$missingFixtureAssetAudit = @($summary.missing_fixture_asset_audit)
+$fixturesWithMissingAssets = @($missingFixtureAssetAudit | Where-Object { $_ -and $_.missing_asset_count -gt 0 })
+$fixtureAssetsMissing = $fixturesWithMissingAssets.Count -gt 0
 
 $firstFailedPhase = $summary.first_failed_phase
 $recommendedCommand = $recommendedRunnerCommand
@@ -71,6 +74,11 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     } else {
         $reason = 'The summary says the recommended issue #3 surface check failed before the phase ladder could run.'
     }
+} elseif ($fixtureAssetsMissing -and $firstFailedPhase -eq 'manual') {
+    $recommendedCommand = $recommendedRunnerCommand
+    $recommendedGuideCommand = $null
+    $nextFocus = 'Restore the missing sibling assets for the saved attached HTML fixtures before trusting the manual Google-style follow-up.'
+    $reason = "The manual follow-up is the first failing phase, and $($fixturesWithMissingAssets.Count) saved fixture selection(s) still reference missing local assets."
 } elseif ($summary.completed) {
     $recommendedCommand = $recommendedRunnerCommand
     $recommendedGuideCommand = $probeTriageCommand
@@ -156,6 +164,9 @@ $guide = [ordered]@{
     manual_phase_uses_fixture_selection = [bool]$summary.manual_phase_uses_fixture_selection
     manual_initial_page = $summary.manual_initial_page
     manual_input_path = @($summary.manual_input_path)
+    missing_fixture_asset_audit = @($missingFixtureAssetAudit)
+    fixture_assets_missing = [bool]$fixtureAssetsMissing
+    fixture_selection_missing_asset_count = $fixturesWithMissingAssets.Count
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
@@ -208,6 +219,18 @@ if ($guide.first_failed_phase_artifact_paths.Count -gt 0) {
 }
 if ($guide.first_failed_phase_error) {
     Write-Host ("Error:     {0}" -f $guide.first_failed_phase_error)
+}
+if ($guide.fixture_assets_missing) {
+    Write-Host 'Missing fixture assets:'
+    foreach ($fixtureAudit in ($guide.missing_fixture_asset_audit | Where-Object { $_.missing_asset_count -gt 0 })) {
+        Write-Host ("- {0} ({1})" -f $fixtureAudit.path, $fixtureAudit.missing_asset_count)
+        foreach ($assetPath in ($fixtureAudit.missing_assets | Select-Object -First 5)) {
+            Write-Host ("  - {0}" -f $assetPath)
+        }
+        if ($fixtureAudit.missing_asset_count -gt 5) {
+            Write-Host ("  - ... {0} more" -f ($fixtureAudit.missing_asset_count - 5))
+        }
+    }
 }
 Write-Host ''
 Write-Host ("Reason:    {0}" -f $guide.reason)
