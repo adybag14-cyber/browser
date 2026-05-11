@@ -124,9 +124,12 @@ $guide = [ordered]@{
     surface_check_status = $summary.surface_check_status
     surface_check_error = $summary.surface_check_error
     surface_check_artifact_path = $summary.surface_check_artifact_path
+    phase_artifact_root = $summary.phase_artifact_root
     first_failed_phase = $firstFailedPhase
     first_failed_phase_error = $summary.first_failed_phase_error
     first_failed_phase_log_path = $summary.first_failed_phase_log_path
+    first_failed_phase_primary_json_artifact_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].primary_json_artifact_path } else { $summary.first_failed_phase_primary_json_artifact_path }
+    first_failed_phase_artifact_paths = if ($failedPhaseResult.Count -gt 0) { @($failedPhaseResult[0].artifact_paths) } else { @() }
     failed_phase_log_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].log_path } else { $null }
     manual_phase_enabled = [bool]$summary.manual_phase_enabled
     manual_phase_google_style = [bool]$summary.manual_phase_google_style
@@ -155,9 +158,21 @@ Write-Host ("Surface:   {0}" -f $guide.surface_check_status)
 if ($guide.surface_check_artifact_path) {
     Write-Host ("Surface JSON: {0}" -f $guide.surface_check_artifact_path)
 }
+if ($guide.phase_artifact_root) {
+    Write-Host ("Phase root: {0}" -f $guide.phase_artifact_root)
+}
 Write-Host ("First fail:{0}" -f $(if ($guide.first_failed_phase) { ' ' + $guide.first_failed_phase } else { ' none' }))
 if ($guide.first_failed_phase_log_path) {
     Write-Host ("Log:       {0}" -f $guide.first_failed_phase_log_path)
+}
+if ($guide.first_failed_phase_primary_json_artifact_path) {
+    Write-Host ("JSON:      {0}" -f $guide.first_failed_phase_primary_json_artifact_path)
+}
+if ($guide.first_failed_phase_artifact_paths.Count -gt 0) {
+    Write-Host 'Artifacts:'
+    foreach ($artifactPath in $guide.first_failed_phase_artifact_paths) {
+        Write-Host ("- {0}" -f $artifactPath)
+    }
 }
 if ($guide.first_failed_phase_error) {
     Write-Host ("Error:     {0}" -f $guide.first_failed_phase_error)
