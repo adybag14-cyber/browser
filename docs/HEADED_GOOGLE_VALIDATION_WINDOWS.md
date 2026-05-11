@@ -119,6 +119,25 @@ keypress probe, localhost Enter-order wrapper, and dedicated form-controls
 Enter-order gate in one place, and `docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md`
 spells out the same ladder in note form.
 
+Use `docs/GOOGLE_TRACE_VALIDATION.md` when the reduced homepage,
+submit-timing, and shared Enter-order probes are already green and the next
+question is whether the later reduced-home trace capture or live Google
+homepage trace path still exposes a headed divergence.
+
+For that later trace handoff, print and run the dedicated helper before another
+live-site capture:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_trace_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase trace
+```
+
+Those helpers keep the suite-router reminder, the later trace surface check,
+the reduced-home trace probe, and the shared live trace wrapper on one small
+command surface before you widen back out to attached HTML or another live-site
+rerun.
+
 ## 2) Recommended validation order
 
 Preferred one-command bounded pass:
@@ -160,6 +179,9 @@ powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_trace_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase trace
 ```
 
 When the question is whether the shared Enter path already agrees with the
@@ -176,7 +198,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_val
 ```
 
 That wrapper stack keeps the shared label-click, immediate Enter, deferred
-Enter, reduced Google-home submit, localhost Enter-order, and stricter shared
+Enter, reduced Google-home submit, localhost Enter-order, and stricter
 keypress-before-submit gates on one command surface.
 
 Only move to `manual` or `trace` after those bounded phases are green.
@@ -215,8 +237,10 @@ Only move to `manual` or `trace` after those bounded phases are green.
 - `manual`: the saved or attached localhost HTML pages can now be compared
   against the bounded passes under the same manual port and preferred initial
   page.
-- `trace`: the live Google homepage is only needed when the bounded phases are
-  green but the real homepage still diverges.
+- `trace`: the dedicated live-trace surface checker and printed flow helper now
+  fail fast and restate the reduced-home plus live Google capture order before
+  the real headed trace runs, and the live Google homepage is only needed when
+  the bounded phases are green but the real homepage still diverges.
 
 The recommended wrapper simply runs the current bounded phases in the same
 order without making you restate the longer flag bundle each time.
@@ -319,6 +343,13 @@ For attached HTML snapshots that already live under `agent_files/`, start with
 the bounded Google-first helper order before you inspect them manually, and use
 `run_google_attached_html_validation.ps1 -Wait` when you want the same attached
 set reopened directly on that Google-style localhost path.
+
+For the later live Google capture handoff, start with
+`check_google_trace_validation_surface.ps1`,
+`show_google_trace_validation_flow.ps1`, and
+`docs/GOOGLE_TRACE_VALIDATION.md` before another real-homepage trace rerun.
+Use the raw `run_google_input_validation.ps1 -Phase trace` command only after
+that helper surface is green and the nearer bounded checkpoints already agree.
 
 For Enter-order work, do not accept a reduced-title pass as green unless the
 keydown edge still reads `KEYDOWN:<text>|13|13` before the final
