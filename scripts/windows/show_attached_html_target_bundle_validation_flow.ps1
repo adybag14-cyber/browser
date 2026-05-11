@@ -107,6 +107,18 @@ if (-not $overall.bundle_validation_profile) {
     throw "Attached HTML target bundle checker did not return bundle-pinned validation metadata."
 }
 
+$suiteRouterCommand = if ($overall.first_change_area) {
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea $($overall.first_change_area)"
+} else {
+    $null
+}
+
+$suiteRouterNote = if ($suiteRouterCommand) {
+    "Use the shared suite router shortcut '$suiteRouterCommand' when you want the main validation map to point back at the same primary change area before you lock into the bundle-pinned attached-page follow-up."
+} else {
+    "Resolve at least one bundle target first so the shared suite router shortcut can point back at the matching primary change area before localhost replay."
+}
+
 $resolvedTargets = @($bundle.targets | Where-Object { $_.status -eq 'found' })
 $targetSummary = @(
     $resolvedTargets | ForEach-Object {
@@ -130,6 +142,7 @@ $flow = [ordered]@{
     locked_input_count = $overall.bundle_locked_input_count
     preferred_initial_page = $overall.preferred_initial_page_display_path
     first_change_area = $overall.first_change_area
+    suite_router_command = $suiteRouterCommand
     first_bounded_step = $overall.first_step
     follow_up = $overall.follow_up
     bundle_summary = $overall.bundle_summary
@@ -168,6 +181,7 @@ $flow = [ordered]@{
     targets = $targetSummary
     notes = @(
         "Use this helper after the bundle route surface check when you want a stable read-first command surface for the current compatibility set instead of copying commands out of free-form checker output.",
+        $suiteRouterNote,
         "The preferred initial page stays pinned to the Google Safety Centre target when the current bundle includes the Google-style page, so the issue #3 localhost-first follow-up remains aligned with the current runbook.",
         "Pass -InputPath when you want the same printed bundle flow but against an explicit saved-page set rather than the auto-discovered workspace bundle.",
         "Pass -RepoRoot when you want the bundle route surface check and bundle checker to evaluate a non-default working tree before printing the pinned commands."
@@ -198,6 +212,9 @@ if ($flow.preferred_initial_page) {
 }
 if ($flow.first_change_area) {
     Write-Host ("First change area: {0}" -f $flow.first_change_area)
+}
+if ($flow.suite_router_command) {
+    Write-Host ("Shared suite router: {0}" -f $flow.suite_router_command)
 }
 if ($flow.first_bounded_step) {
     Write-Host ("Suggested first bounded step: {0}" -f $flow.first_bounded_step)
