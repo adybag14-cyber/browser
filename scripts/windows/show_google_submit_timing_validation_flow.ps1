@@ -20,6 +20,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$surfaceCheck = '.\\scripts\\windows\\check_google_submit_timing_validation_surface.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_submit_timing_validation.ps1'
 $directProbe = '.\\tmp-browser-smoke\\layout-smoke\\chrome-google-submit-timing-probe.ps1'
 
@@ -55,6 +56,11 @@ $flow = [ordered]@{
     focus = "Bounded Google-shaped keydown, keypress, and submit ordering on the real headed surface before the broader shared Enter-order or live Google passes."
     steps = @(
         [ordered]@{
+            name = "surface-check"
+            goal = "Fail fast if the bounded submit-timing guide, helper, wrapper, or raw probe drifted before you trust this narrower issue #3 timing slice."
+            command = "powershell -ExecutionPolicy Bypass -File $surfaceCheck"
+        }
+        [ordered]@{
             name = "wrapper"
             goal = "Run the dedicated submit-timing wrapper first so the bounded timing slice stays on the same reusable command surface as the other issue #3 Windows helpers."
             command = "powershell -ExecutionPolicy Bypass -File $wrapperRunner$wrapperArguments"
@@ -71,6 +77,7 @@ $flow = [ordered]@{
         "Use .\\scripts\\windows\\run_google_input_validation.ps1 -Phase trace when this bounded timing slice is green but the live Google homepage still diverges."
     )
     notes = @(
+        "Start with the surface check when you want the bounded submit-timing slice to fail fast on missing guide, helper, wrapper, or raw-probe drift before the broader issue #3 ladder.",
         "Start with the wrapper unless you already know you need the direct probe output files from tmp-browser-smoke/layout-smoke.",
         "Keep the same host, port, and input text here when you want the submit-timing slice aligned with the broader issue #3 flow.",
         "Treat this as the bounded bridge between the reduced homepage pass and the stricter shared Enter-order stack."
