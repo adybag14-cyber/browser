@@ -180,7 +180,15 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
 }
 
 $phaseResults = @($summary.phase_results)
+$passedPhaseResults = @($phaseResults | Where-Object { $_.status -eq 'passed' })
+$lastPassedPhaseResult = if ($passedPhaseResults.Count -gt 0) { $passedPhaseResults[-1] } else { $null }
 $failedPhaseResult = @($phaseResults | Where-Object { $_.name -eq $firstFailedPhase } | Select-Object -First 1)
+$guideArtifactPath = if ($summary.guide_artifact_path) {
+    $summary.guide_artifact_path
+} else {
+    Join-Path (Split-Path -Parent $SummaryPath) 'google-issue3-recommended-validation-guide.json'
+}
+$boundaryArtifactPath = Join-Path (Split-Path -Parent $SummaryPath) 'google-issue3-phase-boundary.json'
 $guide = [ordered]@{
     issue = 'Google issue #3 validation summary guide'
     purpose = 'Read the saved recommended-validation summary artifact and point the next Windows headed replay at the earliest failing checkpoint.'
@@ -191,6 +199,8 @@ $guide = [ordered]@{
     surface_check_error = $summary.surface_check_error
     surface_check_artifact_path = $summary.surface_check_artifact_path
     manifest_artifact_path = $summary.manifest_artifact_path
+    guide_artifact_path = $guideArtifactPath
+    boundary_artifact_path = $boundaryArtifactPath
     surface_check_profile = $summary.surface_check_profile
     surface_check_checked_count = $surfaceCheckCheckedCount
     surface_check_missing_count = $surfaceCheckMissingCount
@@ -226,6 +236,53 @@ $guide = [ordered]@{
     reminder = 'Keep the next replay on the earliest failing checkpoint first. Read the saved phase-boundary helper to compare the last passing checkpoint with the first failing one before widening back out to the full recommended runner, attached HTML, or live Google.'
 }
 
+$boundaryArtifact = [ordered]@{
+    issue = 'Google issue #3 phase boundary'
+    purpose = 'Persist the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, using the same rerun guidance the summary guide just computed.'
+    summary_path = $SummaryPath
+    boundary_artifact_path = $boundaryArtifactPath
+    generated_at_utc = $summary.generated_at_utc
+    completed = [bool]$summary.completed
+    phase_count = @($phaseResults).Count
+    passed_phase_count = @($passedPhaseResults).Count
+    failed_phase_count = @(@($phaseResults | Where-Object { $_.status -ne 'passed' })).Count
+    phase_artifact_root = $summary.phase_artifact_root
+    manifest_artifact_path = $summary.manifest_artifact_path
+    guide_artifact_path = $guideArtifactPath
+    last_passed_phase = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.name } else { $null }
+    last_passed_phase_log_path = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.log_path } else { $null }
+    last_passed_phase_primary_json_artifact_path = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.primary_json_artifact_path } else { $null }
+    last_passed_phase_artifact_paths = if ($lastPassedPhaseResult) { @($lastPassedPhaseResult.artifact_paths) } else { @() }
+    first_failed_phase = $guide.first_failed_phase
+    first_failed_phase_error = $guide.first_failed_phase_error
+    first_failed_phase_log_path = $guide.first_failed_phase_log_path
+    first_failed_phase_primary_json_artifact_path = $guide.first_failed_phase_primary_json_artifact_path
+    first_failed_phase_artifact_paths = @($guide.first_failed_phase_artifact_paths)
+    boundary_focus = if ($guide.first_failed_phase) {
+        'Compare the last passing phase artifact with the first failing phase artifact before widening back out to a broader issue #3 replay.'
+    } elseif ($lastPassedPhaseResult) {
+        'Every recorded phase passed, so the next replay can widen to attached HTML or live Google evidence gathering.'
+    } else {
+        'No passing phase was recorded yet, so start at the earliest recommended phase and repair the first checkpoint before widening out.'
+    }
+    next_focus = $guide.next_focus
+    recommended_command = $guide.recommended_command
+    recommended_guide_command = $guide.recommended_guide_command
+    manual_fixture_replay_command = $guide.manual_fixture_replay_command
+    reason = $guide.reason
+    next_artifact_to_open = if ($guide.first_failed_phase_primary_json_artifact_path) {
+        $guide.first_failed_phase_primary_json_artifact_path
+    } elseif ($lastPassedPhaseResult -and $lastPassedPhaseResult.primary_json_artifact_path) {
+        $lastPassedPhaseResult.primary_json_artifact_path
+    } elseif ($guideArtifactPath) {
+        $guideArtifactPath
+    } else {
+        $SummaryPath
+    }
+}
+
+$boundaryArtifact | ConvertTo-Json -Depth 6 | Set-Content -Path $boundaryArtifactPath -Encoding Ascii
+
 if ($Json) {
     $guide | ConvertTo-Json -Depth 6
     exit 0
@@ -242,6 +299,12 @@ if ($guide.surface_check_artifact_path) {
 }
 if ($guide.manifest_artifact_path) {
     Write-Host ("Manifest JSON: {0}" -f $guide.manifest_artifact_path)
+}
+if ($guide.guide_artifact_path) {
+    Write-Host ("Guide JSON: {0}" -f $guide.guide_artifact_path)
+}
+if ($guide.boundary_artifact_path) {
+    Write-Host ("Boundary JSON: {0}" -f $guide.boundary_artifact_path)
 }
 if ($guide.surface_check_profile) {
     Write-Host ("Surface profile: {0}" -f $guide.surface_check_profile)
@@ -293,7 +356,7 @@ Write-Host ("Run next:  {0}" -f $guide.recommended_command)
 if ($guide.recommended_guide_command) {
     Write-Host ("Guide:     {0}" -f $guide.recommended_guide_command)
 }
-Write-Host ("Boundary:  {0}" -f $guide.phase_boundary_command)
+Write-Host ("Boundary cmd:  {0}" -f $guide.phase_boundary_command)
 if ($guide.manual_fixture_replay_command) {
     Write-Host ("Manual replay: {0}" -f $guide.manual_fixture_replay_command)
 }
@@ -319,8 +382,8 @@ if ($guide.manual_phase_uses_fixture_selection -and $guide.manual_input_path.Cou
     if ($guide.manual_attached_html_runner_command) {
         Write-Host ("Runner:     {0}" -f $guide.manual_attached_html_runner_command)
     }
-    if ($guide.manual_saved_page_flow_command) {
-        Write-Host ("Saved-page: {0}" -f $guide.manual_saved_page_flow_command)
+    if ($guide.manual_saved_page_flowCommand) {
+        Write-Host ("Saved-page: {0}" -f $guide.manual_saved_page_flowCommand)
     }
 }
 Write-Host ''
