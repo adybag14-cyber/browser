@@ -25,10 +25,22 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
+$surfaceCheck = Join-Path $PSScriptRoot "check_google_quick_validation_surface.ps1"
 $runner = Join-Path $PSScriptRoot "run_google_input_validation.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
 }
+if (-not (Test-Path -LiteralPath $surfaceCheck -PathType Leaf)) {
+    throw "Google quick validation surface checker not found: $surfaceCheck"
+}
+
+Write-Host "Google quick validation"
+Write-Host ("Repo root: {0}" -f $RepoRoot)
+Write-Host ""
+Write-Host "=== google-quick-surface ==="
+Write-Host ("Script: {0}" -f $surfaceCheck)
+& $surfaceCheck -RepoRoot $RepoRoot
+Write-Host ""
 
 $arguments = @{
     RepoRoot = $RepoRoot
