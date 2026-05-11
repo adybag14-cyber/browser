@@ -148,16 +148,19 @@ artifact root with:
 
 If the issue is headed Google-style typing or Enter-submit behavior:
 
-1. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1` when you want the current reusable issue #3 flow first
-2. run `google-investigation-next/`
-3. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick` for the bounded title-plus-watch first pass
-4. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home`
-5. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing`
-6. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order`
-7. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1` when the next pass should stay on the auto-discovered attached HTML set but keep the same localhost-first Google ordering
-8. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait` when you want the same attached HTML Google-style route to launch directly
-9. then use `run_attached_html_localhost_validation.ps1`, `start_localhost_html_validation.ps1`, or `start_staged_localhost_html_validation.ps1` for any broader saved HTML snapshots that are not part of the direct issue `#3` attached-page follow-up
-10. finish with the smallest live-site pass that proves the same behavior
+1. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1` when you want the current reusable issue #3 flow printed first
+2. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1` when you want the current localhost-first issue #3 ladder in one command
+3. run `google-investigation-next/` when you need to inspect the reduced Google-style localhost fixtures directly
+4. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick` for the bounded title-plus-watch first pass
+5. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home`
+6. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1` when the next question is whether a saved Google homepage fixture still reaches focus, typed text, and Enter submit
+7. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1` when the earlier title and reduced-homepage gates are already green and you want the later saved-homepage-fixture, submit-timing, and shared Enter-order slices in one narrower command
+8. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing`
+9. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order`
+10. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1` when the next pass should stay on the auto-discovered attached HTML set but keep the same localhost-first Google ordering
+11. run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait` when you want the same attached HTML Google-style route to launch directly
+12. then use `run_attached_html_localhost_validation.ps1`, `start_localhost_html_validation.ps1`, or `start_staged_localhost_html_validation.ps1` for any broader saved HTML snapshots that are not part of the direct issue `#3` attached-page follow-up
+13. finish with the smallest live-site pass that proves the same behavior
 
 Use `-Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch` when you want the runner to execute the localhost-first Google flow in one pass before the saved-page follow-up.
 
