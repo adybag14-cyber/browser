@@ -322,7 +322,7 @@ fn asUint(comptime string: anytype) std.meta.Int(
         @compileError("expected : " ++ @typeName(expectedType) ++ ", got: " ++ @typeName(@TypeOf(string)));
     }
 
-    return @bitCast(@as(*const [byteLength]u8, string). *);
+    return @bitCast(@as(*const [byteLength]u8, string).*);
 }
 
 const testing = @import("testing.zig");
