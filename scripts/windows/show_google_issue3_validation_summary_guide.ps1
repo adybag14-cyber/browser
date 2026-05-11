@@ -188,7 +188,22 @@ $guideArtifactPath = if ($summary.guide_artifact_path) {
 } else {
     Join-Path (Split-Path -Parent $SummaryPath) 'google-issue3-recommended-validation-guide.json'
 }
-$boundaryArtifactPath = Join-Path (Split-Path -Parent $SummaryPath) 'google-issue3-phase-boundary.json'
+$boundaryArtifactPath = if ($summary.boundary_artifact_path) {
+    $summary.boundary_artifact_path
+} else {
+    Join-Path (Split-Path -Parent $SummaryPath) 'google-issue3-phase-boundary.json'
+}
+$boundaryRecord = $null
+$boundaryArtifactError = $null
+if (-not [string]::IsNullOrWhiteSpace($boundaryArtifactPath) -and (Test-Path -LiteralPath $boundaryArtifactPath -PathType Leaf)) {
+    try {
+        $boundaryRecord = Get-Content -LiteralPath $boundaryArtifactPath -Raw | ConvertFrom-Json
+    } catch {
+        $boundaryArtifactError = $_.Exception.Message
+    }
+} elseif (-not [string]::IsNullOrWhiteSpace($boundaryArtifactPath)) {
+    $boundaryArtifactError = "Boundary artifact not found: $boundaryArtifactPath"
+}
 $guide = [ordered]@{
     issue = 'Google issue #3 validation summary guide'
     purpose = 'Read the saved recommended-validation summary artifact and point the next Windows headed replay at the earliest failing checkpoint.'
@@ -201,6 +216,8 @@ $guide = [ordered]@{
     manifest_artifact_path = $summary.manifest_artifact_path
     guide_artifact_path = $guideArtifactPath
     boundary_artifact_path = $boundaryArtifactPath
+    boundary_artifact_error = $boundaryArtifactError
+    boundary_artifact_exists = [bool]$boundaryRecord
     surface_check_profile = $summary.surface_check_profile
     surface_check_checked_count = $surfaceCheckCheckedCount
     surface_check_missing_count = $surfaceCheckMissingCount
@@ -212,6 +229,9 @@ $guide = [ordered]@{
     first_failed_phase_primary_json_artifact_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].primary_json_artifact_path } else { $summary.first_failed_phase_primary_json_artifact_path }
     first_failed_phase_artifact_paths = if ($failedPhaseResult.Count -gt 0) { @($failedPhaseResult[0].artifact_paths) } else { @() }
     failed_phase_log_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].log_path } else { $null }
+    boundary_last_passed_phase = if ($boundaryRecord) { $boundaryRecord.last_passed_phase } else { $null }
+    boundary_first_failed_phase = if ($boundaryRecord) { $boundaryRecord.first_failed_phase } else { $null }
+    boundary_next_artifact_to_open = if ($boundaryRecord) { $boundaryRecord.next_artifact_to_open } else { $null }
     manual_phase_enabled = [bool]$summary.manual_phase_enabled
     manual_phase_google_style = [bool]$summary.manual_phase_google_style
     manual_phase_uses_fixture_selection = [bool]$summary.manual_phase_uses_fixture_selection
@@ -233,7 +253,11 @@ $guide = [ordered]@{
     broader_runner_command = $recommendedRunnerCommand
     reason = $reason
     next_focus = $nextFocus
-    reminder = 'Keep the next replay on the earliest failing checkpoint first. Read the saved phase-boundary helper to compare the last passing checkpoint with the first failing one before widening back out to the full recommended runner, attached HTML, or live Google.'
+    reminder = if ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
+        'Keep the next replay on the earliest failing checkpoint first. Open the boundary helper artifact and inspect its next_artifact_to_open path before widening back out to the full recommended runner, attached HTML, or live Google.'
+    } else {
+        'Keep the next replay on the earliest failing checkpoint first. Read the saved phase-boundary helper to compare the last passing checkpoint with the first failing one before widening back out to the full recommended runner, attached HTML, or live Google.'
+    }
 }
 
 $boundaryArtifact = [ordered]@{
@@ -266,11 +290,25 @@ $boundaryArtifact = [ordered]@{
         'No passing phase was recorded yet, so start at the earliest recommended phase and repair the first checkpoint before widening out.'
     }
     next_focus = $guide.next_focus
-    recommended_command = $guide.recommended_command
-    recommended_guide_command = $guide.recommended_guide_command
-    manual_fixture_replay_command = $guide.manual_fixture_replay_command
+    recommended_command = if ($guide.boundary_artifact_exists -and $boundaryRecord.recommended_command) {
+        $boundaryRecord.recommended_command
+    } else {
+        $guide.recommended_command
+    }
+    recommended_guide_command = if ($guide.boundary_artifact_exists -and $boundaryRecord.recommended_guide_command) {
+        $boundaryRecord.recommended_guide_command
+    } else {
+        $guide.recommended_guide_command
+    }
+    manual_fixture_replay_command = if ($guide.boundary_artifact_exists -and $boundaryRecord.manual_fixture_replay_command) {
+        $boundaryRecord.manual_fixture_replay_command
+    } else {
+        $guide.manual_fixture_replay_command
+    }
     reason = $guide.reason
-    next_artifact_to_open = if ($guide.first_failed_phase_primary_json_artifact_path) {
+    next_artifact_to_open = if ($guide.boundary_artifact_exists -and $boundaryRecord.next_artifact_to_open) {
+        $boundaryRecord.next_artifact_to_open
+    } elseif ($guide.first_failed_phase_primary_json_artifact_path) {
         $guide.first_failed_phase_primary_json_artifact_path
     } elseif ($lastPassedPhaseResult -and $lastPassedPhaseResult.primary_json_artifact_path) {
         $lastPassedPhaseResult.primary_json_artifact_path
@@ -306,6 +344,9 @@ if ($guide.guide_artifact_path) {
 if ($guide.boundary_artifact_path) {
     Write-Host ("Boundary JSON: {0}" -f $guide.boundary_artifact_path)
 }
+if ($guide.boundary_artifact_error) {
+    Write-Host ("Boundary error: {0}" -f $guide.boundary_artifact_error)
+}
 if ($guide.surface_check_profile) {
     Write-Host ("Surface profile: {0}" -f $guide.surface_check_profile)
 }
@@ -336,6 +377,13 @@ if ($guide.first_failed_phase_artifact_paths.Count -gt 0) {
 }
 if ($guide.first_failed_phase_error) {
     Write-Host ("Error:     {0}" -f $guide.first_failed_phase_error)
+}
+if ($guide.boundary_artifact_exists) {
+    Write-Host ("Boundary last pass: {0}" -f $(if ($guide.boundary_last_passed_phase) { $guide.boundary_last_passed_phase } else { 'none' }))
+    Write-Host ("Boundary first fail: {0}" -f $(if ($guide.boundary_first_failed_phase) { $guide.boundary_first_failed_phase } else { 'none' }))
+    if ($guide.boundary_next_artifact_to_open) {
+        Write-Host ("Open next: {0}" -f $guide.boundary_next_artifact_to_open)
+    }
 }
 if ($guide.fixture_assets_missing) {
     Write-Host 'Missing fixture assets:'
