@@ -140,6 +140,10 @@ $steps.Add((Invoke-RefreshStep -Name 'summary-guide' -ScriptPath $summaryGuideSc
 $steps.Add((Invoke-RefreshStep -Name 'phase-boundary' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'handoff' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'summary-guide-final' -ScriptPath $summaryGuideScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -ArtifactPath $guidePath)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'phase-boundary-final' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'artifact-bundle-final' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'handoff-final' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath)) | Out-Null
 
 $guideRecord = Read-ArtifactJson $guidePath
 $boundaryRecord = Read-ArtifactJson $boundaryPath
@@ -199,16 +203,16 @@ $reason = if ($failedSteps.Count -gt 0) {
 } elseif (-not $manifestExists) {
     'The saved summary-derived helpers were refreshed, but the manifest is still missing and requires a rerun of the recommended validation runner.'
 } elseif ($bundleStatus -and $bundleStatus -ne 'complete') {
-    "The saved helper chain was refreshed, but the artifact-bundle audit still reports '$bundleStatus'."
+    "The saved helper chain was refreshed twice, but the artifact-bundle audit still reports '$bundleStatus'."
 } elseif (-not $handoffReady) {
-    'The saved helper chain was refreshed, but the handoff artifact still lacks a next-artifact pointer.'
+    'The saved helper chain was refreshed twice, but the handoff artifact still lacks a next-artifact pointer.'
 } else {
-    'The saved summary-derived guide, boundary, bundle, and handoff artifacts were refreshed successfully from the current issue #3 summary.'
+    'The saved summary-derived guide, boundary, bundle, and handoff artifacts were refreshed to a stable final state from the current issue #3 summary.'
 }
 
 $report = [ordered]@{
     issue = 'Google issue #3 validation handoff-chain refresh'
-    purpose = 'Refresh the saved summary-derived issue #3 helper artifacts so the next Windows headed replay can reuse a coherent guide, boundary, bundle, and handoff chain without rerunning every narrower helper by hand.'
+    purpose = 'Refresh the saved summary-derived issue #3 helper artifacts until the guide, boundary, bundle, and handoff outputs reach a stable final state for the next Windows headed replay.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     repo_root = $repoRoot
     summary_path = $SummaryPath
