@@ -50,10 +50,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_cont
 ```
 
 That helper translates the smallest gate's `title_after_click`,
-`title_after_type`, `submit_phase`, `event_log`, and
-`submit_after_keypress` outputs into short failure stages so you can tell
-quickly whether the break stayed before click focus, before visible text entry,
-before keypress, or before final submit.
+`title_after_type`, `keydown_held_without_submit`, `submit_phase`,
+`submit_record`, `event_log`, and `submit_after_keypress` outputs into short
+failure stages so you can tell quickly whether the break stayed before click
+focus, before visible text entry, during the held Enter keydown window, before
+keypress, or before final submit.
 
 ## Start with the printed flow
 
@@ -105,6 +106,29 @@ Treat the dedicated gate as green only when all of these remain true:
 
 If this gate fails, fix it before widening to the saved-homepage fixture,
 submit-timing slice, attached HTML follow-up, or live Google replay.
+
+## Exact evidence to keep
+
+When you need to prove that issue `#3` is still specifically an Enter-order
+problem, keep the smallest gate's JSON output or quote these fields in your
+notes before widening back out:
+
+- `clicked_worked = true` and `typed_worked = true`
+- `keydown_held_without_submit = true`
+- `submit_phase = keypress`
+- `submit_after_keydown = true`
+- `submit_after_keypress = true`
+- `submit_record` includes `phase=keypress`
+- `event_log` contains `FOCUS`, `KD:Enter:<text>`, `KP:Enter:<text>`, and `SUBMIT:<text>` in that order
+
+Those markers separate three very different failure families:
+
+- focus or typed-text regressions before Enter ordering matters at all
+- premature submit during held Enter keydown before keypress lands
+- later submit or navigation failures after keypress already arrived cleanly
+
+Keep the dedicated trace guide nearby when you want those same fields translated
+into a quicker yes-or-no checklist during a rerun.
 
 ## When to widen again
 
