@@ -38,6 +38,9 @@ $references = @(
     (New-ValidationReference -Path "tmp-browser-smoke/README.md" -Kind "file" -Purpose "Top-level probe-suite index that routes saved-page follow-up into the local fixture probe."),
     (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures" -Kind "directory" -Purpose "Reusable staged localhost fixture workspace for saved HTML validation."),
     (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1" -Kind "file" -Purpose "Main reusable local HTML fixture probe runner."),
+    (New-ValidationReference -Path "scripts/windows/check_local_html_fixture_asset_closure.ps1" -Kind "file" -Purpose "Dedicated deep asset-closure preflight for fixed local HTML fixture bundles."),
+    (New-ValidationReference -Path "scripts/windows/check_attached_html_local_asset_closure.ps1" -Kind "file" -Purpose "Shared recursive CSS and module-asset audit used by the local fixture asset-closure preflight."),
+    (New-ValidationReference -Path "scripts/windows/HeadedValidationHelpers.ps1" -Kind "file" -Purpose "Shared validation helper surface used by the local fixture preflight wrappers."),
     (New-ValidationReference -Path "tmp-browser-smoke/common/Win32Input.ps1" -Kind "file" -Purpose "Shared headed Win32 window helpers used by the fixture probe."),
     (New-ValidationReference -Path "tmp-browser-smoke/tabs/TabProbeCommon.ps1" -Kind "file" -Purpose "Shared probe process ownership helpers used by the fixture probe."),
     (New-ValidationReference -Path "scripts/windows/check_saved_page_localhost_validation_surface.ps1" -Kind "file" -Purpose "Broader saved-page localhost surface checker that now includes this reusable fixture path.")
@@ -95,5 +98,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} local HTML fixture validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, shared dependency, or probe directory before trusting the reusable local fixture replay path."
+Write-Host "Repair the missing guide, helper, deep asset audit dependency, or probe directory before trusting the reusable local fixture replay path."
 exit 1
