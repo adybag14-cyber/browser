@@ -85,20 +85,39 @@ function Get-AttachedHtmlCandidates([string]$RepoRoot) {
   return @($items | Group-Object FullName | ForEach-Object { $_.Group[0] })
 }
 
-function Get-GoogleStyleFixtureScore($Fixture) {
+function Get-GoogleStyleFixtureSummary($Fixture) {
   $score = 0
   $pathText = $Fixture.FullName.ToLowerInvariant()
+  $reasons = [System.Collections.Generic.List[string]]::new()
+
+  $hasGoogleSearchPathHint = $false
+  $hasSearchPathHint = $false
+  $hasGenericGooglePathHint = $false
+  $hasMarketingPenalty = $false
+  $hasGoogleSearchTitle = $false
+  $hasGenericGoogleTitle = $false
+  $hasQueryInput = $false
+  $hasSearchAria = $false
+  $hasSearchForm = $false
 
   if ($pathText -match 'google[-_ ]?(home|search|input|query|submit|probe)') {
+    $hasGoogleSearchPathHint = $true
     $score += 6
+    $reasons.Add("google-search path") | Out-Null
   } elseif ($pathText -match 'search[-_ ]?(home|input|query|submit|probe|results)') {
+    $hasSearchPathHint = $true
     $score += 4
+    $reasons.Add("search path") | Out-Null
   } elseif ($pathText -match '\bgoogle\b') {
-    $score += 5
+    $hasGenericGooglePathHint = $true
+    $score += 2
+    $reasons.Add("google path") | Out-Null
   }
 
   if ($pathText -match '(safety|privacy|policy|account|support)') {
-    $score -= 2
+    $hasMarketingPenalty = $true
+    $score -= 4
+    $reasons.Add("marketing path penalty") | Out-Null
   }
 
   try {
@@ -106,34 +125,69 @@ function Get-GoogleStyleFixtureScore($Fixture) {
     $rawLower = $raw.ToLowerInvariant()
 
     if ($rawLower -match "<title[^>]*>[^<]*google[^<]*(search|home)") {
+      $hasGoogleSearchTitle = $true
       $score += 6
+      $reasons.Add("google search/home title") | Out-Null
     } elseif ($rawLower -match "<title[^>]*>[^<]*google[^<]*</title>") {
-      $score += 4
+      $hasGenericGoogleTitle = $true
+      $score += 2
+      $reasons.Add("google title") | Out-Null
     }
 
     if ($rawLower -match "name\s*=\s*['`"]q['`"]") {
-      $score += 7
+      $hasQueryInput = $true
+      $score += 8
+      $reasons.Add("query input") | Out-Null
     }
     if ($rawLower -match "aria-label\s*=\s*['`"][^'`"]*search[^'`"]*['`"]") {
+      $hasSearchAria = $true
       $score += 2
+      $reasons.Add("search aria") | Out-Null
     }
     if ($rawLower -match "<form[^>]+action\s*=\s*['`"][^'`"]*/search" -or
         $rawLower -match "\b(btnk|apjfqb|glfyf|gsfi)\b") {
+      $hasSearchForm = $true
       $score += 6
+      $reasons.Add("search form markers") | Out-Null
     }
 
-    if ($rawLower -match '(google safety|safety centre|privacy)') {
-      $score -= 2
+    if ($rawLower -match '(google safety|safety centre|privacy policy|cookie policy)') {
+      if (-not $hasMarketingPenalty) {
+        $reasons.Add("marketing content penalty") | Out-Null
+      }
+      $hasMarketingPenalty = $true
+      $score -= 6
     }
   } catch {
-    return $score
+    return [pscustomobject]@{
+      score = $score
+      reasons = @($reasons)
+      has_query_input = $hasQueryInput
+      has_search_form = $hasSearchForm
+      has_google_search_title = $hasGoogleSearchTitle
+      has_search_aria = $hasSearchAria
+      has_marketing_penalty = $hasMarketingPenalty
+    }
   }
 
-  return $score
+  return [pscustomobject]@{
+    score = $score
+    reasons = @($reasons)
+    has_query_input = $hasQueryInput
+    has_search_form = $hasSearchForm
+    has_google_search_title = $hasGoogleSearchTitle
+    has_search_aria = $hasSearchAria
+    has_marketing_penalty = $hasMarketingPenalty
+  }
+}
+
+function Get-GoogleStyleFixtureScore($Fixture) {
+  return (Get-GoogleStyleFixtureSummary $Fixture).score
 }
 
 function Test-GoogleStyleFixture($Fixture) {
-  return (Get-GoogleStyleFixtureScore $Fixture) -gt 4
+  $summary = Get-GoogleStyleFixtureSummary $Fixture
+  return ($summary.has_query_input -or $summary.has_search_form -or $summary.has_google_search_title) -and $summary.score -gt 5
 }
 
 function Resolve-FixtureSelection {
@@ -273,10 +327,11 @@ function Select-GoogleStyleInitialPage {
       continue
     }
 
-    $score = Get-GoogleStyleFixtureScore $fixture
-    if ($score -le 4) {
+    $summary = Get-GoogleStyleFixtureSummary $fixture
+    if (-not (Test-GoogleStyleFixture $fixture)) {
       continue
     }
+    $score = $summary.score
 
     if ($bestFixture -eq $null -or $score -gt $bestScore -or ($score -eq $bestScore -and $fixture.FullName -lt $bestFixture.FullName)) {
       $bestFixture = $fixture
@@ -312,7 +367,8 @@ function Convert-ToFixtureArgumentLines {
 function Show-FixtureSelectionSummary {
   param(
     [string[]]$FixturePaths,
-    [string]$RepoRoot
+    [string]$RepoRoot,
+    [switch]$GoogleStyle
   )
 
   if (-not $FixturePaths -or -not $FixturePaths.Count) {
@@ -322,7 +378,18 @@ function Show-FixtureSelectionSummary {
 
   Write-Output "Selected fixtures:"
   foreach ($fixture in $FixturePaths) {
-    Write-Output ("- " + (Convert-ToDisplayPath -Path $fixture -RepoRoot $RepoRoot))
+    $displayPath = Convert-ToDisplayPath -Path $fixture -RepoRoot $RepoRoot
+    if ($GoogleStyle) {
+      $item = Get-Item -LiteralPath $fixture -ErrorAction SilentlyContinue
+      if ($item) {
+        $summary = Get-GoogleStyleFixtureSummary $item
+        $reasonText = if ($summary.reasons.Count -gt 0) { $summary.reasons -join ", " } else { "no matched hints" }
+        Write-Output ("- {0} (score {1}: {2})" -f $displayPath, $summary.score, $reasonText)
+        continue
+      }
+    }
+
+    Write-Output ("- " + $displayPath)
   }
 }
 
