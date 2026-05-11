@@ -15,25 +15,58 @@ function Get-AttachedBundleTargetSpec {
         [pscustomobject]@{
             Name = "google-safety-centre"
             DisplayName = "Control your online safety and privacy – Google Safety Centre"
-            MatchPattern = "control your online safety and privacy.+google safety centre"
+            MatchPatterns = @(
+                "google safety centre",
+                "online security and privacy.+google safety centre",
+                "control your online safety and privacy.+google safety centre",
+                "safety\.google"
+            )
             Purpose = "Google-branded policy and content-heavy compatibility target."
         }
         [pscustomobject]@{
             Name = "anthropic-job-application"
             DisplayName = "Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic"
-            MatchPattern = "job application.+interpretability at anthropic"
+            MatchPatterns = @(
+                "job application.+interpretability at anthropic",
+                "jobs\.ashbyhq\.com/.+anthropic",
+                "ashbyhq\.com/.+anthropic"
+            )
             Purpose = "Form-heavy application page compatibility target."
         }
         [pscustomobject]@{
             Name = "uap-encounters"
             DisplayName = "Presidential Unsealing and Reporting System for UAP Encounters"
-            MatchPattern = "presidential unsealing and reporting system for uap encounters"
+            MatchPatterns = @(
+                "presidential unsealing and reporting system for uap encounters",
+                "department of war",
+                "pursue"
+            )
             Purpose = "Dense document and script-heavy compatibility target."
         }
     )
 }
 
-function Get-FixtureTitle {
+function Get-FirstRegexGroupValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Raw,
+        [Parameter(Mandatory = $true)]
+        [string]$Pattern
+    )
+
+    $match = [regex]::Match(
+        $Raw,
+        $Pattern,
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::Multiline
+    )
+    if (-not $match.Success) {
+        return ""
+    }
+
+    return [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value).Trim()
+}
+
+function Get-FixtureMetadata {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Path
@@ -41,15 +74,23 @@ function Get-FixtureTitle {
 
     try {
         $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop
-        $match = [regex]::Match($raw, "<title[^>]*>(.*?)</title>", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline)
-        if ($match.Success) {
-            return [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value).Trim()
-        }
     } catch {
-        return ""
+        return [pscustomobject]@{
+            Raw = ""
+            Title = ""
+            OpenGraphTitle = ""
+            OpenGraphUrl = ""
+            DocumentUrl = ""
+        }
     }
 
-    return ""
+    return [pscustomobject]@{
+        Raw = $raw
+        Title = Get-FirstRegexGroupValue -Raw $raw -Pattern "<title[^>]*>(.*?)</title>"
+        OpenGraphTitle = Get-FirstRegexGroupValue -Raw $raw -Pattern '<meta[^>]+(?:property|name)\s*=\s*["'']?og:title["'']?[^>]+content\s*=\s*["'']([^"'']+)["'']'
+        OpenGraphUrl = Get-FirstRegexGroupValue -Raw $raw -Pattern '<meta[^>]+(?:property|name)\s*=\s*["'']?og:url["'']?[^>]+content\s*=\s*["'']([^"'']+)["'']'
+        DocumentUrl = Get-FirstRegexGroupValue -Raw $raw -Pattern '(?m)^\s*url:\s*(\S+)'
+    }
 }
 
 function Convert-ToSingleQuotedPowerShellArgument {
@@ -88,14 +129,18 @@ function Get-ResolvedBundleCandidates {
 
     return @(
         $paths | ForEach-Object {
-            $title = Get-FixtureTitle -Path $_
+            $metadata = Get-FixtureMetadata -Path $_
             $fixtureItem = Get-Item -LiteralPath $_ -ErrorAction SilentlyContinue
             $googleSummary = if ($fixtureItem) { Get-GoogleStyleFixtureSummary $fixtureItem } else { $null }
+            $searchTextParts = @($_, $metadata.Title, $metadata.OpenGraphTitle, $metadata.OpenGraphUrl, $metadata.DocumentUrl) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
             [pscustomobject]@{
                 Path = $_
-                Title = $title
-                SearchText = (("{0}`n{1}" -f $_, $title)).ToLowerInvariant()
+                Title = $metadata.Title
+                OpenGraphTitle = $metadata.OpenGraphTitle
+                OpenGraphUrl = $metadata.OpenGraphUrl
+                DocumentUrl = $metadata.DocumentUrl
+                SearchText = ($searchTextParts -join "`n").ToLowerInvariant()
                 IsGoogleStyle = if ($fixtureItem) { Test-GoogleStyleFixture $fixtureItem } else { $false }
                 GoogleScore = if ($googleSummary) { $googleSummary.score } else { [int]::MinValue }
             }
@@ -284,25 +329,52 @@ $candidates = @(Get-ResolvedBundleCandidates -RepoRoot $RepoRoot -InputPath $Inp
 $matchedPaths = @()
 $targetResults = foreach ($target in $targets) {
     $matches = @(
-        $candidates | Where-Object {
-            $_.SearchText -match $target.MatchPattern
+        $candidates | ForEach-Object {
+            $candidate = $_
+            $patternHits = @($target.MatchPatterns | Where-Object { $_ -and $candidate.SearchText -match $_ }).Count
+            if ($patternHits -gt 0) {
+                [pscustomobject]@{
+                    Candidate = $candidate
+                    PatternHits = $patternHits
+                }
+            }
         }
     )
 
+    $selectedCandidate = $null
     $selectedPath = $null
     $selectedTitle = ""
+    $selectedOpenGraphTitle = ""
+    $selectedDocumentUrl = ""
     $selectedGoogleStyle = $false
     $selectedGoogleScore = $null
+    $selectedPatternHits = 0
     $status = "missing"
-    if ($matches.Count -eq 1) {
-        $selectedPath = $matches[0].Path
-        $selectedTitle = $matches[0].Title
-        $selectedGoogleStyle = [bool]$matches[0].IsGoogleStyle
-        $selectedGoogleScore = $matches[0].GoogleScore
-        $matchedPaths += $selectedPath
-        $status = "found"
-    } elseif ($matches.Count -gt 1) {
-        $status = "ambiguous"
+    if ($matches.Count -gt 0) {
+        $sortedMatches = @(
+            $matches | Sort-Object \
+                @{ Expression = { $_.PatternHits }; Descending = $true }, \
+                @{ Expression = { $_.Candidate.GoogleScore }; Descending = $true }, \
+                @{ Expression = { $_.Candidate.Path } }
+        )
+        $topPatternHits = $sortedMatches[0].PatternHits
+        $topMatches = @($sortedMatches | Where-Object { $_.PatternHits -eq $topPatternHits })
+
+        if ($topMatches.Count -eq 1) {
+            $selectedCandidate = $topMatches[0].Candidate
+            $selectedPath = $selectedCandidate.Path
+            $selectedTitle = $selectedCandidate.Title
+            $selectedOpenGraphTitle = $selectedCandidate.OpenGraphTitle
+            $selectedDocumentUrl = $selectedCandidate.DocumentUrl
+            $selectedGoogleStyle = [bool]$selectedCandidate.IsGoogleStyle
+            $selectedGoogleScore = $selectedCandidate.GoogleScore
+            $selectedPatternHits = $topMatches[0].PatternHits
+            $matchedPaths += $selectedPath
+            $status = "found"
+        } else {
+            $status = "ambiguous"
+            $selectedPatternHits = $topPatternHits
+        }
     }
 
     $routing = Get-TargetValidationRouting -TargetName $target.Name -Status $status -IsGoogleStyle:$selectedGoogleStyle
@@ -313,15 +385,18 @@ $targetResults = foreach ($target in $targets) {
         purpose = $target.Purpose
         status = $status
         match_count = $matches.Count
+        pattern_hit_count = $selectedPatternHits
         path = $selectedPath
         title = $selectedTitle
+        open_graph_title = $selectedOpenGraphTitle
+        document_url = $selectedDocumentUrl
         is_google_style = $selectedGoogleStyle
         google_style_score = $selectedGoogleScore
         change_area = $routing.change_area
         route_summary = $routing.summary
         bounded_first_step = $routing.first_step
         follow_up = $routing.follow_up
-        candidate_paths = @($matches | ForEach-Object { $_.Path })
+        candidate_paths = @($matches | ForEach-Object { $_.Candidate.Path })
     }
 }
 
@@ -338,15 +413,20 @@ foreach ($fixture in $assetAudit) {
 $resultRows = @(
     $targetResults | ForEach-Object {
         $audit = if ($_.path -and $assetAuditByPath.ContainsKey($_.path)) { $assetAuditByPath[$_.path] } else { $null }
+        $effectiveTitle = if (-not [string]::IsNullOrWhiteSpace($_.title)) { $_.title } else { $_.open_graph_title }
         [ordered]@{
             name = $_.name
             display_name = $_.display_name
             purpose = $_.purpose
             status = $_.status
             match_count = $_.match_count
+            pattern_hit_count = $_.pattern_hit_count
             path = $_.path
             display_path = if ($_.path) { Convert-ToDisplayPath -Path $_.path -RepoRoot $RepoRoot } else { $null }
             title = $_.title
+            open_graph_title = $_.open_graph_title
+            effective_title = $effectiveTitle
+            document_url = $_.document_url
             is_google_style = $_.is_google_style
             google_style_score = $_.google_style_score
             missing_asset_count = if ($audit) { $audit.missing_asset_count } else { $null }
@@ -401,8 +481,14 @@ foreach ($row in $resultRows) {
     if ($row.display_path) {
         Write-Host ("  Path: {0}" -f $row.display_path)
     }
-    if ($row.title) {
-        Write-Host ("  Title: {0}" -f $row.title)
+    if ($row.effective_title) {
+        Write-Host ("  Title: {0}" -f $row.effective_title)
+    }
+    if ($row.document_url) {
+        Write-Host ("  Document URL: {0}" -f $row.document_url)
+    }
+    if ($row.pattern_hit_count -gt 0) {
+        Write-Host ("  Match signal count: {0}" -f $row.pattern_hit_count)
     }
     if ($row.is_google_style) {
         Write-Host ("  Google-style score: {0}" -f $row.google_style_score)
