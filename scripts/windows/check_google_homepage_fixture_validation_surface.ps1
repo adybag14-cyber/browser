@@ -34,9 +34,11 @@ $resolvedRepoRoot = if ($RepoRoot) {
 }
 
 $references = @(
+    (New-ValidationReference -Path "docs/GOOGLE_HOMEPAGE_FIXTURE_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the bounded Google homepage-fixture checkpoint."),
     (New-ValidationReference -Path "docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md" -Kind "file" -Purpose "Main issue #3 guide that routes into the bounded homepage-fixture slice."),
     (New-ValidationReference -Path "docs/GOOGLE_SUBMIT_PATH_VALIDATION.md" -Kind "file" -Purpose "Later-stage note that picks up after the homepage-fixture slice is green."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that lists the homepage-fixture helper chain."),
+    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router that should keep the homepage-fixture slice discoverable."),
     (New-ValidationReference -Path "scripts/windows/show_google_homepage_fixture_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the bounded homepage-fixture slice."),
     (New-ValidationReference -Path "scripts/windows/run_google_homepage_fixture_validation.ps1" -Kind "file" -Purpose "One-command bounded homepage-fixture runner."),
     (New-ValidationReference -Path "scripts/windows/show_google_submit_path_validation_flow.ps1" -Kind "file" -Purpose "Follow-on submit-path flow helper that should stay available after the homepage-fixture gate."),
