@@ -42,6 +42,20 @@ function Resolve-ArtifactCandidatePath {
     return Join-Path $ArtifactRoot $FallbackName
 }
 
+function Read-ArtifactJson {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    } catch {
+        return $null
+    }
+}
+
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
@@ -109,6 +123,24 @@ $manifestArtifactExists = Test-Path -LiteralPath $manifestArtifactPath -PathType
 $bundleArtifactExists = Test-Path -LiteralPath $bundleArtifactPath -PathType Leaf
 $boundaryArtifactExists = Test-Path -LiteralPath $boundaryArtifactPath -PathType Leaf
 $guideArtifactExists = Test-Path -LiteralPath $guideArtifactPath -PathType Leaf
+$refreshRecord = Read-ArtifactJson $refreshArtifactPath
+$refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
+    $refreshRecord.status
+} elseif ($refreshArtifactExists) {
+    'present-unreadable'
+} else {
+    'missing'
+}
+$bundleRecord = Read-ArtifactJson $bundleArtifactPath
+$artifactBundleStatus = if ($bundleRecord -and $bundleRecord.status) {
+    $bundleRecord.status
+} elseif ($bundleArtifactExists) {
+    'present-unreadable'
+} else {
+    'missing'
+}
+$handoffRecord = Read-ArtifactJson $handoffArtifactPath
+$handoffReady = [bool]($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open))
 
 $triageOrder = @()
 $quickDiagnosis = @()
@@ -123,10 +155,16 @@ if (-not $summaryExists) {
     )
     $quickDiagnosis = @(
         'Without a saved summary, the recommended runner is still the source of truth for the first failing phase.',
-        'Once the summary exists, prefer the refresh-status and handoff helpers before digging through broader logs by hand.'
+        'Once the summary exists, prefer the handoff helper when the refresh and bundle state are healthy, and fall back to refresh repair when they are not.'
     )
 } else {
-    if (-not $refreshArtifactExists) {
+    if ($artifactBundleStatus -ne 'complete') {
+        $nextStep = $refreshStatusCommand
+        $reason = "The saved artifact bundle reports '$artifactBundleStatus', so start with refresh status and repair the helper chain before trusting the narrower handoff or manifest guidance."
+    } elseif ($refreshStatus -ne 'refreshed') {
+        $nextStep = $refreshStatusCommand
+        $reason = "The saved refresh artifact reports '$refreshStatus', so start there before trusting the narrower handoff guidance."
+    } elseif (-not $refreshArtifactExists) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved summary exists, but the refresh artifact is missing, so the next replay should start by checking refresh status and then regenerating the helper chain if needed.'
     } elseif (-not $summaryRecordsRefreshArtifactPath) {
@@ -135,21 +173,30 @@ if (-not $summaryExists) {
     } elseif (-not $handoffArtifactExists) {
         $nextStep = $refreshStatusCommand
         $reason = 'The saved summary exists, but the handoff artifact is missing, so refresh status should repair the helper chain before narrower replay.'
+    } elseif (-not $summaryRecordsHandoffArtifactPath) {
+        $nextStep = $refreshStatusCommand
+        $reason = 'The saved summary exists and the handoff artifact exists, but the summary does not record that pointer yet, so refresh status should keep the helper chain aligned before narrower replay.'
+    } elseif ($handoffReady) {
+        $nextStep = $handoffGuideCommand
+        $reason = 'The saved summary, refresh artifact, bundle audit, and handoff artifact are already coherent, so start with the handoff helper and follow its next_artifact_to_open guidance.'
     } else {
         $nextStep = $refreshStatusCommand
-        $reason = 'The saved summary and the key helper artifacts exist, so start with refresh status and then follow the handoff helper into the narrowest current replay step.'
+        $reason = 'The saved handoff artifact exists but does not yet point at a reusable next artifact, so start with refresh status and then repair the helper chain if needed.'
     }
 
     $triageOrder = @(
-        '1. Start with the refresh-status helper for the current summary so you know whether the saved helper chain is fresh enough to trust.',
-        '2. If refresh status recommends repair, run the refresh-chain helper before trusting the saved handoff, manifest, guide, or boundary outputs.',
-        '3. Once refresh status is green enough, open the handoff helper and follow its next_artifact_to_open guidance.',
+        '1. Start with the handoff helper when the saved refresh and artifact-bundle state are healthy; otherwise start with refresh status for the current summary.',
+        '2. If refresh status or the artifact-bundle helper says the chain is stale or incomplete, run the refresh-chain helper before trusting the saved handoff, manifest, guide, or boundary outputs.',
+        '3. Once the helper chain is coherent, open the handoff helper and follow its next_artifact_to_open guidance.',
         '4. Use the manifest helper when you want the richest artifact index for the current replay, and use the boundary helper when you need the exact last-pass / first-fail split.',
         '5. Stay on the title, reduced-home submit, or shared Enter-order slices until those bounded checkpoints agree before widening back out.'
     )
     $quickDiagnosis = @(
         ('Saved summary first_failed_phase: {0}' -f $(if ($summary.first_failed_phase) { $summary.first_failed_phase } else { 'none recorded' })),
         ('Saved summary surface_check_status: {0}' -f $(if ($summary.surface_check_status) { $summary.surface_check_status } else { 'unknown' })),
+        ('Artifact bundle status: {0}' -f $artifactBundleStatus),
+        ('Refresh status: {0}' -f $refreshStatus),
+        ('Handoff ready: {0}' -f $handoffReady),
         ('Summary records refresh pointer: {0}' -f $summaryRecordsRefreshArtifactPath),
         ('Summary records handoff pointer: {0}' -f $summaryRecordsHandoffArtifactPath),
         ('Refresh artifact exists: {0}' -f $refreshArtifactExists),
@@ -163,7 +210,7 @@ if (-not $summaryExists) {
 
 $guide = [ordered]@{
     issue = 'Google issue #3 probe triage'
-    purpose = 'Use the current recommended-validation summary to surface the exact refresh, handoff, manifest, bundle, guide, and boundary artifact paths before picking the next bounded headed replay step.'
+    purpose = 'Use the current recommended-validation summary to surface the exact refresh, handoff, manifest, bundle, guide, and boundary artifact paths, and prefer the saved handoff helper once the helper chain is coherent.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     summary_exists = [bool]$summaryExists
@@ -188,12 +235,15 @@ $guide = [ordered]@{
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
     refresh_artifact_path = $refreshArtifactPath
     refresh_artifact_exists = [bool]$refreshArtifactExists
+    refresh_status = $refreshStatus
     handoff_artifact_path = $handoffArtifactPath
     handoff_artifact_exists = [bool]$handoffArtifactExists
+    handoff_ready = [bool]$handoffReady
     manifest_artifact_path = $manifestArtifactPath
     manifest_artifact_exists = [bool]$manifestArtifactExists
     artifact_bundle_path = $bundleArtifactPath
     artifact_bundle_exists = [bool]$bundleArtifactExists
+    artifact_bundle_status = $artifactBundleStatus
     boundary_artifact_path = $boundaryArtifactPath
     boundary_artifact_exists = [bool]$boundaryArtifactExists
     guide_artifact_path = $guideArtifactPath
@@ -220,6 +270,9 @@ if ($guide.summary_generated_at_utc) {
 if ($summaryExists) {
     Write-Host ("Completed: {0}" -f $guide.summary_completed)
     Write-Host ("Surface:   {0}" -f $guide.surface_check_status)
+    Write-Host ("Bundle:    {0}" -f $guide.artifact_bundle_status)
+    Write-Host ("Refresh:   {0}" -f $guide.refresh_status)
+    Write-Host ("Handoff ready: {0}" -f $guide.handoff_ready)
     Write-Host ("First fail:{0}" -f $(if ($guide.first_failed_phase) { ' ' + $guide.first_failed_phase } else { ' none' }))
 }
 Write-Host ''
