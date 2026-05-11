@@ -11,6 +11,10 @@ This guide is intentionally narrower than
 It focuses on the middle slice that now sits between the reduced homepage pass
 and the broader attached-page or live trace follow-up.
 
+Treat `docs/GOOGLE_HOMEPAGE_FIXTURE_VALIDATION.md` as the read-first note for
+the bounded saved-homepage checkpoint that now lives directly in front of this
+later submit-path ladder.
+
 ## When To Use It
 
 Reach for this note when all of these are true:
@@ -95,43 +99,49 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_pa
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1
 ```
 
-4. Saved homepage fixture flow helper
+4. Saved homepage fixture surface checker
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_homepage_fixture_validation_surface.ps1
+```
+
+5. Saved homepage fixture flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 ```
 
-5. Saved homepage fixture runner
+6. Saved homepage fixture runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 ```
 
-6. Submit-timing flow helper
+7. Submit-timing flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1
 ```
 
-7. Submit-timing runner
+8. Submit-timing runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
 ```
 
-8. Shared Enter-order flow helper
+9. Shared Enter-order flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 ```
 
-9. Shared Enter-order runner
+10. Shared Enter-order runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 ```
 
-10. Dedicated shared form-controls Enter-order gate when you need the smallest
+11. Dedicated shared form-controls Enter-order gate when you need the smallest
 shared end-state proof
 
 ```powershell
