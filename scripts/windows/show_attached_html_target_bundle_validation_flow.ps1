@@ -61,6 +61,19 @@ function Add-SharedPathArrayArgument {
     }
 }
 
+$bundleSurfaceCheckPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle_validation_surface.ps1"
+$bundleSurfaceCheckCommand = '.\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1'
+if (-not (Test-Path -LiteralPath $bundleSurfaceCheckPath -PathType Leaf)) {
+    throw "Attached HTML target-bundle validation surface checker not found: $bundleSurfaceCheckPath"
+}
+
+$bundleSurfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleSurfaceCheckArgs -Name RepoRoot -Value $RepoRoot
+$printedBundleSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File $bundleSurfaceCheckCommand"
+if ($bundleSurfaceCheckArgs.Count -gt 0) {
+    $printedBundleSurfaceCheckCommand += " " + ($bundleSurfaceCheckArgs -join " ")
+}
+
 $bundleCheckerPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle.ps1"
 $bundleCheckerCommand = '.\\scripts\\windows\\check_attached_html_target_bundle.ps1'
 if (-not (Test-Path -LiteralPath $bundleCheckerPath -PathType Leaf)) {
@@ -109,7 +122,7 @@ $targetSummary = @(
 
 $flow = [ordered]@{
     issue = "Attached HTML compatibility bundle validation flow"
-    focus = "Print the current bundle-pinned headed localhost route for the known three-page compatibility set so future runs can stay on one stable command surface instead of hand-copying commands from the bundle checker output."
+    focus = "Print the current bundle-pinned headed localhost route for the known three-page compatibility set so future runs can start with a fail-fast surface check, then stay on one stable command surface instead of hand-copying commands from the bundle checker output."
     input_mode = $bundle.input_mode
     discovered_candidate_count = $bundle.discovered_candidate_count
     matched_target_count = $bundle.matched_target_count
@@ -121,6 +134,11 @@ $flow = [ordered]@{
     follow_up = $overall.follow_up
     bundle_summary = $overall.bundle_summary
     steps = @(
+        [ordered]@{
+            name = "bundle-route-surface-check"
+            goal = "Fail fast if the bundle guide, checker, helper, runner, or delegated attached-HTML validation surfaces drifted before you trust the pinned bundle route."
+            command = $printedBundleSurfaceCheckCommand
+        }
         [ordered]@{
             name = "bundle-check"
             goal = "Confirm the current saved-page set still resolves to the expected three-page compatibility bundle and reuse the same locked InputPath set for the rest of the flow."
@@ -149,11 +167,13 @@ $flow = [ordered]@{
     )
     targets = $targetSummary
     notes = @(
-        "Use this helper after the bundle checker when you want a stable read-first command surface for the current compatibility set instead of copying commands out of free-form checker output.",
+        "Use this helper after the bundle route surface check when you want a stable read-first command surface for the current compatibility set instead of copying commands out of free-form checker output.",
         "The preferred initial page stays pinned to the Google Safety Centre target when the current bundle includes the Google-style page, so the issue #3 localhost-first follow-up remains aligned with the current runbook.",
-        "Pass -InputPath when you want the same printed bundle flow but against an explicit saved-page set rather than the auto-discovered workspace bundle."
+        "Pass -InputPath when you want the same printed bundle flow but against an explicit saved-page set rather than the auto-discovered workspace bundle.",
+        "Pass -RepoRoot when you want the bundle route surface check and bundle checker to evaluate a non-default working tree before printing the pinned commands."
     )
     next_steps = @(
+        "Use the bundle route surface-check command first when the branch has moved and you want the bundle-aware guide, helper, runner, and delegated attached-HTML surfaces to fail fast before anything else.",
         "Use the bundle-pinned flow command when you want the exact printed localhost ladder with the current paths already locked in.",
         "Use the bundle-pinned runner command when the bundle checks are green and you want to launch the headed localhost replay directly.",
         "Move back to the smaller Google title, submit-timing, or shared Enter-order ladders only after the attached-page replay makes the next failure state clear."
