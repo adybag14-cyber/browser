@@ -70,9 +70,10 @@ Good first probes:
 ### 3. Text, Fonts, Editing, And Focus
 
 Use when changes touch input delivery, caret behavior, clipboard, IME, focus
-traversal, text measurement, fonts, or zoom-sensitive editing behavior.
+traversal, text measurement, fonts, zoom-sensitive editing behavior, or the
+issue `#3` Google search-box narrowing path.
 
-Directories:
+Directories and runner entry points:
 - `tmp-browser-smoke/form-controls`
 - `tmp-browser-smoke/google-investigation-next`
 - `tmp-browser-smoke/google-home`
@@ -80,10 +81,18 @@ Directories:
 - `tmp-browser-smoke/font-render`
 - `tmp-browser-smoke/find`
 - `tmp-browser-smoke/zoom`
+- `scripts/windows/run_google_home_title_probe.ps1`
+- `scripts/windows/run_google_quick_validation.ps1`
+- `scripts/windows/run_google_homepage_fixture_validation.ps1`
+- `scripts/windows/run_google_issue3_submit_path_validation.ps1`
 
 Good first probes:
 - `tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1`
+- `scripts/windows/run_google_home_title_probe.ps1`
+- `scripts/windows/run_google_quick_validation.ps1`
 - `tmp-browser-smoke/google-home/chrome-google-home-enter-probe.ps1`
+- `scripts/windows/run_google_homepage_fixture_validation.ps1`
+- `scripts/windows/run_google_issue3_submit_path_validation.ps1`
 - `tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1`
 - `tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1`
 - `tmp-browser-smoke/form-controls/label-click-probe.ps1`
@@ -180,7 +189,7 @@ only as needed.
 - auth/cookie/subresource changes: start with one targeted `image-smoke`, `stylesheet-smoke`, `fetch-credentials`, `websocket-smoke`, or `attachment-downloads` probe
 - restart or persistence changes: start with the restart-oriented probe in the matching persistence directory
 - shell-state changes: start with one `browser-pages`, `tabs`, `settings`, `bookmarks`, or `stop-loading` probe that exercises the changed action directly
-- live-site Google search-box work: start with `scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-input` or `tmp-browser-smoke/google-investigation-next/`, then use the title or quick gate, then the reduced-homepage pass, then `scripts/windows/show_google_submit_timing_validation_flow.ps1` before the bounded timing slice, then the shared Enter-order stack, then `scripts/windows/show_google_attached_html_validation_flow.ps1` when current-run attached HTML exists, and only then move to the saved-page or live trace follow-up; use `src/browser/tests/page/google_home_title_probe.html` when the change specifically touches load or readiness ordering before moving to the full live-site pass
+- live-site Google search-box work: start with `scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-input` or `tmp-browser-smoke/google-investigation-next/`, then use the title or quick gate, then the reduced-homepage pass, then the saved-homepage-fixture or submit-path helper when the typed-text-versus-submit handoff needs narrower focus, then `scripts/windows/show_google_submit_timing_validation_flow.ps1` before the bounded timing slice, then the shared Enter-order stack, then `scripts/windows/show_google_attached_html_validation_flow.ps1` when current-run attached HTML exists, and only then move to the saved-page or live trace follow-up; use `src/browser/tests/page/google_home_title_probe.html` when the change specifically touches load or readiness ordering before moving to the full live-site pass
 
 ## Issue #3 Flow
 
@@ -189,15 +198,17 @@ For issue `#3`, keep the bounded follow-up order consistent across the branch:
 1. `google-investigation-next`
 2. `google-title` or `google-quick` when the next question is title, readiness, focus, or the first real-surface text marker
 3. `google-home` or `google-recommended` when you want the reduced-homepage pass bundled with the current bounded runner
-4. `scripts/windows/show_google_submit_timing_validation_flow.ps1`, then the bounded submit-timing slice
-5. the shared Enter-order stack, including `scripts/windows/show_google_shared_enter_order_validation_flow.ps1` when you want the stricter localhost-first ordering printed before execution
-6. `scripts/windows/show_google_attached_html_validation_flow.ps1` plus attached-page follow-up when the current run already has Google-like HTML snapshots, otherwise the saved-page follow-up
-7. `scripts/windows/show_google_trace_validation_flow.ps1`
-8. live Google trace or the full homepage follow-up
+4. `google-homepage-fixture` or `google-submit-path` when you need a narrower saved-homepage-fixture handoff before the later shared gates
+5. `scripts/windows/show_google_submit_timing_validation_flow.ps1`, then the bounded submit-timing slice
+6. the shared Enter-order stack, including `scripts/windows/show_google_shared_enter_order_validation_flow.ps1` when you want the stricter localhost-first ordering printed before execution
+7. `scripts/windows/show_google_attached_html_validation_flow.ps1` plus attached-page follow-up when the current run already has Google-like HTML snapshots, otherwise the saved-page follow-up
+8. `scripts/windows/show_google_trace_validation_flow.ps1`
+9. live Google trace or the full homepage follow-up
 
 Use `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md`,
-`scripts/windows/show_google_input_validation_flow.ps1`, and
-`scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-input`
+`scripts/windows/show_google_input_validation_flow.ps1`,
+`scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-input`,
+and `scripts/windows/show_headed_validation_suites.ps1 -ChangeArea google-submit-path`
 when you need the exact command map for that sequence.
 
 ## Expected Artifacts
