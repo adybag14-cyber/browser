@@ -67,13 +67,113 @@ function Get-ResolvedBundleCandidates {
 
     return @(
         $paths | ForEach-Object {
+            $title = Get-FixtureTitle -Path $_
+            $fixtureItem = Get-Item -LiteralPath $_ -ErrorAction SilentlyContinue
+            $googleSummary = if ($fixtureItem) { Get-GoogleStyleFixtureSummary $fixtureItem } else { $null }
+
             [pscustomobject]@{
                 Path = $_
-                Title = Get-FixtureTitle -Path $_
-                SearchText = (("{0}`n{1}" -f $_, (Get-FixtureTitle -Path $_))).ToLowerInvariant()
+                Title = $title
+                SearchText = (("{0}`n{1}" -f $_, $title)).ToLowerInvariant()
+                IsGoogleStyle = if ($fixtureItem) { Test-GoogleStyleFixture $fixtureItem } else { $false }
+                GoogleScore = if ($googleSummary) { $googleSummary.score } else { [int]::MinValue }
             }
         }
     )
+}
+
+function Get-TargetValidationRouting {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TargetName,
+        [Parameter(Mandatory = $true)]
+        [string]$Status,
+        [bool]$IsGoogleStyle = $false
+    )
+
+    if ($Status -ne "found") {
+        return [ordered]@{
+            change_area = $null
+            summary = "Routing is available after this target resolves to one attached HTML file."
+            first_step = $null
+            follow_up = $null
+        }
+    }
+
+    switch ($TargetName) {
+        "google-safety-centre" {
+            return [ordered]@{
+                change_area = if ($IsGoogleStyle) { "google-attached-html" } else { "attached-html" }
+                summary = "Start with the Google-style attached HTML flow so the saved page stays on the issue #3 localhost-first ladder before manual replay."
+                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
+                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
+            }
+        }
+        "anthropic-job-application" {
+            return [ordered]@{
+                change_area = "input"
+                summary = "Start with the shared input suites, then use the attached HTML localhost follow-up for the form-heavy page."
+                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input"
+                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
+            }
+        }
+        "uap-encounters" {
+            return [ordered]@{
+                change_area = "rendering"
+                summary = "Start with the rendering suites, then use the attached HTML localhost follow-up for the dense document page."
+                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea rendering"
+                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
+            }
+        }
+        default {
+            return [ordered]@{
+                change_area = "attached-html"
+                summary = "Start with the general attached HTML flow."
+                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
+                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
+            }
+        }
+    }
+}
+
+function Get-OverallBundleRecommendation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$ResultRows
+    )
+
+    $googleTarget = $ResultRows | Where-Object { $_.name -eq "google-safety-centre" -and $_.status -eq "found" } | Select-Object -First 1
+    if ($googleTarget) {
+        return [ordered]@{
+            preferred_initial_page = $googleTarget.path
+            preferred_initial_page_display_path = $googleTarget.display_path
+            first_change_area = $googleTarget.route_change_area
+            first_step = $googleTarget.bounded_first_step
+            follow_up = $googleTarget.follow_up
+            summary = "Keep the Google-style target first so the bundle stays aligned with the issue #3 localhost-first follow-up before the broader attached-page replay."
+        }
+    }
+
+    $firstFound = $ResultRows | Where-Object { $_.status -eq "found" } | Select-Object -First 1
+    if ($firstFound) {
+        return [ordered]@{
+            preferred_initial_page = $firstFound.path
+            preferred_initial_page_display_path = $firstFound.display_path
+            first_change_area = $firstFound.route_change_area
+            first_step = $firstFound.bounded_first_step
+            follow_up = $firstFound.follow_up
+            summary = "Start with the first resolved compatibility target, then widen into the broader attached-page localhost replay."
+        }
+    }
+
+    return [ordered]@{
+        preferred_initial_page = $null
+        preferred_initial_page_display_path = $null
+        first_change_area = $null
+        first_step = $null
+        follow_up = $null
+        summary = "Resolve the expected attached-page bundle before routing validation."
+    }
 }
 
 if (-not $RepoRoot) {
@@ -94,15 +194,21 @@ $targetResults = foreach ($target in $targets) {
 
     $selectedPath = $null
     $selectedTitle = ""
+    $selectedGoogleStyle = $false
+    $selectedGoogleScore = $null
     $status = "missing"
     if ($matches.Count -eq 1) {
         $selectedPath = $matches[0].Path
         $selectedTitle = $matches[0].Title
+        $selectedGoogleStyle = [bool]$matches[0].IsGoogleStyle
+        $selectedGoogleScore = $matches[0].GoogleScore
         $matchedPaths += $selectedPath
         $status = "found"
     } elseif ($matches.Count -gt 1) {
         $status = "ambiguous"
     }
+
+    $routing = Get-TargetValidationRouting -TargetName $target.Name -Status $status -IsGoogleStyle:$selectedGoogleStyle
 
     [pscustomobject]@{
         name = $target.Name
@@ -112,6 +218,12 @@ $targetResults = foreach ($target in $targets) {
         match_count = $matches.Count
         path = $selectedPath
         title = $selectedTitle
+        is_google_style = $selectedGoogleStyle
+        google_style_score = $selectedGoogleScore
+        change_area = $routing.change_area
+        route_summary = $routing.summary
+        bounded_first_step = $routing.first_step
+        follow_up = $routing.follow_up
         candidate_paths = @($matches | ForEach-Object { $_.Path })
     }
 }
@@ -138,7 +250,13 @@ $resultRows = @(
             path = $_.path
             display_path = if ($_.path) { Convert-ToDisplayPath -Path $_.path -RepoRoot $RepoRoot } else { $null }
             title = $_.title
+            is_google_style = $_.is_google_style
+            google_style_score = $_.google_style_score
             missing_asset_count = if ($audit) { $audit.missing_asset_count } else { $null }
+            route_change_area = $_.change_area
+            route_summary = $_.route_summary
+            bounded_first_step = $_.bounded_first_step
+            follow_up = $_.follow_up
             candidate_paths = @($_.candidate_paths | ForEach-Object { Convert-ToDisplayPath -Path $_ -RepoRoot $RepoRoot })
         }
     }
@@ -147,6 +265,7 @@ $resultRows = @(
 $missingTargets = @($resultRows | Where-Object { $_.status -eq "missing" })
 $ambiguousTargets = @($resultRows | Where-Object { $_.status -eq "ambiguous" })
 $bundlePassed = $missingTargets.Count -eq 0 -and $ambiguousTargets.Count -eq 0
+$overallRecommendation = Get-OverallBundleRecommendation -ResultRows $resultRows
 
 if ($Json) {
     [ordered]@{
@@ -157,6 +276,7 @@ if ($Json) {
         expected_target_count = $targets.Count
         matched_target_count = @($resultRows | Where-Object { $_.status -eq "found" }).Count
         passed = $bundlePassed
+        overall_recommendation = $overallRecommendation
         targets = $resultRows
     } | ConvertTo-Json -Depth 8
 
@@ -187,8 +307,17 @@ foreach ($row in $resultRows) {
     if ($row.title) {
         Write-Host ("  Title: {0}" -f $row.title)
     }
+    if ($row.is_google_style) {
+        Write-Host ("  Google-style score: {0}" -f $row.google_style_score)
+    }
     if ($null -ne $row.missing_asset_count) {
         Write-Host ("  Shallow missing-asset count: {0}" -f $row.missing_asset_count)
+    }
+    if ($row.route_change_area) {
+        Write-Host ("  Route: {0}" -f $row.route_change_area)
+        Write-Host ("  Why: {0}" -f $row.route_summary)
+        Write-Host ("  First bounded step: {0}" -f $row.bounded_first_step)
+        Write-Host ("  Follow-up: {0}" -f $row.follow_up)
     }
     if ($row.status -eq "ambiguous") {
         foreach ($candidatePath in $row.candidate_paths) {
@@ -198,6 +327,18 @@ foreach ($row in $resultRows) {
 }
 
 Write-Host ""
+Write-Host ("Overall recommendation: {0}" -f $overallRecommendation.summary)
+if ($overallRecommendation.preferred_initial_page_display_path) {
+    Write-Host ("Preferred initial page: {0}" -f $overallRecommendation.preferred_initial_page_display_path)
+}
+if ($overallRecommendation.first_step) {
+    Write-Host ("Suggested first bounded step: {0}" -f $overallRecommendation.first_step)
+}
+if ($overallRecommendation.follow_up) {
+    Write-Host ("Suggested follow-up: {0}" -f $overallRecommendation.follow_up)
+}
+Write-Host ""
+
 if ($bundlePassed) {
     Write-Host "Known attached HTML compatibility bundle is present."
     Write-Host "Run check_attached_html_local_asset_closure.ps1 next if you also need deep sibling-asset proof before localhost replay."
