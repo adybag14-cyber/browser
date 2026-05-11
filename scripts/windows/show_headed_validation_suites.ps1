@@ -376,6 +376,7 @@ $googleFormControlsEnterOrderGuideCommand = "powershell -ExecutionPolicy Bypass 
 $googleFormControlsEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
 $googleFormControlsEnterOrderRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1"
 $googleSharedEnterOrderFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
+$googleTraceSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_trace_validation_surface.ps1"
 $googleLiveTraceFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 $googleAttachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
@@ -453,6 +454,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Flow helper: {0}" -f $googleSharedEnterOrderFlowCommand)
     }
     if ($suite.Name -eq "google-live-trace") {
+        Write-Host ("Surface checker: {0}" -f $googleTraceSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleLiveTraceFlowCommand)
     }
     if ($suite.Name -eq "google-saved-html") {
@@ -481,7 +483,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     } elseif ($ChangeArea -eq "google-form-controls-enter-order") {
         "Start with the dedicated form-controls Enter-order surface checker so the smallest shared keypress-before-submit note, helper, and raw probe chain fail fast, then print the dedicated flow helper so the narrowest shared Enter-order gate is spelled out before you run the dedicated wrapper, inspect the marker guide, or widen into the broader shared Enter-order ladder."
     } elseif ($ChangeArea -eq "google-live-trace") {
-        "Start with the dedicated live trace flow helper so the reduced-home and live Google capture path stays ordered after the bounded localhost, submit-timing, and shared Enter-order gates, then keep manual follow-up scoped to the smallest remaining divergence."
+        "Start with the dedicated live trace surface checker so the note, suite-router entry, flow helper, wrapper runner, and reduced-home/live probes fail fast before you trust a later-stage capture, then print the live trace flow helper so the reduced-home and real Google handoff stays ordered after the bounded localhost, submit-timing, and shared Enter-order gates."
     } elseif ($ChangeArea -eq "google-saved-html") {
         "Start with the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "google-attached-html") {
@@ -542,6 +544,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     if ($ChangeArea -eq "google-form-controls-enter-order") {
         Write-Host ("Surface checker: {0}" -f $googleFormControlsEnterOrderSurfaceCheckCommand)
     }
+    if ($ChangeArea -eq "google-live-trace") {
+        Write-Host ("Surface checker: {0}" -f $googleTraceSurfaceCheckCommand)
+    }
     if ($ChangeArea -eq "local-html-fixtures") {
         Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
     }
@@ -594,6 +599,7 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-shared-enter-order"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-live-trace"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_trace_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-attached-html"
