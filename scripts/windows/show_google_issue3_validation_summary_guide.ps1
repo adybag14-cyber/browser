@@ -44,6 +44,18 @@ $submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\window
 $formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
 $probeTriageCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1'
 
+$surfaceCheckMissingPaths = @($summary.surface_check_missing_paths)
+$surfaceCheckMissingCount = if ($null -ne $summary.surface_check_missing_count) {
+    [int]$summary.surface_check_missing_count
+} else {
+    @($surfaceCheckMissingPaths).Count
+}
+$surfaceCheckCheckedCount = if ($null -ne $summary.surface_check_checked_count) {
+    [int]$summary.surface_check_checked_count
+} else {
+    $null
+}
+
 $firstFailedPhase = $summary.first_failed_phase
 $recommendedCommand = $recommendedRunnerCommand
 $recommendedGuideCommand = $probeTriageCommand
@@ -54,7 +66,11 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     $recommendedCommand = $surfaceCheckCommand
     $recommendedGuideCommand = $null
     $nextFocus = 'Fix the preflight validation surface before spending time on headed runtime behavior.'
-    $reason = 'The summary says the recommended issue #3 surface check failed before the phase ladder could run.'
+    if ($surfaceCheckMissingCount -gt 0) {
+        $reason = "The summary says the recommended issue #3 surface check failed before the phase ladder could run, and $surfaceCheckMissingCount required path(s) are currently missing."
+    } else {
+        $reason = 'The summary says the recommended issue #3 surface check failed before the phase ladder could run.'
+    }
 } elseif ($summary.completed) {
     $recommendedCommand = $recommendedRunnerCommand
     $recommendedGuideCommand = $probeTriageCommand
@@ -124,6 +140,10 @@ $guide = [ordered]@{
     surface_check_status = $summary.surface_check_status
     surface_check_error = $summary.surface_check_error
     surface_check_artifact_path = $summary.surface_check_artifact_path
+    surface_check_profile = $summary.surface_check_profile
+    surface_check_checked_count = $surfaceCheckCheckedCount
+    surface_check_missing_count = $surfaceCheckMissingCount
+    surface_check_missing_paths = @($surfaceCheckMissingPaths)
     phase_artifact_root = $summary.phase_artifact_root
     first_failed_phase = $firstFailedPhase
     first_failed_phase_error = $summary.first_failed_phase_error
@@ -157,6 +177,18 @@ Write-Host ("Completed: {0}" -f $guide.completed)
 Write-Host ("Surface:   {0}" -f $guide.surface_check_status)
 if ($guide.surface_check_artifact_path) {
     Write-Host ("Surface JSON: {0}" -f $guide.surface_check_artifact_path)
+}
+if ($guide.surface_check_profile) {
+    Write-Host ("Surface profile: {0}" -f $guide.surface_check_profile)
+}
+if ($null -ne $guide.surface_check_checked_count) {
+    Write-Host ("Surface checked: {0}" -f $guide.surface_check_checked_count)
+}
+if ($guide.surface_check_missing_count -gt 0) {
+    Write-Host ("Surface missing: {0}" -f $guide.surface_check_missing_count)
+    foreach ($missingPath in $guide.surface_check_missing_paths) {
+        Write-Host ("- {0}" -f $missingPath)
+    }
 }
 if ($guide.phase_artifact_root) {
     Write-Host ("Phase root: {0}" -f $guide.phase_artifact_root)
