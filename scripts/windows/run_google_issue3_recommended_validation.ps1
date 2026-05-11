@@ -206,6 +206,52 @@ function Invoke-HomepageFixturePhase {
     & $homepageFixtureRunner @fixtureArguments
 }
 
+function Invoke-RecommendedStep {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Action
+    )
+
+    $startedAt = (Get-Date).ToUniversalTime().ToString("o")
+    try {
+        & $Action
+        return [pscustomobject]@{
+            name = $Name
+            status = "passed"
+            started_at_utc = $startedAt
+            completed_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+            error = $null
+        }
+    } catch {
+        return [pscustomobject]@{
+            name = $Name
+            status = "failed"
+            started_at_utc = $startedAt
+            completed_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+            error = $_.Exception.Message
+        }
+    }
+}
+
+function Show-RecommendedSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$PhaseResults
+    )
+
+    Write-Host ""
+    Write-Host "Issue #3 recommended validation summary"
+    foreach ($result in $PhaseResults) {
+        $status = if ($result.status -eq "passed") { "PASS" } else { "FAIL" }
+        Write-Host ("[{0}] {1}" -f $status, $result.name)
+        if ($result.error) {
+            Write-Host ("  {0}" -f $result.error)
+        }
+    }
+}
+
 Write-Host "Google issue #3 recommended validation"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Host: {0}" -f $Host)
@@ -229,13 +275,30 @@ if ($manualPhaseUsesFixtureSelection) {
     Show-MissingLocalFixtureAssetWarnings -AssetAudit $manualPhaseAssetAudit -RepoRoot $RepoRoot
 }
 
-Invoke-RecommendedPhase -Phase "localhost"
-Invoke-RecommendedPhase -Phase "quick"
-Invoke-RecommendedPhase -Phase "home"
-Invoke-HomepageFixturePhase
-Invoke-RecommendedPhase -Phase "input-phase-localhost"
-Invoke-RecommendedPhase -Phase "submit-timing"
-Invoke-RecommendedPhase -Phase "shared-enter-order"
+$phasePlan = [System.Collections.Generic.List[object]]::new()
+$phasePlan.Add([pscustomobject]@{ Name = "localhost"; Action = { Invoke-RecommendedPhase -Phase "localhost" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "quick"; Action = { Invoke-RecommendedPhase -Phase "quick" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "home"; Action = { Invoke-RecommendedPhase -Phase "home" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "homepage-fixture"; Action = { Invoke-HomepageFixturePhase } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "input-phase-localhost"; Action = { Invoke-RecommendedPhase -Phase "input-phase-localhost" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "submit-timing"; Action = { Invoke-RecommendedPhase -Phase "submit-timing" } }) | Out-Null
+$phasePlan.Add([pscustomobject]@{ Name = "shared-enter-order"; Action = { Invoke-RecommendedPhase -Phase "shared-enter-order" } }) | Out-Null
 if ($manualPhaseEnabled) {
-    Invoke-RecommendedPhase -Phase "manual"
+    $phasePlan.Add([pscustomobject]@{ Name = "manual"; Action = { Invoke-RecommendedPhase -Phase "manual" } }) | Out-Null
+}
+
+$phaseResults = [System.Collections.Generic.List[object]]::new()
+foreach ($step in $phasePlan) {
+    $stepResult = Invoke-RecommendedStep -Name $step.Name -Action $step.Action
+    $phaseResults.Add($stepResult) | Out-Null
+    if ($stepResult.status -ne "passed") {
+        break
+    }
+}
+
+Show-RecommendedSummary -PhaseResults @($phaseResults)
+
+$failedPhase = @($phaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
+if ($failedPhase.Count -gt 0) {
+    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}" -f $failedPhase[0].name, $failedPhase[0].error)
 }
