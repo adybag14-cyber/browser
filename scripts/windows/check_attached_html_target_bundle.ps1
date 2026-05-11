@@ -341,7 +341,6 @@ $targetResults = foreach ($target in $targets) {
         }
     )
 
-    $selectedCandidate = $null
     $selectedPath = $null
     $selectedTitle = ""
     $selectedOpenGraphTitle = ""
@@ -352,10 +351,7 @@ $targetResults = foreach ($target in $targets) {
     $status = "missing"
     if ($matches.Count -gt 0) {
         $sortedMatches = @(
-            $matches | Sort-Object \
-                @{ Expression = { $_.PatternHits }; Descending = $true }, \
-                @{ Expression = { $_.Candidate.GoogleScore }; Descending = $true }, \
-                @{ Expression = { $_.Candidate.Path } }
+            $matches | Sort-Object @{ Expression = { $_.PatternHits }; Descending = $true }, @{ Expression = { $_.Candidate.GoogleScore }; Descending = $true }, @{ Expression = { $_.Candidate.Path } }
         )
         $topPatternHits = $sortedMatches[0].PatternHits
         $topMatches = @($sortedMatches | Where-Object { $_.PatternHits -eq $topPatternHits })
