@@ -47,15 +47,24 @@ Use the phase-boundary helper when you want the handoff between the last passing
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1
 ```
 
+Use the artifact-bundle helper when you want a completeness and freshness audit across the saved summary, manifest, guide, boundary, and per-phase artifacts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1
+```
+
+The artifact-bundle helper now reports `stale-cross-references` when the saved manifest, guide, or boundary JSON files still point at an older summary from a previous replay.
+
 ## Suggested operator flow
 
 1. Run the recommended validation runner.
 2. Open the manifest helper output first.
 3. If `Surface` is not `passed`, open the `Surface JSON` artifact first and rerun the `Surface cmd` command before looking at later phase helpers.
 4. Otherwise inspect the `Open next` JSON path before reading broader logs.
-5. Replay only the command shown under `Run next`.
-6. Use the summary guide or phase-boundary helper only when you need extra context around that boundary.
+5. If the artifact bundle says `stale-cross-references`, treat the current summary JSON as the source of truth, rerun the command shown under `Run`, and then refresh the helper listed under `Guide` before trusting older handoff files.
+6. Replay only the command shown under `Run next`.
+7. Use the summary guide or phase-boundary helper only when you need extra context around that boundary.
 
 ## Why this matters
 
-Issue `#3` already has several narrower bounded checkpoints. The hard part on reruns is usually deciding which artifact to trust first, not generating more traces. Starting from the manifest keeps the next replay on the earliest failing checkpoint and helps avoid widening back out to the bigger Google or large-Zig-file paths too early.
+Issue `#3` already has several narrower bounded checkpoints. The hard part on reruns is usually deciding which artifact to trust first, not generating more traces. Starting from the manifest keeps the next replay on the earliest failing checkpoint and helps avoid widening back out to the bigger Google or large-Zig-file paths too early. The new stale-reference warning also helps prevent a later replay from following helper JSON that was generated from an older summary.
