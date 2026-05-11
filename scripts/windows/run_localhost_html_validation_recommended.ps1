@@ -37,8 +37,9 @@ if (-not $RepoRoot) {
 }
 
 $savedRunner = Join-Path $PSScriptRoot "run_saved_page_localhost_validation.ps1"
+$sanitizedRunner = Join-Path $PSScriptRoot "run_sanitized_saved_page_localhost_validation.ps1"
 $attachedRunner = Join-Path $PSScriptRoot "run_attached_html_localhost_validation.ps1"
-foreach ($runner in @($savedRunner, $attachedRunner)) {
+foreach ($runner in @($savedRunner, $sanitizedRunner, $attachedRunner)) {
     if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
         throw "required localhost HTML validation runner not found: $runner"
     }
@@ -94,12 +95,12 @@ switch ($PSCmdlet.ParameterSetName) {
 
             & $attachedRunner @attachedArgs -InputPath $InputPath
         } else {
-            Write-Host "Mode: staged saved-page inputs"
+            Write-Host "Mode: sanitized saved-page inputs"
             Write-Host ("Inputs: {0}" -f $InputPath.Count)
-            Write-Host "Runner: .\scripts\windows\run_saved_page_localhost_validation.ps1"
+            Write-Host "Runner: .\scripts\windows\run_sanitized_saved_page_localhost_validation.ps1"
             Write-Host ""
 
-            & $savedRunner @commonArgs -InputPath $InputPath
+            & $sanitizedRunner @commonArgs -InputPath $InputPath
         }
         exit $LASTEXITCODE
     }
