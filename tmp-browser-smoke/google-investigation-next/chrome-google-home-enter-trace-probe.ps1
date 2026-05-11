@@ -165,7 +165,7 @@ try {
   $focusedWorked = $null -ne $titleAfterFocus
   if (-not $focusedWorked) { throw "google trace probe did not focus the search input" }
 
-  Send-SmokeText $InputText
+  Send-SmokeAsciiText $InputText
   $titleAfterType = Wait-TitleLike -ProcessId $browser.Id -Needle "TYPED:$inputEscaped" -Attempts $TitleWaitAttempts
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "google trace probe did not observe typed input text" }
