@@ -42,6 +42,7 @@ That helper prints the intended order for:
 - the localhost Enter-order wrapper
 - the dedicated shared form-controls surface check
 - the dedicated shared form-controls Enter-order gate
+- the dedicated form-controls trace helper
 
 ## Fastest bounded runner
 
@@ -94,6 +95,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_con
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
+```
+
+7. Dedicated shared form-controls trace guide
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1
 ```
 
 Use `docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md` when you want this
