@@ -12,8 +12,10 @@ param(
     [int]$LocalhostPort = 8176,
     [string]$InputText = "QZ",
     [string]$SharedInputText = "Q",
+    [string]$EnterMutationSuffix = "!",
     [string]$TraceInputText = "lightpanda",
     [int]$TitlePort = 9582,
+    [int]$TitleProbePort = 8159,
     [int]$HomePort = 8168,
     [int]$WatchPort = 9582,
     [int]$SharedLabelPort = 8153,
@@ -22,6 +24,7 @@ param(
     [int]$InlineFlowPort = 8148,
     [int]$SharedReducedGooglePort = 8156,
     [int]$SharedEnterOrderPort = 8157,
+    [int]$ReducedHomeKeypressPort = 8167,
     [int]$SubmitTimingPort = 8181,
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$HomeWindowReadyAttempts = 60,
@@ -212,6 +215,9 @@ function Invoke-SharedEnterOrderSequence {
         SharedReducedGooglePort = $SharedReducedGooglePort
         SharedEnterOrderPort = $SharedEnterOrderPort
         InlineFlowPort = $InlineFlowPort
+        EnterMutationSuffix = $EnterMutationSuffix
+        ReducedHomeKeypressPort = $ReducedHomeKeypressPort
+        TitleProbePort = $TitleProbePort
         ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
         HomeWindowReadyAttempts = $HomeWindowReadyAttempts
         HomeTitleWaitAttempts = $HomeTitleWaitAttempts
@@ -310,6 +316,8 @@ Write-Host ("Trace input text: {0}" -f $TraceInputText)
 Write-Host ("Shared label port: {0}" -f $SharedLabelPort)
 Write-Host ("Shared reduced Google port: {0}" -f $SharedReducedGooglePort)
 Write-Host ("Shared enter-order port: {0}" -f $SharedEnterOrderPort)
+Write-Host ("Shared enter-order title probe port: {0}" -f $TitleProbePort)
+Write-Host ("Shared enter-order reduced-home keypress port: {0}" -f $ReducedHomeKeypressPort)
 Write-Host ("Submit timing port: {0}" -f $SubmitTimingPort)
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     Write-Host ("Manual HTML follow-up: {0}" -f (($ManualInputPath | ForEach-Object { $_ }) -join ", "))
