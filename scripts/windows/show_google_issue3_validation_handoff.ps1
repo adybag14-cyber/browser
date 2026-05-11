@@ -195,7 +195,9 @@ $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
     'missing'
 }
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path)
+$summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path)
 $refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and $refreshExists
+$handoffPointerUsesFallback = -not $summaryRecordsHandoffArtifactPath
 $refreshMatchesSummary = $false
 if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
     $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
@@ -283,6 +285,18 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     } else {
         $SummaryPath
     }
+} elseif ($handoffPointerUsesFallback) {
+    $recommendedCommand = if ($boundaryRecord -and $boundaryRecord.recommended_command) {
+        $boundaryRecord.recommended_command
+    } elseif ($guideRecord -and $guideRecord.recommended_command) {
+        $guideRecord.recommended_command
+    } else {
+        $firstFailedReplayCommand
+    }
+    $recommendedGuideCommand = $bundleGuideCommand
+    $nextFocus = 'The helper chain is usable, but the saved summary still relies on the fallback handoff location. Use this handoff artifact as the bounded checkpoint for the next replay and keep the refresh-chain helper ready until the summary records the handoff pointer directly.'
+    $reason = 'The saved summary does not record handoff_artifact_path yet, so this handoff artifact is being reopened through the fallback handoff location rather than an explicit summary pointer.'
+    $nextArtifactToOpen = $ArtifactPath
 } elseif ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
     $recommendedCommand = if ($boundaryRecord.recommended_command) {
         $boundaryRecord.recommended_command
@@ -373,7 +387,10 @@ $handoff = [ordered]@{
     broader_runner_command = $recommendedRunnerCommand
     summary_records_refresh_artifact_path = [bool]$summaryRecordsRefreshArtifactPath
     summary_refresh_artifact_path = if ($summaryRecordsRefreshArtifactPath) { $summary.refresh_chain_artifact_path } else { $null }
+    summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
+    summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $summary.handoff_artifact_path } else { $null }
     refresh_pointer_uses_fallback = [bool]$refreshPointerUsesFallback
+    handoff_pointer_uses_fallback = [bool]$handoffPointerUsesFallback
     refresh_artifact_path = $refreshPath
     refresh_artifact_exists = [bool]$refreshExists
     refresh_status = $refreshStatus
@@ -414,6 +431,8 @@ $handoff = [ordered]@{
         'Read the current refresh artifact first. Refresh or regenerate stale helper-chain state before trusting the narrower replay commands.'
     } elseif ($bundleNeedsRepair) {
         'Read the current summary and the artifact-bundle audit first. Refresh stale or missing helper artifacts before trusting the narrower replay commands.'
+    } elseif ($handoffPointerUsesFallback) {
+        'The helper chain is usable, but the saved summary still does not advertise handoff_artifact_path. Use this saved handoff artifact directly and keep the refresh-chain helper ready until the summary catches up.'
     } else {
         'The helper chain is coherent enough to stay on the current narrow replay path. Inspect the suggested artifact before widening back out to the full issue #3 runner.'
     }
@@ -443,6 +462,11 @@ Write-Host ("Bundle cmd: {0}" -f $handoff.bundle_guide_command)
 Write-Host ("Bundle:    {0}" -f $handoff.artifact_bundle_path)
 Write-Host ("Bundle exists: {0}" -f $handoff.artifact_bundle_exists)
 Write-Host ("Bundle status: {0}" -f $handoff.artifact_bundle_status)
+Write-Host ("Summary handoff path recorded: {0}" -f $handoff.summary_records_handoff_artifact_path)
+if ($handoff.summary_handoff_artifact_path) {
+    Write-Host ("Summary handoff path: {0}" -f $handoff.summary_handoff_artifact_path)
+}
+Write-Host ("Handoff uses fallback path: {0}" -f $handoff.handoff_pointer_uses_fallback)
 if ($handoff.refresh_error) {
     Write-Host ("Refresh error: {0}" -f $handoff.refresh_error)
 }
