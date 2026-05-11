@@ -193,6 +193,24 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
 $attachedHtmlHints = Get-AttachedHtmlValidationHints -ResolvedInputPath $resolvedInputPath -GoogleStyle ([bool]$GoogleStyle)
 $overallRecommendation = Get-AttachedHtmlOverallRecommendation -Hints $attachedHtmlHints -GoogleStyle ([bool]$GoogleStyle)
 $attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
+$assetClosureChecker = Join-Path $repoRoot "scripts/windows/check_attached_html_local_asset_closure.ps1"
+if (-not (Test-Path -LiteralPath $assetClosureChecker -PathType Leaf)) {
+    throw "attached HTML asset-closure checker not found: $assetClosureChecker"
+}
+
+$assetClosureArgs = @{
+    RepoRoot = $repoRoot
+    InputPath = $resolvedInputPath
+}
+if ($GoogleStyle) {
+    $assetClosureArgs["GoogleStyle"] = $true
+}
+$assetClosureArgs["Json"] = $true
+$assetClosureJson = (& $assetClosureChecker @assetClosureArgs) -join [Environment]::NewLine
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+$assetClosureAudit = $assetClosureJson | ConvertFrom-Json -Depth 10
 
 $helperPath = if ($GoogleStyle) {
     Join-Path $repoRoot "scripts/windows/show_saved_page_google_validation_flow.ps1"
@@ -236,6 +254,7 @@ if ($Json) {
     $result = [ordered]@{
         attached_html = $attachedHtmlMetadata
         missing_asset_audit = $attachedAssetAudit
+        asset_closure_audit = $assetClosureAudit
         fixture_hints = $attachedHtmlHints
         overall_recommendation = $overallRecommendation
         flow = $helperJson | ConvertFrom-Json -Depth 10
@@ -260,6 +279,25 @@ if ($resolvedPreferredInitialPage) {
 Write-Host ("Validation mode: {0}" -f $attachedHtmlMetadata.validation_mode)
 Write-Host ""
 Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $repoRoot
+Write-Host "Deep attached-asset closure audit:"
+foreach ($fixture in @($assetClosureAudit.fixtures)) {
+    Write-Host ("- {0}" -f $fixture.display_path)
+    Write-Host ("  Inspected files: {0}" -f $fixture.inspected_file_count)
+    Write-Host ("  Inspected CSS files: {0}" -f $fixture.inspected_css_file_count)
+    Write-Host ("  Inspected module script files: {0}" -f $fixture.inspected_module_script_file_count)
+    if ($fixture.missing_asset_count -eq 0) {
+        Write-Host "  Missing deep-linked assets: none"
+    } else {
+        Write-Host ("  Missing deep-linked assets: {0}" -f $fixture.missing_asset_count)
+        foreach ($asset in ($fixture.missing_assets | Select-Object -First 5)) {
+            Write-Host ("  - {0}" -f $asset)
+        }
+        if ($fixture.missing_asset_count -gt 5) {
+            Write-Host ("  - ... {0} more" -f ($fixture.missing_asset_count - 5))
+        }
+    }
+}
+Write-Host ""
 Write-Host "Per-page bounded validation hints:"
 foreach ($hint in $attachedHtmlHints) {
     Write-Host ("- {0}" -f $hint.fixture)
