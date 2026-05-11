@@ -148,6 +148,7 @@ $guide = [ordered]@{
     surface_check_status = $summary.surface_check_status
     surface_check_error = $summary.surface_check_error
     surface_check_artifact_path = $summary.surface_check_artifact_path
+    manifest_artifact_path = $summary.manifest_artifact_path
     surface_check_profile = $summary.surface_check_profile
     surface_check_checked_count = $surfaceCheckCheckedCount
     surface_check_missing_count = $surfaceCheckMissingCount
@@ -188,6 +189,9 @@ Write-Host ("Completed: {0}" -f $guide.completed)
 Write-Host ("Surface:   {0}" -f $guide.surface_check_status)
 if ($guide.surface_check_artifact_path) {
     Write-Host ("Surface JSON: {0}" -f $guide.surface_check_artifact_path)
+}
+if ($guide.manifest_artifact_path) {
+    Write-Host ("Manifest JSON: {0}" -f $guide.manifest_artifact_path)
 }
 if ($guide.surface_check_profile) {
     Write-Host ("Surface profile: {0}" -f $guide.surface_check_profile)
