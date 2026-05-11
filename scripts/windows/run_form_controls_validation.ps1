@@ -73,10 +73,10 @@ $probeTable = [ordered]@{
     }
     "google-enter-order" = [ordered]@{
         Label = "google-enter-order"
-        ScriptPath = Join-Path $probeRoot "enter-submit-probe.ps1"
+        ScriptPath = Join-Path $probeRoot "chrome-google-enter-order-probe.ps1"
         Port = $GoogleEnterOrderPort
         DeferredEnter = $false
-        GoogleEnterOrder = $true
+        GoogleEnterOrder = $false
         UsesInputText = $true
     }
 }
