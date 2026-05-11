@@ -37,6 +37,8 @@ if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
 $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
 $phaseResults = @($manifest.phase_results)
 $failedPhase = @($phaseResults | Where-Object { $_.name -eq $manifest.first_failed_phase } | Select-Object -First 1)
+$surfaceCheckFailed = $manifest.surface_check_status -ne "passed"
+$surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1"
 $boundaryRecord = $null
 $boundaryArtifactError = $null
 if (-not [string]::IsNullOrWhiteSpace($manifest.boundary_artifact_path) -and (Test-Path -LiteralPath $manifest.boundary_artifact_path -PathType Leaf)) {
@@ -49,16 +51,37 @@ if (-not [string]::IsNullOrWhiteSpace($manifest.boundary_artifact_path) -and (Te
     $boundaryArtifactError = "Boundary artifact not found: $($manifest.boundary_artifact_path)"
 }
 
-$openNext = if ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
+$openNextReason = $null
+$openNext = if ($surfaceCheckFailed -and $manifest.surface_check_artifact_path) {
+    $openNextReason = "surface-check-failed"
+    $manifest.surface_check_artifact_path
+} elseif ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
+    $openNextReason = "phase-boundary-artifact"
     $boundaryRecord.next_artifact_to_open
 } elseif ($manifest.first_failed_phase_primary_json_artifact_path) {
+    $openNextReason = "first-failed-phase-artifact"
     $manifest.first_failed_phase_primary_json_artifact_path
 } elseif ($manifest.boundary_artifact_path) {
+    $openNextReason = "phase-boundary-fallback"
     $manifest.boundary_artifact_path
 } elseif ($manifest.guide_artifact_path) {
+    $openNextReason = "summary-guide-fallback"
     $manifest.guide_artifact_path
 } else {
+    $openNextReason = "summary-fallback"
     $manifest.summary_path
+}
+
+$nextFocus = if ($surfaceCheckFailed) {
+    "Resolve the recommended-validation surface mismatch before replaying later issue #3 phases."
+} else {
+    $manifest.next_focus
+}
+
+$recommendedCommand = if ($surfaceCheckFailed) {
+    $surfaceCheckCommand
+} else {
+    $manifest.recommended_command
 }
 
 $report = [ordered]@{
@@ -69,6 +92,7 @@ $report = [ordered]@{
     completed = [bool]$manifest.completed
     surface_check_status = $manifest.surface_check_status
     surface_check_error = $manifest.surface_check_error
+    surface_check_command = $surfaceCheckCommand
     surface_check_artifact_path = $manifest.surface_check_artifact_path
     surface_check_missing_count = $manifest.surface_check_missing_count
     surface_check_missing_paths = @($manifest.surface_check_missing_paths)
@@ -85,8 +109,9 @@ $report = [ordered]@{
     boundary_first_failed_phase = if ($boundaryRecord) { $boundaryRecord.first_failed_phase } else { $null }
     boundary_next_artifact_to_open = if ($boundaryRecord) { $boundaryRecord.next_artifact_to_open } else { $null }
     next_artifact_to_open = $openNext
-    next_focus = $manifest.next_focus
-    recommended_command = $manifest.recommended_command
+    next_artifact_reason = $openNextReason
+    next_focus = $nextFocus
+    recommended_command = $recommendedCommand
     recommended_guide_command = $manifest.recommended_guide_command
     manual_fixture_replay_command = $manifest.manual_fixture_replay_command
     manual_fixture_replay_available = [bool]$manifest.manual_fixture_replay_available
@@ -149,7 +174,11 @@ if ($report.boundary_last_passed_phase -or $report.boundary_first_failed_phase) 
 }
 Write-Host ""
 Write-Host ("Open next: {0}" -f $report.next_artifact_to_open)
+Write-Host ("Reason:    {0}" -f $report.next_artifact_reason)
 Write-Host ("Focus:     {0}" -f $report.next_focus)
+if ($report.surface_check_command) {
+    Write-Host ("Surface cmd: {0}" -f $report.surface_check_command)
+}
 if ($report.recommended_command) {
     Write-Host ("Run next:  {0}" -f $report.recommended_command)
 }
