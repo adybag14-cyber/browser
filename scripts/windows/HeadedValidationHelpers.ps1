@@ -32,6 +32,23 @@ function Format-PowerShellLiteral([string]$Value) {
   return "'" + $Value.Replace("'", "''") + "'"
 }
 
+function Add-UniqueString {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Collections.Generic.List[string]]$List,
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return
+  }
+
+  if (-not $List.Contains($Value)) {
+    $List.Add($Value) | Out-Null
+  }
+}
+
 function Get-AttachedHtmlSearchRoots([string]$RepoRoot) {
   $roots = New-Object System.Collections.Generic.List[string]
   $roots.Add((Join-Path $RepoRoot "user_files"))
@@ -307,6 +324,150 @@ function Show-FixtureSelectionSummary {
   foreach ($fixture in $FixturePaths) {
     Write-Output ("- " + (Convert-ToDisplayPath -Path $fixture -RepoRoot $RepoRoot))
   }
+}
+
+function Test-IgnoredLocalAssetReference([string]$Reference) {
+  if ([string]::IsNullOrWhiteSpace($Reference)) {
+    return $true
+  }
+
+  $trimmed = [System.Net.WebUtility]::HtmlDecode($Reference).Trim()
+  if ([string]::IsNullOrWhiteSpace($trimmed)) {
+    return $true
+  }
+
+  if ($trimmed.StartsWith("#") -or $trimmed.StartsWith("/")) {
+    return $true
+  }
+
+  if ($trimmed -match '^(?i)([a-z][a-z0-9+.-]*:|//)') {
+    return $true
+  }
+
+  return $false
+}
+
+function Get-LocalReferenceCandidates([string]$Content) {
+  $candidates = [System.Collections.Generic.List[string]]::new()
+  $patterns = @(
+    '\b(?:src|href|poster)\s*=\s*["'']([^"'']+)["'']',
+    '\bsrcset\s*=\s*["'']([^"'']+)["'']'
+  )
+
+  foreach ($pattern in $patterns) {
+    foreach ($match in [System.Text.RegularExpressions.Regex]::Matches($Content, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+      $value = $match.Groups[1].Value
+      if ($pattern -like '*srcset*') {
+        foreach ($entry in ($value -split ',')) {
+          $srcsetCandidate = ($entry.Trim() -split '\s+')[0]
+          if (-not [string]::IsNullOrWhiteSpace($srcsetCandidate)) {
+            Add-UniqueString -List $candidates -Value $srcsetCandidate
+          }
+        }
+      } else {
+        Add-UniqueString -List $candidates -Value $value
+      }
+    }
+  }
+
+  return @($candidates)
+}
+
+function Resolve-LocalFixtureReferencePath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$FixturePath,
+    [Parameter(Mandatory = $true)]
+    [string]$Reference
+  )
+
+  if (Test-IgnoredLocalAssetReference $Reference) {
+    return $null
+  }
+
+  $decoded = [System.Net.WebUtility]::HtmlDecode($Reference).Trim()
+  $relativeReference = (($decoded -split '#', 2)[0] -split '\?', 2)[0]
+  if ([string]::IsNullOrWhiteSpace($relativeReference)) {
+    return $null
+  }
+
+  $fixtureDir = Split-Path -Parent $FixturePath
+  $fullFixtureDir = [System.IO.Path]::GetFullPath($fixtureDir).TrimEnd('\', '/')
+  $combined = Join-Path $fixtureDir ($relativeReference -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+  $resolved = [System.IO.Path]::GetFullPath($combined)
+  $directoryPrefix = $fullFixtureDir + [System.IO.Path]::DirectorySeparatorChar
+  if (-not $resolved.StartsWith($directoryPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    return $null
+  }
+
+  $displayPath = ($relativeReference -replace '\\', '/').TrimStart('./')
+  return [pscustomobject]@{
+    full_path = $resolved
+    display_path = $displayPath
+  }
+}
+
+function Get-MissingLocalFixtureAssets([string]$FixturePath) {
+  $content = Get-Content -LiteralPath $FixturePath -Raw
+  $missing = [System.Collections.Generic.List[string]]::new()
+
+  foreach ($reference in (Get-LocalReferenceCandidates -Content $content)) {
+    $resolved = Resolve-LocalFixtureReferencePath -FixturePath $FixturePath -Reference $reference
+    if (-not $resolved) {
+      continue
+    }
+
+    if (-not (Test-Path -LiteralPath $resolved.full_path)) {
+      Add-UniqueString -List $missing -Value $resolved.display_path
+    }
+  }
+
+  return @($missing)
+}
+
+function Get-MissingLocalFixtureAssetAudit {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string[]]$FixturePaths
+  )
+
+  return @(
+    $FixturePaths | ForEach-Object {
+      $missing = @(Get-MissingLocalFixtureAssets -FixturePath $_)
+      [pscustomobject]@{
+        path = $_
+        missing_assets = $missing
+        missing_asset_count = $missing.Count
+      }
+    }
+  )
+}
+
+function Show-MissingLocalFixtureAssetWarnings {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object[]]$AssetAudit,
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot
+  )
+
+  $fixturesWithMissingAssets = @($AssetAudit | Where-Object { $_.missing_asset_count -gt 0 })
+  if ($fixturesWithMissingAssets.Count -eq 0) {
+    return
+  }
+
+  Write-Warning "Some attached HTML files reference sibling local assets that are missing from the current workspace. The localhost-headed follow-up may render or behave differently until those files are restored."
+  foreach ($fixture in $fixturesWithMissingAssets) {
+    Write-Host ("Missing assets: {0}" -f (Convert-ToDisplayPath -Path $fixture.path -RepoRoot $RepoRoot))
+    Write-Host ("  Count: {0}" -f $fixture.missing_asset_count)
+    foreach ($asset in ($fixture.missing_assets | Select-Object -First 5)) {
+      Write-Host ("  - {0}" -f $asset)
+    }
+    if ($fixture.missing_asset_count -gt 5) {
+      Write-Host ("  - ... {0} more" -f ($fixture.missing_asset_count - 5))
+    }
+  }
+  Write-Host ""
 }
 
 function Wait-ValidationPause([switch]$Wait) {
