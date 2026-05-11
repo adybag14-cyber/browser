@@ -153,8 +153,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_homepage
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_timing_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-google-submit-timing-probe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
@@ -199,7 +200,9 @@ Only move to `manual` or `trace` after those bounded phases are green.
   saved homepage fixture, bounded submit-timing check, and shared Enter-order
   ladder into one later-stage command surface after the earlier title gates are
   already green.
-- `submit-timing`: the bounded headed Win32 layout-smoke probe still clicks the
+- `submit-timing`: the dedicated surface checker now fails fast if the bounded
+  guide, helper, wrapper, or raw probe drift out of sync before you trust this
+  narrower slice, and the headed Win32 layout-smoke probe still clicks the
   Google-shaped shell, types `QZ`, reaches the submitted page, and preserves
   `keydown,keypress,submit` ordering in the submitted title trace before the
   broader shared gates.
