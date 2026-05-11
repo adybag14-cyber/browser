@@ -72,6 +72,19 @@ function Invoke-OrderedStep {
     }
 }
 
+function Copy-Hashtable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Source
+    )
+
+    $copy = @{}
+    foreach ($key in $Source.Keys) {
+        $copy[$key] = $Source[$key]
+    }
+    return $copy
+}
+
 Write-Host "Google ordered validation"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Browser exe: {0}" -f $BrowserExe)
@@ -117,9 +130,9 @@ Invoke-OrderedStep -Label "google-validation-surface" -ScriptPath $surfaceCheck 
     RepoRoot = $RepoRoot
 }
 
-Invoke-OrderedStep -Label "google-localhost" -ScriptPath $sharedRunner -Arguments ($sharedBaseArgs + @{
-    Phase = "localhost"
-})
+$localhostArgs = Copy-Hashtable $sharedBaseArgs
+$localhostArgs.Phase = "localhost"
+Invoke-OrderedStep -Label "google-localhost" -ScriptPath $sharedRunner -Arguments $localhostArgs
 
 $quickArgs = @{
     RepoRoot = $RepoRoot
@@ -140,22 +153,22 @@ if ($LeaveOpen) {
 }
 Invoke-OrderedStep -Label "google-quick" -ScriptPath $quickRunner -Arguments $quickArgs
 
-Invoke-OrderedStep -Label "google-home" -ScriptPath $sharedRunner -Arguments ($sharedBaseArgs + @{
-    Phase = "home"
-})
+$homeArgs = Copy-Hashtable $sharedBaseArgs
+$homeArgs.Phase = "home"
+Invoke-OrderedStep -Label "google-home" -ScriptPath $sharedRunner -Arguments $homeArgs
 
-Invoke-OrderedStep -Label "google-input-phase-localhost" -ScriptPath $sharedRunner -Arguments ($sharedBaseArgs + @{
-    Phase = "input-phase-localhost"
-})
+$inputPhaseArgs = Copy-Hashtable $sharedBaseArgs
+$inputPhaseArgs.Phase = "input-phase-localhost"
+Invoke-OrderedStep -Label "google-input-phase-localhost" -ScriptPath $sharedRunner -Arguments $inputPhaseArgs
 
-Invoke-OrderedStep -Label "google-submit-timing" -ScriptPath $sharedRunner -Arguments ($sharedBaseArgs + @{
-    Phase = "submit-timing"
-})
+$submitTimingArgs = Copy-Hashtable $sharedBaseArgs
+$submitTimingArgs.Phase = "submit-timing"
+Invoke-OrderedStep -Label "google-submit-timing" -ScriptPath $sharedRunner -Arguments $submitTimingArgs
 
-Invoke-OrderedStep -Label "google-shared-enter-order" -ScriptPath $sharedRunner -Arguments ($sharedBaseArgs + @{
-    Phase = "shared-enter-order"
-    TitleProbePort = $TitlePort
-})
+$sharedEnterOrderArgs = Copy-Hashtable $sharedBaseArgs
+$sharedEnterOrderArgs.Phase = "shared-enter-order"
+$sharedEnterOrderArgs.TitleProbePort = $TitlePort
+Invoke-OrderedStep -Label "google-shared-enter-order" -ScriptPath $sharedRunner -Arguments $sharedEnterOrderArgs
 
 if (($ManualInputPath -and $ManualInputPath.Count -gt 0) -or $ManualGoogleStyle) {
     $manualArgs = @{
