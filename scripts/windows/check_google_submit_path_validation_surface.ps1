@@ -43,6 +43,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/run_google_issue3_submit_path_validation.ps1" -Kind "file" -Purpose "One-command later-stage issue #3 submit-path runner."),
     (New-ValidationReference -Path "scripts/windows/show_google_homepage_fixture_validation_flow.ps1" -Kind "file" -Purpose "Saved homepage fixture flow helper."),
     (New-ValidationReference -Path "scripts/windows/run_google_homepage_fixture_validation.ps1" -Kind "file" -Purpose "Saved homepage fixture runner."),
+    (New-ValidationReference -Path "tmp-browser-smoke/google-investigation-next/analyze-google-enter-trace.ps1" -Kind "file" -Purpose "Reduced Google Enter-trace analyzer used to preserve the bounded post-run diagnosis artifact."),
     (New-ValidationReference -Path "scripts/windows/show_google_submit_timing_validation_flow.ps1" -Kind "file" -Purpose "Submit-timing flow helper."),
     (New-ValidationReference -Path "scripts/windows/run_google_submit_timing_validation.ps1" -Kind "file" -Purpose "Bounded submit-timing runner."),
     (New-ValidationReference -Path "scripts/windows/show_google_shared_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Shared Enter-order flow helper."),
@@ -109,5 +110,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} submit-path validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, or probe before trusting the later issue #3 submit-path ladder."
+Write-Host "Repair the missing guide, helper, analyzer, or probe before trusting the later issue #3 submit-path ladder."
 exit 1
