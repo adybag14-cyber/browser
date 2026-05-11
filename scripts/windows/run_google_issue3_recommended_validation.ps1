@@ -145,6 +145,13 @@ if ($autoAttachedSelection) {
     $resolvedManualGoogleStyle = $true
 }
 
+$manualPhaseUsesFixtureSelection = $resolvedManualInputPath -and $resolvedManualInputPath.Count -gt 0
+$manualPhaseAssetAudit = if ($manualPhaseUsesFixtureSelection) {
+    @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedManualInputPath)
+} else {
+    @()
+}
+
 function Invoke-RecommendedPhase {
     param(
         [Parameter(Mandatory = $true)]
@@ -187,11 +194,18 @@ function Invoke-HomepageFixturePhase {
     & $homepageFixtureRunner @fixtureArguments
 }
 
-if ($autoAttachedSelection) {
-    Write-Host ("Issue #3 recommended runner: Google-style attached HTML files were detected in the current search roots, so the Google-style manual localhost follow-up will run automatically with {0} locked fixture(s)." -f $autoAttachedSelection.InputPath.Count)
-    if ($autoAttachedSelection.InitialPage) {
-        Write-Host ("Issue #3 recommended runner: Preferred auto-selected Google-style initial page: {0}" -f $autoAttachedSelection.InitialPage)
+if ($manualPhaseUsesFixtureSelection) {
+    if ($autoAttachedSelection) {
+        Write-Host ("Issue #3 recommended runner: Google-style attached HTML files were detected in the current search roots, so the Google-style manual localhost follow-up will run automatically with {0} locked fixture(s)." -f $resolvedManualInputPath.Count)
+    } elseif ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
+        Write-Host ("Issue #3 recommended runner: Using {0} explicit saved or attached HTML fixture(s) for the manual follow-up." -f $resolvedManualInputPath.Count)
     }
+
+    Show-FixtureSelectionSummary -FixturePaths $resolvedManualInputPath -RepoRoot $RepoRoot
+    if ($resolvedManualInitialPage) {
+        Write-Host ("Issue #3 recommended runner: Manual follow-up initial page: {0}" -f $resolvedManualInitialPage)
+    }
+    Show-MissingLocalFixtureAssetWarnings -AssetAudit $manualPhaseAssetAudit -RepoRoot $RepoRoot
 }
 
 Invoke-RecommendedPhase -Phase "localhost"
