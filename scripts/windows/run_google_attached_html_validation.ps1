@@ -89,8 +89,12 @@ function Get-GoogleAttachedHtmlValidationMetadata {
 }
 
 $runner = Join-Path $PSScriptRoot "run_localhost_html_validation_recommended.ps1"
+$surfaceChecker = Join-Path $PSScriptRoot "check_google_attached_html_validation_surface.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google-style attached HTML validation runner not found: $runner"
+}
+if (-not (Test-Path -LiteralPath $surfaceChecker -PathType Leaf)) {
+    throw "Google-style attached HTML surface checker not found: $surfaceChecker"
 }
 
 $resolvedRepoRoot = if ($RepoRoot) {
@@ -98,6 +102,19 @@ $resolvedRepoRoot = if ($RepoRoot) {
 } else {
     Resolve-LightpandaRepoRoot $PSScriptRoot
 }
+
+$surfaceCheckArgs = @{ RepoRoot = $resolvedRepoRoot }
+if ($Json -or $SummaryOnly) {
+    $surfaceCheckArgs.Json = $true
+    & $surfaceChecker @surfaceCheckArgs | Out-Null
+} else {
+    & $surfaceChecker @surfaceCheckArgs
+    Write-Host ""
+}
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
 $resolvedPageRoot = if ($PageRoot) {
     (Resolve-Path -LiteralPath $PageRoot).Path
 } else {
