@@ -35,6 +35,7 @@ $sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
 $googleTitleProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1"
 $reducedHomeKeypressProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1"
 $localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
+$formControlsEnterOrderSurfaceCheck = Join-Path $scriptRoot "check_google_form_controls_enter_order_validation_surface.ps1"
 $formControlsEnterOrderRunner = Join-Path $scriptRoot "run_google_form_controls_enter_order_validation.ps1"
 
 if (-not (Test-Path -LiteralPath $surfaceCheck -PathType Leaf)) {
@@ -52,11 +53,18 @@ if (-not (Test-Path -LiteralPath $reducedHomeKeypressProbe -PathType Leaf)) {
 if (-not (Test-Path -LiteralPath $localhostEnterOrderProbe -PathType Leaf)) {
     throw "Google enter-order localhost probe not found: $localhostEnterOrderProbe"
 }
+if (-not (Test-Path -LiteralPath $formControlsEnterOrderSurfaceCheck -PathType Leaf)) {
+    throw "Dedicated shared form-controls Google enter-order surface checker not found: $formControlsEnterOrderSurfaceCheck"
+}
 if (-not (Test-Path -LiteralPath $formControlsEnterOrderRunner -PathType Leaf)) {
     throw "Dedicated shared form-controls Google enter-order runner not found: $formControlsEnterOrderRunner"
 }
 
 $surfaceCheckArgs = @{
+    RepoRoot = $RepoRoot
+}
+
+$formControlsEnterOrderSurfaceCheckArgs = @{
     RepoRoot = $RepoRoot
 }
 
@@ -159,9 +167,14 @@ Write-Host ("Script: {0}" -f $localhostEnterOrderProbe)
 & $localhostEnterOrderProbe @localhostEnterOrderArgs
 
 Write-Host ""
+Write-Host "=== form-controls-google-enter-order-surface ==="
+Write-Host ("Script: {0}" -f $formControlsEnterOrderSurfaceCheck)
+& $formControlsEnterOrderSurfaceCheck @formControlsEnterOrderSurfaceCheckArgs
+
+Write-Host ""
 Write-Host "=== form-controls-google-enter-order ==="
 Write-Host ("Script: {0}" -f $formControlsEnterOrderRunner)
 & $formControlsEnterOrderRunner @formControlsEnterOrderArgs
 
 Write-Host ""
-Write-Host "Next: if the shared surface check, shared gates, localhost title probe, reduced-home keypress-before-submit probe, dedicated shared form-controls Google enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
+Write-Host "Next: if the shared surface check, shared gates, localhost title probe, reduced-home keypress-before-submit probe, localhost Enter-order wrapper, dedicated shared form-controls surface check, and dedicated shared form-controls Google enter-order runner stay green, move on to the smallest live Google manual pass."
