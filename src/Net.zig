@@ -633,466 +633,986 @@ pub fn loadCerts(allocator: Allocator) !libcurl.CurlBlob {
     }
 
     const encoder = std.base64.standard.Encoder;
-    var arr: std.ArrayList(u8) = .empty;
+    const encoded_len = encoder.calcSize(bytes.len);
 
-    const encoded_size = encoder.calcSize(bytes.len);
-    const buffer_size = encoded_size +
-        (bundle.map.count() * 75) + // start / end per certificate + extra, just in case
-        (encoded_size / 64) // newline per 64 characters
-    ;
-    try arr.ensureTotalCapacity(allocator, buffer_size);
-    errdefer arr.deinit(allocator);
-    var writer = arr.writer(allocator);
+    const pem_header = "-----BEGIN CERTIFICATE-----\n";
+    const pem_footer = "\n-----END CERTIFICATE-----\n";
 
-    var it = bundle.map.valueIterator();
-    while (it.next()) |index| {
-        const cert = try std.crypto.Certificate.der.Element.parse(bytes, index.*);
+    // Base64 encoded is always 4/3 of the binary size, so worst-case about 33% larger.
+    // Use checked arithmetic to avoid overflow and satisfy static analysis.
+    const total_size = std.math.add(usize, pem_header.len + pem_footer.len, encoded_len) catch {
+        return error.OutOfMemory;
+    };
 
-        try writer.writeAll("-----BEGIN CERTIFICATE-----\n");
-        var line_writer = LineWriter{ .inner = writer };
-        try encoder.encodeWriter(&line_writer, bytes[index.*..cert.slice.end]);
-        try writer.writeAll("\n-----END CERTIFICATE-----\n");
-    }
+    var pem = try allocator.alloc(u8, total_size);
+    errdefer allocator.free(pem);
 
-    // Final encoding should not be larger than our initial size estimate
-    assert(buffer_size > arr.items.len, "Http loadCerts", .{ .estimate = buffer_size, .len = arr.items.len });
-
-    // Allocate exactly the size needed and copy the data
-    const result = try allocator.dupe(u8, arr.items);
-    // Free the original oversized allocation
-    arr.deinit(allocator);
+    @memcpy(pem[0..pem_header.len], pem_header);
+    _ = encoder.encode(pem[pem_header.len .. pem_header.len + encoded_len], bytes);
+    @memcpy(pem[pem_header.len + encoded_len ..], pem_footer);
 
     return .{
-        .len = result.len,
-        .data = result.ptr,
-        .flags = 0,
+        .data = @ptrCast(pem.ptr),
+        .len = pem.len,
+        .flags = libcurl.CURL_BLOB_COPY,
     };
 }
 
-// Wraps lines @ 64 columns. A PEM is basically a base64 encoded DER (which is
-// what Zig has), with lines wrapped at 64 characters and with a basic header
-// and footer
-const LineWriter = struct {
-    col: usize = 0,
-    inner: std.ArrayList(u8).Writer,
+pub const Multi = struct {
+    arena: ArenaAllocator,
+    handles: Handles,
+    ca_blob: ?libcurl.CurlBlob,
 
-    pub fn writeAll(self: *LineWriter, data: []const u8) !void {
-        var writer = self.inner;
+    pub fn init(allocator: Allocator, config: *const Config) !Multi {
+        const ca_blob = if (config.tls_verify_host == false) null else try loadCerts(allocator);
+        errdefer if (ca_blob) |ca| allocator.free(ca.data[0..ca.len]);
 
-        var col = self.col;
-        const len = 64 - col;
+        var arena = ArenaAllocator.init(allocator);
+        errdefer arena.deinit();
 
-        var remain = data;
-        if (remain.len > len) {
-            col = 0;
-            try writer.writeAll(data[0..len]);
-            try writer.writeByte('\n');
-            remain = data[len..];
+        const handles = try Handles.init(arena.allocator(), ca_blob, config);
+        errdefer handles.deinit(arena.allocator());
+
+        return .{
+            .arena = arena,
+            .handles = handles,
+            .ca_blob = ca_blob,
+        };
+    }
+
+    pub fn deinit(self: *Multi) void {
+        const allocator = self.arena.child_allocator;
+        self.handles.deinit(self.arena.allocator());
+        self.arena.deinit();
+        if (self.ca_blob) |ca| {
+            allocator.free(ca.data[0..ca.len]);
+        }
+    }
+
+    pub fn request(self: *Multi, comptime ResponseType: type, args: RequestArgs(ResponseType)) !Transfer(ResponseType) {
+        const conn = self.handles.get() orelse return error.NoConnectionAvailable;
+        errdefer self.handles.isAvailable(conn);
+
+        const ca_blob = self.ca_blob;
+        const config = args.config;
+        const alloc = self.arena.allocator();
+
+        // reset our connection in case this was previously used with different options
+        try conn.setCallbacks(curlHeaderCallback, curlDataCallback(ResponseType));
+        try conn.setURL(args.url);
+        try conn.setMethod(args.method);
+
+        if (ca_blob) |ca| {
+            // setTlsVerify handles the proxy options only when a proxy is configured.
+            const use_proxy = config.httpProxy() != null;
+            try conn.setTlsVerify(config.tlsVerifyHost(), use_proxy);
+            try conn.setPrivate(null);
+            _ = ca; // silence unused in some build modes
+        } else {
+            try conn.setPrivate(null);
         }
 
-        while (remain.len > 64) {
-            try writer.writeAll(remain[0..64]);
-            try writer.writeByte('\n');
-            remain = data[len..];
+        if (args.proxy) |proxy| {
+            try conn.setProxy(proxy);
         }
-        try writer.writeAll(remain);
-        self.col = col + remain.len;
+
+        if (args.proxy_credentials) |creds| {
+            try conn.setProxyCredentials(creds);
+        }
+
+        switch (args.body) {
+            .none => try conn.setGetMode(),
+            .some => |body| try conn.setBody(body),
+        }
+
+        var header_list = try Headers.init(args.http_headers.user_agent_header);
+        errdefer header_list.deinit();
+        if (args.headers) |headers| {
+            var it = headers.iterator();
+            while (it.next()) |header| {
+                var line = try std.fmt.allocPrintZ(alloc, "{s}: {s}", .{ header.name, header.value });
+                try header_list.add(line.ptr);
+            }
+        }
+
+        try conn.secretHeaders(&header_list, args.http_headers);
+        try conn.setHeaders(&header_list);
+
+        if (args.cookies) |cookies| {
+            // libcurl doesn't have an API that accepts a list of cookies, just a
+            // string. So we have to form that string here.
+            var writer = try std.Io.Writer.Allocating.initCapacity(alloc, cookies.len);
+            try writer.writer.writeAll(cookies);
+            const cookie_str = try writer.toOwnedSliceSentinel(0);
+            header_list.cookies = cookie_str.ptr;
+            try conn.setCookies(cookie_str.ptr);
+        }
+
+        var transfer = try Transfer(ResponseType).init(alloc, conn, args.state, args.response, header_list);
+        errdefer transfer.deinit();
+        try conn.setPrivate(&transfer);
+        try self.handles.add(conn);
+        return transfer;
     }
 };
 
-fn debugCallback(_: *libcurl.Curl, msg_type: libcurl.CurlInfoType, raw: [*c]u8, len: usize, _: *anyopaque) c_int {
-    const data = raw[0..len];
-    switch (msg_type) {
-        .text => std.debug.print("libcurl [text]: {s}\n", .{data}),
-        .header_out => std.debug.print("libcurl [req-h]: {s}\n", .{data}),
-        .header_in => std.debug.print("libcurl [res-h]: {s}\n", .{data}),
-        // .data_in => std.debug.print("libcurl [res-b]: {s}\n", .{data}),
-        else => std.debug.print("libcurl ?? {d}\n", .{msg_type}),
-    }
-    return 0;
-}
-
-// Zig is in a weird backend transition right now. Need to determine if
-// SIMD is even available.
-const backend_supports_vectors = switch (builtin.zig_backend) {
-    .stage2_llvm, .stage2_c => true,
-    else => false,
+pub const RequestBody = union(enum) {
+    none,
+    some: []const u8,
 };
 
-// Websocket messages from client->server are masked using a 4 byte XOR mask
-fn mask(m: []const u8, payload: []u8) void {
-    var data = payload;
-
-    if (!comptime backend_supports_vectors) return simpleMask(m, data);
-
-    const vector_size = std.simd.suggestVectorLength(u8) orelse @sizeOf(usize);
-    if (data.len >= vector_size) {
-        const mask_vector = std.simd.repeat(vector_size, @as(@Vector(4, u8), m[0..4].*));
-        while (data.len >= vector_size) {
-            const slice = data[0..vector_size];
-            const masked_data_slice: @Vector(vector_size, u8) = slice.*;
-            slice.* = masked_data_slice ^ mask_vector;
-            data = data[vector_size..];
-        }
-    }
-    simpleMask(m, data);
-}
-
-// Used when SIMD isn't available, or for any remaining part of the message
-// which is too small to effectively use SIMD.
-fn simpleMask(m: []const u8, payload: []u8) void {
-    for (payload, 0..) |b, i| {
-        payload[i] = b ^ m[i & 3];
-    }
-}
-
-const Fragments = struct {
-    type: Message.Type,
-    message: std.ArrayList(u8),
-};
-
-pub const Message = struct {
-    type: Type,
-    data: []const u8,
-    cleanup_fragment: bool,
-
-    pub const Type = enum {
-        text,
-        binary,
-        close,
-        ping,
-        pong,
+pub fn RequestArgs(comptime ResponseType: type) type {
+    return struct {
+        config: *const Config,
+        state: *anyopaque,
+        response: *ResponseType,
+        url: [:0]const u8,
+        method: Method = .GET,
+        body: RequestBody = .none,
+        headers: ?*Headers = null,
+        cookies: ?[]const u8 = null,
+        http_headers: *const Config.HttpHeaders,
+        proxy: ?[*:0]const u8 = null,
+        proxy_credentials: ?[:0]const u8 = null,
     };
-};
-
-// These are the only websocket types that we're currently sending
-const OpCode = enum(u8) {
-    text = 128 | 1,
-    close = 128 | 8,
-    pong = 128 | 10,
-};
-
-fn fillWebsocketHeader(buf: std.ArrayList(u8)) []const u8 {
-    // can't use buf[0..10] here, because the header length
-    // is variable. If it's just 2 bytes, for example, we need the
-    // framed message to be:
-    //     h1, h2, data
-    // If we use buf[0..10], we'd get:
-    //    h1, h2, 0, 0, 0, 0, 0, 0, 0, 0, data
-
-    var header_buf: [10]u8 = undefined;
-
-    // -10 because we reserved 10 bytes for the header above
-    const header = websocketHeader(&header_buf, .text, buf.items.len - 10);
-    const start = 10 - header.len;
-
-    const message = buf.items;
-    @memcpy(message[start..10], header);
-    return message[start..];
 }
 
-// makes the assumption that our caller reserved the first
-// 10 bytes for the header
-fn websocketHeader(buf: []u8, op_code: OpCode, payload_len: usize) []const u8 {
-    assert(buf.len == 10, "Websocket.Header", .{ .len = buf.len });
+pub fn Transfer(comptime ResponseType: type) type {
+    return struct {
+        const Self = @This();
+        conn: *Connection,
+        state: *anyopaque,
+        response: *ResponseType,
+        response_head: ResponseHead = .{
+            .status = 0,
+            .url = null,
+            .redirect_count = 0,
+        },
+        headers: Headers,
+        allocator: Allocator,
+        promise: ?std.Thread.ResetEvent = null,
+        done: bool = false,
+        err: ?Error = null,
+        content_type_buf: [ResponseHead.MAX_CONTENT_TYPE_LEN]u8 = undefined,
 
-    const len = payload_len;
-    buf[0] = 128 | @intFromEnum(op_code); // fin | opcode
+        pub fn init(allocator: Allocator, conn: *Connection, state: *anyopaque, response: *ResponseType, headers: Headers) !Self {
+            return .{
+                .conn = conn,
+                .state = state,
+                .response = response,
+                .headers = headers,
+                .allocator = allocator,
+                .response_head = .{
+                    .status = 0,
+                    .url = null,
+                    .redirect_count = 0,
+                },
+            };
+        }
+
+        pub fn deinit(self: *Self) void {
+            self.headers.deinit();
+            if (self.promise) |*p| {
+                p.deinit();
+            }
+        }
+
+        pub fn finish(self: *Self) void {
+            self.done = true;
+            if (self.promise) |*p| {
+                p.set();
+            }
+        }
+
+        pub fn setPromise(self: *Self) !void {
+            if (self.promise != null) return;
+            self.promise = std.Thread.ResetEvent{};
+        }
+
+        pub fn wait(self: *Self) void {
+            if (self.promise) |*p| {
+                p.wait();
+            }
+        }
+
+        pub fn responseHeaderIterator(self: *Self) HeaderIterator {
+            if (self.response_head._injected_headers.len > 0) {
+                return .{ .list = .{ .list = self.response_head._injected_headers } };
+            }
+            return .{ .curl = .{ .conn = self.conn } };
+        }
+
+        pub fn contentType(self: *Self) ?[]u8 {
+            return self.response_head.contentType();
+        }
+
+        pub fn head(self: *Self) *ResponseHead {
+            return &self.response_head;
+        }
+
+        pub fn getResponseCode(self: *Self) !u16 {
+            return self.conn.getResponseCode();
+        }
+
+        pub fn hasChallenge(self: *Self) !bool {
+            const status = self.response_head.status;
+            if (status != 401 and status != 407) {
+                return false;
+            }
+            const header_name: [:0]const u8 = if (status == 401) "WWW-Authenticate" else "Proxy-Authenticate";
+            return self.conn.getResponseHeader(header_name, 0) != null;
+        }
+
+        pub fn challenges(self: *Self, allocator: Allocator) !std.ArrayList(AuthChallenge) {
+            const status = self.response_head.status;
+            if (status != 401 and status != 407) {
+                return .{};
+            }
+            const header_name: [:0]const u8 = if (status == 401) "WWW-Authenticate" else "Proxy-Authenticate";
+            var idx: usize = 0;
+            var challenge_list: std.ArrayList(AuthChallenge) = .{};
+            errdefer challenge_list.deinit(allocator);
+            while (self.conn.getResponseHeader(header_name, idx)) |hdr| : (idx += 1) {
+                const line = try std.fmt.allocPrint(allocator, "{s}: {s}", .{ header_name, hdr.value });
+                defer allocator.free(line);
+                const challenge = AuthChallenge.parse(status, line) catch |err| {
+                    log.warn(.page, "auth challenge parse failed", .{ .err = err, .line = line });
+                    continue;
+                };
+                try challenge_list.append(allocator, challenge);
+            }
+            return challenge_list;
+        }
+
+        pub fn fulfill(self: *Self, options: struct {
+            status: u16,
+            body: []const u8,
+            headers: []const Header = &.{},
+            content_type: ?[]const u8 = null,
+        }) !void {
+            // remove body and header callbacks so that curl doesn't write anymore
+            try libcurl.curl_easy_setopt(self.conn.easy, .write_function, null);
+            try libcurl.curl_easy_setopt(self.conn.easy, .header_function, null);
+            self.response_head.status = options.status;
+            self.response_head._injected_headers = options.headers;
+            if (options.content_type) |ct| {
+                const len = @min(ct.len, ResponseHead.MAX_CONTENT_TYPE_LEN);
+                @memcpy(self.response_head._content_type[0..len], ct[0..len]);
+                self.response_head._content_type_len = len;
+            }
+            try self.response.receive(self.state, options.body);
+        }
+    };
+}
+
+fn curlHeaderCallback(
+    buf: [*]u8,
+    size: usize,
+    nitems: usize,
+    user_data: ?*anyopaque,
+) callconv(.c) usize {
+    const byte_count = size * nitems;
+    const transfer: *Transfer(anyopaque) = @ptrCast(@alignCast(user_data orelse return 0));
+    var response_head = &transfer.response_head;
+
+    // response_status
+    if (response_head.status == 0) {
+        const line = buf[0..byte_count];
+        const first = std.mem.indexOfScalar(u8, line, ' ') orelse return 0;
+        const second = std.mem.indexOfScalarPos(u8, line, first + 1, ' ') orelse return 0;
+        response_head.status = std.fmt.parseInt(u16, line[first + 1 .. second], 10) catch return 0;
+        return byte_count;
+    }
+
+    const ct = if (response_head._content_type_len == 0) blk: {
+        // content-type
+        const line = buf[0..byte_count];
+        if (std.ascii.startsWithIgnoreCase(line, "content-type:")) {
+            const end = std.mem.indexOfScalar(u8, line, ';') orelse byte_count;
+            const content_type = std.mem.trim(u8, line[13..end], " \t\r\n");
+            if (content_type.len > 0 and content_type.len <= ResponseHead.MAX_CONTENT_TYPE_LEN) {
+                break :blk content_type;
+            }
+        }
+        break :blk null;
+    } else null;
+
+    // If we're intercepting authentication (401 or 407) don't write the body.
+    // We have to wait for the client code to see the status and authorize the challenge first.
+    if (response_head.status == 401 or response_head.status == 407) {
+        return byte_count;
+    }
+
+    const response = transfer.response;
+    response.receiveHeader(transfer.state, .{ .status = response_head.status, .content_type = ct }) catch return 0;
+
+    if (ct) |content_type| {
+        const len = content_type.len;
+        @memcpy(response_head._content_type[0..len], content_type);
+        response_head._content_type_len = len;
+    }
+
+    return byte_count;
+}
+
+fn curlDataCallback(comptime ResponseType: type) libcurl.CurlWriteFunction {
+    return struct {
+        fn callback(
+            buf: [*]u8,
+            size: usize,
+            nitems: usize,
+            user_data: ?*anyopaque,
+        ) callconv(.c) usize {
+            const transfer: *Transfer(ResponseType) = @ptrCast(@alignCast(user_data orelse return 0));
+            const byte_count = size * nitems;
+            const response = transfer.response;
+            response.receive(transfer.state, buf[0..byte_count]) catch return 0;
+            return byte_count;
+        }
+    }.callback;
+}
+
+pub fn websocketHeader(buf: []u8, comptime message_type: enum { text, binary, pong }, len: usize) []const u8 {
+    buf[0] = switch (message_type) {
+        .text => 129,
+        .binary => 130,
+        .pong => 138,
+    };
 
     if (len <= 125) {
         buf[1] = @intCast(len);
         return buf[0..2];
     }
 
-    if (len < 65536) {
+    if (len <= std.math.maxInt(u16)) {
         buf[1] = 126;
-        buf[2] = @intCast((len >> 8) & 0xFF);
-        buf[3] = @intCast(len & 0xFF);
+        const len_16 = @as(u16, @intCast(len));
+        buf[2] = @intCast(len_16 >> 8);
+        buf[3] = @intCast(len_16);
         return buf[0..4];
     }
 
     buf[1] = 127;
-    buf[2] = 0;
-    buf[3] = 0;
-    buf[4] = 0;
-    buf[5] = 0;
-    buf[6] = @intCast((len >> 24) & 0xFF);
-    buf[7] = @intCast((len >> 16) & 0xFF);
-    buf[8] = @intCast((len >> 8) & 0xFF);
-    buf[9] = @intCast(len & 0xFF);
+    const len_64 = @as(u64, @intCast(len));
+    buf[2] = @intCast(len_64 >> 56);
+    buf[3] = @intCast(len_64 >> 48);
+    buf[4] = @intCast(len_64 >> 40);
+    buf[5] = @intCast(len_64 >> 32);
+    buf[6] = @intCast(len_64 >> 24);
+    buf[7] = @intCast(len_64 >> 16);
+    buf[8] = @intCast(len_64 >> 8);
+    buf[9] = @intCast(len_64);
     return buf[0..10];
 }
 
-fn growBuffer(allocator: Allocator, buf: []u8, required_capacity: usize) ![]u8 {
-    // from std.ArrayList
-    var new_capacity = buf.len;
-    while (true) {
-        new_capacity +|= new_capacity / 2 + 8;
-        if (new_capacity >= required_capacity) break;
+pub fn fillWebsocketHeader(buf: std.ArrayList(u8)) []const u8 {
+    // There should be 10 bytes free in front of our payload. We might need
+    // less depending on the payload size.
+    const len = buf.items.len - 10;
+    const slice = buf.items;
+    if (len <= 125) {
+        slice[8] = 129;
+        slice[9] = @intCast(len);
+        return slice[8..];
     }
 
-    log.debug(.app, "CDP buffer growth", .{ .from = buf.len, .to = new_capacity });
-
-    if (allocator.resize(buf, new_capacity)) {
-        return buf.ptr[0..new_capacity];
+    if (len <= std.math.maxInt(u16)) {
+        slice[6] = 129;
+        slice[7] = 126;
+        const len_16 = @as(u16, @intCast(len));
+        slice[8] = @intCast(len_16 >> 8);
+        slice[9] = @intCast(len_16);
+        return slice[6..];
     }
-    const new_buffer = try allocator.alloc(u8, new_capacity);
-    @memcpy(new_buffer[0..buf.len], buf);
-    allocator.free(buf);
-    return new_buffer;
+
+    slice[0] = 129;
+    slice[1] = 127;
+    const len_64 = @as(u64, @intCast(len));
+    slice[2] = @intCast(len_64 >> 56);
+    slice[3] = @intCast(len_64 >> 48);
+    slice[4] = @intCast(len_64 >> 40);
+    slice[5] = @intCast(len_64 >> 32);
+    slice[6] = @intCast(len_64 >> 24);
+    slice[7] = @intCast(len_64 >> 16);
+    slice[8] = @intCast(len_64 >> 8);
+    slice[9] = @intCast(len_64);
+    return slice[0..];
 }
 
-// WebSocket message reader. Given websocket message, acts as an iterator that
-// can return zero or more Messages. When next returns null, any incomplete
-// message will remain in reader.data
-pub fn Reader(comptime EXPECT_MASK: bool) type {
-    return struct {
-        allocator: Allocator,
+// Shared between our websocket client and our websocket server
+fn mask(mask_: []const u8, data: []u8) void {
+    const mask_4 = std.mem.bytesAsValue(u32, mask_[0..4]).*;
+    var n = data.len / 4;
+    var i: usize = 0;
+    while (n > 0) : ({
+        n -= 1;
+        i += 4;
+    }) {
+        const value = std.mem.bytesAsValue(u32, data[i .. i + 4]);
+        value.* ^= mask_4;
+    }
 
-        // position in buf of the start of the next message
-        pos: usize = 0,
+    const shift: u3 = @intCast((data.len & 3) * 8);
+    const rem = mask_4 << shift | mask_4 >> (32 - shift);
+    n = data.len & 3;
+    while (n > 0) : ({
+        n -= 1;
+        i += 1;
+    }) {
+        data[i] ^= @intCast(rem >> ((n - 1) * 8));
+    }
+}
 
-        // position in buf up until where we have valid data
-        // (any new reads must be placed after this)
-        len: usize = 0,
+pub fn websocketHandshake(allocator: Allocator, request: []u8, config: *const Config) !WsConnection {
+    // must be at least large enough for a valid request-line + \r\n\r\n
+    if (request.len < 16) {
+        return error.InvalidRequest;
+    }
 
-        // we add 140 to allow 1 control message (ping/pong/close) to be
-        // fragmented into a normal message.
-        buf: []u8,
+    // path can be empty, but it must exists
+    const path_start = std.mem.indexOfScalar(u8, request, ' ') orelse return error.InvalidRequest;
+    const path_end = std.mem.indexOfScalarPos(u8, request, path_start + 1, ' ') orelse return error.InvalidRequest;
+    if (path_end == path_start + 1) {
+        return error.InvalidRequest;
+    }
 
-        fragments: ?Fragments = null,
+    const path = request[path_start + 1 .. path_end];
 
-        const Self = @This();
-
-        pub fn init(allocator: Allocator) !Self {
-            const buf = try allocator.alloc(u8, 16 * 1024);
-            return .{
-                .buf = buf,
-                .allocator = allocator,
-            };
+    const socket = blk: {
+        // /json/version
+        if (std.mem.eql(u8, path, "/json/version")) {
+            break :blk try websocketHandshakeForJsonVersion(request, config);
         }
 
-        pub fn deinit(self: *Self) void {
-            self.cleanup();
-            self.allocator.free(self.buf);
-        }
-
-        pub fn cleanup(self: *Self) void {
-            if (self.fragments) |*f| {
-                f.message.deinit(self.allocator);
-                self.fragments = null;
+        // /devtools/browser/blah
+        const browser_prefix = "/devtools/browser/";
+        if (path.len > browser_prefix.len and std.mem.eql(u8, path[0..browser_prefix.len], browser_prefix)) {
+            if (std.mem.indexOfScalarPos(u8, path, browser_prefix.len, '/')) |_| {
+                return error.InvalidRequest;
             }
+            break :blk try websocketHandshakeForBrowser(request, config);
         }
 
-        pub fn readBuf(self: *Self) []u8 {
-            // We might have read a partial http or websocket message.
-            // Subsequent reads must read from where we left off.
-            return self.buf[self.len..];
+        // /devtools/page/blah
+        const page_prefix = "/devtools/page/";
+        if (path.len > page_prefix.len and std.mem.eql(u8, path[0..page_prefix.len], page_prefix)) {
+            if (std.mem.indexOfScalarPos(u8, path, page_prefix.len, '/')) |_| {
+                return error.InvalidRequest;
+            }
+            break :blk try websocketHandshakeForPage(request, config);
         }
 
-        pub fn next(self: *Self) !?Message {
-            LOOP: while (true) {
-                var buf = self.buf[self.pos..self.len];
+        return error.NotFound;
+    };
 
-                const length_of_len, const message_len = extractLengths(buf) orelse {
-                    // we don't have enough bytes
-                    return null;
+    return WsConnection.init(socket, allocator, config.json_version_response, config.cdp_timeout);
+}
+
+fn websocketHandshakeForJsonVersion(request: []u8, config: *const Config) !posix.socket_t {
+    if (request.len < 16) {
+        return error.InvalidRequest;
+    }
+
+    var path_end = std.mem.indexOfScalar(u8, request, ' ') orelse return error.InvalidRequest;
+    if (path_end < 3) {
+        return error.InvalidRequest;
+    }
+
+    const path = request[4..path_end];
+    if (!std.mem.eql(u8, path, "/json/version")) {
+        return error.InvalidRequest;
+    }
+
+    path_end = std.mem.indexOfScalarPos(u8, request, path_end + 1, ' ') orelse return error.InvalidRequest;
+    if (path_end < 6) {
+        return error.InvalidRequest;
+    }
+
+    const protocol = request[path_end + 1 .. path_end + 9];
+    if (!std.ascii.eqlIgnoreCase(protocol, "HTTP/1.1")) {
+        return error.InvalidProtocol;
+    }
+
+    const socket = config.websocket_socket orelse return error.InvalidRequest;
+    return socket;
+}
+
+fn websocketHandshakeForBrowser(request: []u8, config: *const Config) !posix.socket_t {
+    if (request.len < 16) {
+        return error.InvalidRequest;
+    }
+
+    var path_end = std.mem.indexOfScalar(u8, request, ' ') orelse return error.InvalidRequest;
+    if (path_end < 3) {
+        return error.InvalidRequest;
+    }
+
+    const path = request[4..path_end];
+    const browser_prefix = "/devtools/browser/";
+    if (path.len <= browser_prefix.len or !std.mem.eql(u8, path[0..browser_prefix.len], browser_prefix)) {
+        return error.InvalidRequest;
+    }
+
+    if (std.mem.indexOfScalarPos(u8, path, browser_prefix.len, '/')) |_| {
+        return error.InvalidRequest;
+    }
+
+    path_end = std.mem.indexOfScalarPos(u8, request, path_end + 1, ' ') orelse return error.InvalidRequest;
+    if (path_end < 6) {
+        return error.InvalidRequest;
+    }
+
+    const protocol = request[path_end + 1 .. path_end + 9];
+    if (!std.ascii.eqlIgnoreCase(protocol, "HTTP/1.1")) {
+        return error.InvalidProtocol;
+    }
+
+    const socket = config.websocket_socket orelse return error.InvalidRequest;
+    return socket;
+}
+
+fn websocketHandshakeForPage(request: []u8, config: *const Config) !posix.socket_t {
+    if (request.len < 16) {
+        return error.InvalidRequest;
+    }
+
+    var path_end = std.mem.indexOfScalar(u8, request, ' ') orelse return error.InvalidRequest;
+    if (path_end < 3) {
+        return error.InvalidRequest;
+    }
+
+    const path = request[4..path_end];
+    const page_prefix = "/devtools/page/";
+    if (path.len <= page_prefix.len or !std.mem.eql(u8, path[0..page_prefix.len], page_prefix)) {
+        return error.InvalidRequest;
+    }
+
+    if (std.mem.indexOfScalarPos(u8, path, page_prefix.len, '/')) |_| {
+        return error.InvalidRequest;
+    }
+
+    path_end = std.mem.indexOfScalarPos(u8, request, path_end + 1, ' ') orelse return error.InvalidRequest;
+    if (path_end < 6) {
+        return error.InvalidRequest;
+    }
+
+    const protocol = request[path_end + 1 .. path_end + 9];
+    if (!std.ascii.eqlIgnoreCase(protocol, "HTTP/1.1")) {
+        return error.InvalidProtocol;
+    }
+
+    const socket = config.websocket_socket orelse return error.InvalidRequest;
+    return socket;
+}
+
+pub fn websocketAcceptKey(allocator: Allocator, key: []const u8) ![]u8 {
+    var sha1 = std.crypto.hash.Sha1.init(.{});
+    sha1.update(key);
+    sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    var digest: [20]u8 = undefined;
+    sha1.final(&digest);
+
+    const encoder = std.base64.standard.Encoder;
+    const encoded_len = encoder.calcSize(digest.len);
+    var encoded = try allocator.alloc(u8, encoded_len);
+    _ = encoder.encode(encoded, &digest);
+    return encoded;
+}
+
+pub const Client = struct {
+    arena: ArenaAllocator,
+    conn: Connection,
+    reader: Reader(false),
+
+    pub fn init(allocator: Allocator, address: std.net.Address) !Client {
+        var arena = ArenaAllocator.init(allocator);
+        errdefer arena.deinit();
+
+        const sock = try posix.socket(address.any.family, posix.SOCK.STREAM, posix.IPPROTO.TCP);
+        errdefer posix.close(sock);
+
+        try posix.connect(sock, &address.any, address.getOsSockLen());
+
+        return .{
+            .arena = arena,
+            .conn = .{ .socket = sock },
+            .reader = try Reader(false).init(arena.allocator()),
+        };
+    }
+
+    pub fn deinit(self: *Client) void {
+        posix.close(self.conn.socket);
+        self.reader.deinit();
+        self.arena.deinit();
+    }
+
+    pub fn send(self: *Client, data: []const u8) !void {
+        // client -> server messages need to be masked
+        var header_buf: [14]u8 = undefined;
+        const header = websocketHeader(&header_buf, .text, data.len);
+
+        const allocator = self.arena.allocator();
+        const framed = try allocator.alloc(u8, header.len + 4 + data.len);
+        @memcpy(framed[0..header.len], header);
+
+        // add the mask bit
+        framed[1] = framed[1] | 128;
+
+        const mask_start = header.len;
+        const mask_ = framed[mask_start .. mask_start + 4];
+        mask_.* = .{ 1, 2, 200, 240 };
+
+        const payload = framed[mask_start + 4 ..];
+        @memcpy(payload, data);
+        mask(mask_, payload);
+
+        try self.conn.send(framed);
+        _ = self.arena.reset(.retain_capacity);
+    }
+
+    pub fn receive(self: *Client) !?Message {
+        var reader = &self.reader;
+
+        while (reader.next()) |message| {
+            return message;
+        }
+
+        const n = try self.conn.read();
+        reader.len += n;
+
+        return try reader.next();
+    }
+
+    pub const Message = Reader(false).Message;
+};
+
+pub fn websocketConnect(allocator: Allocator, address: std.net.Address, endpoint: []const u8) !Client {
+    var c = try Client.init(allocator, address);
+    errdefer c.deinit();
+
+    const rand = std.crypto.random;
+    var nonce: [16]u8 = undefined;
+    rand.bytes(&nonce);
+
+    const encoder = std.base64.standard.Encoder;
+    const expected_response = try allocator.alloc(u8, encoder.calcSize(20));
+    defer allocator.free(expected_response);
+    const key = try allocator.alloc(u8, encoder.calcSize(16));
+    defer allocator.free(key);
+    _ = encoder.encode(key, &nonce);
+
+    {
+        var sha1 = std.crypto.hash.Sha1.init(.{});
+        sha1.update(key);
+        sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+        var digest: [20]u8 = undefined;
+        sha1.final(&digest);
+        _ = encoder.encode(expected_response, &digest);
+    }
+
+    var buffer = std.ArrayList(u8).empty;
+    defer buffer.deinit(allocator);
+    try buffer.appendSlice(allocator, "GET ");
+    try buffer.appendSlice(allocator, endpoint);
+    try buffer.appendSlice(allocator, " HTTP/1.1\r\n");
+    try buffer.appendSlice(allocator, "Host: localhost\r\n");
+    try buffer.appendSlice(allocator, "Upgrade: websocket\r\n");
+    try buffer.appendSlice(allocator, "Connection: Upgrade\r\n");
+    try buffer.appendSlice(allocator, "Sec-Websocket-Version: 13\r\n");
+    try buffer.appendSlice(allocator, "Sec-Websocket-Key: ");
+    try buffer.appendSlice(allocator, key);
+    try buffer.appendSlice(allocator, "\r\n\r\n");
+
+    const request = buffer.items;
+    try c.conn.send(request);
+
+    var response_header: [512]u8 = undefined;
+    const n = try c.conn.read(response_header[0..]);
+    if (n < 20) {
+        return error.InvalidResponse;
+    }
+    const response = response_header[0..n];
+    if (std.mem.eql(u8, response[0..13], "HTTP/1.1 101 ") == false) {
+        return error.InvalidResponse;
+    }
+
+    const accept_key_index = std.mem.indexOf(u8, response, "Sec-Websocket-Accept: ") orelse return error.InvalidResponse;
+    const end = std.mem.indexOfScalarPos(u8, response, accept_key_index, '\r') orelse return error.InvalidResponse;
+    const accept_key = std.mem.trim(u8, response[accept_key_index + 22 .. end], " ");
+    if (std.mem.eql(u8, accept_key, expected_response) == false) {
+        return error.InvalidResponse;
+    }
+
+    return c;
+}
+
+pub const Reader = struct {
+    const MessageType = enum {
+        text,
+        binary,
+        close,
+        ping,
+        pong,
+    };
+
+    pub const Message = struct {
+        data: []const u8,
+        type: MessageType,
+        cleanup_fragment: bool,
+    };
+
+    pub fn Reader(comptime EXPECT_MASK: bool) type {
+        return struct {
+            const Self = @This();
+            buf: []u8,
+            len: usize = 0,
+            pos: usize = 0,
+            allocator: Allocator,
+            fragments: ?Fragments = null,
+
+            const Fragments = struct {
+                message: std.ArrayList(u8),
+                type: MessageType,
+            };
+
+            pub fn init(allocator: Allocator) !Self {
+                const buf = try allocator.alloc(u8, 4096);
+                return .{
+                    .buf = buf,
+                    .allocator = allocator,
                 };
+            }
 
-                const byte1 = buf[0];
+            fn growBuffer(allocator: Allocator, old: []u8, new_len: usize) ![]u8 {
+                var new = try allocator.alloc(u8, new_len);
+                errdefer allocator.free(new);
+                @memcpy(new[0..old.len], old);
+                allocator.free(old);
+                return new;
+            }
 
-                if (byte1 & 112 != 0) {
-                    return error.ReservedFlags;
+            pub fn deinit(self: *Self) void {
+                self.cleanup();
+                self.allocator.free(self.buf);
+            }
+
+            pub fn cleanup(self: *Self) void {
+                if (self.fragments) |*f| {
+                    f.message.deinit(self.allocator);
+                    self.fragments = null;
                 }
+            }
 
-                if (comptime EXPECT_MASK) {
-                    if (buf[1] & 128 != 128) {
-                        // client -> server messages _must_ be masked
-                        return error.NotMasked;
+            pub fn readBuf(self: *Self) []u8 {
+                // We might have read a partial http or websocket message.
+                // Subsequent reads must read from where we left off.
+                return self.buf[self.len..];
+            }
+
+            pub fn next(self: *Self) !?Message {
+                LOOP: while (true) {
+                    var buf = self.buf[self.pos..self.len];
+
+                    const length_of_len, const message_len = extractLengths(buf) orelse {
+                        // we don't have enough bytes
+                        return null;
+                    };
+
+                    const byte1 = buf[0];
+
+                    if (byte1 & 112 != 0) {
+                        return error.ReservedFlags;
                     }
-                } else if (buf[1] & 128 != 0) {
-                    // server -> client are never masked
-                    return error.Masked;
-                }
 
-                var is_control = false;
-                var is_continuation = false;
-                var message_type: Message.Type = undefined;
-                switch (byte1 & 15) {
-                    0 => is_continuation = true,
-                    1 => message_type = .text,
-                    2 => message_type = .binary,
-                    8 => {
-                        is_control = true;
-                        message_type = .close;
-                    },
-                    9 => {
-                        is_control = true;
-                        message_type = .ping;
-                    },
-                    10 => {
-                        is_control = true;
-                        message_type = .pong;
-                    },
-                    else => return error.InvalidMessageType,
-                }
-
-                if (is_control) {
-                    if (message_len > 125) {
-                        return error.ControlTooLarge;
+                    if (comptime EXPECT_MASK) {
+                        if (buf[1] & 128 != 128) {
+                            // client -> server messages _must_ be masked
+                            return error.NotMasked;
+                        }
+                    } else if (buf[1] & 128 != 0) {
+                        // server -> client are never masked
+                        return error.Masked;
                     }
-                } else if (message_len > Config.CDP_MAX_MESSAGE_SIZE) {
-                    return error.TooLarge;
-                } else if (message_len > self.buf.len) {
-                    const len = self.buf.len;
-                    self.buf = try growBuffer(self.allocator, self.buf, message_len);
-                    buf = self.buf[0..len];
-                    // we need more data
-                    return null;
-                } else if (buf.len < message_len) {
-                    // we need more data
-                    return null;
-                }
 
-                // prefix + length_of_len + mask
-                const header_len = 2 + length_of_len + if (comptime EXPECT_MASK) 4 else 0;
+                    var is_control = false;
+                    var is_continuation = false;
+                    var message_type: Message.Type = undefined;
+                    switch (byte1 & 15) {
+                        0 => is_continuation = true,
+                        1 => message_type = .text,
+                        2 => message_type = .binary,
+                        8 => {
+                            is_control = true;
+                            message_type = .close;
+                        },
+                        9 => {
+                            is_control = true;
+                            message_type = .ping;
+                        },
+                        10 => {
+                            is_control = true;
+                            message_type = .pong;
+                        },
+                        else => return error.InvalidMessageType,
+                    }
 
-                const payload = buf[header_len..message_len];
-                if (comptime EXPECT_MASK) {
-                    mask(buf[header_len - 4 .. header_len], payload);
-                }
-
-                // whatever happens after this, we know where the next message starts
-                self.pos += message_len;
-
-                const fin = byte1 & 128 == 128;
-
-                if (is_continuation) {
-                    const fragments = &(self.fragments orelse return error.InvalidContinuation);
-                    if (fragments.message.items.len + message_len > Config.CDP_MAX_MESSAGE_SIZE) {
+                    if (is_control) {
+                        if (message_len > 125) {
+                            return error.ControlTooLarge;
+                        }
+                    } else if (message_len > Config.CDP_MAX_MESSAGE_SIZE) {
                         return error.TooLarge;
+                    } else if (message_len > self.buf.len) {
+                        const len = self.buf.len;
+                        self.buf = try growBuffer(self.allocator, self.buf, message_len);
+                        buf = self.buf[0..len];
+                        // we need more data
+                        return null;
+                    } else if (buf.len < message_len) {
+                        // we need more data
+                        return null;
                     }
 
-                    try fragments.message.appendSlice(self.allocator, payload);
+                    // prefix + length_of_len + mask
+                    const header_len = 2 + length_of_len + if (comptime EXPECT_MASK) 4 else 0;
+
+                    const payload = buf[header_len..message_len];
+                    if (comptime EXPECT_MASK) {
+                        mask(buf[header_len - 4 .. header_len], payload);
+                    }
+
+                    // whatever happens after this, we know where the next message starts
+                    self.pos += message_len;
+
+                    const fin = byte1 & 128 == 128;
+
+                    if (is_continuation) {
+                        const fragments = &(self.fragments orelse return error.InvalidContinuation);
+                        if (fragments.message.items.len + message_len > Config.CDP_MAX_MESSAGE_SIZE) {
+                            return error.TooLarge;
+                        }
+
+                        try fragments.message.appendSlice(self.allocator, payload);
+
+                        if (fin == false) {
+                            // maybe we have more parts of the message waiting
+                            continue :LOOP;
+                        }
+
+                        // this continuation is done!
+                        return .{
+                            .type = fragments.type,
+                            .data = fragments.message.items,
+                            .cleanup_fragment = true,
+                        };
+                    }
+
+                    const can_be_fragmented = message_type == .text or message_type == .binary;
+                    if (self.fragments != null and can_be_fragmented) {
+                        // if this isn't a continuation, then we can't have fragments
+                        return error.NestedFragementation;
+                    }
 
                     if (fin == false) {
-                        // maybe we have more parts of the message waiting
+                        if (can_be_fragmented == false) {
+                            return error.InvalidContinuation;
+                        }
+
+                        // not continuation, and not fin. It has to be the first message
+                        // in a fragmented message.
+                        var fragments = Fragments{ .message = .{}, .type = message_type };
+                        try fragments.message.appendSlice(self.allocator, payload);
+                        self.fragments = fragments;
                         continue :LOOP;
                     }
 
-                    // this continuation is done!
                     return .{
-                        .type = fragments.type,
-                        .data = fragments.message.items,
-                        .cleanup_fragment = true,
+                        .data = payload,
+                        .type = message_type,
+                        .cleanup_fragment = false,
                     };
                 }
+            }
 
-                const can_be_fragmented = message_type == .text or message_type == .binary;
-                if (self.fragments != null and can_be_fragmented) {
-                    // if this isn't a continuation, then we can't have fragments
-                    return error.NestedFragementation;
+            fn extractLengths(buf: []const u8) ?struct { usize, usize } {
+                if (buf.len < 2) {
+                    return null;
                 }
 
-                if (fin == false) {
-                    if (can_be_fragmented == false) {
-                        return error.InvalidContinuation;
-                    }
-
-                    // not continuation, and not fin. It has to be the first message
-                    // in a fragmented message.
-                    var fragments = Fragments{ .message = .{}, .type = message_type };
-                    try fragments.message.appendSlice(self.allocator, payload);
-                    self.fragments = fragments;
-                    continue :LOOP;
-                }
-
-                return .{
-                    .data = payload,
-                    .type = message_type,
-                    .cleanup_fragment = false,
+                const length_of_len: usize = switch (buf[1] & 127) {
+                    126 => 2,
+                    127 => 8,
+                    else => 0,
                 };
-            }
-        }
 
-        fn extractLengths(buf: []const u8) ?struct { usize, usize } {
-            if (buf.len < 2) {
-                return null;
-            }
+                if (buf.len < length_of_len + 2) {
+                    // we definitely don't have enough buf yet
+                    return null;
+                }
 
-            const length_of_len: usize = switch (buf[1] & 127) {
-                126 => 2,
-                127 => 8,
-                else => 0,
-            };
+                const message_len = switch (length_of_len) {
+                    2 => @as(u16, @intCast(buf[3])) | @as(u16, @intCast(buf[2])) << 8,
+                    8 => @as(u64, @intCast(buf[9])) | @as(u64, @intCast(buf[8])) << 8 | @as(u64, @intCast(buf[7])) << 16 | @as(u64, @intCast(buf[6])) << 24 | @as(u64, @intCast(buf[5])) << 32 | @as(u64, @intCast(buf[4])) << 40 | @as(u64, @intCast(buf[3])) << 48 | @as(u64, @intCast(buf[2])) << 56,
+                    else => buf[1] & 127,
+                } + length_of_len + 2 + if (comptime EXPECT_MASK) 4 else 0; // +2 for header prefix, +4 for mask;
 
-            if (buf.len < length_of_len + 2) {
-                // we definitely don't have enough buf yet
-                return null;
+                return .{ length_of_len, message_len };
             }
 
-            const message_len = switch (length_of_len) {
-                2 => @as(u16, @intCast(buf[3])) | @as(u16, @intCast(buf[2])) << 8,
-                8 => @as(u64, @intCast(buf[9])) | @as(u64, @intCast(buf[8])) << 8 | @as(u64, @intCast(buf[7])) << 16 | @as(u64, @intCast(buf[6])) << 24 | @as(u64, @intCast(buf[5])) << 32 | @as(u64, @intCast(buf[4])) << 40 | @as(u64, @intCast(buf[3])) << 48 | @as(u64, @intCast(buf[2])) << 56,
-                else => buf[1] & 127,
-            } + length_of_len + 2 + if (comptime EXPECT_MASK) 4 else 0; // +2 for header prefix, +4 for mask;
+            // This is called after we've processed complete websocket messages (this
+            // only applies to websocket messages).
+            // There are three cases:
+            // 1 - We don't have any incomplete data (for a subsequent message) in buf.
+            //     This is the easier to handle, we can set pos & len to 0.
+            // 2 - We have part of the next message, but we know it'll fit in the
+            //     remaining buf. We don't need to do anything
+            // 3 - We have part of the next message, but either it won't fight into the
+            //     remaining buffer, or we don't know (because we don't have enough
+            //     of the header to tell the length). We need to "compact" the buffer
+            fn compact(self: *Self) void {
+                const pos = self.pos;
+                const len = self.len;
 
-            return .{ length_of_len, message_len };
-        }
+                assert(pos <= len, "Client.Reader.compact precondition", .{ .pos = pos, .len = len });
 
-        // This is called after we've processed complete websocket messages (this
-        // only applies to websocket messages).
-        // There are three cases:
-        // 1 - We don't have any incomplete data (for a subsequent message) in buf.
-        //     This is the easier to handle, we can set pos & len to 0.
-        // 2 - We have part of the next message, but we know it'll fit in the
-        //     remaining buf. We don't need to do anything
-        // 3 - We have part of the next message, but either it won't fight into the
-        //     remaining buffer, or we don't know (because we don't have enough
-        //     of the header to tell the length). We need to "compact" the buffer
-        fn compact(self: *Self) void {
-            const pos = self.pos;
-            const len = self.len;
+                // how many (if any) partial bytes do we have
+                const partial_bytes = len - pos;
 
-            assert(pos <= len, "Client.Reader.compact precondition", .{ .pos = pos, .len = len });
-
-            // how many (if any) partial bytes do we have
-            const partial_bytes = len - pos;
-
-            if (partial_bytes == 0) {
-                // We have no partial bytes. Setting these to 0 ensures that we
-                // get the best utilization of our buffer
-                self.pos = 0;
-                self.len = 0;
-                return;
-            }
-
-            const partial = self.buf[pos..len];
-
-            // If we have enough bytes of the next message to tell its length
-            // we'll be able to figure out whether we need to do anything or not.
-            if (extractLengths(partial)) |length_meta| {
-                const next_message_len = length_meta.@"1";
-                // if this isn't true, then we have a full message and it
-                // should have been processed.
-                assert(pos <= len, "Client.Reader.compact postcondition", .{ .next_len = next_message_len, .partial = partial_bytes });
-
-                const missing_bytes = next_message_len - partial_bytes;
-
-                const free_space = self.buf.len - len;
-                if (missing_bytes < free_space) {
-                    // we have enough space in our buffer, as is,
+                if (partial_bytes == 0) {
+                    // We have no partial bytes. Setting these to 0 ensures that we
+                    // get the best utilization of our buffer
+                    self.pos = 0;
+                    self.len = 0;
                     return;
                 }
-            }
 
-            // We're here because we either don't have enough bytes of the next
-            // message, or we know that it won't fit in our buffer as-is.
-            std.mem.copyForwards(u8, self.buf, partial);
-            self.pos = 0;
-            self.len = partial_bytes;
-        }
-    };
+                const partial = self.buf[pos..len];
+
+                // If we have enough bytes of the next message to tell its length
+                // we'll be able to figure out whether we need to do anything or not.
+                if (extractLengths(partial)) |length_meta| {
+                    const next_message_len = length_meta.@"1";
+                    // if this isn't true, then we have a full message and it
+                    // should have been processed.
+                    assert(pos <= len, "Client.Reader.compact postcondition", .{ .next_len = next_message_len, .partial = partial_bytes });
+
+                    const missing_bytes = next_message_len - partial_bytes;
+
+                    const free_space = self.buf.len - len;
+                    if (missing_bytes < free_space) {
+                        // we have enough space in our buffer, as is,
+                        return;
+                    }
+                }
+
+                // We're here because we either don't have enough bytes of the next
+                // message, or we know that it won't fit in our buffer as-is.
+                std.mem.copyForwards(u8, self.buf, partial);
+                self.pos = 0;
+                self.len = partial_bytes;
+            }
+        };
+    }
 }
 
 // In-place string lowercase
@@ -1412,7 +1932,7 @@ const testing = std.testing;
 
 test "mask" {
     var buf: [4000]u8 = undefined;
-    const messages = [_][]const u8{ "1234", "1234" ** 99, "1234" ** 999 };
+    const messages = [_][]const u8{ "1234", "1234"**99, "1234"**999 };
     for (messages) |message| {
         // we need the message to be mutable since mask operates in-place
         const payload = buf[0..message.len];
