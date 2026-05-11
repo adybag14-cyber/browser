@@ -12,8 +12,7 @@ param(
     [int]$HomeTitleWaitAttempts = 80,
     [int]$HomePollMilliseconds = 250,
     [int]$WatchTimeoutSeconds = 90,
-    [int]$WatchPollMilliseconds = 250,
-    [switch]$LeaveOpen
+    [int]$WatchPollMilliseconds = 250
 )
 
 Set-StrictMode -Version Latest
@@ -29,95 +28,112 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
 }
 
 $surfaceCheck = '.\\scripts\\windows\\check_google_quick_validation_surface.ps1'
-$titleFlowRunner = '.\\scripts\\windows\\show_google_title_validation_flow.ps1'
+$titleFlow = '.\\scripts\\windows\\show_google_title_validation_flow.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_quick_validation.ps1'
+$directQuickRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$watchRunner = '.\\scripts\\windows\\run_google_home_watch_probe.ps1'
 
-$titleFlowArguments = ""
 $wrapperArguments = ""
+$directQuickArguments = ""
+$watchArguments = ""
 if ($RepoRoot) {
     $quotedRepoRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot
-    $titleFlowArguments += " -RepoRoot $quotedRepoRoot"
     $wrapperArguments += " -RepoRoot $quotedRepoRoot"
+    $directQuickArguments += " -RepoRoot $quotedRepoRoot"
+    $watchArguments += " -RepoRoot $quotedRepoRoot"
 }
 if ($BrowserExe) {
     $quotedBrowserExe = ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe
-    $titleFlowArguments += " -BrowserExe $quotedBrowserExe"
     $wrapperArguments += " -BrowserExe $quotedBrowserExe"
+    $directQuickArguments += " -BrowserExe $quotedBrowserExe"
+    $watchArguments += " -BrowserExe $quotedBrowserExe"
 }
 if ($Host) {
     $quotedHost = ConvertTo-PowerShellSingleQuotedLiteral -Value $Host
-    $titleFlowArguments += " -Host $quotedHost"
     $wrapperArguments += " -Host $quotedHost"
+    $directQuickArguments += " -Host $quotedHost"
+    $watchArguments += " -Host $quotedHost"
 }
 if ($InputText) {
     $quotedInputText = ConvertTo-PowerShellSingleQuotedLiteral -Value $InputText
-    $titleFlowArguments += " -InputText $quotedInputText"
     $wrapperArguments += " -InputText $quotedInputText"
+    $directQuickArguments += " -InputText $quotedInputText"
+    $watchArguments += " -InputText $quotedInputText"
 }
 if ($TitlePort) {
-    $titleFlowArguments += " -TitlePort $TitlePort"
     $wrapperArguments += " -TitlePort $TitlePort"
 }
 if ($WatchPort) {
     $wrapperArguments += " -WatchPort $WatchPort"
+    $directQuickArguments += " -WatchPort $WatchPort"
+    $watchArguments += " -Port $WatchPort"
 }
 if ($ServerReadyTimeoutSeconds) {
-    $titleFlowArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
     $wrapperArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
+    $directQuickArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
+    $watchArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
 }
 if ($HomeWindowReadyAttempts) {
-    $titleFlowArguments += " -HomeWindowReadyAttempts $HomeWindowReadyAttempts"
     $wrapperArguments += " -HomeWindowReadyAttempts $HomeWindowReadyAttempts"
 }
 if ($HomeTitleWaitAttempts) {
-    $titleFlowArguments += " -HomeTitleWaitAttempts $HomeTitleWaitAttempts"
     $wrapperArguments += " -HomeTitleWaitAttempts $HomeTitleWaitAttempts"
 }
 if ($HomePollMilliseconds) {
-    $titleFlowArguments += " -HomePollMilliseconds $HomePollMilliseconds"
     $wrapperArguments += " -HomePollMilliseconds $HomePollMilliseconds"
 }
 if ($WatchTimeoutSeconds) {
     $wrapperArguments += " -WatchTimeoutSeconds $WatchTimeoutSeconds"
+    $directQuickArguments += " -WatchTimeoutSeconds $WatchTimeoutSeconds"
+    $watchArguments += " -TimeoutSeconds $WatchTimeoutSeconds"
 }
 if ($WatchPollMilliseconds) {
     $wrapperArguments += " -WatchPollMilliseconds $WatchPollMilliseconds"
-}
-if ($LeaveOpen) {
-    $wrapperArguments += " -LeaveOpen"
+    $directQuickArguments += " -WatchPollMilliseconds $WatchPollMilliseconds"
+    $watchArguments += " -PollMilliseconds $WatchPollMilliseconds"
 }
 
 $flow = [ordered]@{
     issue = "Headed Windows Google quick validation flow"
-    focus = "Fast title-plus-watch triage for issue #3 after the reduced localhost probes are green, with a dedicated fail-fast surface check before the bounded title markers and self-starting watch pass."
+    focus = "Fast title-plus-watch validation on the real headed surface before the reduced homepage, saved-homepage, submit-timing, or shared Enter-order follow-up."
     steps = @(
         [ordered]@{
             name = "surface-check"
-            goal = "Fail fast if the quick-validation guide, quick wrapper, watch helper, or title dependencies drifted before you trust this fast issue #3 path."
+            goal = "Fail fast if the quick-validation note, title flow, wrapper, watch helper, or raw quick phase drifted before you trust the faster issue #3 checkpoint."
             command = "powershell -ExecutionPolicy Bypass -File $surfaceCheck"
         }
         [ordered]@{
             name = "title-flow"
-            goal = "Print the bounded title-wrapper flow next when you want the focus, typed-text, and Enter-submit markers translated before the fast quick pass."
-            command = "powershell -ExecutionPolicy Bypass -File $titleFlowRunner$titleFlowArguments"
+            goal = "Print the narrower title flow first when you want the focus, visible text, and Enter markers mapped before the quick wrapper widens out to the watch phase."
+            command = "powershell -ExecutionPolicy Bypass -File $titleFlow"
         }
         [ordered]@{
-            name = "quick-wrapper"
-            goal = "Run the dedicated quick wrapper so the title probe and self-starting watch phase stay on the same reusable issue #3 command surface."
+            name = "wrapper"
+            goal = "Run the dedicated quick wrapper so the bounded title-plus-watch slice stays on the same reusable command surface as the neighboring issue #3 helpers."
             command = "powershell -ExecutionPolicy Bypass -File $wrapperRunner$wrapperArguments"
+        }
+        [ordered]@{
+            name = "raw-quick-phase"
+            goal = "Run the raw quick phase only when you need to narrow a wrapper failure to the underlying title probe plus watch handoff without the wrapper layer."
+            command = "powershell -ExecutionPolicy Bypass -File $directQuickRunner -Phase quick$directQuickArguments"
+        }
+        [ordered]@{
+            name = "watch-only"
+            goal = "Run the standalone watch helper when the title pass is already known-good and you only need the shorter live title-stream confirmation."
+            command = "powershell -ExecutionPolicy Bypass -File $watchRunner$watchArguments -SendEnter"
         }
     )
     next_steps = @(
-        "Use .\\scripts\\windows\\run_google_home_validation.ps1 after the quick wrapper is green when you want the reduced headed homepage submit pass.",
-        "Use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 after the quick wrapper is green when you want the bounded Google-shaped submit-ordering slice printed before you run it.",
-        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 after the quick wrapper is green when you want the stricter shared Enter-order stack printed before you run it."
+        "Use .\\scripts\\windows\\show_google_home_validation_flow.ps1 after this quick slice is green when you want the reduced homepage gate printed before execution.",
+        "Use .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1 when the next question is whether the saved homepage fixture still agrees with the quick headed proof.",
+        "Use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 when the title and watch phases are green but keydown, keypress, and submit ordering still need a narrower headed check."
     )
     notes = @(
-        "Start with the surface-check when you want the fast quick slice to fail early on missing guide, wrapper, watch helper, or title-fixture drift before the broader issue #3 ladder.",
-        "The title-flow step stays next so the bounded title markers are still explained before you rely on the quick wrapper's faster watch handoff.",
-        "The quick wrapper is the preferred fast pass when you want the title probe and the watch phase paired without restating the longer flag bundle by hand.",
-        "Use the same host, title port, watch port, input text, and timing overrides here when you need the quick pass aligned with the broader issue #3 flow.",
-        "Use -LeaveOpen when you want the quick wrapper to keep the headed browser open after the bounded phases finish so the live state is easier to inspect."
+        "Start with the surface check when you want the fast quick slice to fail fast on missing docs, helper scripts, or watch-probe drift before a longer manual run.",
+        "Start with the title flow helper when you want the quick wrapper to inherit the same focus, typed-text, and Enter marker meanings as the bounded title checkpoint.",
+        "Use the wrapper unless you already know you need the raw quick phase or watch helper by itself.",
+        "Keep the same host, input text, and watch timing overrides here when you want the quick slice aligned with the broader issue #3 runner.",
+        "Treat this quick slice as the bridge between the bounded title checkpoint and the reduced homepage or saved-homepage follow-up, not as a replacement for those later gates."
     )
 }
 
