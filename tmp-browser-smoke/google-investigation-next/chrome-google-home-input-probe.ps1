@@ -70,7 +70,7 @@ try {
     Start-Sleep -Milliseconds ([Math]::Max($PollMilliseconds, 250) * 10)
     $titleBefore = Get-SmokeWindowTitle $hwnd
 
-    Send-SmokeText $InputText
+    Send-SmokeAsciiText $InputText
     Start-Sleep -Milliseconds ([Math]::Max($PollMilliseconds, 250) * 5)
     $titleAfterType = Get-SmokeWindowTitle $hwnd
 
