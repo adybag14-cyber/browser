@@ -7,7 +7,7 @@ param(
     [string]$SuiteName,
 
     [Parameter(ParameterSetName = "Change")]
-    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-submit-path", "google-form-controls-enter-order", "google-live-trace", "google-saved-html", "google-attached-html", "manual-html", "attached-html", "local-html-fixtures")]
+    [ValidateSet("shell", "rendering", "input", "storage", "network", "downloads", "graphics", "google-input", "google-submit-path", "google-form-controls-enter-order", "google-live-trace", "google-saved-html", "google-attached-html", "attached-html-target-bundle", "manual-html", "attached-html", "local-html-fixtures")]
     [string]$ChangeArea,
 
     [switch]$Json
@@ -228,6 +228,13 @@ $suiteCatalog = @(
         RecommendedWith = @("google-saved-html", "manual-user")
     }
     [pscustomobject]@{
+        Name = "attached-html-target-bundle"
+        Category = "manual-html"
+        Path = "scripts/windows/run_attached_html_target_bundle_validation.ps1"
+        Purpose = "Bundle-aware attached-page route for the current three-page compatibility set, including the pinned surface check, bundle check, flow helper, and delegated localhost runner."
+        RecommendedWith = @("google-attached-html", "manual-user")
+    }
+    [pscustomobject]@{
         Name = "find"
         Category = "input"
         Path = "tmp-browser-smoke/find"
@@ -355,9 +362,10 @@ $changeRecommendations = @{
     "google-live-trace" = @("google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
     "google-saved-html" = @("google-saved-html", "manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
     "google-attached-html" = @("google-attached-html", "manual-user", "google-recommended", "google-shared-enter-order")
+    "attached-html-target-bundle" = @("attached-html-target-bundle", "google-attached-html", "manual-user")
     "local-html-fixtures" = @("local-html-fixtures", "manual-user", "form-controls")
     "manual-html" = @("manual-user", "form-controls", "layout-smoke")
-    "attached-html" = @("manual-user", "form-controls", "layout-smoke")
+    "attached-html" = @("attached-html-target-bundle", "manual-user", "form-controls", "layout-smoke")
 }
 
 $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
@@ -382,6 +390,9 @@ $savedPageLocalhostSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -Fi
 $googleSavedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 $googleAttachedHtmlSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
 $googleAttachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
+$attachedHtmlTargetBundleSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1"
+$attachedHtmlTargetBundleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1"
+$attachedHtmlTargetBundleRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait"
 $manualHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
 $attachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
 $localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_local_html_fixture_validation_surface.ps1"
@@ -467,6 +478,11 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
     }
+    if ($suite.Name -eq "attached-html-target-bundle") {
+        Write-Host ("Surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
+        Write-Host ("Flow helper: {0}" -f $attachedHtmlTargetBundleFlowCommand)
+        Write-Host ("Runner: {0}" -f $attachedHtmlTargetBundleRunnerCommand)
+    }
     if ($suite.Name -eq "local-html-fixtures") {
         Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
         Write-Host ("Runner: {0}" -f $localHtmlFixtureProbeCommand)
@@ -492,12 +508,14 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         "Start with the saved-page localhost surface checker so the saved-page helper chain fails fast after branch moves, then print the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "google-attached-html") {
         "Start with the dedicated attached-HTML Google surface checker so the guide, helper, runner, and asset-audit chain fail fast, then print the dedicated attached-HTML Google flow helper so auto-discovered current-run pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest."
+    } elseif ($ChangeArea -eq "attached-html-target-bundle") {
+        "Start with the bundle route surface checker so the bundle guide, checker, helper, and runner fail fast, then print the bundle flow helper so the current three-page compatibility set stays on one pinned attached-page route before you drop to the delegated localhost runner or the broader attached-page fallbacks."
     } elseif ($ChangeArea -eq "local-html-fixtures") {
         "Start with the dedicated local fixture surface checker so the reusable saved-export replay path fails fast if a guide, helper, or shared probe dependency moved, then run the fixed-list localhost fixture probe for screenshot and page-title proof before widening back out to the broader attached-page or manual headed follow-up."
     } elseif ($ChangeArea -eq "manual-html") {
         "Start with the matching bounded suite, then use the one-command recommended localhost HTML runner to auto-route attached or saved pages into the right helper before dropping to the printed flow map."
     } elseif ($ChangeArea -eq "attached-html") {
-        "Start with the attached-page flow helper so the current workspace snapshots auto-discover, summarize, and route into the right localhost or Google-style follow-up without restating each file path by hand."
+        "Start with the attached HTML target-bundle route when the current workspace still holds the known three-page compatibility set, because it fails fast and pins the same locked inputs through the checker, flow helper, and delegated runner. Fall back to the broader attached-page flow helper only when the current pages are not that known bundle."
     } else {
         "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
     }
@@ -514,12 +532,14 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         $googleSavedHtmlFlowCommand
     } elseif ($ChangeArea -eq "google-attached-html") {
         $googleAttachedHtmlFlowCommand
+    } elseif ($ChangeArea -eq "attached-html-target-bundle") {
+        $attachedHtmlTargetBundleFlowCommand
     } elseif ($ChangeArea -eq "local-html-fixtures") {
         $localHtmlFixtureProbeCommand
     } elseif ($ChangeArea -eq "manual-html") {
         $manualHtmlFlowCommand
     } elseif ($ChangeArea -eq "attached-html") {
-        $attachedHtmlFlowCommand
+        $attachedHtmlTargetBundleFlowCommand
     } else {
         $null
     }
@@ -557,8 +577,14 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     if ($ChangeArea -eq "google-attached-html") {
         Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
     }
+    if ($ChangeArea -eq "attached-html-target-bundle") {
+        Write-Host ("Surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
+    }
     if ($ChangeArea -eq "local-html-fixtures") {
         Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
+    }
+    if ($ChangeArea -eq "attached-html") {
+        Write-Host ("Bundle surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
     }
     if ($flowCommand) {
         Write-Host ("Flow helper: {0}" -f $flowCommand)
@@ -615,6 +641,10 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_saved_page_localhost_validation_surface.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-attached-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName local-html-fixtures"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-submit-path"
@@ -623,6 +653,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_trace_validation_surface.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-saved-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea local-html-fixtures"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
@@ -636,5 +667,7 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\loc
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
