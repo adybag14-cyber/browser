@@ -96,6 +96,25 @@ function New-CrossReferenceMismatch {
     }
 }
 
+function New-StaleSummaryArtifactDetail {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Label,
+        [string]$Path,
+        [string]$ExpectedSummaryGeneratedAtUtc,
+        [string]$RecordedSummaryGeneratedAtUtc,
+        [string]$RepairCommand
+    )
+
+    [pscustomobject]@{
+        label = $Label
+        path = $Path
+        expected_summary_generated_at_utc = $ExpectedSummaryGeneratedAtUtc
+        recorded_summary_generated_at_utc = $RecordedSummaryGeneratedAtUtc
+        repair_command = $RepairCommand
+    }
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -170,6 +189,39 @@ $preferredStaleRepairCommand = if ($staleCrossReferenceDetected) {
     $null
 }
 
+$summaryGeneratedAtUtc = $summary.generated_at_utc
+$staleSummaryArtifactDetails = [System.Collections.Generic.List[object]]::new()
+$guideSummaryGeneratedAtUtc = if ($guideRecord -and -not [string]::IsNullOrWhiteSpace($guideRecord.generated_at_utc)) {
+    $guideRecord.generated_at_utc
+} else {
+    $null
+}
+$boundarySummaryGeneratedAtUtc = if ($boundaryRecord -and -not [string]::IsNullOrWhiteSpace($boundaryRecord.generated_at_utc)) {
+    $boundaryRecord.generated_at_utc
+} else {
+    $null
+}
+$handoffSummaryGeneratedAtUtc = if ($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_generated_at_utc)) {
+    $handoffRecord.summary_generated_at_utc
+} else {
+    $null
+}
+if (-not [string]::IsNullOrWhiteSpace($summaryGeneratedAtUtc)) {
+    if ($guideRecord -and $guideSummaryGeneratedAtUtc -and $guideSummaryGeneratedAtUtc -ne $summaryGeneratedAtUtc) {
+        $staleSummaryArtifactDetails.Add((New-StaleSummaryArtifactDetail -Label 'guide' -Path $guidePath -ExpectedSummaryGeneratedAtUtc $summaryGeneratedAtUtc -RecordedSummaryGeneratedAtUtc $guideSummaryGeneratedAtUtc -RepairCommand $refreshChainCommand)) | Out-Null
+    }
+    if ($boundaryRecord -and $boundarySummaryGeneratedAtUtc -and $boundarySummaryGeneratedAtUtc -ne $summaryGeneratedAtUtc) {
+        $staleSummaryArtifactDetails.Add((New-StaleSummaryArtifactDetail -Label 'boundary' -Path $boundaryPath -ExpectedSummaryGeneratedAtUtc $summaryGeneratedAtUtc -RecordedSummaryGeneratedAtUtc $boundarySummaryGeneratedAtUtc -RepairCommand $refreshChainCommand)) | Out-Null
+    }
+    if ($handoffRecord -and $handoffSummaryGeneratedAtUtc -and $handoffSummaryGeneratedAtUtc -ne $summaryGeneratedAtUtc) {
+        $staleSummaryArtifactDetails.Add((New-StaleSummaryArtifactDetail -Label 'handoff' -Path $handoffPath -ExpectedSummaryGeneratedAtUtc $summaryGeneratedAtUtc -RecordedSummaryGeneratedAtUtc $handoffSummaryGeneratedAtUtc -RepairCommand $refreshChainCommand)) | Out-Null
+    }
+}
+$staleSummaryArtifactDetected = $staleSummaryArtifactDetails.Count -gt 0
+$staleSummaryArtifactLabels = @($staleSummaryArtifactDetails | ForEach-Object { $_.label })
+$staleSummaryArtifactPaths = @($staleSummaryArtifactDetails | ForEach-Object { $_.path })
+$staleSummaryArtifactRepairCommands = @($staleSummaryArtifactDetails | ForEach-Object { $_.repair_command } | Select-Object -Unique)
+
 $phaseResults = @($summary.phase_results)
 $phaseStatuses = [ordered]@{}
 $phaseHealth = [System.Collections.Generic.List[object]]::new()
@@ -222,7 +274,7 @@ foreach ($phaseRecord in $phaseHealth) {
 }
 
 $firstFailedPhaseHealth = @($phaseHealth | Where-Object { $_.name -eq $summary.first_failed_phase } | Select-Object -First 1)
-$nextArtifactToOpen = if ($staleCrossReferenceDetected) {
+$nextArtifactToOpen = if ($staleCrossReferenceDetected -or $staleSummaryArtifactDetected) {
     $SummaryPath
 } elseif (-not $summaryRecordsHandoffArtifactPath -and $handoffRef.exists) {
     $handoffPath
@@ -248,8 +300,8 @@ $nextArtifactToOpen = if ($staleCrossReferenceDetected) {
     $SummaryPath
 }
 
-$recommendedCommand = if ($staleCrossReferenceDetected) {
-    $preferredStaleRepairCommand
+$recommendedCommand = if ($staleCrossReferenceDetected -or $staleSummaryArtifactDetected) {
+    $refreshChainCommand
 } elseif ($coreMissingLabels -contains 'handoff') {
     $refreshChainCommand
 } elseif ($handoffRecord -and $handoffRecord.recommended_command) {
@@ -261,7 +313,7 @@ $recommendedCommand = if ($staleCrossReferenceDetected) {
 } else {
     $null
 }
-$recommendedGuideCommand = if ($staleCrossReferenceDetected) {
+$recommendedGuideCommand = if ($staleCrossReferenceDetected -or $staleSummaryArtifactDetected) {
     $handoffGuideCommand
 } elseif ($coreMissingLabels -contains 'handoff') {
     $handoffGuideCommand
@@ -276,6 +328,8 @@ $recommendedGuideCommand = if ($staleCrossReferenceDetected) {
 }
 $nextFocus = if ($staleCrossReferenceDetected) {
     'Refresh the saved issue #3 handoff chain so the handoff, manifest, guide, and boundary helpers all point at the current recommended-validation summary before trusting the next replay handoff.'
+} elseif ($staleSummaryArtifactDetected) {
+    'Refresh the saved issue #3 helper artifacts so the guide, boundary, and handoff outputs match the current recommended-validation summary generation before trusting the next replay handoff.'
 } elseif (-not $summaryRecordsHandoffArtifactPath) {
     'The summary artifact does not record its handoff JSON path yet, so open the saved handoff artifact directly and keep the refresh-chain helper ready until the runner catches up.'
 } elseif ($coreMissingLabels -contains 'handoff') {
@@ -290,23 +344,23 @@ $nextFocus = if ($staleCrossReferenceDetected) {
     'Open the first failing phase artifact before widening back out to the full issue #3 replay.'
 }
 
-$status = if ($coreMissing.Count -eq 0 -and $totalPhaseMissingCount -eq 0 -and -not $staleCrossReferenceDetected) {
+$status = if ($coreMissing.Count -eq 0 -and $totalPhaseMissingCount -eq 0 -and -not $staleCrossReferenceDetected -and -not $staleSummaryArtifactDetected) {
     'complete'
 } elseif (-not $summaryRef.exists) {
     'missing-summary'
 } elseif ($coreMissing.Count -gt 0) {
     'missing-core-artifacts'
-} elseif ($staleCrossReferenceDetected) {
-    'stale-cross-references'
+} elseif ($staleCrossReferenceDetected -or $staleSummaryArtifactDetected) {
+    'stale-helper-artifacts'
 } else {
     'missing-phase-artifacts'
 }
 
 $bundle = [ordered]@{
     issue = 'Google issue #3 validation artifact bundle'
-    purpose = 'Check whether the saved recommended-validation artifact family is complete, including the handoff artifact, call out stale cross-references between the summary and helper artifacts, and point the next Windows headed replay at the best artifact to open first.'
+    purpose = 'Check whether the saved recommended-validation artifact family is complete, including the handoff artifact, call out stale cross-references or stale summary-derived helper state, and point the next Windows headed replay at the best artifact to open first.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
-    summary_generated_at_utc = $summary.generated_at_utc
+    summary_generated_at_utc = $summaryGeneratedAtUtc
     artifact_bundle_path = $ArtifactPath
     repo_root = $repoRoot
     artifact_root = $artifactRoot
@@ -331,6 +385,12 @@ $bundle = [ordered]@{
     stale_cross_reference_paths = @($staleCrossReferencePaths)
     stale_cross_reference_details = @($crossReferenceMismatches)
     stale_cross_reference_repair_commands = @($staleCrossReferenceRepairCommands)
+    stale_summary_artifact_detected = [bool]$staleSummaryArtifactDetected
+    stale_summary_artifact_count = $staleSummaryArtifactDetails.Count
+    stale_summary_artifact_labels = @($staleSummaryArtifactLabels)
+    stale_summary_artifact_paths = @($staleSummaryArtifactPaths)
+    stale_summary_artifact_details = @($staleSummaryArtifactDetails)
+    stale_summary_artifact_repair_commands = @($staleSummaryArtifactRepairCommands)
     handoff_artifact_path = $handoffPath
     handoff_artifact_exists = [bool]$handoffRef.exists
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
@@ -362,6 +422,8 @@ $bundle = [ordered]@{
         $firstFailedPhaseHealth[0].missing_paths[0]
     } elseif ($staleCrossReferenceDetected) {
         $staleCrossReferencePaths[0]
+    } elseif ($staleSummaryArtifactDetected) {
+        $staleSummaryArtifactPaths[0]
     } else {
         $null
     }
@@ -419,6 +481,7 @@ Write-Host ("Phase log missing: {0}" -f $bundle.phase_log_missing_count)
 Write-Host ("Phase JSON missing: {0}" -f $bundle.phase_json_missing_count)
 Write-Host ("Phase artifact gaps: {0}" -f $bundle.phase_missing_artifact_count)
 Write-Host ("Stale refs: {0}" -f $bundle.stale_cross_reference_count)
+Write-Host ("Stale summary helpers: {0}" -f $bundle.stale_summary_artifact_count)
 Write-Host ("Handoff exists: {0}" -f $bundle.handoff_artifact_exists)
 Write-Host ("Summary handoff path recorded: {0}" -f $bundle.summary_records_handoff_artifact_path)
 if ($bundle.summary_handoff_artifact_path) {
@@ -442,6 +505,16 @@ if ($bundle.stale_cross_reference_detected) {
         Write-Host ("- {0}: {1}" -f $mismatch.label, $mismatch.path)
         Write-Host ("  Recorded summary: {0}" -f $mismatch.recorded_summary_path)
         Write-Host ("  Refresh: {0}" -f $mismatch.repair_command)
+    }
+}
+if ($bundle.stale_summary_artifact_detected) {
+    Write-Host ''
+    Write-Host 'Stale summary-derived helpers:'
+    foreach ($detail in $bundle.stale_summary_artifact_details) {
+        Write-Host ("- {0}: {1}" -f $detail.label, $detail.path)
+        Write-Host ("  Expected summary timestamp: {0}" -f $detail.expected_summary_generated_at_utc)
+        Write-Host ("  Recorded summary timestamp: {0}" -f $detail.recorded_summary_generated_at_utc)
+        Write-Host ("  Refresh: {0}" -f $detail.repair_command)
     }
 }
 if (-not $bundle.summary_records_handoff_artifact_path) {
@@ -490,9 +563,10 @@ if ($bundle.recommended_runner_command) {
 if ($bundle.refresh_chain_command) {
     Write-Host ("Refresh chain: {0}" -f $bundle.refresh_chain_command)
 }
-if ($bundle.stale_cross_reference_detected -and $bundle.stale_cross_reference_repair_commands.Count -gt 0) {
+if (($bundle.stale_cross_reference_detected -and $bundle.stale_cross_reference_repair_commands.Count -gt 0) -or ($bundle.stale_summary_artifact_detected -and $bundle.stale_summary_artifact_repair_commands.Count -gt 0)) {
+    $repairCommands = @($bundle.stale_cross_reference_repair_commands + $bundle.stale_summary_artifact_repair_commands | Select-Object -Unique)
     Write-Host 'Refresh order:'
-    foreach ($repairCommand in $bundle.stale_cross_reference_repair_commands) {
+    foreach ($repairCommand in $repairCommands) {
         Write-Host ("- {0}" -f $repairCommand)
     }
 }
