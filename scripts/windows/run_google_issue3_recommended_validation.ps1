@@ -141,12 +141,12 @@ function Convert-ToRepoRelativeArtifactPath {
         [string]$Path
     )
 
-    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\', '/')
+    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\\', '/')
     $normalizedPath = [System.IO.Path]::GetFullPath($Path)
     if ($normalizedPath.StartsWith($normalizedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\', '/')
+        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\\', '/')
         if (-not [string]::IsNullOrWhiteSpace($relative)) {
-            return $relative -replace '\', '/'
+            return $relative -replace '\\', '/'
         }
     }
 
@@ -429,6 +429,9 @@ function Show-RecommendedSummary {
         if ($GuideRecord.recommended_command) {
             Write-Host ("Run next: {0}" -f $GuideRecord.recommended_command)
         }
+        if ($GuideRecord.manual_fixture_replay_command) {
+            Write-Host ("Manual replay: {0}" -f $GuideRecord.manual_fixture_replay_command)
+        }
     }
 }
 
@@ -538,6 +541,9 @@ function Write-RecommendedManifestArtifact {
         first_failed_phase_primary_json_artifact_path = if ($failedPhase.Count -gt 0) { $failedPhase[0].primary_json_artifact_path } else { $null }
         recommended_command = if ($GuideRecord) { $GuideRecord.recommended_command } else { $null }
         recommended_guide_command = if ($GuideRecord) { $GuideRecord.recommended_guide_command } else { $null }
+        manual_fixture_replay_available = if ($GuideRecord) { [bool]$GuideRecord.manual_fixture_replay_available } else { $false }
+        manual_fixture_replay_command = if ($GuideRecord) { $GuideRecord.manual_fixture_replay_command } else { $null }
+        manual_fixture_replay_reason = if ($GuideRecord) { $GuideRecord.manual_fixture_replay_reason } else { $null }
         next_focus = if ($GuideRecord) { $GuideRecord.next_focus } else { $null }
         phase_results = @($PhaseResults | ForEach-Object {
             [pscustomobject]@{
