@@ -9,7 +9,8 @@ param(
     [switch]$GoogleStyle,
     [switch]$SummaryOnly,
     [switch]$Wait,
-    [switch]$LeaveServerRunning
+    [switch]$LeaveServerRunning,
+    [switch]$AllowMissingLocalAssets
 )
 
 Set-StrictMode -Version Latest
@@ -68,6 +69,9 @@ $assetClosureArgs = @{
 if ($GoogleStyle) {
     $assetClosureArgs["GoogleStyle"] = $true
 }
+if ($AllowMissingLocalAssets) {
+    $assetClosureArgs["AllowMissingAssets"] = $true
+}
 
 if ($SummaryOnly) {
     $assetClosureArgs["Json"] = $true
@@ -123,7 +127,11 @@ if (-not $SummaryOnly) {
     Write-Host "Staging mode: sanitized attached HTML inputs"
     Write-Host "Runner: .\\scripts\\windows\\run_sanitized_saved_page_localhost_validation.ps1"
     Write-Host ""
-    Write-Host "Preflight: attached HTML validation surface and deep attached-asset closure audit passed before launch."
+    if ($AllowMissingLocalAssets) {
+        Write-Host "Preflight: attached HTML validation surface passed and deep attached-asset closure audit is advisory in degraded localhost mode."
+    } else {
+        Write-Host "Preflight: attached HTML validation surface and deep attached-asset closure audit passed before launch."
+    }
     Write-Host ""
 }
 
