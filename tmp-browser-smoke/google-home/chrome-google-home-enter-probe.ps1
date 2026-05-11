@@ -123,7 +123,7 @@ try {
   $focusedTitle = Wait-ForTitleLike $hwnd "FOCUSED*" $TitleWaitAttempts $PollMilliseconds
   if ($null -eq $focusedTitle) { throw "query input did not focus after click" }
 
-  Send-SmokeText $InputText
+  Send-SmokeAsciiText $InputText
   $typedTitle = Wait-ForTitleLike $hwnd (Get-LikePrefixPattern -Prefix "TYPED:" -Value $InputText) $TitleWaitAttempts $PollMilliseconds
   $typedWorked = $null -ne $typedTitle
   if (-not $typedWorked) { throw "query input did not receive typed text" }
