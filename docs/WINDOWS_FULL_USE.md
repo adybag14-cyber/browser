@@ -123,6 +123,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle -LeaveOpen
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_validation.ps1
@@ -159,6 +160,7 @@ Routing rules:
 - Use `run_google_issue3_recommended_validation.ps1` when you want the one-command issue `#3` flow to include the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
 - Use `check_google_form_controls_enter_order_validation_surface.ps1` before `show_google_form_controls_enter_order_validation_flow.ps1` or `run_google_form_controls_enter_order_validation.ps1` so missing docs, helper scripts, or the raw dedicated probe fail fast.
 - Use `show_google_form_controls_enter_order_validation_flow.ps1` when you want only the dedicated shared form-controls Enter-order gate printed and parameterized before you run it.
+- Use `show_google_form_controls_enter_order_trace_guide.ps1` when you want the dedicated probe markers translated into quick failure stages without reopening the longer read-first markdown note.
 - Use `run_google_form_controls_enter_order_validation.ps1` when you want the dedicated shared form-controls Enter-order gate by itself after the broader shared Enter-order ladder or when narrowing the last shared keypress-before-submit check.
 - Use `run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle` when you want the one-command issue `#3` flow to finish by auto-discovering current-run attached HTML under `user_files/` and `agent_files/`, while preferring a Google-like page first.
 - Use `run_google_shared_enter_order_validation.ps1` when you want the shared issue `#3` enter-order stack by itself, including the reduced-home keypress-before-submit probe, the stricter localhost wrapper, and the shared form-controls gate.
