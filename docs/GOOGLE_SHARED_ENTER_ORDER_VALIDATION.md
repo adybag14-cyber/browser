@@ -8,6 +8,9 @@ This note is intentionally narrower than `docs/HEADED_GOOGLE_VALIDATION_WINDOWS.
 It focuses on the shared Enter-order ladder that sits between the reduced
 localhost Google probes and the later manual or live-Google follow-up.
 
+Use `docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md` when you only need
+the last shared form-controls end-state proof without printing the wider ladder.
+
 ## Start with the printed flow
 
 Use the dedicated flow helper first when you want the current command order
@@ -71,6 +74,9 @@ powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-investigatio
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
 ```
+
+Use `docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md` when you want this
+last gate broken out as its own read-first step before you widen again.
 
 ## What success looks like
 
