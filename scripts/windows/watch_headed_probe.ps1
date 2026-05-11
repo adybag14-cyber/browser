@@ -4,6 +4,7 @@ param(
     [string]$BrowserExe,
     [string]$Url = "http://127.0.0.1:9582/src/browser/tests/page/google_home_title_probe.html",
     [string]$ExpectedTitleContains = "BOUND|",
+    [string[]]$ExpectedTitleContainsAny = @(),
     [string]$ExpectedTypedTitleContains,
     [string]$ExpectedEnterTitleContains,
     [string]$InputText,
@@ -39,6 +40,19 @@ if (Test-Path -LiteralPath $stdoutPath) { Remove-Item -LiteralPath $stdoutPath -
 if (Test-Path -LiteralPath $stderrPath) { Remove-Item -LiteralPath $stderrPath -Force }
 if (Test-Path -LiteralPath $tracePath) { Remove-Item -LiteralPath $tracePath -Force }
 
+$readyMarkers = New-Object System.Collections.Generic.List[string]
+if (-not [string]::IsNullOrWhiteSpace($ExpectedTitleContains)) {
+    $readyMarkers.Add($ExpectedTitleContains)
+}
+foreach ($marker in $ExpectedTitleContainsAny) {
+    if ([string]::IsNullOrWhiteSpace($marker)) {
+        continue
+    }
+    if (-not $readyMarkers.Contains($marker)) {
+        $readyMarkers.Add($marker)
+    }
+}
+
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = $BrowserExe
 $psi.Arguments = "browse --browser_mode headed --window_width 1366 --window_height 768 `"$Url`""
@@ -56,7 +70,7 @@ $stderrTask = $process.StandardError.ReadToEndAsync()
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $lastTitle = ""
-$matchedReady = [string]::IsNullOrWhiteSpace($ExpectedTitleContains)
+$matchedReady = ($readyMarkers.Count -eq 0)
 $matchedTyped = [string]::IsNullOrEmpty($InputText)
 $matchedEnter = -not $SendEnter
 $inputSent = [string]::IsNullOrEmpty($InputText)
@@ -65,8 +79,8 @@ $preparedWindow = $false
 $trace = New-Object System.Collections.Generic.List[object]
 
 Write-Host ("Watching headed probe at {0}" -f $Url)
-if ($ExpectedTitleContains) {
-    Write-Host ("Expected ready title marker: {0}" -f $ExpectedTitleContains)
+if ($readyMarkers.Count -gt 0) {
+    Write-Host ("Expected ready title markers: {0}" -f ($readyMarkers -join " | "))
 }
 if ($InputText) {
     Write-Host ("Input text: {0}" -f $InputText)
@@ -108,12 +122,17 @@ while ((Get-Date) -lt $deadline) {
         Write-Host ("[{0}] {1}" -f $stamp, $title)
     }
 
-    if (-not $matchedReady -and $title -and $title.Contains($ExpectedTitleContains)) {
-        $matchedReady = $true
+    if (-not $matchedReady -and $title) {
+        foreach ($marker in $readyMarkers) {
+            if ($title.Contains($marker)) {
+                $matchedReady = $true
+                break
+            }
+        }
     }
 
     if ($matchedReady -and -not $inputSent) {
-        Send-SmokeText $InputText
+        Send-SmokeAsciiText $InputText
         $inputSent = $true
         if ([string]::IsNullOrWhiteSpace($ExpectedTypedTitleContains)) {
             $matchedTyped = $true
@@ -155,6 +174,7 @@ $stderrTask.Result | Set-Content -Path $stderrPath -Encoding Ascii
 $result = [pscustomobject]@{
     url = $Url
     expected_title_contains = $ExpectedTitleContains
+    expected_title_contains_any = $readyMarkers
     expected_typed_title_contains = $ExpectedTypedTitleContains
     expected_enter_title_contains = $ExpectedEnterTitleContains
     input_text = $InputText
