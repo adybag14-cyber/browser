@@ -30,12 +30,16 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
+$surfaceCheck = Join-Path $scriptRoot "check_google_shared_enter_order_validation_surface.ps1"
 $sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
 $googleTitleProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1"
 $reducedHomeKeypressProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1"
 $localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
 $formControlsEnterOrderRunner = Join-Path $scriptRoot "run_google_form_controls_enter_order_validation.ps1"
 
+if (-not (Test-Path -LiteralPath $surfaceCheck -PathType Leaf)) {
+    throw "Shared Google Enter-order surface checker not found: $surfaceCheck"
+}
 if (-not (Test-Path -LiteralPath $sharedRunner -PathType Leaf)) {
     throw "Shared Google validation runner not found: $sharedRunner"
 }
@@ -50,6 +54,10 @@ if (-not (Test-Path -LiteralPath $localhostEnterOrderProbe -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $formControlsEnterOrderRunner -PathType Leaf)) {
     throw "Dedicated shared form-controls Google enter-order runner not found: $formControlsEnterOrderRunner"
+}
+
+$surfaceCheckArgs = @{
+    RepoRoot = $RepoRoot
 }
 
 $sharedArgs = @{
@@ -128,6 +136,11 @@ Write-Host ("Reduced-home keypress port: {0}" -f $ReducedHomeKeypressPort)
 Write-Host ("Shared Enter-order port: {0}" -f $SharedEnterOrderPort)
 Write-Host ""
 
+Write-Host "=== google-shared-enter-order-surface ==="
+Write-Host ("Script: {0}" -f $surfaceCheck)
+& $surfaceCheck @surfaceCheckArgs
+
+Write-Host ""
 & $sharedRunner @sharedArgs
 
 Write-Host ""
@@ -151,4 +164,4 @@ Write-Host ("Script: {0}" -f $formControlsEnterOrderRunner)
 & $formControlsEnterOrderRunner @formControlsEnterOrderArgs
 
 Write-Host ""
-Write-Host "Next: if the shared gates, localhost title probe, reduced-home keypress-before-submit probe, dedicated shared form-controls Google enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
+Write-Host "Next: if the shared surface check, shared gates, localhost title probe, reduced-home keypress-before-submit probe, dedicated shared form-controls Google enter-order probe, and localhost Enter-order wrapper stay green, move on to the smallest live Google manual pass."
