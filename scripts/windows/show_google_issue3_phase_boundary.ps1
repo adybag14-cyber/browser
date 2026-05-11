@@ -27,6 +27,32 @@ function Resolve-RepoRoot([string]$StartPath) {
     }
 }
 
+function Resolve-ArtifactCandidatePath {
+    param(
+        [string]$ConfiguredPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$FallbackName
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ConfiguredPath)) {
+        return $ConfiguredPath
+    }
+
+    return Join-Path $ArtifactRoot $FallbackName
+}
+
+function Read-ArtifactJson {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+}
+
 function Get-PhaseReplayCommand([string]$PhaseName) {
     if ([string]::IsNullOrWhiteSpace($PhaseName)) {
         return $null
@@ -72,9 +98,13 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
+    $summary.artifact_root
+} else {
+    Split-Path -Parent $SummaryPath
+}
 if (-not $ArtifactPath) {
-    $ArtifactRoot = Split-Path -Parent $SummaryPath
-    $ArtifactPath = Join-Path $ArtifactRoot "google-issue3-phase-boundary.json"
+    $ArtifactPath = Join-Path $artifactRoot "google-issue3-phase-boundary.json"
 }
 
 $phaseResults = @($summary.phase_results)
@@ -90,7 +120,7 @@ $guideArtifactError = $null
 $guideArtifactPath = $summary.guide_artifact_path
 if (-not [string]::IsNullOrWhiteSpace($guideArtifactPath) -and (Test-Path -LiteralPath $guideArtifactPath -PathType Leaf)) {
     try {
-        $guideRecord = Get-Content -LiteralPath $guideArtifactPath -Raw | ConvertFrom-Json
+        $guideRecord = Read-ArtifactJson $guideArtifactPath
     } catch {
         $guideArtifactError = $_.Exception.Message
     }
@@ -98,17 +128,65 @@ if (-not [string]::IsNullOrWhiteSpace($guideArtifactPath) -and (Test-Path -Liter
     $guideArtifactError = "Guide artifact not found: $guideArtifactPath"
 }
 
-$boundaryFocus = if ($firstFailed) {
-    "Compare the last passing phase artifact with the first failing phase artifact before widening back out to a broader issue #3 replay."
-} elseif ($lastPassed) {
-    "Every recorded phase passed, so the next replay can widen to attached HTML or live Google evidence gathering."
+$artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
+$artifactBundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
+$artifactBundleExists = Test-Path -LiteralPath $artifactBundlePath -PathType Leaf
+$artifactBundleRecord = $null
+$artifactBundleError = if ($summary.artifact_bundle_error) { $summary.artifact_bundle_error } else { $null }
+if ($artifactBundleExists) {
+    try {
+        $artifactBundleRecord = Read-ArtifactJson $artifactBundlePath
+    } catch {
+        $artifactBundleError = $_.Exception.Message
+    }
+}
+$artifactBundleStatus = if ($artifactBundleRecord -and $artifactBundleRecord.status) {
+    $artifactBundleRecord.status
+} elseif ($artifactBundleError) {
+    'helper-error'
+} elseif ($artifactBundleExists) {
+    'present-unreadable'
 } else {
-    "No passing phase was recorded yet, so start at the earliest recommended phase and repair the first checkpoint before widening out."
+    'missing'
+}
+$artifactBundleNeedsRepair = $artifactBundleStatus -ne 'complete'
+$artifactBundleRecommendedCommand = if ($artifactBundleRecord -and $artifactBundleRecord.recommended_command) {
+    $artifactBundleRecord.recommended_command
+} elseif ($guideRecord) {
+    $guideRecord.recommended_command
+} else {
+    $null
+}
+$artifactBundleGuideCommand = if ($artifactBundleRecord -and $artifactBundleRecord.recommended_guide_command) {
+    $artifactBundleRecord.recommended_guide_command
+} elseif ($guideRecord) {
+    $guideRecord.recommended_guide_command
+} else {
+    $null
+}
+$artifactBundleReason = if ($artifactBundleError) {
+    'The saved artifact bundle could not be parsed cleanly, so reopen the current summary before trusting older boundary or guide output.'
+} elseif ($artifactBundleStatus -eq 'missing') {
+    'The bundle audit is missing for this summary, so reopen the current summary and refresh the helper chain before trusting the saved boundary handoff.'
+} elseif ($artifactBundleStatus -ne 'complete') {
+    "The saved artifact bundle reports '$artifactBundleStatus', so direct boundary users should return to the current summary until the handoff set is refreshed."
+} else {
+    'The saved artifact bundle agrees the current handoff set is complete, so the boundary artifact is safe to use as the next narrowing step.'
+}
+
+$boundaryFocus = if ($artifactBundleNeedsRepair) {
+    'Refresh the saved artifact-bundle handoff so the manifest, guide, boundary, and per-phase artifacts all point at the current summary before widening back out.'
+} elseif ($firstFailed) {
+    'Compare the last passing phase artifact with the first failing phase artifact before widening back out to a broader issue #3 replay.'
+} elseif ($lastPassed) {
+    'Every recorded phase passed, so the next replay can widen to attached HTML or live Google evidence gathering.'
+} else {
+    'No passing phase was recorded yet, so start at the earliest recommended phase and repair the first checkpoint before widening out.'
 }
 
 $boundary = [ordered]@{
     issue = 'Google issue #3 phase boundary'
-    purpose = 'Persist the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, surface the next rerun command from the saved guide artifact when available, and expose direct replay commands for the boundary phases.'
+    purpose = 'Persist the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, but route direct boundary users back to the current summary when the saved artifact-bundle audit says the helper chain is incomplete or stale.'
     summary_path = $SummaryPath
     boundary_artifact_path = $ArtifactPath
     generated_at_utc = $summary.generated_at_utc
@@ -120,6 +198,15 @@ $boundary = [ordered]@{
     manifest_artifact_path = $summary.manifest_artifact_path
     guide_artifact_path = $guideArtifactPath
     guide_artifact_error = $guideArtifactError
+    artifact_bundle_path = $artifactBundlePath
+    artifact_bundle_exists = [bool]$artifactBundleExists
+    artifact_bundle_status = $artifactBundleStatus
+    artifact_bundle_error = $artifactBundleError
+    artifact_bundle_reason = $artifactBundleReason
+    artifact_bundle_next_artifact_to_open = if ($artifactBundleRecord) { $artifactBundleRecord.next_artifact_to_open } else { $null }
+    artifact_bundle_recommended_command = $artifactBundleRecommendedCommand
+    artifact_bundle_recommended_guide_command = $artifactBundleGuideCommand
+    artifact_bundle_first_missing_path = if ($artifactBundleRecord) { $artifactBundleRecord.first_missing_path } else { $null }
     last_passed_phase = if ($lastPassed) { $lastPassed.name } else { $null }
     last_passed_phase_log_path = if ($lastPassed) { $lastPassed.log_path } else { $null }
     last_passed_phase_primary_json_artifact_path = if ($lastPassed) { $lastPassed.primary_json_artifact_path } else { $null }
@@ -132,16 +219,42 @@ $boundary = [ordered]@{
     first_failed_phase_artifact_paths = if ($firstFailed) { @($firstFailed.artifact_paths) } else { @() }
     first_failed_phase_replay_command = $firstFailedReplayCommand
     boundary_focus = $boundaryFocus
-    next_focus = if ($guideRecord -and $guideRecord.next_focus) {
+    next_focus = if ($artifactBundleNeedsRepair) {
+        if ($artifactBundleRecord -and $artifactBundleRecord.next_focus) {
+            $artifactBundleRecord.next_focus
+        } else {
+            $boundaryFocus
+        }
+    } elseif ($guideRecord -and $guideRecord.next_focus) {
         $guideRecord.next_focus
     } else {
         $boundaryFocus
     }
-    recommended_command = if ($guideRecord) { $guideRecord.recommended_command } else { $null }
-    recommended_guide_command = if ($guideRecord) { $guideRecord.recommended_guide_command } else { $null }
+    recommended_command = if ($artifactBundleNeedsRepair) {
+        $artifactBundleRecommendedCommand
+    } elseif ($guideRecord) {
+        $guideRecord.recommended_command
+    } else {
+        $null
+    }
+    recommended_guide_command = if ($artifactBundleNeedsRepair) {
+        $artifactBundleGuideCommand
+    } elseif ($guideRecord) {
+        $guideRecord.recommended_guide_command
+    } else {
+        $null
+    }
     manual_fixture_replay_command = if ($guideRecord) { $guideRecord.manual_fixture_replay_command } else { $null }
-    reason = if ($guideRecord) { $guideRecord.reason } else { $null }
-    next_artifact_to_open = if ($firstFailed -and $firstFailed.primary_json_artifact_path) {
+    reason = if ($artifactBundleNeedsRepair) {
+        $artifactBundleReason
+    } elseif ($guideRecord) {
+        $guideRecord.reason
+    } else {
+        $null
+    }
+    next_artifact_to_open = if ($artifactBundleNeedsRepair) {
+        $SummaryPath
+    } elseif ($firstFailed -and $firstFailed.primary_json_artifact_path) {
         $firstFailed.primary_json_artifact_path
     } elseif ($lastPassed -and $lastPassed.primary_json_artifact_path) {
         $lastPassed.primary_json_artifact_path
@@ -177,6 +290,19 @@ if ($boundary.guide_artifact_path) {
 }
 if ($boundary.guide_artifact_error) {
     Write-Host ("Guide error: {0}" -f $boundary.guide_artifact_error)
+}
+Write-Host ("Bundle cmd: {0}" -f $artifactBundleCommand)
+Write-Host ("Bundle:    {0}" -f $boundary.artifact_bundle_path)
+Write-Host ("Bundle exists: {0}" -f $boundary.artifact_bundle_exists)
+Write-Host ("Bundle status: {0}" -f $boundary.artifact_bundle_status)
+if ($boundary.artifact_bundle_error) {
+    Write-Host ("Bundle error: {0}" -f $boundary.artifact_bundle_error)
+}
+if ($boundary.artifact_bundle_next_artifact_to_open) {
+    Write-Host ("Bundle open: {0}" -f $boundary.artifact_bundle_next_artifact_to_open)
+}
+if ($boundary.artifact_bundle_first_missing_path) {
+    Write-Host ("Bundle first missing: {0}" -f $boundary.artifact_bundle_first_missing_path)
 }
 Write-Host ''
 Write-Host ("Last pass: {0}" -f $(if ($boundary.last_passed_phase) { $boundary.last_passed_phase } else { 'none' }))
