@@ -26,6 +26,32 @@ function Resolve-RepoRoot([string]$StartPath) {
     }
 }
 
+function Resolve-ArtifactCandidatePath {
+    param(
+        [string]$ConfiguredPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$FallbackName
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ConfiguredPath)) {
+        return $ConfiguredPath
+    }
+
+    return Join-Path $ArtifactRoot $FallbackName
+}
+
+function Read-ArtifactJson {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $ManifestPath) {
     $ManifestPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-manifest.json"
@@ -44,14 +70,53 @@ $probeTriageCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\window
 $phaseBoundaryCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1"
 $recommendedRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1"
 $artifactBundleCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1"
-$artifactRoot = if ($manifest.summary_path) {
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($manifest.artifact_root)) {
+    $manifest.artifact_root
+} elseif ($manifest.summary_path) {
     Split-Path -Parent $manifest.summary_path
 } else {
     Split-Path -Parent $ManifestPath
 }
-$artifactBundlePath = Join-Path $artifactRoot "google-issue3-validation-artifact-bundle.json"
+$artifactBundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifest.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-artifact-bundle.json"
 $artifactBundleExists = Test-Path -LiteralPath $artifactBundlePath -PathType Leaf
-$artifactBundleReason = "Run the artifact-bundle helper when you want one saved completeness audit across the summary, manifest, guide, boundary, and per-phase artifacts."
+$artifactBundleRecord = $null
+$artifactBundleError = if ($manifest.artifact_bundle_error) { $manifest.artifact_bundle_error } else { $null }
+if ($artifactBundleExists) {
+    try {
+        $artifactBundleRecord = Read-ArtifactJson $artifactBundlePath
+    } catch {
+        $artifactBundleError = $_.Exception.Message
+    }
+}
+$artifactBundleStatus = if ($artifactBundleRecord -and $artifactBundleRecord.status) {
+    $artifactBundleRecord.status
+} elseif ($artifactBundleError) {
+    "helper-error"
+} elseif ($artifactBundleExists) {
+    "present-unreadable"
+} else {
+    "missing"
+}
+$artifactBundleNeedsRepair = $artifactBundleStatus -ne "complete"
+$artifactBundleRecommendedCommand = if ($artifactBundleRecord -and $artifactBundleRecord.recommended_command) {
+    $artifactBundleRecord.recommended_command
+} else {
+    $recommendedRunnerCommand
+}
+$artifactBundleGuideCommand = if ($artifactBundleRecord -and $artifactBundleRecord.recommended_guide_command) {
+    $artifactBundleRecord.recommended_guide_command
+} else {
+    $summaryGuideCommand
+}
+$artifactBundleReason = if ($artifactBundleError) {
+    "The runner recorded an artifact-bundle generation error, so reopen the current summary before trusting the saved helper chain."
+} elseif ($artifactBundleStatus -eq "missing") {
+    "The recommended runner should auto-save the artifact bundle, so reopen the current summary and refresh the handoff files before following older helper output."
+} elseif ($artifactBundleStatus -ne "complete") {
+    "The auto-saved artifact bundle reports '$artifactBundleStatus', so trust the current summary first and refresh the helper named under Run before following older handoff files."
+} else {
+    "The auto-saved artifact bundle is the saved completeness audit across the summary, manifest, guide, boundary, and per-phase artifacts."
+}
 $boundaryRecord = $null
 $boundaryArtifactError = $null
 if (-not [string]::IsNullOrWhiteSpace($manifest.boundary_artifact_path) -and (Test-Path -LiteralPath $manifest.boundary_artifact_path -PathType Leaf)) {
@@ -68,6 +133,9 @@ $openNextReason = $null
 $openNext = if ($surfaceCheckFailed -and $manifest.surface_check_artifact_path) {
     $openNextReason = "surface-check-failed"
     $manifest.surface_check_artifact_path
+} elseif ($artifactBundleNeedsRepair -and $manifest.summary_path) {
+    $openNextReason = "artifact-bundle-needs-repair"
+    $manifest.summary_path
 } elseif ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
     $openNextReason = "phase-boundary-artifact"
     $boundaryRecord.next_artifact_to_open
@@ -87,19 +155,35 @@ $openNext = if ($surfaceCheckFailed -and $manifest.surface_check_artifact_path) 
 
 $nextFocus = if ($surfaceCheckFailed) {
     "Resolve the recommended-validation surface mismatch before replaying later issue #3 phases."
+} elseif ($artifactBundleNeedsRepair) {
+    if ($artifactBundleRecord -and $artifactBundleRecord.next_focus) {
+        $artifactBundleRecord.next_focus
+    } else {
+        "Refresh the saved artifact-bundle handoff so the manifest, guide, boundary, and per-phase artifacts all point at the current summary before widening back out."
+    }
 } else {
     $manifest.next_focus
 }
 
 $recommendedCommand = if ($surfaceCheckFailed) {
     $surfaceCheckCommand
+} elseif ($artifactBundleNeedsRepair) {
+    $artifactBundleRecommendedCommand
 } else {
     $manifest.recommended_command
 }
 
+$recommendedGuideCommand = if ($surfaceCheckFailed) {
+    $summaryGuideCommand
+} elseif ($artifactBundleNeedsRepair) {
+    $artifactBundleGuideCommand
+} else {
+    $manifest.recommended_guide_command
+}
+
 $report = [ordered]@{
     issue = "Google issue #3 validation manifest guide"
-    purpose = "Open the saved manifest first, summarize the current boundary, and surface the optional artifact-bundle audit when you need to verify the saved replay handoff set."
+    purpose = "Open the saved manifest first, summarize the current boundary, and surface the auto-saved artifact-bundle audit when you need to verify the saved replay handoff set."
     manifest_path = $ManifestPath
     generated_at_utc = $manifest.generated_at_utc
     completed = [bool]$manifest.completed
@@ -119,7 +203,13 @@ $report = [ordered]@{
     artifact_bundle_command = $artifactBundleCommand
     artifact_bundle_path = $artifactBundlePath
     artifact_bundle_exists = [bool]$artifactBundleExists
+    artifact_bundle_status = $artifactBundleStatus
+    artifact_bundle_error = $artifactBundleError
     artifact_bundle_reason = $artifactBundleReason
+    artifact_bundle_next_artifact_to_open = if ($artifactBundleRecord) { $artifactBundleRecord.next_artifact_to_open } else { $null }
+    artifact_bundle_recommended_command = $artifactBundleRecommendedCommand
+    artifact_bundle_recommended_guide_command = $artifactBundleGuideCommand
+    artifact_bundle_first_missing_path = if ($artifactBundleRecord) { $artifactBundleRecord.first_missing_path } else { $null }
     boundary_artifact_error = $boundaryArtifactError
     phase_artifact_root = $manifest.phase_artifact_root
     first_failed_phase = $manifest.first_failed_phase
@@ -133,7 +223,7 @@ $report = [ordered]@{
     next_artifact_reason = $openNextReason
     next_focus = $nextFocus
     recommended_command = $recommendedCommand
-    recommended_guide_command = $manifest.recommended_guide_command
+    recommended_guide_command = $recommendedGuideCommand
     manual_fixture_replay_command = $manifest.manual_fixture_replay_command
     manual_fixture_replay_available = [bool]$manifest.manual_fixture_replay_available
 }
@@ -177,6 +267,16 @@ Write-Host ("Broader cmd: {0}" -f $report.broader_runner_command)
 Write-Host ("Bundle cmd: {0}" -f $report.artifact_bundle_command)
 Write-Host ("Bundle target: {0}" -f $report.artifact_bundle_path)
 Write-Host ("Bundle exists: {0}" -f $report.artifact_bundle_exists)
+Write-Host ("Bundle status: {0}" -f $report.artifact_bundle_status)
+if ($report.artifact_bundle_error) {
+    Write-Host ("Bundle error: {0}" -f $report.artifact_bundle_error)
+}
+if ($report.artifact_bundle_next_artifact_to_open) {
+    Write-Host ("Bundle open: {0}" -f $report.artifact_bundle_next_artifact_to_open)
+}
+if ($report.artifact_bundle_first_missing_path) {
+    Write-Host ("Bundle first missing: {0}" -f $report.artifact_bundle_first_missing_path)
+}
 if ($report.boundary_artifact_error) {
     Write-Host ("Boundary error: {0}" -f $report.boundary_artifact_error)
 }
