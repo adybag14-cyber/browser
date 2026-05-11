@@ -234,6 +234,8 @@ $bundle = [ordered]@{
     first_failed_phase = $summary.first_failed_phase
     first_failed_phase_error = $summary.first_failed_phase_error
     surface_check_status = $summary.surface_check_status
+    guide_artifact_error = if ($summary.guide_artifact_error) { $summary.guide_artifact_error } else { $null }
+    boundary_artifact_error = if ($summary.boundary_artifact_error) { $summary.boundary_artifact_error } else { $null }
     phase_result_count = $phaseResults.Count
     core_missing_count = $coreMissing.Count
     core_missing_labels = @($coreMissing | ForEach-Object { $_.label })
@@ -242,8 +244,18 @@ $bundle = [ordered]@{
     phase_json_missing_count = $phaseJsonMissingCount
     phase_missing_artifact_count = $totalPhaseMissingCount
     next_artifact_to_open = $nextArtifactToOpen
+    boundary_last_passed_phase = if ($boundaryRecord) { $boundaryRecord.last_passed_phase } else { $null }
+    boundary_first_failed_phase = if ($boundaryRecord) { $boundaryRecord.first_failed_phase } else { $null }
+    boundary_focus = if ($boundaryRecord) { $boundaryRecord.boundary_focus } else { $null }
+    boundary_reason = if ($boundaryRecord) { $boundaryRecord.reason } else { $null }
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
+    recommended_runner_command = if ($guideRecord -and $guideRecord.broader_runner_command) {
+        $guideRecord.broader_runner_command
+    } else {
+        $recommendedCommand
+    }
+    phase_boundary_command = if ($guideRecord) { $guideRecord.phase_boundary_command } else { $null }
     next_focus = $nextFocus
     first_missing_path = if ($coreArtifactMissingPaths.Count -gt 0) {
         $coreArtifactMissingPaths[0]
@@ -252,6 +264,12 @@ $bundle = [ordered]@{
     } else {
         $null
     }
+    manual_fixture_replay_available = if ($guideRecord) { [bool]$guideRecord.manual_fixture_replay_available } else { $false }
+    manual_fixture_replay_command = if ($guideRecord) { $guideRecord.manual_fixture_replay_command } else { $null }
+    manual_asset_closure_command = if ($guideRecord) { $guideRecord.manual_asset_closure_command } else { $null }
+    manual_attached_html_flow_command = if ($guideRecord) { $guideRecord.manual_attached_html_flow_command } else { $null }
+    manual_attached_html_runner_command = if ($guideRecord) { $guideRecord.manual_attached_html_runner_command } else { $null }
+    manual_saved_page_flow_command = if ($guideRecord) { $guideRecord.manual_saved_page_flow_command } else { $null }
     core_artifacts = @($coreRefs)
     phase_health = @($phaseHealth)
     manifest_summary_path_matches = if ($manifestRecord -and $manifestRecord.summary_path) {
@@ -294,6 +312,12 @@ Write-Host ("Core missing: {0}" -f $bundle.core_missing_count)
 Write-Host ("Phase log missing: {0}" -f $bundle.phase_log_missing_count)
 Write-Host ("Phase JSON missing: {0}" -f $bundle.phase_json_missing_count)
 Write-Host ("Phase artifact gaps: {0}" -f $bundle.phase_missing_artifact_count)
+if ($bundle.guide_artifact_error) {
+    Write-Host ("Guide error: {0}" -f $bundle.guide_artifact_error)
+}
+if ($bundle.boundary_artifact_error) {
+    Write-Host ("Boundary error: {0}" -f $bundle.boundary_artifact_error)
+}
 Write-Host ""
 foreach ($reference in $coreRefs) {
     $marker = if ($reference.exists) { "OK" } else { "MISSING" }
@@ -305,13 +329,44 @@ if ($bundle.first_missing_path) {
 }
 Write-Host ""
 Write-Host ("Open:  {0}" -f $bundle.next_artifact_to_open)
+if ($bundle.boundary_last_passed_phase -or $bundle.boundary_first_failed_phase) {
+    Write-Host ("Boundary last pass: {0}" -f $(if ($bundle.boundary_last_passed_phase) { $bundle.boundary_last_passed_phase } else { 'none' }))
+    Write-Host ("Boundary first fail: {0}" -f $(if ($bundle.boundary_first_failed_phase) { $bundle.boundary_first_failed_phase } else { 'none' }))
+}
+if ($bundle.boundary_focus) {
+    Write-Host ("Boundary focus: {0}" -f $bundle.boundary_focus)
+}
+if ($bundle.boundary_reason) {
+    Write-Host ("Boundary reason: {0}" -f $bundle.boundary_reason)
+}
 if ($bundle.recommended_command) {
     Write-Host ("Run:   {0}" -f $bundle.recommended_command)
 }
 if ($bundle.recommended_guide_command) {
     Write-Host ("Guide: {0}" -f $bundle.recommended_guide_command)
 }
+if ($bundle.phase_boundary_command) {
+    Write-Host ("Phase boundary: {0}" -f $bundle.phase_boundary_command)
+}
+if ($bundle.recommended_runner_command) {
+    Write-Host ("Broader runner: {0}" -f $bundle.recommended_runner_command)
+}
 Write-Host ("Focus: {0}" -f $bundle.next_focus)
+if ($bundle.manual_fixture_replay_command) {
+    Write-Host ("Manual replay: {0}" -f $bundle.manual_fixture_replay_command)
+}
+if ($bundle.manual_asset_closure_command) {
+    Write-Host ("Asset check: {0}" -f $bundle.manual_asset_closure_command)
+}
+if ($bundle.manual_attached_html_flow_command) {
+    Write-Host ("Manual flow: {0}" -f $bundle.manual_attached_html_flow_command)
+}
+if ($bundle.manual_attached_html_runner_command) {
+    Write-Host ("Manual runner: {0}" -f $bundle.manual_attached_html_runner_command)
+}
+if ($bundle.manual_saved_page_flow_command) {
+    Write-Host ("Saved-page flow: {0}" -f $bundle.manual_saved_page_flow_command)
+}
 
 if ($status -ne "complete") {
     exit 1
