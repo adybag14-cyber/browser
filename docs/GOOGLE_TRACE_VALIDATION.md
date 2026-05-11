@@ -37,8 +37,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_trace_va
 
 That checker verifies this dedicated note, the broader issue `#3` notes that
 route into the trace slice, the Windows runbook, the shared suite router, the
-trace flow helper, the shared wrapper runner, and the reduced-home plus live
-trace probes.
+trace flow helper, the dedicated trace runner, the shared wrapper runner, and
+the reduced-home plus live trace probes.
 
 ## Start with the printed flow
 
@@ -52,6 +52,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_val
 That helper keeps the suite-router reminder, the dedicated surface check, the
 reduced-home trace probe, the shared wrapper trace phase, and the raw live
 probe on one small command surface before you widen again.
+
+## One-command trace runner
+
+When you want the dedicated trace surface check and the shared trace phase on
+one reusable command surface, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_trace_validation.ps1
+```
+
+Use this wrapper when the earlier bounded checkpoints are already green and you
+want the later reduced-home plus live Google trace handoff without restating
+the shared `-Phase trace` arguments by hand.
 
 ## Shared wrapper runner
 
@@ -85,8 +98,8 @@ wrapper layer, run:
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-investigation-next\chrome-google-home-input-probe.ps1
 ```
 
-Prefer the shared wrapper unless you specifically need the raw direct probe
-outputs from `tmp-browser-smoke\google-investigation-next`.
+Prefer the dedicated trace runner or shared wrapper unless you specifically need
+the raw direct probe outputs from `tmp-browser-smoke\google-investigation-next`.
 
 ## What success looks like
 
@@ -94,6 +107,8 @@ Treat the trace handoff as healthy only when all of these remain true:
 
 - the reduced-home trace probe still captures the expected focus, typing, and
   Enter-submit markers on the real headed surface
+- the dedicated trace runner still keeps the surface check and shared wrapper on
+  one small command surface
 - the shared wrapper trace phase still reaches the live Google capture path
   without missing helper or runner wiring
 - the raw live probe still remains available for deeper narrowing when the
