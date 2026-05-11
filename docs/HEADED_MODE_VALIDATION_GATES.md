@@ -116,13 +116,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1
 ```
 
 Treat that helper chain as the bounded handoff state for the next Windows replay:
 
-- read the saved summary guide first to see the first failing phase and its next command
+- read the saved summary guide first when you need the initial phase boundary from a fresh recommended-validation replay
 - use the manifest, artifact-bundle, refresh-status, and handoff helpers to confirm the saved JSON pointers still match the current summary before rerunning a narrower stage
-- if the refresh or handoff helper says the saved chain is stale, missing, or still using fallback pointers, run `refresh_google_issue3_validation_handoff_chain.ps1` before widening back out to a broader issue `#3` replay
+- if `show_google_issue3_validation_refresh_status.ps1` reports `status = ready` and `handoff_ready = True`, open the handoff helper next and follow its `next_artifact_to_open` path instead of widening back out
+- if the refresh-status helper says it is using manifest-backed refresh or handoff pointers for the current summary, treat the missing summary-side pointer fields as follow-up cleanup instead of a reason to restart a broader replay
+- if the refresh-status, artifact-bundle, or handoff helper says the chain is stale, missing, or still using an untrusted fallback pointer, run `refresh_google_issue3_validation_handoff_chain.ps1`, reopen the saved handoff JSON, and only then rerun the narrower step it names
 
 7. Only after the bounded gates are green and the saved helper chain agrees,
    use the live-trace and attached or saved-page follow-ups.
