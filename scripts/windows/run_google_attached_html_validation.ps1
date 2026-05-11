@@ -43,7 +43,9 @@ function Get-GoogleAttachedHtmlValidationMetadata {
         [Parameter(Mandatory = $true)]
         [bool]$LeaveServerRunning,
         [Parameter(Mandatory = $true)]
-        [object[]]$MissingAssetAudit
+        [object[]]$MissingAssetAudit,
+        [Parameter(Mandatory = $true)]
+        [bool]$AssetClosureChecked
     )
 
     $parameterMode = switch ($ParameterSetName) {
@@ -83,6 +85,7 @@ function Get-GoogleAttachedHtmlValidationMetadata {
         summary_only = $SummaryOnly
         wait = $Wait
         leave_server_running = $LeaveServerRunning
+        deep_asset_closure_checked = $AssetClosureChecked
         missing_asset_audit = $normalizedAssetAudit
         search_roots = if ($ParameterSetName -eq "Auto") { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) } else { @() }
     }
@@ -90,11 +93,15 @@ function Get-GoogleAttachedHtmlValidationMetadata {
 
 $runner = Join-Path $PSScriptRoot "run_localhost_html_validation_recommended.ps1"
 $surfaceChecker = Join-Path $PSScriptRoot "check_google_attached_html_validation_surface.ps1"
+$assetClosureChecker = Join-Path $PSScriptRoot "check_attached_html_local_asset_closure.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google-style attached HTML validation runner not found: $runner"
 }
 if (-not (Test-Path -LiteralPath $surfaceChecker -PathType Leaf)) {
     throw "Google-style attached HTML surface checker not found: $surfaceChecker"
+}
+if (-not (Test-Path -LiteralPath $assetClosureChecker -PathType Leaf)) {
+    throw "Attached HTML asset-closure checker not found: $assetClosureChecker"
 }
 
 $resolvedRepoRoot = if ($RepoRoot) {
@@ -148,13 +155,38 @@ $autoGoogleStyleFixture = if ($PSCmdlet.ParameterSetName -eq "Auto") {
 
 if ($PSCmdlet.ParameterSetName -eq "Auto" -and -not $autoGoogleStyleFixture) {
     $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $resolvedRepoRoot)
-    throw "No Google-style attached HTML files were found under: $($searchRoots -join '; '). Use .\scripts\windows\show_attached_html_validation_flow.ps1 or .\scripts\windows\run_localhost_html_validation_recommended.ps1 for non-Google attached pages."
+    throw "No Google-style attached HTML files were found under: $($searchRoots -join '; '). Use .\\scripts\\windows\\show_attached_html_validation_flow.ps1 or .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 for non-Google attached pages."
 }
 
 $missingAssetAudit = if ($PSCmdlet.ParameterSetName -eq "PageRoot") {
     @()
 } else {
     @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
+}
+
+$assetClosureChecked = $PSCmdlet.ParameterSetName -ne "PageRoot"
+$assetClosureSummary = $null
+if ($assetClosureChecked) {
+    $assetClosureArgs = @{
+        RepoRoot = $resolvedRepoRoot
+        GoogleStyle = $true
+        InputPath = $resolvedInputPath
+    }
+
+    if ($Json -or $SummaryOnly) {
+        $assetClosureArgs.Json = $true
+        $assetClosureJson = (& $assetClosureChecker @assetClosureArgs) -join [Environment]::NewLine
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+        $assetClosureSummary = $assetClosureJson | ConvertFrom-Json -Depth 10
+    } else {
+        & $assetClosureChecker @assetClosureArgs
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+        Write-Host ""
+    }
 }
 
 $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlValidationMetadata `
@@ -169,7 +201,8 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlValidationMetadata `
     -SummaryOnly ([bool]$SummaryOnly) `
     -Wait ([bool]$Wait) `
     -LeaveServerRunning ([bool]$LeaveServerRunning) `
-    -MissingAssetAudit $missingAssetAudit
+    -MissingAssetAudit $missingAssetAudit `
+    -AssetClosureChecked $assetClosureChecked
 
 $arguments = @{
     Host = $Host
@@ -232,9 +265,15 @@ if (-not $SummaryOnly -and -not $Json) {
     if ($missingAssetAudit.Count -gt 0) {
         Show-MissingLocalFixtureAssetWarnings -AssetAudit $missingAssetAudit -RepoRoot $resolvedRepoRoot
     }
+    Write-Host ""
+    if ($assetClosureChecked) {
+        Write-Host "Preflight: deep attached-asset closure audit passed before launch."
+    } else {
+        Write-Host "Preflight: explicit page-root mode skips the deep attached-asset closure audit."
+    }
     Write-Host "Override: use -PreferredInitialPage to pin the first Google-like page, or pass -PageRoot / -InputPath to skip auto-discovery."
     Write-Host "Launch mode: headed localhost follow-up"
-    Write-Host "Runner: .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle"
+    Write-Host "Runner: .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -GoogleStyle"
     Write-Host ""
 }
 
@@ -250,6 +289,7 @@ if ($Json) {
 
     $result = [ordered]@{
         google_attached_html = $googleAttachedHtmlMetadata
+        asset_closure_audit = $assetClosureSummary
         summary = $summaryJson | ConvertFrom-Json -Depth 10
     }
     $result | ConvertTo-Json -Depth 10
