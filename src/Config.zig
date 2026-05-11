@@ -488,8 +488,8 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
     std.process.exit(1);
 }
 
-pub fn parseArgs(allocator: Allocator) !Config {
-    var args = try std.process.argsWithAllocator(allocator);
+pub fn parseArgs(allocator: Allocator, argv: std.process.Args) !Config {
+    var args = try std.process.Args.Iterator.initAllocator(argv, allocator);
     defer args.deinit();
 
     const exec_name = try allocator.dupe(u8, std.fs.path.basename(args.next().?));
@@ -503,7 +503,7 @@ pub fn parseArgs(allocator: Allocator) !Config {
         // as we transition to this command mode approach.
         args.deinit();
 
-        args = try std.process.argsWithAllocator(allocator);
+        args = try std.process.Args.Iterator.initAllocator(argv, allocator);
         // skip the exec_name
         _ = args.skip();
 
@@ -599,7 +599,7 @@ fn inferMode(opt: []const u8) ?RunMode {
 
 fn parseBrowseArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Browse {
     var url: ?[:0]const u8 = null;
     var common: Common = .{ .browser_mode = .headed };
@@ -656,7 +656,7 @@ fn parseBrowseArgs(
 
 fn parseServeArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Serve {
     var serve: Serve = .{};
 
@@ -735,7 +735,7 @@ fn parseServeArgs(
 
 fn parseMcpArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Mcp {
     var mcp: Mcp = .{};
 
@@ -753,7 +753,7 @@ fn parseMcpArgs(
 
 fn parseFetchArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Fetch {
     var dump_mode: ?DumpFormat = null;
     var with_base: bool = false;
@@ -857,7 +857,7 @@ fn parseFetchArgs(
 fn parseCommonArg(
     allocator: Allocator,
     opt: []const u8,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
     common: *Common,
 ) !bool {
     if (std.mem.eql(u8, "--insecure_disable_tls_host_verification", opt)) {
@@ -1132,4 +1132,3 @@ test "explicit http timeout overrides interactive defaults" {
 
     try std.testing.expectEqual(@as(u31, 1234), config.httpTimeout());
 }
-
