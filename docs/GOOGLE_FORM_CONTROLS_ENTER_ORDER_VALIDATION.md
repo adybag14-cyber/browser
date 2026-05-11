@@ -20,8 +20,25 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_con
 ```
 
 That checker verifies the dedicated note, the broader shared Enter-order note,
-the Windows runbook, the dedicated flow helper, the trace guide, the wrapper
-runner, and the raw form-controls probe that this smallest gate depends on.
+the Windows runbook, the shared discovery routes, the dedicated flow helper,
+the trace guide, the wrapper runner, and the raw form-controls probe that this
+smallest gate depends on.
+
+## Reconfirm the shared discovery routes
+
+When you are approaching this gate from the broader Windows runbook instead of
+opening the dedicated note first, print the shared discovery surfaces before
+running anything:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-form-controls-enter-order
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+```
+
+Those commands should keep the dedicated surface checker, trace guide, wrapper,
+and the wider shared Enter-order ladder visible from the same issue `#3`
+entrypoints future runs already use.
 
 ## Read the trace guide first
 
