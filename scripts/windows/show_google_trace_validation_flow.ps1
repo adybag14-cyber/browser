@@ -21,6 +21,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$surfaceCheck = '.\\scripts\\windows\\check_google_trace_validation_surface.ps1'
 $reducedTraceProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-home-enter-trace-probe.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $liveTraceProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-home-input-probe.ps1'
@@ -68,6 +69,11 @@ $flow = [ordered]@{
     leave_open = [bool]$LeaveOpen
     steps = @(
         [ordered]@{
+            name = "surface-check"
+            goal = "Fail fast if the later issue #3 trace handoff drifted before you trust a reduced-home or live Google capture."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $surfaceCheck)
+        }
+        [ordered]@{
             name = "reduced-trace"
             goal = "Run the reduced-home trace probe first when you want the real headed surface plus the Google-specific runtime logs without jumping straight to live Google."
             command = "powershell -ExecutionPolicy Bypass -File $reducedTraceProbe$reducedTraceArguments"
@@ -89,6 +95,7 @@ $flow = [ordered]@{
         "Use .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 when the next question is whether the current attached or saved Google-like HTML pages diverge before the live Google homepage does."
     )
     notes = @(
+        "Run the trace surface checker first so missing guides, runner wiring, or probe files fail before the later-stage capture looks trustworthy.",
         "Treat this helper as a later-stage investigation handoff, not the first gate. Start with the reduced localhost probes and shared input stacks first.",
         "Use the wrapper unless you already know you need the raw direct probe outputs from tmp-browser-smoke/google-investigation-next.",
         "When LeaveOpen is set, the reduced and live trace commands keep the headed window open after capture so the real surface can be inspected before teardown."
