@@ -1,63 +1,98 @@
 # Google Home Input-Phase Localhost Validation
 
-This note captures the smallest dedicated validation surface for the reduced
-Google-style localhost probe that proves typed text commits before Enter submit
-reaches the page.
+Use this note when issue `#3` has already cleared the reduced homepage and
+saved-homepage fixture checkpoints, and the next question is whether the
+reduced localhost input-phase probe still proves that submit waits until the
+keypress phase completes on the real headed surface.
 
-## Purpose
+This note is intentionally narrower than
+`docs/GOOGLE_SUBMIT_PATH_VALIDATION.md` and
+`docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md`.
+It focuses on the small reduced-home localhost checkpoint that now sits between
+the bounded homepage-fixture gate and the broader submit-timing or shared
+Enter-order ladders.
 
-Use this when issue `#3` work needs one more bounded checkpoint between the
-generic localhost Google-style probes and the broader reduced-homepage or live
-Google passes.
+## Start with the validation surface check
 
-The goal is to prove all of the following on the real headed surface:
-
-1. Click focus recovery still reaches the reduced Google-style query input.
-2. Typed text still commits into the field and updates the page title.
-3. Enter submit still waits until the keypress phase, not keydown.
-4. Only then widen back out to the broader issue `#3` validation ladder.
-
-## Commands
-
-Surface checker:
+Use the dedicated checker first so missing docs, helpers, wrapper commands, or
+the raw headed probe fail fast before you trust this narrower issue `#3`
+checkpoint:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_home_input_phase_localhost_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_home_input_phase_validation_surface.ps1
 ```
 
-Read-first flow helper:
+That checker verifies the dedicated note, the earlier homepage-fixture note,
+the later submit-timing note, the broader issue `#3` flow helpers, the wrapper
+runner, and the raw reduced-home localhost probe.
+
+## Start with the printed flow
+
+After the surface check is green, use the dedicated helper first when you want
+the current command order printed before you run it:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_home_input_phase_localhost_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_home_input_phase_validation_flow.ps1
 ```
 
-One-command wrapper:
+That helper keeps the dedicated surface check, wrapper runner, and raw probe on
+one small command surface before you widen again.
+
+## Fastest bounded runner
+
+When you want the reusable reduced-home input-phase checkpoint in one command,
+run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_input_phase_localhost_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_input_phase_validation.ps1
 ```
 
-Raw probe:
+Use the wrapper when the earlier homepage-fixture checkpoint is already green
+and the next question is whether the reduced localhost Google-style form still
+records submit after the keypress phase on the real headed Win32 surface.
+
+## Raw probe fallback
+
+When you need the exact underlying reduced-home localhost probe without the
+wrapper layer, run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-investigation-next\google-home-input-phase-localhost-probe.ps1
 ```
 
-## Success Markers
+Prefer the wrapper unless you specifically need the raw probe output files from
+`tmp-browser-smoke\google-investigation-next`.
 
-A good run should prove all of the following:
+## What success looks like
 
-- the probe can recover focus onto the reduced query field
-- typing updates the title to `Google Home Typed <query>`
-- Enter reaches the submitted page
-- the server-side submit marker records `submit_phase=keypress`
+Treat the reduced-home input-phase checkpoint as green only when all of these
+remain true:
 
-## Escalation Order
+- the reduced Google-style probe still reaches the expected typed-text state
+- the Enter path still reaches the submitted page on the real headed surface
+- `submitted_after_keypress = true` still holds for the same shared text value
+- the same ordering still agrees with the later submit-timing and shared
+  Enter-order ladders when you widen back out
 
-1. Run the surface checker first.
-2. Run the dedicated wrapper.
-3. Drop to the raw probe only when the wrapper fails and you need the direct
-   output files from `tmp-browser-smoke/google-investigation-next/`.
-4. Return to `docs/GOOGLE_INPUT_VALIDATION.md` or
-   `scripts/windows/show_google_input_validation_flow.ps1` when this smaller
-   gate is green and you want the broader issue `#3` ladder again.
+If this checkpoint fails, fix it before widening into the later submit-timing
+slice, the shared Enter-order stack, attached HTML follow-up, or the live
+Google homepage.
+
+## When to widen again
+
+After this bounded checkpoint is green:
+
+- use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1` when you want the later Google-shaped keydown, keypress, and submit-ordering ladder printed before you run it
+- use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1` when you want the next bounded timing slice on one command surface
+- use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1` when the next question is the wider shared label baseline plus stricter Enter-order ladder
+- use `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1` only after the reduced-home input-phase, submit-timing, and shared Enter-order checkpoints agree
+
+## Working rule
+
+Do not jump from the homepage-fixture checkpoint straight to attached HTML or
+the live Google homepage when the branch already provides this smaller reduced
+localhost input-phase proof.
+
+Keep the reduced-home input-phase checkpoint green first, then widen back out
+to the submit-timing slice, the shared Enter-order ladder, attached-page
+follow-up, or the live headed homepage only as needed.
