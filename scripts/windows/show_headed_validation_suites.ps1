@@ -364,6 +364,7 @@ $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windo
 $googleTitleSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_title_validation_surface.ps1"
 $googleTitleGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_probe_trace_guide.ps1"
 $googleTitleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
+$googleHomepageFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_homepage_fixture_validation_surface.ps1"
 $googleHomepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
 $googleSubmitPathSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_path_validation_surface.ps1"
 $googleSubmitPathFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
@@ -430,6 +431,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Flow helper: {0}" -f $googleTitleFlowCommand)
     }
     if ($suite.Name -eq "google-homepage-fixture") {
+        Write-Host ("Surface checker: {0}" -f $googleHomepageFixtureSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleHomepageFixtureFlowCommand)
     }
     if ($suite.Name -eq "google-submit-path") {
@@ -473,7 +475,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper, then run the narrower title-surface checker and read the reduced title marker guide before widening into google-investigation-next, google-title, google-quick, google-home, google-homepage-fixture, google-submit-path, google-submit-timing, the dedicated form-controls Enter-order gate, the broader shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1 when the earlier title gates are already green and you want the later saved-homepage-fixture, submit-timing, and shared Enter-order slices in one narrower command before the live trace helper."
+        "Start with the dedicated Google-input flow helper, then run the narrower title-surface checker and read the reduced title marker guide before widening into google-investigation-next, google-title, google-quick, google-home, the homepage-fixture surface checker plus flow helper, google-submit-path, google-submit-timing, the dedicated form-controls Enter-order gate, the broader shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1 when the earlier title gates are already green and you want the later saved-homepage-fixture, submit-timing, and shared Enter-order slices in one narrower command before the live trace helper."
     } elseif ($ChangeArea -eq "google-submit-path") {
         "Start with the dedicated submit-path surface checker so the later note, helper, and bounded probes fail fast if one was renamed or removed, then print the flow helper so the saved homepage fixture, submit-timing slice, the dedicated form-controls Enter-order gate, and the shared Enter-order ladder stay in order before you decide whether to run the one-command submit-path runner or isolate one later-stage slice by itself."
     } elseif ($ChangeArea -eq "google-form-controls-enter-order") {
@@ -532,6 +534,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     Write-Host ("Next step: {0}" -f $nextStep)
     if ($ChangeArea -eq "google-input") {
         Write-Host ("Title surface checker: {0}" -f $googleTitleSurfaceCheckCommand)
+        Write-Host ("Homepage fixture surface checker: {0}" -f $googleHomepageFixtureSurfaceCheckCommand)
     }
     if ($ChangeArea -eq "google-submit-path") {
         Write-Host ("Surface checker: {0}" -f $googleSubmitPathSurfaceCheckCommand)
@@ -572,6 +575,7 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-homepage-fixture"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_homepage_fixture_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-path"
