@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$SummaryPath,
+    [string]$ArtifactPath,
     [switch]$Json
 )
 
@@ -37,54 +38,66 @@ function Get-PhaseReplayCommand([string]$PhaseName) {
 
     switch ($PhaseName) {
         'localhost' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase localhost'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase localhost'
         }
         'quick' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase quick'
         }
         'home' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase home'
         }
         'homepage-fixture' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1'
         }
         'input-phase-localhost' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase input-phase-localhost'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase input-phase-localhost'
         }
         'submit-timing' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase submit-timing'
         }
         'shared-enter-order' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase shared-enter-order'
         }
         'manual' {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_manual_fixture_replay.ps1'
         }
         default {
-            return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+            return 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1'
         }
     }
 }
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
-    $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
+    $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-summary.json"
 }
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
     throw "Issue #3 recommended validation summary not found: $SummaryPath"
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1'
-$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$phaseRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1'
-$homepageFixtureRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1'
-$phaseBoundaryCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
-$titleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1'
-$submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1'
-$formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
-$probeTriageCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1'
-$manualFixtureReplayCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1'
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
+    $summary.artifact_root
+} else {
+    Split-Path -Parent $SummaryPath
+}
+$guideArtifactPath = if (-not [string]::IsNullOrWhiteSpace($ArtifactPath)) {
+    $ArtifactPath
+} elseif ($summary.guide_artifact_path) {
+    $summary.guide_artifact_path
+} else {
+    Join-Path $artifactRoot 'google-issue3-recommended-validation-guide.json'
+}
+$surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_recommended_validation_surface.ps1'
+$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1'
+$phaseRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1'
+$homepageFixtureRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1'
+$phaseBoundaryCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_phase_boundary.ps1'
+$titleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_probe_trace_guide.ps1'
+$submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_trace_guide.ps1'
+$formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1'
+$probeTriageCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_probe_triage.ps1'
+$manualFixtureReplayCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_manual_fixture_replay.ps1'
 
 $surfaceCheckMissingPaths = @($summary.surface_check_missing_paths)
 $surfaceCheckMissingCount = if ($null -ne $summary.surface_check_missing_count) {
@@ -117,22 +130,22 @@ $manualPreferredInitialPageArgument = if ($manualFixtureReplayAvailable -and $su
     ""
 }
 $manualAssetClosureCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
-    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -InputPath $manualInputPathArguments"
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle -InputPath $manualInputPathArguments"
 } else {
     $null
 }
 $manualAttachedHtmlFlowCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
-    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -InputPath $manualInputPathArguments$manualPreferredInitialPageArgument"
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -InputPath $manualInputPathArguments$manualPreferredInitialPageArgument"
 } else {
     $null
 }
 $manualAttachedHtmlRunnerCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
-    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait -InputPath $manualInputPathArguments$manualPreferredInitialPageArgument"
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait -InputPath $manualInputPathArguments$manualPreferredInitialPageArgument"
 } else {
     $null
 }
 $manualSavedPageFlowCommand = if ($manualFixtureReplayAvailable -and $manualInputPathArguments) {
-    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath $manualInputPathArguments"
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -InputPath $manualInputPathArguments"
 } else {
     $null
 }
@@ -221,15 +234,10 @@ $lastPassedPhaseResult = if ($passedPhaseResults.Count -gt 0) { $passedPhaseResu
 $failedPhaseResult = @($phaseResults | Where-Object { $_.name -eq $firstFailedPhase } | Select-Object -First 1)
 $lastPassedPhaseReplayCommand = if ($lastPassedPhaseResult) { Get-PhaseReplayCommand $lastPassedPhaseResult.name } else { $null }
 $firstFailedPhaseReplayCommand = if ($failedPhaseResult.Count -gt 0) { Get-PhaseReplayCommand $failedPhaseResult[0].name } else { $null }
-$guideArtifactPath = if ($summary.guide_artifact_path) {
-    $summary.guide_artifact_path
-} else {
-    Join-Path (Split-Path -Parent $SummaryPath) 'google-issue3-recommended-validation-guide.json'
-}
 $boundaryArtifactPath = if ($summary.boundary_artifact_path) {
     $summary.boundary_artifact_path
 } else {
-    Join-Path (Split-Path -Parent $SummaryPath) 'google-issue3-phase-boundary.json'
+    Join-Path $artifactRoot 'google-issue3-phase-boundary.json'
 }
 $boundaryRecord = $null
 $boundaryArtifactError = $null
@@ -363,6 +371,7 @@ $boundaryArtifact = [ordered]@{
     }
 }
 
+$guide | ConvertTo-Json -Depth 6 | Set-Content -Path $guideArtifactPath -Encoding Ascii
 $boundaryArtifact | ConvertTo-Json -Depth 6 | Set-Content -Path $boundaryArtifactPath -Encoding Ascii
 
 if ($Json) {
