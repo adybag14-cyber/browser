@@ -377,24 +377,17 @@ fn linkCurl(b: *Build, mod: *Build.Module) !void {
     }
 }
 
-fn createNativeModule(
-    b: *Build,
-    target: Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-) *Build.Module {
-    return b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-}
-
 fn buildZlib(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *Build.Step.Compile {
     const dep = b.dependency("zlib", .{});
     const is_windows = target.result.os.tag == .windows;
     const is_msvc = target.result.abi == .msvc;
 
-    const mod = createNativeModule(b, target, optimize);
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+
     const lib = b.addLibrary(.{ .name = "z", .root_module = mod });
     lib.installHeadersDirectory(dep.path(""), "", .{});
     lib.root_module.addCSourceFiles(.{
@@ -427,17 +420,16 @@ fn buildZlib(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.Opti
 fn buildBrotli(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) [3]*Build.Step.Compile {
     const dep = b.dependency("brotli", .{});
 
-    const brotlicmn_mod = createNativeModule(b, target, optimize);
-    brotlicmn_mod.addIncludePath(dep.path("c/include"));
-    const brotlicmn = b.addLibrary(.{ .name = "brotlicommon", .root_module = brotlicmn_mod });
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    mod.addIncludePath(dep.path("c/include"));
 
-    const brotlidec_mod = createNativeModule(b, target, optimize);
-    brotlidec_mod.addIncludePath(dep.path("c/include"));
-    const brotlidec = b.addLibrary(.{ .name = "brotlidec", .root_module = brotlidec_mod });
-
-    const brotlienc_mod = createNativeModule(b, target, optimize);
-    brotlienc_mod.addIncludePath(dep.path("c/include"));
-    const brotlienc = b.addLibrary(.{ .name = "brotlienc", .root_module = brotlienc_mod });
+    const brotlicmn = b.addLibrary(.{ .name = "brotlicommon", .root_module = mod });
+    const brotlidec = b.addLibrary(.{ .name = "brotlidec", .root_module = mod });
+    const brotlienc = b.addLibrary(.{ .name = "brotlienc", .root_module = mod });
 
     brotlicmn.installHeadersDirectory(dep.path("c/include/brotli"), "brotli", .{});
     brotlicmn.root_module.addCSourceFiles(.{
@@ -492,7 +484,11 @@ fn buildNghttp2(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.O
     const is_windows = target.result.os.tag == .windows;
     const is_msvc = target.result.abi == .msvc;
 
-    const mod = createNativeModule(b, target, optimize);
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
     mod.addIncludePath(dep.path("lib/includes"));
 
     const config = b.addConfigHeader(.{
@@ -556,7 +552,11 @@ fn buildCurl(
 ) *Build.Step.Compile {
     const dep = b.dependency("curl", .{});
 
-    const mod = createNativeModule(b, target, optimize);
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
     mod.addIncludePath(dep.path("lib"));
     mod.addIncludePath(dep.path("include"));
 
@@ -799,9 +799,9 @@ fn buildCurl(
         .CURL_EXTERN_SYMBOL = "__attribute__ ((__visibility__ (\"default\"))",
     });
     curl_config.addValues(config);
-    mod.addConfigHeader(curl_config);
 
     const lib = b.addLibrary(.{ .name = "curl", .root_module = mod });
+    lib.root_module.addConfigHeader(curl_config);
     lib.installHeadersDirectory(dep.path("include/curl"), "curl", .{});
     lib.root_module.addCSourceFiles(.{
         .root = dep.path("lib"),
@@ -912,4 +912,4 @@ const Manifest = struct {
             }
         };
     }
-};
+}
