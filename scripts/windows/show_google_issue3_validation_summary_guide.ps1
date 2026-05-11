@@ -43,6 +43,7 @@ $titleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows
 $submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1'
 $formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
 $probeTriageCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1'
+$manualFixtureReplayCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1'
 
 $surfaceCheckMissingPaths = @($summary.surface_check_missing_paths)
 $surfaceCheckMissingCount = if ($null -ne $summary.surface_check_missing_count) {
@@ -58,6 +59,7 @@ $surfaceCheckCheckedCount = if ($null -ne $summary.surface_check_checked_count) 
 $missingFixtureAssetAudit = @($summary.missing_fixture_asset_audit)
 $fixturesWithMissingAssets = @($missingFixtureAssetAudit | Where-Object { $_ -and $_.missing_asset_count -gt 0 })
 $fixtureAssetsMissing = $fixturesWithMissingAssets.Count -gt 0
+$manualFixtureReplayAvailable = [bool]$summary.manual_phase_uses_fixture_selection -and (@($summary.manual_input_path).Count -gt 0)
 
 $firstFailedPhase = $summary.first_failed_phase
 $recommendedCommand = $recommendedRunnerCommand
@@ -76,7 +78,7 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     }
 } elseif ($fixtureAssetsMissing -and $firstFailedPhase -eq 'manual') {
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $null
+    $recommendedGuideCommand = if ($manualFixtureReplayAvailable) { $manualFixtureReplayCommand } else { $null }
     $nextFocus = 'Restore the missing sibling assets for the saved attached HTML fixtures before trusting the manual Google-style follow-up.'
     $reason = "The manual follow-up is the first failing phase, and $($fixturesWithMissingAssets.Count) saved fixture selection(s) still reference missing local assets."
 } elseif ($summary.completed) {
@@ -130,7 +132,7 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
         }
         'manual' {
             $recommendedCommand = $recommendedRunnerCommand
-            $recommendedGuideCommand = $probeTriageCommand
+            $recommendedGuideCommand = if ($manualFixtureReplayAvailable) { $manualFixtureReplayCommand } else { $probeTriageCommand }
             $nextFocus = 'The bounded phases passed and the attached HTML or Google-style manual follow-up is now the narrowest failing step.'
             $reason = 'The manual follow-up was the first failing phase, so the next replay should preserve the saved fixture selection and rerun the full recommended command.'
         }
@@ -168,6 +170,9 @@ $guide = [ordered]@{
     missing_fixture_asset_audit = @($missingFixtureAssetAudit)
     fixture_assets_missing = [bool]$fixtureAssetsMissing
     fixture_selection_missing_asset_count = $fixturesWithMissingAssets.Count
+    manual_fixture_replay_available = [bool]$manualFixtureReplayAvailable
+    manual_fixture_replay_command = if ($manualFixtureReplayAvailable) { $manualFixtureReplayCommand } else { $null }
+    manual_fixture_replay_reason = if ($manualFixtureReplayAvailable) { 'Use this helper to print the exact asset-check, flow, and runner commands for the saved attached-HTML fixture bundle.' } else { $null }
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
@@ -243,6 +248,9 @@ Write-Host ("Run next:  {0}" -f $guide.recommended_command)
 if ($guide.recommended_guide_command) {
     Write-Host ("Guide:     {0}" -f $guide.recommended_guide_command)
 }
+if ($guide.manual_fixture_replay_command) {
+    Write-Host ("Manual replay: {0}" -f $guide.manual_fixture_replay_command)
+}
 Write-Host ("Broader:   {0}" -f $guide.broader_runner_command)
 if ($guide.manual_phase_uses_fixture_selection -and $guide.manual_input_path.Count -gt 0) {
     Write-Host ''
@@ -252,6 +260,9 @@ if ($guide.manual_phase_uses_fixture_selection -and $guide.manual_input_path.Cou
     }
     if ($guide.manual_initial_page) {
         Write-Host ("Initial page: {0}" -f $guide.manual_initial_page)
+    }
+    if ($guide.manual_fixture_replay_reason) {
+        Write-Host ("Replay hint: {0}" -f $guide.manual_fixture_replay_reason)
     }
 }
 Write-Host ''
