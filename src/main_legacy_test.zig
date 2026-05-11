@@ -187,7 +187,7 @@ const TestHTTPServer = struct {
         const path = req.head.target;
 
         if (std.mem.eql(u8, path, "/xhr")) {
-            return req.respond("1234567890" ** 10, .{
+            return req.respond("1234567890" * *10, .{
                 .extra_headers = &.{
                     .{ .name = "Content-Type", .value = "text/html; charset=utf-8" },
                 },
