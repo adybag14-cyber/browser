@@ -30,7 +30,9 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [Parameter(Mandatory = $true)]
         [bool]$LeaveOpen,
         [Parameter(Mandatory = $true)]
-        [int]$Port
+        [int]$Port,
+        [Parameter(Mandatory = $true)]
+        [object[]]$MissingAssetAudit
     )
 
     $parameterMode = switch ($ParameterSetName) {
@@ -47,6 +49,16 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         if ($ParameterSetName -eq "PageRoot") { "page-root-default" } else { "saved-page-summary-auto" }
     }
 
+    $normalizedAssetAudit = @(
+        $MissingAssetAudit | ForEach-Object {
+            [ordered]@{
+                path = $_.path
+                missing_assets = @($_.missing_assets)
+                missing_asset_count = $_.missing_asset_count
+            }
+        }
+    )
+
     return [ordered]@{
         parameter_mode = $parameterMode
         page_root = $PageRoot
@@ -57,6 +69,7 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         validation_mode = "google-style"
         leave_open = $LeaveOpen
         port = $Port
+        missing_asset_audit = $normalizedAssetAudit
         search_roots = if ($ParameterSetName -eq "Auto") { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) } else { @() }
     }
 }
@@ -103,6 +116,12 @@ if ($PSCmdlet.ParameterSetName -eq "Auto" -and -not $autoGoogleStyleFixture) {
     throw "No Google-style attached HTML files were found under: $($searchRoots -join '; '). Use .\scripts\windows\show_attached_html_validation_flow.ps1 for the general attached-page flow, or pass -InputPath / -PageRoot to override auto-discovery."
 }
 
+$attachedAssetAudit = if ($PSCmdlet.ParameterSetName -eq "PageRoot") {
+    @()
+} else {
+    @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
+}
+
 $arguments = @{
     Port = $Port
     ManualGoogleStyle = $true
@@ -122,7 +141,8 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -PreferredInitialPage $PreferredInitialPage `
     -ResolvedPreferredInitialPage $resolvedPreferredInitialPage `
     -LeaveOpen ([bool]$LeaveOpen) `
-    -Port $Port
+    -Port $Port `
+    -MissingAssetAudit $attachedAssetAudit
 
 if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
@@ -148,6 +168,7 @@ if (-not $Json) {
     if ($resolvedInputPath.Count -gt 0) {
         Write-Host ""
         Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $repoRoot
+        Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $repoRoot
     }
     if ($resolvedPreferredInitialPage) {
         Write-Host ""
@@ -175,6 +196,7 @@ if ($Json) {
 
     $result = [ordered]@{
         google_attached_html = $googleAttachedHtmlMetadata
+        missing_asset_audit = $attachedAssetAudit
         flow = $helperJson | ConvertFrom-Json -Depth 10
     }
     $result | ConvertTo-Json -Depth 10
