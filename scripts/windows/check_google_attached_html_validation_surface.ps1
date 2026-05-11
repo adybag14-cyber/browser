@@ -41,6 +41,7 @@ $references = @(
     (New-ValidationReference -Path "tmp-browser-smoke/manual-user/README.md" -Kind "file" -Purpose "Manual saved-page and attached-page follow-up guide."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "General attached-HTML flow helper."),
     (New-ValidationReference -Path "scripts/windows/run_attached_html_localhost_validation.ps1" -Kind "file" -Purpose "General attached-HTML localhost runner."),
+    (New-ValidationReference -Path "scripts/windows/check_attached_html_local_asset_closure.ps1" -Kind "file" -Purpose "Deep attached-HTML asset audit that catches missing nested CSS, image, and font dependencies before launch."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Google-style attached-HTML flow helper."),
     (New-ValidationReference -Path "scripts/windows/run_google_attached_html_validation.ps1" -Kind "file" -Purpose "Google-style attached-HTML localhost runner."),
     (New-ValidationReference -Path "scripts/windows/run_localhost_html_validation_recommended.ps1" -Kind "file" -Purpose "Shared localhost validation router used by the attached-HTML helpers."),
@@ -100,5 +101,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} attached-HTML validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, or runner before trusting the Google-style attached-HTML follow-up."
+Write-Host "Repair the missing guide, helper, runner, or asset-audit script before trusting the Google-style attached-HTML follow-up."
 exit 1
