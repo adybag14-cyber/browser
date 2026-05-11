@@ -71,6 +71,7 @@ $bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bu
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
 $guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.guide_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
 $boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.boundary_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
+$refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.refresh_chain_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
 
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
@@ -98,8 +99,34 @@ $bundleStatus = if ($bundleRecord -and $bundleRecord.status) {
     'missing'
 }
 
+$refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
+$refreshRecord = $null
+$refreshError = $null
+if ($refreshExists) {
+    try {
+        $refreshRecord = Read-ArtifactJson $refreshPath
+    } catch {
+        $refreshError = $_.Exception.Message
+    }
+}
+
+$refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
+    $refreshRecord.status
+} elseif ($refreshError) {
+    'helper-error'
+} elseif ($refreshExists) {
+    'present-unreadable'
+} else {
+    'missing'
+}
+
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path)
-$refreshNeeded = (-not $summaryRecordsHandoffArtifactPath) -or ($bundleStatus -ne 'complete')
+$refreshReady = ($refreshStatus -eq 'refreshed')
+$refreshNeeded = if ($refreshReady) {
+    $false
+} else {
+    (-not $summaryRecordsHandoffArtifactPath) -or ($bundleStatus -ne 'complete')
+}
 $staleCrossReferenceDetected = if ($bundleRecord) { [bool]$bundleRecord.stale_cross_reference_detected } else { $false }
 $staleSummaryArtifactDetected = if ($bundleRecord) { [bool]$bundleRecord.stale_summary_artifact_detected } else { $false }
 $coreMissingCount = if ($bundleRecord -and $null -ne $bundleRecord.core_missing_count) { [int]$bundleRecord.core_missing_count } else { $null }
@@ -108,7 +135,9 @@ $phaseArtifactGapCount = if ($bundleRecord -and $null -ne $bundleRecord.phase_mi
 $recommendedCommand = if ($refreshNeeded) { $refreshChainCommand } else { $handoffGuideCommand }
 $recommendedGuideCommand = if ($refreshNeeded) { $bundleGuideCommand } else { $handoffGuideCommand }
 $nextArtifactToOpen = if ($refreshNeeded) {
-    if ($bundleRecord -and $bundleRecord.next_artifact_to_open) {
+    if ($refreshExists) {
+        $refreshPath
+    } elseif ($bundleRecord -and $bundleRecord.next_artifact_to_open) {
         $bundleRecord.next_artifact_to_open
     } else {
         $SummaryPath
@@ -121,7 +150,19 @@ $nextArtifactToOpen = if ($refreshNeeded) {
     $SummaryPath
 }
 
-$reason = if (-not $summaryRecordsHandoffArtifactPath) {
+$reason = if ($refreshReady) {
+    'The saved refresh artifact already reports a stable helper chain for the current issue #3 summary, so the handoff guidance is ready to trust.'
+} elseif ($refreshError) {
+    'The saved refresh artifact exists but could not be read cleanly, so rerun the refresh helper before trusting the narrower handoff.'
+} elseif ($refreshStatus -eq 'helper-failures') {
+    'The saved refresh artifact says one or more summary-derived helpers still failed during the last repair pass.'
+} elseif ($refreshStatus -eq 'manifest-missing') {
+    'The saved refresh artifact says the helper chain reran, but the manifest is still missing and the recommended validation runner should be rerun.'
+} elseif ($refreshStatus -eq 'bundle-incomplete') {
+    'The saved refresh artifact says the helper chain reran, but the bundle audit still reports missing or stale artifacts.'
+} elseif ($refreshStatus -eq 'handoff-incomplete') {
+    'The saved refresh artifact says the helper chain reran, but the handoff artifact still lacks the next-artifact pointer needed for narrow replay.'
+} elseif (-not $summaryRecordsHandoffArtifactPath) {
     'The current summary does not record its handoff artifact path yet, so refresh the saved helper chain before trusting older handoff links.'
 } elseif ($bundleError) {
     'The saved artifact-bundle helper could not be read cleanly, so refresh the summary-derived helper chain before trusting the handoff.'
@@ -139,13 +180,23 @@ $reason = if (-not $summaryRecordsHandoffArtifactPath) {
     'The saved helper chain looks coherent enough to open the handoff helper and stay on the current narrow replay path.'
 }
 
-$nextFocus = if ($refreshNeeded) {
+$nextFocus = if ($refreshReady) {
+    'Open the handoff helper and follow its next_artifact_to_open guidance for the narrowest current replay step.'
+} elseif ($refreshExists) {
+    'Inspect the saved refresh artifact first, then rerun the refresh helper if the helper chain still is not settled for the current summary.'
+} elseif ($refreshNeeded) {
     'Repair or refresh the saved issue #3 helper chain first, then reopen the handoff artifact once the current summary, bundle, guide, boundary, and handoff outputs agree.'
 } else {
     'Open the handoff helper and follow its next_artifact_to_open guidance for the narrowest current replay step.'
 }
 
-$status = if ($refreshNeeded) { 'refresh-recommended' } else { 'ready' }
+$status = if ($refreshReady) {
+    'ready'
+} elseif ($refreshNeeded) {
+    'refresh-recommended'
+} else {
+    'ready'
+}
 
 $report = [ordered]@{
     issue = 'Google issue #3 validation refresh status'
@@ -160,6 +211,14 @@ $report = [ordered]@{
     first_failed_phase = $summary.first_failed_phase
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
     summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $summary.handoff_artifact_path } else { $null }
+    refresh_artifact_path = $refreshPath
+    refresh_artifact_exists = [bool]$refreshExists
+    refresh_status = $refreshStatus
+    refresh_reason = if ($refreshRecord) { $refreshRecord.reason } else { $null }
+    refresh_failed_step_count = if ($refreshRecord -and $null -ne $refreshRecord.failed_step_count) { [int]$refreshRecord.failed_step_count } else { $null }
+    refresh_failed_step_names = if ($refreshRecord) { @($refreshRecord.failed_step_names) } else { @() }
+    refresh_next_artifact_to_open = if ($refreshRecord) { $refreshRecord.next_artifact_to_open } else { $null }
+    refresh_recommended_command = if ($refreshRecord) { $refreshRecord.recommended_command } else { $null }
     bundle_artifact_path = $bundlePath
     bundle_artifact_exists = [bool]$bundleExists
     bundle_status = $bundleStatus
@@ -193,13 +252,21 @@ if ($Json) {
 Write-Host 'Google issue #3 validation refresh status'
 Write-Host ''
 Write-Host ("Summary:  {0}" -f $report.summary_path)
+Write-Host ("Refresh:  {0}" -f $report.refresh_artifact_path)
 Write-Host ("Bundle:   {0}" -f $report.bundle_artifact_path)
 Write-Host ("Handoff:  {0}" -f $report.handoff_artifact_path)
 Write-Host ("Status:   {0}" -f $report.status)
 Write-Host ("Surface:  {0}" -f $report.surface_check_status)
 Write-Host ("First fail:{0}" -f $(if ($report.first_failed_phase) { ' ' + $report.first_failed_phase } else { ' none' }))
+Write-Host ("Refresh status: {0}" -f $report.refresh_status)
 Write-Host ("Bundle status: {0}" -f $report.bundle_status)
 Write-Host ("Summary handoff path recorded: {0}" -f $report.summary_records_handoff_artifact_path)
+if ($report.refresh_reason) {
+    Write-Host ("Refresh reason: {0}" -f $report.refresh_reason)
+}
+if ($null -ne $report.refresh_failed_step_count -and $report.refresh_failed_step_count -gt 0) {
+    Write-Host ("Refresh failed steps: {0}" -f ($report.refresh_failed_step_names -join ', '))
+}
 if ($report.bundle_error) {
     Write-Host ("Bundle error: {0}" -f $report.bundle_error)
 }
