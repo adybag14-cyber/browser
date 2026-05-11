@@ -43,7 +43,7 @@ function Get-LikePrefixPattern([string]$Prefix, [string]$Value) {
     return "{0}{1}*" -f $Prefix, ([System.Management.Automation.WildcardPattern]::Escape($Value))
 }
 
-$pageUrl = "http://$Host`:$Port/legacy-table.html"
+$pageUrl = "http://$Host`:$Port/legacy-table-enter.html"
 $outPng = Join-Path $root "legacy-table-enter.png"
 $browserOut = Join-Path $root "legacy-table-enter.browser.stdout.txt"
 $browserErr = Join-Path $root "legacy-table-enter.browser.stderr.txt"
@@ -108,11 +108,11 @@ try {
     if (-not $typedWorked) { throw "legacy table input did not receive typed text" }
 
     Send-SmokeEnter
-    $keydownTitle = Wait-ForTitleLike $hwnd (Get-LikePrefixPattern -Prefix "KEYDOWN:" -Value $InputText)
+    $keydownTitle = Wait-ForTitleLike $hwnd (Get-LikePrefixPattern -Prefix "KEYDOWN:" -Value $InputText) -Attempts 80 -SleepMs 25
     $keydownWorked = $null -ne $keydownTitle
     if (-not $keydownWorked) { throw "legacy table input did not expose KEYDOWN before submit" }
 
-    $submitTitle = Wait-ForTitleLike $hwnd (Get-LikePrefixPattern -Prefix "SUBMIT:" -Value $InputText)
+    $submitTitle = Wait-ForTitleLike $hwnd (Get-LikePrefixPattern -Prefix "SUBMIT:" -Value $InputText) -Attempts 80 -SleepMs 25
     $submittedWorked = $null -ne $submitTitle
     if (-not $submittedWorked) { throw "legacy table input did not submit after Enter" }
 
