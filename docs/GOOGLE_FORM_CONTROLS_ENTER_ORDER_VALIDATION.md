@@ -10,17 +10,31 @@ This note is intentionally narrower than
 It focuses on the single shared headed Windows proof that submit still lands
 after Enter keypress on the Google-style form-controls path.
 
+## Start with the validation surface check
+
+Use the dedicated checker first so missing docs, wrapper scripts, or the raw
+headed probe fail before you trust this narrower gate:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1
+```
+
+That checker verifies the dedicated note, the broader shared Enter-order note,
+the Windows runbook, the dedicated flow helper, the wrapper runner, and the raw
+form-controls probe that this smallest gate depends on.
+
 ## Start with the printed flow
 
-Use the dedicated helper first when you want the current command order printed
-with the active host, port, and shared text value:
+Use the dedicated helper after the surface check when you want the current
+command order printed with the active host, port, and shared text value:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
 ```
 
-That helper keeps the dedicated wrapper, the raw headed localhost probe, and the
-wider shared Enter-order escalation path aligned on one small command surface.
+That helper keeps the dedicated surface check, the wrapper, the raw headed
+localhost probe, and the wider shared Enter-order escalation path aligned on
+one small command surface.
 
 ## Fastest bounded runner
 
