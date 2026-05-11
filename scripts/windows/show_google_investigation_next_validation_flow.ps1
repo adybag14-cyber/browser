@@ -34,6 +34,8 @@ $enterOrderProbe = '.\\tmp-browser-smoke\\google-investigation-next\\google-ente
 $delayedReadyProbe = '.\\tmp-browser-smoke\\google-investigation-next\\google-style-delayed-ready-localhost-probe.ps1'
 $reducedHomeTraceProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-home-enter-trace-probe.ps1'
 $liveHomeTraceProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-home-input-probe.ps1'
+$suiteRouterCommand = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-investigation-next'
+$changeAreaRouterCommand = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input'
 
 $commonArguments = ""
 if ($RepoRoot) {
@@ -94,15 +96,18 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
+        "Use $suiteRouterCommand when you want the shared suite router to print this reduced localhost stack with its category, path, and neighboring validation suites before you run it.",
+        "Use $changeAreaRouterCommand when you want the broader issue #3 validation ladder routed from the shared catalog before you drop into this smaller localhost-first suite.",
         "Use .\\scripts\\windows\\show_google_title_validation_flow.ps1 when you want the narrower title-wrapper ladder printed before you widen into the title checkpoint.",
-        "Use .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1 when you want the same reduced localhost suite plus the title, reduced-homepage, saved-homepage, submit-timing, shared Enter-order, and watch phases on one runner.",
+        "Use .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1 when you want the same reduced localhost suite plus the title, reduced-homepage, saved-homepage, submit-timing, shared Enter-order, attached-HTML, and watch phases on one runner.",
         "Use .\\scripts\\windows\\show_google_trace_validation_flow.ps1 when the reduced-home trace is green and you want the later live Google trace handoff printed before another capture."
     )
     notes = @(
         "Start with the surface check whenever the branch moved recently and you want the reduced Google investigation suite to fail fast on missing helpers or fixtures.",
         "Keep the same host and ports here when you want the bounded localhost probes aligned with the broader issue #3 runner and its follow-up trace helpers.",
         "Use reduced-home-trace before live-home-trace so the smaller real-surface checkpoint still exists if the live Google homepage adds timing noise or challenge-page divergence.",
-        "Treat this suite as the smallest reusable Google-style localhost gate before the title wrapper, submit-timing slice, shared Enter-order ladder, attached-page follow-up, or live homepage investigation."
+        "Treat this suite as the smallest reusable Google-style localhost gate before the title wrapper, submit-timing slice, shared Enter-order ladder, attached-page follow-up, or live homepage investigation.",
+        "The shared suite router now exposes both the dedicated suite shortcut and the broader google-input change-area shortcut, so this helper and the central validation catalog can hand off to each other cleanly."
     )
 }
 
