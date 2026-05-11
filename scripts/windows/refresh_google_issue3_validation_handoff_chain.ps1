@@ -126,9 +126,10 @@ $summaryGuideScript = Join-Path $PSScriptRoot "show_google_issue3_validation_sum
 $boundaryScript = Join-Path $PSScriptRoot "show_google_issue3_phase_boundary.ps1"
 $bundleScript = Join-Path $PSScriptRoot "show_google_issue3_validation_artifact_bundle.ps1"
 $handoffScript = Join-Path $PSScriptRoot "show_google_issue3_validation_handoff.ps1"
+$manifestScript = Join-Path $PSScriptRoot "show_google_issue3_validation_manifest.ps1"
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
-$requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript)
+$requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript, $manifestScript)
 foreach ($helperPath in $requiredHelpers) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
@@ -138,10 +139,12 @@ foreach ($helperPath in $requiredHelpers) {
 $steps = [System.Collections.Generic.List[object]]::new()
 $steps.Add((Invoke-RefreshStep -Name 'summary-guide' -ScriptPath $summaryGuideScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -ArtifactPath $guidePath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'phase-boundary' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'manifest' -ScriptPath $manifestScript -Arguments @('-ManifestPath', $manifestPath, '-Json') -ArtifactPath $manifestPath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'handoff' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'summary-guide-final' -ScriptPath $summaryGuideScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -ArtifactPath $guidePath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'phase-boundary-final' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'manifest-final' -ScriptPath $manifestScript -Arguments @('-ManifestPath', $manifestPath, '-Json') -ArtifactPath $manifestPath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'artifact-bundle-final' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath)) | Out-Null
 $steps.Add((Invoke-RefreshStep -Name 'handoff-final' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath)) | Out-Null
 
