@@ -149,12 +149,12 @@ function Convert-ToRepoRelativeArtifactPath {
         [string]$Path
     )
 
-    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\\', '/')
+    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\', '/')
     $normalizedPath = [System.IO.Path]::GetFullPath($Path)
     if ($normalizedPath.StartsWith($normalizedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\\', '/')
+        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\', '/')
         if (-not [string]::IsNullOrWhiteSpace($relative)) {
-            return $relative -replace '\\', '/'
+            return $relative -replace '\', '/'
         }
     }
 
@@ -623,7 +623,7 @@ function Save-SurfaceCheckArtifact {
         & powershell -NoProfile -ExecutionPolicy Bypass -File $SurfaceCheckScript -RepoRoot $RepoRoot -Json 2>&1
     )
     $surfaceCheckExitCode = $LASTEXITCODE
-    $surfaceCheckText = ($surfaceCheckOutput | ForEach-Object { "$ _" }) -join [Environment]::NewLine
+    $surfaceCheckText = ($surfaceCheckOutput | ForEach-Object { "${_}" }) -join [Environment]::NewLine
     if ([string]::IsNullOrWhiteSpace($surfaceCheckText)) {
         throw "Google issue #3 recommended validation surface checker produced no JSON output."
     }
@@ -656,7 +656,7 @@ function Save-RecommendedGuideArtifact {
     $guideOutput = @(
         & powershell -NoProfile -ExecutionPolicy Bypass -File $GuideScript -SummaryPath $SummaryPath -Json 2>&1
     )
-    $guideText = ($guideOutput | ForEach-Object { "$ _" }) -join [Environment]::NewLine
+    $guideText = ($guideOutput | ForEach-Object { "${_}" }) -join [Environment]::NewLine
     if ([string]::IsNullOrWhiteSpace($guideText)) {
         throw "Google issue #3 validation summary guide produced no JSON output."
     }
@@ -683,7 +683,7 @@ function Save-PhaseBoundaryArtifact {
     $boundaryOutput = @(
         & powershell -NoProfile -ExecutionPolicy Bypass -File $BoundaryScript -SummaryPath $SummaryPath -ArtifactPath $ArtifactPath -Json 2>&1
     )
-    $boundaryText = ($boundaryOutput | ForEach-Object { "$ _" }) -join [Environment]::NewLine
+    $boundaryText = ($boundaryOutput | ForEach-Object { "${_}" }) -join [Environment]::NewLine
     if ([string]::IsNullOrWhiteSpace($boundaryText)) {
         throw "Google issue #3 phase boundary helper produced no JSON output."
     }
@@ -708,7 +708,7 @@ function Save-ValidationArtifactBundle {
     $bundleOutput = @(
         & powershell -NoProfile -ExecutionPolicy Bypass -File $ArtifactBundleScript -SummaryPath $SummaryPath -ArtifactPath $ArtifactPath -Json 2>&1
     )
-    $bundleText = ($bundleOutput | ForEach-Object { "$ _" }) -join [Environment]::NewLine
+    $bundleText = ($bundleOutput | ForEach-Object { "${_}" }) -join [Environment]::NewLine
     if ([string]::IsNullOrWhiteSpace($bundleText)) {
         throw "Google issue #3 validation artifact-bundle helper produced no JSON output."
     }
