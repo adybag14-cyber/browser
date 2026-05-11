@@ -34,14 +34,13 @@ $resolvedRepoRoot = if ($RepoRoot) {
 }
 
 $references = @(
-    (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the bounded submit-timing slice."),
-    (New-ValidationReference -Path "docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md" -Kind "file" -Purpose "Google issue #3 validation guide that documents the submit-timing slice."),
-    (New-ValidationReference -Path "docs/HEADED_MODE_VALIDATION_GATES.md" -Kind "file" -Purpose "Validation suite-routing note that should keep the bounded submit-timing gate discoverable."),
-    (New-ValidationReference -Path "tmp-browser-smoke/README.md" -Kind "file" -Purpose "Directory-level probe index that should still point future runs at the submit-timing slice."),
-    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router that should list the submit-timing gate and helper surface."),
-    (New-ValidationReference -Path "scripts/windows/show_google_submit_timing_validation_flow.ps1" -Kind "file" -Purpose "Printed flow helper for the bounded submit-timing slice."),
-    (New-ValidationReference -Path "scripts/windows/run_google_submit_timing_validation.ps1" -Kind "file" -Purpose "Wrapper runner for the bounded submit-timing slice."),
-    (New-ValidationReference -Path "tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1" -Kind "file" -Purpose "Raw Google-shaped submit-timing probe on the real headed surface.")
+    (New-ValidationReference -Path "docs/GOOGLE_SUBMIT_TIMING_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the bounded issue #3 submit-timing slice."),
+    (New-ValidationReference -Path "docs/GOOGLE_SUBMIT_PATH_VALIDATION.md" -Kind "file" -Purpose "Broader later-stage issue #3 note that routes into the submit-timing slice."),
+    (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the submit-timing helper."),
+    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router that should keep the bounded submit-timing slice discoverable."),
+    (New-ValidationReference -Path "scripts/windows/show_google_submit_timing_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the bounded submit-timing slice."),
+    (New-ValidationReference -Path "scripts/windows/run_google_submit_timing_validation.ps1" -Kind "file" -Purpose "One-command bounded submit-timing wrapper."),
+    (New-ValidationReference -Path "tmp-browser-smoke/layout-smoke/chrome-google-submit-timing-probe.ps1" -Kind "file" -Purpose "Raw Google-shaped headed keydown, keypress, and submit-ordering probe.")
 )
 
 $results = foreach ($reference in $references) {
@@ -96,5 +95,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} submit-timing validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, probe, or suite note before trusting the bounded Google submit-timing slice."
+Write-Host "Repair the missing guide, helper, wrapper, or raw probe before trusting the bounded issue #3 submit-timing slice."
 exit 1
