@@ -192,6 +192,7 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
 
 $attachedHtmlHints = Get-AttachedHtmlValidationHints -ResolvedInputPath $resolvedInputPath -GoogleStyle ([bool]$GoogleStyle)
 $overallRecommendation = Get-AttachedHtmlOverallRecommendation -Hints $attachedHtmlHints -GoogleStyle ([bool]$GoogleStyle)
+$attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
 
 $helperPath = if ($GoogleStyle) {
     Join-Path $repoRoot "scripts/windows/show_saved_page_google_validation_flow.ps1"
@@ -234,6 +235,7 @@ if ($Json) {
     $helperJson = (& $helperPath @helperArgs) -join [Environment]::NewLine
     $result = [ordered]@{
         attached_html = $attachedHtmlMetadata
+        missing_asset_audit = $attachedAssetAudit
         fixture_hints = $attachedHtmlHints
         overall_recommendation = $overallRecommendation
         flow = $helperJson | ConvertFrom-Json -Depth 10
@@ -257,6 +259,7 @@ if ($resolvedPreferredInitialPage) {
 }
 Write-Host ("Validation mode: {0}" -f $attachedHtmlMetadata.validation_mode)
 Write-Host ""
+Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $repoRoot
 Write-Host "Per-page bounded validation hints:"
 foreach ($hint in $attachedHtmlHints) {
     Write-Host ("- {0}" -f $hint.fixture)
