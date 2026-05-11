@@ -52,6 +52,27 @@ function Get-FixtureTitle {
     return ""
 }
 
+function Convert-ToSingleQuotedPowerShellArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + $Value.Replace("'", "''") + "'"
+}
+
+function Convert-ToPowerShellArgumentList {
+    param(
+        [string[]]$Values
+    )
+
+    if (-not $Values -or $Values.Count -eq 0) {
+        return ""
+    }
+
+    return ($Values | ForEach-Object { Convert-ToSingleQuotedPowerShellArgument -Value $_ }) -join " "
+}
+
 function Get-ResolvedBundleCandidates {
     param(
         [Parameter(Mandatory = $true)]
@@ -136,12 +157,67 @@ function Get-TargetValidationRouting {
     }
 }
 
+function Get-BundlePinnedValidationCommands {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$ResultRows
+    )
+
+    $resolvedRows = @($ResultRows | Where-Object { $_.status -eq "found" -and $_.path })
+    if ($resolvedRows.Count -eq 0) {
+        return [ordered]@{
+            validation_profile = $null
+            locked_input_count = 0
+            preferred_initial_page = $null
+            preferred_initial_page_display_path = $null
+            summary = "Resolve the expected bundle first so the checker can print the exact attached-page follow-up commands."
+            surface_check = $null
+            asset_closure = $null
+            flow = $null
+            runner = $null
+        }
+    }
+
+    $resolvedInputPath = @($resolvedRows | ForEach-Object { $_.path })
+    $inputPathArguments = Convert-ToPowerShellArgumentList -Values $resolvedInputPath
+    $googleTarget = $resolvedRows | Where-Object { $_.name -eq "google-safety-centre" } | Select-Object -First 1
+    $preferredTarget = if ($googleTarget) { $googleTarget } else { $resolvedRows | Select-Object -First 1 }
+    $preferredInitialPageArgument = Convert-ToSingleQuotedPowerShellArgument -Value $preferredTarget.path
+
+    if ($googleTarget) {
+        return [ordered]@{
+            validation_profile = "google-attached-html"
+            locked_input_count = $resolvedInputPath.Count
+            preferred_initial_page = $preferredTarget.path
+            preferred_initial_page_display_path = $preferredTarget.display_path
+            summary = "Keep the current compatibility bundle locked into the Google-style attached HTML route, with the Google Safety Centre page pinned first for the issue #3 localhost-first follow-up."
+            surface_check = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
+            asset_closure = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle -InputPath $inputPathArguments"
+            flow = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument"
+            runner = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument -Wait"
+        }
+    }
+
+    return [ordered]@{
+        validation_profile = "attached-html"
+        locked_input_count = $resolvedInputPath.Count
+        preferred_initial_page = $preferredTarget.path
+        preferred_initial_page_display_path = $preferredTarget.display_path
+        summary = "Keep the current compatibility bundle locked into the general attached HTML route, with the first resolved target pinned as the initial page."
+        surface_check = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_validation_surface.ps1"
+        asset_closure = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -InputPath $inputPathArguments"
+        flow = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument"
+        runner = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_localhost_validation.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument -Wait"
+    }
+}
+
 function Get-OverallBundleRecommendation {
     param(
         [Parameter(Mandatory = $true)]
         [object[]]$ResultRows
     )
 
+    $bundlePinnedCommands = Get-BundlePinnedValidationCommands -ResultRows $ResultRows
     $googleTarget = $ResultRows | Where-Object { $_.name -eq "google-safety-centre" -and $_.status -eq "found" } | Select-Object -First 1
     if ($googleTarget) {
         return [ordered]@{
@@ -151,6 +227,13 @@ function Get-OverallBundleRecommendation {
             first_step = $googleTarget.bounded_first_step
             follow_up = $googleTarget.follow_up
             summary = "Keep the Google-style target first so the bundle stays aligned with the issue #3 localhost-first follow-up before the broader attached-page replay."
+            bundle_validation_profile = $bundlePinnedCommands.validation_profile
+            bundle_locked_input_count = $bundlePinnedCommands.locked_input_count
+            bundle_surface_check = $bundlePinnedCommands.surface_check
+            bundle_asset_closure = $bundlePinnedCommands.asset_closure
+            bundle_flow = $bundlePinnedCommands.flow
+            bundle_runner = $bundlePinnedCommands.runner
+            bundle_summary = $bundlePinnedCommands.summary
         }
     }
 
@@ -163,6 +246,13 @@ function Get-OverallBundleRecommendation {
             first_step = $firstFound.bounded_first_step
             follow_up = $firstFound.follow_up
             summary = "Start with the first resolved compatibility target, then widen into the broader attached-page localhost replay."
+            bundle_validation_profile = $bundlePinnedCommands.validation_profile
+            bundle_locked_input_count = $bundlePinnedCommands.locked_input_count
+            bundle_surface_check = $bundlePinnedCommands.surface_check
+            bundle_asset_closure = $bundlePinnedCommands.asset_closure
+            bundle_flow = $bundlePinnedCommands.flow
+            bundle_runner = $bundlePinnedCommands.runner
+            bundle_summary = $bundlePinnedCommands.summary
         }
     }
 
@@ -173,6 +263,13 @@ function Get-OverallBundleRecommendation {
         first_step = $null
         follow_up = $null
         summary = "Resolve the expected attached-page bundle before routing validation."
+        bundle_validation_profile = $bundlePinnedCommands.validation_profile
+        bundle_locked_input_count = $bundlePinnedCommands.locked_input_count
+        bundle_surface_check = $bundlePinnedCommands.surface_check
+        bundle_asset_closure = $bundlePinnedCommands.asset_closure
+        bundle_flow = $bundlePinnedCommands.flow
+        bundle_runner = $bundlePinnedCommands.runner
+        bundle_summary = $bundlePinnedCommands.summary
     }
 }
 
@@ -336,6 +433,24 @@ if ($overallRecommendation.first_step) {
 }
 if ($overallRecommendation.follow_up) {
     Write-Host ("Suggested follow-up: {0}" -f $overallRecommendation.follow_up)
+}
+if ($overallRecommendation.bundle_validation_profile) {
+    Write-Host ""
+    Write-Host ("Bundle-pinned validation profile: {0}" -f $overallRecommendation.bundle_validation_profile)
+    Write-Host ("Bundle-pinned inputs: {0}" -f $overallRecommendation.bundle_locked_input_count)
+    Write-Host ("Bundle route summary: {0}" -f $overallRecommendation.bundle_summary)
+    if ($overallRecommendation.bundle_surface_check) {
+        Write-Host ("Bundle surface check: {0}" -f $overallRecommendation.bundle_surface_check)
+    }
+    if ($overallRecommendation.bundle_asset_closure) {
+        Write-Host ("Bundle asset-closure check: {0}" -f $overallRecommendation.bundle_asset_closure)
+    }
+    if ($overallRecommendation.bundle_flow) {
+        Write-Host ("Bundle flow helper: {0}" -f $overallRecommendation.bundle_flow)
+    }
+    if ($overallRecommendation.bundle_runner) {
+        Write-Host ("Bundle runner: {0}" -f $overallRecommendation.bundle_runner)
+    }
 }
 Write-Host ""
 
