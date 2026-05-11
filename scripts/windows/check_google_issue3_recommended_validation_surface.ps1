@@ -62,6 +62,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router that should still expose the later Google trace handoff after the bounded issue #3 checkpoints."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_recommended_validation_flow.ps1" -Kind "file" -Purpose "Printed flow helper for the one-command recommended issue #3 runner."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_summary_guide.ps1" -Kind "file" -Purpose "Saved-summary guide helper that points at the earliest failing issue #3 checkpoint."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_manifest.ps1" -Kind "file" -Purpose "Saved-manifest guide helper that exposes the single read-first artifact index for the recommended issue #3 runner."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_phase_boundary.ps1" -Kind "file" -Purpose "Saved-summary helper that points at the last passing and first failing issue #3 checkpoints."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_probe_triage.ps1" -Kind "file" -Purpose "Triage helper that routes issue #3 follow-up toward the sharpest saved probe or phase boundary."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_manual_fixture_replay.ps1" -Kind "file" -Purpose "Saved-fixture replay helper for the manual issue #3 follow-up path."),
