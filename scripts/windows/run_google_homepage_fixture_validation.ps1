@@ -22,6 +22,19 @@ if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 }
 
+$surfaceCheck = Join-Path $PSScriptRoot "check_google_homepage_fixture_validation_surface.ps1"
+if (-not (Test-Path -LiteralPath $surfaceCheck -PathType Leaf)) {
+    throw "Google homepage fixture validation surface checker not found: $surfaceCheck"
+}
+
+Write-Host "Google homepage-fixture validation"
+Write-Host ("Repo root: {0}" -f $RepoRoot)
+Write-Host ""
+Write-Host "=== google-homepage-fixture-surface ==="
+Write-Host ("Script: {0}" -f $surfaceCheck)
+& $surfaceCheck -RepoRoot $RepoRoot
+Write-Host ""
+
 $probe = Join-Path $RepoRoot "tmp-browser-smoke\form-controls\chrome-google-homepage-probe.ps1"
 if (-not (Test-Path -LiteralPath $probe -PathType Leaf)) {
     throw "Saved Google homepage fixture probe not found: $probe"
