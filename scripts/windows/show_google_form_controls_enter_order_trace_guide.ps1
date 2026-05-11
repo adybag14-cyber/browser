@@ -14,7 +14,7 @@ $rawProbeCommand = 'powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke
 
 $guide = [ordered]@{
     issue = 'Google form-controls Enter-order trace guide'
-    purpose = 'Translate the dedicated shared Google-style Enter-order probe markers into click-focus, typed-text, keydown, keypress, and submit stages before widening issue #3 validation again.'
+    purpose = 'Translate the dedicated shared Google-style Enter-order probe markers and JSON fields into click-focus, typed-text, held-keydown, keypress, and submit stages before widening issue #3 validation again.'
     guide_path = $guidePath
     surface_check_command = $surfaceCheckCommand
     flow_command = $flowCommand
@@ -23,12 +23,14 @@ $guide = [ordered]@{
     quick_diagnosis = @(
         'No title_after_click or no FOCUS marker means the headed click-focus path is still broken before typing starts.',
         'title_after_click plus no title_after_type means Enter-order is not the first failure; typed text never became visible after focus.',
+        'keydown_held_without_submit = false means the page already submitted or navigated during held Enter keydown, before the later Enter phase settled.',
+        'submit_record missing means the server-side proof never arrived, so do not treat a title-only transition as a green shared gate.',
         'submit_phase = keydown means the page still submitted too early, before keypress reached the form.',
         'An event_log with KD:Enter but no KP:Enter means the Enter keydown arrived but keypress still did not reach the page.',
         'KP:Enter plus no SUBMIT marker means keypress arrived but the form did not transition into submit.',
-        'submit_after_keypress = true with the expected query text means the smallest shared Enter-order checkpoint is green and you can widen back out safely.'
+        'submit_phase = keypress with submit_after_keydown = true and submit_after_keypress = true is the exact green end-state for the dedicated gate.'
     )
-    next_step = 'Run the dedicated surface checker first, print this guide or the full flow helper when needed, then rerun the dedicated wrapper before moving back to the wider shared Enter-order ladder or live Google follow-up.'
+    next_step = 'Run the dedicated surface checker first, print this guide or the full flow helper when needed, rerun the dedicated wrapper, and keep the JSON fields for issue notes before moving back to the wider shared Enter-order ladder or live Google follow-up.'
 }
 
 if ($Json) {
