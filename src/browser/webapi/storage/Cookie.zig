@@ -700,7 +700,7 @@ test "Jar: add limit" {
         .domain = "lightpanda.io",
         .path = "/",
         .expires = null,
-        .value = "v" ** 4096 ++ "v",
+        .value = "v"**4096 ++ "v",
     }, now));
 
     // generate unique names.
@@ -708,7 +708,7 @@ test "Jar: add limit" {
         @setEvalBranchQuota(max_jar_size);
         var result: [max_jar_size][]const u8 = undefined;
         for (0..max_jar_size) |i| {
-            result[i] = "v" ** i;
+            result[i] = "v"**i;
         }
         break :blk result;
     };
@@ -1087,8 +1087,8 @@ test "Cookie: parse domain" {
 }
 
 test "Cookie: parse limit" {
-    try expectError(error.CookieHeaderSizeExceeded, "http://lightpanda.io/", "v" ** 8192 ++ ";domain=lightpanda.io");
-    try expectError(error.CookieSizeExceeded, "http://lightpanda.io/", "v" ** 4096 ++ "v;domain=lightpanda.io");
+    try expectError(error.CookieHeaderSizeExceeded, "http://lightpanda.io/", "v"**8192 ++ ";domain=lightpanda.io");
+    try expectError(error.CookieSizeExceeded, "http://lightpanda.io/", "v"**4096 ++ "v;domain=lightpanda.io");
 }
 
 const ExpectedCookie = struct {
