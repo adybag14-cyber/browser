@@ -24,6 +24,10 @@ recommended runner or dropping down to the single-probe scripts.
   keypress-backed submit path against
   `src/browser/tests/page/google_home_title_probe.html` before the fuller
   reduced-home submit and shared Enter-order gates.
+- `chrome-google-enter-order-probe.ps1`
+  Compatibility wrapper for the dedicated Google-style Enter-order probe so the
+  shared form-controls runner, notes, and issue comments can reuse one stable
+  command surface.
 - `google-enter-order-probe.ps1`
   Verifies the stricter Google-style Enter path against
   `http://127.0.0.1:8157/google-enter-order.html`, including click focus,
@@ -37,10 +41,11 @@ Google-style submit-timing bug from issue #3. It checks that typed text becomes
 visible first, that Enter reaches the pending state, and only then that the
 form actually submits.
 
-Pair it with `chrome-google-home-title-probe.ps1` and
+Pair it with `chrome-google-home-title-probe.ps1`,
+`chrome-google-enter-order-probe.ps1`, and
 `google-enter-order-probe.ps1` when the change specifically reaches
 Google-style input timing, because the title probe keeps the smaller bounded
-focus-and-submit gate visible and the stricter Enter-order probe proves the
+focus-and-submit gate visible and the stricter Enter-order probes prove the
 shared headed path did not submit early at keydown.
 
 ## Recommended Order For Google-Input Work
@@ -51,7 +56,7 @@ shared headed path did not submit early at keydown.
 4. Print the ordered shared form-controls handoff with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_form_controls_validation_flow.ps1`.
 5. Print the dedicated Google-style shared Enter-order handoff with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1` when the next question is specifically whether submit waited until keypress.
 6. Print the dedicated trace helper with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1` when you want the smallest gate's focus, typed-text, keypress, and submit markers translated before or after a rerun.
-7. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation_recommended.ps1`, or narrow with `run_google_home_title_probe.ps1`, `deferred-enter-submit-probe.ps1`, `google-enter-order-probe.ps1`, and `enter-submit-probe.ps1` when you already know which shared gate needs attention.
+7. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_form_controls_validation_recommended.ps1`, or narrow with `run_google_home_title_probe.ps1`, `deferred-enter-submit-probe.ps1`, `chrome-google-enter-order-probe.ps1`, `google-enter-order-probe.ps1`, and `enter-submit-probe.ps1` when you already know which shared gate needs attention.
 8. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1` when you want only the dedicated Google-style keypress-before-submit gate without rerunning the broader form-controls ladder.
 9. Run the nearby inline-flow submit probe when the change also touched broader layout or focus behavior.
 10. Move on to the smallest live Google manual pass only after the bounded probes stay green.
