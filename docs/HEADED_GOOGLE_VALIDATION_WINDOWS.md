@@ -85,12 +85,15 @@ you want one bounded localhost pass before broader manual replay, use the
 homepage-fixture helper directly:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_homepage_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 ```
 
-That slice keeps the saved homepage fixture on the same issue `#3` route as the
-reduced title, reduced home, submit-timing, and shared Enter-order checks.
+That slice now starts with its dedicated homepage-fixture surface checker before
+the printed flow or wrapper runs, while keeping the saved homepage fixture on
+the same issue `#3` route as the reduced title, reduced home, submit-timing,
+and shared Enter-order checks.
 
 When the earlier title gates are already green and you want the narrower saved
 homepage fixture, submit-timing, and shared Enter-order stack in one command
@@ -146,6 +149,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_vali
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_quick_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_homepage_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
@@ -188,7 +192,9 @@ Only move to `manual` or `trace` after those bounded phases are green.
   markers `FOCUSED`, `TYPED:QZ`, and `SUBMIT:QZ`.
 - `google-homepage-fixture`: the bounded saved homepage fixture still proves the
   localhost copy reaches focus, typed text, and Enter submit before the broader
-  saved-page or attached-page manual follow-up.
+  saved-page or attached-page manual follow-up, and its dedicated surface
+  checker now fails fast if the narrower guide, wrapper, or probe drift out of
+  sync.
 - `submit-path`: the dedicated issue `#3` submit-path runner still bundles the
   saved homepage fixture, bounded submit-timing check, and shared Enter-order
   ladder into one later-stage command surface after the earlier title gates are
