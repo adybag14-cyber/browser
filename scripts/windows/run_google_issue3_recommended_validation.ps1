@@ -56,9 +56,14 @@ New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $artifactRoot "google-issue3-recommended-validation-summary.json"
 }
+$phaseArtifactRoot = Join-Path $artifactRoot "google-issue3-recommended-validation-phases"
 if (Test-Path -LiteralPath $SummaryPath) {
     Remove-Item -LiteralPath $SummaryPath -Force
 }
+if (Test-Path -LiteralPath $phaseArtifactRoot) {
+    Remove-Item -LiteralPath $phaseArtifactRoot -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $phaseArtifactRoot | Out-Null
 
 function Test-GoogleStyleAttachedHtmlAvailable {
     param(
@@ -94,6 +99,20 @@ function Resolve-GoogleStyleAttachedHtmlSelection {
         InputPath = $resolvedInputPath
         InitialPage = $resolvedInitialPage
     }
+}
+
+function Convert-ToPhaseArtifactSlug {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $slug = $Name.ToLowerInvariant() -replace '[^a-z0-9]+', '-'
+    $slug = $slug.Trim('-')
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        return "phase"
+    }
+    return $slug
 }
 
 $surfaceCheck = Join-Path $PSScriptRoot "check_google_issue3_recommended_validation_surface.ps1"
@@ -224,23 +243,38 @@ function Invoke-RecommendedStep {
         [scriptblock]$Action
     )
 
+    $phaseSlug = Convert-ToPhaseArtifactSlug -Name $Name
+    $phaseLogPath = Join-Path $phaseArtifactRoot ($phaseSlug + ".log")
+    if (Test-Path -LiteralPath $phaseLogPath) {
+        Remove-Item -LiteralPath $phaseLogPath -Force
+    }
+
     $startedAt = (Get-Date).ToUniversalTime().ToString("o")
     try {
-        & $Action
+        & $Action *>&1 | Tee-Object -FilePath $phaseLogPath -Append
         return [pscustomobject]@{
             name = $Name
             status = "passed"
             started_at_utc = $startedAt
             completed_at_utc = (Get-Date).ToUniversalTime().ToString("o")
             error = $null
+            log_path = $phaseLogPath
         }
     } catch {
+        $errorMessage = $_.Exception.Message
+        $errorRecordText = ($_ | Out-String).TrimEnd()
+        if (-not [string]::IsNullOrWhiteSpace($errorRecordText)) {
+            Add-Content -Path $phaseLogPath -Value ""
+            Add-Content -Path $phaseLogPath -Value $errorRecordText
+        }
+
         return [pscustomobject]@{
             name = $Name
             status = "failed"
             started_at_utc = $startedAt
             completed_at_utc = (Get-Date).ToUniversalTime().ToString("o")
-            error = $_.Exception.Message
+            error = $errorMessage
+            log_path = $phaseLogPath
         }
     }
 }
@@ -253,9 +287,13 @@ function Show-RecommendedSummary {
 
     Write-Host ""
     Write-Host "Issue #3 recommended validation summary"
+    Write-Host ("Artifact root: {0}" -f $phaseArtifactRoot)
     foreach ($result in $PhaseResults) {
         $status = if ($result.status -eq "passed") { "PASS" } else { "FAIL" }
         Write-Host ("[{0}] {1}" -f $status, $result.name)
+        if ($result.log_path) {
+            Write-Host ("  Log: {0}" -f $result.log_path)
+        }
         if ($result.error) {
             Write-Host ("  {0}" -f $result.error)
         }
@@ -279,6 +317,8 @@ function Write-RecommendedSummaryArtifact {
         repo_root = $RepoRoot
         browser_exe = $BrowserExe
         host = $Host
+        artifact_root = $artifactRoot
+        phase_artifact_root = $phaseArtifactRoot
         summary_path = $SummaryPath
         leave_open = [bool]$LeaveOpen
         skip_auto_attached_html = [bool]$SkipAutoAttachedHtml
@@ -298,6 +338,7 @@ function Write-RecommendedSummaryArtifact {
         phase_results = @($PhaseResults)
         first_failed_phase = if ($failedPhase.Count -gt 0) { $failedPhase[0].name } else { $null }
         first_failed_phase_error = if ($failedPhase.Count -gt 0) { $failedPhase[0].error } else { $null }
+        first_failed_phase_log_path = if ($failedPhase.Count -gt 0) { $failedPhase[0].log_path } else { $null }
         completed = ($failedPhase.Count -eq 0 -and $SurfaceCheckStatus -eq "passed")
     }
 
@@ -319,6 +360,7 @@ if ($manualPhaseEnabled) {
 Write-Host "Google issue #3 recommended validation"
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 Write-Host ("Host: {0}" -f $Host)
+Write-Host ("Phase artifacts: {0}" -f $phaseArtifactRoot)
 Write-Host ("Summary JSON: {0}" -f $SummaryPath)
 Write-Host ""
 Write-Host "=== google-issue3-recommended-surface ==="
