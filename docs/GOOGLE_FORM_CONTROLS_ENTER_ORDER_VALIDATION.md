@@ -20,8 +20,23 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_con
 ```
 
 That checker verifies the dedicated note, the broader shared Enter-order note,
-the Windows runbook, the dedicated flow helper, the wrapper runner, and the raw
-form-controls probe that this smallest gate depends on.
+the Windows runbook, the dedicated flow helper, the trace guide, the wrapper
+runner, and the raw form-controls probe that this smallest gate depends on.
+
+## Read the trace guide first
+
+Use the quick diagnosis helper after the surface check when you want the
+dedicated marker meanings printed before or after a rerun:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1
+```
+
+That helper translates the smallest gate's `title_after_click`,
+`title_after_type`, `submit_phase`, `event_log`, and
+`submit_after_keypress` outputs into short failure stages so you can tell
+quickly whether the break stayed before click focus, before visible text entry,
+before keypress, or before final submit.
 
 ## Start with the printed flow
 
@@ -32,9 +47,9 @@ command order printed with the active host, port, and shared text value:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1
 ```
 
-That helper keeps the dedicated surface check, the wrapper, the raw headed
-localhost probe, and the wider shared Enter-order escalation path aligned on
-one small command surface.
+That helper keeps the dedicated surface check, the trace guide, the wrapper,
+the raw headed localhost probe, and the wider shared Enter-order escalation
+path aligned on one small command surface.
 
 ## Fastest bounded runner
 
@@ -66,6 +81,7 @@ with the broader issue `#3` helpers.
 Treat the dedicated gate as green only when all of these remain true:
 
 - the Google-style shared form-controls probe still reaches the expected text value
+- click focus still lands before typing
 - the Enter path still records the keydown edge before the final submit state
 - submit still lands after keypress on the real headed Win32 surface
 - the same text and Enter-order expectations still agree with the broader shared Enter-order ladder when you widen back out
