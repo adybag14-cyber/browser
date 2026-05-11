@@ -11,6 +11,7 @@ $surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $flowCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1'
 $runnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1'
 $homepageFixtureCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1'
+$reducedEnterTraceAnalysisCommand = 'powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-investigation-next\analyze-google-enter-trace.ps1 -OutputPath .\tmp-browser-smoke\headed-probe\google-enter-trace-analysis.json'
 $submitTimingCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1'
 $sharedEnterOrderCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1'
 
@@ -22,17 +23,21 @@ $guide = [ordered]@{
     flow_command = $flowCommand
     runner_command = $runnerCommand
     homepage_fixture_command = $homepageFixtureCommand
+    reduced_enter_trace_analysis_command = $reducedEnterTraceAnalysisCommand
     submit_timing_command = $submitTimingCommand
     shared_enter_order_command = $sharedEnterOrderCommand
     quick_diagnosis = @(
         'No title_after_focus or no FOCUS marker in the saved homepage fixture means the later submit path is not the first failure; click focus never stabilized on the reduced saved-homepage checkpoint.',
         'title_after_focus plus no title_after_type means the saved homepage fixture still lost typed text before Enter ordering became relevant.',
         'title_after_type plus no title_after_submit means the saved homepage fixture never observed Enter submit, so keep the investigation on that checkpoint before trusting the later timing slices.',
+        'If google-enter-trace-analysis.json reports classification = submit_before_keypress_or_keypress_missing, stay on the reduced Enter checkpoint before trusting the later submit-timing or shared Enter-order slices.',
+        'If google-enter-trace-analysis.json reports classification = keypress_missing or submit_missing_after_keypress, inspect the saved trace_artifacts listed in that JSON before widening back out to larger issue #3 helpers.',
+        'If google-enter-trace-analysis.json reports classification = enter_sequence_complete but a later submit-timing or shared Enter-order slice still fails, the remaining gap is downstream of the reduced homepage Enter path.',
         'A submit-timing result with title_after_enter but keypress_before_submit = false means the Google-shaped headed timing slice still submits too early, before keypress reaches submit.',
-        'A green saved homepage fixture and submit-timing slice plus a failing shared Enter-order runner means the remaining gap likely lives in the stricter shared form-controls or inline-flow handoff rather than the reduced Google-shaped probes.',
-        'When the saved homepage fixture, submit-timing slice, and shared Enter-order ladder all stay green together, move on to attached HTML or live Google trace capture instead of re-running the same bounded submit-path steps.'
+        'A green saved homepage fixture, reduced Enter-trace analysis, and submit-timing slice plus a failing shared Enter-order runner means the remaining gap likely lives in the stricter shared form-controls or inline-flow handoff rather than the reduced Google-shaped probes.',
+        'When the saved homepage fixture, reduced Enter-trace analysis, submit-timing slice, and shared Enter-order ladder all stay green together, move on to attached HTML or live Google trace capture instead of re-running the same bounded submit-path steps.'
     )
-    next_step = 'Run the submit-path surface checker first, print the flow or this guide when needed, rerun the one-command submit-path runner, and widen back out only after the bounded homepage-fixture, submit-timing, and shared Enter-order slices agree.'
+    next_step = 'Run the submit-path surface checker first, then the submit-path runner. If the saved homepage fixture is green but later timing is still unclear, open tmp-browser-smoke\headed-probe\google-enter-trace-analysis.json before rerunning anything broader.'
 }
 
 if ($Json) {
@@ -48,6 +53,7 @@ Write-Host ("Check:   {0}" -f $guide.surface_check_command)
 Write-Host ("Flow:    {0}" -f $guide.flow_command)
 Write-Host ("Run:     {0}" -f $guide.runner_command)
 Write-Host ("Fixture: {0}" -f $guide.homepage_fixture_command)
+Write-Host ("Trace:   {0}" -f $guide.reduced_enter_trace_analysis_command)
 Write-Host ("Timing:  {0}" -f $guide.submit_timing_command)
 Write-Host ("Shared:  {0}" -f $guide.shared_enter_order_command)
 Write-Host ''
