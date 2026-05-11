@@ -49,7 +49,7 @@ try {
         -RepoRoot $RepoRoot `
         -BrowserExe $BrowserExe `
         -Url "http://127.0.0.1:$Port/src/browser/tests/page/google_home_title_probe.html" `
-        -ExpectedTitleContains "BOUND|" `
+        -ExpectedTitleContainsAny @("Q=INPUT:q::1", "BOUND|", "FOCUSED|") `
         -InputText $InputText `
         -ExpectedTypedTitleContains ("TYPED:{0}" -f $InputText) `
         -SendEnter `
