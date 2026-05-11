@@ -322,17 +322,17 @@ fn asUint(comptime string: anytype) std.meta.Int(
         @compileError("expected : " ++ @typeName(expectedType) ++ ", got: " ++ @typeName(@TypeOf(string)));
     }
 
-    return @bitCast(@as(*const [byteLength]u8, string).*);
+    return @bitCast(@as(*const [byteLength]u8, string). *);
 }
 
 const testing = @import("testing.zig");
 test "String" {
     const other_short = try String.init(undefined, "other_short", .{});
-    const other_long = try String.init(testing.allocator, "other_long"**100, .{});
+    const other_long = try String.init(testing.allocator, "other_long" * *100, .{});
     defer other_long.deinit(testing.allocator);
 
     inline for (0..100) |i| {
-        const input = "a"**i;
+        const input = "a" * *i;
         const str = try String.init(testing.allocator, input, .{});
         defer str.deinit(testing.allocator);
 
@@ -344,7 +344,7 @@ test "String" {
         try testing.expectEqual(false, str.eqlSlice("other_short"));
 
         try testing.expectEqual(false, str.eql(other_long));
-        try testing.expectEqual(false, str.eqlSlice("other_long"**100));
+        try testing.expectEqual(false, str.eqlSlice("other_long" * *100));
     }
 }
 
