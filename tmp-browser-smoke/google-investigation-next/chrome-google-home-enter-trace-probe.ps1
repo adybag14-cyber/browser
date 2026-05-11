@@ -119,7 +119,7 @@ if (-not (Test-Path -LiteralPath $serverScript)) {
   throw "google trace probe server script not found: $serverScript"
 }
 
-cmd /c "rmdir /s /q `"$profileRoot`"`" | Out-Null
+cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
 New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
 $originalAppData = $env:APPDATA
 $originalLocalAppData = $env:LOCALAPPDATA
