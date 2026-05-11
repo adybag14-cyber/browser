@@ -47,8 +47,8 @@ For the Google search-box investigation, keep this order:
 
 The dedicated Google attached-page runner now reruns the deep asset-closure
 check automatically for attached-file modes before launch. Keeping the explicit
-command in the guide still makes missing nested CSS, image, and font assets
-obvious before the headed window starts.
+command in the guide still makes missing nested CSS, JavaScript module, image,
+and font assets obvious before the headed window starts.
 
 ## Generic Attached-Page Order
 
