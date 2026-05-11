@@ -4,13 +4,12 @@ param(
     [string]$RepoRoot,
     [string]$BrowserExe,
     [string]$Host = "127.0.0.1",
-    [string]$InputText = "QZ",
     [int]$Port = 8168,
+    [string]$InputText = "QZ",
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$WindowReadyAttempts = 60,
     [int]$TitleWaitAttempts = 80,
-    [int]$PollMilliseconds = 250,
-    [switch]$LeaveOpen
+    [int]$PollMilliseconds = 250
 )
 
 Set-StrictMode -Version Latest
@@ -26,120 +25,104 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
 }
 
 $surfaceCheck = '.\\scripts\\windows\\check_google_home_validation_surface.ps1'
-$quickFlowRunner = '.\\scripts\\windows\\show_google_quick_validation_flow.ps1'
-$quickRunner = '.\\scripts\\windows\\run_google_quick_validation.ps1'
+$quickFlow = '.\\scripts\\windows\\show_google_quick_validation_flow.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_home_validation.ps1'
-$rawProbe = '.\\tmp-browser-smoke\\google-home\\chrome-google-home-enter-probe.ps1'
+$directHomeRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$directProbe = '.\\tmp-browser-smoke\\google-home\\chrome-google-home-enter-probe.ps1'
+$readFirstGuide = 'docs/GOOGLE_HOME_VALIDATION.md'
 
-$quickFlowArguments = ""
-$quickArguments = ""
 $wrapperArguments = ""
-$rawProbeArguments = ""
+$directHomeArguments = ""
+$directProbeArguments = ""
 if ($RepoRoot) {
     $quotedRepoRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot
-    $quickFlowArguments += " -RepoRoot $quotedRepoRoot"
-    $quickArguments += " -RepoRoot $quotedRepoRoot"
     $wrapperArguments += " -RepoRoot $quotedRepoRoot"
-    $rawProbeArguments += " -RepoRoot $quotedRepoRoot"
+    $directHomeArguments += " -RepoRoot $quotedRepoRoot"
+    $directProbeArguments += " -RepoRoot $quotedRepoRoot"
 }
 if ($BrowserExe) {
     $quotedBrowserExe = ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe
-    $quickFlowArguments += " -BrowserExe $quotedBrowserExe"
-    $quickArguments += " -BrowserExe $quotedBrowserExe"
     $wrapperArguments += " -BrowserExe $quotedBrowserExe"
-    $rawProbeArguments += " -BrowserExe $quotedBrowserExe"
+    $directHomeArguments += " -BrowserExe $quotedBrowserExe"
+    $directProbeArguments += " -BrowserExe $quotedBrowserExe"
 }
 if ($Host) {
     $quotedHost = ConvertTo-PowerShellSingleQuotedLiteral -Value $Host
-    $quickFlowArguments += " -Host $quotedHost"
-    $quickArguments += " -Host $quotedHost"
     $wrapperArguments += " -Host $quotedHost"
-    $rawProbeArguments += " -Host $quotedHost"
-}
-if ($InputText) {
-    $quotedInputText = ConvertTo-PowerShellSingleQuotedLiteral -Value $InputText
-    $quickFlowArguments += " -InputText $quotedInputText"
-    $quickArguments += " -InputText $quotedInputText"
-    $wrapperArguments += " -InputText $quotedInputText"
-    $rawProbeArguments += " -InputText $quotedInputText"
+    $directHomeArguments += " -Host $quotedHost"
+    $directProbeArguments += " -Host $quotedHost"
 }
 if ($Port) {
     $wrapperArguments += " -Port $Port"
-    $rawProbeArguments += " -Port $Port"
+    $directHomeArguments += " -HomePort $Port"
+    $directProbeArguments += " -Port $Port"
+}
+if ($InputText) {
+    $quotedInputText = ConvertTo-PowerShellSingleQuotedLiteral -Value $InputText
+    $wrapperArguments += " -InputText $quotedInputText"
+    $directHomeArguments += " -InputText $quotedInputText"
+    $directProbeArguments += " -InputText $quotedInputText"
 }
 if ($ServerReadyTimeoutSeconds) {
-    $quickFlowArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
-    $quickArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
     $wrapperArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
-    $rawProbeArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
+    $directHomeArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
+    $directProbeArguments += " -ServerReadyTimeoutSeconds $ServerReadyTimeoutSeconds"
 }
 if ($WindowReadyAttempts) {
-    $quickFlowArguments += " -HomeWindowReadyAttempts $WindowReadyAttempts"
-    $quickArguments += " -HomeWindowReadyAttempts $WindowReadyAttempts"
     $wrapperArguments += " -WindowReadyAttempts $WindowReadyAttempts"
-    $rawProbeArguments += " -WindowReadyAttempts $WindowReadyAttempts"
+    $directProbeArguments += " -WindowReadyAttempts $WindowReadyAttempts"
 }
 if ($TitleWaitAttempts) {
-    $quickFlowArguments += " -HomeTitleWaitAttempts $TitleWaitAttempts"
-    $quickArguments += " -HomeTitleWaitAttempts $TitleWaitAttempts"
     $wrapperArguments += " -TitleWaitAttempts $TitleWaitAttempts"
-    $rawProbeArguments += " -TitleWaitAttempts $TitleWaitAttempts"
+    $directProbeArguments += " -TitleWaitAttempts $TitleWaitAttempts"
 }
 if ($PollMilliseconds) {
-    $quickFlowArguments += " -HomePollMilliseconds $PollMilliseconds"
-    $quickArguments += " -HomePollMilliseconds $PollMilliseconds"
     $wrapperArguments += " -PollMilliseconds $PollMilliseconds"
-    $rawProbeArguments += " -PollMilliseconds $PollMilliseconds"
-}
-if ($LeaveOpen) {
-    $quickFlowArguments += " -LeaveOpen"
-    $quickArguments += " -LeaveOpen"
-    $wrapperArguments += " -LeaveOpen"
-    $rawProbeArguments += " -LeaveOpen"
+    $directProbeArguments += " -PollMilliseconds $PollMilliseconds"
 }
 
 $flow = [ordered]@{
     issue = "Headed Windows Google reduced homepage validation flow"
-    focus = "Read-first handoff from the bounded localhost and quick/title gates into the reduced homepage Enter-submit pass on the real headed surface, with a dedicated fail-fast surface check before the wrapper or raw probe runs."
-    leave_open = [bool]$LeaveOpen
+    focus = "Smallest real-surface reduced homepage proof for issue #3 after the quicker title-plus-watch gate is green."
+    read_first_guide = $readFirstGuide
     steps = @(
         [ordered]@{
             name = "surface-check"
-            goal = "Fail fast if the reduced-homepage guide, helper, runner, or raw probe drifted before you trust this smaller real-surface issue #3 gate."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $surfaceCheck)
+            goal = "Fail fast if the reduced-homepage note, quick handoff, wrapper, or raw homepage probe drifted before you trust this headed checkpoint."
+            command = "powershell -ExecutionPolicy Bypass -File $surfaceCheck"
         }
         [ordered]@{
-            name = "quick-flow"
-            goal = "Print the faster title-plus-watch handoff when you want the last narrower gate spelled out before the reduced homepage pass."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $quickFlowRunner, $quickFlowArguments)
+            name = "quick-handoff"
+            goal = "Print the quicker title-plus-watch flow first when you want the smaller headed checkpoint sequence laid out before the reduced homepage wrapper."
+            command = "powershell -ExecutionPolicy Bypass -File $quickFlow"
         }
         [ordered]@{
-            name = "quick-wrapper"
-            goal = "Run the dedicated quick wrapper when you want the title markers and watch phase rechecked before the reduced homepage step."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $quickRunner, $quickArguments)
+            name = "wrapper"
+            goal = "Run the dedicated reduced-homepage wrapper so the real-surface Google-home gate stays on the same reusable command surface as the other issue #3 helpers."
+            command = "powershell -ExecutionPolicy Bypass -File $wrapperRunner$wrapperArguments"
         }
         [ordered]@{
-            name = "reduced-homepage"
-            goal = "Run the dedicated reduced homepage wrapper so the real-surface focus, typed-text, and Enter-submit proof stays on one reusable command surface."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $wrapperRunner, $wrapperArguments)
+            name = "raw-home-phase"
+            goal = "Run the raw home phase only when you need to narrow a wrapper failure to the underlying reduced homepage phase inside the general issue #3 runner."
+            command = "powershell -ExecutionPolicy Bypass -File $directHomeRunner -Phase home$directHomeArguments"
         }
         [ordered]@{
-            name = "raw-probe"
-            goal = "Run the underlying reduced homepage probe directly when you need the exact headed localhost script without the wrapper layer."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $rawProbe, $rawProbeArguments)
+            name = "direct-probe"
+            goal = "Run the raw reduced-homepage probe only when you need the exact headed fixture entrypoint without the wrapper or broader runner layer."
+            command = "powershell -ExecutionPolicy Bypass -File $directProbe$directProbeArguments"
         }
     )
     next_steps = @(
-        "Use .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1 after the reduced homepage wrapper is green when you want the bounded saved-homepage checkpoint printed next.",
-        "Use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 after the reduced homepage wrapper is green when the next question is keydown, keypress, and submit ordering.",
-        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 after the reduced homepage wrapper is green when you need the stricter shared Enter-order ladder before manual or live replay."
+        "Use .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1 when this reduced homepage gate is green and the next question is whether the saved homepage fixture still agrees.",
+        "Use .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1 when this gate is green but keydown, keypress, and submit ordering still need a tighter headed check.",
+        "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 when the reduced homepage gate is green and you want the stricter shared Enter-order ladder printed before you run it."
     )
     notes = @(
-        "Run the reduced-homepage surface checker first so missing guides, helpers, runner wiring, or the raw probe fail before the later-stage real-surface pass looks trustworthy.",
-        "Keep the quick-flow and quick-wrapper steps ahead of the reduced-homepage wrapper when you still want the last narrower title-plus-watch gate visible in the same printed ladder.",
-        "Prefer the dedicated wrapper unless you already know you need the raw direct probe output from tmp-browser-smoke/google-home.",
-        "Use the same host, port, input text, and timing overrides here when you need the reduced homepage pass aligned with the broader issue #3 helpers.",
-        "When LeaveOpen is set, the quick and reduced-homepage commands keep the headed browser open after the bounded phases finish so the real surface is easier to inspect."
+        "Start with the surface check when you want the reduced-homepage gate to fail fast on missing notes, helper scripts, or raw probe drift before manual or live replay.",
+        "Use the quick-handoff helper when you want the faster title-plus-watch gate printed in front of this real-surface homepage checkpoint.",
+        "Use the wrapper unless you already know you need the raw home phase or the direct raw probe by itself.",
+        "Keep the same host, port, input text, and timing overrides here when you want the reduced-homepage gate aligned with the broader issue #3 runner.",
+        "Treat this as the smallest real-surface homepage proof before widening to the saved homepage fixture, submit timing, shared Enter order, attached HTML, or live Google follow-up."
     )
 }
 
@@ -151,7 +134,7 @@ if ($Json) {
 Write-Host "Headed Windows Google reduced homepage validation flow"
 Write-Host ""
 Write-Host ("Focus: {0}" -f $flow.focus)
-Write-Host ("Leave open after reduced-homepage pass: {0}" -f ([bool]$LeaveOpen))
+Write-Host ("Guide: {0}" -f $flow.read_first_guide)
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
