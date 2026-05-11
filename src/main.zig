@@ -44,13 +44,13 @@ pub fn main(process: std.process.Init) !void {
     const main_arena = main_arena_instance.allocator();
     defer main_arena_instance.deinit();
 
-    run(gpa, main_arena, process.minimal.args) catch |err| {
+    run(gpa, main_arena, process.io, process.minimal.args) catch |err| {
         log.fatal(.app, "exit", .{ .err = err });
         std.posix.exit(1);
     };
 }
 
-fn run(allocator: Allocator, main_arena: Allocator, argv: std.process.Args) !void {
+fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
     const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
 
@@ -148,8 +148,8 @@ fn run(allocator: Allocator, main_arena: Allocator, argv: std.process.Args) !voi
                 },
             };
 
-            var stdout = std.fs.File.stdout();
-            var writer = stdout.writer(&.{});
+            var stdout = std.Io.File.stdout();
+            var writer = stdout.writer(io, &.{});
             if (opts.dump_mode != null) {
                 fetch_opts.writer = &writer.interface;
             }
@@ -164,13 +164,13 @@ fn run(allocator: Allocator, main_arena: Allocator, argv: std.process.Args) !voi
 
             log.opts.format = .logfmt;
 
-            var stdout = std.fs.File.stdout().writer(&.{});
+            var stdout = std.Io.File.stdout().writer(io, &.{});
 
             var mcp_server: *lp.mcp.Server = try .init(allocator, app, &stdout.interface);
             defer mcp_server.deinit();
 
             var stdin_buf: [64 * 1024]u8 = undefined;
-            var stdin = std.fs.File.stdin().reader(&stdin_buf);
+            var stdin = std.Io.File.stdin().reader(io, &stdin_buf);
 
             try lp.mcp.router.processRequests(mcp_server, &stdin.interface);
         },
