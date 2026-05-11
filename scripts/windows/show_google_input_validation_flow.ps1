@@ -27,6 +27,7 @@ $runner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $recommendedRunner = '.\\scripts\\windows\\run_google_issue3_recommended_validation.ps1'
 $titleRunner = '.\\scripts\\windows\\run_google_title_validation.ps1'
 $surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1"
+$titleSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile title"
 $surfaceCheckAttachedCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile attached-html"
 $titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
@@ -70,7 +71,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the saved homepage fixture checkpoint, the dedicated later-stage submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the saved homepage fixture checkpoint, the dedicated later-stage submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -84,6 +85,11 @@ $flow = [ordered]@{
             name = "localhost"
             goal = "Run the reduced localhost Google-style probes before any real-surface homepage pass."
             command = $localhostCommand
+        }
+        [ordered]@{
+            name = "title-surface-check"
+            goal = "Fail fast if the dedicated bounded title-validation guide, helper, direct probe, or fixture drifted out of sync before you depend on the narrower issue #3 title ladder."
+            command = $titleSurfaceCheckCommand
         }
         [ordered]@{
             name = "title-flow"
@@ -167,7 +173,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "full"
-            goal = "Run the localhost-first issue #3 recommended runner in one pass so the reduced title phase, reduced homepage pass, saved homepage fixture checkpoint, dedicated submit-path stage, bounded submit-timing slice, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watcher stay on one reusable command surface before the broader manual follow-up."
+            goal = "Run the localhost-first issue #3 recommended runner in one pass so the reduced title phase, reduced homepage pass, saved homepage fixture checkpoint, dedicated submit-path stage, bounded submit-timing slice, shared label baseline, shared Enter-order wrapper, attached Google helper handoff, and watch phases stay on one reusable command surface before the broader manual follow-up."
             command = $fullCommand
         }
     )
@@ -214,9 +220,10 @@ $flow = [ordered]@{
         "-WatchPollMilliseconds 250"
     )
     notes = @(
-        "Start with the validation-surface checker so guide or helper drift fails fast before localhost, title-flow, title, quick-flow, or quick.",
+        "Start with the validation-surface checker so guide or helper drift fails fast before localhost, title-surface-check, title-flow, title, quick-flow, or quick.",
         "Use .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile attached-html before attached or saved-page follow-up when the next slice depends on the saved-page or attached-page handoff staying intact.",
-        "Start with localhost before title-flow, title, quick-flow, or quick so the reduced Google-style probes stay the first bounded gate.",
+        "Start with localhost before title-surface-check, title-flow, title, quick-flow, or quick so the reduced Google-style probes stay the first bounded gate.",
+        "Use .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile title before the title-flow or title steps when you want the narrower title guide, helper, direct-probe, and fixture chain to fail fast before you depend on that smaller issue #3 ladder.",
         "Use the title-flow step when you want the dedicated title wrapper and raw probe handoff printed before you run that narrower slice.",
         "Use the quick-flow step when you want the fast title-plus-watch stack printed before you execute the quick wrapper.",
         "Use the homepage-fixture-flow step after the reduced homepage pass when you want the saved homepage fixture checkpoint printed before execution.",
