@@ -30,8 +30,10 @@ if (-not $BrowserExe) {
 $artifactRoot = Join-Path $RepoRoot "tmp-browser-smoke\headed-probe"
 New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
 $reducedEnterTraceArtifactPath = Join-Path $artifactRoot "google-enter-trace-analysis.json"
+$submitPathHandoffArtifactPath = Join-Path $artifactRoot "google-submit-path-handoff.json"
 $submitPathSurfaceCheck = Join-Path $PSScriptRoot "check_google_submit_path_validation_surface.ps1"
 $submitPathTraceGuide = Join-Path $PSScriptRoot "show_google_submit_path_trace_guide.ps1"
+$submitPathHandoff = Join-Path $PSScriptRoot "show_google_submit_path_handoff.ps1"
 $homepageFixtureRunner = Join-Path $PSScriptRoot "run_google_homepage_fixture_validation.ps1"
 $submitTimingRunner = Join-Path $PSScriptRoot "run_google_submit_timing_validation.ps1"
 $sharedEnterOrderRunner = Join-Path $PSScriptRoot "run_google_shared_enter_order_validation.ps1"
@@ -42,6 +44,9 @@ if (-not (Test-Path -LiteralPath $submitPathSurfaceCheck -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $submitPathTraceGuide -PathType Leaf)) {
     throw "Google submit-path trace guide not found: $submitPathTraceGuide"
+}
+if (-not (Test-Path -LiteralPath $submitPathHandoff -PathType Leaf)) {
+    throw "Google submit-path handoff helper not found: $submitPathHandoff"
 }
 if (-not (Test-Path -LiteralPath $homepageFixtureRunner -PathType Leaf)) {
     throw "Google homepage fixture validation runner not found: $homepageFixtureRunner"
@@ -119,10 +124,11 @@ Write-Host ("Reduced Enter-trace port: {0}" -f $ReducedEnterTracePort)
 Write-Host ("Submit-timing port: {0}" -f $SubmitTimingPort)
 Write-Host ("Shared Enter-order port: {0}" -f $SharedEnterOrderPort)
 Write-Host ("Reduced Enter analysis JSON: {0}" -f $reducedEnterTraceArtifactPath)
+Write-Host ("Submit-path handoff JSON: {0}" -f $submitPathHandoffArtifactPath)
 Write-Host ""
 Write-Host "This runner is for the stage after the bounded localhost title gates are already green."
 Write-Host "It keeps the issue #3 focus on the real submit path: saved homepage fixture, reduced Enter-trace diagnosis, submit timing, and shared Enter-order."
-Write-Host ("If one bounded step fails, use the read-first trace guide at {0} before widening back out." -f $submitPathTraceGuide)
+Write-Host ("If one bounded step fails, use the saved handoff helper at {0} and the trace guide at {1} before widening back out." -f $submitPathHandoff, $submitPathTraceGuide)
 Write-Host ""
 
 Write-Host "=== google-submit-path-surface ==="
@@ -140,6 +146,9 @@ Write-Host ("Script: {0}" -f $reducedEnterTraceAnalyzer)
 if (Test-Path -LiteralPath $reducedEnterTraceArtifactPath) {
     Remove-Item -LiteralPath $reducedEnterTraceArtifactPath -Force
 }
+if (Test-Path -LiteralPath $submitPathHandoffArtifactPath) {
+    Remove-Item -LiteralPath $submitPathHandoffArtifactPath -Force
+}
 $null = & $reducedEnterTraceAnalyzer @reducedEnterTraceArgs
 if (-not (Test-Path -LiteralPath $reducedEnterTraceArtifactPath -PathType Leaf)) {
     throw "Reduced Google Enter-trace analysis did not save its JSON artifact: $reducedEnterTraceArtifactPath"
@@ -149,6 +158,24 @@ try {
 } catch {
     throw "Reduced Google Enter-trace analysis returned non-JSON output. Artifact: $reducedEnterTraceArtifactPath"
 }
+$submitPathHandoffArgs = @{
+    RepoRoot = $RepoRoot
+    AnalysisPath = $reducedEnterTraceArtifactPath
+    ArtifactPath = $submitPathHandoffArtifactPath
+    Json = $true
+}
+$submitPathHandoffText = (& $submitPathHandoff @submitPathHandoffArgs) -join [Environment]::NewLine
+if ([string]::IsNullOrWhiteSpace($submitPathHandoffText)) {
+    throw "Google submit-path handoff helper did not return JSON output."
+}
+try {
+    $submitPathHandoffRecord = $submitPathHandoffText | ConvertFrom-Json
+} catch {
+    throw "Google submit-path handoff helper returned non-JSON output. Artifact: $submitPathHandoffArtifactPath"
+}
+if (-not (Test-Path -LiteralPath $submitPathHandoffArtifactPath -PathType Leaf)) {
+    throw "Google submit-path handoff helper did not save its JSON artifact: $submitPathHandoffArtifactPath"
+}
 Write-Host ("Analysis JSON: {0}" -f $reducedEnterTraceArtifactPath)
 Write-Host ("Classification: {0}" -f $reducedEnterTraceRecord.classification)
 if ($reducedEnterTraceRecord.failure_stage) {
@@ -156,6 +183,16 @@ if ($reducedEnterTraceRecord.failure_stage) {
 }
 if ($reducedEnterTraceRecord.recommendation) {
     Write-Host ("Recommendation: {0}" -f $reducedEnterTraceRecord.recommendation)
+}
+Write-Host ("Handoff JSON: {0}" -f $submitPathHandoffArtifactPath)
+if ($submitPathHandoffRecord.next_focus) {
+    Write-Host ("Next focus: {0}" -f $submitPathHandoffRecord.next_focus)
+}
+if ($submitPathHandoffRecord.next_runner_command) {
+    Write-Host ("Next runner: {0}" -f $submitPathHandoffRecord.next_runner_command)
+}
+if ($submitPathHandoffRecord.recommended_command) {
+    Write-Host ("Guide: {0}" -f $submitPathHandoffRecord.recommended_command)
 }
 
 Write-Host ""
@@ -169,4 +206,4 @@ Write-Host ("Script: {0}" -f $sharedEnterOrderRunner)
 & $sharedEnterOrderRunner @sharedEnterOrderArgs
 
 Write-Host ""
-Write-Host ("Next: open {0} first when the saved homepage fixture is green but later timing still feels ambiguous. If the saved homepage fixture, reduced Enter-trace analysis, submit-timing, and shared Enter-order slices stay green together, move on to the smallest live Google manual pass or trace capture. If they diverge, print {1} before the next rerun." -f $reducedEnterTraceArtifactPath, $submitPathTraceGuide)
+Write-Host ("Next: open {0} first when the saved homepage fixture is green but later timing still feels ambiguous. If the later steps diverge, read the saved handoff artifact at {1} and print {2} before the next rerun. If the saved homepage fixture, reduced Enter-trace analysis, submit-timing, and shared Enter-order slices stay green together, move on to the smallest live Google manual pass or trace capture." -f $reducedEnterTraceArtifactPath, $submitPathHandoffArtifactPath, $submitPathTraceGuide)
