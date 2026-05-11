@@ -3,14 +3,15 @@
 set -euo pipefail
 
 usage() {
-    cat <<'EOF'
+    cat <<'EOF2'
 Usage:
   scripts/linux/check_offline_build_prereqs.sh \
     [--browser-root /path/to/browser-repo] \
     [--zig-binary /path/to/zig] \
     [--cargo-binary /path/to/cargo] \
     [--rustc-binary /path/to/rustc] \
-    [--prebuilt-v8-path /path/to/libc_v8_*.a]
+    [--prebuilt-v8-path /path/to/libc_v8_*.a] \
+    [--allow-zig-mismatch]
 
 This helper confirms that an offline Linux browser checkout is ready for a real
 build attempt before `zig build` runs. It checks the active Zig version against
@@ -21,8 +22,10 @@ command. Use `--zig-binary`, `--cargo-binary`, `--rustc-binary`, `ZIG=...`,
 `CARGO=...`, or `RUSTC=...` when compatible toolchains are installed outside
 PATH. When the configured Zig binary is missing or version-mismatched, the
 helper also scans nearby workspace roots for an exact-match Zig and prints
-rerun hints for the discovered candidate paths.
-EOF
+rerun hints for the discovered candidate paths. Use `--allow-zig-mismatch`
+during active Zig port work when you want layout validation without treating a
+known toolchain-version mismatch as a hard preflight failure.
+EOF2
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +36,7 @@ ZIG_BINARY="${ZIG:-}"
 CARGO_BINARY="${CARGO:-}"
 RUSTC_BINARY="${RUSTC:-}"
 PREBUILT_V8_PATH=""
+ALLOW_ZIG_MISMATCH=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -55,6 +59,10 @@ while [[ $# -gt 0 ]]; do
         --prebuilt-v8-path)
             PREBUILT_V8_PATH="$2"
             shift 2
+            ;;
+        --allow-zig-mismatch)
+            ALLOW_ZIG_MISMATCH=1
+            shift
             ;;
         -h|--help)
             usage
@@ -206,11 +214,22 @@ if [[ -n "${zig_version}" ]]; then
     if [[ "${zig_version}" == "${MINIMUM_ZIG_VERSION}" ]]; then
         write_status "ZigVersion" true "matches build.zig.zon minimum ${MINIMUM_ZIG_VERSION}"
     else
-        write_status "ZigVersion" false "expected ${MINIMUM_ZIG_VERSION}, found ${zig_version}"
+        if [[ "${ALLOW_ZIG_MISMATCH}" -eq 1 ]]; then
+            printf '[WARN] %s - expected %s, found %s; continuing because --allow-zig-mismatch was set\n' "ZigVersion" "${MINIMUM_ZIG_VERSION}" "${zig_version}"
+        else
+            write_status "ZigVersion" false "expected ${MINIMUM_ZIG_VERSION}, found ${zig_version}"
+        fi
     fi
 fi
 
-if [[ -z "${zig_cmd}" || "${zig_version}" != "${MINIMUM_ZIG_VERSION}" ]]; then
+need_zig_candidate_search=false
+if [[ -z "${zig_cmd}" ]]; then
+    need_zig_candidate_search=true
+elif [[ "${zig_version}" != "${MINIMUM_ZIG_VERSION}" && "${ALLOW_ZIG_MISMATCH}" -ne 1 ]]; then
+    need_zig_candidate_search=true
+fi
+
+if [[ "${need_zig_candidate_search}" == "true" ]]; then
     discover_matching_zig_candidates "${MINIMUM_ZIG_VERSION}" "${ZIG_SEARCH_ROOTS[@]}"
     if (( ${#zig_candidate_details[@]} > 0 )); then
         for candidate_detail in "${zig_candidate_details[@]}"; do
@@ -344,4 +363,7 @@ else
     echo "No local Zig candidate matching ${MINIMUM_ZIG_VERSION} was discovered in the nearby workspace roots."
 fi
 echo "Run scripts/linux/restore_offline_build_inputs.sh (or scripts/linux/prepare_offline_build_inputs.sh for custom archive locations), switch to Zig ${MINIMUM_ZIG_VERSION}, and make sure cargo plus rustc are available before retrying zig build. Use --zig-binary /path/to/zig, --cargo-binary /path/to/cargo, --rustc-binary /path/to/rustc, or the ZIG/CARGO/RUSTC environment variables when the compatible toolchains are installed outside PATH."
+if [[ "${ALLOW_ZIG_MISMATCH}" -eq 1 ]]; then
+    echo "Because --allow-zig-mismatch was set, the remaining failures are layout or toolchain-path issues rather than the expected Zig version drift."
+fi
 exit 1
