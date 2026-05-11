@@ -360,6 +360,7 @@ $googleHomepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\
 $googleSubmitPathSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_path_validation_surface.ps1"
 $googleSubmitPathFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 $googleSubmitPathRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
+$googleSubmitTimingSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_timing_validation_surface.ps1"
 $googleSubmitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 $googleFormControlsEnterOrderSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_form_controls_enter_order_validation_surface.ps1"
 $googleFormControlsEnterOrderGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1"
@@ -427,6 +428,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Runner: {0}" -f $googleSubmitPathRunnerCommand)
     }
     if ($suite.Name -eq "google-submit-timing") {
+        Write-Host ("Surface checker: {0}" -f $googleSubmitTimingSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleSubmitTimingFlowCommand)
     }
     if ($suite.Name -eq "google-form-controls-enter-order") {
@@ -556,6 +558,7 @@ Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\chec
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_timing_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_submit_timing_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-form-controls-enter-order"
