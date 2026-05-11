@@ -240,6 +240,7 @@ if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary
 }
 $refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and (-not $manifestRecordsRefreshArtifactPath) -and $refreshExists
 $refreshPointerUsesManifest = (-not $summaryRecordsRefreshArtifactPath) -and $manifestRecordsRefreshArtifactPath
+$refreshPointerTrusted = [bool]($summaryRecordsRefreshArtifactPath -or $manifestRecordsRefreshArtifactPath -or $refreshMatchesSummary)
 $refreshReady = ($refreshStatus -eq 'refreshed') -and $refreshMatchesSummary
 $refreshNeeded = -not $refreshReady
 
@@ -462,6 +463,16 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     $nextArtifactToOpen = $SummaryPath
 }
 
+$artifactChainCoherent = [bool](-not $refreshNeeded -and -not $bundleNeedsRepair -and $refreshMatchesSummary -and $handoffMatchesSummary)
+$pointerRepairNeeded = [bool](($refreshMatchesSummary -and -not $summaryRecordsRefreshArtifactPath) -or ($handoffMatchesSummary -and -not $summaryRecordsHandoffArtifactPath))
+$preferredStartHelper = if ($recommendedGuideCommand -eq $handoffGuideCommand) {
+    'handoff'
+} elseif ($recommendedGuideCommand -eq $refreshStatusCommand -or $recommendedCommand -eq $refreshChainCommand) {
+    'refresh-status'
+} else {
+    'recommended-runner'
+}
+
 $handoff = [ordered]@{
     issue = 'Google issue #3 validation handoff'
     purpose = 'Save one refresh-aware handoff artifact that tells the next Windows headed replay whether to trust the narrow replay guidance yet or repair the saved helper chain first.'
@@ -491,6 +502,7 @@ $handoff = [ordered]@{
     manifest_refresh_artifact_path = if ($manifestRecordsRefreshArtifactPath) { $configuredManifestRefreshPath } else { $null }
     refresh_pointer_uses_manifest = [bool]$refreshPointerUsesManifest
     refresh_pointer_uses_fallback = [bool]$refreshPointerUsesFallback
+    refresh_pointer_trusted = [bool]$refreshPointerTrusted
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
     summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $configuredSummaryHandoffPath } else { $null }
     manifest_records_handoff_artifact_path = [bool]$manifestRecordsHandoffArtifactPath
@@ -528,6 +540,9 @@ $handoff = [ordered]@{
     next_artifact_to_open = $nextArtifactToOpen
     handoff_matches_summary = [bool]$handoffMatchesSummary
     handoff_pointer_trusted = [bool]$handoffPointerTrusted
+    artifact_chain_coherent = [bool]$artifactChainCoherent
+    pointer_repair_needed = [bool]$pointerRepairNeeded
+    preferred_start_helper = $preferredStartHelper
     manual_fixture_replay_command = if ($guideRecord) { $guideRecord.manual_fixture_replay_command } else { $null }
     manual_asset_closure_command = if ($guideRecord) { $guideRecord.manual_asset_closure_command } else { $null }
     manual_attached_html_flow_command = if ($guideRecord) { $guideRecord.manual_attached_html_flow_command } else { $null }
@@ -575,6 +590,7 @@ Write-Host ("Refresh:   {0}" -f $handoff.refresh_artifact_path)
 Write-Host ("Refresh exists: {0}" -f $handoff.refresh_artifact_exists)
 Write-Host ("Refresh status: {0}" -f $handoff.refresh_status)
 Write-Host ("Refresh matches summary: {0}" -f $handoff.refresh_matches_summary)
+Write-Host ("Refresh pointer trusted: {0}" -f $handoff.refresh_pointer_trusted)
 if ($handoff.refresh_summary_path) {
     Write-Host ("Refresh summary path: {0}" -f $handoff.refresh_summary_path)
 }
@@ -599,6 +615,9 @@ Write-Host ("Bundle status: {0}" -f $handoff.artifact_bundle_status)
 Write-Host ("Handoff exists: {0}" -f $handoff.handoff_artifact_exists)
 Write-Host ("Handoff matches summary: {0}" -f $handoff.handoff_matches_summary)
 Write-Host ("Handoff pointer trusted: {0}" -f $handoff.handoff_pointer_trusted)
+Write-Host ("Artifact chain coherent: {0}" -f $handoff.artifact_chain_coherent)
+Write-Host ("Pointer repair needed: {0}" -f $handoff.pointer_repair_needed)
+Write-Host ("Preferred helper: {0}" -f $handoff.preferred_start_helper)
 Write-Host ("Summary handoff path recorded: {0}" -f $handoff.summary_records_handoff_artifact_path)
 Write-Host ("Manifest handoff path recorded: {0}" -f $handoff.manifest_records_handoff_artifact_path)
 if ($handoff.summary_handoff_artifact_path) {
