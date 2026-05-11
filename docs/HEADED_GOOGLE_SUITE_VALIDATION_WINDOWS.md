@@ -4,9 +4,9 @@ This guide is the shortest read-first companion to the bounded issue `#3`
 validation flow on `fork/headed-mode-foundation`.
 
 Use it when you want one compact entry point that checks the validation surface
-first, then prints the current localhost, title, homepage-fixture, shared
-Enter-order, and attached-page follow-up order before you widen into longer
-manual replay.
+first, then prints the current localhost, title, homepage-fixture, submit-path,
+shared Enter-order, and attached-page follow-up order before you widen into
+longer manual replay.
 
 ## Quick Start
 
@@ -55,7 +55,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-title
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-homepage-fixture
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-submit-path
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 ```
 
@@ -72,7 +74,8 @@ The helper keeps these checks in one printed order:
 4. Read the saved homepage fixture flow when the next follow-up is itself a captured Google homepage.
 5. Read the dedicated shared form-controls Enter-order flow.
 6. Run the current one-command localhost-first issue `#3` validation pass.
-7. Only after those bounded passes are green, widen into attached or saved-page follow-up.
+7. Run the dedicated submit-path runner when the earlier title gates are already green and you want the saved homepage fixture, submit-timing, and shared Enter-order stack without replaying the earlier localhost title phases.
+8. Only after those bounded passes are green, widen into attached or saved-page follow-up.
 
 ## Why It Exists
 
@@ -96,6 +99,6 @@ Do not use the attached-page or live-Google passes as the first evidence for
 issue `#3`.
 
 Run `check_google_validation_surface.ps1` first after guide or helper edits,
-keep the localhost, title, homepage-fixture, submit-order, and shared
-Enter-order gates aligned first, and treat `KEYDOWN:<text>|13|13` before
+keep the localhost, title, homepage-fixture, submit-path, submit-order, and
+shared Enter-order gates aligned first, and treat `KEYDOWN:<text>|13|13` before
 `SUBMIT:<text>` as the bounded acceptance edge for Enter-order work.
