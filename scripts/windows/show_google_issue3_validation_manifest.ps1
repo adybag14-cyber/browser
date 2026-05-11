@@ -39,6 +39,10 @@ $phaseResults = @($manifest.phase_results)
 $failedPhase = @($phaseResults | Where-Object { $_.name -eq $manifest.first_failed_phase } | Select-Object -First 1)
 $surfaceCheckFailed = $manifest.surface_check_status -ne "passed"
 $surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1"
+$summaryGuideCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1"
+$probeTriageCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1"
+$phaseBoundaryCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1"
+$recommendedRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1"
 $artifactBundleCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1"
 $artifactRoot = if ($manifest.summary_path) {
     Split-Path -Parent $manifest.summary_path
@@ -102,6 +106,10 @@ $report = [ordered]@{
     surface_check_status = $manifest.surface_check_status
     surface_check_error = $manifest.surface_check_error
     surface_check_command = $surfaceCheckCommand
+    summary_guide_command = $summaryGuideCommand
+    probe_triage_command = $probeTriageCommand
+    phase_boundary_command = $phaseBoundaryCommand
+    broader_runner_command = $recommendedRunnerCommand
     surface_check_artifact_path = $manifest.surface_check_artifact_path
     surface_check_missing_count = $manifest.surface_check_missing_count
     surface_check_missing_paths = @($manifest.surface_check_missing_paths)
@@ -162,6 +170,10 @@ if ($report.guide_artifact_path) {
 if ($report.boundary_artifact_path) {
     Write-Host ("Boundary JSON: {0}" -f $report.boundary_artifact_path)
 }
+Write-Host ("Summary cmd: {0}" -f $report.summary_guide_command)
+Write-Host ("Triage cmd: {0}" -f $report.probe_triage_command)
+Write-Host ("Boundary cmd: {0}" -f $report.phase_boundary_command)
+Write-Host ("Broader cmd: {0}" -f $report.broader_runner_command)
 Write-Host ("Bundle cmd: {0}" -f $report.artifact_bundle_command)
 Write-Host ("Bundle target: {0}" -f $report.artifact_bundle_path)
 Write-Host ("Bundle exists: {0}" -f $report.artifact_bundle_exists)
