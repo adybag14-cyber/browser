@@ -28,6 +28,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+$surfaceCheck = '.\\scripts\\windows\\check_google_quick_validation_surface.ps1'
 $titleFlowRunner = '.\\scripts\\windows\\show_google_title_validation_flow.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_quick_validation.ps1'
 
@@ -88,11 +89,16 @@ if ($LeaveOpen) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google quick validation flow"
-    focus = "Fast title-plus-watch triage for issue #3 after the reduced localhost probes are green, while keeping the bounded title markers and the self-starting watch pass on one reusable command surface."
+    focus = "Fast title-plus-watch triage for issue #3 after the reduced localhost probes are green, with a dedicated fail-fast surface check before the bounded title markers and self-starting watch pass."
     steps = @(
         [ordered]@{
+            name = "surface-check"
+            goal = "Fail fast if the quick-validation guide, quick wrapper, watch helper, or title dependencies drifted before you trust this fast issue #3 path."
+            command = "powershell -ExecutionPolicy Bypass -File $surfaceCheck"
+        }
+        [ordered]@{
             name = "title-flow"
-            goal = "Print the bounded title-wrapper flow first when you want the focus, typed-text, and Enter-submit markers translated before the fast quick pass."
+            goal = "Print the bounded title-wrapper flow next when you want the focus, typed-text, and Enter-submit markers translated before the fast quick pass."
             command = "powershell -ExecutionPolicy Bypass -File $titleFlowRunner$titleFlowArguments"
         }
         [ordered]@{
@@ -107,7 +113,8 @@ $flow = [ordered]@{
         "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 after the quick wrapper is green when you want the stricter shared Enter-order stack printed before you run it."
     )
     notes = @(
-        "Start with the title-flow step when you want the bounded title markers explained before you rely on the quick wrapper's faster watch handoff.",
+        "Start with the surface-check when you want the fast quick slice to fail early on missing guide, wrapper, watch helper, or title-fixture drift before the broader issue #3 ladder.",
+        "The title-flow step stays next so the bounded title markers are still explained before you rely on the quick wrapper's faster watch handoff.",
         "The quick wrapper is the preferred fast pass when you want the title probe and the watch phase paired without restating the longer flag bundle by hand.",
         "Use the same host, title port, watch port, input text, and timing overrides here when you need the quick pass aligned with the broader issue #3 flow.",
         "Use -LeaveOpen when you want the quick wrapper to keep the headed browser open after the bounded phases finish so the live state is easier to inspect."
