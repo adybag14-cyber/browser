@@ -119,7 +119,7 @@ if (-not (Test-Path -LiteralPath $serverScript)) {
   throw "google trace probe server script not found: $serverScript"
 }
 
-cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+cmd /c "rmdir /s /q `"$profileRoot`"`" | Out-Null
 New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
 $originalAppData = $env:APPDATA
 $originalLocalAppData = $env:LOCALAPPDATA
@@ -142,6 +142,20 @@ $titleAfterKeydown = $null
 $titleAfterKeypress = $null
 $titleAfterDocKeypress = $null
 $titleAfterSubmit = $null
+$serverReadyAtUtc = $null
+$screenshotReadyAtUtc = $null
+$windowReadyAtUtc = $null
+$focusObservedAtUtc = $null
+$inputSentAtUtc = $null
+$typedObservedAtUtc = $null
+$enterSentAtUtc = $null
+$keydownObservedAtUtc = $null
+$keypressObservedAtUtc = $null
+$docKeypressObservedAtUtc = $null
+$submitObservedAtUtc = $null
+$titleAtInputSend = $null
+$titleAtEnterSend = $null
+$failureStage = "server_ready"
 $failure = $null
 
 try {
@@ -149,13 +163,19 @@ try {
   $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port, $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
   Wait-HttpReady -Url "http://$Host`:$Port/ping" -TimeoutSeconds $ServerReadyTimeoutSeconds
   $ready = $true
+  $serverReadyAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  $failureStage = "screenshot_ready"
 
   $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "960", "--window_height", "720", "--screenshot_png", $pngPath, $probeUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $pngReady = Wait-FileReady -Path $pngPath -Attempts $WindowReadyAttempts
   if (-not $pngReady) { throw "google trace probe screenshot did not become ready" }
+  $screenshotReadyAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  $failureStage = "window_handle"
 
   $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts
   if ($hwnd -eq [IntPtr]::Zero) { throw "google trace probe window handle not found" }
+  $windowReadyAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  $failureStage = "focus_marker"
 
   Show-SmokeWindow $hwnd
   $titleBefore = Get-SmokeWindowTitle $hwnd
@@ -164,23 +184,47 @@ try {
   $titleAfterFocus = Wait-TitleLike -ProcessId $browser.Id -Needle "FOCUSED|" -Attempts $TitleWaitAttempts
   $focusedWorked = $null -ne $titleAfterFocus
   if (-not $focusedWorked) { throw "google trace probe did not focus the search input" }
+  $focusObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  $failureStage = "typed_marker"
 
   Send-SmokeAsciiText $InputText
+  $inputSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  $titleAtInputSend = $titleAfterFocus
   $titleAfterType = Wait-TitleLike -ProcessId $browser.Id -Needle "TYPED:$inputEscaped" -Attempts $TitleWaitAttempts
   $typedWorked = $null -ne $titleAfterType
   if (-not $typedWorked) { throw "google trace probe did not observe typed input text" }
+  $typedObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  $failureStage = "submit_marker"
 
   Send-SmokeEnter
+  $enterSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  $titleAtEnterSend = $titleAfterType
   $titleAfterKeydown = Wait-TitleLike -ProcessId $browser.Id -Needle "KEYDOWN:$inputEscaped:13:13" -Attempts 20
+  if ($null -ne $titleAfterKeydown) {
+    $keydownObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  }
   $titleAfterKeypress = Wait-TitleLike -ProcessId $browser.Id -Needle "KEYPRESS:Enter:$inputEscaped" -Attempts 20
+  if ($null -ne $titleAfterKeypress) {
+    $keypressObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  }
   $titleAfterDocKeypress = Wait-TitleLike -ProcessId $browser.Id -Needle "DOC-KP:" -Attempts 5
+  if ($null -ne $titleAfterDocKeypress) {
+    $docKeypressObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  }
   $titleAfterSubmit = Wait-TitleLike -ProcessId $browser.Id -Needle "SUBMIT:$inputEscaped" -Attempts $TitleWaitAttempts
+  if ($null -ne $titleAfterSubmit) {
+    $submitObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  }
   if (Test-Path -LiteralPath $serverErr) {
     $serverLog = Get-Content -LiteralPath $serverErr -Raw
     $serverSawSubmit = $serverLog -match $submitPattern
   }
+  if ($serverSawSubmit -and $null -eq $submitObservedAtUtc) {
+    $submitObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+  }
   $submittedWorked = ($null -ne $titleAfterSubmit) -or $serverSawSubmit
   if (-not $submittedWorked) { throw "google trace probe did not reach the submitted page" }
+  $failureStage = $null
 } catch {
   $failure = $_.Exception.Message
 } finally {
@@ -192,6 +236,9 @@ try {
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
+  if ($browser -and $browser.HasExited -and -not $submittedWorked -and $failureStage -ne $null) {
+    $failureStage = "process_exit"
+  }
 
   [ordered]@{
     repo_root = $repo
@@ -208,9 +255,23 @@ try {
     typed_worked = $typedWorked
     submitted_worked = $submittedWorked
     server_saw_submit = $serverSawSubmit
+    server_ready_at_utc = $serverReadyAtUtc
+    screenshot_ready_at_utc = $screenshotReadyAtUtc
+    window_ready_at_utc = $windowReadyAtUtc
+    focus_observed_at_utc = $focusObservedAtUtc
+    input_sent_at_utc = $inputSentAtUtc
+    typed_observed_at_utc = $typedObservedAtUtc
+    enter_sent_at_utc = $enterSentAtUtc
+    keydown_observed_at_utc = $keydownObservedAtUtc
+    keypress_observed_at_utc = $keypressObservedAtUtc
+    doc_keypress_observed_at_utc = $docKeypressObservedAtUtc
+    submit_observed_at_utc = $submitObservedAtUtc
+    failure_stage = $failureStage
     title_before = $titleBefore
     title_after_focus = $titleAfterFocus
+    title_at_input_send = $titleAtInputSend
     title_after_type = $titleAfterType
+    title_at_enter_send = $titleAtEnterSend
     title_after_keydown = $titleAfterKeydown
     title_after_keypress = $titleAfterKeypress
     title_after_doc_keypress = $titleAfterDocKeypress
