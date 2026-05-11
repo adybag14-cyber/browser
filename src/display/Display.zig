@@ -153,6 +153,16 @@ browse_screenshot_png_attempted: bool = false,
 browse_navigation_state_seen: bool = false,
 browse_is_loading: bool = true,
 
+fn initBackend(allocator: std.mem.Allocator, runtime_mode: Config.BrowserMode, host: ?*Host, viewport: Viewport) Backend {
+    if (runtime_mode == .headless) {
+        return .{ .headless = .{} };
+    }
+    if (build_config.target_class == .bare_metal) {
+        return .{ .bare_metal = BareMetalBackend.init(host orelse @panic("bare metal display requires host services"), allocator, viewport.width, viewport.height) };
+    }
+    return .{ .headed_windows = Win32Backend.init(allocator, viewport.width, viewport.height) };
+}
+
 pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) Display {
     const requested_mode = config.browserMode();
     const default_viewport: Viewport = .{
@@ -169,15 +179,7 @@ pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) D
     return .{
         .requested_mode = requested_mode,
         .runtime_mode = runtime_mode,
-        .backend = switch (requested_mode) {
-            .headless => .{ .headless = .{} },
-            .headed => if (build_config.target_class == .bare_metal)
-                .{ .bare_metal = BareMetalBackend.init(host orelse @panic("bare metal display requires host services"), allocator, default_viewport.width, default_viewport.height) }
-            else if (runtime_mode == .headed)
-                .{ .headed_windows = Win32Backend.init(allocator, default_viewport.width, default_viewport.height) }
-            else
-                .{ .headed_stub = .{} },
-        },
+        .backend = initBackend(allocator, runtime_mode, host, default_viewport),
         .default_viewport = default_viewport,
         .viewport = default_viewport,
         .browse_screenshot_bmp_path = switch (config.mode) {
@@ -692,7 +694,7 @@ pub fn userClosed(self: *const Display) bool {
 
 pub fn deinit(self: *Display) void {
     if (self.requested_mode == .headed and self.runtime_mode == .headless) {
-        log.info(.app, "headed stub shutdown", .{});
+        log.info(.app, "headed fallback shutdown", .{});
     }
     switch (self.backend) {
         .bare_metal => |*backend| {
@@ -704,6 +706,33 @@ pub fn deinit(self: *Display) void {
             log.info(.app, "headed windows shutdown", .{});
         },
         else => {},
+    }
+}
+
+test "unsupported headed fallback uses headless backend" {
+    if (builtin.os.tag == .windows or build_config.target_class == .bare_metal) return error.SkipZigTest;
+
+    var config = try Config.init(std.testing.allocator, "test", .{
+        .browse = .{
+            .url = "https://example.com/",
+            .common = .{ .browser_mode = .headed },
+        },
+    });
+    defer config.deinit(std.testing.allocator);
+
+    var display = Display.init(std.testing.allocator, &config, null);
+    defer display.deinit();
+
+    try std.testing.expectEqual(Config.BrowserMode.headless, display.runtime_mode);
+    switch (display.backend) {
+        .headless => |backend| try std.testing.expectEqual(@as(u32, 0), backend.page_count),
+        else => return error.TestUnexpectedResult,
+    }
+
+    display.onPageCreated();
+    switch (display.backend) {
+        .headless => |backend| try std.testing.expectEqual(@as(u32, 1), backend.page_count),
+        else => return error.TestUnexpectedResult,
     }
 }
 
