@@ -105,8 +105,27 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_contr
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 ```
 
-6. Only after the bounded gates are green, use the live-trace and attached or
-   saved-page follow-ups.
+6. Use the saved recommended-runner helper chain before widening back out.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1
+```
+
+Treat that helper chain as the bounded handoff state for the next Windows replay:
+
+- read the saved summary guide first to see the first failing phase and its next command
+- use the manifest, artifact-bundle, refresh-status, and handoff helpers to confirm the saved JSON pointers still match the current summary before rerunning a narrower stage
+- if the refresh or handoff helper says the saved chain is stale, missing, or still using fallback pointers, run `refresh_google_issue3_validation_handoff_chain.ps1` before widening back out to a broader issue `#3` replay
+
+7. Only after the bounded gates are green and the saved helper chain agrees,
+   use the live-trace and attached or saved-page follow-ups.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1
@@ -160,8 +179,9 @@ Use this order whenever a gate fails:
 
 1. Re-run the matching surface checker.
 2. Re-read the suite flow helper.
-3. Run the smallest wrapper again.
-4. Widen to the neighboring shared suite only if the failure crosses that
+3. Re-open the saved issue-specific summary, bundle, refresh, or handoff artifact when that ladder now persists a bounded helper chain.
+4. Run the smallest wrapper again.
+5. Widen to the neighboring shared suite only if the failure crosses that
    boundary.
 
 Examples:
@@ -170,6 +190,7 @@ Examples:
   `inline-flow`.
 - `google-home` failure that only appears after the saved homepage fixture:
   widen to `google-homepage-fixture`, not straight to live trace.
+- issue `#3` helper-chain mismatch where the saved refresh or handoff artifact no longer matches the current summary: run `refresh_google_issue3_validation_handoff_chain.ps1`, reopen the saved handoff JSON, then choose the narrower replay from there.
 - attached HTML bundle failure on just one page script path: keep the bundle
   runner, then widen to `manual-user` only after the pinned bundle route is
   understood.
