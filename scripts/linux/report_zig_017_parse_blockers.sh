@@ -35,6 +35,7 @@ report_smallest_candidates() {
   local scope="${3:-$repo_root/src}"
   local limit="${4:-5}"
   local files
+  local shortlisted
 
   echo "## $label"
   files="$(rg -l "$pattern" "$scope" || true)"
@@ -44,11 +45,24 @@ report_smallest_candidates() {
     return
   fi
 
-  printf '%s\n' "$files" \
-    | xargs -r wc -c \
-    | sort -n \
-    | head -n "$limit" \
-    | awk '{ printf "%7s  %s\n", $1, $2 }'
+  shortlisted="$(
+    printf '%s\n' "$files" \
+      | xargs -r wc -c \
+      | sort -n \
+      | head -n "$limit" \
+      | awk '{ size = $1; $1 = ""; sub(/^ +/, ""); printf "%s\t%s\n", size, $0 }'
+  )"
+
+  while IFS=$'\t' read -r size file; do
+    [ -n "$file" ] || continue
+    printf '%7s  %s\n' "$size" "$file"
+
+    local first_match
+    first_match="$(rg -n -m 1 "$pattern" "$file" || true)"
+    if [ -n "$first_match" ]; then
+      printf '         %s\n' "$first_match"
+    fi
+  done <<< "$shortlisted"
   echo
 }
 
