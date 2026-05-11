@@ -30,10 +30,16 @@ ships with this workspace context:
 - `Presidential Unsealing and Reporting System for UAP Encounters`
 
 Before you rely on an attached-page localhost pass as proof for those saved-page
-targets, confirm the bundle is still discoverable:
+targets, confirm the bundle route itself is still intact and then confirm the
+bundle is still discoverable:
 
+- `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1`
+
+The new bundle-route surface checker fails fast if the guide, bundle checker,
+flow helper, runner, or delegated attached-HTML validation surfaces drift out
+of sync before you trust the printed bundle-pinned commands.
 
 The checker verifies that all three known targets can still be found under the
 attached HTML search roots and reports their current paths, page titles, and
@@ -54,9 +60,10 @@ resolved set, including:
 - exact surface-check, asset-closure, printed-flow, and runner commands with
   the resolved `-InputPath` set already locked in
 
-Use those bundle-pinned commands or the flow helper when you want the same
-saved-page set to stay stable across the surface check, printed flow, and
-headed localhost launch without retyping paths by hand.
+Use the bundle-route surface checker first, then the bundle-pinned commands or
+the flow helper when you want the same saved-page set to stay stable across the
+surface check, printed flow, and headed localhost launch without retyping paths
+by hand.
 
 ## Issue #3 Order
 
@@ -70,10 +77,11 @@ For the Google search-box investigation, keep this order:
    only need the later saved-homepage-fixture, submit-timing, and shared
    Enter-order slices, jump to:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1`
-3. Run `check_attached_html_target_bundle.ps1` and, when the current saved-page
-   set is still the known compatibility bundle, print the one-command bundle
-   flow helper before choosing between the pinned surface-check, flow, or
-   runner commands:
+3. Run the dedicated bundle-route surface check and then the bundle checker.
+   When the current saved-page set is still the known compatibility bundle,
+   print the one-command bundle flow helper before choosing between the pinned
+   surface-check, flow, or runner commands:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1`
 4. If you are not using the bundle-pinned output directly, run the dedicated
@@ -100,7 +108,9 @@ and font assets obvious before the headed window starts.
 When the task is not specifically the Google homepage issue, keep this order:
 
 1. Run the narrowest bounded suite for the changed subsystem.
-2. Confirm the known target bundle or the intended attached-page set is present:
+2. Confirm the bundle route itself is intact and then confirm the known target
+   bundle or the intended attached-page set is present:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1`
 3. Reuse the printed bundle-pinned attached-page commands or the stable flow
    helper when the checker has already resolved the exact saved-page set you
