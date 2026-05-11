@@ -25,7 +25,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
-$surfaceCheck = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_validation_surface.ps1 -Profile issue3'
+$surfaceCheck = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_homepage_fixture_validation_surface.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_homepage_fixture_validation.ps1'
 $directProbe = '.\\tmp-browser-smoke\\form-controls\\chrome-google-homepage-probe.ps1'
 
@@ -81,7 +81,7 @@ $flow = [ordered]@{
     steps = @(
         [ordered]@{
             name = "surface-check"
-            goal = "Fail fast if the issue #3 validation guides, wrappers, or underlying probes drifted before you trust this narrower homepage-fixture checkpoint."
+            goal = "Fail fast if the dedicated homepage-fixture guide, wrapper, or underlying probe drifted before you trust this narrower saved-homepage checkpoint."
             command = $surfaceCheck
         }
         [ordered]@{
@@ -101,7 +101,7 @@ $flow = [ordered]@{
         "Use .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1 after this helper is green when you want the stricter shared Enter-order stack printed before you run it."
     )
     notes = @(
-        "Run the issue #3 surface checker first so missing docs, wrapper scripts, or probe files fail before the bounded fixture pass looks trustworthy.",
+        "Run the dedicated homepage-fixture surface checker first so missing docs, wrapper scripts, or probe files fail before the bounded fixture pass looks trustworthy.",
         "Start with the wrapper unless you already know you need the direct probe output files from tmp-browser-smoke/form-controls.",
         "Keep the same host, fixture port, input text, and timing overrides here when you want the saved homepage fixture slice aligned with the broader issue #3 flow.",
         "Use -LeaveOpen when you want the wrapper to keep the headed browser open after the bounded phases finish so the live fixture state is easier to inspect."
