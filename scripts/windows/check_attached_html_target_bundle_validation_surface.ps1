@@ -35,7 +35,9 @@ $resolvedRepoRoot = if ($RepoRoot) {
 
 $references = @(
     (New-ValidationReference -Path "docs/HEADED_ATTACHED_HTML_VALIDATION.md" -Kind "file" -Purpose "Primary attached-HTML validation guide for the current compatibility bundle route."),
+    (New-ValidationReference -Path "docs/HEADED_MODE_VALIDATION_GATES.md" -Kind "file" -Purpose "Canonical bounded-suite routing map that keeps the three-page compatibility bundle pinned to the right first gate before broader attached-page replay."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the bundle-aware attached-page helpers."),
+    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Canonical suite router that exposes the attached-html-target-bundle entry point before the narrower bundle helpers run."),
     (New-ValidationReference -Path "scripts/windows/check_attached_html_target_bundle.ps1" -Kind "file" -Purpose "Checker for the known three-page attached HTML compatibility target bundle."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_target_bundle_validation_flow.ps1" -Kind "file" -Purpose "Bundle-aware attached HTML flow helper."),
     (New-ValidationReference -Path "scripts/windows/run_attached_html_target_bundle_validation.ps1" -Kind "file" -Purpose "Bundle-aware attached HTML localhost runner."),
@@ -100,5 +102,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} attached HTML target-bundle validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, checker, helper, runner, or delegated attached-HTML surface before trusting the bundle-pinned localhost route."
+Write-Host "Repair the missing guide, routing map, suite router, checker, helper, runner, or delegated attached-HTML surface before trusting the bundle-pinned localhost route."
 exit 1
