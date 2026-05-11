@@ -85,9 +85,13 @@ function Resolve-GoogleStyleAttachedHtmlSelection {
     }
 }
 
+$surfaceCheck = Join-Path $PSScriptRoot "check_google_issue3_recommended_validation_surface.ps1"
 $runner = Join-Path $PSScriptRoot "run_google_input_validation.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
+}
+if (-not (Test-Path -LiteralPath $surfaceCheck -PathType Leaf)) {
+    throw "Google issue #3 recommended validation surface checker not found: $surfaceCheck"
 }
 
 $homepageFixtureRunner = Join-Path $PSScriptRoot "run_google_homepage_fixture_validation.ps1"
@@ -199,6 +203,15 @@ function Invoke-HomepageFixturePhase {
 
     & $homepageFixtureRunner @fixtureArguments
 }
+
+Write-Host "Google issue #3 recommended validation"
+Write-Host ("Repo root: {0}" -f $RepoRoot)
+Write-Host ("Host: {0}" -f $Host)
+Write-Host ""
+Write-Host "=== google-issue3-recommended-surface ==="
+Write-Host ("Script: {0}" -f $surfaceCheck)
+& $surfaceCheck -RepoRoot $RepoRoot
+Write-Host ""
 
 if ($manualPhaseUsesFixtureSelection) {
     if ($autoAttachedSelection) {
