@@ -57,6 +57,7 @@ function Add-SharedArgument {
     }
 }
 
+$surfaceCheck = '.\scripts\windows\check_google_shared_enter_order_validation_surface.ps1'
 $runner = '.\scripts\windows\run_google_shared_enter_order_validation.ps1'
 $sharedRunner = '.\scripts\windows\run_google_input_validation.ps1'
 $googleTitleProbe = '.\tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1'
@@ -118,6 +119,11 @@ $flow = [ordered]@{
     title_probe_port = $TitleProbePort
     steps = @(
         [ordered]@{
+            name = "surface-check"
+            goal = "Fail fast if the shared Enter-order guide, helpers, or probes drifted before you trust this narrower issue #3 ladder."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $surfaceCheck)
+        }
+        [ordered]@{
             name = "recommended"
             goal = "Run the full shared Enter-order stack in the intended order and keep one command for issue #3 handoff."
             command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $runner, $(if ($runnerArgs.Count -gt 0) { " " + ($runnerArgs -join " ") } else { "" }))
@@ -155,6 +161,7 @@ $flow = [ordered]@{
         "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
     )
     notes = @(
+        "Run the shared Enter-order surface checker first so missing docs, wrapper scripts, or probe files fail before the narrower ladder looks trustworthy.",
         "Start with the recommended runner unless you are already narrowing a known failing step.",
         "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
         "The localhost wrapper and the dedicated form-controls probe both default to the shared Enter-order port on purpose so one port override keeps the pair aligned.",
