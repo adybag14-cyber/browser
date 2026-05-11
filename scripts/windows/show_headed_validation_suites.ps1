@@ -356,6 +356,7 @@ $googleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windo
 $googleTitleGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_probe_trace_guide.ps1"
 $googleTitleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
 $googleHomepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
+$googleSubmitPathSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_path_validation_surface.ps1"
 $googleSubmitPathFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 $googleSubmitPathRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
 $googleSubmitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
@@ -418,6 +419,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Flow helper: {0}" -f $googleHomepageFixtureFlowCommand)
     }
     if ($suite.Name -eq "google-submit-path") {
+        Write-Host ("Surface checker: {0}" -f $googleSubmitPathSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleSubmitPathFlowCommand)
         Write-Host ("Runner: {0}" -f $googleSubmitPathRunnerCommand)
     }
@@ -453,7 +455,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     $nextStep = if ($ChangeArea -eq "google-input") {
         "Start with the dedicated Google-input flow helper, then read the reduced title marker guide and title flow helper before widening into google-investigation-next, google-title, google-quick, google-home, google-homepage-fixture, google-submit-path, google-submit-timing, the dedicated form-controls Enter-order gate, the broader shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1 when the earlier title gates are already green and you want the later saved-homepage-fixture, submit-timing, and shared Enter-order slices in one narrower command before the live trace helper."
     } elseif ($ChangeArea -eq "google-submit-path") {
-        "Start with the dedicated submit-path flow helper so the saved homepage fixture, submit-timing slice, the dedicated form-controls Enter-order gate, and the shared Enter-order ladder are printed in order before you decide whether to run the one-command submit-path runner or isolate one later-stage slice by itself."
+        "Start with the dedicated submit-path surface checker so the later note, helper, and bounded probes fail fast if one was renamed or removed, then print the flow helper so the saved homepage fixture, submit-timing slice, the dedicated form-controls Enter-order gate, and the shared Enter-order ladder stay in order before you decide whether to run the one-command submit-path runner or isolate one later-stage slice by itself."
     } elseif ($ChangeArea -eq "google-form-controls-enter-order") {
         "Start with the dedicated form-controls Enter-order flow helper so the narrowest shared keypress-before-submit gate is printed in order before you run the dedicated wrapper, inspect the dedicated marker guide, or widen into the broader shared Enter-order ladder."
     } elseif ($ChangeArea -eq "google-live-trace") {
@@ -504,6 +506,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     Write-Host ("Recommended suites for change area '{0}':" -f $ChangeArea)
     Write-Host (Format-SuiteList -Items $items)
     Write-Host ("Next step: {0}" -f $nextStep)
+    if ($ChangeArea -eq "google-submit-path") {
+        Write-Host ("Surface checker: {0}" -f $googleSubmitPathSurfaceCheckCommand)
+    }
     if ($flowCommand) {
         Write-Host ("Flow helper: {0}" -f $flowCommand)
     }
@@ -536,6 +541,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-path"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_path_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-timing"
