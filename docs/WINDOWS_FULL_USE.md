@@ -127,10 +127,13 @@ For attached or saved localhost HTML follow-up after the matching bounded suite
 is green, use these entry points:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_saved_page_localhost_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_localhost_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_sanitized_saved_page_localhost_validation.ps1 -InputPath '<saved-html-or-folder>' -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
@@ -154,7 +157,9 @@ Routing rules:
 - Use `check_google_attached_html_validation_surface.ps1` before `show_google_attached_html_validation_flow.ps1` or `run_google_attached_html_validation.ps1` when the next pass should reuse attached Google-style pages, so missing guides, helpers, or localhost runners fail fast.
 - Use `check_attached_html_local_asset_closure.ps1 -GoogleStyle` before the Google attached-page flow when the saved page set might have nested CSS, image, or font dependencies that were not copied beside the HTML export.
 - Use `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` when you want the shared validation router to point directly at the dedicated attached-HTML Google follow-up helper.
+- Use `check_saved_page_localhost_validation_surface.ps1` before manual saved-page follow-up when the branch has moved recently and you want the general localhost helper chain to fail fast if a guide, runner, or summary helper was renamed or removed.
 - Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
+- Use `run_sanitized_saved_page_localhost_validation.ps1` when the saved inputs have Unicode-heavy filenames, were exported as standalone HTML files with sibling `*_files` assets, or need one ASCII-safe staged localhost root before headed launch.
 - Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
 - Use `show_google_attached_html_validation_flow.ps1` when you want the printed Google-style localhost-first flow for auto-discovered attached HTML without reshaping the broader issue `#3` commands by hand.
 - Use `run_google_attached_html_validation.ps1` when you want the same Google-style attached HTML follow-up to execute directly in one command; attached-file modes now rerun the deep asset-closure audit before launch.
