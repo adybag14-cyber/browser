@@ -65,6 +65,7 @@ $reducedHomeProbe = '.\tmp-browser-smoke\google-home\chrome-google-home-keypress
 $localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1'
 $formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
 $formControlsFlow = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
+$formControlsTraceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
 
 $runnerArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $runnerArgs -Name RepoRoot -Value $RepoRoot
@@ -153,9 +154,15 @@ $flow = [ordered]@{
             goal = "Verify the dedicated shared form-controls Google-style gate still records submit after Enter keypress on the headed surface."
             command = ("powershell -ExecutionPolicy Bypass -File {0} -SharedInputText {1} -SharedEnterOrderPort {2} -Host {3} -ServerReadyTimeoutSeconds {4} -HomeWindowReadyAttempts {5} -HomeTitleWaitAttempts {6} -HomePollMilliseconds {7}{8}" -f $formControlsRunner, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $SharedEnterOrderPort, (ConvertTo-PowerShellSingleQuotedLiteral -Value $Host), $ServerReadyTimeoutSeconds, $HomeWindowReadyAttempts, $HomeTitleWaitAttempts, $HomePollMilliseconds, $(if ($RepoRoot) { " -RepoRoot " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot) } else { "" }) + $(if ($BrowserExe) { " -BrowserExe " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe) } else { "" }))
         }
+        [ordered]@{
+            name = "form-controls-trace-guide"
+            goal = "Translate the dedicated form-controls gate markers into quick failure stages before you rerun it or widen back out to the broader shared ladder."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $formControlsTraceGuide)
+        }
     )
     next_steps = @(
         "Use .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1 when you want only the dedicated shared form-controls gate printed and parameterized before you run it.",
+        "Use .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1 when you want the dedicated gate markers translated into click-focus, typed-text, keypress, and submit failure stages.",
         "Use .\scripts\windows\run_google_issue3_recommended_validation.ps1 when you want this stack folded into the broader localhost-first issue #3 flow.",
         "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, and both Enter-order probes stay green together.",
         "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
@@ -165,7 +172,8 @@ $flow = [ordered]@{
         "Start with the recommended runner unless you are already narrowing a known failing step.",
         "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
         "The localhost wrapper and the dedicated form-controls probe both default to the shared Enter-order port on purpose so one port override keeps the pair aligned.",
-        "Use the dedicated form-controls flow helper when you only need the last shared keypress-before-submit gate without printing the wider shared Enter-order ladder."
+        "Use the dedicated form-controls flow helper when you only need the last shared keypress-before-submit gate without printing the wider shared Enter-order ladder.",
+        "Use the form-controls trace guide when you want a quick explanation of whether the remaining failure stayed before click focus, before visible text commit, or before keypress reached submit."
     )
 }
 
