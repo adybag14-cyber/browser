@@ -53,13 +53,13 @@ if ($Host) {
 
 $flow = [ordered]@{
     issue = "Headed Windows form-controls validation flow"
-    focus = "Shared label-click, immediate Enter-submit, deferred Enter-submit, reduced Google-home submit, and stricter keypress-before-submit gates for the headed input baseline."
+    focus = "Shared label-click, immediate Enter-submit, deferred Enter-submit, bounded reduced Google title, reduced Google-home submit, and stricter keypress-before-submit gates for the headed input baseline."
     skip_baseline = [bool]$SkipBaseline
     keep_going = [bool]$KeepGoing
     steps = @(
         [ordered]@{
             name = "recommended"
-            goal = "Run the one-command shared baseline and collect one JSON summary before moving into inline-flow, Google shared Enter-order, or attached HTML follow-up."
+            goal = "Run the one-command shared baseline, reduced Google title, reduced Google-home submit, and Enter-order stack before moving into inline-flow, Google shared Enter-order, or attached HTML follow-up."
             command = $recommendedCommand
         }
         [ordered]@{
@@ -78,8 +78,13 @@ $flow = [ordered]@{
             command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe deferred-enter$commonProbeArguments"
         }
         [ordered]@{
+            name = "google-title"
+            goal = "Run the bounded reduced Google title gate before the fuller reduced-home submit pass or the stricter shared Enter-order gate."
+            command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe google-title$commonProbeArguments"
+        }
+        [ordered]@{
             name = "reduced-google-home"
-            goal = "Run the reduced Google-home submit gate after the shared baseline Enter checks are stable."
+            goal = "Run the reduced Google-home submit gate after the smaller title pass is stable."
             command = "powershell -ExecutionPolicy Bypass -File $probeRunner -Probe reduced-google-home$commonProbeArguments"
         }
         [ordered]@{
@@ -96,7 +101,8 @@ $flow = [ordered]@{
     notes = @(
         "Start with the recommended runner unless you are already narrowing an existing regression.",
         "Use SkipBaseline only when the label-click plus immediate Enter gate already passed elsewhere and you need a faster deferred or Google-shaped rerun.",
-        "Use KeepGoing when you want one failing summary that still attempts later steps for comparison instead of stopping at the first broken gate."
+        "Use KeepGoing when you want one failing summary that still attempts later steps for comparison instead of stopping at the first broken gate.",
+        "Treat the reduced Google title step as the smaller gateway into the reduced-home submit and shared Enter-order checks, not as a separate side path."
     )
 }
 
