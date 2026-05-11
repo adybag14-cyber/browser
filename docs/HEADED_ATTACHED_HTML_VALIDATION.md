@@ -24,14 +24,21 @@ the subsystem that changed.
 
 For the Google search-box investigation, keep this order:
 
-1. Run the reduced Google probe first.
-2. Run the bounded submit-order or shared Enter-order follow-up that matches the
-   current change.
+1. Run the current bounded issue `#3` ladder first:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1`
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1`
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`
+2. When the earlier title and reduced-homepage gates are already green and you
+   only need the later saved-homepage-fixture, submit-timing, and shared
+   Enter-order slices, jump to:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1`
 3. Print the attached-page flow so the next pass uses the same current-run input
    set:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1`
-4. Run the auto-discovered attached-page localhost helper:
-   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait`
+4. Run the dedicated Google attached-page localhost helper so the same attached
+   set stays on the issue `#3` bounded order instead of falling back to the
+   generic manual router:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait`
 5. Only after the attached localhost pass is understood, move to the reduced
    trace or live Google follow-up.
 
