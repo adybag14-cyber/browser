@@ -39,6 +39,7 @@ $references = @(
     (New-ValidationReference -Path "docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md" -Kind "file" -Purpose "Smallest shared Enter-order note for the final bounded proof."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the submit-path helpers."),
     (New-ValidationReference -Path "scripts/windows/show_google_submit_path_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the later issue #3 submit-path slice."),
+    (New-ValidationReference -Path "scripts/windows/show_google_submit_path_handoff.ps1" -Kind "file" -Purpose "Saved reduced Enter-analysis handoff helper for the next bounded submit-path replay."),
     (New-ValidationReference -Path "scripts/windows/show_google_submit_path_trace_guide.ps1" -Kind "file" -Purpose "Read-first trace helper for the later submit-path ladder."),
     (New-ValidationReference -Path "scripts/windows/run_google_issue3_submit_path_validation.ps1" -Kind "file" -Purpose "One-command later-stage issue #3 submit-path runner."),
     (New-ValidationReference -Path "scripts/windows/show_google_homepage_fixture_validation_flow.ps1" -Kind "file" -Purpose "Saved homepage fixture flow helper."),
