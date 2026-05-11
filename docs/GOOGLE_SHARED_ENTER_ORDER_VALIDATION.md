@@ -21,8 +21,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_shared_e
 ```
 
 That checker verifies the shared Enter-order note, the dedicated form-controls
-note, the shared and dedicated runners, and the reduced localhost probes that
-this ladder depends on.
+note, the dedicated form-controls surface checker, the shared and dedicated
+runners, and the reduced localhost probes that this ladder depends on.
 
 ## Start with the printed flow
 
@@ -40,6 +40,7 @@ That helper prints the intended order for:
 - the reduced localhost Google title probe
 - the reduced Google homepage keypress probe
 - the localhost Enter-order wrapper
+- the dedicated shared form-controls surface check
 - the dedicated shared form-controls Enter-order gate
 
 ## Fastest bounded runner
@@ -83,7 +84,13 @@ powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-home\chrome-
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1
 ```
 
-5. Dedicated shared form-controls Enter-order gate
+5. Dedicated shared form-controls surface check
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1
+```
+
+6. Dedicated shared form-controls Enter-order gate
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
