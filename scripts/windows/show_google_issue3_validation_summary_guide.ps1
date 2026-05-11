@@ -319,7 +319,7 @@ if ($guide.manual_phase_uses_fixture_selection -and $guide.manual_input_path.Cou
     if ($guide.manual_attached_html_runner_command) {
         Write-Host ("Runner:     {0}" -f $guide.manual_attached_html_runner_command)
     }
-    if ($guide.manual_saved_page_flowCommand) {
+    if ($guide.manual_saved_page_flow_command) {
         Write-Host ("Saved-page: {0}" -f $guide.manual_saved_page_flow_command)
     }
 }
