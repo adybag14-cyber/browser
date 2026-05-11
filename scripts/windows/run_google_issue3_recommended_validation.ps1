@@ -61,6 +61,7 @@ $guideArtifactPath = Join-Path $artifactRoot "google-issue3-recommended-validati
 $manifestArtifactPath = Join-Path $artifactRoot "google-issue3-recommended-validation-manifest.json"
 $phaseBoundaryArtifactPath = Join-Path $artifactRoot "google-issue3-phase-boundary.json"
 $artifactBundlePath = Join-Path $artifactRoot "google-issue3-validation-artifact-bundle.json"
+$handoffArtifactPath = Join-Path $artifactRoot "google-issue3-validation-handoff.json"
 $phaseArtifactRoot = Join-Path $artifactRoot "google-issue3-recommended-validation-phases"
 if (Test-Path -LiteralPath $SummaryPath) {
     Remove-Item -LiteralPath $SummaryPath -Force
@@ -79,6 +80,9 @@ if (Test-Path -LiteralPath $phaseBoundaryArtifactPath) {
 }
 if (Test-Path -LiteralPath $artifactBundlePath) {
     Remove-Item -LiteralPath $artifactBundlePath -Force
+}
+if (Test-Path -LiteralPath $handoffArtifactPath) {
+    Remove-Item -LiteralPath $handoffArtifactPath -Force
 }
 if (Test-Path -LiteralPath $phaseArtifactRoot) {
     Remove-Item -LiteralPath $phaseArtifactRoot -Recurse -Force
@@ -149,12 +153,12 @@ function Convert-ToRepoRelativeArtifactPath {
         [string]$Path
     )
 
-    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\', '/')
+    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\\', '/')
     $normalizedPath = [System.IO.Path]::GetFullPath($Path)
     if ($normalizedPath.StartsWith($normalizedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\', '/')
+        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\\', '/')
         if (-not [string]::IsNullOrWhiteSpace($relative)) {
-            return $relative -replace '\', '/'
+            return $relative -replace '\\', '/'
         }
     }
 
@@ -211,6 +215,7 @@ $runner = Join-Path $PSScriptRoot "run_google_input_validation.ps1"
 $summaryGuide = Join-Path $PSScriptRoot "show_google_issue3_validation_summary_guide.ps1"
 $phaseBoundaryHelper = Join-Path $PSScriptRoot "show_google_issue3_phase_boundary.ps1"
 $artifactBundleHelper = Join-Path $PSScriptRoot "show_google_issue3_validation_artifact_bundle.ps1"
+$handoffHelper = Join-Path $PSScriptRoot "show_google_issue3_validation_handoff.ps1"
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
 }
@@ -225,6 +230,9 @@ if (-not (Test-Path -LiteralPath $phaseBoundaryHelper -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $artifactBundleHelper -PathType Leaf)) {
     throw "Google issue #3 validation artifact-bundle helper not found: $artifactBundleHelper"
+}
+if (-not (Test-Path -LiteralPath $handoffHelper -PathType Leaf)) {
+    throw "Google issue #3 validation handoff helper not found: $handoffHelper"
 }
 
 $homepageFixtureRunner = Join-Path $PSScriptRoot "run_google_homepage_fixture_validation.ps1"
@@ -411,9 +419,12 @@ function Show-RecommendedSummary {
         [string]$ManifestArtifactPath,
         [Parameter(Mandatory = $true)]
         [string]$ArtifactBundlePath,
+        [Parameter(Mandatory = $true)]
+        [string]$HandoffArtifactPath,
         [string]$GuideArtifactError,
         [string]$BoundaryArtifactError,
         [string]$ArtifactBundleError,
+        [string]$HandoffArtifactError,
         $GuideRecord
     )
 
@@ -444,11 +455,15 @@ function Show-RecommendedSummary {
     }
     Write-Host ("Manifest JSON: {0}" -f $ManifestArtifactPath)
     Write-Host ("Bundle JSON: {0}" -f $ArtifactBundlePath)
+    Write-Host ("Handoff JSON: {0}" -f $HandoffArtifactPath)
     if ($GuideArtifactError) {
         Write-Host ("Guide error: {0}" -f $GuideArtifactError)
     }
     if ($ArtifactBundleError) {
         Write-Host ("Bundle error: {0}" -f $ArtifactBundleError)
+    }
+    if ($HandoffArtifactError) {
+        Write-Host ("Handoff error: {0}" -f $HandoffArtifactError)
     }
     if ($GuideRecord) {
         if ($GuideRecord.first_failed_phase) {
@@ -481,7 +496,9 @@ function Write-RecommendedSummaryArtifact {
         [string]$GuideArtifactError,
         [string]$BoundaryArtifactError,
         [string]$ArtifactBundlePath,
-        [string]$ArtifactBundleError
+        [string]$ArtifactBundleError,
+        [string]$HandoffArtifactPath,
+        [string]$HandoffArtifactError
     )
 
     $failedPhase = @($PhaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
@@ -498,9 +515,11 @@ function Write-RecommendedSummaryArtifact {
         boundary_artifact_path = $BoundaryArtifactPath
         manifest_artifact_path = $manifestArtifactPath
         artifact_bundle_path = $ArtifactBundlePath
+        handoff_artifact_path = $HandoffArtifactPath
         guide_artifact_error = $GuideArtifactError
         boundary_artifact_error = $BoundaryArtifactError
         artifact_bundle_error = $ArtifactBundleError
+        handoff_artifact_error = $HandoffArtifactError
         leave_open = [bool]$LeaveOpen
         skip_auto_attached_html = [bool]$SkipAutoAttachedHtml
         auto_attached_html_detected = [bool]$autoAttachedHtml
@@ -552,6 +571,8 @@ function Write-RecommendedManifestArtifact {
         [string]$BoundaryArtifactError,
         [string]$ArtifactBundlePath,
         [string]$ArtifactBundleError,
+        [string]$HandoffArtifactPath,
+        [string]$HandoffArtifactError,
         $GuideRecord
     )
 
@@ -569,9 +590,11 @@ function Write-RecommendedManifestArtifact {
         guide_artifact_path = $GuideArtifactPath
         boundary_artifact_path = $BoundaryArtifactPath
         artifact_bundle_path = $ArtifactBundlePath
+        handoff_artifact_path = $HandoffArtifactPath
         guide_artifact_error = $GuideArtifactError
         boundary_artifact_error = $BoundaryArtifactError
         artifact_bundle_error = $ArtifactBundleError
+        handoff_artifact_error = $HandoffArtifactError
         phase_artifact_root = $phaseArtifactRoot
         surface_check_status = $SurfaceCheckStatus
         surface_check_error = $SurfaceCheckError
@@ -720,6 +743,31 @@ function Save-ValidationArtifactBundle {
     }
 }
 
+function Save-RecommendedHandoffArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$HandoffScript,
+        [Parameter(Mandatory = $true)]
+        [string]$SummaryPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactPath
+    )
+
+    $handoffOutput = @(
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $HandoffScript -SummaryPath $SummaryPath -ArtifactPath $ArtifactPath -Json 2>&1
+    )
+    $handoffText = ($handoffOutput | ForEach-Object { "${_}" }) -join [Environment]::NewLine
+    if ([string]::IsNullOrWhiteSpace($handoffText)) {
+        throw "Google issue #3 validation handoff helper produced no JSON output."
+    }
+
+    try {
+        return ($handoffText | ConvertFrom-Json)
+    } catch {
+        throw ("Google issue #3 validation handoff helper returned non-JSON output. Artifact: {0}" -f $ArtifactPath)
+    }
+}
+
 $phasePlan = [System.Collections.Generic.List[object]]::new()
 $phasePlan.Add([pscustomobject]@{ Name = "localhost"; Action = { Invoke-RecommendedPhase -Phase "localhost" } }) | Out-Null
 $phasePlan.Add([pscustomobject]@{ Name = "quick"; Action = { Invoke-RecommendedPhase -Phase "quick" } }) | Out-Null
@@ -742,6 +790,7 @@ Write-Host ("Guide JSON: {0}" -f $guideArtifactPath)
 Write-Host ("Boundary JSON: {0}" -f $phaseBoundaryArtifactPath)
 Write-Host ("Manifest JSON: {0}" -f $manifestArtifactPath)
 Write-Host ("Bundle JSON: {0}" -f $artifactBundlePath)
+Write-Host ("Handoff JSON: {0}" -f $handoffArtifactPath)
 Write-Host ""
 Write-Host "=== google-issue3-recommended-surface ==="
 Write-Host ("Script: {0}" -f $surfaceCheck)
@@ -754,6 +803,7 @@ $guideRecord = $null
 $guideArtifactError = $null
 $boundaryArtifactError = $null
 $artifactBundleError = $null
+$handoffArtifactError = $null
 try {
     $surfaceCheckResult = Save-SurfaceCheckArtifact -SurfaceCheckScript $surfaceCheck -RepoRoot $RepoRoot -ArtifactPath $surfaceCheckArtifactPath
     $surfaceCheckStatus = $surfaceCheckResult.status
@@ -770,7 +820,7 @@ try {
     $surfaceCheckError = $_.Exception.Message
 }
 if ($surfaceCheckStatus -ne "passed") {
-    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError
+    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
     try {
         $guideRecord = Save-RecommendedGuideArtifact -GuideScript $summaryGuide -SummaryPath $SummaryPath -ArtifactPath $guideArtifactPath
     } catch {
@@ -781,15 +831,20 @@ if ($surfaceCheckStatus -ne "passed") {
     } catch {
         $boundaryArtifactError = $_.Exception.Message
     }
-    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError
-    Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -GuideRecord $guideRecord
+    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
+    Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
     try {
         $null = Save-ValidationArtifactBundle -ArtifactBundleScript $artifactBundleHelper -SummaryPath $SummaryPath -ArtifactPath $artifactBundlePath
     } catch {
         $artifactBundleError = $_.Exception.Message
     }
-    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError
-    Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -GuideRecord $guideRecord
+    try {
+        $null = Save-RecommendedHandoffArtifact -HandoffScript $handoffHelper -SummaryPath $SummaryPath -ArtifactPath $handoffArtifactPath
+    } catch {
+        $handoffArtifactError = $_.Exception.Message
+    }
+    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
+    Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
     $guideMessage = if ($guideArtifactError) {
         " Guide artifact error: $guideArtifactError"
     } else {
@@ -805,7 +860,12 @@ if ($surfaceCheckStatus -ne "passed") {
     } else {
         " Bundle JSON: $artifactBundlePath"
     }
-    throw ("Google issue #3 recommended validation surface check failed: {0}. Surface JSON: {1}. Summary JSON: {2}. Manifest JSON: {3}.{4}{5}{6}" -f $surfaceCheckError, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage)
+    $handoffMessage = if ($handoffArtifactError) {
+        " Handoff artifact error: $handoffArtifactError"
+    } else {
+        " Handoff JSON: $handoffArtifactPath"
+    }
+    throw ("Google issue #3 recommended validation surface check failed: {0}. Surface JSON: {1}. Summary JSON: {2}. Manifest JSON: {3}.{4}{5}{6}{7}" -f $surfaceCheckError, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage, $handoffMessage)
 }
 Write-Host ""
 
@@ -831,7 +891,7 @@ foreach ($step in $phasePlan) {
     }
 }
 
-Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
 try {
     $guideRecord = Save-RecommendedGuideArtifact -GuideScript $summaryGuide -SummaryPath $SummaryPath -ArtifactPath $guideArtifactPath
 } catch {
@@ -842,16 +902,21 @@ try {
 } catch {
     $boundaryArtifactError = $_.Exception.Message
 }
-Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError
-Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -GuideRecord $guideRecord
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
+Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
 try {
     $null = Save-ValidationArtifactBundle -ArtifactBundleScript $artifactBundleHelper -SummaryPath $SummaryPath -ArtifactPath $artifactBundlePath
 } catch {
     $artifactBundleError = $_.Exception.Message
 }
-Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError
-Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -GuideRecord $guideRecord
-Show-RecommendedSummary -PhaseResults @($phaseResults) -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -ManifestArtifactPath $manifestArtifactPath -ArtifactBundlePath $artifactBundlePath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundleError $artifactBundleError -GuideRecord $guideRecord
+try {
+    $null = Save-RecommendedHandoffArtifact -HandoffScript $handoffHelper -SummaryPath $SummaryPath -ArtifactPath $handoffArtifactPath
+} catch {
+    $handoffArtifactError = $_.Exception.Message
+}
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError
+Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundlePath $artifactBundlePath -ArtifactBundleError $artifactBundleError -HandoffArtifactPath $handoffArtifactPath -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
+Show-RecommendedSummary -PhaseResults @($phaseResults) -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -ManifestArtifactPath $manifestArtifactPath -ArtifactBundlePath $artifactBundlePath -HandoffArtifactPath $handoffArtifactPath -GuideArtifactError $guideArtifactError -BoundaryArtifactError $boundaryArtifactError -ArtifactBundleError $artifactBundleError -HandoffArtifactError $handoffArtifactError -GuideRecord $guideRecord
 
 $failedPhase = @($phaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
 if ($failedPhase.Count -gt 0) {
@@ -870,7 +935,12 @@ if ($failedPhase.Count -gt 0) {
     } else {
         " Bundle JSON: $artifactBundlePath"
     }
-    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Surface JSON: {2}. Summary JSON: {3}. Manifest JSON: {4}.{5}{6}{7}" -f $failedPhase[0].name, $failedPhase[0].error, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage)
+    $handoffMessage = if ($handoffArtifactError) {
+        " Handoff artifact error: $handoffArtifactError"
+    } else {
+        " Handoff JSON: $handoffArtifactPath"
+    }
+    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Surface JSON: {2}. Summary JSON: {3}. Manifest JSON: {4}.{5}{6}{7}{8}" -f $failedPhase[0].name, $failedPhase[0].error, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage, $boundaryMessage, $bundleMessage, $handoffMessage)
 }
 if ($guideArtifactError) {
     Write-Warning ("Google issue #3 validation guide artifact could not be generated: {0}" -f $guideArtifactError)
@@ -880,4 +950,7 @@ if ($boundaryArtifactError) {
 }
 if ($artifactBundleError) {
     Write-Warning ("Google issue #3 validation artifact bundle could not be generated: {0}" -f $artifactBundleError)
+}
+if ($handoffArtifactError) {
+    Write-Warning ("Google issue #3 validation handoff artifact could not be generated: {0}" -f $handoffArtifactError)
 }
