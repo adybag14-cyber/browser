@@ -77,16 +77,22 @@ When the task is not specifically the Google homepage issue, keep this order:
 1. Run the narrowest bounded suite for the changed subsystem.
 2. Confirm the known target bundle or the intended attached-page set is present:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1`
-3. Print the attached-page flow:
-   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1`
-4. Run the deep attached-page asset audit when saved files are part of the
-   replay:
+3. Run the dedicated general attached-page surface check and the deep local
+   asset-closure audit before printing or launching the broader localhost flow:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_validation_surface.ps1`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1`
+4. Print the attached-page flow:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1`
 5. Run the attached localhost helper:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_localhost_validation.ps1`
 6. If a saved folder is being replayed instead of current-run attached files,
    use:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_saved_page_localhost_validation.ps1 -InputPath '<saved-html-or-folder>'`
+
+The general attached-page runner now reruns the dedicated surface check and the
+deep asset-closure audit automatically before the headed localhost replay. Keep
+the explicit commands above when you want that failure to happen before the
+launcher starts.
 
 ## What To Capture
 
