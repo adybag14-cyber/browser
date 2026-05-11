@@ -14,7 +14,8 @@ param(
     [switch]$SummaryOnly,
     [switch]$Json,
     [switch]$Wait,
-    [switch]$LeaveServerRunning
+    [switch]$LeaveServerRunning,
+    [switch]$AllowMissingLocalAssets
 )
 
 Set-StrictMode -Version Latest
@@ -45,7 +46,9 @@ function Get-GoogleAttachedHtmlValidationMetadata {
         [Parameter(Mandatory = $true)]
         [object[]]$MissingAssetAudit,
         [Parameter(Mandatory = $true)]
-        [bool]$AssetClosureChecked
+        [bool]$AssetClosureChecked,
+        [Parameter(Mandatory = $true)]
+        [bool]$AllowMissingLocalAssets
     )
 
     $parameterMode = switch ($ParameterSetName) {
@@ -85,6 +88,7 @@ function Get-GoogleAttachedHtmlValidationMetadata {
         summary_only = $SummaryOnly
         wait = $Wait
         leave_server_running = $LeaveServerRunning
+        allow_missing_local_assets = $AllowMissingLocalAssets
         deep_asset_closure_checked = $AssetClosureChecked
         missing_asset_audit = $normalizedAssetAudit
         search_roots = if ($ParameterSetName -eq "Auto") { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) } else { @() }
@@ -172,6 +176,9 @@ if ($assetClosureChecked) {
         GoogleStyle = $true
         InputPath = $resolvedInputPath
     }
+    if ($AllowMissingLocalAssets) {
+        $assetClosureArgs.AllowMissingAssets = $true
+    }
 
     if ($Json -or $SummaryOnly) {
         $assetClosureArgs.Json = $true
@@ -202,7 +209,8 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlValidationMetadata `
     -Wait ([bool]$Wait) `
     -LeaveServerRunning ([bool]$LeaveServerRunning) `
     -MissingAssetAudit $missingAssetAudit `
-    -AssetClosureChecked $assetClosureChecked
+    -AssetClosureChecked $assetClosureChecked `
+    -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 
 $arguments = @{
     Host = $Host
@@ -224,6 +232,9 @@ if ($Wait) {
 }
 if ($LeaveServerRunning) {
     $arguments.LeaveServerRunning = $true
+}
+if ($AllowMissingLocalAssets) {
+    $arguments.AllowMissingLocalAssets = $true
 }
 
 if (-not $SummaryOnly -and -not $Json) {
@@ -267,7 +278,11 @@ if (-not $SummaryOnly -and -not $Json) {
     }
     Write-Host ""
     if ($assetClosureChecked) {
-        Write-Host "Preflight: deep attached-asset closure audit passed before launch."
+        if ($AllowMissingLocalAssets) {
+            Write-Host "Preflight: deep attached-asset closure audit completed in degraded localhost mode, so missing assets stay visible without blocking launch."
+        } else {
+            Write-Host "Preflight: deep attached-asset closure audit passed before launch."
+        }
     } else {
         Write-Host "Preflight: explicit page-root mode skips the deep attached-asset closure audit."
     }
