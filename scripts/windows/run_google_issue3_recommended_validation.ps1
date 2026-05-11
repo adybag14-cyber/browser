@@ -59,6 +59,7 @@ if (-not $SummaryPath) {
 $surfaceCheckArtifactPath = Join-Path $artifactRoot "google-issue3-recommended-validation-surface.json"
 $guideArtifactPath = Join-Path $artifactRoot "google-issue3-recommended-validation-guide.json"
 $manifestArtifactPath = Join-Path $artifactRoot "google-issue3-recommended-validation-manifest.json"
+$phaseBoundaryArtifactPath = Join-Path $artifactRoot "google-issue3-phase-boundary.json"
 $phaseArtifactRoot = Join-Path $artifactRoot "google-issue3-recommended-validation-phases"
 if (Test-Path -LiteralPath $SummaryPath) {
     Remove-Item -LiteralPath $SummaryPath -Force
@@ -71,6 +72,9 @@ if (Test-Path -LiteralPath $guideArtifactPath) {
 }
 if (Test-Path -LiteralPath $manifestArtifactPath) {
     Remove-Item -LiteralPath $manifestArtifactPath -Force
+}
+if (Test-Path -LiteralPath $phaseBoundaryArtifactPath) {
+    Remove-Item -LiteralPath $phaseBoundaryArtifactPath -Force
 }
 if (Test-Path -LiteralPath $phaseArtifactRoot) {
     Remove-Item -LiteralPath $phaseArtifactRoot -Recurse -Force
@@ -141,12 +145,12 @@ function Convert-ToRepoRelativeArtifactPath {
         [string]$Path
     )
 
-    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\', '/')
+    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\\', '/')
     $normalizedPath = [System.IO.Path]::GetFullPath($Path)
     if ($normalizedPath.StartsWith($normalizedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\', '/')
+        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\\', '/')
         if (-not [string]::IsNullOrWhiteSpace($relative)) {
-            return $relative -replace '\', '/'
+            return $relative -replace '\\', '/'
         }
     }
 
@@ -390,6 +394,8 @@ function Show-RecommendedSummary {
         [Parameter(Mandatory = $true)]
         [string]$GuideArtifactPath,
         [Parameter(Mandatory = $true)]
+        [string]$BoundaryArtifactPath,
+        [Parameter(Mandatory = $true)]
         [string]$ManifestArtifactPath,
         [string]$GuideArtifactError,
         $GuideRecord
@@ -416,6 +422,7 @@ function Show-RecommendedSummary {
     Write-Host ("Surface JSON: {0}" -f $SurfaceCheckArtifactPath)
     Write-Host ("Summary JSON: {0}" -f $SummaryPath)
     Write-Host ("Guide JSON: {0}" -f $GuideArtifactPath)
+    Write-Host ("Boundary JSON: {0}" -f $BoundaryArtifactPath)
     Write-Host ("Manifest JSON: {0}" -f $ManifestArtifactPath)
     if ($GuideArtifactError) {
         Write-Host ("Guide error: {0}" -f $GuideArtifactError)
@@ -446,6 +453,7 @@ function Write-RecommendedSummaryArtifact {
         [string]$SurfaceCheckArtifactPath,
         $SurfaceCheckRecord,
         [string]$GuideArtifactPath,
+        [string]$BoundaryArtifactPath,
         [string]$GuideArtifactError
     )
 
@@ -460,6 +468,7 @@ function Write-RecommendedSummaryArtifact {
         phase_artifact_root = $phaseArtifactRoot
         summary_path = $SummaryPath
         guide_artifact_path = $GuideArtifactPath
+        boundary_artifact_path = $BoundaryArtifactPath
         manifest_artifact_path = $manifestArtifactPath
         guide_artifact_error = $GuideArtifactError
         leave_open = [bool]$LeaveOpen
@@ -508,6 +517,7 @@ function Write-RecommendedManifestArtifact {
         [string]$SurfaceCheckArtifactPath,
         $SurfaceCheckRecord,
         [string]$GuideArtifactPath,
+        [string]$BoundaryArtifactPath,
         [string]$GuideArtifactError,
         $GuideRecord
     )
@@ -524,6 +534,7 @@ function Write-RecommendedManifestArtifact {
         summary_path = $SummaryPath
         surface_check_artifact_path = $SurfaceCheckArtifactPath
         guide_artifact_path = $GuideArtifactPath
+        boundary_artifact_path = $BoundaryArtifactPath
         guide_artifact_error = $GuideArtifactError
         phase_artifact_root = $phaseArtifactRoot
         surface_check_status = $SurfaceCheckStatus
@@ -642,6 +653,7 @@ Write-Host ("Phase artifacts: {0}" -f $phaseArtifactRoot)
 Write-Host ("Surface JSON: {0}" -f $surfaceCheckArtifactPath)
 Write-Host ("Summary JSON: {0}" -f $SummaryPath)
 Write-Host ("Guide JSON: {0}" -f $guideArtifactPath)
+Write-Host ("Boundary JSON: {0}" -f $phaseBoundaryArtifactPath)
 Write-Host ("Manifest JSON: {0}" -f $manifestArtifactPath)
 Write-Host ""
 Write-Host "=== google-issue3-recommended-surface ==="
@@ -669,20 +681,20 @@ try {
     $surfaceCheckError = $_.Exception.Message
 }
 if ($surfaceCheckStatus -ne "passed") {
-    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -GuideArtifactError $guideArtifactError
+    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError
     try {
         $guideRecord = Save-RecommendedGuideArtifact -GuideScript $summaryGuide -SummaryPath $SummaryPath -ArtifactPath $guideArtifactPath
     } catch {
         $guideArtifactError = $_.Exception.Message
     }
-    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -GuideArtifactError $guideArtifactError
-    Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -GuideArtifactError $guideArtifactError -GuideRecord $guideRecord
+    Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError
+    Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -GuideRecord $guideRecord
     $guideMessage = if ($guideArtifactError) {
         " Guide artifact error: $guideArtifactError"
     } else {
         " Guide JSON: $guideArtifactPath"
     }
-    throw ("Google issue #3 recommended validation surface check failed: {0}. Surface JSON: {1}. Summary JSON: {2}. Manifest JSON: {3}.{4}" -f $surfaceCheckError, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage)
+    throw ("Google issue #3 recommended validation surface check failed: {0}. Surface JSON: {1}. Summary JSON: {2}. Manifest JSON: {3}. Boundary JSON: {4}.{5}" -f $surfaceCheckError, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $phaseBoundaryArtifactPath, $guideMessage)
 }
 Write-Host ""
 
@@ -708,15 +720,15 @@ foreach ($step in $phasePlan) {
     }
 }
 
-Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -GuideArtifactError $guideArtifactError
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError
 try {
     $guideRecord = Save-RecommendedGuideArtifact -GuideScript $summaryGuide -SummaryPath $SummaryPath -ArtifactPath $guideArtifactPath
 } catch {
     $guideArtifactError = $_.Exception.Message
 }
-Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -GuideArtifactError $guideArtifactError
-Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -GuideArtifactError $guideArtifactError -GuideRecord $guideRecord
-Show-RecommendedSummary -PhaseResults @($phaseResults) -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -GuideArtifactPath $guideArtifactPath -ManifestArtifactPath $manifestArtifactPath -GuideArtifactError $guideArtifactError -GuideRecord $guideRecord
+Write-RecommendedSummaryArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError
+Write-RecommendedManifestArtifact -PhaseResults @($phaseResults) -SurfaceCheckStatus $surfaceCheckStatus -SurfaceCheckError $surfaceCheckError -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -SurfaceCheckRecord $surfaceCheckRecord -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -GuideArtifactError $guideArtifactError -GuideRecord $guideRecord
+Show-RecommendedSummary -PhaseResults @($phaseResults) -SurfaceCheckArtifactPath $surfaceCheckArtifactPath -GuideArtifactPath $guideArtifactPath -BoundaryArtifactPath $phaseBoundaryArtifactPath -ManifestArtifactPath $manifestArtifactPath -GuideArtifactError $guideArtifactError -GuideRecord $guideRecord
 
 $failedPhase = @($phaseResults | Where-Object { $_.status -ne "passed" } | Select-Object -First 1)
 if ($failedPhase.Count -gt 0) {
@@ -725,7 +737,7 @@ if ($failedPhase.Count -gt 0) {
     } else {
         " Guide JSON: $guideArtifactPath"
     }
-    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Surface JSON: {2}. Summary JSON: {3}. Manifest JSON: {4}.{5}" -f $failedPhase[0].name, $failedPhase[0].error, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $guideMessage)
+    throw ("Google issue #3 recommended validation stopped at phase '{0}': {1}. Surface JSON: {2}. Summary JSON: {3}. Manifest JSON: {4}. Boundary JSON: {5}.{6}" -f $failedPhase[0].name, $failedPhase[0].error, $surfaceCheckArtifactPath, $SummaryPath, $manifestArtifactPath, $phaseBoundaryArtifactPath, $guideMessage)
 }
 if ($guideArtifactError) {
     Write-Warning ("Google issue #3 validation guide artifact could not be generated: {0}" -f $guideArtifactError)
