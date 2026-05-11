@@ -79,13 +79,60 @@ $preparedWindow = $false
 $trace = New-Object System.Collections.Generic.List[object]
 $readyMarkerMatched = $null
 $readyObservedAtUtc = $null
+$readyTitle = $null
+$readyTitleState = $null
 $inputSentAtUtc = $null
 $titleAtInputSend = $null
 $typedObservedAtUtc = $null
+$typedTitle = $null
+$typedTitleState = $null
 $enterSentAtUtc = $null
 $titleAtEnterSend = $null
 $enterObservedAtUtc = $null
+$enterTitle = $null
+$enterTitleState = $null
 $failureStage = "window_handle"
+
+function Convert-TitleState {
+    param(
+        [string]$Title
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Title)) {
+        return $null
+    }
+
+    $parts = $Title -split '\|'
+    $state = [ordered]@{
+        raw_title = $Title
+        marker = if ($parts.Count -gt 0) { $parts[0] } else { $Title }
+    }
+
+    for ($i = 1; $i -lt $parts.Count; $i++) {
+        $segment = $parts[$i]
+        if ([string]::IsNullOrWhiteSpace($segment)) {
+            continue
+        }
+
+        $pair = $segment -split '=', 2
+        if ($pair.Count -ne 2) {
+            $state[("extra_{0}" -f $i)] = $segment
+            continue
+        }
+
+        $name = switch ($pair[0]) {
+            'A' { 'active_element' }
+            'Q' { 'query_element' }
+            'V' { 'query_value' }
+            'S' { 'selection' }
+            'E' { 'last_event' }
+            default { $pair[0].ToLowerInvariant() }
+        }
+        $state[$name] = $pair[1]
+    }
+
+    return [pscustomobject]$state
+}
 
 Write-Host ("Watching headed probe at {0}" -f $Url)
 if ($readyMarkers.Count -gt 0) {
@@ -127,11 +174,13 @@ while ((Get-Date) -lt $deadline) {
     }
 
     $title = Get-SmokeWindowTitle ([IntPtr]$process.MainWindowHandle)
+    $titleState = Convert-TitleState $title
     if ($title -and $title -ne $lastTitle) {
         $stamp = (Get-Date).ToUniversalTime().ToString("o")
         $entry = [pscustomobject]@{
             observed_at_utc = $stamp
             title = $title
+            state = $titleState
         }
         $trace.Add($entry) | Out-Null
         $lastTitle = $title
@@ -144,6 +193,8 @@ while ((Get-Date) -lt $deadline) {
                 $matchedReady = $true
                 $readyMarkerMatched = $marker
                 $readyObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+                $readyTitle = $title
+                $readyTitleState = $titleState
                 if (-not $matchedTyped) {
                     $failureStage = "typed_marker"
                 } elseif (-not $matchedEnter) {
@@ -164,6 +215,8 @@ while ((Get-Date) -lt $deadline) {
         if ([string]::IsNullOrWhiteSpace($ExpectedTypedTitleContains)) {
             $matchedTyped = $true
             $typedObservedAtUtc = $inputSentAtUtc
+            $typedTitle = $title
+            $typedTitleState = $titleState
             if (-not $matchedEnter) {
                 $failureStage = "enter_marker"
             } else {
@@ -175,6 +228,8 @@ while ((Get-Date) -lt $deadline) {
     if ($inputSent -and -not $matchedTyped -and $title -and $title.Contains($ExpectedTypedTitleContains)) {
         $matchedTyped = $true
         $typedObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        $typedTitle = $title
+        $typedTitleState = $titleState
         if (-not $matchedEnter) {
             $failureStage = "enter_marker"
         } else {
@@ -190,6 +245,8 @@ while ((Get-Date) -lt $deadline) {
         if ([string]::IsNullOrWhiteSpace($ExpectedEnterTitleContains)) {
             $matchedEnter = $true
             $enterObservedAtUtc = $enterSentAtUtc
+            $enterTitle = $title
+            $enterTitleState = $titleState
             $failureStage = $null
         }
     }
@@ -197,6 +254,8 @@ while ((Get-Date) -lt $deadline) {
     if ($enterSent -and -not $matchedEnter -and $title -and $title.Contains($ExpectedEnterTitleContains)) {
         $matchedEnter = $true
         $enterObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        $enterTitle = $title
+        $enterTitleState = $titleState
         $failureStage = $null
     }
 
@@ -233,8 +292,14 @@ $result = [pscustomobject]@{
     matched_enter = $matchedEnter
     matched_ready_marker = $readyMarkerMatched
     ready_observed_at_utc = $readyObservedAtUtc
+    ready_title = $readyTitle
+    ready_title_state = $readyTitleState
     typed_observed_at_utc = $typedObservedAtUtc
+    typed_title = $typedTitle
+    typed_title_state = $typedTitleState
     enter_observed_at_utc = $enterObservedAtUtc
+    enter_title = $enterTitle
+    enter_title_state = $enterTitleState
     input_sent = $inputSent
     input_sent_at_utc = $inputSentAtUtc
     title_at_input_send = $titleAtInputSend
@@ -243,6 +308,7 @@ $result = [pscustomobject]@{
     title_at_enter_send = $titleAtEnterSend
     failure_stage = $failureStage
     last_title = $lastTitle
+    last_title_state = Convert-TitleState $lastTitle
     leave_open = [bool]$LeaveOpen
     process_exited = $process.HasExited
     exit_code = if ($process.HasExited) { $process.ExitCode } else { $null }
