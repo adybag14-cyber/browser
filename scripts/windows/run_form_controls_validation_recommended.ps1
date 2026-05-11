@@ -43,13 +43,20 @@ $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-RepoRoot $PSScriptRoot }
 $probeRoot = Join-Path $repo "tmp-browser-smoke\form-controls"
 $scriptRoot = Join-Path $repo "scripts\windows"
 $powerShellExe = Resolve-PowerShellCommand
+$surfaceCheck = Join-Path $scriptRoot "check_form_controls_validation_surface.ps1"
 
 $sharedArgs = @()
 if ($RepoRoot) { $sharedArgs += @("-RepoRoot", $RepoRoot) }
 if ($BrowserExe) { $sharedArgs += @("-BrowserExe", $BrowserExe) }
 if ($Host) { $sharedArgs += @("-Host", $Host) }
 
-$steps = @()
+$steps = @(
+  [pscustomobject]@{
+    Name = "form-controls-surface"
+    Script = $surfaceCheck
+    Arguments = @("-RepoRoot", $repo)
+  }
+)
 if (-not $SkipBaseline) {
   $steps += [pscustomobject]@{
     Name = "baseline-enter-submit"
