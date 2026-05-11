@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Google Enter Order Probe</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #fff;
+      color: #202124;
+      font: 14px Arial, sans-serif;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      font-size: 13px;
+    }
+
+    .topbar a {
+      color: #1f1f1f;
+      text-decoration: none;
+      margin-right: 14px;
+    }
+
+    .topbar .right a:last-child {
+      margin-right: 0;
+    }
+
+    .shell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 56px);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .logo {
+      margin-bottom: 28px;
+      font-size: 56px;
+      font-weight: 700;
+      letter-spacing: 0;
+      color: #4285f4;
+    }
+
+    .logo span:nth-child(2) { color: #ea4335; }
+    .logo span:nth-child(3) { color: #fbbc05; }
+    .logo span:nth-child(4) { color: #4285f4; }
+    .logo span:nth-child(5) { color: #34a853; }
+    .logo span:nth-child(6) { color: #ea4335; }
+
+    form {
+      width: min(640px, 100%);
+    }
+
+    .searchRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 48px;
+      padding: 0 16px;
+      border: 1px solid #dfe1e5;
+      border-radius: 24px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .searchRow:focus-within {
+      border-color: #c6c6c6;
+      box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+    }
+
+    .searchGlyph {
+      color: #9aa0a6;
+      font-size: 16px;
+      user-select: none;
+    }
+
+    input[name="q"] {
+      flex: 1;
+      border: 0;
+      outline: 0;
+      padding: 0;
+      font: 16px Arial, sans-serif;
+      color: #202124;
+      background: transparent;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .actions input[type="submit"] {
+      min-width: 144px;
+      height: 36px;
+      padding: 0 16px;
+      border: 1px solid #f8f9fa;
+      border-radius: 4px;
+      background: #f8f9fa;
+      color: #3c4043;
+      font: 14px Arial, sans-serif;
+      cursor: pointer;
+    }
+
+    .status {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 2147483647;
+      max-width: min(90vw, 760px);
+      padding: 10px 12px;
+      border: 2px solid #1a73e8;
+      border-radius: 8px;
+      background: rgba(17, 17, 17, 0.94);
+      color: #fff;
+      font: 13px/1.35 monospace;
+      white-space: normal;
+      word-break: break-word;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="left">
+      <a href="#search">Search</a>
+      <a href="#images">Images</a>
+    </div>
+    <div class="right">
+      <a href="#gmail">Gmail</a>
+      <a href="#signin">Sign in</a>
+    </div>
+  </div>
+
+  <main class="shell">
+    <div class="logo" aria-hidden="true">
+      <span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span>
+    </div>
+
+    <form name="f" action="/search" method="get">
+      <input type="hidden" name="hl" value="en">
+      <input type="hidden" name="source" value="hp">
+      <div class="searchRow">
+        <span class="searchGlyph" aria-hidden="true">Q</span>
+        <input
+          id="google-query"
+          name="q"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          title="Google Search"
+        >
+      </div>
+      <div class="actions">
+        <input type="submit" name="btnG" value="Google Search">
+        <input type="submit" name="btnI" value="I'm Feeling Lucky">
+      </div>
+      <input type="hidden" name="iflsig" value="fixture-probe">
+    </form>
+  </main>
+
+  <div id="probe-status" class="status">INIT</div>
+
+  <script>
+    (function() {
+      var q = document.forms.f && document.forms.f.q;
+      var badge = document.getElementById("probe-status");
+      var lastMark = "INIT";
+      var enterOrder = [];
+      var earlyEvents = [];
+
+      function describeElement(el) {
+        if (!el) return "NONE";
+        return [
+          el.tagName || "",
+          el.getAttribute && (el.getAttribute("name") || ""),
+          el.id || "",
+          el.isConnected ? "1" : "0"
+        ].join(":");
+      }
+
+      function pushEarly(label) {
+        earlyEvents.push(label);
+        if (earlyEvents.length > 6) earlyEvents.shift();
+      }
+
+      function pushEnter(label) {
+        enterOrder.push(label);
+        if (enterOrder.length > 6) enterOrder.shift();
+      }
+
+      function renderStatus() {
+        var active = describeElement(document.activeElement);
+        var value = q ? (q.value || "") : "";
+        var selection = q ? [q.selectionStart, q.selectionEnd].join(":") : "NONE";
+        var early = earlyEvents.length ? earlyEvents[earlyEvents.length - 1] : "NONE";
+        var order = enterOrder.length ? enterOrder.join(">") : "NONE";
+        var summary = lastMark +
+          "|A=" + active +
+          "|Q=" + describeElement(q) +
+          "|V=" + value +
+          "|S=" + selection +
+          "|E=" + early +
+          "|ORD=" + order;
+        document.title = summary;
+        badge.textContent = summary;
+      }
+
+      function mark(value) {
+        lastMark = value;
+        renderStatus();
+      }
+
+      if (!q) {
+        mark("NOQ");
+        return;
+      }
+
+      q.addEventListener("focus", function() {
+        mark("FOCUSED");
+      });
+
+      q.addEventListener("beforeinput", function(e) {
+        pushEarly("BI:" + (e.data || ""));
+        mark("BEFOREINPUT:" + (e.data || "") + ":" + q.value);
+      });
+
+      q.addEventListener("input", function() {
+        pushEarly("IN:" + q.value);
+        mark("TYPED:" + q.value);
+      });
+
+      q.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
+          pushEarly("KD:ENTER");
+          pushEnter("KEYDOWN");
+          mark("KEYDOWN:" + q.value + "|13|13");
+          return;
+        }
+        if ((e.key || "").length === 1) {
+          pushEarly("KD:" + e.key);
+          mark("KEYDOWN:" + e.key + ":" + q.value);
+        }
+      });
+
+      q.addEventListener("keypress", function(e) {
+        if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
+          pushEarly("KP:ENTER");
+          pushEnter("KEYPRESS");
+          mark("KEYPRESS:" + q.value + "|13|13");
+          return;
+        }
+        if ((e.key || "").length === 1) {
+          pushEarly("KP:" + e.key);
+        }
+      });
+
+      document.forms.f.addEventListener("submit", function(e) {
+        e.preventDefault();
+        pushEarly("SUBMIT:" + q.value);
+        pushEnter("SUBMIT");
+        mark("SUBMIT:" + q.value + "|E=KP:ENTER");
+      });
+
+      document.addEventListener("focusin", function(e) {
+        if (e.target !== q) {
+          mark("FOCUSIN:" + describeElement(e.target));
+        }
+      }, true);
+
+      document.addEventListener("selectionchange", function() {
+        if (document.activeElement === q) {
+          mark("SEL:" + q.value);
+        }
+      }, true);
+
+      mark("BOUND");
+    })();
+  </script>
+</body>
+</html>
