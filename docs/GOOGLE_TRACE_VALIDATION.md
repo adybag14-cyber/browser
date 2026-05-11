@@ -12,6 +12,19 @@ It focuses on the later-stage trace handoff that sits after the bounded
 submit-path ladder but before another round of engine work on the real Google
 homepage path.
 
+## Suite router entry
+
+When you need to re-anchor this later-stage slice inside the shared Windows
+validation map before you run anything, start with:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-live-trace
+```
+
+That shared entry prints the live-trace suite purpose, its neighboring
+recommended suites, and the dedicated trace flow helper before you narrow into
+the later capture commands.
+
 ## Start with the validation surface check
 
 Use the dedicated checker first so missing notes, flow helpers, wrapper
@@ -36,9 +49,9 @@ run the later-stage trace handoff:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1
 ```
 
-That helper keeps the dedicated surface check, the reduced-home trace probe,
-the shared wrapper trace phase, and the raw live probe on one small command
-surface before you widen again.
+That helper keeps the suite-router reminder, the dedicated surface check, the
+reduced-home trace probe, the shared wrapper trace phase, and the raw live
+probe on one small command surface before you widen again.
 
 ## Shared wrapper runner
 
