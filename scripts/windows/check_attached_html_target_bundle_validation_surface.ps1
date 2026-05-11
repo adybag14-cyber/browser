@@ -1,0 +1,104 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [switch]$Json
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
+
+function New-ValidationReference {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("file", "directory")]
+        [string]$Kind,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Kind = $Kind
+        Purpose = $Purpose
+    }
+}
+
+$resolvedRepoRoot = if ($RepoRoot) {
+    (Resolve-Path -LiteralPath $RepoRoot).Path
+} else {
+    Resolve-LightpandaRepoRoot $PSScriptRoot
+}
+
+$references = @(
+    (New-ValidationReference -Path "docs/HEADED_ATTACHED_HTML_VALIDATION.md" -Kind "file" -Purpose "Primary attached-HTML validation guide for the current compatibility bundle route."),
+    (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the bundle-aware attached-page helpers."),
+    (New-ValidationReference -Path "scripts/windows/check_attached_html_target_bundle.ps1" -Kind "file" -Purpose "Checker for the known three-page attached HTML compatibility target bundle."),
+    (New-ValidationReference -Path "scripts/windows/show_attached_html_target_bundle_validation_flow.ps1" -Kind "file" -Purpose "Bundle-aware attached HTML flow helper."),
+    (New-ValidationReference -Path "scripts/windows/run_attached_html_target_bundle_validation.ps1" -Kind "file" -Purpose "Bundle-aware attached HTML localhost runner."),
+    (New-ValidationReference -Path "scripts/windows/check_attached_html_validation_surface.ps1" -Kind "file" -Purpose "General attached-HTML validation surface checker used by the non-Google route."),
+    (New-ValidationReference -Path "scripts/windows/check_google_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Google-style attached-HTML validation surface checker used when the bundle includes the Google page."),
+    (New-ValidationReference -Path "scripts/windows/check_attached_html_local_asset_closure.ps1" -Kind "file" -Purpose "Deep attached-HTML asset audit for the locked bundle paths."),
+    (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "General attached-HTML flow helper referenced by the bundle checker when the bundle is not Google-routed."),
+    (New-ValidationReference -Path "scripts/windows/run_attached_html_localhost_validation.ps1" -Kind "file" -Purpose "General attached-HTML localhost runner delegated to by the bundle-aware path."),
+    (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Google-style attached-HTML flow helper referenced by the bundle checker when the bundle stays on the issue #3 route."),
+    (New-ValidationReference -Path "scripts/windows/run_google_attached_html_validation.ps1" -Kind "file" -Purpose "Google-style attached-HTML localhost runner delegated to by the bundle-aware path.")
+)
+
+$results = foreach ($reference in $references) {
+    $fullPath = Join-Path $resolvedRepoRoot $reference.Path
+    $exists = if ($reference.Kind -eq "directory") {
+        Test-Path -LiteralPath $fullPath -PathType Container
+    } else {
+        Test-Path -LiteralPath $fullPath -PathType Leaf
+    }
+
+    [pscustomobject]@{
+        Path = $reference.Path
+        Kind = $reference.Kind
+        Purpose = $reference.Purpose
+        Exists = [bool]$exists
+    }
+}
+
+$missing = @($results | Where-Object { -not $_.Exists })
+
+if ($Json) {
+    [ordered]@{
+        profile = "attached-html-target-bundle"
+        repo_root = $resolvedRepoRoot
+        checked_count = @($results).Count
+        missing_count = @($missing).Count
+        references = @($results)
+    } | ConvertTo-Json -Depth 6
+
+    if ($missing.Count -gt 0) {
+        exit 1
+    }
+
+    exit 0
+}
+
+Write-Host "Attached HTML target-bundle validation surface check"
+Write-Host ""
+Write-Host ("Repo root: {0}" -f $resolvedRepoRoot)
+Write-Host ""
+
+foreach ($result in $results) {
+    $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+    Write-Host ("[{0}] {1}" -f $status, $result.Path)
+    Write-Host ("  {0}" -f $result.Purpose)
+}
+
+Write-Host ""
+if ($missing.Count -eq 0) {
+    Write-Host "Attached HTML target-bundle validation surface is intact."
+    exit 0
+}
+
+Write-Host ("Missing {0} attached HTML target-bundle validation path(s)." -f $missing.Count)
+Write-Host "Repair the missing guide, checker, helper, runner, or delegated attached-HTML surface before trusting the bundle-pinned localhost route."
+exit 1
