@@ -24,8 +24,8 @@ Reach for this note when all of these are true:
 ## Start with the fail-fast surface check
 
 Before you lean on the later submit-path ladder, verify that the read-first note,
-flow helper, runners, and bounded probe files are all still present on the
-branch:
+flow helper, trace guide, runners, and bounded probe files are all still present
+on the branch:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_path_validation_surface.ps1
@@ -47,6 +47,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_pa
 That helper keeps the saved homepage fixture checkpoint, the submit-timing
 wrapper, and the shared Enter-order ladder aligned on one reusable command
 surface.
+
+## Read the trace guide before widening again
+
+When the bounded later-stage ladder disagrees and you want the smallest
+explanation of what failed before you rerun anything, print the trace guide:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1
+```
+
+Use this helper when you want the saved homepage fixture fields, the
+submit-timing output, and the shared Enter-order result translated into the next
+narrowing step without reopening the longer notes by hand.
 
 ## One-command runner for the later submit path
 
@@ -70,49 +83,55 @@ If the later submit path still needs isolation, use this smaller order:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_path_validation_surface.ps1
 ```
 
-2. Saved homepage fixture flow helper
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
-```
-
-3. Saved homepage fixture runner
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
-```
-
-4. Submit-path flow helper
+2. Submit-path flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
 ```
 
-5. Submit-timing flow helper
+3. Submit-path trace guide
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1
+```
+
+4. Saved homepage fixture flow helper
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
+```
+
+5. Saved homepage fixture runner
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
+```
+
+6. Submit-timing flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1
 ```
 
-6. Submit-timing runner
+7. Submit-timing runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
 ```
 
-7. Shared Enter-order flow helper
+8. Shared Enter-order flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 ```
 
-8. Shared Enter-order runner
+9. Shared Enter-order runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 ```
 
-9. Dedicated shared form-controls Enter-order gate when you need the smallest
+10. Dedicated shared form-controls Enter-order gate when you need the smallest
 shared end-state proof
 
 ```powershell
@@ -131,8 +150,9 @@ Treat the later submit path as green only when all of these remain true:
   the real headed surface
 - the dedicated shared form-controls gate still agrees with that same ordering
 
-If one layer fails, fix that layer before widening out to attached HTML,
-saved-page manual replay, or the live Google homepage.
+If one layer fails, use the trace guide to keep the next narrowing step on the
+right bounded checkpoint before widening out to attached HTML, saved-page
+manual replay, or the live Google homepage.
 
 ## When to widen again
 
@@ -148,5 +168,5 @@ Do not jump from the reduced homepage pass straight to the live Google homepage
 when the branch already provides narrower later-stage submit checkpoints.
 
 Keep the saved homepage fixture, submit-timing slice, and shared Enter-order
-ladder green first, then widen back out to attached HTML or the live headed
-homepage.
+ladder green first, use the trace guide when the later-stage checkpoints
+diverge, then widen back out to attached HTML or the live headed homepage.
