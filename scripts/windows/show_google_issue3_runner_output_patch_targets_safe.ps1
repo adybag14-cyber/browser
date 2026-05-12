@@ -143,6 +143,7 @@ if (-not $ArtifactPath) {
 
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $artifactPathRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_artifact_paths.ps1'
+$runnerOutputPatchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
 $runnerOutputPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $runnerOutputWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
@@ -215,16 +216,16 @@ $nextArtifactToOpen = $null
 if (-not $summaryHasArtifactRootField) {
     $status = 'summary-artifact-root-missing'
     $reason = 'The saved summary omits artifact_root, so the raw patch-target helper can fail under strict mode before it reaches fallback artifact-root resolution.'
-    $nextFocus = 'Regenerate the broader issue #3 runner outputs before trusting the raw patch-target helper.'
+    $nextFocus = 'Regenerate the broader issue #3 runner outputs first, then rerun this safe helper before trusting the raw patch-target helper.'
     $recommendedCommand = $broaderRunnerCommand
-    $recommendedGuideCommand = $refreshStatusSafeCommand
+    $recommendedGuideCommand = $runnerOutputPatchTargetsSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif (-not $summaryHasManifestArtifactPathField) {
     $status = 'summary-manifest-path-missing'
     $reason = 'The saved summary omits manifest_artifact_path, so the raw patch-target helper can fail under strict mode before it resolves the fallback manifest location.'
-    $nextFocus = 'Repair the saved validation artifact paths first, then reopen the raw patch-target helper.'
+    $nextFocus = 'Repair the saved validation artifact paths first, then rerun this safe helper before trusting the raw patch-target helper.'
     $recommendedCommand = $artifactPathRepairCommand
-    $recommendedGuideCommand = $runnerOutputPatchTargetsCommand
+    $recommendedGuideCommand = $runnerOutputPatchTargetsSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ((-not $manifestExists) -and $runnerSourceIndicatesDirectFieldWiring) {
     $status = 'runner-source-already-wired-manifest-missing'
@@ -315,6 +316,7 @@ $report = [ordered]@{
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $broaderRunnerCommand
     artifact_path_repair_command = $artifactPathRepairCommand
+    runner_output_patch_targets_safe_command = $runnerOutputPatchTargetsSafeCommand
     runner_output_patch_targets_command = $runnerOutputPatchTargetsCommand
     runner_output_wiring_status_safe_command = $runnerOutputWiringStatusSafeCommand
     runner_contract_repair_command = $runnerContractRepairCommand
@@ -360,3 +362,4 @@ Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Safe patch-target gate: {0}" -f $report.runner_output_patch_targets_safe_command)
