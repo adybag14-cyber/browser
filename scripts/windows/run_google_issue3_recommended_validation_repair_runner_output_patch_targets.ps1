@@ -281,6 +281,7 @@ if (-not $summaryExistsAfterRunnerOutputSafe) {
 }
 
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-runner-output-wiring') { $runnerOutputWiringSafeCommand },
     if ($patchTargetsStep) { $patchTargetsStep.recommended_command },
     if ($runnerOutputSafeStep) { $runnerOutputSafeStep.recommended_command },
     $patchTargetsSafeRouteCommand,
@@ -289,7 +290,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $runnerOutputSafeCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($status -eq 'ready-for-runner-output-wiring') { $runnerOutputWiringSafeCommand },
+    if ($status -eq 'ready-for-runner-output-wiring') { $runnerOutputWiringCommand },
     if ($patchTargetsStep) { $patchTargetsStep.recommended_guide_command },
     if ($runnerOutputSafeStep) { $runnerOutputSafeStep.recommended_guide_command },
     if ($status -eq 'ready-for-runner-output-wiring') { $patchTargetsVerificationCommand },
