@@ -195,6 +195,7 @@ $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\
 $runnerOutputContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$runnerOutputPatchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
 $runnerOutputPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
@@ -272,6 +273,7 @@ $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($runnerOutputWiringSafeStep) { $runnerOutputWiringSafeStep.recommended_guide_command },
     if ($runnerOutputContractRepairStep) { $runnerOutputContractRepairStep.recommended_guide_command },
     if ($runnerOutputWiringSafeStep -and $runnerOutputWiringSafeStep.status -eq 'safe-to-run-existing-helper') { $runnerOutputWiringCommand },
+    $runnerOutputPatchTargetsSafeCommand,
     $runnerOutputPatchTargetsCommand,
     $refreshStatusSafeCommand,
     $summaryGuideCommand
@@ -306,6 +308,7 @@ $report = [ordered]@{
     runner_output_contract_repair_command = $runnerOutputContractRepairCommand
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
+    runner_output_patch_targets_safe_command = $runnerOutputPatchTargetsSafeCommand
     runner_output_patch_targets_command = $runnerOutputPatchTargetsCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
     summary_guide_command = $summaryGuideCommand
