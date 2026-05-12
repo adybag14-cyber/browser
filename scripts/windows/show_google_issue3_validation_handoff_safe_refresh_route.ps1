@@ -215,12 +215,13 @@ $steps = [System.Collections.Generic.List[object]]::new()
 $handoffSafeStep = Invoke-JsonHelper -Name 'handoff-safe' -ScriptPath $handoffSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 $steps.Add($handoffSafeStep) | Out-Null
 
-$shouldRunRefreshStatusSafe = [bool]($handoffSafeStep.success -and $handoffSafeStep.status -eq 'refresh-state-needs-rebuild')
+$shouldRunRefreshStatusSafe = [bool]($handoffSafeStep.success -and $handoffSafeStep.recommended_command -eq $refreshStatusSafeCommand)
+$readyForHandoff = [bool]($handoffSafeStep.success -and $handoffSafeStep.recommended_command -eq $handoffGuideCommand)
 $refreshStatusSafeStep = $null
 if ($shouldRunRefreshStatusSafe) {
     $refreshStatusSafeStep = Invoke-JsonHelper -Name 'refresh-status-safe' -ScriptPath $refreshStatusSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 } else {
-    $refreshStatusSafeStep = New-SkippedHelperStep -Name 'refresh-status-safe' -ScriptPath $refreshStatusSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_command, $handoffSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_guide_command, $summaryGuideCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_focus, 'Use the current handoff-safe guidance; the refresh-safe follow-up is only needed when the saved refresh state is stale or missing.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The handoff-safe checkpoint did not report refresh-state-needs-rebuild, so the extra refresh-safe follow-up step was not needed.'
+    $refreshStatusSafeStep = New-SkippedHelperStep -Name 'refresh-status-safe' -ScriptPath $refreshStatusSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_command, $handoffSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_guide_command, $summaryGuideCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_focus, 'Use the current handoff-safe guidance; the refresh-safe follow-up is only needed when the upstream helper routes the next replay through the safe refresh-status checkpoint.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The handoff-safe checkpoint did not route the next replay through the safe refresh-status helper, so the extra refresh-safe follow-up step was not needed.'
 }
 $steps.Add($refreshStatusSafeStep) | Out-Null
 
@@ -231,13 +232,13 @@ if (-not $handoffSafeStep.success) {
     $reason = 'The handoff-safe helper did not finish cleanly, so the next Windows replay should start from that safer checkpoint before widening back out.'
 } elseif ($shouldRunRefreshStatusSafe -and -not $refreshStatusSafeStep.success) {
     $status = 'refresh-status-safe-failed'
-    $reason = 'The handoff-safe helper correctly detected stale refresh state, but the safe refresh-status helper did not finish cleanly, so the next replay should reopen that safer refresh checkpoint directly.'
+    $reason = 'The handoff-safe helper correctly routed the next replay through the safe refresh-status checkpoint, but that safe follow-up helper did not finish cleanly, so the next replay should reopen that safer refresh path directly.'
 } elseif ($shouldRunRefreshStatusSafe) {
     $status = 'refresh-status-safe-follow-up-ready'
-    $reason = 'The handoff-safe helper detected stale refresh state and this wrapper immediately reopened the safe refresh-status checkpoint, so the next Windows replay can continue from the narrowed refresh guidance instead of re-deriving that branch by hand.'
-} elseif ($handoffSafeStep.status -eq 'safe-to-run-handoff') {
+    $reason = 'The handoff-safe helper routed the next replay through the safe refresh-status checkpoint and this wrapper immediately reopened it, so the next Windows replay can continue from the narrowed refresh guidance instead of re-deriving that branch by hand.'
+} elseif ($readyForHandoff) {
     $status = 'ready-for-handoff'
-    $reason = 'The handoff-safe helper already says the existing handoff helper is the right next checkpoint, so no extra refresh-safe follow-up was needed.'
+    $reason = 'The handoff-safe helper already routes the next replay back to the raw handoff helper, so no extra refresh-safe follow-up was needed.'
 } else {
     $status = 'handoff-safe-follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
@@ -254,7 +255,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.recommended_guide_command },
-    if ($handoffSafeStep.status -eq 'safe-to-run-handoff') { $handoffGuideCommand },
+    if ($readyForHandoff) { $handoffGuideCommand },
     $handoffSafeStep.recommended_guide_command,
     $summaryGuideCommand
 )
