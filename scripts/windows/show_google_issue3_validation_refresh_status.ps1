@@ -52,6 +52,16 @@ function Read-ArtifactJson {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function Test-HasProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -82,8 +92,8 @@ if ($manifestExists) {
 $bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
 $guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.guide_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
 $boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.boundary_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
-$configuredSummaryHandoffPath = $summary.handoff_artifact_path
-$configuredManifestHandoffPath = if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }
+$configuredSummaryHandoffPath = if (Test-HasProperty -Object $summary -Name 'handoff_artifact_path') { $summary.handoff_artifact_path } else { $null }
+$configuredManifestHandoffPath = if ($manifestRecord -and (Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_path')) { $manifestRecord.handoff_artifact_path } else { $null }
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)
 $manifestRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)
 $configuredHandoffPath = if ($summaryRecordsHandoffArtifactPath) {
@@ -94,8 +104,8 @@ $configuredHandoffPath = if ($summaryRecordsHandoffArtifactPath) {
     $null
 }
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
-$configuredSummaryRefreshPath = $summary.refresh_chain_artifact_path
-$configuredManifestRefreshPath = if ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }
+$configuredSummaryRefreshPath = if (Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path') { $summary.refresh_chain_artifact_path } else { $null }
+$configuredManifestRefreshPath = if ($manifestRecord -and (Test-HasProperty -Object $manifestRecord -Name 'refresh_chain_artifact_path')) { $manifestRecord.refresh_chain_artifact_path } else { $null }
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)
 $manifestRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)
 $configuredRefreshPath = if ($summaryRecordsRefreshArtifactPath) {
@@ -107,6 +117,15 @@ $configuredRefreshPath = if ($summaryRecordsRefreshArtifactPath) {
 }
 $refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
 
+$summaryHasRefreshArtifactErrorField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_error'
+$summaryHasHandoffArtifactErrorField = Test-HasProperty -Object $summary -Name 'handoff_artifact_error'
+$manifestHasRefreshArtifactErrorField = Test-HasProperty -Object $manifestRecord -Name 'refresh_chain_artifact_error'
+$manifestHasHandoffArtifactErrorField = Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_error'
+$summaryRefreshArtifactErrorPopulated = [bool]($summaryHasRefreshArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$summary.refresh_chain_artifact_error))
+$summaryHandoffArtifactErrorPopulated = [bool]($summaryHasHandoffArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$summary.handoff_artifact_error))
+$manifestRefreshArtifactErrorPopulated = [bool]($manifestHasRefreshArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$manifestRecord.refresh_chain_artifact_error))
+$manifestHandoffArtifactErrorPopulated = [bool]($manifestHasHandoffArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$manifestRecord.handoff_artifact_error))
+
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $bundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
@@ -114,7 +133,7 @@ $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windo
 
 $bundleExists = Test-Path -LiteralPath $bundlePath -PathType Leaf
 $bundleRecord = $null
-$bundleError = if ($summary.artifact_bundle_error) { $summary.artifact_bundle_error } else { $null }
+$bundleError = if ((Test-HasProperty -Object $summary -Name 'artifact_bundle_error') -and -not [string]::IsNullOrWhiteSpace([string]$summary.artifact_bundle_error)) { $summary.artifact_bundle_error } else { $null }
 if ($bundleExists) {
     try {
         $bundleRecord = Read-ArtifactJson $bundlePath
@@ -135,9 +154,9 @@ $bundleStatus = if ($bundleRecord -and $bundleRecord.status) {
 
 $refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
 $refreshRecord = $null
-$refreshError = if ($summary.refresh_chain_artifact_error) {
+$refreshError = if ($summaryRefreshArtifactErrorPopulated) {
     $summary.refresh_chain_artifact_error
-} elseif ($manifestRecord -and $manifestRecord.refresh_chain_artifact_error) {
+} elseif ($manifestRefreshArtifactErrorPopulated) {
     $manifestRecord.refresh_chain_artifact_error
 } else {
     $null
@@ -171,9 +190,9 @@ $refreshNeeded = -not $refreshReady
 
 $handoffExists = Test-Path -LiteralPath $handoffPath -PathType Leaf
 $handoffRecord = $null
-$handoffError = if ($summary.handoff_artifact_error) {
+$handoffError = if ($summaryHandoffArtifactErrorPopulated) {
     $summary.handoff_artifact_error
-} elseif ($manifestRecord -and $manifestRecord.handoff_artifact_error) {
+} elseif ($manifestHandoffArtifactErrorPopulated) {
     $manifestRecord.handoff_artifact_error
 } else {
     $null
@@ -345,6 +364,14 @@ $report = [ordered]@{
     completed = [bool]$summary.completed
     surface_check_status = $summary.surface_check_status
     first_failed_phase = $summary.first_failed_phase
+    summary_has_refresh_artifact_error_field = [bool]$summaryHasRefreshArtifactErrorField
+    summary_has_handoff_artifact_error_field = [bool]$summaryHasHandoffArtifactErrorField
+    summary_refresh_artifact_error_populated = [bool]$summaryRefreshArtifactErrorPopulated
+    summary_handoff_artifact_error_populated = [bool]$summaryHandoffArtifactErrorPopulated
+    manifest_has_refresh_artifact_error_field = [bool]$manifestHasRefreshArtifactErrorField
+    manifest_has_handoff_artifact_error_field = [bool]$manifestHasHandoffArtifactErrorField
+    manifest_refresh_artifact_error_populated = [bool]$manifestRefreshArtifactErrorPopulated
+    manifest_handoff_artifact_error_populated = [bool]$manifestHandoffArtifactErrorPopulated
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
     summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $configuredSummaryHandoffPath } else { $null }
     manifest_records_handoff_artifact_path = [bool]$manifestRecordsHandoffArtifactPath
@@ -432,6 +459,14 @@ Write-Host ("Handoff ready: {0}" -f $report.handoff_ready)
 if ($report.handoff_summary_path) {
     Write-Host ("Handoff summary path: {0}" -f $report.handoff_summary_path)
 }
+Write-Host ("Summary refresh error field recorded: {0}" -f $report.summary_has_refresh_artifact_error_field)
+Write-Host ("Summary handoff error field recorded: {0}" -f $report.summary_has_handoff_artifact_error_field)
+Write-Host ("Summary refresh error populated: {0}" -f $report.summary_refresh_artifact_error_populated)
+Write-Host ("Summary handoff error populated: {0}" -f $report.summary_handoff_artifact_error_populated)
+Write-Host ("Manifest refresh error field recorded: {0}" -f $report.manifest_has_refresh_artifact_error_field)
+Write-Host ("Manifest handoff error field recorded: {0}" -f $report.manifest_has_handoff_artifact_error_field)
+Write-Host ("Manifest refresh error populated: {0}" -f $report.manifest_refresh_artifact_error_populated)
+Write-Host ("Manifest handoff error populated: {0}" -f $report.manifest_handoff_artifact_error_populated)
 Write-Host ("Summary handoff path recorded: {0}" -f $report.summary_records_handoff_artifact_path)
 Write-Host ("Manifest handoff path recorded: {0}" -f $report.manifest_records_handoff_artifact_path)
 if ($report.summary_handoff_artifact_path) {
