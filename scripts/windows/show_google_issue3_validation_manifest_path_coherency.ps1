@@ -22,7 +22,6 @@ function Resolve-RepoRoot([string]$StartPath) {
         if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $cursor) {
             throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
         }
-
         $cursor = $parent
     }
 }
@@ -120,6 +119,7 @@ function New-PathRecord {
 
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
@@ -146,10 +146,12 @@ if (-not $summaryExists) {
         manifest_summary_matches = $false
         drift_labels = @()
         recommended_command = $recommendedRunnerCommand
-        recommended_guide_command = $summaryGuideCommand
+        recommended_guide_command = $summaryGuideSafeCommand
         next_artifact_to_open = $SummaryPath
         reason = 'No saved issue #3 recommended-validation summary exists yet, so the raw manifest guide has no current summary state to compare against.'
         next_focus = 'Run the bounded issue #3 validation runner first, then reopen this helper before trusting the raw manifest guide.'
+        summary_guide_command = $summaryGuideCommand
+        summary_guide_safe_command = $summaryGuideSafeCommand
     }
 
     if ($Json) {
@@ -283,6 +285,8 @@ $report = [ordered]@{
     next_artifact_to_open = $nextArtifactToOpen
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
+    summary_guide_command = $summaryGuideCommand
+    summary_guide_safe_command = $summaryGuideSafeCommand
     manifest_guide_command = $manifestGuideCommand
     manifest_safe_command = $manifestSafeCommand
     refresh_status_command = $refreshStatusCommand
