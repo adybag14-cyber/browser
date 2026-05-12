@@ -271,9 +271,9 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $runnerOutputContractRepairCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+    if ($runnerOutputWiringSafeStep -and $runnerOutputWiringSafeStep.status -eq 'safe-to-run-existing-helper') { $runnerOutputWiringCommand },
     if ($runnerOutputWiringSafeStep) { $runnerOutputWiringSafeStep.recommended_guide_command },
     if ($runnerOutputContractRepairStep) { $runnerOutputContractRepairStep.recommended_guide_command },
-    if ($runnerOutputWiringSafeStep -and $runnerOutputWiringSafeStep.status -eq 'safe-to-run-existing-helper') { $runnerOutputWiringCommand },
     $runnerOutputPatchTargetsSafeRouteCommand,
     $runnerOutputPatchTargetsSafeCommand,
     $runnerOutputPatchTargetsCommand,
