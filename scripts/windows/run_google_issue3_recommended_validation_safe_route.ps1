@@ -352,6 +352,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunHandoffSafeRefreshRoute) { $handoffSafeRefreshRouteStep.recommended_guide_command },
+    if (-not $shouldRunHandoffSafeRefreshRoute -and $artifactBundleSafePathRouteStep.success) { $artifactBundleSafePathRouteCommand },
     $artifactBundleSafePathRouteStep.recommended_guide_command,
     $summaryGuideStep.recommended_guide_command,
     $artifactBundleSafePathRouteCommand,
