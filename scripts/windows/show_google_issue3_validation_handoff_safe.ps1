@@ -44,6 +44,24 @@ function Resolve-ArtifactCandidatePath {
     return Join-Path $ArtifactRoot $FallbackName
 }
 
+function Get-SiblingArtifactPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Suffix
+    )
+
+    $directory = Split-Path -Parent $Path
+    $fileName = [System.IO.Path]::GetFileNameWithoutExtension($Path)
+    $extension = [System.IO.Path]::GetExtension($Path)
+    if ([string]::IsNullOrWhiteSpace($extension)) {
+        $extension = '.json'
+    }
+
+    return Join-Path $directory ("{0}{1}{2}" -f $fileName, $Suffix, $extension)
+}
+
 function Read-ArtifactJson {
     param([string]$Path)
 
@@ -106,9 +124,6 @@ $artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
 if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
     $artifactRoot = Split-Path -Parent $SummaryPath
 }
-if (-not $ArtifactPath) {
-    $ArtifactPath = Join-Path $artifactRoot "google-issue3-validation-handoff-safe.json"
-}
 
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
@@ -163,6 +178,9 @@ $configuredManifestHandoffPath = Get-OptionalPropertyValue -Object $manifestReco
 
 $refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (-not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)) { $configuredSummaryRefreshPath } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)) { $configuredManifestRefreshPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (-not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)) { $configuredSummaryHandoffPath } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)) { $configuredManifestHandoffPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+if (-not $ArtifactPath) {
+    $ArtifactPath = Get-SiblingArtifactPath -Path $handoffPath -Suffix '-safe'
+}
 
 $refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
 $refreshRecord = $null
