@@ -251,6 +251,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $repairChainCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-manifest-guide') { $manifestGuideCommand },
     if ($manifestSafeStep) { $manifestSafeStep.recommended_guide_command },
     if ($repairChainStep) { $repairChainStep.recommended_guide_command },
     $summaryGuideCommand
