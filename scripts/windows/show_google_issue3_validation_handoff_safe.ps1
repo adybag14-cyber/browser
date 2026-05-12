@@ -196,7 +196,7 @@ if (-not [string]::IsNullOrWhiteSpace($handoffSummaryPath)) {
 }
 
 $runnerContractMissing = $missingFields.Count -gt 0
-$existingHelperLikelySafe = [bool]((-not $runnerContractMissing) -and (-not $manifestError))
+$existingHelperLikelySafe = [bool]((-not $runnerContractMissing) -and (-not $manifestError) -and $refreshExists -and $refreshMatchesSummary -and (-not $refreshError))
 
 $status = $null
 $reason = $null
