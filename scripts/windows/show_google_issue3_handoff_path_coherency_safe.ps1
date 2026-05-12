@@ -86,6 +86,7 @@ $repairArtifactPathsCommand = 'powershell -ExecutionPolicy Bypass -File .\script
 $handoffPathCoherencyCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_handoff_path_coherency.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
@@ -107,7 +108,7 @@ if (-not $summaryExists) {
         artifact_path = $ArtifactPath
         summary_exists = $false
         recommended_command = $recommendedRunnerCommand
-        recommended_guide_command = $summaryGuideCommand
+        recommended_guide_command = $summaryGuideSafeCommand
         broader_runner_command = $recommendedRunnerCommand
         repair_artifact_paths_command = $repairArtifactPathsCommand
         handoff_path_coherency_command = $handoffPathCoherencyCommand
@@ -116,6 +117,8 @@ if (-not $summaryExists) {
         status = 'summary-missing'
         reason = 'No saved issue #3 recommended-validation summary exists yet, so the handoff path coherency helper cannot be trusted for the current replay.'
         next_focus = 'Run the bounded issue #3 recommended validation first, then reopen this safe helper before trusting the raw handoff path coherency step.'
+        summary_guide_command = $summaryGuideCommand
+        summary_guide_safe_command = $summaryGuideSafeCommand
     }
 
     $report | ConvertTo-Json -Depth 6 | Set-Content -Path $ArtifactPath -Encoding Ascii
@@ -175,7 +178,7 @@ if (-not $summaryHasArtifactRootField) {
     $reason = 'The saved issue #3 summary omits artifact_root, so the raw handoff path coherency helper can still fail under strict mode before it reaches its fallback path logic.'
     $nextFocus = 'Regenerate the broader recommended-validation summary before trusting the raw handoff path coherency helper.'
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $summaryGuideCommand
+    $recommendedGuideCommand = $summaryGuideSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif (-not $summaryHasManifestArtifactPathField) {
     $status = 'summary-manifest-path-missing'
@@ -189,14 +192,14 @@ if (-not $summaryHasArtifactRootField) {
     $reason = 'The saved issue #3 summary points at a manifest path, but the manifest file is missing for the current replay.'
     $nextFocus = 'Regenerate the broader recommended-validation outputs so the manifest exists before trusting the raw handoff path coherency helper.'
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $summaryGuideCommand
+    $recommendedGuideCommand = $summaryGuideSafeCommand
     $nextArtifactToOpen = $manifestPath
 } elseif (-not $manifestReadable) {
     $status = 'manifest-unreadable'
     $reason = 'The saved issue #3 manifest exists but could not be parsed cleanly, so the raw handoff path coherency helper is not the safest next checkpoint yet.'
     $nextFocus = 'Regenerate the broader recommended-validation outputs, then reopen the raw handoff path coherency helper once the manifest is readable.'
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $summaryGuideCommand
+    $recommendedGuideCommand = $summaryGuideSafeCommand
     $nextArtifactToOpen = $manifestPath
 } else {
     $status = 'safe-to-run-existing-helper'
@@ -229,6 +232,7 @@ $report = [ordered]@{
     handoff_path_coherency_command = $handoffPathCoherencyCommand
     handoff_guide_command = $handoffGuideCommand
     summary_guide_command = $summaryGuideCommand
+    summary_guide_safe_command = $summaryGuideSafeCommand
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     next_artifact_to_open = $nextArtifactToOpen
