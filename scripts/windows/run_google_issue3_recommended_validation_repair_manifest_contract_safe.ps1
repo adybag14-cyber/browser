@@ -263,6 +263,7 @@ if (-not $summaryExistsAfterRunner) {
 }
 
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-handoff-safe-refresh-route') { $handoffSafeRefreshRouteCommand },
     if ($manifestSafeStep) { $manifestSafeStep.recommended_command },
     if ($manifestContractRepairStep) { $manifestContractRepairStep.recommended_command },
     if (-not $runnerStep.success) { $recommendedRunnerCommand },
