@@ -212,13 +212,17 @@ $manifestContractSafeStep = Invoke-ScriptStep -Name 'recommended-validation-mani
 $steps.Add($manifestContractSafeStep) | Out-Null
 
 $summaryExistsAfterManifestContractSafe = Test-Path -LiteralPath $SummaryPath -PathType Leaf
-$shouldRunHandoffSafeRefreshRoute = [bool]($summaryExistsAfterManifestContractSafe -and $manifestContractSafeStep.success -and $manifestContractSafeStep.status -eq 'ready-for-handoff-safe-refresh-route')
+$shouldRunHandoffSafeRefreshRoute = [bool](
+    $summaryExistsAfterManifestContractSafe -and
+    $manifestContractSafeStep.success -and
+    $manifestContractSafeStep.recommended_command -eq $handoffSafeRefreshRouteCommand
+)
 
 $handoffSafeRefreshRouteStep = $null
 if ($shouldRunHandoffSafeRefreshRoute) {
     $handoffSafeRefreshRouteStep = Invoke-ScriptStep -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments $handoffSafeRefreshRouteArguments -ExpectJson
 } else {
-    $handoffSafeRefreshRouteStep = New-SkippedStep -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments $handoffSafeRefreshRouteArguments -Reason 'The manifest-contract-safe wrapper did not report ready-for-handoff-safe-refresh-route, so this bounded route preserved its safer follow-up guidance without reopening the narrower helper yet.' -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.recommended_command, $manifestContractSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.recommended_guide_command, $summaryGuideCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.next_focus, 'Use the current manifest-contract-safe guidance; the handoff-safe refresh route should only reopen once that checkpoint says the saved summary is ready.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.next_artifact_to_open, $SummaryPath, $ArtifactPath))
+    $handoffSafeRefreshRouteStep = New-SkippedStep -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments $handoffSafeRefreshRouteArguments -Reason 'The manifest-contract-safe wrapper did not currently recommend the handoff-safe refresh route, so this bounded wrapper preserved its safer follow-up guidance without reopening the narrower helper yet.' -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.recommended_command, $manifestContractSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.recommended_guide_command, $summaryGuideCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.next_focus, 'Use the current manifest-contract-safe guidance; the handoff-safe refresh route should only reopen once that checkpoint actively recommends it for the current summary.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($manifestContractSafeStep.next_artifact_to_open, $SummaryPath, $ArtifactPath))
     $steps.Add($handoffSafeRefreshRouteStep) | Out-Null
 }
 if ($shouldRunHandoffSafeRefreshRoute) {
