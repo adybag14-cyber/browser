@@ -530,7 +530,7 @@ if ($guide.last_passed_phase) {
 }
 if ($guide.boundary_artifact_exists) {
     Write-Host ("Boundary last pass: {0}" -f $(if ($guide.boundary_last_passed_phase) { $guide.boundary_last_passed_phase } else { 'none' }))
-    Write-Host ("Boundary first fail: {0}" -f $(if ($guide.boundary_first_failed_phase) { $guide.boundaryFirstFailedPhase } else { 'none' }))
+    Write-Host ("Boundary first fail: {0}" -f $(if ($guide.boundary_first_failed_phase) { $guide.boundary_first_failed_phase } else { 'none' }))
     if ($guide.boundary_next_artifact_to_open) {
         Write-Host ("Open next: {0}" -f $guide.boundary_next_artifact_to_open)
     }
