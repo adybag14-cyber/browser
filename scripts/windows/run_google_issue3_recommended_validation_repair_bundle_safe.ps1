@@ -252,6 +252,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $repairChainCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-bundle-guide') { $bundleCommand },
     if ($bundleSafeStep) { $bundleSafeStep.recommended_guide_command },
     if ($repairChainStep) { $repairChainStep.recommended_guide_command },
     $summaryGuideCommand
