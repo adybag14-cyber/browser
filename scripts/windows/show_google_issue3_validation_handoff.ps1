@@ -143,6 +143,9 @@ $configuredHandoffPath = if ($summaryRecordsHandoffArtifactPath) {
     $null
 }
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+if (-not $ArtifactPath) {
+    $ArtifactPath = $handoffPath
+}
 $configuredSummaryRefreshPath = $summary.refresh_chain_artifact_path
 $configuredManifestRefreshPath = if ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)
