@@ -114,6 +114,7 @@ $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\
 $manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
@@ -245,16 +246,16 @@ if (-not $manifestExists) {
 } elseif ((-not $refreshExists) -or (-not $refreshMatchesSummary) -or $refreshError) {
     $status = 'refresh-state-needs-rebuild'
     $reason = 'The saved refresh artifact is missing, unreadable, or belongs to a different summary, so the helper chain should be refreshed before relying on the manifest guide.'
-    $nextFocus = 'Refresh the saved helper chain from the current summary before using the narrower manifest or handoff guidance.'
+    $nextFocus = 'Refresh the saved helper chain from the current summary, then reopen the newer handoff-safe refresh route before using the narrower manifest or handoff guidance.'
     $recommendedCommand = $refreshChainCommand
-    $recommendedGuideCommand = $refreshStatusSafeCommand
+    $recommendedGuideCommand = $handoffSafeRefreshRouteCommand
     $nextArtifactToOpen = if ($refreshExists) { $resolvedRefreshPath } else { $SummaryPath }
 } else {
     $status = 'safe-to-run-manifest-guide'
     $reason = 'The manifest carries the fields the existing manifest guide expects, and the saved refresh artifact matches the current summary.'
-    $nextFocus = 'Use the existing manifest guide or move on to the safer handoff checkpoint for the next narrowed Windows replay.'
+    $nextFocus = 'Use the existing manifest guide or move on to the newer handoff-safe refresh route for the next narrowed Windows replay.'
     $recommendedCommand = $manifestGuideCommand
-    $recommendedGuideCommand = $handoffSafeCommand
+    $recommendedGuideCommand = $handoffSafeRefreshRouteCommand
     $nextArtifactToOpen = $manifestPath
 }
 
@@ -295,6 +296,7 @@ $report = [ordered]@{
     manifest_safe_command = $manifestSafeCommand
     manifest_guide_command = $manifestGuideCommand
     handoff_safe_command = $handoffSafeCommand
+    handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     handoff_guide_command = $handoffGuideCommand
     refresh_status_command = $refreshStatusCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
