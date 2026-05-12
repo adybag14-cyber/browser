@@ -177,7 +177,7 @@ if (-not $manifestExists) {
 } elseif ($summaryChangedFields.Count -gt 0 -and $manifestChangedFields.Count -gt 0) {
     $status = 'summary-and-manifest-repaired'
     $reason = 'The repair helper backfilled missing artifact-path fields in both the saved summary and manifest.'
-} elseif ($summaryChangedFields.Count -_attach 0) {
+} elseif ($summaryChangedFields.Count -gt 0) {
     $status = 'summary-repaired'
     $reason = 'The repair helper backfilled missing artifact-path fields in the saved summary.'
 } else {
