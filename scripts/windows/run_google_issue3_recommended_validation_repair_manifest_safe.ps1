@@ -193,7 +193,7 @@ $manifestSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_man
 $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_chain.ps1'
 $manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 foreach ($helperPath in @($repairChainScript, $manifestSafeScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
