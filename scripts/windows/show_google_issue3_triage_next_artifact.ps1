@@ -57,11 +57,55 @@ function Read-ArtifactJson {
     }
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($Object -and $Object.PSObject.Properties[$Name]) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
+function Get-NormalizedPathValue {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    try {
+        return [System.IO.Path]::GetFullPath($Path)
+    } catch {
+        return $Path
+    }
+}
+
+function Test-PathsEqual {
+    param(
+        [string]$Left,
+        [string]$Right
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Left) -or [string]::IsNullOrWhiteSpace($Right)) {
+        return $false
+    }
+
+    $leftValue = Get-NormalizedPathValue $Left
+    $rightValue = Get-NormalizedPathValue $Right
+    return $leftValue.Equals($rightValue, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$normalizePostRunCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\normalize_google_issue3_post_run_state.ps1'
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
@@ -124,7 +168,7 @@ $configuredRefreshPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummar
 $refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
 $refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
 $refreshRecord = Read-ArtifactJson $refreshPath
-$refreshMatchesSummary = [bool]($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path) -and ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase))
+$refreshMatchesSummary = [bool]($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path) -and (Test-PathsEqual -Left $refreshRecord.summary_path -Right $SummaryPath))
 $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
     $refreshRecord.status
 } elseif ($summary.refresh_chain_artifact_error -or ($manifestRecord -and $manifestRecord.refresh_chain_artifact_error)) {
@@ -147,7 +191,7 @@ $configuredHandoffPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummar
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
 $handoffExists = Test-Path -LiteralPath $handoffPath -PathType Leaf
 $handoffRecord = Read-ArtifactJson $handoffPath
-$handoffMatchesSummary = [bool]($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_path) -and ([System.IO.Path]::GetFullPath($handoffRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase))
+$handoffMatchesSummary = [bool]($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_path) -and (Test-PathsEqual -Left $handoffRecord.summary_path -Right $SummaryPath))
 $handoffReady = [bool]($handoffRecord -and $handoffMatchesSummary -and -not [string]::IsNullOrWhiteSpace($handoffRecord.next_artifact_to_open))
 
 $bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
@@ -163,8 +207,32 @@ $bundleStatus = if ($bundleRecord -and $bundleRecord.status) {
     'missing'
 }
 
+$configuredSummaryNormalizationPath = Get-OptionalPropertyValue -Object $summary -Name 'post_run_state_normalization_artifact_path'
+$configuredManifestNormalizationPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'post_run_state_normalization_artifact_path'
+$configuredNormalizationPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummaryNormalizationPath)) {
+    $configuredSummaryNormalizationPath
+} elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestNormalizationPath)) {
+    $configuredManifestNormalizationPath
+} else {
+    $null
+}
+$normalizationPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredNormalizationPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-post-run-state-normalization.json'
+$normalizationExists = Test-Path -LiteralPath $normalizationPath -PathType Leaf
+$normalizationRecord = Read-ArtifactJson $normalizationPath
+$normalizationMatchesSummary = [bool]($normalizationRecord -and -not [string]::IsNullOrWhiteSpace($normalizationRecord.summary_path) -and (Test-PathsEqual -Left $normalizationRecord.summary_path -Right $SummaryPath))
+$normalizationStatus = if ($normalizationRecord -and $normalizationRecord.status) {
+    $normalizationRecord.status
+} elseif ($normalizationExists) {
+    'present-unreadable'
+} else {
+    'missing'
+}
+$normalizationReady = [bool]($normalizationRecord -and $normalizationMatchesSummary -and -not [string]::IsNullOrWhiteSpace($normalizationRecord.recommended_command) -and -not [string]::IsNullOrWhiteSpace($normalizationRecord.next_artifact_to_open))
+
 $artifactChainCoherent = [bool]($bundleStatus -eq 'complete' -and $refreshStatus -eq 'refreshed' -and $refreshMatchesSummary -and $handoffMatchesSummary)
-$preferredStartHelper = if ($artifactChainCoherent -and $handoffReady) {
+$preferredStartHelper = if ($normalizationReady) {
+    'post-run-normalization'
+} elseif ($artifactChainCoherent -and $handoffReady) {
     'handoff'
 } elseif ($refreshStatus -eq 'missing' -and -not $refreshExists) {
     'recommended-runner'
@@ -178,7 +246,33 @@ $nextArtifactToOpen = $null
 $reason = $null
 $nextFocus = $null
 
-if ($preferredStartHelper -eq 'handoff') {
+if ($preferredStartHelper -eq 'post-run-normalization') {
+    $recommendedCommand = if ($normalizationRecord.recommended_command) {
+        $normalizationRecord.recommended_command
+    } else {
+        $normalizePostRunCommand
+    }
+    $recommendedGuideCommand = if ($normalizationRecord.recommended_guide_command) {
+        $normalizationRecord.recommended_guide_command
+    } else {
+        $normalizePostRunCommand
+    }
+    $nextArtifactToOpen = if ($normalizationRecord.next_artifact_to_open) {
+        $normalizationRecord.next_artifact_to_open
+    } else {
+        $normalizationPath
+    }
+    $reason = if ($normalizationStatus -eq 'normalized') {
+        'The saved post-run normalization report already collapsed repair, refresh, coherency, and handoff state for this summary, so it is the best starting point for the next narrowed replay.'
+    } else {
+        'A saved post-run normalization report already matches this summary and carries the latest follow-up recommendation, so start there instead of re-deriving the helper-chain state by hand.'
+    }
+    $nextFocus = if ($normalizationRecord.next_focus) {
+        $normalizationRecord.next_focus
+    } else {
+        'Open the saved post-run normalization report first, then follow its recommended command and next-artifact pointer before widening back out.'
+    }
+} elseif ($preferredStartHelper -eq 'handoff') {
     $recommendedCommand = if ($handoffRecord -and $handoffRecord.recommended_command) {
         $handoffRecord.recommended_command
     } else {
@@ -252,6 +346,11 @@ $report = [ordered]@{
     artifact_bundle_path = $bundlePath
     artifact_bundle_exists = [bool]$bundleExists
     artifact_bundle_status = $bundleStatus
+    normalization_artifact_path = $normalizationPath
+    normalization_artifact_exists = [bool]$normalizationExists
+    normalization_status = $normalizationStatus
+    normalization_matches_summary = [bool]$normalizationMatchesSummary
+    normalization_ready = [bool]$normalizationReady
     artifact_chain_coherent = [bool]$artifactChainCoherent
     preferred_start_helper = $preferredStartHelper
     recommended_command = $recommendedCommand
@@ -261,6 +360,7 @@ $report = [ordered]@{
     refresh_chain_command = $refreshChainCommand
     handoff_guide_command = $handoffGuideCommand
     summary_guide_command = $summaryGuideCommand
+    normalize_post_run_command = $normalizePostRunCommand
     broader_runner_command = $recommendedRunnerCommand
     reason = $reason
     next_focus = $nextFocus
@@ -273,15 +373,16 @@ if ($Json) {
 
 Write-Host 'Google issue #3 triage next artifact'
 Write-Host ''
-Write-Host ("Summary:  {0}" -f $report.summary_path)
-Write-Host ("Manifest: {0}" -f $report.manifest_artifact_path)
-Write-Host ("Refresh:  {0}" -f $report.refresh_artifact_path)
-Write-Host ("Handoff:  {0}" -f $report.handoff_artifact_path)
-Write-Host ("Bundle:   {0}" -f $report.artifact_bundle_path)
-Write-Host ("Helper:   {0}" -f $report.preferred_start_helper)
-Write-Host ("Open:     {0}" -f $report.next_artifact_to_open)
+Write-Host ("Summary:       {0}" -f $report.summary_path)
+Write-Host ("Manifest:      {0}" -f $report.manifest_artifact_path)
+Write-Host ("Refresh:       {0}" -f $report.refresh_artifact_path)
+Write-Host ("Handoff:       {0}" -f $report.handoff_artifact_path)
+Write-Host ("Bundle:        {0}" -f $report.artifact_bundle_path)
+Write-Host ("Normalization: {0}" -f $report.normalization_artifact_path)
+Write-Host ("Helper:        {0}" -f $report.preferred_start_helper)
+Write-Host ("Open:          {0}" -f $report.next_artifact_to_open)
 Write-Host ''
-Write-Host ("Reason:   {0}" -f $report.reason)
-Write-Host ("Focus:    {0}" -f $report.next_focus)
-Write-Host ("Run:      {0}" -f $report.recommended_command)
-Write-Host ("Guide:    {0}" -f $report.recommended_guide_command)
+Write-Host ("Reason:        {0}" -f $report.reason)
+Write-Host ("Focus:         {0}" -f $report.next_focus)
+Write-Host ("Run:           {0}" -f $report.recommended_command)
+Write-Host ("Guide:         {0}" -f $report.recommended_guide_command)
