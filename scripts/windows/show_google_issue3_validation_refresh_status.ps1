@@ -201,10 +201,28 @@ $staleSummaryArtifactDetected = if ($bundleRecord) { [bool]$bundleRecord.stale_s
 $coreMissingCount = if ($bundleRecord -and $null -ne $bundleRecord.core_missing_count) { [int]$bundleRecord.core_missing_count } else { $null }
 $phaseArtifactGapCount = if ($bundleRecord -and $null -ne $bundleRecord.phase_missing_artifact_count) { [int]$bundleRecord.phase_missing_artifact_count } else { $null }
 
-$recommendedCommand = if ($refreshNeeded -or $handoffNeedsRepair) { $refreshChainCommand } else { $handoffGuideCommand }
-$recommendedGuideCommand = if ($refreshNeeded -or $handoffNeedsRepair) { $bundleGuideCommand } else { $handoffGuideCommand }
+$recommendedCommand = if ($refreshNeeded -or $handoffNeedsRepair) {
+    if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.recommended_command)) {
+        $refreshRecord.recommended_command
+    } else {
+        $refreshChainCommand
+    }
+} else {
+    $handoffGuideCommand
+}
+$recommendedGuideCommand = if ($refreshNeeded -or $handoffNeedsRepair) {
+    if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.recommended_guide_command)) {
+        $refreshRecord.recommended_guide_command
+    } else {
+        $bundleGuideCommand
+    }
+} else {
+    $handoffGuideCommand
+}
 $nextArtifactToOpen = if ($refreshNeeded) {
-    if ($refreshExists) {
+    if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.next_artifact_to_open)) {
+        $refreshRecord.next_artifact_to_open
+    } elseif ($refreshExists) {
         $refreshPath
     } elseif ($bundleRecord -and $bundleRecord.next_artifact_to_open) {
         $bundleRecord.next_artifact_to_open
@@ -212,7 +230,9 @@ $nextArtifactToOpen = if ($refreshNeeded) {
         $SummaryPath
     }
 } elseif ($handoffNeedsRepair) {
-    if ($handoffExists) {
+    if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.next_artifact_to_open)) {
+        $refreshRecord.next_artifact_to_open
+    } elseif ($handoffExists) {
         $handoffPath
     } elseif ($refreshExists) {
         $refreshPath
@@ -348,6 +368,7 @@ $report = [ordered]@{
     refresh_failed_step_names = if ($refreshRecord) { @($refreshRecord.failed_step_names) } else { @() }
     refresh_next_artifact_to_open = if ($refreshRecord) { $refreshRecord.next_artifact_to_open } else { $null }
     refresh_recommended_command = if ($refreshRecord) { $refreshRecord.recommended_command } else { $null }
+    refresh_recommended_guide_command = if ($refreshRecord) { $refreshRecord.recommended_guide_command } else { $null }
     bundle_artifact_path = $bundlePath
     bundle_artifact_exists = [bool]$bundleExists
     bundle_status = $bundleStatus
@@ -441,6 +462,12 @@ if ($report.refresh_pointer_uses_fallback) {
 }
 if ($report.refresh_reason) {
     Write-Host ("Refresh reason: {0}" -f $report.refresh_reason)
+}
+if ($report.refresh_recommended_command) {
+    Write-Host ("Refresh recommended command: {0}" -f $report.refresh_recommended_command)
+}
+if ($report.refresh_recommended_guide_command) {
+    Write-Host ("Refresh recommended guide: {0}" -f $report.refresh_recommended_guide_command)
 }
 if ($report.handoff_error) {
     Write-Host ("Handoff error: {0}" -f $report.handoff_error)
