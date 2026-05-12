@@ -118,6 +118,7 @@ $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\wind
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $runnerWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
+$runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 $manifestContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_manifest_contract.ps1'
@@ -225,9 +226,9 @@ if (-not $manifestExists) {
     $nextArtifactToOpen = if ($manifestExists) { $manifestPath } else { $SummaryPath }
 } elseif ($runnerContractMissing) {
     $status = 'runner-contract-missing'
-    $reason = 'The summary or manifest still omits at least one direct refresh or handoff field that the existing manifest guide reads under strict mode.'
-    $nextFocus = 'Patch the recommended runner outputs first, then rerun the runner wiring audit before returning to the manifest guide.'
-    $recommendedCommand = $runnerPatchTargetsCommand
+    $reason = 'The summary or manifest still omits at least one direct refresh or handoff field that the existing manifest guide reads under strict mode, but the branch now includes a bounded repair helper for normalizing those saved outputs immediately after a run.'
+    $nextFocus = 'Run the runner-output contract repair helper first, then rerun the runner wiring audit before returning to the manifest guide.'
+    $recommendedCommand = $runnerContractRepairCommand
     $recommendedGuideCommand = $runnerWiringStatusCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ($manifestGuideContractMissing) {
@@ -285,6 +286,7 @@ $report = [ordered]@{
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
+    runner_contract_repair_command = $runnerContractRepairCommand
     manifest_contract_repair_command = $manifestContractRepairCommand
     manifest_guide_command = $manifestGuideCommand
     handoff_safe_command = $handoffSafeCommand
