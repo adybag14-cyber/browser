@@ -217,6 +217,7 @@ $patchTargetsSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_out
 $patchTargetsScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets.ps1'
 $patchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
 $patchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
+$patchHandoffCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_handoff.ps1'
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $repairRunnerOutputContractCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
@@ -321,9 +322,9 @@ $recommendedGuideCommand = $null
 $nextFocus = $null
 $nextArtifactToOpen = $null
 if ($status -eq 'ready-for-runner-patch') {
-    $recommendedCommand = $patchTargetsCommand
+    $recommendedCommand = $patchHandoffCommand
     $recommendedGuideCommand = $runnerOutputWiringSafeCommand
-    $nextFocus = 'Inspect the patch-target lines now preserved in this wrapper artifact, land the direct refresh and handoff runner-output fields in scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the safe wiring audit before reopening the stricter raw verification command preserved in this artifact.'
+    $nextFocus = 'Run the explicit patch handoff helper now, then use its preserved snippet lines to wire the direct refresh and handoff fields into scripts/windows/run_google_issue3_recommended_validation.ps1 before rerunning the safe wiring audit and only later reopening the stricter raw verification command.'
     $nextArtifactToOpen = $ArtifactPath
 } elseif ($status -eq 'runner-already-wired-regenerate-outputs') {
     $recommendedCommand = Get-FirstNonEmptyValue -Values @($patchTargetsStep.recommended_command, $recommendedRepairCommand, $repairRunnerOutputContractCommand, $recommendedRegenerationCommand, $broaderRunnerCommand)
@@ -361,6 +362,7 @@ $report = [ordered]@{
     artifact_path = $ArtifactPath
     patch_targets_safe_command = $patchTargetsSafeCommand
     patch_targets_command = $patchTargetsCommand
+    patch_handoff_command = $patchHandoffCommand
     broader_runner_command = $broaderRunnerCommand
     repair_runner_output_contract_command = $repairRunnerOutputContractCommand
     repair_artifact_paths_command = $repairArtifactPathsCommand
@@ -442,10 +444,10 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifestPatchSnippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
-    foreach ($line in $report.manifest_patch_snippet_lines) {
+    foreach ($line in $report.manifestPatchSnippetLines) {
         Write-Host $line
     }
 }
