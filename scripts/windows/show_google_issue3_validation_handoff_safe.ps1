@@ -112,6 +112,7 @@ if (-not $ArtifactPath) {
 
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
@@ -221,7 +222,7 @@ if ($manifestError) {
     $reason = 'The refresh artifact is missing, unreadable, or belongs to a different summary, so the helper chain should be refreshed before using the narrower handoff path.'
     $nextFocus = 'Refresh the helper chain from the current summary before relying on the existing handoff helper output.'
     $recommendedCommand = $refreshChainCommand
-    $recommendedGuideCommand = $refreshStatusCommand
+    $recommendedGuideCommand = $refreshStatusSafeCommand
     $nextArtifactToOpen = if ($refreshExists) { $refreshPath } else { $SummaryPath }
 } else {
     $status = 'safe-to-run-handoff'
@@ -268,6 +269,7 @@ $report = [ordered]@{
     runner_patch_targets_command = $runnerPatchTargetsCommand
     runner_contract_repair_command = $runnerContractRepairCommand
     refresh_status_command = $refreshStatusCommand
+    refresh_status_safe_command = $refreshStatusSafeCommand
     refresh_chain_command = $refreshChainCommand
     handoff_guide_command = $handoffGuideCommand
     next_focus = $nextFocus
