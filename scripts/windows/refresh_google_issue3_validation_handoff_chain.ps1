@@ -178,6 +178,8 @@ $repairHandoffPointerScript = Join-Path $PSScriptRoot "repair_google_issue3_vali
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $repairPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_refresh_pointer.ps1'
 $repairHandoffPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_handoff_pointer.ps1'
+$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
+$handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 
 $requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript, $manifestScript, $repairRefreshPointerScript, $repairHandoffPointerScript)
 foreach ($helperPath in $requiredHelpers) {
@@ -331,14 +333,14 @@ if (-not $repairStep.success) {
     $status = 'refresh-pointer-repair-failed'
     $reason = 'The helper chain report was written, but the follow-up refresh-pointer repair step failed, so later helpers may still depend on fallback refresh-location guesses.'
     $recommendedCommand = $repairPointerCommand
-    $recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+    $recommendedGuideCommand = $refreshStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
     $nextFocus = 'Repair the saved summary and manifest refresh-pointer fields before trusting downstream helper-chain guidance for the next Windows replay.'
 } elseif (-not $repairHandoffStep.success) {
     $status = 'handoff-pointer-repair-failed'
     $reason = 'The helper chain report was written, but the follow-up handoff-pointer repair step failed, so later helpers may still depend on the fallback handoff location.'
     $recommendedCommand = $repairHandoffPointerCommand
-    $recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
+    $recommendedGuideCommand = $handoffSafeCommand
     $nextArtifactToOpen = $SummaryPath
     $nextFocus = 'Repair the saved summary and manifest handoff-pointer fields before trusting downstream handoff guidance for the next Windows replay.'
 }
