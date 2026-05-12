@@ -31,6 +31,46 @@ function Convert-ToQuotedPowerShellArgument([string]$Value) {
     return "'" + $Value.Replace("'", "''") + "'"
 }
 
+function Test-HasProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
+function Resolve-ArtifactCandidatePath {
+    param(
+        [string]$ConfiguredPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$FallbackName
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ConfiguredPath)) {
+        return $ConfiguredPath
+    }
+
+    return Join-Path $ArtifactRoot $FallbackName
+}
+
 function Get-PhaseReplayCommand([string]$PhaseName) {
     if ([string]::IsNullOrWhiteSpace($PhaseName)) {
         return $null
@@ -76,15 +116,15 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
-    $summary.artifact_root
-} else {
-    Split-Path -Parent $SummaryPath
+$artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
+if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
+    $artifactRoot = Split-Path -Parent $SummaryPath
 }
+$configuredGuideArtifactPath = Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path'
 $guideArtifactPath = if (-not [string]::IsNullOrWhiteSpace($ArtifactPath)) {
     $ArtifactPath
-} elseif ($summary.guide_artifact_path) {
-    $summary.guide_artifact_path
+} elseif (-not [string]::IsNullOrWhiteSpace($configuredGuideArtifactPath)) {
+    $configuredGuideArtifactPath
 } else {
     Join-Path $artifactRoot 'google-issue3-recommended-validation-guide.json'
 }
@@ -103,23 +143,27 @@ $artifactBundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\script
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $refreshStatusGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 
-$surfaceCheckMissingPaths = @($summary.surface_check_missing_paths)
-$surfaceCheckMissingCount = if ($null -ne $summary.surface_check_missing_count) {
-    [int]$summary.surface_check_missing_count
+$surfaceCheckMissingPaths = @((Get-OptionalPropertyValue -Object $summary -Name 'surface_check_missing_paths'))
+$configuredSurfaceCheckMissingCount = Get-OptionalPropertyValue -Object $summary -Name 'surface_check_missing_count'
+$surfaceCheckMissingCount = if ($null -ne $configuredSurfaceCheckMissingCount) {
+    [int]$configuredSurfaceCheckMissingCount
 } else {
     @($surfaceCheckMissingPaths).Count
 }
-$surfaceCheckCheckedCount = if ($null -ne $summary.surface_check_checked_count) {
-    [int]$summary.surface_check_checked_count
+$configuredSurfaceCheckCheckedCount = Get-OptionalPropertyValue -Object $summary -Name 'surface_check_checked_count'
+$surfaceCheckCheckedCount = if ($null -ne $configuredSurfaceCheckCheckedCount) {
+    [int]$configuredSurfaceCheckCheckedCount
 } else {
     $null
 }
-$missingFixtureAssetAudit = @($summary.missing_fixture_asset_audit)
+$missingFixtureAssetAudit = @((Get-OptionalPropertyValue -Object $summary -Name 'missing_fixture_asset_audit'))
 $fixturesWithMissingAssets = @($missingFixtureAssetAudit | Where-Object { $_ -and $_.missing_asset_count -gt 0 })
 $fixtureAssetsMissing = $fixturesWithMissingAssets.Count -gt 0
-$manualFixtureReplayAvailable = [bool]$summary.manual_phase_uses_fixture_selection -and (@($summary.manual_input_path).Count -gt 0)
+$manualPhaseUsesFixtureSelection = [bool](Get-OptionalPropertyValue -Object $summary -Name 'manual_phase_uses_fixture_selection')
+$manualInputPath = @((Get-OptionalPropertyValue -Object $summary -Name 'manual_input_path'))
+$manualFixtureReplayAvailable = [bool]$manualPhaseUsesFixtureSelection -and ($manualInputPath.Count -gt 0)
 $manualQuotedInputPath = if ($manualFixtureReplayAvailable) {
-    @($summary.manual_input_path | ForEach-Object { Convert-ToQuotedPowerShellArgument $_ })
+    @($manualInputPath | ForEach-Object { Convert-ToQuotedPowerShellArgument $_ })
 } else {
     @()
 }
@@ -128,8 +172,9 @@ $manualInputPathArguments = if ($manualQuotedInputPath.Count -gt 0) {
 } else {
     $null
 }
-$manualPreferredInitialPageArgument = if ($manualFixtureReplayAvailable -and $summary.manual_initial_page) {
-    " -PreferredInitialPage " + (Convert-ToQuotedPowerShellArgument $summary.manual_initial_page)
+$manualInitialPage = Get-OptionalPropertyValue -Object $summary -Name 'manual_initial_page'
+$manualPreferredInitialPageArgument = if ($manualFixtureReplayAvailable -and -not [string]::IsNullOrWhiteSpace($manualInitialPage)) {
+    " -PreferredInitialPage " + (Convert-ToQuotedPowerShellArgument $manualInitialPage)
 } else {
     ""
 }
@@ -154,13 +199,16 @@ $manualSavedPageFlowCommand = if ($manualFixtureReplayAvailable -and $manualInpu
     $null
 }
 
-$firstFailedPhase = $summary.first_failed_phase
+$summaryGeneratedAt = Get-OptionalPropertyValue -Object $summary -Name 'generated_at_utc'
+$surfaceCheckStatus = Get-OptionalPropertyValue -Object $summary -Name 'surface_check_status'
+$summaryCompleted = [bool](Get-OptionalPropertyValue -Object $summary -Name 'completed')
+$firstFailedPhase = Get-OptionalPropertyValue -Object $summary -Name 'first_failed_phase'
 $recommendedCommand = $recommendedRunnerCommand
 $recommendedGuideCommand = $probeTriageCommand
 $nextFocus = 'Rerun the bounded issue #3 ladder and use the first failing phase to decide whether to stay on localhost probes or widen back out to attached HTML or live Google.'
 $reason = 'The summary artifact did not record a single failing phase, so the safest next step is to keep the normal recommended runner as the source of truth.'
 
-if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed') {
+if ($surfaceCheckStatus -and $surfaceCheckStatus -ne 'passed') {
     $recommendedCommand = $surfaceCheckCommand
     $recommendedGuideCommand = $null
     $nextFocus = 'Fix the preflight validation surface before spending time on headed runtime behavior.'
@@ -174,7 +222,7 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     $recommendedGuideCommand = if ($manualFixtureReplayAvailable) { $manualFixtureReplayCommand } else { $null }
     $nextFocus = 'Restore the missing sibling assets for the saved attached HTML fixtures before trusting the manual Google-style follow-up.'
     $reason = "The manual follow-up is the first failing phase, and $($fixturesWithMissingAssets.Count) saved fixture selection(s) still reference missing local assets."
-} elseif ($summary.completed) {
+} elseif ($summaryCompleted) {
     $recommendedCommand = $recommendedRunnerCommand
     $recommendedGuideCommand = $probeTriageCommand
     $nextFocus = 'The bounded localhost ladder completed, so the next replay can widen to attached HTML or live Google evidence gathering.'
@@ -232,37 +280,18 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     }
 }
 
-$phaseResults = @($summary.phase_results)
+$phaseResultsValue = Get-OptionalPropertyValue -Object $summary -Name 'phase_results'
+$phaseResults = if ($phaseResultsValue) { @($phaseResultsValue) } else { @() }
 $passedPhaseResults = @($phaseResults | Where-Object { $_.status -eq 'passed' })
 $lastPassedPhaseResult = if ($passedPhaseResults.Count -gt 0) { $passedPhaseResults[-1] } else { $null }
 $failedPhaseResult = @($phaseResults | Where-Object { $_.name -eq $firstFailedPhase } | Select-Object -First 1)
 $lastPassedPhaseReplayCommand = if ($lastPassedPhaseResult) { Get-PhaseReplayCommand $lastPassedPhaseResult.name } else { $null }
 $firstFailedPhaseReplayCommand = if ($failedPhaseResult.Count -gt 0) { Get-PhaseReplayCommand $failedPhaseResult[0].name } else { $null }
-$manifestArtifactPath = if ($summary.manifest_artifact_path) {
-    $summary.manifest_artifact_path
-} else {
-    Join-Path $artifactRoot 'google-issue3-recommended-validation-manifest.json'
-}
-$boundaryArtifactPath = if ($summary.boundary_artifact_path) {
-    $summary.boundary_artifact_path
-} else {
-    Join-Path $artifactRoot 'google-issue3-phase-boundary.json'
-}
-$artifactBundlePath = if ($summary.artifact_bundle_path) {
-    $summary.artifact_bundle_path
-} else {
-    Join-Path $artifactRoot 'google-issue3-validation-artifact-bundle.json'
-}
-$handoffArtifactPath = if ($summary.handoff_artifact_path) {
-    $summary.handoff_artifact_path
-} else {
-    Join-Path $artifactRoot 'google-issue3-validation-handoff.json'
-}
-$refreshChainArtifactPath = if ($summary.refresh_chain_artifact_path) {
-    $summary.refresh_chain_artifact_path
-} else {
-    Join-Path $artifactRoot 'google-issue3-validation-handoff-chain-refresh.json'
-}
+$manifestArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$boundaryArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'boundary_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
+$artifactBundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'artifact_bundle_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
+$handoffArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'handoff_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+$refreshChainArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'refresh_chain_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
 $boundaryRecord = $null
 $boundaryArtifactError = $null
 if (-not [string]::IsNullOrWhiteSpace($boundaryArtifactPath) -and (Test-Path -LiteralPath $boundaryArtifactPath -PathType Leaf)) {
@@ -274,15 +303,21 @@ if (-not [string]::IsNullOrWhiteSpace($boundaryArtifactPath) -and (Test-Path -Li
 } elseif (-not [string]::IsNullOrWhiteSpace($boundaryArtifactPath)) {
     $boundaryArtifactError = "Boundary artifact not found: $boundaryArtifactPath"
 }
+$boundaryRecommendedCommand = Get-OptionalPropertyValue -Object $boundaryRecord -Name 'recommended_command'
+$boundaryRecommendedGuideCommand = Get-OptionalPropertyValue -Object $boundaryRecord -Name 'recommended_guide_command'
+$boundaryManualFixtureReplayCommand = Get-OptionalPropertyValue -Object $boundaryRecord -Name 'manual_fixture_replay_command'
+$boundaryNextArtifactToOpen = Get-OptionalPropertyValue -Object $boundaryRecord -Name 'next_artifact_to_open'
+$boundaryLastPassedPhase = Get-OptionalPropertyValue -Object $boundaryRecord -Name 'last_passed_phase'
+$boundaryFirstFailedPhase = Get-OptionalPropertyValue -Object $boundaryRecord -Name 'first_failed_phase'
 $guide = [ordered]@{
     issue = 'Google issue #3 validation summary guide'
     purpose = 'Read the saved recommended-validation summary artifact and point the next Windows headed replay at the earliest failing checkpoint.'
     summary_path = $SummaryPath
-    generated_at_utc = $summary.generated_at_utc
-    completed = [bool]$summary.completed
-    surface_check_status = $summary.surface_check_status
-    surface_check_error = $summary.surface_check_error
-    surface_check_artifact_path = $summary.surface_check_artifact_path
+    generated_at_utc = $summaryGeneratedAt
+    completed = [bool]$summaryCompleted
+    surface_check_status = $surfaceCheckStatus
+    surface_check_error = Get-OptionalPropertyValue -Object $summary -Name 'surface_check_error'
+    surface_check_artifact_path = Get-OptionalPropertyValue -Object $summary -Name 'surface_check_artifact_path'
     manifest_artifact_path = $manifestArtifactPath
     manifest_artifact_exists = [bool](-not [string]::IsNullOrWhiteSpace($manifestArtifactPath) -and (Test-Path -LiteralPath $manifestArtifactPath -PathType Leaf))
     guide_artifact_path = $guideArtifactPath
@@ -295,15 +330,15 @@ $guide = [ordered]@{
     handoff_artifact_exists = [bool](-not [string]::IsNullOrWhiteSpace($handoffArtifactPath) -and (Test-Path -LiteralPath $handoffArtifactPath -PathType Leaf))
     refresh_chain_artifact_path = $refreshChainArtifactPath
     refresh_chain_artifact_exists = [bool](-not [string]::IsNullOrWhiteSpace($refreshChainArtifactPath) -and (Test-Path -LiteralPath $refreshChainArtifactPath -PathType Leaf))
-    surface_check_profile = $summary.surface_check_profile
+    surface_check_profile = Get-OptionalPropertyValue -Object $summary -Name 'surface_check_profile'
     surface_check_checked_count = $surfaceCheckCheckedCount
     surface_check_missing_count = $surfaceCheckMissingCount
     surface_check_missing_paths = @($surfaceCheckMissingPaths)
-    phase_artifact_root = $summary.phase_artifact_root
+    phase_artifact_root = Get-OptionalPropertyValue -Object $summary -Name 'phase_artifact_root'
     first_failed_phase = $firstFailedPhase
-    first_failed_phase_error = $summary.first_failed_phase_error
-    first_failed_phase_log_path = $summary.first_failed_phase_log_path
-    first_failed_phase_primary_json_artifact_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].primary_json_artifact_path } else { $summary.first_failed_phase_primary_json_artifact_path }
+    first_failed_phase_error = Get-OptionalPropertyValue -Object $summary -Name 'first_failed_phase_error'
+    first_failed_phase_log_path = Get-OptionalPropertyValue -Object $summary -Name 'first_failed_phase_log_path'
+    first_failed_phase_primary_json_artifact_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].primary_json_artifact_path } else { Get-OptionalPropertyValue -Object $summary -Name 'first_failed_phase_primary_json_artifact_path' }
     first_failed_phase_artifact_paths = if ($failedPhaseResult.Count -gt 0) { @($failedPhaseResult[0].artifact_paths) } else { @() }
     first_failed_phase_replay_command = $firstFailedPhaseReplayCommand
     failed_phase_log_path = if ($failedPhaseResult.Count -gt 0) { $failedPhaseResult[0].log_path } else { $null }
@@ -312,14 +347,14 @@ $guide = [ordered]@{
     last_passed_phase_primary_json_artifact_path = if ($lastPassedPhaseResult) { $lastPassedPhaseResult.primary_json_artifact_path } else { $null }
     last_passed_phase_artifact_paths = if ($lastPassedPhaseResult) { @($lastPassedPhaseResult.artifact_paths) } else { @() }
     last_passed_phase_replay_command = $lastPassedPhaseReplayCommand
-    boundary_last_passed_phase = if ($boundaryRecord) { $boundaryRecord.last_passed_phase } else { $null }
-    boundary_first_failed_phase = if ($boundaryRecord) { $boundaryRecord.first_failed_phase } else { $null }
-    boundary_next_artifact_to_open = if ($boundaryRecord) { $boundaryRecord.next_artifact_to_open } else { $null }
-    manual_phase_enabled = [bool]$summary.manual_phase_enabled
-    manual_phase_google_style = [bool]$summary.manual_phase_google_style
-    manual_phase_uses_fixture_selection = [bool]$summary.manual_phase_uses_fixture_selection
-    manual_initial_page = $summary.manual_initial_page
-    manual_input_path = @($summary.manual_input_path)
+    boundary_last_passed_phase = $boundaryLastPassedPhase
+    boundary_first_failed_phase = $boundaryFirstFailedPhase
+    boundary_next_artifact_to_open = $boundaryNextArtifactToOpen
+    manual_phase_enabled = [bool](Get-OptionalPropertyValue -Object $summary -Name 'manual_phase_enabled')
+    manual_phase_google_style = [bool](Get-OptionalPropertyValue -Object $summary -Name 'manual_phase_google_style')
+    manual_phase_uses_fixture_selection = [bool]$manualPhaseUsesFixtureSelection
+    manual_initial_page = $manualInitialPage
+    manual_input_path = @($manualInputPath)
     missing_fixture_asset_audit = @($missingFixtureAssetAudit)
     fixture_assets_missing = [bool]$fixtureAssetsMissing
     fixture_selection_missing_asset_count = $fixturesWithMissingAssets.Count
@@ -340,7 +375,7 @@ $guide = [ordered]@{
     broader_runner_command = $recommendedRunnerCommand
     reason = $reason
     next_focus = $nextFocus
-    reminder = if ($boundaryRecord -and $boundaryRecord.next_artifact_to_open) {
+    reminder = if ($boundaryRecord -and $boundaryNextArtifactToOpen) {
         'Keep the next replay on the earliest failing checkpoint first. Open the boundary helper artifact and inspect its next_artifact_to_open path before widening back out to the full recommended runner, attached HTML, or live Google.'
     } else {
         'Keep the next replay on the earliest failing checkpoint first. Read the saved phase-boundary helper to compare the last passing checkpoint with the first failing one before widening back out to the full recommended runner, attached HTML, or live Google.'
@@ -352,12 +387,12 @@ $boundaryArtifact = [ordered]@{
     purpose = 'Persist the boundary between the last passing checkpoint and the first failing checkpoint from the saved recommended-validation summary, using the same rerun guidance the summary guide just computed.'
     summary_path = $SummaryPath
     boundary_artifact_path = $boundaryArtifactPath
-    generated_at_utc = $summary.generated_at_utc
-    completed = [bool]$summary.completed
+    generated_at_utc = $summaryGeneratedAt
+    completed = [bool]$summaryCompleted
     phase_count = @($phaseResults).Count
     passed_phase_count = @($passedPhaseResults).Count
     failed_phase_count = @(@($phaseResults | Where-Object { $_.status -ne 'passed' })).Count
-    phase_artifact_root = $summary.phase_artifact_root
+    phase_artifact_root = Get-OptionalPropertyValue -Object $summary -Name 'phase_artifact_root'
     manifest_artifact_path = $manifestArtifactPath
     guide_artifact_path = $guideArtifactPath
     artifact_bundle_path = $artifactBundlePath
@@ -380,24 +415,24 @@ $boundaryArtifact = [ordered]@{
         'No passing phase was recorded yet, so start at the earliest recommended phase and repair the first checkpoint before widening out.'
     }
     next_focus = $guide.next_focus
-    recommended_command = if ($guide.boundary_artifact_exists -and $boundaryRecord.recommended_command) {
-        $boundaryRecord.recommended_command
+    recommended_command = if ($guide.boundary_artifact_exists -and -not [string]::IsNullOrWhiteSpace($boundaryRecommendedCommand)) {
+        $boundaryRecommendedCommand
     } else {
         $guide.recommended_command
     }
-    recommended_guide_command = if ($guide.boundary_artifact_exists -and $boundaryRecord.recommended_guide_command) {
-        $boundaryRecord.recommended_guide_command
+    recommended_guide_command = if ($guide.boundary_artifact_exists -and -not [string]::IsNullOrWhiteSpace($boundaryRecommendedGuideCommand)) {
+        $boundaryRecommendedGuideCommand
     } else {
         $guide.recommended_guide_command
     }
-    manual_fixture_replay_command = if ($guide.boundary_artifact_exists -and $boundaryRecord.manual_fixture_replay_command) {
-        $boundaryRecord.manual_fixture_replay_command
+    manual_fixture_replay_command = if ($guide.boundary_artifact_exists -and -not [string]::IsNullOrWhiteSpace($boundaryManualFixtureReplayCommand)) {
+        $boundaryManualFixtureReplayCommand
     } else {
         $guide.manual_fixture_replay_command
     }
     reason = $guide.reason
-    next_artifact_to_open = if ($guide.boundary_artifact_exists -and $boundaryRecord.next_artifact_to_open) {
-        $boundaryRecord.next_artifact_to_open
+    next_artifact_to_open = if ($guide.boundary_artifact_exists -and -not [string]::IsNullOrWhiteSpace($boundaryNextArtifactToOpen)) {
+        $boundaryNextArtifactToOpen
     } elseif ($guide.first_failed_phase_primary_json_artifact_path) {
         $guide.first_failed_phase_primary_json_artifact_path
     } elseif ($lastPassedPhaseResult -and $lastPassedPhaseResult.primary_json_artifact_path) {
@@ -495,7 +530,7 @@ if ($guide.last_passed_phase) {
 }
 if ($guide.boundary_artifact_exists) {
     Write-Host ("Boundary last pass: {0}" -f $(if ($guide.boundary_last_passed_phase) { $guide.boundary_last_passed_phase } else { 'none' }))
-    Write-Host ("Boundary first fail: {0}" -f $(if ($guide.boundary_first_failed_phase) { $guide.boundary_first_failed_phase } else { 'none' }))
+    Write-Host ("Boundary first fail: {0}" -f $(if ($guide.boundary_first_failed_phase) { $guide.boundaryFirstFailedPhase } else { 'none' }))
     if ($guide.boundary_next_artifact_to_open) {
         Write-Host ("Open next: {0}" -f $guide.boundary_next_artifact_to_open)
     }
