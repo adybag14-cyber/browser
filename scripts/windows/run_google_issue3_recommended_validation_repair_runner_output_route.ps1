@@ -65,6 +65,21 @@ function Get-FirstNonEmptyValue {
     return $null
 }
 
+function Get-ArrayValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $value = Get-OptionalPropertyValue -Object $Object -Name $Name
+    if ($null -eq $value) {
+        return @()
+    }
+
+    return @($value)
+}
+
 function Invoke-JsonHelper {
     param(
         [Parameter(Mandatory = $true)]
@@ -127,6 +142,14 @@ $recommendedCommand = Get-OptionalPropertyValue -Object $patchTargetRouteRecord 
 $recommendedGuideCommand = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'recommended_guide_command'
 $nextFocus = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'next_focus'
 $nextArtifactToOpen = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'next_artifact_to_open'
+$recommendedPatchTarget = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'recommended_patch_target'
+$runnerPatchStillRequired = [bool](Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'runner_patch_still_required')
+$patchTargetsVerificationCommand = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'recommended_verification_command'
+$patchTargetsRepairCommand = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'recommended_repair_command'
+$patchTargetsRegenerationCommand = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'recommended_regeneration_command'
+$missingRunnerFields = @(Get-ArrayValue -Object $patchTargetRouteRecord -Name 'missing_runner_fields')
+$summaryPatchSnippetLines = @(Get-ArrayValue -Object $patchTargetRouteRecord -Name 'summary_patch_snippet_lines')
+$manifestPatchSnippetLines = @(Get-ArrayValue -Object $patchTargetRouteRecord -Name 'manifest_patch_snippet_lines')
 
 if ($patchTargetRouteRecord.status -eq 'ready-for-runner-output-wiring') {
     $runnerOutputWiringSafeRecord = Invoke-JsonHelper -ScriptPath $runnerOutputWiringSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -Name 'runner-output wiring safe'
@@ -171,8 +194,14 @@ $report = [ordered]@{
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     patch_target_route_status = $patchTargetRouteRecord.status
     runner_output_wiring_safe_status = if ($runnerOutputWiringSafeRecord) { $runnerOutputWiringSafeRecord.status } else { $null }
-    recommended_patch_target = Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'recommended_patch_target'
-    runner_patch_still_required = [bool](Get-OptionalPropertyValue -Object $patchTargetRouteRecord -Name 'runner_patch_still_required')
+    recommended_patch_target = $recommendedPatchTarget
+    runner_patch_still_required = [bool]$runnerPatchStillRequired
+    recommended_verification_command = $patchTargetsVerificationCommand
+    recommended_repair_command = $patchTargetsRepairCommand
+    recommended_regeneration_command = $patchTargetsRegenerationCommand
+    missing_runner_fields = @($missingRunnerFields)
+    summary_patch_snippet_lines = @($summaryPatchSnippetLines)
+    manifest_patch_snippet_lines = @($manifestPatchSnippetLines)
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     next_focus = $nextFocus
@@ -199,6 +228,35 @@ if ($report.runner_output_wiring_safe_status) {
 }
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
+}
+if ($report.recommended_verification_command) {
+    Write-Host ("Verify:      {0}" -f $report.recommended_verification_command)
+}
+if ($report.recommended_repair_command) {
+    Write-Host ("Repair:      {0}" -f $report.recommended_repair_command)
+}
+if ($report.recommended_regeneration_command) {
+    Write-Host ("Rerun:       {0}" -f $report.recommended_regeneration_command)
+}
+if ($report.missing_runner_fields.Count -gt 0) {
+    Write-Host 'Missing runner fields:'
+    foreach ($fieldName in $report.missing_runner_fields) {
+        Write-Host ("- {0}" -f $fieldName)
+    }
+}
+if ($report.summary_patch_snippet_lines.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Summary patch snippet:'
+    foreach ($line in $report.summary_patch_snippet_lines) {
+        Write-Host $line
+    }
+}
+if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Manifest patch snippet:'
+    foreach ($line in $report.manifest_patch_snippet_lines) {
+        Write-Host $line
+    }
 }
 Write-Host ''
 Write-Host ("Reason: {0}" -f $report.reason)
