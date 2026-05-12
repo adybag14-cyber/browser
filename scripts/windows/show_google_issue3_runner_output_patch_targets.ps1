@@ -147,6 +147,26 @@ function New-PatchFieldRecord {
     }
 }
 
+function Convert-ToPowerShellLiteral {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return '$null'
+    }
+
+    $escaped = ([string]$Value) -replace "'", "''"
+    return "'$escaped'"
+}
+
+function New-PatchSnippetLine {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$FieldRecord
+    )
+
+    return ('        {0} = {1}' -f $FieldRecord.field, (Convert-ToPowerShellLiteral -Value $FieldRecord.suggested_value))
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -194,9 +214,13 @@ $manifestPatchFields = @(
     New-PatchFieldRecord -FieldName 'handoff_artifact_error' -CurrentObject $manifestRecord -SuggestedValue $handoffErrorConfigured.value -ValueSource $handoffErrorConfigured.source -Nullable $true
 )
 
-$summaryMissingFields = @($summaryPatchFields | Where-Object { -not $_.present } | ForEach-Object { $_.field })
-$manifestMissingFields = @($manifestPatchFields | Where-Object { -not $_.present } | ForEach-Object { $_.field })
+$summaryMissingPatchFields = @($summaryPatchFields | Where-Object { -not $_.present })
+$manifestMissingPatchFields = @($manifestPatchFields | Where-Object { -not $_.present })
+$summaryMissingFields = @($summaryMissingPatchFields | ForEach-Object { $_.field })
+$manifestMissingFields = @($manifestMissingPatchFields | ForEach-Object { $_.field })
 $allMissingFields = @($summaryMissingFields + $manifestMissingFields | Sort-Object -Unique)
+$summaryPatchSnippetLines = @($summaryMissingPatchFields | ForEach-Object { New-PatchSnippetLine -FieldRecord $_ })
+$manifestPatchSnippetLines = @($manifestMissingPatchFields | ForEach-Object { New-PatchSnippetLine -FieldRecord $_ })
 
 $summaryNeedsPatch = $summaryMissingFields.Count -gt 0
 $manifestNeedsPatch = $manifestMissingFields.Count -gt 0
@@ -253,6 +277,8 @@ $report = [ordered]@{
     missing_runner_fields = @($allMissingFields)
     summary_patch_fields = @($summaryPatchFields)
     manifest_patch_fields = @($manifestPatchFields)
+    summary_patch_snippet_lines = @($summaryPatchSnippetLines)
+    manifest_patch_snippet_lines = @($manifestPatchSnippetLines)
     recommended_patch_target = 'scripts/windows/run_google_issue3_recommended_validation.ps1'
     recommended_verification_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
     runner_output_status_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
@@ -294,11 +320,25 @@ foreach ($field in $report.summary_patch_fields) {
         Write-Host ("- {0}: {1} ({2})" -f $field.field, $field.suggested_value, $field.suggested_value_source)
     }
 }
+if ($report.summary_patch_snippet_lines.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Summary patch snippet:'
+    foreach ($line in $report.summary_patch_snippet_lines) {
+        Write-Host $line
+    }
+}
 Write-Host ''
 Write-Host 'Manifest patch fields:'
 foreach ($field in $report.manifest_patch_fields) {
     if (-not $field.present) {
         Write-Host ("- {0}: {1} ({2})" -f $field.field, $field.suggested_value, $field.suggested_value_source)
+    }
+}
+if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Manifest patch snippet:'
+    foreach ($line in $report.manifest_patch_snippet_lines) {
+        Write-Host $line
     }
 }
 Write-Host ''
