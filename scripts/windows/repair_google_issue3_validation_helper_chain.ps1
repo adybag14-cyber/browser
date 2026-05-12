@@ -203,8 +203,7 @@ $runnerContractRepairScript = Join-Path $PSScriptRoot 'repair_google_issue3_runn
 $refreshChainScript = Join-Path $PSScriptRoot 'refresh_google_issue3_validation_handoff_chain.ps1'
 $wiringStatusSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_wiring_status_safe.ps1'
 $wiringStatusScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_wiring_status.ps1'
-$refreshStatusScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_refresh_status_safe.ps1'
-$handoffSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe.ps1'
+$handoffSafeRefreshRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 
 $requiredHelpers = @(
     $artifactPathRepairScript,
@@ -212,8 +211,7 @@ $requiredHelpers = @(
     $refreshChainScript,
     $wiringStatusSafeScript,
     $wiringStatusScript,
-    $refreshStatusScript,
-    $handoffSafeScript
+    $handoffSafeRefreshRouteScript
 )
 foreach ($helperPath in $requiredHelpers) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -239,14 +237,12 @@ if ($runRawWiringStatus) {
     $steps.Add((New-SkippedHelperStep -Name 'runner-output-wiring-status' -ScriptPath $wiringStatusScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $wiringSafeStep.recommended_command -RecommendedGuideCommand $wiringSafeStep.recommended_guide_command -NextFocus $wiringSafeStep.next_focus -NextArtifactToOpen $wiringSafeStep.next_artifact_to_open -Reason 'The safe wiring helper said the raw runner-output wiring helper was not the safest next checkpoint yet.')) | Out-Null
 }
 
-$steps.Add((Invoke-JsonHelper -Name 'refresh-status' -ScriptPath $refreshStatusScript -Arguments @('-SummaryPath', $SummaryPath, '-Json'))) | Out-Null
-$steps.Add((Invoke-JsonHelper -Name 'handoff-safe-status' -ScriptPath $handoffSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json'))) | Out-Null
+$steps.Add((Invoke-JsonHelper -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json'))) | Out-Null
 
 $failedSteps = @($steps | Where-Object { -not $_.success })
 $wiringSafeStep = @($steps | Where-Object { $_.name -eq 'runner-output-wiring-safe-status' } | Select-Object -First 1)[0]
 $wiringStep = @($steps | Where-Object { $_.name -eq 'runner-output-wiring-status' } | Select-Object -First 1)[0]
-$refreshStep = @($steps | Where-Object { $_.name -eq 'refresh-status' } | Select-Object -First 1)[0]
-$handoffStep = @($steps | Where-Object { $_.name -eq 'handoff-safe-status' } | Select-Object -First 1)[0]
+$handoffSafeRefreshRouteStep = @($steps | Where-Object { $_.name -eq 'handoff-safe-refresh-route' } | Select-Object -First 1)[0]
 $repairStep = @($steps | Where-Object { $_.name -eq 'runner-output-contract-repair' } | Select-Object -First 1)[0]
 $pathRepairStep = @($steps | Where-Object { $_.name -eq 'artifact-path-repair' } | Select-Object -First 1)[0]
 $refreshChainStep = @($steps | Where-Object { $_.name -eq 'handoff-chain-refresh' } | Select-Object -First 1)[0]
@@ -257,17 +253,17 @@ $wiringSafeNeedsFollowUp = [bool](
     @('summary-artifact-root-missing', 'summary-manifest-path-missing', 'manifest-missing', 'manifest-unreadable') -contains $wiringSafeStep.status
 )
 $wiringFullyWired = [bool]($wiringStep -and $wiringStep.status -eq 'fully-wired')
-$refreshReady = [bool]($refreshStep -and $refreshStep.status -eq 'ready')
-$handoffReady = [bool]($handoffStep -and $handoffStep.status -eq 'safe-to-run-handoff')
+$handoffReady = [bool]($handoffSafeRefreshRouteStep -and $handoffSafeRefreshRouteStep.status -eq 'ready-for-handoff')
+$refreshFollowUpReady = [bool]($handoffSafeRefreshRouteStep -and $handoffSafeRefreshRouteStep.status -eq 'refresh-status-safe-follow-up-ready')
 
 $status = $null
 $reason = $null
 if ($failedSteps.Count -gt 0) {
     $status = 'helper-failure'
-    $reason = 'One or more issue #3 repair or audit helpers did not finish cleanly, so the helper chain still needs direct attention before the next Windows replay can trust the narrower handoff path.'
+    $reason = 'One or more issue #3 repair or audit helpers did not finish cleanly, so the helper chain still needs direct attention before the next Windows replay can trust the bounded handoff refresh route.'
 } elseif ($handoffReady) {
     $status = 'ready-for-handoff'
-    $reason = 'The saved issue #3 outputs were normalized, the safe wiring gate cleared the raw audit path, and the safe handoff helper says the narrower handoff path is ready to use.'
+    $reason = 'The saved issue #3 outputs were normalized, the safe wiring gate cleared the raw audit path, and the handoff safe refresh-route helper says the narrower handoff path is ready to use.'
 } elseif ($wiringSafeNeedsFollowUp) {
     $status = 'wiring-safe-follow-up-needed'
     $reason = if ($wiringSafeStep.reason) {
@@ -278,17 +274,16 @@ if ($failedSteps.Count -gt 0) {
 } elseif (-not $wiringFullyWired) {
     $status = 'runner-contract-still-open'
     $reason = 'The helper chain repairs ran, but the runner-output wiring audit still reports that the direct refresh and handoff contract is incomplete for the current saved outputs.'
-} elseif (-not $refreshReady) {
-    $status = 'refresh-follow-up-needed'
-    $reason = 'The helper chain repairs ran and the runner contract looks wired, but the refresh-status helper still says the saved handoff chain needs another refresh or replay-specific follow-up.'
+} elseif ($refreshFollowUpReady) {
+    $status = 'refresh-follow-up-ready'
+    $reason = 'The helper chain repairs ran, the runner contract looks wired, and the handoff safe refresh-route helper already reopened the narrower refresh-safe checkpoint for the next replay.'
 } else {
     $status = 'repair-follow-up-needed'
-    $reason = 'The helper chain repairs completed, but the final safe handoff gate still does not recommend the narrow handoff path yet.'
+    $reason = 'The helper chain repairs completed, but the final handoff safe refresh-route checkpoint still does not recommend the narrow handoff path yet.'
 }
 
 $commandSources = @(
-    if ($handoffStep) { $handoffStep.recommended_command },
-    if ($refreshStep) { $refreshStep.recommended_command },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.recommended_command },
     if ($wiringSafeStep) { $wiringSafeStep.recommended_command },
     if ($wiringStep) { $wiringStep.recommended_command },
     if ($refreshChainStep) { $refreshChainStep.recommended_command },
@@ -297,8 +292,7 @@ $commandSources = @(
     'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 )
 $guideSources = @(
-    if ($handoffStep) { $handoffStep.recommended_guide_command },
-    if ($refreshStep) { $refreshStep.recommended_guide_command },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.recommended_guide_command },
     if ($wiringSafeStep) { $wiringSafeStep.recommended_guide_command },
     if ($wiringStep) { $wiringStep.recommended_guide_command },
     if ($refreshChainStep) { $refreshChainStep.recommended_guide_command },
@@ -307,8 +301,7 @@ $guideSources = @(
     'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 )
 $focusSources = @(
-    if ($handoffStep) { $handoffStep.next_focus },
-    if ($refreshStep) { $refreshStep.next_focus },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.next_focus },
     if ($wiringSafeStep) { $wiringSafeStep.next_focus },
     if ($wiringStep) { $wiringStep.next_focus },
     if ($refreshChainStep) { $refreshChainStep.next_focus },
@@ -316,8 +309,7 @@ $focusSources = @(
     if ($pathRepairStep) { $pathRepairStep.next_focus }
 )
 $artifactSources = @(
-    if ($handoffStep) { $handoffStep.next_artifact_to_open },
-    if ($refreshStep) { $refreshStep.next_artifact_to_open },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.next_artifact_to_open },
     if ($wiringSafeStep) { $wiringSafeStep.next_artifact_to_open },
     if ($wiringStep) { $wiringStep.next_artifact_to_open },
     if ($refreshChainStep) { $refreshChainStep.next_artifact_to_open },
@@ -333,7 +325,7 @@ $nextArtifactToOpen = Get-FirstNonEmptyValue -Values $artifactSources
 
 $report = [ordered]@{
     issue = 'Google issue #3 validation helper-chain repair'
-    purpose = 'Run the bounded issue #3 repair helpers in order, then leave one final readiness verdict plus the best next command for the next Windows headed replay.'
+    purpose = 'Run the bounded issue #3 repair helpers in order, then route through the newer handoff safe refresh-route checkpoint and leave one final readiness verdict plus the best next command for the next Windows headed replay.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
@@ -345,8 +337,7 @@ $report = [ordered]@{
     next_artifact_to_open = $nextArtifactToOpen
     runner_output_wiring_safe_status = if ($wiringSafeStep) { $wiringSafeStep.status } else { $null }
     runner_output_wiring_status = if ($wiringStep) { $wiringStep.status } else { $null }
-    refresh_status = if ($refreshStep) { $refreshStep.status } else { $null }
-    handoff_safe_status = if ($handoffStep) { $handoffStep.status } else { $null }
+    handoff_safe_refresh_route_status = if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.status } else { $null }
     failed_step_count = $failedSteps.Count
     failed_step_names = @($failedSteps | ForEach-Object { $_.name })
     steps = @($steps | ForEach-Object {
@@ -384,8 +375,7 @@ Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
 Write-Host ("Wiring safe: {0}" -f $report.runner_output_wiring_safe_status)
 Write-Host ("Wiring raw:  {0}" -f $report.runner_output_wiring_status)
-Write-Host ("Refresh:   {0}" -f $report.refresh_status)
-Write-Host ("Handoff:   {0}" -f $report.handoff_safe_status)
+Write-Host ("Handoff route: {0}" -f $report.handoff_safe_refresh_route_status)
 Write-Host ("Failed steps: {0}" -f $report.failed_step_count)
 Write-Host ''
 foreach ($step in $report.steps) {
