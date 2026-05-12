@@ -189,14 +189,14 @@ if (-not $ArtifactPath) {
 }
 
 $repairChainScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation_repair_chain.ps1'
-$bundleSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artifact_bundle_safe.ps1'
+$bundleSafePathRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artifact_bundle_safe_path_route.ps1'
 $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_chain.ps1'
-$bundleSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
+$bundleSafePathRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe_path_route.ps1'
 $bundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
-foreach ($helperPath in @($repairChainScript, $bundleSafeScript)) {
+foreach ($helperPath in @($repairChainScript, $bundleSafePathRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
     }
@@ -207,82 +207,82 @@ if ($RunnerArgument) {
     $repairChainArguments += '-RunnerArgument'
     $repairChainArguments += $RunnerArgument
 }
-$bundleSafeArguments = @('-SummaryPath', $SummaryPath, '-Json')
+$bundleSafePathRouteArguments = @('-SummaryPath', $SummaryPath, '-Json')
 
 $steps = [System.Collections.Generic.List[object]]::new()
 $repairChainStep = Invoke-ScriptStep -Name 'recommended-validation-repair-chain' -ScriptPath $repairChainScript -Arguments $repairChainArguments -ExpectJson
 $steps.Add($repairChainStep) | Out-Null
 
 $summaryExistsAfterRepairChain = Test-Path -LiteralPath $SummaryPath -PathType Leaf
-$bundleSafeStep = $null
+$bundleSafePathRouteStep = $null
 if ($summaryExistsAfterRepairChain) {
-    $bundleSafeStep = Invoke-ScriptStep -Name 'artifact-bundle-safe' -ScriptPath $bundleSafeScript -Arguments $bundleSafeArguments -ExpectJson
-    $steps.Add($bundleSafeStep) | Out-Null
+    $bundleSafePathRouteStep = Invoke-ScriptStep -Name 'artifact-bundle-safe-path-route' -ScriptPath $bundleSafePathRouteScript -Arguments $bundleSafePathRouteArguments -ExpectJson
+    $steps.Add($bundleSafePathRouteStep) | Out-Null
 } else {
-    $bundleSafeStep = New-SkippedStep -Name 'artifact-bundle-safe' -ScriptPath $bundleSafeScript -Arguments $bundleSafeArguments -Reason 'The combined repair chain did not leave a current summary artifact, so the artifact-bundle-safe check had no replay state to inspect.' -RecommendedCommand $repairChainCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 validation chain to leave a fresh summary artifact before checking the artifact-bundle-safe gate.' -NextArtifactToOpen $ArtifactPath
-    $steps.Add($bundleSafeStep) | Out-Null
+    $bundleSafePathRouteStep = New-SkippedStep -Name 'artifact-bundle-safe-path-route' -ScriptPath $bundleSafePathRouteScript -Arguments $bundleSafePathRouteArguments -Reason 'The combined repair chain did not leave a current summary artifact, so the artifact-bundle safe-path route had no replay state to inspect.' -RecommendedCommand $repairChainCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 validation chain to leave a fresh summary artifact before checking the artifact-bundle safe-path route.' -NextArtifactToOpen $ArtifactPath
+    $steps.Add($bundleSafePathRouteStep) | Out-Null
 }
 
 $status = $null
 $reason = $null
 if (-not $summaryExistsAfterRepairChain) {
     $status = 'repair-chain-no-summary'
-    $reason = 'The broader issue #3 validation repair chain did not leave a summary artifact, so the follow-up artifact-bundle-safe check could not continue.'
+    $reason = 'The broader issue #3 validation repair chain did not leave a summary artifact, so the follow-up artifact-bundle safe-path route could not continue.'
 } elseif (-not $repairChainStep.success) {
     $status = 'repair-chain-failed'
-    $reason = 'The broader issue #3 validation repair chain did not finish cleanly, so the next replay still needs direct repair-chain attention before the bundle path is trusted.'
-} elseif (-not $bundleSafeStep.success) {
-    $status = 'bundle-safe-check-failed'
-    $reason = 'The validation repair chain completed, but the artifact-bundle-safe helper did not finish cleanly, so the next replay should stay on the saved repair artifact first.'
-} elseif ($bundleSafeStep.status -eq 'safe-to-run-existing-helper') {
-    $status = 'ready-for-bundle-guide'
-    $reason = 'The broader validation repair chain completed, and the artifact-bundle-safe helper says the raw issue #3 bundle guide is ready for the next Windows replay.'
+    $reason = 'The broader issue #3 validation repair chain did not finish cleanly, so the next replay still needs direct repair-chain attention before the bounded bundle route is trusted.'
+} elseif (-not $bundleSafePathRouteStep.success) {
+    $status = 'bundle-safe-path-route-failed'
+    $reason = 'The validation repair chain completed, but the artifact-bundle safe-path route did not finish cleanly, so the next replay should stay on the saved repair artifact first.'
+} elseif ($bundleSafePathRouteStep.status -eq 'ready-for-bundle-follow-up') {
+    $status = 'ready-for-bundle-follow-up'
+    $reason = 'The broader validation repair chain completed, and the artifact-bundle safe-path route says the raw issue #3 bundle audit already ran and the next Windows replay can continue from the narrower follow-up guidance.'
 } else {
     $status = 'follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
-        if ($bundleSafeStep) { $bundleSafeStep.reason },
+        if ($bundleSafePathRouteStep) { $bundleSafePathRouteStep.reason },
         if ($repairChainStep) { $repairChainStep.reason },
-        'The broader validation repair chain and artifact-bundle-safe check completed, but the next issue #3 replay still needs the follow-up command reported by the saved artifacts.'
+        'The broader validation repair chain and artifact-bundle safe-path route completed, but the next issue #3 replay still needs the follow-up command reported by the saved artifacts.'
     )
 }
 
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
-    if ($bundleSafeStep) { $bundleSafeStep.recommended_command },
+    if ($bundleSafePathRouteStep) { $bundleSafePathRouteStep.recommended_command },
     if ($repairChainStep) { $repairChainStep.recommended_command },
     $repairChainCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($status -eq 'ready-for-bundle-guide') { $bundleCommand },
-    if ($bundleSafeStep) { $bundleSafeStep.recommended_guide_command },
+    if ($status -eq 'ready-for-bundle-follow-up') { $handoffSafeCommand },
+    if ($bundleSafePathRouteStep) { $bundleSafePathRouteStep.recommended_guide_command },
     if ($repairChainStep) { $repairChainStep.recommended_guide_command },
     $summaryGuideCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
-    if ($bundleSafeStep) { $bundleSafeStep.next_focus },
+    if ($bundleSafePathRouteStep) { $bundleSafePathRouteStep.next_focus },
     if ($repairChainStep) { $repairChainStep.next_focus },
-    if (-not $summaryExistsAfterRepairChain) { 'Regenerate the issue #3 recommended validation summary before asking the artifact-bundle-safe helper to narrow the next replay.' }
+    if (-not $summaryExistsAfterRepairChain) { 'Regenerate the issue #3 recommended validation summary before asking the artifact-bundle safe-path route to narrow the next replay.' }
 )
 $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
-    if ($bundleSafeStep) { $bundleSafeStep.next_artifact_to_open },
+    if ($bundleSafePathRouteStep) { $bundleSafePathRouteStep.next_artifact_to_open },
     if ($repairChainStep) { $repairChainStep.next_artifact_to_open },
     if ($summaryExistsAfterRepairChain) { $SummaryPath },
     $ArtifactPath
 )
 
 $report = [ordered]@{
-    issue = 'Google issue #3 recommended validation repair plus artifact-bundle-safe gate'
-    purpose = 'Run the broader issue #3 validation repair chain, then immediately confirm whether the artifact-bundle-safe checkpoint is clear enough for the next Windows replay to trust the raw bundle guide.'
+    issue = 'Google issue #3 recommended validation repair plus artifact-bundle safe path route'
+    purpose = 'Run the broader issue #3 validation repair chain, then immediately continue through the artifact-bundle safe-path route so the next Windows replay can keep following the bounded bundle checkpoint before handoff guidance reopens.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     runner_argument_passthrough = @($RunnerArgument)
     summary_exists_after_repair_chain = [bool]$summaryExistsAfterRepairChain
     repair_chain_status = $repairChainStep.status
-    bundle_safe_status = $bundleSafeStep.status
+    bundle_safe_path_route_status = $bundleSafePathRouteStep.status
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     repair_chain_command = $repairChainCommand
-    bundle_safe_command = $bundleSafeCommand
+    bundle_safe_path_route_command = $bundleSafePathRouteCommand
     bundle_command = $bundleCommand
     handoff_safe_command = $handoffSafeCommand
     summary_guide_command = $summaryGuideCommand
@@ -312,20 +312,20 @@ $report | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding As
 
 if ($Json) {
     $report | ConvertTo-Json -Depth 8
-    if (@('repair-chain-no-summary', 'repair-chain-failed', 'bundle-safe-check-failed') -contains $status) {
+    if (@('repair-chain-no-summary', 'repair-chain-failed', 'bundle-safe-path-route-failed') -contains $status) {
         exit 1
     }
     exit 0
 }
 
-Write-Host 'Google issue #3 recommended validation repair plus artifact-bundle-safe gate'
+Write-Host 'Google issue #3 recommended validation repair plus artifact-bundle safe path route'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
 Write-Host ("Summary exists after repair chain: {0}" -f $report.summary_exists_after_repair_chain)
 Write-Host ("Repair chain: {0}" -f $report.repair_chain_status)
-Write-Host ("Bundle safe: {0}" -f $report.bundle_safe_status)
+Write-Host ("Bundle safe path route: {0}" -f $report.bundle_safe_path_route_status)
 Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
@@ -344,6 +344,6 @@ Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
 
-if (@('repair-chain-no-summary', 'repair-chain-failed', 'bundle-safe-check-failed') -contains $status) {
+if (@('repair-chain-no-summary', 'repair-chain-failed', 'bundle-safe-path-route-failed') -contains $status) {
     exit 1
 }
