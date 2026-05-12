@@ -101,6 +101,25 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_ru
 
 If the safe route still says the raw patch-target helper is the next safe checkpoint, let that helper be reopened through the safe-route wrapper instead of launching it by hand first.
 
+## When the runner source is already wired
+
+If `show_google_issue3_runner_output_wiring_status.ps1` reports `saved-artifacts-stale-runner-already-wired`, do not patch `scripts/windows/run_google_issue3_recommended_validation.ps1` again as the first move.
+
+Treat that status as a saved-output recovery problem instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_safe_route.ps1
+```
+
+If you need the narrower repair step without reopening the wider safe route yet, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1
+```
+
+Only come back to the raw runner-output wiring audit after the safe wiring helper routes there again. The goal is to regenerate or normalize the saved summary and manifest before spending another replay on a direct runner patch that is already present in source.
+
 Patch target:
 - `scripts/windows/run_google_issue3_recommended_validation.ps1`
 
@@ -136,6 +155,7 @@ Patch rules:
 - Use the values emitted by `show_google_issue3_runner_output_patch_targets_safe_route.ps1` or `show_google_issue3_runner_output_patch_handoff.ps1` instead of inventing paths.
 - Keep the error fields present even when the value is empty or `$null`; the newer audits distinguish between a missing field and a recorded empty value.
 - Recheck both object writers after editing. The helper-chain audits treat the summary and manifest as separate contracts.
+- If the raw wiring audit reports `saved-artifacts-stale-runner-already-wired`, stop the direct patch loop and move back to output regeneration or repair instead of reapplying the same source edit.
 
 Recommended patch loop:
 1. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1` or `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1`.
@@ -151,3 +171,4 @@ Recommended patch loop:
 If two helpers disagree:
 - prefer the wrapper over the raw command when a wrapper already exists for that checkpoint
 - otherwise prefer the helper with `safe` in the name unless the safe helper explicitly says the raw helper is ready
+- if the raw wiring audit says `saved-artifacts-stale-runner-already-wired`, prefer saved-output regeneration or repair over another direct runner patch
