@@ -192,8 +192,9 @@ if ($refreshExists) {
     }
 }
 $refreshMatchesSummary = $false
-if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
-    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+$refreshSummaryPath = Get-OptionalPropertyValue -Object $refreshRecord -Name 'summary_path'
+if (-not [string]::IsNullOrWhiteSpace($refreshSummaryPath)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 $bundleExists = Test-Path -LiteralPath $resolvedBundlePath -PathType Leaf
