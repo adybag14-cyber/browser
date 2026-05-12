@@ -84,6 +84,18 @@ $refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
 $handoffExists = Test-Path -LiteralPath $handoffPath -PathType Leaf
 $repairReportExists = Test-Path -LiteralPath $repairReportPath -PathType Leaf
 $repairReport = Read-ArtifactJson $repairReportPath
+$refreshRecord = Read-ArtifactJson $refreshPath
+$handoffRecord = Read-ArtifactJson $handoffPath
+
+$refreshMatchesSummary = $false
+if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+$handoffMatchesSummary = $false
+if ($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_path)) {
+    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
 
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path)
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path)
@@ -100,7 +112,10 @@ $manifestRecordsHandoffArtifactError = [bool]($manifestRecord -and -not [string]
 $runnerRefreshPathFullyWired = [bool]($summaryRecordsRefreshArtifactPath -and $manifestRecordsRefreshArtifactPath)
 $runnerHandoffPathFullyWired = [bool]($summaryRecordsHandoffArtifactPath -and $manifestRecordsHandoffArtifactPath)
 $runnerHasExplicitTopLevelPointers = [bool]($summaryRecordsRefreshArtifactPath -and $summaryRecordsHandoffArtifactPath)
-$repairCouldPromotePointers = [bool](((-not $summaryRecordsRefreshArtifactPath) -and ($manifestRecordsRefreshArtifactPath -or $refreshExists)) -or ((-not $summaryRecordsHandoffArtifactPath) -and ($manifestRecordsHandoffArtifactPath -or $handoffExists)))
+$refreshPointerRecoverable = [bool]($manifestRecordsRefreshArtifactPath -or ($refreshExists -and $refreshMatchesSummary))
+$handoffPointerRecoverable = [bool]($manifestRecordsHandoffArtifactPath -or ($handoffExists -and $handoffMatchesSummary))
+$repairCouldPromotePointers = [bool](((-not $summaryRecordsRefreshArtifactPath) -and $refreshPointerRecoverable) -or ((-not $summaryRecordsHandoffArtifactPath) -and $handoffPointerRecoverable))
+$implicitPointerChainUsable = [bool]($repairCouldPromotePointers -and (($summaryRecordsRefreshArtifactPath -or $refreshPointerRecoverable) -and ($summaryRecordsHandoffArtifactPath -or $handoffPointerRecoverable) -and (($refreshExists -and $refreshMatchesSummary) -or ($handoffExists -and $handoffMatchesSummary))))
 $pointerRepairAlreadyRan = [bool]($repairReportExists -and $repairReport -and $repairReport.status -eq 'updated')
 
 $repairSummaryPointersCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_summary_pointers.ps1'
@@ -130,23 +145,46 @@ if ($runnerHasExplicitTopLevelPointers) {
         $recommendedGuideCommand = $pointerSourceCommand
         if ($repairReportExists) {
             $nextArtifactToOpen = $repairReportPath
-        } elseif ($handoffExists) {
+        } elseif ($handoffExists -and $handoffMatchesSummary) {
             $nextArtifactToOpen = $handoffPath
+        } elseif ($refreshExists -and $refreshMatchesSummary) {
+            $nextArtifactToOpen = $refreshPath
+        } elseif ($manifestExists) {
+            $nextArtifactToOpen = $manifestPath
         } else {
             $nextArtifactToOpen = $SummaryPath
         }
         $reason = 'The summary-pointer repair helper already promoted at least one missing top-level helper pointer, so the next replay should validate the refreshed handoff path instead of rerunning the same repair immediately.'
         $nextFocus = 'Reopen the pointer-source or handoff helper and confirm the saved summary now advertises the refresh and handoff artifacts directly.'
+    } elseif ($implicitPointerChainUsable) {
+        $status = 'runner-pointers-implicit-but-chain-usable'
+        $recommendedCommand = $handoffGuideCommand
+        $recommendedGuideCommand = $pointerSourceCommand
+        if ($handoffExists -and $handoffMatchesSummary) {
+            $nextArtifactToOpen = $handoffPath
+        } elseif ($refreshExists -and $refreshMatchesSummary) {
+            $nextArtifactToOpen = $refreshPath
+        } elseif ($manifestExists) {
+            $nextArtifactToOpen = $manifestPath
+        } else {
+            $nextArtifactToOpen = $SummaryPath
+        }
+        $reason = 'The runner summary still omits at least one top-level helper pointer, but the current manifest-backed or matching saved artifacts already keep the helper chain coherent for this summary.'
+        $nextFocus = 'Continue from the current handoff or refresh helper now, and leave summary-pointer repair as follow-up cleanup instead of gating the next replay.'
     } else {
         $status = 'summary-repair-recommended'
         $recommendedCommand = $repairSummaryPointersCommand
         $recommendedGuideCommand = $pointerSourceCommand
         if ($manifestExists) {
             $nextArtifactToOpen = $manifestPath
+        } elseif ($refreshExists -and $refreshMatchesSummary) {
+            $nextArtifactToOpen = $refreshPath
+        } elseif ($handoffExists -and $handoffMatchesSummary) {
+            $nextArtifactToOpen = $handoffPath
         } else {
             $nextArtifactToOpen = $SummaryPath
         }
-        $reason = 'The runner output still leaves at least one top-level summary pointer implicit, but the manifest or fallback helper artifacts already provide enough information to promote those links into the saved summary.'
+        $reason = 'The runner output still leaves at least one top-level summary pointer implicit, but the manifest or matching saved helper artifacts already provide enough information to promote those links into the saved summary.'
         $nextFocus = 'Run the summary-pointer repair helper, then reopen the pointer-source or handoff helper to confirm the summary now advertises the refresh and handoff artifacts directly.'
     }
 } else {
@@ -154,7 +192,7 @@ if ($runnerHasExplicitTopLevelPointers) {
     $recommendedCommand = $recommendedRunnerCommand
     $recommendedGuideCommand = $refreshStatusCommand
     $nextArtifactToOpen = $SummaryPath
-    $reason = 'The saved summary is still missing top-level helper pointers and there is not enough manifest-backed or fallback artifact state to repair them cleanly after the fact.'
+    $reason = 'The saved summary is still missing top-level helper pointers and there is not enough manifest-backed or current-summary artifact state to repair them cleanly after the fact.'
     $nextFocus = 'Rerun the recommended validator so the helper chain is regenerated before trusting narrower issue #3 replay guidance.'
 }
 
@@ -167,8 +205,10 @@ $report = [ordered]@{
     manifest_artifact_exists = [bool]$manifestExists
     refresh_artifact_path = $refreshPath
     refresh_artifact_exists = [bool]$refreshExists
+    refresh_matches_summary = [bool]$refreshMatchesSummary
     handoff_artifact_path = $handoffPath
     handoff_artifact_exists = [bool]$handoffExists
+    handoff_matches_summary = [bool]$handoffMatchesSummary
     repair_report_path = $repairReportPath
     repair_report_exists = [bool]$repairReportExists
     repair_report_status = if ($repairReport) { $repairReport.status } else { $null }
@@ -183,7 +223,10 @@ $report = [ordered]@{
     runner_refresh_path_fully_wired = [bool]$runnerRefreshPathFullyWired
     runner_handoff_path_fully_wired = [bool]$runnerHandoffPathFullyWired
     runner_has_explicit_top_level_pointers = [bool]$runnerHasExplicitTopLevelPointers
+    refresh_pointer_recoverable = [bool]$refreshPointerRecoverable
+    handoff_pointer_recoverable = [bool]$handoffPointerRecoverable
     repair_could_promote_pointers = [bool]$repairCouldPromotePointers
+    implicit_pointer_chain_usable = [bool]$implicitPointerChainUsable
     pointer_repair_already_ran = [bool]$pointerRepairAlreadyRan
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
@@ -210,8 +253,10 @@ Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
 Write-Host ("Manifest exists: {0}" -f $report.manifest_artifact_exists)
 Write-Host ("Refresh:   {0}" -f $report.refresh_artifact_path)
 Write-Host ("Refresh exists: {0}" -f $report.refresh_artifact_exists)
+Write-Host ("Refresh matches summary: {0}" -f $report.refresh_matches_summary)
 Write-Host ("Handoff:   {0}" -f $report.handoff_artifact_path)
 Write-Host ("Handoff exists: {0}" -f $report.handoff_artifact_exists)
+Write-Host ("Handoff matches summary: {0}" -f $report.handoff_matches_summary)
 Write-Host ("Repair report: {0}" -f $report.repair_report_path)
 Write-Host ("Repair exists: {0}" -f $report.repair_report_exists)
 if ($report.repair_report_status) {
@@ -224,7 +269,10 @@ Write-Host ("Manifest handoff path recorded: {0}" -f $report.manifest_records_ha
 Write-Host ("Runner refresh path fully wired: {0}" -f $report.runner_refresh_path_fully_wired)
 Write-Host ("Runner handoff path fully wired: {0}" -f $report.runner_handoff_path_fully_wired)
 Write-Host ("Explicit top-level pointers: {0}" -f $report.runner_has_explicit_top_level_pointers)
+Write-Host ("Refresh pointer recoverable: {0}" -f $report.refresh_pointer_recoverable)
+Write-Host ("Handoff pointer recoverable: {0}" -f $report.handoff_pointer_recoverable)
 Write-Host ("Repair can promote pointers: {0}" -f $report.repair_could_promote_pointers)
+Write-Host ("Implicit chain usable: {0}" -f $report.implicit_pointer_chain_usable)
 Write-Host ("Pointer repair already ran: {0}" -f $report.pointer_repair_already_ran)
 Write-Host ''
 Write-Host ("Status: {0}" -f $report.status)
