@@ -130,13 +130,13 @@ if (-not [string]::IsNullOrWhiteSpace($artifactRoot)) {
 }
 
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+$refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
-$manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
+$manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $boundaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
-$bundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
+$bundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
 
 $guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
@@ -341,7 +341,7 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     $nextArtifactToOpen = if ($summary.surface_check_artifact_path) { $summary.surface_check_artifact_path } else { $SummaryPath }
 } elseif ($manifestError) {
     $recommendedCommand = $refreshChainCommand
-    $recommendedGuideCommand = $refreshStatusCommand
+    $recommendedGuideCommand = $summaryGuideCommand
     $nextFocus = 'Repair or regenerate the saved issue #3 manifest before trusting manifest-backed refresh or handoff pointers for the next narrow replay.'
     $reason = 'The saved manifest for the current issue #3 summary could not be read cleanly, so this helper cannot safely trust manifest-backed pointer recovery yet.'
     $nextArtifactToOpen = if ($manifestExists) { $manifestPath } else { $SummaryPath }
