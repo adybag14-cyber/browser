@@ -231,7 +231,7 @@ $steps.Add($wiringSafeStep) | Out-Null
 
 $runRawWiringStatus = [bool](
     $wiringSafeStep.success -and
-    @('runner-contract-missing', 'safe-to-run-existing-helper') -contains $wiringSafeStep.status
+    $wiringSafeStep.status -eq 'safe-to-run-existing-helper'
 )
 if ($runRawWiringStatus) {
     $steps.Add((Invoke-JsonHelper -Name 'runner-output-wiring-status' -ScriptPath $wiringStatusScript -Arguments @('-SummaryPath', $SummaryPath, '-Json'))) | Out-Null
