@@ -226,7 +226,7 @@ $nextFocus = $null
 
 if (-not $summaryHasArtifactRootField) {
     $status = 'artifact-root-fallback-used'
-    $reason = 'The saved summary omits artifact_root, so this safe helper fell back to the summary directory instead of relying on the raw pointer-sources helper\'s strict-mode access to that field.'
+    $reason = 'The saved summary omits artifact_root, so this safe helper fell back to the summary directory instead of relying on the raw pointer-sources helper''s strict-mode access to that field.'
     $nextFocus = 'Use the safe next-step command from this report or regenerate the broader issue #3 outputs before going back to the raw pointer-sources helper.'
 } elseif ($refreshExists -and $refreshRecord -and -not $refreshHasSummaryPathField) {
     $status = 'refresh-artifact-missing-summary-path'
