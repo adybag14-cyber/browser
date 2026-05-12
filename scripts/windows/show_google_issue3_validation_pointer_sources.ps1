@@ -153,8 +153,12 @@ $preferredStartHelper = if ($handoffArtifactUsable) {
     'recommended-runner'
 }
 
-$recommendedCommand = if ($preferredStartHelper -eq 'handoff' -and $handoffRecord -and $handoffRecord.recommended_command) {
-    $handoffRecord.recommended_command
+$recommendedCommand = if ($preferredStartHelper -eq 'handoff') {
+    if ($handoffRecord -and $handoffRecord.recommended_command) {
+        $handoffRecord.recommended_command
+    } else {
+        $handoffGuideCommand
+    }
 } elseif ($preferredStartHelper -eq 'refresh-status') {
     $refreshStatusCommand
 } else {
