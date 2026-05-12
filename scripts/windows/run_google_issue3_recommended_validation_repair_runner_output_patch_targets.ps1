@@ -289,6 +289,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $runnerOutputSafeCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-runner-output-wiring') { $runnerOutputWiringCommand },
     if ($patchTargetsStep) { $patchTargetsStep.recommended_guide_command },
     if ($runnerOutputSafeStep) { $runnerOutputSafeStep.recommended_guide_command },
     if ($status -eq 'ready-for-runner-output-wiring') { $patchTargetsVerificationCommand },
@@ -297,7 +298,7 @@ $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
     if ($runnerPatchStillRequired) { 'Use the emitted safe-route artifact to wire the remaining direct refresh and handoff fields into scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the narrower runner-output wiring audit.' },
-    if ($status -eq 'ready-for-runner-output-wiring') { 'The direct runner-output contract looks wired, so reopen the runner-output wiring helpers instead of reopening the patch-target route.' },
+    if ($status -eq 'ready-for-runner-output-wiring') { 'The direct runner-output contract looks wired, so reopen the safe runner-output wiring helper first and use the raw wiring audit as the stricter follow-up instead of reopening the patch-target route.' },
     if ($status -eq 'runner-already-wired-regenerate-outputs') { 'Regenerate or repair the saved issue #3 outputs on Windows now that the live runner source already carries the direct contract fields.' },
     if ($patchTargetsStep) { $patchTargetsStep.next_focus },
     if ($runnerOutputSafeStep) { $runnerOutputSafeStep.next_focus },
