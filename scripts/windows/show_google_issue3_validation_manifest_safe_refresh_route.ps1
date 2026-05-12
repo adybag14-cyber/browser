@@ -262,9 +262,9 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunHandoffSafeRefreshRoute) { $handoffSafeRefreshRouteStep.recommended_guide_command },
-    if ($manifestSafeStep.status -eq 'safe-to-run-manifest-guide') { $manifestGuideCommand },
     $manifestSafeStep.recommended_guide_command,
     if ($shouldRunHandoffSafeRefreshRoute) { $handoffSafeCommand },
+    if ($manifestSafeStep.status -eq 'safe-to-run-manifest-guide') { $manifestGuideCommand },
     $summaryGuideCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
