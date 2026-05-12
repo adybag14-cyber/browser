@@ -96,7 +96,28 @@ function Add-MissingField {
     }
 }
 
+function Get-DirectFieldAssignmentCount {
+    param(
+        [string]$SourceText,
+        [Parameter(Mandatory = $true)]
+        [string]$AssignmentText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SourceText)) {
+        return 0
+    }
+
+    return [regex]::Matches($SourceText, [regex]::Escape($AssignmentText)).Count
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
+$runnerScriptPath = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation.ps1'
+$runnerScriptExists = Test-Path -LiteralPath $runnerScriptPath -PathType Leaf
+$runnerScriptSource = if ($runnerScriptExists) {
+    Get-Content -LiteralPath $runnerScriptPath -Raw
+} else {
+    $null
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -175,10 +196,22 @@ $patchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$repairRunnerOutputContractCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 
 $runnerOutputsFullyWired = [bool]($summaryHasAllRunnerFields -and $manifestHasAllRunnerFields)
 $manifestBackfillsSummary = [bool]((-not $summaryHasAllRunnerFields) -and $manifestHasAllRunnerFields)
 $summaryOutrunsManifest = [bool]($summaryHasAllRunnerFields -and (-not $manifestHasAllRunnerFields))
+$runnerRefreshPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_path = $RefreshChainArtifactPath'
+$runnerRefreshErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_error = $RefreshChainArtifactError'
+$runnerHandoffPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_path = $HandoffArtifactPath'
+$runnerHandoffErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_error = $HandoffArtifactError'
+$runnerSourceIndicatesDirectFieldWiring = [bool](
+    $runnerRefreshPathAssignmentCount -ge 2 -and
+    $runnerRefreshErrorAssignmentCount -ge 2 -and
+    $runnerHandoffPathAssignmentCount -ge 2 -and
+    $runnerHandoffErrorAssignmentCount -ge 2
+)
+$runnerPatchStillRequired = [bool](($refreshContractIncomplete -or $handoffContractIncomplete) -and (-not $runnerSourceIndicatesDirectFieldWiring))
 
 $status = $null
 $reason = $null
@@ -208,6 +241,13 @@ if (-not $manifestExists) {
     $recommendedCommand = $refreshStatusCommand
     $recommendedGuideCommand = $handoffGuideCommand
     $nextArtifactToOpen = if ($summaryRecordsHandoffPath) { $configuredSummaryHandoffPath } elseif ($manifestRecordsHandoffPath) { $configuredManifestHandoffPath } else { $handoffPath }
+} elseif ($runnerSourceIndicatesDirectFieldWiring) {
+    $status = 'saved-artifacts-stale-runner-already-wired'
+    $reason = 'The saved summary or manifest still omits direct refresh or handoff fields, but the live runner source already writes those fields into both output objects.'
+    $nextFocus = 'Regenerate the recommended validation outputs on Windows, or run the saved-output repair helper on the current artifacts before trusting patch-target guidance again.'
+    $recommendedCommand = $recommendedRunnerCommand
+    $recommendedGuideCommand = $repairRunnerOutputContractCommand
+    $nextArtifactToOpen = $SummaryPath
 } elseif ($onlyRefreshContractIncomplete) {
     $status = 'refresh-fields-missing-only'
     $reason = 'The remaining runner-output gap is limited to refresh path or refresh error fields; the handoff contract is already present in both saved outputs.'
@@ -288,6 +328,16 @@ $report = [ordered]@{
     runner_outputs_fully_wired = [bool]$runnerOutputsFullyWired
     manifest_backfills_summary = [bool]$manifestBackfillsSummary
     summary_outruns_manifest = [bool]$summaryOutrunsManifest
+    runner_script_path = $runnerScriptPath
+    runner_script_exists = [bool]$runnerScriptExists
+    runner_source_indicates_direct_field_wiring = [bool]$runnerSourceIndicatesDirectFieldWiring
+    runner_patch_still_required = [bool]$runnerPatchStillRequired
+    runner_direct_field_assignment_counts = [ordered]@{
+        refresh_chain_artifact_path = $runnerRefreshPathAssignmentCount
+        refresh_chain_artifact_error = $runnerRefreshErrorAssignmentCount
+        handoff_artifact_path = $runnerHandoffPathAssignmentCount
+        handoff_artifact_error = $runnerHandoffErrorAssignmentCount
+    }
     missing_runner_fields = @($missingFields)
     next_artifact_to_open = $nextArtifactToOpen
     recommended_command = $recommendedCommand
@@ -297,6 +347,7 @@ $report = [ordered]@{
     patch_targets_command = $patchTargetsCommand
     refresh_status_command = $refreshStatusCommand
     handoff_guide_command = $handoffGuideCommand
+    repair_runner_output_contract_command = $repairRunnerOutputContractCommand
     broader_runner_command = $recommendedRunnerCommand
     status = $status
     reason = $reason
@@ -327,6 +378,9 @@ Write-Host ("Manifest missing handoff fields: {0}" -f $report.manifest_missing_h
 Write-Host ("Refresh contract incomplete: {0}" -f $report.refresh_contract_incomplete)
 Write-Host ("Handoff contract incomplete: {0}" -f $report.handoff_contract_incomplete)
 Write-Host ("Fully wired: {0}" -f $report.runner_outputs_fully_wired)
+Write-Host ("Runner script: {0}" -f $report.runner_script_path)
+Write-Host ("Runner source wired: {0}" -f $report.runner_source_indicates_direct_field_wiring)
+Write-Host ("Runner patch still required: {0}" -f $report.runner_patch_still_required)
 if ($report.manifest_backfills_summary) {
     Write-Host 'Manifest backfills summary: True'
 }
@@ -345,3 +399,4 @@ Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Repair: {0}" -f $report.repair_runner_output_contract_command)
