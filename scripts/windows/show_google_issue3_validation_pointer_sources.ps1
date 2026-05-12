@@ -57,6 +57,16 @@ function Read-ArtifactJson {
     }
 }
 
+function Test-HasProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
 function Get-PointerSource {
     param(
         [Parameter(Mandatory = $true)]
@@ -95,12 +105,25 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
     Split-Path -Parent $SummaryPath
 }
 
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$manifestConfiguredPath = if (Test-HasProperty -Object $summary -Name 'manifest_artifact_path') {
+    $summary.manifest_artifact_path
+} else {
+    $null
+}
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifestConfiguredPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = Read-ArtifactJson $manifestPath
 
-$configuredSummaryRefreshPath = $summary.refresh_chain_artifact_path
-$configuredManifestRefreshPath = if ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }
+$configuredSummaryRefreshPath = if (Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path') {
+    $summary.refresh_chain_artifact_path
+} else {
+    $null
+}
+$configuredManifestRefreshPath = if (Test-HasProperty -Object $manifestRecord -Name 'refresh_chain_artifact_path') {
+    $manifestRecord.refresh_chain_artifact_path
+} else {
+    $null
+}
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)
 $manifestRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)
 $configuredRefreshPath = if ($summaryRecordsRefreshArtifactPath) {
@@ -120,8 +143,16 @@ if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary
 $refreshPointerSource = Get-PointerSource -SummaryRecorded $summaryRecordsRefreshArtifactPath -ManifestRecorded $manifestRecordsRefreshArtifactPath -ArtifactExists $refreshExists
 $refreshArtifactUsable = [bool]($refreshExists -and $refreshMatchesSummary)
 
-$configuredSummaryHandoffPath = $summary.handoff_artifact_path
-$configuredManifestHandoffPath = if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }
+$configuredSummaryHandoffPath = if (Test-HasProperty -Object $summary -Name 'handoff_artifact_path') {
+    $summary.handoff_artifact_path
+} else {
+    $null
+}
+$configuredManifestHandoffPath = if (Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_path') {
+    $manifestRecord.handoff_artifact_path
+} else {
+    $null
+}
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)
 $manifestRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)
 $configuredHandoffPath = if ($summaryRecordsHandoffArtifactPath) {
