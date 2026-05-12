@@ -115,8 +115,10 @@ $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\wind
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $runnerWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$runnerWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
@@ -220,16 +222,16 @@ if (-not $manifestExists) {
 } elseif ($manifestError) {
     $status = 'manifest-unreadable'
     $reason = 'The saved manifest could not be read cleanly, so the existing manifest guide should not be trusted under strict mode for this summary.'
-    $nextFocus = 'Regenerate the saved issue #3 outputs with the broader runner, then reopen the runner wiring audit before trusting the manifest guide again.'
+    $nextFocus = 'Regenerate the saved issue #3 outputs with the broader runner, then reopen the safe runner wiring audit before trusting the manifest guide again.'
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $runnerWiringStatusCommand
+    $recommendedGuideCommand = $runnerWiringStatusSafeCommand
     $nextArtifactToOpen = if ($manifestExists) { $manifestPath } else { $SummaryPath }
 } elseif ($runnerContractMissing) {
     $status = 'runner-contract-missing'
     $reason = 'The summary or manifest still omits at least one direct refresh or handoff field that the existing manifest guide reads under strict mode, but the branch now includes a bounded repair helper for normalizing those saved outputs immediately after a run.'
-    $nextFocus = 'Run the runner-output contract repair helper first, then rerun the runner wiring audit before returning to the manifest guide.'
+    $nextFocus = 'Run the runner-output contract repair helper first, then rerun the safe runner wiring audit before returning to the manifest guide.'
     $recommendedCommand = $runnerContractRepairCommand
-    $recommendedGuideCommand = $runnerWiringStatusCommand
+    $recommendedGuideCommand = $runnerWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ($manifestGuideContractMissing) {
     $status = 'manifest-guide-contract-missing'
@@ -243,7 +245,7 @@ if (-not $manifestExists) {
     $reason = 'The saved refresh artifact is missing, unreadable, or belongs to a different summary, so the helper chain should be refreshed before relying on the manifest guide.'
     $nextFocus = 'Refresh the saved helper chain from the current summary before using the narrower manifest or handoff guidance.'
     $recommendedCommand = $refreshChainCommand
-    $recommendedGuideCommand = $refreshStatusCommand
+    $recommendedGuideCommand = $refreshStatusSafeCommand
     $nextArtifactToOpen = if ($refreshExists) { $resolvedRefreshPath } else { $SummaryPath }
 } else {
     $status = 'safe-to-run-manifest-guide'
@@ -292,8 +294,10 @@ $report = [ordered]@{
     handoff_safe_command = $handoffSafeCommand
     handoff_guide_command = $handoffGuideCommand
     refresh_status_command = $refreshStatusCommand
+    refresh_status_safe_command = $refreshStatusSafeCommand
     refresh_chain_command = $refreshChainCommand
     runner_wiring_status_command = $runnerWiringStatusCommand
+    runner_wiring_status_safe_command = $runnerWiringStatusSafeCommand
     runner_patch_targets_command = $runnerPatchTargetsCommand
     artifact_bundle_command = $artifactBundleCommand
     summary_guide_command = $summaryGuideCommand
