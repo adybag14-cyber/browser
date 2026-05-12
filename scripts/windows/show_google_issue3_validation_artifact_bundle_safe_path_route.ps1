@@ -216,14 +216,23 @@ $steps = [System.Collections.Generic.List[object]]::new()
 $bundleSafeStep = Invoke-JsonHelper -Name 'artifact-bundle-safe' -ScriptPath $bundleSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 $steps.Add($bundleSafeStep) | Out-Null
 
-$shouldRunRawBundle = [bool]($bundleSafeStep.success -and $bundleSafeStep.status -eq 'safe-to-run-existing-helper')
+$shouldRunRawBundle = [bool](
+    $bundleSafeStep.success -and
+    $bundleSafeStep.recommended_command -eq $bundleCommand
+)
 $bundleStep = $null
 if ($shouldRunRawBundle) {
     $bundleStep = Invoke-JsonHelper -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 } else {
-    $bundleStep = New-SkippedHelperStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_command, $bundleSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_focus, 'Use the current artifact-bundle-safe guidance; the raw artifact-bundle audit should only reopen after the safe checkpoint says it is ready.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The artifact-bundle-safe checkpoint did not report safe-to-run-existing-helper, so the raw artifact-bundle helper was not reopened yet.'
+    $bundleStep = New-SkippedHelperStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_command, $bundleSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_focus, 'Use the current artifact-bundle-safe guidance; the raw artifact-bundle audit should only reopen after the safe checkpoint actively recommends it.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The artifact-bundle-safe checkpoint did not currently recommend the raw artifact-bundle audit, so the raw artifact-bundle helper was not reopened yet.'
 }
 $steps.Add($bundleStep) | Out-Null
+
+$readyForBundleFollowUp = [bool](
+    $shouldRunRawBundle -and
+    $bundleStep.success -and
+    $bundleStep.recommended_command -eq $handoffSafeCommand
+)
 
 $status = $null
 $reason = $null
@@ -232,10 +241,10 @@ if (-not $bundleSafeStep.success) {
     $reason = 'The artifact-bundle-safe helper did not finish cleanly, so the next Windows replay should start from that safer checkpoint before widening back out.'
 } elseif ($shouldRunRawBundle -and -not $bundleStep.success) {
     $status = 'artifact-bundle-helper-failed'
-    $reason = 'The artifact-bundle-safe helper reported that the raw bundle audit was ready, but the raw artifact-bundle helper did not finish cleanly, so the next replay should reopen that bounded audit directly.'
-} elseif ($shouldRunRawBundle -and $bundleStep.status -eq 'complete') {
+    $reason = 'The artifact-bundle-safe helper recommended reopening the raw bundle audit, but the raw artifact-bundle helper did not finish cleanly, so the next replay should reopen that bounded audit directly.'
+} elseif ($readyForBundleFollowUp) {
     $status = 'ready-for-bundle-follow-up'
-    $reason = 'The artifact-bundle-safe helper cleared the strict-mode prerequisites and the raw artifact-bundle audit completed, so the next Windows replay can continue from the narrower follow-up guidance it emitted.'
+    $reason = 'The artifact-bundle-safe helper cleared the strict-mode prerequisites and the raw artifact-bundle audit now recommends the handoff-safe checkpoint, so the next Windows replay can continue from that narrower follow-up guidance.'
 } elseif ($shouldRunRawBundle) {
     $status = 'artifact-bundle-follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
@@ -257,8 +266,8 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $bundleSafeCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($shouldRunRawBundle -and $bundleStep.status -eq 'complete') { $handoffSafeCommand },
-    if ($shouldRunRawBundle -and $bundleStep.status -ne 'complete') { $bundleSafePathRouteCommand },
+    if ($readyForBundleFollowUp) { $handoffSafeCommand },
+    if ($shouldRunRawBundle -and -not $readyForBundleFollowUp) { $bundleSafePathRouteCommand },
     if ($shouldRunRawBundle) { $bundleStep.recommended_guide_command },
     $bundleSafeStep.recommended_guide_command,
     $summaryGuideSafeCommand
@@ -276,7 +285,7 @@ $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
 
 $report = [ordered]@{
     issue = 'Google issue #3 artifact bundle safe path route'
-    purpose = 'Run the issue #3 artifact-bundle-safe checkpoint first and, when it says the raw artifact-bundle audit is ready, immediately reopen that raw helper so the next Windows replay can continue from the narrowest trustworthy bundle checkpoint.'
+    purpose = 'Run the issue #3 artifact-bundle-safe checkpoint first and, when it recommends that the raw artifact-bundle audit is ready, immediately reopen that raw helper so the next Windows replay can continue from the narrowest trustworthy bundle checkpoint.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
