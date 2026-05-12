@@ -204,6 +204,8 @@ $refreshChainScript = Join-Path $PSScriptRoot 'refresh_google_issue3_validation_
 $wiringStatusSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_wiring_status_safe.ps1'
 $wiringStatusScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_wiring_status.ps1'
 $handoffSafeRefreshRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe_refresh_route.ps1'
+$summaryGuideSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_summary_guide_safe.ps1'
+$summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 $requiredHelpers = @(
     $artifactPathRepairScript,
@@ -211,7 +213,8 @@ $requiredHelpers = @(
     $refreshChainScript,
     $wiringStatusSafeScript,
     $wiringStatusScript,
-    $handoffSafeRefreshRouteScript
+    $handoffSafeRefreshRouteScript,
+    $summaryGuideSafeScript
 )
 foreach ($helperPath in $requiredHelpers) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -298,7 +301,7 @@ $guideSources = @(
     if ($refreshChainStep) { $refreshChainStep.recommended_guide_command },
     if ($repairStep) { $repairStep.recommended_guide_command },
     if ($pathRepairStep) { $pathRepairStep.recommended_guide_command },
-    'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+    $summaryGuideSafeCommand
 )
 $focusSources = @(
     if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.next_focus },
@@ -333,6 +336,7 @@ $report = [ordered]@{
     reason = $reason
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
+    summary_guide_safe_command = $summaryGuideSafeCommand
     next_focus = $nextFocus
     next_artifact_to_open = $nextArtifactToOpen
     runner_output_wiring_safe_status = if ($wiringSafeStep) { $wiringSafeStep.status } else { $null }
@@ -394,6 +398,7 @@ Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Safe summary guide: {0}" -f $report.summary_guide_safe_command)
 
 if ($status -eq 'helper-failure') {
     exit 1
