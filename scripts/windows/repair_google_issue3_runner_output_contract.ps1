@@ -246,8 +246,11 @@ $status = if (-not $manifestExists) {
     'noop'
 }
 
-$recommendedCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
-$recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
+$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$runnerOutputPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
+$recommendedCommand = $runnerOutputWiringSafeCommand
+$recommendedGuideCommand = $runnerOutputWiringCommand
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $reason = if ($status -eq 'updated') {
     'The saved issue #3 summary and manifest now both advertise the refresh and handoff runner-output contract directly, so later helpers no longer need to infer those top-level fields from partial pointer recovery alone.'
@@ -263,7 +266,7 @@ $reason = if ($status -eq 'updated') {
     'The saved issue #3 summary and manifest already expose the direct refresh and handoff runner-output fields, so there was nothing left for this helper to repair.'
 }
 $nextFocus = if ($status -eq 'updated' -or $status -eq 'noop') {
-    'Reopen the runner-output wiring helper and confirm the current saved outputs now report the full direct contract before widening back out to later refresh or handoff helpers.'
+    'Reopen the safe runner-output wiring audit first, then use the raw wiring helper only after the safe gate says the stricter check is appropriate.'
 } else {
     'Regenerate the broader recommended-validation outputs first, then rerun this repair helper only if the runner still leaves a contract gap.'
 }
@@ -289,6 +292,9 @@ $report = [ordered]@{
     resolved_handoff_artifact_path = $resolvedHandoffPath
     handoff_path_value_source = if ($handoffConfigured) { $handoffConfigured.source } else { 'fallback-path' }
     handoff_error_value_source = $handoffErrorValue.source
+    runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
+    runner_output_wiring_command = $runnerOutputWiringCommand
+    runner_output_patch_targets_command = $runnerOutputPatchTargetsCommand
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $broaderRunnerCommand
@@ -331,4 +337,5 @@ Write-Host ("Reason: {0}" -f $report.reason)
 Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Verify: {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Patch targets: {0}" -f $report.runner_output_patch_targets_command)
 Write-Host ("Runner: {0}" -f $report.broader_runner_command)
