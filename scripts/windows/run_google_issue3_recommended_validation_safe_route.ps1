@@ -273,10 +273,10 @@ if (-not $ArtifactPath) {
 
 $runnerScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation.ps1'
 $summaryGuideSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_summary_guide_safe.ps1'
-$artifactBundleSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artifact_bundle_safe.ps1'
+$artifactBundleSafePathRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artifact_bundle_safe_path_route.ps1'
 $handoffSafeRefreshRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 
-foreach ($helperPath in @($runnerScript, $summaryGuideSafeScript, $artifactBundleSafeScript, $handoffSafeRefreshRouteScript)) {
+foreach ($helperPath in @($runnerScript, $summaryGuideSafeScript, $artifactBundleSafePathRouteScript, $handoffSafeRefreshRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
     }
@@ -284,7 +284,7 @@ foreach ($helperPath in @($runnerScript, $summaryGuideSafeScript, $artifactBundl
 
 $runnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
-$artifactBundleSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
+$artifactBundleSafePathRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe_path_route.ps1'
 $handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 
 $steps = [System.Collections.Generic.List[object]]::new()
@@ -300,20 +300,20 @@ if ($summaryExists) {
 }
 $steps.Add($summaryGuideStep) | Out-Null
 
-$artifactBundleSafeStep = $null
+$artifactBundleSafePathRouteStep = $null
 if ($summaryGuideStep.success) {
-    $artifactBundleSafeStep = Invoke-JsonHelper -Name 'artifact-bundle-safe' -ScriptPath $artifactBundleSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+    $artifactBundleSafePathRouteStep = Invoke-JsonHelper -Name 'artifact-bundle-safe-path-route' -ScriptPath $artifactBundleSafePathRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 } else {
-    $artifactBundleSafeStep = New-SkippedHelperStep -Name 'artifact-bundle-safe' -ScriptPath $artifactBundleSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.recommended_command, $runnerCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.next_focus, 'The safe summary checkpoint needs attention before the bundle-safe wrapper can make a narrower handoff decision.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.next_artifact_to_open, $SummaryPath)) -Reason 'Skipped because the safe summary guide did not complete cleanly.'
+    $artifactBundleSafePathRouteStep = New-SkippedHelperStep -Name 'artifact-bundle-safe-path-route' -ScriptPath $artifactBundleSafePathRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.recommended_command, $runnerCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.next_focus, 'The safe summary checkpoint needs attention before the bundle-safe path route can make a narrower handoff decision.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($summaryGuideStep.next_artifact_to_open, $SummaryPath)) -Reason 'Skipped because the safe summary guide did not complete cleanly.'
 }
-$steps.Add($artifactBundleSafeStep) | Out-Null
+$steps.Add($artifactBundleSafePathRouteStep) | Out-Null
 
-$shouldRunHandoffSafeRefreshRoute = [bool]($artifactBundleSafeStep.success -and $artifactBundleSafeStep.status -eq 'safe-to-run-existing-helper')
+$shouldRunHandoffSafeRefreshRoute = [bool]($artifactBundleSafePathRouteStep.success -and $artifactBundleSafePathRouteStep.status -eq 'ready-for-bundle-follow-up')
 $handoffSafeRefreshRouteStep = $null
 if ($shouldRunHandoffSafeRefreshRoute) {
     $handoffSafeRefreshRouteStep = Invoke-JsonHelper -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 } else {
-    $handoffSafeRefreshRouteStep = New-SkippedHelperStep -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($artifactBundleSafeStep.recommended_command, $summaryGuideStep.recommended_command, $runnerCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($artifactBundleSafeStep.recommended_guide_command, $summaryGuideStep.recommended_guide_command, $artifactBundleSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($artifactBundleSafeStep.next_focus, $summaryGuideStep.next_focus, 'The bundle-safe checkpoint still needs follow-up before the narrower handoff-safe refresh route can run.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($artifactBundleSafeStep.next_artifact_to_open, $summaryGuideStep.next_artifact_to_open, $SummaryPath)) -Reason 'Skipped because the bundle-safe checkpoint did not yet declare the raw helper chain safe enough for the handoff-safe refresh route.'
+    $handoffSafeRefreshRouteStep = New-SkippedHelperStep -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($artifactBundleSafePathRouteStep.recommended_command, $summaryGuideStep.recommended_command, $runnerCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($artifactBundleSafePathRouteStep.recommended_guide_command, $summaryGuideStep.recommended_guide_command, $artifactBundleSafePathRouteCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($artifactBundleSafePathRouteStep.next_focus, $summaryGuideStep.next_focus, 'The bundle-safe path route still needs follow-up before the narrower handoff-safe refresh route can run.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($artifactBundleSafePathRouteStep.next_artifact_to_open, $summaryGuideStep.next_artifact_to_open, $SummaryPath)) -Reason 'Skipped because the bundle-safe path route did not yet declare the raw bundle guidance ready for the handoff-safe refresh route.'
 }
 $steps.Add($handoffSafeRefreshRouteStep) | Out-Null
 
@@ -325,22 +325,19 @@ if (-not $runnerStep.success -and -not $summaryExists) {
 } elseif (-not $summaryGuideStep.success) {
     $status = 'summary-guide-safe-failed'
     $reason = 'The safe summary guide did not complete cleanly, so the wrapper cannot make a trustworthy narrower recommendation yet.'
-} elseif (-not $artifactBundleSafeStep.success) {
-    $status = 'artifact-bundle-safe-failed'
-    $reason = 'The safe artifact-bundle checkpoint did not complete cleanly, so the wrapper stopped before the narrower handoff-safe route.'
+} elseif (-not $artifactBundleSafePathRouteStep.success) {
+    $status = 'artifact-bundle-safe-path-route-failed'
+    $reason = 'The artifact-bundle safe-path wrapper did not complete cleanly, so the wrapper stopped before the narrower handoff-safe refresh route.'
 } elseif ($shouldRunHandoffSafeRefreshRoute -and -not $handoffSafeRefreshRouteStep.success) {
     $status = 'handoff-safe-refresh-route-failed'
     $reason = 'The wrapper reached the handoff-safe refresh route, but that narrowed checkpoint did not complete cleanly.'
 } elseif ($shouldRunHandoffSafeRefreshRoute) {
     $status = 'handoff-safe-refresh-route-ready'
-    $reason = 'The wrapper ran the broader issue #3 recommended validation and then chained straight into the safe handoff refresh route, so the next Windows replay can continue from the narrowed safe guidance.'
-} elseif ($artifactBundleSafeStep.status -eq 'safe-to-run-existing-helper') {
-    $status = 'bundle-safe-ready-for-handoff-route'
-    $reason = 'The safe artifact-bundle checkpoint says the raw helper chain is coherent for the current summary, so the next replay can move on to the handoff-safe refresh route.'
+    $reason = 'The wrapper ran the broader issue #3 recommended validation and then chained through the safe summary and bundle path-route checkpoints into the handoff-safe refresh route, so the next Windows replay can continue from the narrowed safe guidance.'
 } else {
     $status = 'safe-follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
-        $artifactBundleSafeStep.reason,
+        $artifactBundleSafePathRouteStep.reason,
         $summaryGuideStep.reason,
         'The broader validation completed, but the safe helper chain still wants a bounded follow-up before the narrower handoff route is trusted.'
     )
@@ -348,28 +345,28 @@ if (-not $runnerStep.success -and -not $summaryExists) {
 
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunHandoffSafeRefreshRoute) { $handoffSafeRefreshRouteStep.recommended_command },
-    $artifactBundleSafeStep.recommended_command,
+    $artifactBundleSafePathRouteStep.recommended_command,
     $summaryGuideStep.recommended_command,
     $runnerStep.recommended_command,
     $runnerCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunHandoffSafeRefreshRoute) { $handoffSafeRefreshRouteStep.recommended_guide_command },
-    $artifactBundleSafeStep.recommended_guide_command,
+    $artifactBundleSafePathRouteStep.recommended_guide_command,
     $summaryGuideStep.recommended_guide_command,
-    $artifactBundleSafeCommand,
+    $artifactBundleSafePathRouteCommand,
     $summaryGuideSafeCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunHandoffSafeRefreshRoute) { $handoffSafeRefreshRouteStep.next_focus },
-    $artifactBundleSafeStep.next_focus,
+    $artifactBundleSafePathRouteStep.next_focus,
     $summaryGuideStep.next_focus,
     $runnerStep.next_focus,
     'Run the broader issue #3 recommended validation first, then use the safe helper chain to choose the narrowest next checkpoint.'
 )
 $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunHandoffSafeRefreshRoute) { $handoffSafeRefreshRouteStep.next_artifact_to_open },
-    $artifactBundleSafeStep.next_artifact_to_open,
+    $artifactBundleSafePathRouteStep.next_artifact_to_open,
     $summaryGuideStep.next_artifact_to_open,
     $runnerStep.next_artifact_to_open,
     $SummaryPath
@@ -377,7 +374,7 @@ $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
 
 $report = [ordered]@{
     issue = 'Google issue #3 recommended validation safe route wrapper'
-    purpose = 'Run the broader issue #3 recommended validation first and then continue through the safe summary, bundle, and handoff-refresh checkpoints so the next Windows replay can follow the safest narrowed route without manual step selection.'
+    purpose = 'Run the broader issue #3 recommended validation first and then continue through the safe summary, bundle safe-path, and handoff-refresh checkpoints so the next Windows replay can follow the safest narrowed route without manual step selection.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     repo_root = $resolvedRepoRoot
     browser_exe = $BrowserExe
@@ -386,7 +383,7 @@ $report = [ordered]@{
     summary_available = [bool]$summaryExists
     runner_command = $runnerCommand
     summary_guide_safe_command = $summaryGuideSafeCommand
-    artifact_bundle_safe_command = $artifactBundleSafeCommand
+    artifact_bundle_safe_path_route_command = $artifactBundleSafePathRouteCommand
     handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     leave_open = [bool]$LeaveOpen
     skip_auto_attached_html = [bool]$SkipAutoAttachedHtml
@@ -418,7 +415,7 @@ $report | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding As
 
 if ($Json) {
     $report | ConvertTo-Json -Depth 8
-    if (@('runner-failed-no-summary', 'summary-guide-safe-failed', 'artifact-bundle-safe-failed', 'handoff-safe-refresh-route-failed') -contains $status) {
+    if (@('runner-failed-no-summary', 'summary-guide-safe-failed', 'artifact-bundle-safe-path-route-failed', 'handoff-safe-refresh-route-failed') -contains $status) {
         exit 1
     }
     exit 0
@@ -448,6 +445,6 @@ Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
 
-if (@('runner-failed-no-summary', 'summary-guide-safe-failed', 'artifact-bundle-safe-failed', 'handoff-safe-refresh-route-failed') -contains $status) {
+if (@('runner-failed-no-summary', 'summary-guide-safe-failed', 'artifact-bundle-safe-path-route-failed', 'handoff-safe-refresh-route-failed') -contains $status) {
     exit 1
 }
