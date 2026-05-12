@@ -202,6 +202,7 @@ $bundleSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artif
 $bundleScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artifact_bundle.ps1'
 $bundleSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
 $bundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
+$bundleSafePathRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe_path_route.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
@@ -257,7 +258,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunRawBundle -and $bundleStep.status -eq 'complete') { $handoffSafeCommand },
-    if ($shouldRunRawBundle -and $bundleStep.status -ne 'complete') { $bundleSafeCommand },
+    if ($shouldRunRawBundle -and $bundleStep.status -ne 'complete') { $bundleSafePathRouteCommand },
     if ($shouldRunRawBundle) { $bundleStep.recommended_guide_command },
     $bundleSafeStep.recommended_guide_command,
     $summaryGuideSafeCommand
@@ -281,6 +282,7 @@ $report = [ordered]@{
     artifact_path = $ArtifactPath
     artifact_bundle_safe_command = $bundleSafeCommand
     artifact_bundle_command = $bundleCommand
+    artifact_bundle_safe_path_route_command = $bundleSafePathRouteCommand
     handoff_safe_command = $handoffSafeCommand
     summary_guide_safe_command = $summaryGuideSafeCommand
     raw_bundle_follow_up_ran = [bool]$shouldRunRawBundle
