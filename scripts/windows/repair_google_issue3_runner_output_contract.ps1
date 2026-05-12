@@ -64,6 +64,20 @@ function Test-HasProperty {
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 function Get-ConfiguredPathRecord {
     param(
         [object]$Primary,
@@ -150,8 +164,9 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
-    $summary.artifact_root
+$configuredArtifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($configuredArtifactRoot)) {
+    $configuredArtifactRoot
 } else {
     Split-Path -Parent $SummaryPath
 }
