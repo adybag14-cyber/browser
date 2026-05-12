@@ -117,6 +117,7 @@ $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scrip
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
@@ -260,9 +261,9 @@ if (-not $summaryHasArtifactRootField) {
 } elseif ((-not $handoffExists) -or $handoffError -or ($handoffRecord -and $handoffSafeFieldsMissing.Count -gt 0) -or ($handoffRecord -and -not $handoffMatchesSummary)) {
     $status = 'handoff-artifact-needs-rebuild'
     $reason = 'The saved handoff artifact is missing, unreadable, incomplete, or belongs to a different summary, so the existing refresh-status helper is safer to revisit after the helper chain is refreshed.'
-    $nextFocus = 'Refresh the helper chain from the current summary, then reopen the handoff-safe checkpoint before trusting the existing refresh-status helper.'
+    $nextFocus = 'Refresh the helper chain from the current summary, then reopen the combined handoff-safe refresh route before trusting the existing refresh-status helper.'
     $recommendedCommand = $refreshChainCommand
-    $recommendedGuideCommand = $handoffSafeCommand
+    $recommendedGuideCommand = $handoffSafeRefreshRouteCommand
     $nextArtifactToOpen = if ($handoffExists) { $handoffPath } else { $SummaryPath }
 } else {
     $status = 'safe-to-run-existing-helper'
@@ -317,6 +318,7 @@ $report = [ordered]@{
     refresh_chain_command = $refreshChainCommand
     manifest_safe_command = $manifestSafeCommand
     handoff_safe_command = $handoffSafeCommand
+    handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     artifact_bundle_command = $artifactBundleCommand
     summary_guide_command = $summaryGuideCommand
     next_artifact_to_open = $nextArtifactToOpen
