@@ -1,12 +1,12 @@
 [CmdletBinding()]
 param(
     [string]$SummaryPath,
-    [string]$ManifestPath,
+    [string]$ArtifactPath,
     [switch]$Json
 )
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = "Stop"
 
 function Resolve-RepoRoot([string]$StartPath) {
     if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -15,7 +15,7 @@ function Resolve-RepoRoot([string]$StartPath) {
 
     $cursor = [System.IO.Path]::GetFullPath($StartPath)
     while ($true) {
-        if (Test-Path (Join-Path $cursor 'build.zig')) {
+        if (Test-Path (Join-Path $cursor "build.zig")) {
             return $cursor
         }
 
@@ -45,20 +45,13 @@ function Resolve-ArtifactCandidatePath {
 }
 
 function Read-ArtifactJson {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path
-    )
+    param([string]$Path)
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw "Artifact not found: $Path"
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
     }
 
-    try {
-        return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-    } catch {
-        throw "Artifact is not valid JSON: $Path"
-    }
+    return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
 function Test-HasProperty {
@@ -71,56 +64,49 @@ function Test-HasProperty {
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
 }
 
-function Resolve-PreferredPathValue {
+function Get-ConfiguredPathRecord {
     param(
-        [object]$Summary,
-        [object]$Manifest,
-        [Parameter(Mandatory = $true)]
-        [string]$FieldName,
-        [Parameter(Mandatory = $true)]
-        [string]$ArtifactRoot,
-        [Parameter(Mandatory = $true)]
-        [string]$FallbackName
-    )
-
-    if ((Test-HasProperty -Object $Summary -Name $FieldName) -and -not [string]::IsNullOrWhiteSpace($Summary.$FieldName)) {
-        return [pscustomobject]@{
-            value = $Summary.$FieldName
-            source = 'summary'
-        }
-    }
-
-    if ((Test-HasProperty -Object $Manifest -Name $FieldName) -and -not [string]::IsNullOrWhiteSpace($Manifest.$FieldName)) {
-        return [pscustomobject]@{
-            value = $Manifest.$FieldName
-            source = 'manifest'
-        }
-    }
-
-    return [pscustomobject]@{
-        value = (Resolve-ArtifactCandidatePath -ConfiguredPath $null -ArtifactRoot $ArtifactRoot -FallbackName $FallbackName)
-        source = 'fallback-path'
-    }
-}
-
-function Resolve-PreferredErrorValue {
-    param(
-        [object]$Summary,
-        [object]$Manifest,
+        [object]$Primary,
+        [object]$Secondary,
         [Parameter(Mandatory = $true)]
         [string]$FieldName
     )
 
-    if (Test-HasProperty -Object $Summary -Name $FieldName) {
+    if ((Test-HasProperty -Object $Primary -Name $FieldName) -and -not [string]::IsNullOrWhiteSpace($Primary.$FieldName)) {
         return [pscustomobject]@{
-            value = $Summary.$FieldName
+            value = $Primary.$FieldName
             source = 'summary'
         }
     }
 
-    if (Test-HasProperty -Object $Manifest -Name $FieldName) {
+    if ((Test-HasProperty -Object $Secondary -Name $FieldName) -and -not [string]::IsNullOrWhiteSpace($Secondary.$FieldName)) {
         return [pscustomobject]@{
-            value = $Manifest.$FieldName
+            value = $Secondary.$FieldName
+            source = 'manifest'
+        }
+    }
+
+    return $null
+}
+
+function Get-ErrorValueRecord {
+    param(
+        [object]$Primary,
+        [object]$Secondary,
+        [Parameter(Mandatory = $true)]
+        [string]$FieldName
+    )
+
+    if (Test-HasProperty -Object $Primary -Name $FieldName) {
+        return [pscustomobject]@{
+            value = $Primary.$FieldName
+            source = 'summary'
+        }
+    }
+
+    if (Test-HasProperty -Object $Secondary -Name $FieldName) {
+        return [pscustomobject]@{
+            value = $Secondary.$FieldName
             source = 'manifest'
         }
     }
@@ -131,98 +117,171 @@ function Resolve-PreferredErrorValue {
     }
 }
 
-function Set-ArtifactField {
+function Set-ContractField {
     param(
         [Parameter(Mandatory = $true)]
-        [object]$Artifact,
+        $Object,
         [Parameter(Mandatory = $true)]
         [string]$FieldName,
         $Value,
-        [Parameter(Mandatory = $true)]
-        [string]$TargetName,
-        [Parameter(Mandatory = $true)]
-        [System.Collections.Generic.List[object]]$ChangeLog
+        [switch]$TreatBlankAsMissing
     )
 
-    $hadField = Test-HasProperty -Object $Artifact -Name $FieldName
-    $previousValue = if ($hadField) { $Artifact.$FieldName } else { $null }
-    $changed = (-not $hadField) -or ($previousValue -ne $Value)
-
-    if (-not $hadField) {
-        $Artifact | Add-Member -NotePropertyName $FieldName -NotePropertyValue $Value
-    } else {
-        $Artifact.$FieldName = $Value
+    $property = $Object.PSObject.Properties[$FieldName]
+    $needsUpdate = -not $property
+    if (-not $needsUpdate -and $TreatBlankAsMissing) {
+        $needsUpdate = [string]::IsNullOrWhiteSpace([string]$property.Value)
     }
 
-    $ChangeLog.Add([pscustomobject]@{
-        target = $TargetName
-        field = $FieldName
-        changed = [bool]$changed
-        previous_value = $previousValue
-        new_value = $Value
-    }) | Out-Null
+    if (-not $needsUpdate) {
+        return $false
+    }
+
+    $Object | Add-Member -NotePropertyName $FieldName -NotePropertyValue $Value -Force
+    return $true
 }
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
-    $SummaryPath = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json'
+    $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
+}
+if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
+    throw "Issue #3 recommended validation summary not found: $SummaryPath"
 }
 
-$summary = Read-ArtifactJson -Path $SummaryPath
-$artifactRoot = if ((Test-HasProperty -Object $summary -Name 'artifact_root') -and -not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
+$summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
     $summary.artifact_root
 } else {
     Split-Path -Parent $SummaryPath
 }
-
-if (-not $ManifestPath) {
-    $ManifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ((Test-HasProperty -Object $summary -Name 'manifest_artifact_path') -and -not [string]::IsNullOrWhiteSpace($summary.manifest_artifact_path)) { $summary.manifest_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+if (-not $ArtifactPath) {
+    $ArtifactPath = Join-Path $artifactRoot 'google-issue3-runner-output-contract-repair.json'
 }
 
-$manifest = Read-ArtifactJson -Path $ManifestPath
-$changeLog = [System.Collections.Generic.List[object]]::new()
-
-$refreshPath = Resolve-PreferredPathValue -Summary $summary -Manifest $manifest -FieldName 'refresh_chain_artifact_path' -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
-$handoffPath = Resolve-PreferredPathValue -Summary $summary -Manifest $manifest -FieldName 'handoff_artifact_path' -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
-$refreshError = Resolve-PreferredErrorValue -Summary $summary -Manifest $manifest -FieldName 'refresh_chain_artifact_error'
-$handoffError = Resolve-PreferredErrorValue -Summary $summary -Manifest $manifest -FieldName 'handoff_artifact_error'
-
-Set-ArtifactField -Artifact $summary -FieldName 'refresh_chain_artifact_path' -Value $refreshPath.value -TargetName 'summary' -ChangeLog $changeLog
-Set-ArtifactField -Artifact $summary -FieldName 'refresh_chain_artifact_error' -Value $refreshError.value -TargetName 'summary' -ChangeLog $changeLog
-Set-ArtifactField -Artifact $summary -FieldName 'handoff_artifact_path' -Value $handoffPath.value -TargetName 'summary' -ChangeLog $changeLog
-Set-ArtifactField -Artifact $summary -FieldName 'handoff_artifact_error' -Value $handoffError.value -TargetName 'summary' -ChangeLog $changeLog
-
-Set-ArtifactField -Artifact $manifest -FieldName 'refresh_chain_artifact_path' -Value $refreshPath.value -TargetName 'manifest' -ChangeLog $changeLog
-Set-ArtifactField -Artifact $manifest -FieldName 'refresh_chain_artifact_error' -Value $refreshError.value -TargetName 'manifest' -ChangeLog $changeLog
-Set-ArtifactField -Artifact $manifest -FieldName 'handoff_artifact_path' -Value $handoffPath.value -TargetName 'manifest' -ChangeLog $changeLog
-Set-ArtifactField -Artifact $manifest -FieldName 'handoff_artifact_error' -Value $handoffError.value -TargetName 'manifest' -ChangeLog $changeLog
-
-$summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $SummaryPath -Encoding Ascii
-$manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ManifestPath -Encoding Ascii
-
-$changedFields = @($changeLog | Where-Object { $_.changed })
-$report = [ordered]@{
-    issue = 'Google issue #3 runner output contract repair'
-    purpose = 'Repair the saved recommended-validation summary and manifest so both artifacts expose refresh and handoff path and error fields directly.'
-    generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
-    summary_path = $SummaryPath
-    manifest_artifact_path = $ManifestPath
-    resolved_refresh_artifact_path = $refreshPath.value
-    resolved_handoff_artifact_path = $handoffPath.value
-    refresh_path_value_source = $refreshPath.source
-    handoff_path_value_source = $handoffPath.source
-    refresh_error_value_source = $refreshError.source
-    handoff_error_value_source = $handoffError.source
-    changed_field_count = $changedFields.Count
-    changed_fields = @($changedFields)
-    verify_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
-    status = if ($changedFields.Count -gt 0) { 'repaired' } else { 'already-direct' }
-    reason = if ($changedFields.Count -gt 0) {
-        'The saved runner outputs were normalized so later issue #3 helpers can rely on direct refresh and handoff fields instead of inferring them indirectly.'
-    } else {
-        'The saved runner outputs already exposed the direct refresh and handoff fields, so no repair was needed.'
+$manifestConfigured = Get-ConfiguredPathRecord -Primary $summary -Secondary $null -FieldName 'manifest_artifact_path'
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($manifestConfigured) { $manifestConfigured.value } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
+$manifestRecord = $null
+$manifestError = $null
+if ($manifestExists) {
+    try {
+        $manifestRecord = Read-ArtifactJson $manifestPath
+    } catch {
+        $manifestError = $_.Exception.Message
     }
 }
+$manifestReadable = [bool]$manifestRecord
+
+$refreshConfigured = Get-ConfiguredPathRecord -Primary $summary -Secondary $manifestRecord -FieldName 'refresh_chain_artifact_path'
+$handoffConfigured = Get-ConfiguredPathRecord -Primary $summary -Secondary $manifestRecord -FieldName 'handoff_artifact_path'
+$refreshErrorValue = Get-ErrorValueRecord -Primary $summary -Secondary $manifestRecord -FieldName 'refresh_chain_artifact_error'
+$handoffErrorValue = Get-ErrorValueRecord -Primary $summary -Secondary $manifestRecord -FieldName 'handoff_artifact_error'
+
+$resolvedRefreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($refreshConfigured) { $refreshConfigured.value } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
+$resolvedHandoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($handoffConfigured) { $handoffConfigured.value } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+
+$summaryUpdatedFields = New-Object System.Collections.Generic.List[string]
+$manifestUpdatedFields = New-Object System.Collections.Generic.List[string]
+
+if (Set-ContractField -Object $summary -FieldName 'refresh_chain_artifact_path' -Value $resolvedRefreshPath -TreatBlankAsMissing) {
+    $summaryUpdatedFields.Add('refresh_chain_artifact_path') | Out-Null
+}
+if (Set-ContractField -Object $summary -FieldName 'refresh_chain_artifact_error' -Value $refreshErrorValue.value) {
+    $summaryUpdatedFields.Add('refresh_chain_artifact_error') | Out-Null
+}
+if (Set-ContractField -Object $summary -FieldName 'handoff_artifact_path' -Value $resolvedHandoffPath -TreatBlankAsMissing) {
+    $summaryUpdatedFields.Add('handoff_artifact_path') | Out-Null
+}
+if (Set-ContractField -Object $summary -FieldName 'handoff_artifact_error' -Value $handoffErrorValue.value) {
+    $summaryUpdatedFields.Add('handoff_artifact_error') | Out-Null
+}
+
+if ($manifestRecord) {
+    if (Set-ContractField -Object $manifestRecord -FieldName 'refresh_chain_artifact_path' -Value $resolvedRefreshPath -TreatBlankAsMissing) {
+        $manifestUpdatedFields.Add('refresh_chain_artifact_path') | Out-Null
+    }
+    if (Set-ContractField -Object $manifestRecord -FieldName 'refresh_chain_artifact_error' -Value $refreshErrorValue.value) {
+        $manifestUpdatedFields.Add('refresh_chain_artifact_error') | Out-Null
+    }
+    if (Set-ContractField -Object $manifestRecord -FieldName 'handoff_artifact_path' -Value $resolvedHandoffPath -TreatBlankAsMissing) {
+        $manifestUpdatedFields.Add('handoff_artifact_path') | Out-Null
+    }
+    if (Set-ContractField -Object $manifestRecord -FieldName 'handoff_artifact_error' -Value $handoffErrorValue.value) {
+        $manifestUpdatedFields.Add('handoff_artifact_error') | Out-Null
+    }
+}
+
+$summaryUpdated = $summaryUpdatedFields.Count -gt 0
+$manifestUpdated = $manifestUpdatedFields.Count -gt 0
+if ($summaryUpdated) {
+    $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $SummaryPath -Encoding Ascii
+}
+if ($manifestUpdated) {
+    $manifestRecord | ConvertTo-Json -Depth 8 | Set-Content -Path $manifestPath -Encoding Ascii
+}
+
+$status = if (-not $manifestExists) {
+    if ($summaryUpdated) { 'summary-updated-manifest-missing' } else { 'manifest-missing' }
+} elseif (-not $manifestReadable) {
+    if ($summaryUpdated) { 'summary-updated-manifest-unreadable' } else { 'manifest-unreadable' }
+} elseif ($summaryUpdated -or $manifestUpdated) {
+    'updated'
+} else {
+    'noop'
+}
+
+$recommendedCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
+$broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$reason = if ($status -eq 'updated') {
+    'The saved issue #3 summary and manifest now both advertise the refresh and handoff runner-output contract directly, so later helpers no longer need to infer those top-level fields from partial pointer recovery alone.'
+} elseif ($status -eq 'summary-updated-manifest-missing') {
+    'The saved summary was repaired with the direct runner-output contract, but the manifest file is still missing and must be regenerated by a fresh recommended-validation replay.'
+} elseif ($status -eq 'summary-updated-manifest-unreadable') {
+    'The saved summary was repaired with the direct runner-output contract, but the manifest could not be read cleanly and still needs regeneration.'
+} elseif ($status -eq 'manifest-missing') {
+    'No saved manifest was available to repair, so the broader runner still needs to regenerate the missing manifest output.'
+} elseif ($status -eq 'manifest-unreadable') {
+    'The saved manifest exists but could not be read cleanly, so the broader runner still needs to regenerate it before the full direct contract can be trusted.'
+} else {
+    'The saved issue #3 summary and manifest already expose the direct refresh and handoff runner-output fields, so there was nothing left for this helper to repair.'
+}
+$nextFocus = if ($status -eq 'updated' -or $status -eq 'noop') {
+    'Reopen the runner-output wiring helper and confirm the current saved outputs now report the full direct contract before widening back out to later refresh or handoff helpers.'
+} else {
+    'Regenerate the broader recommended-validation outputs first, then rerun this repair helper only if the runner still leaves a contract gap.'
+}
+
+$report = [ordered]@{
+    issue = 'Google issue #3 runner output contract repair'
+    purpose = 'Repair missing top-level refresh and handoff path and error fields in the saved issue #3 recommended-validation summary and manifest outputs.'
+    generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    summary_path = $SummaryPath
+    manifest_artifact_path = $manifestPath
+    manifest_artifact_exists = [bool]$manifestExists
+    manifest_artifact_readable = [bool]$manifestReadable
+    manifest_artifact_error = $manifestError
+    artifact_path = $ArtifactPath
+    status = $status
+    summary_updated = [bool]$summaryUpdated
+    manifest_updated = [bool]$manifestUpdated
+    summary_updated_fields = @($summaryUpdatedFields)
+    manifest_updated_fields = @($manifestUpdatedFields)
+    resolved_refresh_artifact_path = $resolvedRefreshPath
+    refresh_path_value_source = if ($refreshConfigured) { $refreshConfigured.source } else { 'fallback-path' }
+    refresh_error_value_source = $refreshErrorValue.source
+    resolved_handoff_artifact_path = $resolvedHandoffPath
+    handoff_path_value_source = if ($handoffConfigured) { $handoffConfigured.source } else { 'fallback-path' }
+    handoff_error_value_source = $handoffErrorValue.source
+    recommended_command = $recommendedCommand
+    recommended_guide_command = $recommendedGuideCommand
+    broader_runner_command = $broaderRunnerCommand
+    reason = $reason
+    next_focus = $nextFocus
+}
+
+$report | ConvertTo-Json -Depth 6 | Set-Content -Path $ArtifactPath -Encoding Ascii
 
 if ($Json) {
     $report | ConvertTo-Json -Depth 6
@@ -233,17 +292,28 @@ Write-Host 'Google issue #3 runner output contract repair'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
-Write-Host ("Refresh:   {0}" -f $report.resolved_refresh_artifact_path)
-Write-Host ("Refresh source: {0}" -f $report.refresh_path_value_source)
-Write-Host ("Handoff:   {0}" -f $report.resolved_handoff_artifact_path)
-Write-Host ("Handoff source: {0}" -f $report.handoff_path_value_source)
+Write-Host ("Manifest exists: {0}" -f $report.manifest_artifact_exists)
+Write-Host ("Manifest readable: {0}" -f $report.manifest_artifact_readable)
+Write-Host ("Report:    {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
-if ($report.changed_field_count -gt 0) {
-    Write-Host 'Changed fields:'
-    foreach ($field in $report.changed_fields) {
-        Write-Host ("- {0}.{1}" -f $field.target, $field.field)
-    }
+Write-Host ("Summary updated:  {0}" -f $report.summary_updated)
+Write-Host ("Manifest updated: {0}" -f $report.manifest_updated)
+Write-Host ("Refresh path: {0}" -f $report.resolved_refresh_artifact_path)
+Write-Host ("Refresh source: {0}" -f $report.refresh_path_value_source)
+Write-Host ("Handoff path: {0}" -f $report.resolved_handoff_artifact_path)
+Write-Host ("Handoff source: {0}" -f $report.handoff_path_value_source)
+if ($report.summary_updated_fields.Count -gt 0) {
+    Write-Host ("Summary fields:  {0}" -f ($report.summary_updated_fields -join ', '))
+}
+if ($report.manifest_updated_fields.Count -gt 0) {
+    Write-Host ("Manifest fields: {0}" -f ($report.manifest_updated_fields -join ', '))
+}
+if ($report.manifest_artifact_error) {
+    Write-Host ("Manifest error: {0}" -f $report.manifest_artifact_error)
 }
 Write-Host ''
 Write-Host ("Reason: {0}" -f $report.reason)
-Write-Host ("Verify: {0}" -f $report.verify_command)
+Write-Host ("Focus:  {0}" -f $report.next_focus)
+Write-Host ("Verify: {0}" -f $report.recommended_command)
+Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Runner: {0}" -f $report.broader_runner_command)
