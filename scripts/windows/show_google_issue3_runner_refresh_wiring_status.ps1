@@ -117,8 +117,12 @@ $handoffPointerRecoverable = [bool]($manifestRecordsHandoffArtifactPath -or ($ha
 $repairCouldPromotePointers = [bool](((-not $summaryRecordsRefreshArtifactPath) -and $refreshPointerRecoverable) -or ((-not $summaryRecordsHandoffArtifactPath) -and $handoffPointerRecoverable))
 $implicitPointerChainUsable = [bool]($repairCouldPromotePointers -and (($summaryRecordsRefreshArtifactPath -or $refreshPointerRecoverable) -and ($summaryRecordsHandoffArtifactPath -or $handoffPointerRecoverable) -and (($refreshExists -and $refreshMatchesSummary) -or ($handoffExists -and $handoffMatchesSummary))))
 $pointerRepairAlreadyRan = [bool]($repairReportExists -and $repairReport -and $repairReport.status -eq 'updated')
+$refreshPointerMissing = -not $summaryRecordsRefreshArtifactPath
+$handoffPointerMissing = -not $summaryRecordsHandoffArtifactPath
 
 $repairSummaryPointersCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_summary_pointers.ps1'
+$repairRefreshPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_refresh_pointer.ps1'
+$repairHandoffPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_handoff_pointer.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
@@ -171,6 +175,36 @@ if ($runnerHasExplicitTopLevelPointers) {
         }
         $reason = 'The runner summary still omits at least one top-level helper pointer, but the current manifest-backed or matching saved artifacts already keep the helper chain coherent for this summary.'
         $nextFocus = 'Continue from the current handoff or refresh helper now, and leave summary-pointer repair as follow-up cleanup instead of gating the next replay.'
+    } elseif ($refreshPointerMissing -and -not $handoffPointerMissing) {
+        $status = 'refresh-pointer-repair-recommended'
+        $recommendedCommand = $repairRefreshPointerCommand
+        $recommendedGuideCommand = $refreshStatusCommand
+        if ($refreshExists -and $refreshMatchesSummary) {
+            $nextArtifactToOpen = $refreshPath
+        } elseif ($manifestExists) {
+            $nextArtifactToOpen = $manifestPath
+        } elseif ($handoffExists -and $handoffMatchesSummary) {
+            $nextArtifactToOpen = $handoffPath
+        } else {
+            $nextArtifactToOpen = $SummaryPath
+        }
+        $reason = 'The runner summary still omits refresh_chain_artifact_path, but the current manifest or matching refresh artifact already provides enough state to promote that pointer with the dedicated refresh repair helper.'
+        $nextFocus = 'Run the refresh-pointer repair helper, then reopen the refresh-status helper to confirm the saved summary now advertises the refresh artifact directly.'
+    } elseif ($handoffPointerMissing -and -not $refreshPointerMissing) {
+        $status = 'handoff-pointer-repair-recommended'
+        $recommendedCommand = $repairHandoffPointerCommand
+        $recommendedGuideCommand = $handoffGuideCommand
+        if ($handoffExists -and $handoffMatchesSummary) {
+            $nextArtifactToOpen = $handoffPath
+        } elseif ($manifestExists) {
+            $nextArtifactToOpen = $manifestPath
+        } elseif ($refreshExists -and $refreshMatchesSummary) {
+            $nextArtifactToOpen = $refreshPath
+        } else {
+            $nextArtifactToOpen = $SummaryPath
+        }
+        $reason = 'The runner summary still omits handoff_artifact_path, but the current manifest or matching handoff artifact already provides enough state to promote that pointer with the dedicated handoff repair helper.'
+        $nextFocus = 'Run the handoff-pointer repair helper, then reopen the handoff helper to confirm the saved summary now advertises the handoff artifact directly.'
     } else {
         $status = 'summary-repair-recommended'
         $recommendedCommand = $repairSummaryPointersCommand
@@ -184,8 +218,8 @@ if ($runnerHasExplicitTopLevelPointers) {
         } else {
             $nextArtifactToOpen = $SummaryPath
         }
-        $reason = 'The runner output still leaves at least one top-level summary pointer implicit, but the manifest or matching saved helper artifacts already provide enough information to promote those links into the saved summary.'
-        $nextFocus = 'Run the summary-pointer repair helper, then reopen the pointer-source or handoff helper to confirm the summary now advertises the refresh and handoff artifacts directly.'
+        $reason = 'The runner output still leaves both top-level summary pointers implicit, but the manifest or matching saved helper artifacts already provide enough information to promote those links into the saved summary.'
+        $nextFocus = 'Run the combined summary-pointer repair helper, then reopen the pointer-source or handoff helper to confirm the summary now advertises the refresh and handoff artifacts directly.'
     }
 } else {
     $status = 'runner-rerun-needed'
@@ -234,6 +268,8 @@ $report = [ordered]@{
     handoff_guide_command = $handoffGuideCommand
     pointer_source_command = $pointerSourceCommand
     repair_summary_pointers_command = $repairSummaryPointersCommand
+    repair_refresh_pointer_command = $repairRefreshPointerCommand
+    repair_handoff_pointer_command = $repairHandoffPointerCommand
     broader_runner_command = $recommendedRunnerCommand
     next_artifact_to_open = $nextArtifactToOpen
     status = $status
@@ -281,3 +317,5 @@ Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Refresh repair: {0}" -f $report.repair_refresh_pointer_command)
+Write-Host ("Handoff repair: {0}" -f $report.repair_handoff_pointer_command)
