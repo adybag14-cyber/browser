@@ -198,11 +198,72 @@ function New-SkippedHelperStep {
 }
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
+$artifactPathExplicit = -not [string]::IsNullOrWhiteSpace($ArtifactPath)
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json'
 }
+$defaultArtifactRoot = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe'
+if (-not $artifactPathExplicit) {
+    $ArtifactPath = Join-Path $defaultArtifactRoot 'google-issue3-validation-safe-route-runner-patch-wrapper.json'
+}
+
+$validationSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route.ps1'
+$runnerPatchSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets_safe_route.ps1'
+$validationSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route.ps1'
+$runnerPatchSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
+$broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
-    throw "Issue #3 recommended validation summary not found: $SummaryPath"
+    $status = 'summary-missing-broader-replay-first'
+    $reason = 'The top-level issue #3 wrapper did not find a saved recommended-validation summary yet, so it cannot safely reopen the narrower safe-route helpers.'
+    $nextFocus = 'Run the broader issue #3 recommended validation runner first so it regenerates the summary and manifest, then reopen this wrapper to preserve the narrower runner patch guidance in one artifact.'
+    $report = [ordered]@{
+        issue = 'Google issue #3 validation safe route runner patch wrapper'
+        purpose = 'Run the top-level issue #3 validation safe route first and preserve the exact runner patch-target details from the narrower safe patch route in one combined artifact.'
+        generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+        summary_path = $SummaryPath
+        artifact_path = $ArtifactPath
+        validation_safe_route_command = $validationSafeRouteCommand
+        runner_output_patch_targets_safe_route_command = $runnerPatchSafeRouteCommand
+        broader_runner_command = $broaderRunnerCommand
+        runner_patch_route_ran = $false
+        recommended_command = $broaderRunnerCommand
+        recommended_guide_command = $validationSafeRouteCommand
+        recommended_patch_target = $null
+        recommended_regeneration_command = $broaderRunnerCommand
+        recommended_verification_command = $null
+        recommended_repair_command = $null
+        runner_patch_still_required = $false
+        missing_runner_fields = @()
+        summary_patch_snippet_lines = @()
+        manifest_patch_snippet_lines = @()
+        next_focus = $nextFocus
+        next_artifact_to_open = $SummaryPath
+        status = $status
+        reason = $reason
+        steps = @()
+    }
+
+    $report | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding Ascii
+
+    if ($Json) {
+        $report | ConvertTo-Json -Depth 8
+        exit 0
+    }
+
+    Write-Host 'Google issue #3 validation safe route runner patch wrapper'
+    Write-Host ''
+    Write-Host ("Summary:   {0}" -f $report.summary_path)
+    Write-Host ("Artifact:  {0}" -f $report.artifact_path)
+    Write-Host ("Status:    {0}" -f $report.status)
+    Write-Host ("Runner patch route ran: {0}" -f $report.runner_patch_route_ran)
+    Write-Host ''
+    Write-Host ("Reason: {0}" -f $report.reason)
+    Write-Host ("Focus:  {0}" -f $report.next_focus)
+    Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
+    Write-Host ("Run:    {0}" -f $report.recommended_command)
+    Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+    exit 0
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
@@ -210,14 +271,9 @@ $artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
 if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
     $artifactRoot = Split-Path -Parent $SummaryPath
 }
-if (-not $ArtifactPath) {
+if (-not $artifactPathExplicit) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-safe-route-runner-patch-wrapper.json'
 }
-
-$validationSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route.ps1'
-$runnerPatchSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets_safe_route.ps1'
-$validationSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route.ps1'
-$runnerPatchSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
 
 foreach ($helperPath in @($validationSafeRouteScript, $runnerPatchSafeRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -301,6 +357,7 @@ $report = [ordered]@{
     artifact_path = $ArtifactPath
     validation_safe_route_command = $validationSafeRouteCommand
     runner_output_patch_targets_safe_route_command = $runnerPatchSafeRouteCommand
+    broader_runner_command = $broaderRunnerCommand
     runner_patch_route_ran = [bool]$shouldRunRunnerPatchRoute
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
