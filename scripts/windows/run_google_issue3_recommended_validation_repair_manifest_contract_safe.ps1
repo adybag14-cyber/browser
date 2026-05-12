@@ -196,6 +196,7 @@ $manifestContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scr
 $manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $runnerWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 foreach ($helperPath in @($recommendedRunnerScript, $manifestContractRepairScript, $manifestSafeScript)) {
@@ -247,8 +248,8 @@ if (-not $summaryExistsAfterRunner) {
     $status = 'manifest-safe-check-failed'
     $reason = 'The manifest-contract repair step completed, but the safe manifest helper did not finish cleanly, so the next replay should stay on the saved repair artifact first.'
 } elseif ($manifestSafeStep.status -eq 'safe-to-run-manifest-guide') {
-    $status = 'ready-for-manifest-guide'
-    $reason = 'The broader runner completed, the manifest-contract repair normalized the saved manifest metadata, and the safe manifest helper says the narrower manifest guide is ready for the next Windows replay.'
+    $status = 'ready-for-handoff-safe-refresh-route'
+    $reason = 'The broader runner completed, the manifest-contract repair normalized the saved manifest metadata, and the safe manifest helper says the next Windows replay should continue through the newer handoff-safe refresh route.'
 } elseif (-not $runnerStep.success) {
     $status = 'runner-failed-follow-up-ready'
     $reason = 'The broader runner still failed, but it left enough saved state for the manifest-contract repair and safe manifest check to narrow the next issue #3 follow-up step.'
@@ -268,6 +269,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $manifestContractRepairCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-handoff-safe-refresh-route') { $handoffSafeRefreshRouteCommand },
     if ($manifestSafeStep) { $manifestSafeStep.recommended_guide_command },
     if ($manifestContractRepairStep) { $manifestContractRepairStep.recommended_guide_command },
     if ($manifestSafeStep -and $manifestSafeStep.status -eq 'safe-to-run-manifest-guide') { $manifestGuideCommand },
@@ -305,6 +307,7 @@ $report = [ordered]@{
     manifest_safe_command = $manifestSafeCommand
     manifest_guide_command = $manifestGuideCommand
     runner_wiring_status_safe_command = $runnerWiringStatusSafeCommand
+    handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     summary_guide_command = $summaryGuideCommand
     status = $status
     reason = $reason
