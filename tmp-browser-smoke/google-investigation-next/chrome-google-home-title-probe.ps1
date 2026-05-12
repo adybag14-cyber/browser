@@ -142,7 +142,7 @@ try {
             -RepoRoot $RepoRoot `
             -BrowserExe $BrowserExe `
             -Url $probeUrl `
-            -ExpectedTitleContainsAny @("Q=INPUT:q::1", "BOUND|", "FOCUSED|") `
+            -ExpectedTitleContainsAny @("A=INPUT:q::1", "FOCUSED|") `
             -InputText $InputText `
             -ExpectedTypedTitleContains ("TYPED:{0}" -f $InputText) `
             -SendEnter `
