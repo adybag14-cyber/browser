@@ -208,7 +208,14 @@ $recommendedCommand = $null
 $recommendedGuideCommand = $null
 $nextArtifactToOpen = $null
 
-if ($manifestError) {
+if (-not $manifestExists) {
+    $status = 'manifest-missing'
+    $reason = 'The saved manifest is missing for the current summary, so the existing manifest guide cannot be trusted yet.'
+    $nextFocus = 'Regenerate the saved issue #3 outputs with the broader runner, then reopen the summary or runner wiring audit before trusting the manifest guide.'
+    $recommendedCommand = $recommendedRunnerCommand
+    $recommendedGuideCommand = $summaryGuideCommand
+    $nextArtifactToOpen = $SummaryPath
+} elseif ($manifestError) {
     $status = 'manifest-unreadable'
     $reason = 'The saved manifest could not be read cleanly, so the existing manifest guide should not be trusted under strict mode for this summary.'
     $nextFocus = 'Regenerate the saved issue #3 outputs with the broader runner, then reopen the runner wiring audit before trusting the manifest guide again.'
