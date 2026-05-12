@@ -111,6 +111,7 @@ if (-not $ArtifactPath) {
 }
 
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
@@ -239,7 +240,7 @@ if (-not $manifestExists) {
     $reason = 'The broader runner contract is mostly present, but the existing manifest guide still depends on additional manifest-facing fields that are missing under strict mode.'
     $nextFocus = 'Run the manifest-contract repair helper first, then rerun the safe manifest audit before trusting the existing manifest guide.'
     $recommendedCommand = $manifestContractRepairCommand
-    $recommendedGuideCommand = $handoffSafeCommand
+    $recommendedGuideCommand = $manifestSafeCommand
     $nextArtifactToOpen = $manifestPath
 } elseif ((-not $refreshExists) -or (-not $refreshMatchesSummary) -or $refreshError) {
     $status = 'refresh-state-needs-rebuild'
@@ -291,6 +292,7 @@ $report = [ordered]@{
     broader_runner_command = $recommendedRunnerCommand
     runner_contract_repair_command = $runnerContractRepairCommand
     manifest_contract_repair_command = $manifestContractRepairCommand
+    manifest_safe_command = $manifestSafeCommand
     manifest_guide_command = $manifestGuideCommand
     handoff_safe_command = $handoffSafeCommand
     handoff_guide_command = $handoffGuideCommand
@@ -339,7 +341,7 @@ Write-Host ("Guide:     {0}" -f $report.guide_artifact_path)
 Write-Host ("Guide exists: {0}" -f $report.guide_artifact_exists)
 Write-Host ("Boundary:  {0}" -f $report.boundary_artifact_path)
 Write-Host ("Boundary exists: {0}" -f $report.boundary_artifact_exists)
-Write-Host ("Existing manifest guide likely safe: {0}" -f $report.existingManifestGuideLikelySafe)
+Write-Host ("Existing manifest guide likely safe: {0}" -f $report.existing_manifest_guide_likely_safe)
 Write-Host ("Runner contract missing: {0}" -f $report.runner_contract_missing)
 Write-Host ("Manifest guide contract missing: {0}" -f $report.manifest_guide_contract_missing)
 if ($report.summary_missing_fields.Count -gt 0) {
