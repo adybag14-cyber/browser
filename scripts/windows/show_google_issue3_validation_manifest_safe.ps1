@@ -239,7 +239,7 @@ if (-not $manifestExists) {
     $reason = 'The broader runner contract is mostly present, but the existing manifest guide still depends on additional manifest-facing fields that are missing under strict mode.'
     $nextFocus = 'Run the manifest-contract repair helper first, then rerun the safe manifest audit before trusting the existing manifest guide.'
     $recommendedCommand = $manifestContractRepairCommand
-    $recommendedGuideCommand = $manifestGuideCommand
+    $recommendedGuideCommand = $handoffSafeCommand
     $nextArtifactToOpen = $manifestPath
 } elseif ((-not $refreshExists) -or (-not $refreshMatchesSummary) -or $refreshError) {
     $status = 'refresh-state-needs-rebuild'
@@ -339,7 +339,7 @@ Write-Host ("Guide:     {0}" -f $report.guide_artifact_path)
 Write-Host ("Guide exists: {0}" -f $report.guide_artifact_exists)
 Write-Host ("Boundary:  {0}" -f $report.boundary_artifact_path)
 Write-Host ("Boundary exists: {0}" -f $report.boundary_artifact_exists)
-Write-Host ("Existing manifest guide likely safe: {0}" -f $report.existing_manifest_guide_likely_safe)
+Write-Host ("Existing manifest guide likely safe: {0}" -f $report.existingManifestGuideLikelySafe)
 Write-Host ("Runner contract missing: {0}" -f $report.runner_contract_missing)
 Write-Host ("Manifest guide contract missing: {0}" -f $report.manifest_guide_contract_missing)
 if ($report.summary_missing_fields.Count -gt 0) {
