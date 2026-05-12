@@ -241,7 +241,10 @@ $patchTargetsVerificationCommand = if ($patchTargetsStep.record) {
     $null
 }
 $patchTargetsRepairCommand = if ($patchTargetsStep.record) {
-    Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_repair_command' } else { $null }
+    Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_repair_command'
+} else {
+    $null
+}
 $patchTargetsRegenerationCommand = if ($patchTargetsStep.record) {
     Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_regeneration_command'
 } else {
