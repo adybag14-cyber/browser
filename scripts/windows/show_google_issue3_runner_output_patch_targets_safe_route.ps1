@@ -232,18 +232,16 @@ $steps = [System.Collections.Generic.List[object]]::new()
 $patchTargetsSafeStep = Invoke-JsonHelper -Name 'patch-targets-safe' -ScriptPath $patchTargetsSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 $steps.Add($patchTargetsSafeStep) | Out-Null
 
-$safeStatusesThatAllowRawPatchTargets = @(
-    'safe-to-run-patch-targets',
-    'safe-to-run-patch-targets-manifest-missing',
-    'safe-to-run-patch-targets-manifest-unreadable'
+$shouldRunRawPatchTargets = [bool](
+    $patchTargetsSafeStep.success -and
+    $patchTargetsSafeStep.recommended_command -eq $patchTargetsCommand
 )
-$shouldRunRawPatchTargets = [bool]($patchTargetsSafeStep.success -and ($safeStatusesThatAllowRawPatchTargets -contains $patchTargetsSafeStep.status))
 
 $patchTargetsStep = $null
 if ($shouldRunRawPatchTargets) {
     $patchTargetsStep = Invoke-JsonHelper -Name 'patch-targets' -ScriptPath $patchTargetsScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 } else {
-    $patchTargetsStep = New-SkippedHelperStep -Name 'patch-targets' -ScriptPath $patchTargetsScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_command, $patchTargetsSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_guide_command, $runnerOutputWiringSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_focus, 'Use the current safe patch-target guidance; the raw patch-target helper is only needed when the saved outputs are already strict-mode-safe.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The safe patch-target gate did not report a raw patch-target-ready state, so the wrapper stayed on the safer routing helper.'
+    $patchTargetsStep = New-SkippedHelperStep -Name 'patch-targets' -ScriptPath $patchTargetsScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_command, $patchTargetsSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_guide_command, $runnerOutputWiringSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_focus, 'Use the current safe patch-target guidance; the raw patch-target helper is only needed when the saved outputs are already strict-mode-safe.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The safe patch-target gate did not route the next replay to the raw patch-target helper, so the wrapper stayed on the safer routing helper.'
 }
 $steps.Add($patchTargetsStep) | Out-Null
 
@@ -260,11 +258,29 @@ if ($patchTargetsStep.record) {
     $recommendedRegenerationCommand = Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_regeneration_command'
     $recommendedVerificationCommand = Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_verification_command'
     $recommendedRepairCommand = Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_repair_command'
-    $runnerPatchStillRequired = [bool](Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'runner_patch_still_required')
+    $runnerPatchStillRequired = [bool](-not [string]::IsNullOrWhiteSpace($recommendedPatchTarget))
     $missingRunnerFields = @(Get-ArrayValue -Object $patchTargetsStep.record -Name 'missing_runner_fields')
     $summaryPatchSnippetLines = @(Get-ArrayValue -Object $patchTargetsStep.record -Name 'summary_patch_snippet_lines')
     $manifestPatchSnippetLines = @(Get-ArrayValue -Object $patchTargetsStep.record -Name 'manifest_patch_snippet_lines')
 }
+
+$runnerAlreadyWiredNeedsRegeneration = [bool](
+    $shouldRunRawPatchTargets -and
+    -not $runnerPatchStillRequired -and
+    $patchTargetsStep.recommended_guide_command -eq $runnerOutputWiringSafeCommand -and
+    @(
+        $recommendedRepairCommand,
+        $repairRunnerOutputContractCommand,
+        $recommendedRegenerationCommand,
+        $broaderRunnerCommand
+    ) -contains $patchTargetsStep.recommended_command
+)
+$alreadyDirectFromRawPatchTargets = [bool](
+    $shouldRunRawPatchTargets -and
+    -not $runnerPatchStillRequired -and
+    $patchTargetsStep.recommended_guide_command -eq $runnerOutputWiringSafeCommand -and
+    -not $runnerAlreadyWiredNeedsRegeneration
+)
 
 $status = $null
 $reason = $null
@@ -273,25 +289,25 @@ if (-not $patchTargetsSafeStep.success) {
     $reason = 'The safe patch-target helper did not finish cleanly, so the next replay should stay on that strict-mode-safe gate before reopening the raw patch-target helper.'
 } elseif ($shouldRunRawPatchTargets -and -not $patchTargetsStep.success) {
     $status = 'patch-target-helper-failed'
-    $reason = 'The safe helper said the saved outputs were ready for raw patch-target guidance, but the raw patch-target helper did not finish cleanly.'
+    $reason = 'The safe helper routed the next replay to the raw patch-target guidance, but the raw patch-target helper did not finish cleanly.'
 } elseif ($shouldRunRawPatchTargets -and $patchTargetsStep.record -and $runnerPatchStillRequired) {
     $status = 'ready-for-runner-patch'
-    $reason = 'The safe gate passed and the raw patch-target helper surfaced the direct runner-output fields that still need to land in the recommended validation runner.'
-} elseif ($shouldRunRawPatchTargets -and $patchTargetsStep.status -eq 'saved-artifacts-stale-runner-already-wired') {
+    $reason = 'The safe gate routed the next replay to the raw patch-target helper and that helper surfaced the direct runner-output fields that still need to land in the recommended validation runner.'
+} elseif ($runnerAlreadyWiredNeedsRegeneration) {
     $status = 'runner-already-wired-regenerate-outputs'
-    $reason = 'The safe gate passed, but the raw helper reports the live runner source is already wired and the saved outputs are simply stale.'
-} elseif ($shouldRunRawPatchTargets -and $patchTargetsStep.status -eq 'fully-wired') {
+    $reason = 'The safe gate routed the next replay through the raw patch-target helper, and that helper now points back to regeneration or repair because the live runner source is already wired and the saved outputs are stale.'
+} elseif ($alreadyDirectFromRawPatchTargets) {
     $status = 'already-direct'
-    $reason = 'The safe gate passed and the raw patch-target helper confirmed the saved summary and manifest already carry the direct runner-output contract.'
+    $reason = 'The safe gate routed the next replay through the raw patch-target helper, and that helper now points straight to the safe wiring audit because the saved summary and manifest already carry the direct runner-output contract.'
+} elseif ($patchTargetsSafeStep.status -eq 'already-direct') {
+    $status = 'already-direct'
+    $reason = 'The safe patch-target gate says the saved outputs already expose the direct runner-output contract, so no raw patch-target follow-up is needed.'
 } elseif ($shouldRunRawPatchTargets) {
     $status = 'patch-target-follow-up-ready'
     $reason = Get-FirstNonEmptyValue -Values @(
         $patchTargetsStep.reason,
-        'The safe gate passed and the raw patch-target helper produced the next bounded runner-contract guidance.'
+        'The safe gate routed the next replay through the raw patch-target helper and that helper produced the next bounded runner-contract guidance.'
     )
-} elseif ($patchTargetsSafeStep.status -eq 'already-direct') {
-    $status = 'already-direct'
-    $reason = 'The safe patch-target gate says the saved outputs already expose the direct runner-output contract, so no raw patch-target follow-up is needed.'
 } else {
     $status = 'patch-target-safe-follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
@@ -310,7 +326,7 @@ if ($status -eq 'ready-for-runner-patch') {
     $nextFocus = 'Inspect the patch-target lines now preserved in this wrapper artifact, land the direct refresh and handoff runner-output fields in scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the safe wiring audit before reopening the stricter raw verification command preserved in this artifact.'
     $nextArtifactToOpen = $ArtifactPath
 } elseif ($status -eq 'runner-already-wired-regenerate-outputs') {
-    $recommendedCommand = Get-FirstNonEmptyValue -Values @($recommendedRepairCommand, $repairRunnerOutputContractCommand, $broaderRunnerCommand)
+    $recommendedCommand = Get-FirstNonEmptyValue -Values @($patchTargetsStep.recommended_command, $recommendedRepairCommand, $repairRunnerOutputContractCommand, $recommendedRegenerationCommand, $broaderRunnerCommand)
     $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextFocus = 'Regenerate or repair the saved issue #3 outputs now that the live runner source already carries the direct contract fields, then reopen the safe wiring audit before trusting the stricter raw verification command again.'
     $nextArtifactToOpen = $ArtifactPath
@@ -339,7 +355,7 @@ if ($status -eq 'ready-for-runner-patch') {
 
 $report = [ordered]@{
     issue = 'Google issue #3 runner output patch-target safe route'
-    purpose = 'Run the safe patch-target gate first and, when it says the saved outputs are strict-mode-safe, immediately reopen the raw patch-target helper so the next Windows replay can move from routing to runner patch guidance without a manual extra step.'
+    purpose = 'Run the safe patch-target gate first and, when it routes the next replay to the raw patch-target helper, immediately reopen that raw helper so the next Windows replay can move from routing to runner patch guidance without a manual extra step.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
@@ -350,6 +366,8 @@ $report = [ordered]@{
     repair_artifact_paths_command = $repairArtifactPathsCommand
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     raw_patch_targets_ran = [bool]$shouldRunRawPatchTargets
+    runner_already_wired_needs_regeneration = [bool]$runnerAlreadyWiredNeedsRegeneration
+    already_direct_from_raw_patch_targets = [bool]$alreadyDirectFromRawPatchTargets
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     recommended_patch_target = $recommendedPatchTarget
@@ -377,7 +395,7 @@ $report = [ordered]@{
             next_focus = $_.next_focus
             next_artifact_to_open = $_.next_artifact_to_open
             reason = $_.reason
-            runner_patch_still_required = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'runner_patch_still_required') } else { $false }
+            runner_patch_still_required = if ($_.record) { [bool](-not [string]::IsNullOrWhiteSpace((Get-OptionalPropertyValue -Object $_.record -Name 'recommended_patch_target'))) } else { $false }
             missing_runner_fields = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'missing_runner_fields') } else { @() }
             summary_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'summary_patch_snippet_lines') } else { @() }
             manifest_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'manifest_patch_snippet_lines') } else { @() }
