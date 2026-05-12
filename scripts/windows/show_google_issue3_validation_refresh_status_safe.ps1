@@ -120,7 +120,8 @@ $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\window
 $handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$artifactBundleSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
@@ -254,9 +255,9 @@ if (-not $summaryHasArtifactRootField) {
 } elseif ((-not $bundleExists) -or $bundleError -or ($bundleRecord -and $bundleSafeFieldsMissing.Count -gt 0)) {
     $status = 'bundle-artifact-needs-rebuild'
     $reason = 'The saved artifact-bundle record is missing, unreadable, or incomplete for the current summary, so the existing refresh-status helper can still hit strict-mode gaps when it inspects bundle state.'
-    $nextFocus = 'Refresh the helper chain or rebuild the bundle artifact before trusting the existing refresh-status helper.'
+    $nextFocus = 'Refresh the helper chain or rebuild the bundle artifact through the safe bundle checkpoint before trusting the existing refresh-status helper.'
     $recommendedCommand = $refreshChainCommand
-    $recommendedGuideCommand = $artifactBundleCommand
+    $recommendedGuideCommand = $artifactBundleSafeCommand
     $nextArtifactToOpen = if ($bundleExists) { $bundlePath } else { $SummaryPath }
 } elseif ((-not $handoffExists) -or $handoffError -or ($handoffRecord -and $handoffSafeFieldsMissing.Count -gt 0) -or ($handoffRecord -and -not $handoffMatchesSummary)) {
     $status = 'handoff-artifact-needs-rebuild'
@@ -320,6 +321,7 @@ $report = [ordered]@{
     handoff_safe_command = $handoffSafeCommand
     handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     artifact_bundle_command = $artifactBundleCommand
+    artifact_bundle_safe_command = $artifactBundleSafeCommand
     summary_guide_command = $summaryGuideCommand
     next_artifact_to_open = $nextArtifactToOpen
     status = $status
