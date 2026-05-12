@@ -112,15 +112,41 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
 } else {
     Split-Path -Parent $SummaryPath
 }
-if (-not $ArtifactPath) {
-    $ArtifactPath = Join-Path $artifactRoot "google-issue3-validation-handoff-chain-refresh.json"
-}
 
 $guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.guide_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-guide.json"
 $boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.boundary_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-phase-boundary.json"
 $bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-artifact-bundle.json"
-$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
+$manifestRecord = $null
+if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+    try {
+        $manifestRecord = Read-ArtifactJson $manifestPath
+    } catch {
+        $manifestRecord = $null
+    }
+}
+$configuredSummaryHandoffPath = $summary.handoff_artifact_path
+$configuredManifestHandoffPath = if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }
+$configuredHandoffPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)) {
+    $configuredSummaryHandoffPath
+} elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)) {
+    $configuredManifestHandoffPath
+} else {
+    $null
+}
+$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
+if (-not $ArtifactPath) {
+    $configuredSummaryRefreshPath = $summary.refresh_chain_artifact_path
+    $configuredManifestRefreshPath = if ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }
+    $configuredRefreshPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)) {
+        $configuredSummaryRefreshPath
+    } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)) {
+        $configuredManifestRefreshPath
+    } else {
+        $null
+    }
+    $ArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff-chain-refresh.json"
+}
 
 $summaryGuideScript = Join-Path $PSScriptRoot "show_google_issue3_validation_summary_guide.ps1"
 $boundaryScript = Join-Path $PSScriptRoot "show_google_issue3_phase_boundary.ps1"
