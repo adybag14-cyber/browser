@@ -147,7 +147,7 @@ $phaseRoot = if (-not [string]::IsNullOrWhiteSpace($summary.phase_artifact_root)
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path)
 $summaryRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path)
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $boundaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
@@ -565,7 +565,7 @@ if ($bundle.stale_cross_reference_detected) {
         Write-Host ("  Refresh: {0}" -f $mismatch.repair_command)
     }
 }
-if ($bundle.stale_summary_artifact_detected) {
+if ($bundle.staleSummaryArtifactDetected) {
     Write-Host ''
     Write-Host 'Stale summary-derived helpers:'
     foreach ($detail in $bundle.stale_summary_artifact_details) {
