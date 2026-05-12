@@ -85,7 +85,7 @@ $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\
 $repairArtifactPathsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_artifact_paths.ps1'
 $handoffPathCoherencyCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_handoff_path_coherency.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 $summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
@@ -250,18 +250,18 @@ if ($Json) {
 
 Write-Host 'Google issue #3 handoff path coherency safe helper'
 Write-Host ''
-Write-Host ("Summary:   {0}" -f $report.summary_path)
-Write-Host ("Artifact:  {0}" -f $report.artifact_path)
-Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
-Write-Host ("Status:    {0}" -f $report.status)
-Write-Host ("Manifest exists: {0}" -f $report.manifest_artifact_exists)
-Write-Host ("Manifest readable: {0}" -f $report.manifest_artifact_readable)
-if ($report.manifest_artifact_error) {
-    Write-Host ("Manifest error: {0}" -f $report.manifest_artifact_error)
-}
-Write-Host ''
-Write-Host ("Reason: {0}" -f $report.reason)
-Write-Host ("Focus:  {0}" -f $report.next_focus)
-Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
-Write-Host ("Run:    {0}" -f $report.recommended_command)
-Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+    Write-Host ("Summary:   {0}" -f $report.summary_path)
+    Write-Host ("Artifact:  {0}" -f $report.artifact_path)
+    Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
+    Write-Host ("Status:    {0}" -f $report.status)
+    Write-Host ("Manifest exists: {0}" -f $report.manifest_artifact_exists)
+    Write-Host ("Manifest readable: {0}" -f $report.manifest_artifact_readable)
+    if ($report.manifest_artifact_error) {
+        Write-Host ("Manifest error: {0}" -f $report.manifest_artifact_error)
+    }
+    Write-Host ''
+    Write-Host ("Reason: {0}" -f $report.reason)
+    Write-Host ("Focus:  {0}" -f $report.next_focus)
+    Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
+    Write-Host ("Run:    {0}" -f $report.recommended_command)
+    Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
