@@ -189,13 +189,13 @@ if (-not $ArtifactPath) {
 }
 
 $repairChainScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation_repair_chain.ps1'
-$manifestSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_manifest_safe.ps1'
+$manifestSafePathRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_manifest_safe_path_route.ps1'
 $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_chain.ps1'
-$manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
+$manifestSafePathRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe_path_route.ps1'
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
-foreach ($helperPath in @($repairChainScript, $manifestSafeScript)) {
+foreach ($helperPath in @($repairChainScript, $manifestSafePathRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
     }
@@ -206,82 +206,82 @@ if ($RunnerArgument) {
     $repairChainArguments += '-RunnerArgument'
     $repairChainArguments += $RunnerArgument
 }
-$manifestSafeArguments = @('-SummaryPath', $SummaryPath, '-Json')
+$manifestSafePathRouteArguments = @('-SummaryPath', $SummaryPath, '-Json')
 
 $steps = [System.Collections.Generic.List[object]]::new()
 $repairChainStep = Invoke-ScriptStep -Name 'recommended-validation-repair-chain' -ScriptPath $repairChainScript -Arguments $repairChainArguments -ExpectJson
 $steps.Add($repairChainStep) | Out-Null
 
 $summaryExistsAfterRepairChain = Test-Path -LiteralPath $SummaryPath -PathType Leaf
-$manifestSafeStep = $null
+$manifestSafePathRouteStep = $null
 if ($summaryExistsAfterRepairChain) {
-    $manifestSafeStep = Invoke-ScriptStep -Name 'manifest-safe-status' -ScriptPath $manifestSafeScript -Arguments $manifestSafeArguments -ExpectJson
-    $steps.Add($manifestSafeStep) | Out-Null
+    $manifestSafePathRouteStep = Invoke-ScriptStep -Name 'manifest-safe-path-route' -ScriptPath $manifestSafePathRouteScript -Arguments $manifestSafePathRouteArguments -ExpectJson
+    $steps.Add($manifestSafePathRouteStep) | Out-Null
 } else {
-    $manifestSafeStep = New-SkippedStep -Name 'manifest-safe-status' -ScriptPath $manifestSafeScript -Arguments $manifestSafeArguments -Reason 'The combined repair chain did not leave a current summary artifact, so the safe manifest check had no replay state to inspect.' -RecommendedCommand $repairChainCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 validation chain to leave a fresh summary artifact before checking the manifest-safe gate.' -NextArtifactToOpen $ArtifactPath
-    $steps.Add($manifestSafeStep) | Out-Null
+    $manifestSafePathRouteStep = New-SkippedStep -Name 'manifest-safe-path-route' -ScriptPath $manifestSafePathRouteScript -Arguments $manifestSafePathRouteArguments -Reason 'The combined repair chain did not leave a current summary artifact, so the manifest-safe path route had no replay state to inspect.' -RecommendedCommand $repairChainCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 validation chain to leave a fresh summary artifact before checking the manifest-safe path route.' -NextArtifactToOpen $ArtifactPath
+    $steps.Add($manifestSafePathRouteStep) | Out-Null
 }
 
 $status = $null
 $reason = $null
 if (-not $summaryExistsAfterRepairChain) {
     $status = 'repair-chain-no-summary'
-    $reason = 'The broader issue #3 validation repair chain did not leave a summary artifact, so the follow-up manifest-safe check could not continue.'
+    $reason = 'The broader issue #3 validation repair chain did not leave a summary artifact, so the follow-up manifest-safe path route could not continue.'
 } elseif (-not $repairChainStep.success) {
     $status = 'repair-chain-failed'
-    $reason = 'The broader issue #3 validation repair chain did not finish cleanly, so the next replay still needs direct repair-chain attention before the manifest path is trusted.'
-} elseif (-not $manifestSafeStep.success) {
-    $status = 'manifest-safe-check-failed'
-    $reason = 'The validation repair chain completed, but the safe manifest helper did not finish cleanly, so the next replay should stay on the saved repair artifact first.'
-} elseif ($manifestSafeStep.status -eq 'safe-to-run-manifest-guide') {
+    $reason = 'The broader issue #3 validation repair chain did not finish cleanly, so the next replay still needs direct repair-chain attention before the manifest route is trusted.'
+} elseif (-not $manifestSafePathRouteStep.success) {
+    $status = 'manifest-safe-path-route-failed'
+    $reason = 'The validation repair chain completed, but the manifest-safe path-route helper did not finish cleanly, so the next replay should stay on the saved repair artifact first.'
+} elseif ($manifestSafePathRouteStep.status -eq 'ready-for-manifest-guide') {
     $status = 'ready-for-manifest-guide'
-    $reason = 'The broader validation repair chain completed, and the safe manifest helper says the raw issue #3 manifest guide is ready for the next Windows replay.'
+    $reason = 'The broader validation repair chain completed, and the manifest-safe path route says the raw issue #3 manifest guide is ready for the next Windows replay.'
 } else {
     $status = 'follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
-        if ($manifestSafeStep) { $manifestSafeStep.reason },
+        if ($manifestSafePathRouteStep) { $manifestSafePathRouteStep.reason },
         if ($repairChainStep) { $repairChainStep.reason },
-        'The broader validation repair chain and safe manifest check completed, but the next issue #3 replay still needs the follow-up command reported by the saved artifacts.'
+        'The broader validation repair chain and manifest-safe path route completed, but the next issue #3 replay still needs the follow-up command reported by the saved artifacts.'
     )
 }
 
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
-    if ($manifestSafeStep) { $manifestSafeStep.recommended_command },
+    if ($manifestSafePathRouteStep) { $manifestSafePathRouteStep.recommended_command },
     if ($repairChainStep) { $repairChainStep.recommended_command },
     $repairChainCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($status -eq 'ready-for-manifest-guide') { $manifestGuideCommand },
-    if ($manifestSafeStep) { $manifestSafeStep.recommended_guide_command },
+    if ($manifestSafePathRouteStep) { $manifestSafePathRouteStep.recommended_guide_command },
     if ($repairChainStep) { $repairChainStep.recommended_guide_command },
     $summaryGuideCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
-    if ($manifestSafeStep) { $manifestSafeStep.next_focus },
+    if ($manifestSafePathRouteStep) { $manifestSafePathRouteStep.next_focus },
     if ($repairChainStep) { $repairChainStep.next_focus },
-    if (-not $summaryExistsAfterRepairChain) { 'Regenerate the issue #3 recommended validation summary before asking the manifest-safe helper to narrow the next replay.' }
+    if (-not $summaryExistsAfterRepairChain) { 'Regenerate the issue #3 recommended validation summary before asking the manifest-safe path route to narrow the next replay.' }
 )
 $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
-    if ($manifestSafeStep) { $manifestSafeStep.next_artifact_to_open },
+    if ($manifestSafePathRouteStep) { $manifestSafePathRouteStep.next_artifact_to_open },
     if ($repairChainStep) { $repairChainStep.next_artifact_to_open },
     if ($summaryExistsAfterRepairChain) { $SummaryPath },
     $ArtifactPath
 )
 
 $report = [ordered]@{
-    issue = 'Google issue #3 recommended validation repair plus manifest-safe gate'
-    purpose = 'Run the broader issue #3 validation repair chain, then immediately confirm whether the safe manifest checkpoint is clear enough for the next Windows replay to trust the raw manifest guide.'
+    issue = 'Google issue #3 recommended validation repair plus manifest-safe path route'
+    purpose = 'Run the broader issue #3 validation repair chain, then immediately continue through the manifest-safe path route so the next Windows replay only returns to the raw manifest guide when the narrower manifest checkpoints are actually ready.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     runner_argument_passthrough = @($RunnerArgument)
     summary_exists_after_repair_chain = [bool]$summaryExistsAfterRepairChain
     repair_chain_status = $repairChainStep.status
-    manifest_safe_status = $manifestSafeStep.status
+    manifest_safe_path_route_status = $manifestSafePathRouteStep.status
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     repair_chain_command = $repairChainCommand
-    manifest_safe_command = $manifestSafeCommand
+    manifest_safe_path_route_command = $manifestSafePathRouteCommand
     manifest_guide_command = $manifestGuideCommand
     summary_guide_command = $summaryGuideCommand
     next_focus = $nextFocus
@@ -310,20 +310,20 @@ $report | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding As
 
 if ($Json) {
     $report | ConvertTo-Json -Depth 8
-    if (@('repair-chain-no-summary', 'repair-chain-failed', 'manifest-safe-check-failed') -contains $status) {
+    if (@('repair-chain-no-summary', 'repair-chain-failed', 'manifest-safe-path-route-failed') -contains $status) {
         exit 1
     }
     exit 0
 }
 
-Write-Host 'Google issue #3 recommended validation repair plus manifest-safe gate'
+Write-Host 'Google issue #3 recommended validation repair plus manifest-safe path route'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
 Write-Host ("Summary exists after repair chain: {0}" -f $report.summary_exists_after_repair_chain)
 Write-Host ("Repair chain: {0}" -f $report.repair_chain_status)
-Write-Host ("Manifest safe: {0}" -f $report.manifest_safe_status)
+Write-Host ("Manifest safe route: {0}" -f $report.manifest_safe_path_route_status)
 Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
@@ -342,6 +342,6 @@ Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
 
-if (@('repair-chain-no-summary', 'repair-chain-failed', 'manifest-safe-check-failed') -contains $status) {
+if (@('repair-chain-no-summary', 'repair-chain-failed', 'manifest-safe-path-route-failed') -contains $status) {
     exit 1
 }
