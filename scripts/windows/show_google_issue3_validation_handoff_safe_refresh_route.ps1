@@ -247,25 +247,33 @@ if (-not $handoffSafeStep.success) {
     )
 }
 
+$refreshFollowUpRecommendedCommand = if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.recommended_command } else { $null }
+$refreshFollowUpRecommendedGuideCommand = if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.recommended_guide_command } else { $null }
+$refreshFollowUpNextFocus = if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.next_focus } else { $null }
+$refreshFollowUpNextArtifactToOpen = if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.next_artifact_to_open } else { $null }
+$refreshFollowUpFallbackCommand = if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeCommand } else { $null }
+$readyForHandoffGuideCommand = if ($readyForHandoff) { $handoffGuideCommand } else { $null }
+$refreshFollowUpDefaultFocus = if ($shouldRunRefreshStatusSafe) { 'Use the safe refresh-status guidance produced in this run before reopening the narrower handoff path.' } else { $null }
+
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
-    if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.recommended_command },
+    $refreshFollowUpRecommendedCommand,
     $handoffSafeStep.recommended_command,
-    if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeCommand },
+    $refreshFollowUpFallbackCommand,
     $handoffSafeCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.recommended_guide_command },
-    if ($readyForHandoff) { $handoffGuideCommand },
+    $refreshFollowUpRecommendedGuideCommand,
+    $readyForHandoffGuideCommand,
     $handoffSafeStep.recommended_guide_command,
     $summaryGuideCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
-    if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.next_focus },
+    $refreshFollowUpNextFocus,
     $handoffSafeStep.next_focus,
-    if ($shouldRunRefreshStatusSafe) { 'Use the safe refresh-status guidance produced in this run before reopening the narrower handoff path.' }
+    $refreshFollowUpDefaultFocus
 )
 $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
-    if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.next_artifact_to_open },
+    $refreshFollowUpNextArtifactToOpen,
     $handoffSafeStep.next_artifact_to_open,
     $SummaryPath
 )
