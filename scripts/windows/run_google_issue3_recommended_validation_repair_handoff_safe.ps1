@@ -193,7 +193,7 @@ $handoffSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_hand
 $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_chain.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 foreach ($helperPath in @($repairChainScript, $handoffSafeScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
