@@ -51,11 +51,7 @@ function Read-ArtifactJson {
         return $null
     }
 
-    try {
-        return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-    } catch {
-        return $null
-    }
+    return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
 function Test-HasProperty {
