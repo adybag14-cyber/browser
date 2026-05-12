@@ -224,18 +224,19 @@ $status = if ($summaryUpdated) {
 }
 
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $handoffCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
 $recommendedCommand = if ($status -eq 'updated' -or $status -eq 'noop') {
-    $handoffSafeCommand
+    $handoffSafeRefreshRouteCommand
 } else {
     $refreshChainCommand
 }
 $recommendedGuideCommand = if ($status -eq 'updated' -or $status -eq 'noop') {
-    $refreshStatusSafeCommand
+    $handoffSafeCommand
 } else {
     $artifactBundleCommand
 }
@@ -247,7 +248,7 @@ $reason = if ($status -eq 'updated') {
     'The saved issue #3 summary is still missing at least one helper-chain pointer, and no matching manifest-backed or fallback artifact could be promoted into the summary yet.'
 }
 $nextFocus = if ($status -eq 'updated' -or $status -eq 'noop') {
-    'Reopen the safe handoff or safe refresh-status helper first, then use the raw helpers only after those safer checkpoints say the stricter follow-up is appropriate.'
+    'Reopen the handoff-safe refresh route first, then use the raw handoff or refresh helpers only after those safer checkpoints say the stricter follow-up is appropriate.'
 } else {
     'Regenerate or refresh the helper chain first so the missing handoff or refresh artifact exists before trying to repair the summary pointers again.'
 }
@@ -277,6 +278,7 @@ $report = [ordered]@{
     refresh_pointer_source = $refreshRepair.source
     refresh_pointer_exists = [bool]$refreshRepair.exists
     handoff_safe_command = $handoffSafeCommand
+    handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     handoff_command = $handoffCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
     refresh_status_command = $refreshStatusCommand
@@ -322,5 +324,6 @@ Write-Host ("Reason: {0}" -f $report.reason)
 Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Safe handoff route: {0}" -f $report.handoff_safe_refresh_route_command)
 Write-Host ("Raw handoff: {0}" -f $report.handoff_command)
 Write-Host ("Raw refresh: {0}" -f $report.refresh_status_command)
