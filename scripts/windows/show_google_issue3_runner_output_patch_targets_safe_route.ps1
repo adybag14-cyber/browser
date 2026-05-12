@@ -306,13 +306,13 @@ $nextFocus = $null
 $nextArtifactToOpen = $null
 if ($status -eq 'ready-for-runner-patch') {
     $recommendedCommand = $patchTargetsCommand
-    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @($recommendedVerificationCommand, $runnerOutputWiringSafeCommand)
-    $nextFocus = 'Inspect the patch-target lines now preserved in this wrapper artifact, land the direct refresh and handoff runner-output fields in scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the safe wiring audit.'
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
+    $nextFocus = 'Inspect the patch-target lines now preserved in this wrapper artifact, land the direct refresh and handoff runner-output fields in scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the safe wiring audit before reopening the stricter raw verification command preserved in this artifact.'
     $nextArtifactToOpen = $ArtifactPath
 } elseif ($status -eq 'runner-already-wired-regenerate-outputs') {
     $recommendedCommand = Get-FirstNonEmptyValue -Values @($recommendedRepairCommand, $repairRunnerOutputContractCommand, $broaderRunnerCommand)
-    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @($recommendedVerificationCommand, $runnerOutputWiringSafeCommand)
-    $nextFocus = 'Regenerate or repair the saved issue #3 outputs now that the live runner source already carries the direct contract fields.'
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
+    $nextFocus = 'Regenerate or repair the saved issue #3 outputs now that the live runner source already carries the direct contract fields, then reopen the safe wiring audit before trusting the stricter raw verification command again.'
     $nextArtifactToOpen = $ArtifactPath
 } else {
     $recommendedCommand = Get-FirstNonEmptyValue -Values @(
