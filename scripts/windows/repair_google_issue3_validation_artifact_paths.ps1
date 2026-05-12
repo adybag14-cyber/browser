@@ -164,7 +164,10 @@ $status = $null
 $reason = $null
 $recommendedCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
-$nextFocus = 'Reopen the safe handoff gate against the repaired summary and manifest first, then use the raw handoff helper only after the safe gate says the stricter check is appropriate.'
+$runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
+$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$nextFocus = 'Reopen the safe handoff gate against the repaired summary and manifest first, then use the raw handoff helper only after the safe gate says the stricter check is appropriate. If the repaired outputs still show runner-contract gaps, repair that contract and route verification through the safe runner-output wiring helper before reopening the raw audit.'
 if (-not $manifestExists) {
     $status = 'summary-repaired-manifest-missing'
     $reason = 'The summary was normalized, but the manifest file was still missing, so only the summary artifact-path contract could be repaired in this pass.'
@@ -198,6 +201,9 @@ $report = [ordered]@{
     manifest_changed_fields = @($manifestChangedFields)
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
+    runner_contract_repair_command = $runnerContractRepairCommand
+    runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
+    runner_output_wiring_command = $runnerOutputWiringCommand
     next_focus = $nextFocus
     status = $status
     reason = $reason
@@ -235,3 +241,6 @@ Write-Host ("Reason: {0}" -f $report.reason)
 Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Runner contract repair: {0}" -f $report.runner_contract_repair_command)
+Write-Host ("Runner wiring safe:     {0}" -f $report.runner_output_wiring_safe_command)
+Write-Host ("Runner wiring raw:      {0}" -f $report.runner_output_wiring_command)
