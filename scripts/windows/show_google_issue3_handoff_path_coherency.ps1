@@ -56,6 +56,20 @@ function Read-ArtifactJson {
     }
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($Object -and $Object.PSObject.Properties[$Name]) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 function PathsMatch([string]$Left, [string]$Right) {
     if ([string]::IsNullOrWhiteSpace($Left) -or [string]::IsNullOrWhiteSpace($Right)) {
         return $false
@@ -118,8 +132,8 @@ $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = Read-ArtifactJson $manifestPath
 
-$configuredSummaryHandoffPath = $summary.handoff_artifact_path
-$configuredManifestHandoffPath = if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }
+$configuredSummaryHandoffPath = Get-OptionalPropertyValue -Object $summary -Name 'handoff_artifact_path'
+$configuredManifestHandoffPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'handoff_artifact_path'
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)
 $manifestRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)
 $configuredHandoffPath = if ($summaryRecordsHandoffArtifactPath) {
