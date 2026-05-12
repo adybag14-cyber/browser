@@ -78,6 +78,20 @@ function Get-OptionalPropertyValue {
     return $null
 }
 
+function Get-DirectFieldAssignmentCount {
+    param(
+        [string]$SourceText,
+        [Parameter(Mandatory = $true)]
+        [string]$AssignmentText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SourceText)) {
+        return 0
+    }
+
+    return [regex]::Matches($SourceText, [regex]::Escape($AssignmentText)).Count
+}
+
 function Get-ConfiguredPathRecord {
     param(
         [object]$Primary,
@@ -156,6 +170,13 @@ function Set-ContractField {
 }
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
+$runnerScriptPath = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation.ps1'
+$runnerScriptExists = Test-Path -LiteralPath $runnerScriptPath -PathType Leaf
+$runnerScriptSource = if ($runnerScriptExists) {
+    Get-Content -LiteralPath $runnerScriptPath -Raw
+} else {
+    $null
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -251,9 +272,28 @@ $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts
 $runnerOutputPatchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
 $runnerOutputPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$runnerRefreshPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_path = $RefreshChainArtifactPath'
+$runnerRefreshErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_error = $RefreshChainArtifactError'
+$runnerHandoffPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_path = $HandoffArtifactPath'
+$runnerHandoffErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_error = $HandoffArtifactError'
+$runnerSourceIndicatesDirectFieldWiring = [bool](
+    $runnerRefreshPathAssignmentCount -ge 2 -and
+    $runnerRefreshErrorAssignmentCount -ge 2 -and
+    $runnerHandoffPathAssignmentCount -ge 2 -and
+    $runnerHandoffErrorAssignmentCount -ge 2
+)
+$artifactsNeedRegeneration = [bool](
+    $status -eq 'summary-updated-manifest-missing' -or
+    $status -eq 'summary-updated-manifest-unreadable' -or
+    $status -eq 'manifest-missing' -or
+    $status -eq 'manifest-unreadable'
+)
 if ($status -eq 'updated' -or $status -eq 'noop') {
     $recommendedCommand = $runnerOutputWiringSafeCommand
     $recommendedGuideCommand = $runnerOutputWiringCommand
+} elseif ($artifactsNeedRegeneration -and $runnerSourceIndicatesDirectFieldWiring) {
+    $recommendedCommand = $broaderRunnerCommand
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
 } else {
     $recommendedCommand = $broaderRunnerCommand
     $recommendedGuideCommand = $runnerOutputPatchTargetsSafeCommand
@@ -273,6 +313,8 @@ $reason = if ($status -eq 'updated') {
 }
 $nextFocus = if ($status -eq 'updated' -or $status -eq 'noop') {
     'Reopen the safe runner-output wiring audit first, then use the raw wiring helper only after the safe gate says the stricter check is appropriate.'
+} elseif ($artifactsNeedRegeneration -and $runnerSourceIndicatesDirectFieldWiring) {
+    'Regenerate the broader recommended-validation outputs first, then reopen the safe runner-output wiring audit because the live runner source already writes the direct contract fields.'
 } else {
     'Regenerate the broader recommended-validation outputs first, then use the safe patch-target helper before reopening the stricter runner wiring checks if the runner still leaves a contract gap.'
 }
@@ -298,6 +340,15 @@ $report = [ordered]@{
     resolved_handoff_artifact_path = $resolvedHandoffPath
     handoff_path_value_source = if ($handoffConfigured) { $handoffConfigured.source } else { 'fallback-path' }
     handoff_error_value_source = $handoffErrorValue.source
+    runner_script_path = $runnerScriptPath
+    runner_script_exists = [bool]$runnerScriptExists
+    runner_source_indicates_direct_field_wiring = [bool]$runnerSourceIndicatesDirectFieldWiring
+    runner_direct_field_assignment_counts = [ordered]@{
+        refresh_chain_artifact_path = $runnerRefreshPathAssignmentCount
+        refresh_chain_artifact_error = $runnerRefreshErrorAssignmentCount
+        handoff_artifact_path = $runnerHandoffPathAssignmentCount
+        handoff_artifact_error = $runnerHandoffErrorAssignmentCount
+    }
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
     runner_output_patch_targets_safe_command = $runnerOutputPatchTargetsSafeCommand
@@ -330,6 +381,8 @@ Write-Host ("Refresh path: {0}" -f $report.resolved_refresh_artifact_path)
 Write-Host ("Refresh source: {0}" -f $report.refresh_path_value_source)
 Write-Host ("Handoff path: {0}" -f $report.resolved_handoff_artifact_path)
 Write-Host ("Handoff source: {0}" -f $report.handoff_path_value_source)
+Write-Host ("Runner script: {0}" -f $report.runner_script_path)
+Write-Host ("Runner source wired: {0}" -f $report.runner_source_indicates_direct_field_wiring)
 if ($report.summary_updated_fields.Count -gt 0) {
     Write-Host ("Summary fields:  {0}" -f ($report.summary_updated_fields -join ', '))
 }
