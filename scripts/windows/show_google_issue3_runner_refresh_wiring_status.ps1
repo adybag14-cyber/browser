@@ -124,12 +124,31 @@ if ($runnerHasExplicitTopLevelPointers) {
     $reason = 'The saved summary already records both refresh and handoff artifact paths directly, so later helpers do not need to recover those links from the manifest or fallback discovery.'
     $nextFocus = 'Use the handoff and refresh-status helpers for the current replay instead of spending another run on pointer repair.'
 } elseif ($repairCouldPromotePointers) {
-    $status = if ($pointerRepairAlreadyRan) { 'summary-repair-landed' } else { 'summary-repair-recommended' }
-    $recommendedCommand = $repairSummaryPointersCommand
-    $recommendedGuideCommand = $pointerSourceCommand
-    $nextArtifactToOpen = $repairReportPath
-    $reason = 'The runner output still leaves at least one top-level summary pointer implicit, but the manifest or fallback helper artifacts already provide enough information to promote those links into the saved summary.'
-    $nextFocus = 'Run the summary-pointer repair helper, then reopen the pointer-source or handoff helper to confirm the summary now advertises the refresh and handoff artifacts directly.'
+    if ($pointerRepairAlreadyRan) {
+        $status = 'summary-repair-landed'
+        $recommendedCommand = $handoffGuideCommand
+        $recommendedGuideCommand = $pointerSourceCommand
+        if ($repairReportExists) {
+            $nextArtifactToOpen = $repairReportPath
+        } elseif ($handoffExists) {
+            $nextArtifactToOpen = $handoffPath
+        } else {
+            $nextArtifactToOpen = $SummaryPath
+        }
+        $reason = 'The summary-pointer repair helper already promoted at least one missing top-level helper pointer, so the next replay should validate the refreshed handoff path instead of rerunning the same repair immediately.'
+        $nextFocus = 'Reopen the pointer-source or handoff helper and confirm the saved summary now advertises the refresh and handoff artifacts directly.'
+    } else {
+        $status = 'summary-repair-recommended'
+        $recommendedCommand = $repairSummaryPointersCommand
+        $recommendedGuideCommand = $pointerSourceCommand
+        if ($manifestExists) {
+            $nextArtifactToOpen = $manifestPath
+        } else {
+            $nextArtifactToOpen = $SummaryPath
+        }
+        $reason = 'The runner output still leaves at least one top-level summary pointer implicit, but the manifest or fallback helper artifacts already provide enough information to promote those links into the saved summary.'
+        $nextFocus = 'Run the summary-pointer repair helper, then reopen the pointer-source or handoff helper to confirm the summary now advertises the refresh and handoff artifacts directly.'
+    }
 } else {
     $status = 'runner-rerun-needed'
     $recommendedCommand = $recommendedRunnerCommand
