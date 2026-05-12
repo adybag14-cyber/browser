@@ -53,6 +53,30 @@ function Read-ArtifactJson {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function Test-HasProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 function Resolve-PointerRepair {
     param(
         [string]$CurrentPath,
@@ -130,8 +154,9 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
-    $summary.artifact_root
+$configuredArtifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($configuredArtifactRoot)) {
+    $configuredArtifactRoot
 } else {
     Split-Path -Parent $SummaryPath
 }
@@ -139,7 +164,8 @@ if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-summary-pointer-repair.json'
 }
 
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$manifestConfiguredPath = Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path'
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $manifestConfiguredPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = $null
 $manifestError = $null
@@ -154,8 +180,15 @@ if ($manifestExists) {
 $handoffFallbackPath = Join-Path $artifactRoot 'google-issue3-validation-handoff.json'
 $refreshFallbackPath = Join-Path $artifactRoot 'google-issue3-validation-handoff-chain-refresh.json'
 
-$handoffRepair = Resolve-PointerRepair -CurrentPath $summary.handoff_artifact_path -ManifestPath $(if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }) -FallbackPath $handoffFallbackPath
-$refreshRepair = Resolve-PointerRepair -CurrentPath $summary.refresh_chain_artifact_path -ManifestPath $(if ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }) -FallbackPath $refreshFallbackPath
+$summaryHandoffPath = Get-OptionalPropertyValue -Object $summary -Name 'handoff_artifact_path'
+$summaryRefreshPath = Get-OptionalPropertyValue -Object $summary -Name 'refresh_chain_artifact_path'
+$manifestHandoffPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'handoff_artifact_path'
+$manifestRefreshPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'refresh_chain_artifact_path'
+$manifestHandoffError = Get-OptionalPropertyValue -Object $manifestRecord -Name 'handoff_artifact_error'
+$manifestRefreshError = Get-OptionalPropertyValue -Object $manifestRecord -Name 'refresh_chain_artifact_error'
+
+$handoffRepair = Resolve-PointerRepair -CurrentPath $summaryHandoffPath -ManifestPath $manifestHandoffPath -FallbackPath $handoffFallbackPath
+$refreshRepair = Resolve-PointerRepair -CurrentPath $summaryRefreshPath -ManifestPath $manifestRefreshPath -FallbackPath $refreshFallbackPath
 
 $updatedFields = New-Object System.Collections.Generic.List[string]
 $errorFieldRepairs = New-Object System.Collections.Generic.List[string]
@@ -169,10 +202,10 @@ if ($refreshRepair.repaired -and -not [string]::IsNullOrWhiteSpace($refreshRepai
     $updatedFields.Add('refresh_chain_artifact_path') | Out-Null
 }
 if ($manifestRecord) {
-    if (Copy-ErrorFieldFromManifest -Summary $summary -FieldName 'handoff_artifact_error' -ManifestValue $manifestRecord.handoff_artifact_error) {
+    if (Copy-ErrorFieldFromManifest -Summary $summary -FieldName 'handoff_artifact_error' -ManifestValue $manifestHandoffError) {
         $errorFieldRepairs.Add('handoff_artifact_error') | Out-Null
     }
-    if (Copy-ErrorFieldFromManifest -Summary $summary -FieldName 'refresh_chain_artifact_error' -ManifestValue $manifestRecord.refresh_chain_artifact_error) {
+    if (Copy-ErrorFieldFromManifest -Summary $summary -FieldName 'refresh_chain_artifact_error' -ManifestValue $manifestRefreshError) {
         $errorFieldRepairs.Add('refresh_chain_artifact_error') | Out-Null
     }
 }
@@ -213,6 +246,9 @@ $nextFocus = if ($status -eq 'updated' -or $status -eq 'noop') {
     'Regenerate or refresh the helper chain first so the missing handoff or refresh artifact exists before trying to repair the summary pointers again.'
 }
 
+$summaryHandoffPathAfter = Get-OptionalPropertyValue -Object $summary -Name 'handoff_artifact_path'
+$summaryRefreshPathAfter = Get-OptionalPropertyValue -Object $summary -Name 'refresh_chain_artifact_path'
+
 $report = [ordered]@{
     issue = 'Google issue #3 validation summary pointer repair'
     purpose = 'Repair missing handoff and refresh pointer fields in the saved issue #3 recommended-validation summary by promoting the current manifest-backed or fallback artifact paths into the summary itself.'
@@ -227,11 +263,11 @@ $report = [ordered]@{
     updated_fields = @($updatedFields)
     repaired_error_fields = @($errorFieldRepairs)
     handoff_pointer_before = $handoffRepair.current_path
-    handoff_pointer_after = if ($summary.handoff_artifact_path) { $summary.handoff_artifact_path } else { $null }
+    handoff_pointer_after = $summaryHandoffPathAfter
     handoff_pointer_source = $handoffRepair.source
     handoff_pointer_exists = [bool]$handoffRepair.exists
     refresh_pointer_before = $refreshRepair.current_path
-    refresh_pointer_after = if ($summary.refresh_chain_artifact_path) { $summary.refresh_chain_artifact_path } else { $null }
+    refresh_pointer_after = $summaryRefreshPathAfter
     refresh_pointer_source = $refreshRepair.source
     refresh_pointer_exists = [bool]$refreshRepair.exists
     recommended_command = $recommendedCommand
