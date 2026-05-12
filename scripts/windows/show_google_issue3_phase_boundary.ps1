@@ -103,8 +103,14 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
 } else {
     Split-Path -Parent $SummaryPath
 }
+$configuredBoundaryPath = if ($summary.PSObject.Properties['boundary_artifact_path'] -and -not [string]::IsNullOrWhiteSpace($summary.boundary_artifact_path)) {
+    $summary.boundary_artifact_path
+} else {
+    $null
+}
+$resolvedBoundaryArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredBoundaryPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
 if (-not $ArtifactPath) {
-    $ArtifactPath = Join-Path $artifactRoot "google-issue3-phase-boundary.json"
+    $ArtifactPath = $resolvedBoundaryArtifactPath
 }
 
 $phaseResults = @($summary.phase_results)
