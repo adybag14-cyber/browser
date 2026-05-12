@@ -114,6 +114,15 @@ $manifestHasHandoffPathField = Test-HasProperty -Object $manifestRecord -Name 'h
 $manifestHasHandoffErrorField = Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_error'
 $manifestHasAllRunnerFields = [bool]($manifestHasRefreshPathField -and $manifestHasRefreshErrorField -and $manifestHasHandoffPathField -and $manifestHasHandoffErrorField)
 
+$summaryMissingRefreshFields = [bool]((-not $summaryHasRefreshPathField) -or (-not $summaryHasRefreshErrorField))
+$summaryMissingHandoffFields = [bool]((-not $summaryHasHandoffPathField) -or (-not $summaryHasHandoffErrorField))
+$manifestMissingRefreshFields = [bool]((-not $manifestHasRefreshPathField) -or (-not $manifestHasRefreshErrorField))
+$manifestMissingHandoffFields = [bool]((-not $manifestHasHandoffPathField) -or (-not $manifestHasHandoffErrorField))
+$refreshContractIncomplete = [bool]($summaryMissingRefreshFields -or $manifestMissingRefreshFields)
+$handoffContractIncomplete = [bool]($summaryMissingHandoffFields -or $manifestMissingHandoffFields)
+$onlyRefreshContractIncomplete = [bool]($refreshContractIncomplete -and (-not $handoffContractIncomplete))
+$onlyHandoffContractIncomplete = [bool]($handoffContractIncomplete -and (-not $refreshContractIncomplete))
+
 $configuredSummaryRefreshPath = if ($summaryHasRefreshPathField) { $summary.refresh_chain_artifact_path } else { $null }
 $configuredSummaryHandoffPath = if ($summaryHasHandoffPathField) { $summary.handoff_artifact_path } else { $null }
 $configuredManifestRefreshPath = if ($manifestHasRefreshPathField) { $manifestRecord.refresh_chain_artifact_path } else { $null }
@@ -146,6 +155,7 @@ Add-MissingField -List $missingFields -FieldName 'manifest.handoff_artifact_erro
 
 $runnerRefreshWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_refresh_wiring_status.ps1'
 $pointerSourcesCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_pointer_sources.ps1'
+$patchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
@@ -182,26 +192,40 @@ if (-not $manifestExists) {
     $recommendedCommand = $refreshStatusCommand
     $recommendedGuideCommand = $handoffGuideCommand
     $nextArtifactToOpen = if ($summaryRecordsHandoffPath) { $configuredSummaryHandoffPath } elseif ($manifestRecordsHandoffPath) { $configuredManifestHandoffPath } else { $handoffPath }
+} elseif ($onlyRefreshContractIncomplete) {
+    $status = 'refresh-fields-missing-only'
+    $reason = 'The remaining runner-output gap is limited to refresh path or refresh error fields; the handoff contract is already present in both saved outputs.'
+    $nextFocus = 'Use the runner output patch-target helper to wire the direct refresh path and refresh error fields into the recommended runner outputs, then rerun the wiring audit.'
+    $recommendedCommand = $runnerRefreshWiringCommand
+    $recommendedGuideCommand = $patchTargetsCommand
+    $nextArtifactToOpen = $SummaryPath
+} elseif ($onlyHandoffContractIncomplete) {
+    $status = 'handoff-fields-missing-only'
+    $reason = 'The remaining runner-output gap is limited to handoff path or handoff error fields; the refresh contract is already present in both saved outputs.'
+    $nextFocus = 'Use the runner output patch-target helper to wire the direct handoff path and handoff error fields into the recommended runner outputs, then rerun the wiring audit.'
+    $recommendedCommand = $runnerRefreshWiringCommand
+    $recommendedGuideCommand = $patchTargetsCommand
+    $nextArtifactToOpen = $SummaryPath
 } elseif ($manifestBackfillsSummary) {
     $status = 'summary-still-needs-direct-fields'
     $reason = 'The manifest already carries the full refresh and handoff runner-output contract, but the summary still omits at least one of those top-level fields.'
-    $nextFocus = 'Keep the issue #3 helper chain on the runner wiring audit until the summary exposes the same direct refresh and handoff fields without relying on manifest recovery.'
+    $nextFocus = 'Use the runner output patch-target helper to add the missing direct fields to the summary so later helpers stop relying on manifest-only recovery.'
     $recommendedCommand = $runnerRefreshWiringCommand
-    $recommendedGuideCommand = $pointerSourcesCommand
+    $recommendedGuideCommand = $patchTargetsCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ($summaryOutrunsManifest) {
     $status = 'manifest-still-needs-direct-fields'
     $reason = 'The summary already exposes the refresh and handoff runner-output contract, but the manifest still omits at least one of those top-level fields.'
-    $nextFocus = 'Keep the issue #3 helper chain on the runner wiring audit until the manifest advertises the same direct refresh and handoff fields as the summary.'
+    $nextFocus = 'Use the runner output patch-target helper to add the missing direct fields to the manifest so it matches the summary contract.'
     $recommendedCommand = $runnerRefreshWiringCommand
-    $recommendedGuideCommand = $pointerSourcesCommand
+    $recommendedGuideCommand = $patchTargetsCommand
     $nextArtifactToOpen = $manifestPath
 } else {
     $status = 'runner-contract-incomplete'
     $reason = 'Both the saved summary and manifest still omit at least one top-level refresh or handoff runner-output field, so later helpers are still recovering part of the chain indirectly.'
-    $nextFocus = 'Keep the issue #3 helper chain on the runner-output contract until both summary and manifest expose refresh and handoff path plus error fields directly.'
+    $nextFocus = 'Keep the issue #3 helper chain on the direct runner-output contract until both summary and manifest expose refresh and handoff path plus error fields directly.'
     $recommendedCommand = $runnerRefreshWiringCommand
-    $recommendedGuideCommand = $pointerSourcesCommand
+    $recommendedGuideCommand = $patchTargetsCommand
     $nextArtifactToOpen = $SummaryPath
 }
 
@@ -228,6 +252,8 @@ $report = [ordered]@{
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffPath
     summary_refresh_artifact_error_populated = [bool]$summaryRefreshErrorPopulated
     summary_handoff_artifact_error_populated = [bool]$summaryHandoffErrorPopulated
+    summary_missing_refresh_fields = [bool]$summaryMissingRefreshFields
+    summary_missing_handoff_fields = [bool]$summaryMissingHandoffFields
     manifest_has_refresh_artifact_path_field = [bool]$manifestHasRefreshPathField
     manifest_has_refresh_artifact_error_field = [bool]$manifestHasRefreshErrorField
     manifest_has_handoff_artifact_path_field = [bool]$manifestHasHandoffPathField
@@ -239,6 +265,10 @@ $report = [ordered]@{
     manifest_records_handoff_artifact_path = [bool]$manifestRecordsHandoffPath
     manifest_refresh_artifact_error_populated = [bool]$manifestRefreshErrorPopulated
     manifest_handoff_artifact_error_populated = [bool]$manifestHandoffErrorPopulated
+    manifest_missing_refresh_fields = [bool]$manifestMissingRefreshFields
+    manifest_missing_handoff_fields = [bool]$manifestMissingHandoffFields
+    refresh_contract_incomplete = [bool]$refreshContractIncomplete
+    handoff_contract_incomplete = [bool]$handoffContractIncomplete
     runner_outputs_fully_wired = [bool]$runnerOutputsFullyWired
     manifest_backfills_summary = [bool]$manifestBackfillsSummary
     summary_outruns_manifest = [bool]$summaryOutrunsManifest
@@ -248,6 +278,7 @@ $report = [ordered]@{
     recommended_guide_command = $recommendedGuideCommand
     runner_refresh_wiring_command = $runnerRefreshWiringCommand
     pointer_sources_command = $pointerSourcesCommand
+    patch_targets_command = $patchTargetsCommand
     refresh_status_command = $refreshStatusCommand
     handoff_guide_command = $handoffGuideCommand
     broader_runner_command = $recommendedRunnerCommand
@@ -273,6 +304,12 @@ Write-Host ("Handoff:   {0}" -f $report.resolved_handoff_artifact_path)
 Write-Host ("Handoff source: {0}" -f $report.resolved_handoff_artifact_path_source)
 Write-Host ("Summary has all fields: {0}" -f $report.summary_has_all_runner_fields)
 Write-Host ("Manifest has all fields: {0}" -f $report.manifest_has_all_runner_fields)
+Write-Host ("Summary missing refresh fields: {0}" -f $report.summary_missing_refresh_fields)
+Write-Host ("Summary missing handoff fields: {0}" -f $report.summary_missing_handoff_fields)
+Write-Host ("Manifest missing refresh fields: {0}" -f $report.manifest_missing_refresh_fields)
+Write-Host ("Manifest missing handoff fields: {0}" -f $report.manifest_missing_handoff_fields)
+Write-Host ("Refresh contract incomplete: {0}" -f $report.refresh_contract_incomplete)
+Write-Host ("Handoff contract incomplete: {0}" -f $report.handoff_contract_incomplete)
 Write-Host ("Fully wired: {0}" -f $report.runner_outputs_fully_wired)
 if ($report.manifest_backfills_summary) {
     Write-Host 'Manifest backfills summary: True'
