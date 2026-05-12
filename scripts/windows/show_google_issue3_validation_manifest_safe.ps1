@@ -247,7 +247,7 @@ if (-not $manifestExists) {
     $status = 'refresh-state-needs-rebuild'
     $reason = 'The saved refresh artifact is missing, unreadable, or belongs to a different summary, so the helper chain should be refreshed before relying on the manifest guide.'
     $nextFocus = 'Refresh the saved helper chain from the current summary, then reopen the newer handoff-safe refresh route before using the narrower manifest or handoff guidance.'
-    $recommendedCommand = $refreshChainCommand
+    $recommendedCommand = $handoffSafeRefreshRouteCommand
     $recommendedGuideCommand = $handoffSafeRefreshRouteCommand
     $nextArtifactToOpen = if ($refreshExists) { $resolvedRefreshPath } else { $SummaryPath }
 } else {
