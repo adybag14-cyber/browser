@@ -174,8 +174,9 @@ if ($refreshExists) {
     }
 }
 $refreshMatchesSummary = $false
-if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
-    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+$refreshSummaryPath = Get-OptionalPropertyValue -Object $refreshRecord -Name 'summary_path'
+if (-not [string]::IsNullOrWhiteSpace($refreshSummaryPath)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 $handoffExists = Test-Path -LiteralPath $handoffPath -PathType Leaf
@@ -189,8 +190,9 @@ if ($handoffExists) {
     }
 }
 $handoffMatchesSummary = $false
-if ($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_path)) {
-    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+$handoffSummaryPath = Get-OptionalPropertyValue -Object $handoffRecord -Name 'summary_path'
+if (-not [string]::IsNullOrWhiteSpace($handoffSummaryPath)) {
+    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 $runnerContractMissing = $missingFields.Count -gt 0
