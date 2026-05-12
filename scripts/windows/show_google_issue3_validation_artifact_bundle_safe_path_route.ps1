@@ -257,7 +257,6 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunRawBundle -and $bundleStep.status -eq 'complete') { $handoffSafeCommand },
-    if ($shouldRunRawBundle) { $handoffSafeCommand },
     if ($shouldRunRawBundle) { $bundleStep.recommended_guide_command },
     $bundleSafeStep.recommended_guide_command,
     $summaryGuideSafeCommand
