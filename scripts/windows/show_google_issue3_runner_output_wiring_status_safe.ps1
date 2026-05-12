@@ -118,6 +118,7 @@ if (-not $ArtifactPath) {
 
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $artifactPathRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_artifact_paths.ps1'
+$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $runnerPatchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
@@ -169,30 +170,30 @@ $nextArtifactToOpen = $null
 if (-not $summaryHasArtifactRootField) {
     $status = 'summary-artifact-root-missing'
     $reason = 'The saved summary omits artifact_root, so the existing runner-output wiring helper can fail under strict mode before it reaches fallback path resolution.'
-    $nextFocus = 'Regenerate the broader issue #3 validation summary before trusting the existing runner-output wiring helper.'
+    $nextFocus = 'Regenerate the broader issue #3 validation summary first, then rerun this safe runner-output wiring helper before trusting the raw wiring audit.'
     $recommendedCommand = $broaderRunnerCommand
-    $recommendedGuideCommand = $refreshStatusSafeCommand
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif (-not $summaryHasManifestArtifactPathField) {
     $status = 'summary-manifest-path-missing'
     $reason = 'The saved summary omits manifest_artifact_path, so the existing runner-output wiring helper can fail under strict mode before it reaches the manifest fallback path.'
-    $nextFocus = 'Repair the saved validation artifact paths first, then reopen the runner-output wiring helper.'
+    $nextFocus = 'Repair the saved validation artifact paths first, then rerun this safe helper before reopening the raw runner-output wiring audit.'
     $recommendedCommand = $artifactPathRepairCommand
-    $recommendedGuideCommand = $runnerOutputWiringCommand
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif (-not $manifestExists) {
     $status = 'manifest-missing'
     $reason = 'The summary points at a manifest path, but the manifest file is still missing for the current issue #3 replay.'
-    $nextFocus = 'Regenerate the broader runner outputs so the manifest exists before trusting the existing runner-output wiring helper.'
+    $nextFocus = 'Regenerate the broader runner outputs so the manifest exists, then reopen this safe helper before trusting the raw runner-output wiring audit.'
     $recommendedCommand = $broaderRunnerCommand
-    $recommendedGuideCommand = $runnerOutputWiringCommand
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextArtifactToOpen = $manifestPath
 } elseif (-not $manifestReadable) {
     $status = 'manifest-unreadable'
     $reason = 'The manifest file exists but could not be parsed cleanly, so the existing runner-output wiring helper is not the safest next checkpoint yet.'
-    $nextFocus = 'Regenerate the broader runner outputs, then reopen the runner-output wiring helper once the manifest is readable.'
+    $nextFocus = 'Regenerate the broader runner outputs, then rerun this safe helper once the manifest is readable before reopening the raw runner-output wiring audit.'
     $recommendedCommand = $broaderRunnerCommand
-    $recommendedGuideCommand = $runnerOutputWiringCommand
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextArtifactToOpen = $manifestPath
 } elseif ($runnerContractMissing) {
     $status = 'runner-contract-missing'
@@ -238,6 +239,7 @@ $report = [ordered]@{
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $broaderRunnerCommand
     artifact_path_repair_command = $artifactPathRepairCommand
+    runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
     runner_patch_targets_safe_command = $runnerPatchTargetsSafeCommand
     runner_patch_targets_command = $runnerPatchTargetsCommand
@@ -280,4 +282,5 @@ Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Safe wiring gate: {0}" -f $report.runner_output_wiring_safe_command)
 Write-Host ("Safe patch targets: {0}" -f $report.runner_patch_targets_safe_command)
