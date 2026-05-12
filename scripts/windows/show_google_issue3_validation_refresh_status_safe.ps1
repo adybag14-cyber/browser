@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$SummaryPath,
+    [string]$ArtifactPath,
     [switch]$Json
 )
 
@@ -50,11 +51,7 @@ function Read-ArtifactJson {
         return $null
     }
 
-    try {
-        return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-    } catch {
-        return $null
-    }
+    return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
 function Test-HasProperty {
@@ -65,6 +62,20 @@ function Test-HasProperty {
     )
 
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
 }
 
 function Add-MissingField {
@@ -91,25 +102,36 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if ((Test-HasProperty -Object $summary -Name 'artifact_root') -and -not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
-    $summary.artifact_root
-} else {
-    Split-Path -Parent $SummaryPath
+$summaryHasArtifactRootField = Test-HasProperty -Object $summary -Name 'artifact_root'
+$artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
+if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
+    $artifactRoot = Split-Path -Parent $SummaryPath
+}
+if (-not $ArtifactPath) {
+    $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-refresh-status-safe.json'
 }
 
-$summaryHasManifestArtifactPathField = Test-HasProperty -Object $summary -Name 'manifest_artifact_path'
-$summaryHasGuideArtifactPathField = Test-HasProperty -Object $summary -Name 'guide_artifact_path'
-$summaryHasBoundaryArtifactPathField = Test-HasProperty -Object $summary -Name 'boundary_artifact_path'
-$summaryHasBundleArtifactPathField = Test-HasProperty -Object $summary -Name 'artifact_bundle_path'
+$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$runnerWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
+$refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+$refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
+$handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
+$artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summaryHasManifestArtifactPathField) { $summary.manifest_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
-$guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summaryHasGuideArtifactPathField) { $summary.guide_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
-$boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summaryHasBoundaryArtifactPathField) { $summary.boundary_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
-$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summaryHasBundleArtifactPathField) { $summary.artifact_bundle_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
-
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
-$manifestRecord = Read-ArtifactJson $manifestPath
-$manifestReadable = [bool]$manifestRecord
+$manifestRecord = $null
+$manifestError = $null
+if ($manifestExists) {
+    try {
+        $manifestRecord = Read-ArtifactJson $manifestPath
+    } catch {
+        $manifestError = $_.Exception.Message
+    }
+}
 
 $summaryHasRefreshPathField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path'
 $summaryHasRefreshErrorField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_error'
@@ -120,12 +142,6 @@ $manifestHasRefreshErrorField = Test-HasProperty -Object $manifestRecord -Name '
 $manifestHasHandoffPathField = Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_path'
 $manifestHasHandoffErrorField = Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_error'
 
-$summaryPathFieldsMissing = [System.Collections.Generic.List[string]]::new()
-Add-MissingField -List $summaryPathFieldsMissing -FieldName 'summary.manifest_artifact_path' -Present $summaryHasManifestArtifactPathField
-Add-MissingField -List $summaryPathFieldsMissing -FieldName 'summary.guide_artifact_path' -Present $summaryHasGuideArtifactPathField
-Add-MissingField -List $summaryPathFieldsMissing -FieldName 'summary.boundary_artifact_path' -Present $summaryHasBoundaryArtifactPathField
-Add-MissingField -List $summaryPathFieldsMissing -FieldName 'summary.artifact_bundle_path' -Present $summaryHasBundleArtifactPathField
-
 $runnerContractMissingFields = [System.Collections.Generic.List[string]]::new()
 Add-MissingField -List $runnerContractMissingFields -FieldName 'summary.refresh_chain_artifact_path' -Present $summaryHasRefreshPathField
 Add-MissingField -List $runnerContractMissingFields -FieldName 'summary.refresh_chain_artifact_error' -Present $summaryHasRefreshErrorField
@@ -135,14 +151,76 @@ Add-MissingField -List $runnerContractMissingFields -FieldName 'manifest.refresh
 Add-MissingField -List $runnerContractMissingFields -FieldName 'manifest.refresh_chain_artifact_error' -Present $manifestHasRefreshErrorField
 Add-MissingField -List $runnerContractMissingFields -FieldName 'manifest.handoff_artifact_path' -Present $manifestHasHandoffPathField
 Add-MissingField -List $runnerContractMissingFields -FieldName 'manifest.handoff_artifact_error' -Present $manifestHasHandoffErrorField
+$runnerContractMissing = [bool]($runnerContractMissingFields.Count -gt 0)
 
-$runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
-$runnerWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
-$refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
-$manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
-$broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$configuredSummaryRefreshPath = Get-OptionalPropertyValue -Object $summary -Name 'refresh_chain_artifact_path'
+$configuredManifestRefreshPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'refresh_chain_artifact_path'
+$configuredSummaryHandoffPath = Get-OptionalPropertyValue -Object $summary -Name 'handoff_artifact_path'
+$configuredManifestHandoffPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'handoff_artifact_path'
+$configuredBundlePath = Get-OptionalPropertyValue -Object $summary -Name 'artifact_bundle_path'
 
-$safeToRunRefreshStatus = [bool](($summaryPathFieldsMissing.Count -eq 0) -and ($runnerContractMissingFields.Count -eq 0))
+$refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (-not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)) { $configuredSummaryRefreshPath } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)) { $configuredManifestRefreshPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
+$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (-not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)) { $configuredSummaryHandoffPath } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)) { $configuredManifestHandoffPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredBundlePath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
+
+$refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
+$refreshRecord = $null
+$refreshError = $null
+if ($refreshExists) {
+    try {
+        $refreshRecord = Read-ArtifactJson $refreshPath
+    } catch {
+        $refreshError = $_.Exception.Message
+    }
+}
+$refreshSafeFieldsMissing = [System.Collections.Generic.List[string]]::new()
+if ($refreshRecord) {
+    foreach ($fieldName in @('status', 'summary_path', 'reason', 'recommended_command', 'recommended_guide_command', 'next_artifact_to_open', 'failed_step_count', 'failed_step_names')) {
+        Add-MissingField -List $refreshSafeFieldsMissing -FieldName ("refresh.{0}" -f $fieldName) -Present (Test-HasProperty -Object $refreshRecord -Name $fieldName)
+    }
+}
+$refreshMatchesSummary = $false
+if ($refreshRecord -and (Test-HasProperty -Object $refreshRecord -Name 'summary_path') -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+$bundleExists = Test-Path -LiteralPath $bundlePath -PathType Leaf
+$bundleRecord = $null
+$bundleError = $null
+if ($bundleExists) {
+    try {
+        $bundleRecord = Read-ArtifactJson $bundlePath
+    } catch {
+        $bundleError = $_.Exception.Message
+    }
+}
+$bundleSafeFieldsMissing = [System.Collections.Generic.List[string]]::new()
+if ($bundleRecord) {
+    foreach ($fieldName in @('status', 'next_artifact_to_open', 'stale_cross_reference_detected', 'stale_cross_reference_labels', 'stale_summary_artifact_detected', 'stale_summary_artifact_labels', 'core_missing_count', 'core_missing_labels', 'phase_missing_artifact_count')) {
+        Add-MissingField -List $bundleSafeFieldsMissing -FieldName ("bundle.{0}" -f $fieldName) -Present (Test-HasProperty -Object $bundleRecord -Name $fieldName)
+    }
+}
+
+$handoffExists = Test-Path -LiteralPath $handoffPath -PathType Leaf
+$handoffRecord = $null
+$handoffError = $null
+if ($handoffExists) {
+    try {
+        $handoffRecord = Read-ArtifactJson $handoffPath
+    } catch {
+        $handoffError = $_.Exception.Message
+    }
+}
+$handoffSafeFieldsMissing = [System.Collections.Generic.List[string]]::new()
+if ($handoffRecord) {
+    foreach ($fieldName in @('summary_path', 'next_artifact_to_open')) {
+        Add-MissingField -List $handoffSafeFieldsMissing -FieldName ("handoff.{0}" -f $fieldName) -Present (Test-HasProperty -Object $handoffRecord -Name $fieldName)
+    }
+}
+$handoffMatchesSummary = $false
+if ($handoffRecord -and (Test-HasProperty -Object $handoffRecord -Name 'summary_path') -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_path)) {
+    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
 
 $status = $null
 $reason = $null
@@ -151,60 +229,75 @@ $recommendedCommand = $null
 $recommendedGuideCommand = $null
 $nextArtifactToOpen = $null
 
-if ($summaryPathFieldsMissing.Count -gt 0) {
-    $status = 'summary-artifact-paths-missing'
-    $reason = 'The saved issue #3 summary still omits one or more artifact-path fields that the narrower refresh-status helper reads directly under strict mode.'
-    $nextFocus = 'Regenerate the broader recommended-validation outputs before trusting the narrower refresh-status helper.'
-    $recommendedCommand = $broaderRunnerCommand
-    $recommendedGuideCommand = $manifestSafeCommand
+if (-not $summaryHasArtifactRootField) {
+    $status = 'summary-artifact-root-missing'
+    $reason = 'The saved summary omits artifact_root, so the existing refresh-status helper can fail under strict mode before it reaches fallback path resolution.'
+    $nextFocus = 'Regenerate the broader issue #3 validation summary before trusting the existing refresh-status helper.'
+    $recommendedCommand = $recommendedRunnerCommand
+    $recommendedGuideCommand = $runnerWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
-} elseif (-not $manifestExists) {
-    $status = 'manifest-missing'
-    $reason = 'The saved issue #3 manifest is missing, so the narrower refresh-status helper would have to rely on fallback recovery instead of the current summary-plus-manifest contract.'
-    $nextFocus = 'Regenerate the broader recommended-validation outputs so the manifest exists for the current summary.'
-    $recommendedCommand = $broaderRunnerCommand
-    $recommendedGuideCommand = $manifestSafeCommand
-    $nextArtifactToOpen = $manifestPath
-} elseif (-not $manifestReadable) {
-    $status = 'manifest-unreadable'
-    $reason = 'The saved issue #3 manifest exists but could not be parsed cleanly, so the narrower refresh-status helper is not the safest next checkpoint yet.'
-    $nextFocus = 'Repair or regenerate the manifest before trusting the narrower refresh-status helper.'
-    $recommendedCommand = $broaderRunnerCommand
-    $recommendedGuideCommand = $manifestSafeCommand
-    $nextArtifactToOpen = $manifestPath
-} elseif ($runnerContractMissingFields.Count -gt 0) {
+} elseif ($runnerContractMissing) {
     $status = 'runner-contract-missing'
-    $reason = 'The summary and manifest still omit part of the direct refresh or handoff runner-output contract, so the narrower refresh-status helper could still be compensating for missing top-level fields.'
-    $nextFocus = 'Use the runner patch-target and runner wiring helpers first, then return to the narrower refresh-status helper after the direct contract is wired.'
-    $recommendedCommand = $runnerPatchTargetsCommand
-    $recommendedGuideCommand = $runnerWiringCommand
+    $reason = 'The saved summary or manifest still omits part of the direct refresh or handoff runner-output contract that the existing refresh-status helper is easier to trust once it is normalized.'
+    $nextFocus = 'Repair the saved runner-output contract first, then rerun the existing refresh-status helper or this safe checkpoint.'
+    $recommendedCommand = $runnerContractRepairCommand
+    $recommendedGuideCommand = $runnerWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
+} elseif ((-not $refreshExists) -or $refreshError -or ($refreshRecord -and $refreshSafeFieldsMissing.Count -gt 0) -or ($refreshRecord -and -not $refreshMatchesSummary)) {
+    $status = 'refresh-artifact-needs-rebuild'
+    $reason = 'The saved refresh artifact is missing, unreadable, incomplete, or belongs to a different summary, so the existing refresh-status helper is not the safest next checkpoint yet.'
+    $nextFocus = 'Refresh the saved helper chain from the current summary before relying on the existing refresh-status helper.'
+    $recommendedCommand = $refreshChainCommand
+    $recommendedGuideCommand = $manifestSafeCommand
+    $nextArtifactToOpen = if ($refreshExists) { $refreshPath } else { $SummaryPath }
+} elseif ((-not $bundleExists) -or $bundleError -or ($bundleRecord -and $bundleSafeFieldsMissing.Count -gt 0)) {
+    $status = 'bundle-artifact-needs-rebuild'
+    $reason = 'The saved artifact-bundle record is missing, unreadable, or incomplete for the current summary, so the existing refresh-status helper can still hit strict-mode gaps when it inspects bundle state.'
+    $nextFocus = 'Refresh the helper chain or rebuild the bundle artifact before trusting the existing refresh-status helper.'
+    $recommendedCommand = $refreshChainCommand
+    $recommendedGuideCommand = $artifactBundleCommand
+    $nextArtifactToOpen = if ($bundleExists) { $bundlePath } else { $SummaryPath }
+} elseif ((-not $handoffExists) -or $handoffError -or ($handoffRecord -and $handoffSafeFieldsMissing.Count -gt 0) -or ($handoffRecord -and -not $handoffMatchesSummary)) {
+    $status = 'handoff-artifact-needs-rebuild'
+    $reason = 'The saved handoff artifact is missing, unreadable, incomplete, or belongs to a different summary, so the existing refresh-status helper is safer to revisit after the helper chain is refreshed.'
+    $nextFocus = 'Refresh the helper chain from the current summary, then reopen the handoff-safe checkpoint before trusting the existing refresh-status helper.'
+    $recommendedCommand = $refreshChainCommand
+    $recommendedGuideCommand = $handoffSafeCommand
+    $nextArtifactToOpen = if ($handoffExists) { $handoffPath } else { $SummaryPath }
 } else {
-    $status = 'safe-to-run-refresh-status'
-    $reason = 'The saved summary exposes the artifact-path fields the narrower refresh-status helper expects, and the saved summary plus manifest already advertise the direct runner-output contract.'
-    $nextFocus = 'Open the narrower refresh-status helper and continue the current issue #3 validation chain from there.'
+    $status = 'safe-to-run-existing-helper'
+    $reason = 'The saved summary, refresh, bundle, and handoff artifacts expose the fields the existing refresh-status helper expects under strict mode for the current summary.'
+    $nextFocus = 'Run the existing refresh-status helper or move on to the handoff-safe checkpoint for the next narrowed Windows replay.'
     $recommendedCommand = $refreshStatusCommand
-    $recommendedGuideCommand = $runnerWiringCommand
-    $nextArtifactToOpen = $guidePath
+    $recommendedGuideCommand = $handoffSafeCommand
+    $nextArtifactToOpen = $refreshPath
 }
 
 $report = [ordered]@{
-    issue = 'Google issue #3 validation refresh-status safe helper'
-    purpose = 'Check whether the saved issue #3 summary and manifest are complete enough to trust the narrower refresh-status helper without another strict-mode or runner-contract detour.'
+    issue = 'Google issue #3 validation refresh status safe helper'
+    purpose = 'Check whether the existing refresh-status helper is safe to trust under strict mode for the current issue #3 summary and saved helper-chain artifacts.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
+    artifact_path = $ArtifactPath
     artifact_root = $artifactRoot
+    summary_has_artifact_root_field = [bool]$summaryHasArtifactRootField
     manifest_artifact_path = $manifestPath
     manifest_artifact_exists = [bool]$manifestExists
-    manifest_artifact_readable = [bool]$manifestReadable
-    guide_artifact_path = $guidePath
-    boundary_artifact_path = $boundaryPath
-    artifact_bundle_path = $bundlePath
-    summary_has_manifest_artifact_path_field = [bool]$summaryHasManifestArtifactPathField
-    summary_has_guide_artifact_path_field = [bool]$summaryHasGuideArtifactPathField
-    summary_has_boundary_artifact_path_field = [bool]$summaryHasBoundaryArtifactPathField
-    summary_has_artifact_bundle_path_field = [bool]$summaryHasBundleArtifactPathField
-    summary_path_fields_missing = @($summaryPathFieldsMissing)
+    manifest_artifact_error = $manifestError
+    refresh_artifact_path = $refreshPath
+    refresh_artifact_exists = [bool]$refreshExists
+    refresh_artifact_error = $refreshError
+    refresh_matches_summary = [bool]$refreshMatchesSummary
+    refresh_safe_fields_missing = @($refreshSafeFieldsMissing)
+    bundle_artifact_path = $bundlePath
+    bundle_artifact_exists = [bool]$bundleExists
+    bundle_artifact_error = $bundleError
+    bundle_safe_fields_missing = @($bundleSafeFieldsMissing)
+    handoff_artifact_path = $handoffPath
+    handoff_artifact_exists = [bool]$handoffExists
+    handoff_artifact_error = $handoffError
+    handoff_matches_summary = [bool]$handoffMatchesSummary
+    handoff_safe_fields_missing = @($handoffSafeFieldsMissing)
     summary_has_refresh_chain_artifact_path_field = [bool]$summaryHasRefreshPathField
     summary_has_refresh_chain_artifact_error_field = [bool]$summaryHasRefreshErrorField
     summary_has_handoff_artifact_path_field = [bool]$summaryHasHandoffPathField
@@ -213,46 +306,75 @@ $report = [ordered]@{
     manifest_has_refresh_chain_artifact_error_field = [bool]$manifestHasRefreshErrorField
     manifest_has_handoff_artifact_path_field = [bool]$manifestHasHandoffPathField
     manifest_has_handoff_artifact_error_field = [bool]$manifestHasHandoffErrorField
+    runner_contract_missing = [bool]$runnerContractMissing
     runner_contract_missing_fields = @($runnerContractMissingFields)
-    safe_to_run_refresh_status = [bool]$safeToRunRefreshStatus
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
-    runner_patch_targets_command = $runnerPatchTargetsCommand
-    runner_wiring_command = $runnerWiringCommand
+    broader_runner_command = $recommendedRunnerCommand
+    runner_wiring_status_safe_command = $runnerWiringStatusSafeCommand
+    runner_contract_repair_command = $runnerContractRepairCommand
     refresh_status_command = $refreshStatusCommand
+    refresh_chain_command = $refreshChainCommand
     manifest_safe_command = $manifestSafeCommand
-    broader_runner_command = $broaderRunnerCommand
+    handoff_safe_command = $handoffSafeCommand
+    artifact_bundle_command = $artifactBundleCommand
+    summary_guide_command = $summaryGuideCommand
     next_artifact_to_open = $nextArtifactToOpen
     status = $status
     reason = $reason
     next_focus = $nextFocus
 }
 
+$report | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding Ascii
+
 if ($Json) {
-    $report | ConvertTo-Json -Depth 6
+    $report | ConvertTo-Json -Depth 8
     exit 0
 }
 
-Write-Host 'Google issue #3 validation refresh-status safe helper'
+Write-Host 'Google issue #3 validation refresh status safe helper'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
-Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
-Write-Host ("Guide:     {0}" -f $report.guide_artifact_path)
-Write-Host ("Boundary:  {0}" -f $report.boundary_artifact_path)
-Write-Host ("Bundle:    {0}" -f $report.artifact_bundle_path)
-Write-Host ("Status:    {0}" -f $report.status)
-Write-Host ("Safe:      {0}" -f $report.safe_to_run_refresh_status)
-Write-Host ("Manifest exists: {0}" -f $report.manifest_artifact_exists)
-Write-Host ("Manifest readable: {0}" -f $report.manifest_artifact_readable)
-if ($report.summary_path_fields_missing.Count -gt 0) {
-    Write-Host 'Missing summary artifact-path fields:'
-    foreach ($fieldName in $report.summary_path_fields_missing) {
-        Write-Host ("- {0}" -f $fieldName)
-    }
+Write-Host ("Artifact:  {0}" -f $report.artifact_path)
+Write-Host ("Refresh:   {0}" -f $report.refresh_artifact_path)
+Write-Host ("Refresh exists: {0}" -f $report.refresh_artifact_exists)
+Write-Host ("Refresh matches summary: {0}" -f $report.refresh_matches_summary)
+if ($report.refresh_artifact_error) {
+    Write-Host ("Refresh error: {0}" -f $report.refresh_artifact_error)
 }
+Write-Host ("Bundle:    {0}" -f $report.bundle_artifact_path)
+Write-Host ("Bundle exists: {0}" -f $report.bundle_artifact_exists)
+if ($report.bundle_artifact_error) {
+    Write-Host ("Bundle error: {0}" -f $report.bundle_artifact_error)
+}
+Write-Host ("Handoff:   {0}" -f $report.handoff_artifact_path)
+Write-Host ("Handoff exists: {0}" -f $report.handoff_artifact_exists)
+Write-Host ("Handoff matches summary: {0}" -f $report.handoff_matches_summary)
+if ($report.handoff_artifact_error) {
+    Write-Host ("Handoff error: {0}" -f $report.handoff_artifact_error)
+}
+Write-Host ("Runner contract missing: {0}" -f $report.runner_contract_missing)
 if ($report.runner_contract_missing_fields.Count -gt 0) {
     Write-Host 'Missing runner-contract fields:'
     foreach ($fieldName in $report.runner_contract_missing_fields) {
+        Write-Host ("- {0}" -f $fieldName)
+    }
+}
+if ($report.refresh_safe_fields_missing.Count -gt 0) {
+    Write-Host 'Missing refresh fields:'
+    foreach ($fieldName in $report.refresh_safe_fields_missing) {
+        Write-Host ("- {0}" -f $fieldName)
+    }
+}
+if ($report.bundle_safe_fields_missing.Count -gt 0) {
+    Write-Host 'Missing bundle fields:'
+    foreach ($fieldName in $report.bundle_safe_fields_missing) {
+        Write-Host ("- {0}" -f $fieldName)
+    }
+}
+if ($report.handoff_safe_fields_missing.Count -gt 0) {
+    Write-Host 'Missing handoff fields:'
+    foreach ($fieldName in $report.handoff_safe_fields_missing) {
         Write-Host ("- {0}" -f $fieldName)
     }
 }
