@@ -102,9 +102,6 @@ $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = Read-ArtifactJson $manifestPath
 $manifestReadable = [bool]$manifestRecord
 
-$refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.refresh_chain_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
-$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
-
 $summaryHasRefreshPathField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path'
 $summaryHasRefreshErrorField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_error'
 $summaryHasHandoffPathField = Test-HasProperty -Object $summary -Name 'handoff_artifact_path'
@@ -117,10 +114,20 @@ $manifestHasHandoffPathField = Test-HasProperty -Object $manifestRecord -Name 'h
 $manifestHasHandoffErrorField = Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_error'
 $manifestHasAllRunnerFields = [bool]($manifestHasRefreshPathField -and $manifestHasRefreshErrorField -and $manifestHasHandoffPathField -and $manifestHasHandoffErrorField)
 
-$summaryRecordsRefreshPath = [bool]($summaryHasRefreshPathField -and -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path))
-$summaryRecordsHandoffPath = [bool]($summaryHasHandoffPathField -and -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path))
-$manifestRecordsRefreshPath = [bool]($manifestHasRefreshPathField -and -not [string]::IsNullOrWhiteSpace($manifestRecord.refresh_chain_artifact_path))
-$manifestRecordsHandoffPath = [bool]($manifestHasHandoffPathField -and -not [string]::IsNullOrWhiteSpace($manifestRecord.handoff_artifact_path))
+$configuredSummaryRefreshPath = if ($summaryHasRefreshPathField) { $summary.refresh_chain_artifact_path } else { $null }
+$configuredSummaryHandoffPath = if ($summaryHasHandoffPathField) { $summary.handoff_artifact_path } else { $null }
+$configuredManifestRefreshPath = if ($manifestHasRefreshPathField) { $manifestRecord.refresh_chain_artifact_path } else { $null }
+$configuredManifestHandoffPath = if ($manifestHasHandoffPathField) { $manifestRecord.handoff_artifact_path } else { $null }
+
+$summaryRecordsRefreshPath = [bool](-not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath))
+$summaryRecordsHandoffPath = [bool](-not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath))
+$manifestRecordsRefreshPath = [bool](-not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath))
+$manifestRecordsHandoffPath = [bool](-not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath))
+
+$refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summaryRecordsRefreshPath) { $configuredSummaryRefreshPath } elseif ($manifestRecordsRefreshPath) { $configuredManifestRefreshPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
+$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summaryRecordsHandoffPath) { $configuredSummaryHandoffPath } elseif ($manifestRecordsHandoffPath) { $configuredManifestHandoffPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+$resolvedRefreshPathSource = if ($summaryRecordsRefreshPath) { 'summary' } elseif ($manifestRecordsRefreshPath) { 'manifest' } else { 'fallback' }
+$resolvedHandoffPathSource = if ($summaryRecordsHandoffPath) { 'summary' } elseif ($manifestRecordsHandoffPath) { 'manifest' } else { 'fallback' }
 
 $summaryRefreshErrorPopulated = [bool]($summaryHasRefreshErrorField -and -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_error))
 $summaryHandoffErrorPopulated = [bool]($summaryHasHandoffErrorField -and -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_error))
@@ -174,7 +181,7 @@ if (-not $manifestExists) {
     $nextFocus = 'Use the narrower refresh or handoff helpers now that the runner outputs already advertise the top-level pointer contract directly.'
     $recommendedCommand = $refreshStatusCommand
     $recommendedGuideCommand = $handoffGuideCommand
-    $nextArtifactToOpen = if ($summaryRecordsHandoffPath) { $summary.handoff_artifact_path } elseif ($manifestRecordsHandoffPath) { $manifestRecord.handoff_artifact_path } else { $handoffPath }
+    $nextArtifactToOpen = if ($summaryRecordsHandoffPath) { $configuredSummaryHandoffPath } elseif ($manifestRecordsHandoffPath) { $configuredManifestHandoffPath } else { $handoffPath }
 } elseif ($manifestBackfillsSummary) {
     $status = 'summary-still-needs-direct-fields'
     $reason = 'The manifest already carries the full refresh and handoff runner-output contract, but the summary still omits at least one of those top-level fields.'
@@ -207,12 +214,16 @@ $report = [ordered]@{
     manifest_artifact_exists = [bool]$manifestExists
     manifest_artifact_readable = [bool]$manifestReadable
     resolved_refresh_artifact_path = $refreshPath
+    resolved_refresh_artifact_path_source = $resolvedRefreshPathSource
     resolved_handoff_artifact_path = $handoffPath
+    resolved_handoff_artifact_path_source = $resolvedHandoffPathSource
     summary_has_refresh_artifact_path_field = [bool]$summaryHasRefreshPathField
     summary_has_refresh_artifact_error_field = [bool]$summaryHasRefreshErrorField
     summary_has_handoff_artifact_path_field = [bool]$summaryHasHandoffPathField
     summary_has_handoff_artifact_error_field = [bool]$summaryHasHandoffErrorField
     summary_has_all_runner_fields = [bool]$summaryHasAllRunnerFields
+    summary_refresh_artifact_path = if ($summaryHasRefreshPathField) { $configuredSummaryRefreshPath } else { $null }
+    summary_handoff_artifact_path = if ($summaryHasHandoffPathField) { $configuredSummaryHandoffPath } else { $null }
     summary_records_refresh_artifact_path = [bool]$summaryRecordsRefreshPath
     summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffPath
     summary_refresh_artifact_error_populated = [bool]$summaryRefreshErrorPopulated
@@ -222,6 +233,8 @@ $report = [ordered]@{
     manifest_has_handoff_artifact_path_field = [bool]$manifestHasHandoffPathField
     manifest_has_handoff_artifact_error_field = [bool]$manifestHasHandoffErrorField
     manifest_has_all_runner_fields = [bool]$manifestHasAllRunnerFields
+    manifest_refresh_artifact_path = if ($manifestHasRefreshPathField) { $configuredManifestRefreshPath } else { $null }
+    manifest_handoff_artifact_path = if ($manifestHasHandoffPathField) { $configuredManifestHandoffPath } else { $null }
     manifest_records_refresh_artifact_path = [bool]$manifestRecordsRefreshPath
     manifest_records_handoff_artifact_path = [bool]$manifestRecordsHandoffPath
     manifest_refresh_artifact_error_populated = [bool]$manifestRefreshErrorPopulated
@@ -255,7 +268,9 @@ Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
 Write-Host ("Manifest exists: {0}" -f $report.manifest_artifact_exists)
 Write-Host ("Manifest readable: {0}" -f $report.manifest_artifact_readable)
 Write-Host ("Refresh:   {0}" -f $report.resolved_refresh_artifact_path)
+Write-Host ("Refresh source: {0}" -f $report.resolved_refresh_artifact_path_source)
 Write-Host ("Handoff:   {0}" -f $report.resolved_handoff_artifact_path)
+Write-Host ("Handoff source: {0}" -f $report.resolved_handoff_artifact_path_source)
 Write-Host ("Summary has all fields: {0}" -f $report.summary_has_all_runner_fields)
 Write-Host ("Manifest has all fields: {0}" -f $report.manifest_has_all_runner_fields)
 Write-Host ("Fully wired: {0}" -f $report.runner_outputs_fully_wired)
