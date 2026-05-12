@@ -202,6 +202,7 @@ $pointerRepairScript = Join-Path $PSScriptRoot 'repair_google_issue3_validation_
 $errorFieldRepairScript = Join-Path $PSScriptRoot 'repair_google_issue3_validation_summary_error_field_contract.ps1'
 $wiringStatusSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_wiring_status_safe.ps1'
 $wiringStatusScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_wiring_status.ps1'
+$wiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $requiredHelpers = @(
     $pointerRepairScript,
     $errorFieldRepairScript,
@@ -221,11 +222,11 @@ $steps.Add((Invoke-JsonHelper -Name 'summary-error-field-contract-repair' -Scrip
 $wiringSafeStep = Invoke-JsonHelper -Name 'runner-output-wiring-safe-status' -ScriptPath $wiringStatusSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 $steps.Add($wiringSafeStep) | Out-Null
 
-$runRawWiringStatus = [bool](
+$safeGateCleared = [bool](
     $wiringSafeStep.success -and
-    $wiringSafeStep.status -eq 'safe-to-run-existing-helper'
+    $wiringSafeStep.recommended_command -eq $wiringStatusCommand
 )
-if ($runRawWiringStatus) {
+if ($safeGateCleared) {
     $steps.Add((Invoke-JsonHelper -Name 'runner-output-wiring-status' -ScriptPath $wiringStatusScript -Arguments @('-SummaryPath', $SummaryPath, '-Json'))) | Out-Null
 } else {
     $steps.Add((New-SkippedHelperStep -Name 'runner-output-wiring-status' -ScriptPath $wiringStatusScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $wiringSafeStep.recommended_command -RecommendedGuideCommand $wiringSafeStep.recommended_guide_command -NextFocus $wiringSafeStep.next_focus -NextArtifactToOpen $wiringSafeStep.next_artifact_to_open -Reason 'The safe runner-output wiring gate said the raw wiring helper was not the safest next checkpoint yet.')) | Out-Null
@@ -244,9 +245,9 @@ if ($failedSteps.Count -gt 0) {
 } elseif ($wiringStep -and $wiringStep.status -eq 'fully-wired') {
     $status = 'fully-wired'
     $reason = 'The saved issue #3 summary contract was normalized and the runner-output wiring audit now reports the direct refresh and handoff contract as fully wired.'
-} elseif ($wiringSafeStep.status -eq 'safe-to-run-existing-helper') {
+} elseif ($safeGateCleared) {
     $status = 'safe-gate-cleared'
-    $reason = 'The saved summary contract repairs ran cleanly and the safe wiring gate now says the raw runner-output wiring helper is safe to trust again.'
+    $reason = 'The saved summary contract repairs ran cleanly and the safe wiring helper now routes directly to the raw runner-output wiring audit again.'
 } elseif ($wiringSafeStep.status -eq 'runner-contract-missing') {
     $status = 'runner-contract-still-open'
     $reason = 'The saved summary contract repairs ran, but the runner-output wiring audit still reports that the broader direct refresh and handoff contract is incomplete.'
