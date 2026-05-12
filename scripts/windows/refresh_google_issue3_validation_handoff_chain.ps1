@@ -168,7 +168,7 @@ if (-not $ArtifactPath) {
     $ArtifactPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff-chain-refresh.json"
 }
 
-$summaryGuideScript = Join-Path $PSScriptRoot "show_google_issue3_validation_summary_guide.ps1"
+$summaryGuideScript = Join-Path $PSScriptRoot "show_google_issue3_validation_summary_guide_safe.ps1"
 $boundaryScript = Join-Path $PSScriptRoot "show_google_issue3_phase_boundary.ps1"
 $bundleScript = Join-Path $PSScriptRoot "show_google_issue3_validation_artifact_bundle.ps1"
 $handoffScript = Join-Path $PSScriptRoot "show_google_issue3_validation_handoff.ps1"
@@ -233,7 +233,7 @@ $recommendedGuideCommand = if ($handoffRecord -and $handoffRecord.recommended_gu
 } elseif ($bundleRecord -and $bundleRecord.recommended_guide_command) {
     $bundleRecord.recommended_guide_command
 } else {
-    'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+    'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 }
 $nextArtifactToOpen = if ($handoffRecord -and $handoffRecord.next_artifact_to_open) {
     $handoffRecord.next_artifact_to_open
