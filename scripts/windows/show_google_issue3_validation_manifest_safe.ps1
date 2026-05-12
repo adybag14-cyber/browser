@@ -120,6 +120,7 @@ $runnerWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$manifestContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_manifest_contract.ps1'
 
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
@@ -231,10 +232,10 @@ if (-not $manifestExists) {
     $nextArtifactToOpen = $SummaryPath
 } elseif ($manifestGuideContractMissing) {
     $status = 'manifest-guide-contract-missing'
-    $reason = 'The broader runner contract is mostly present, but the existing manifest guide still depends on additional optional manifest fields that are missing under strict mode.'
-    $nextFocus = 'Regenerate or normalize the saved manifest outputs before trusting the existing manifest guide, and keep the next replay on the safer helper chain.'
-    $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $handoffSafeCommand
+    $reason = 'The broader runner contract is mostly present, but the existing manifest guide still depends on additional manifest-facing fields that are missing under strict mode.'
+    $nextFocus = 'Run the manifest-contract repair helper first, then rerun the safe manifest audit before trusting the existing manifest guide.'
+    $recommendedCommand = $manifestContractRepairCommand
+    $recommendedGuideCommand = $manifestGuideCommand
     $nextArtifactToOpen = $manifestPath
 } elseif ((-not $refreshExists) -or (-not $refreshMatchesSummary) -or $refreshError) {
     $status = 'refresh-state-needs-rebuild'
@@ -284,6 +285,7 @@ $report = [ordered]@{
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
+    manifest_contract_repair_command = $manifestContractRepairCommand
     manifest_guide_command = $manifestGuideCommand
     handoff_safe_command = $handoffSafeCommand
     handoff_guide_command = $handoffGuideCommand
