@@ -116,6 +116,7 @@ $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 $runnerWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$runnerWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 
@@ -204,16 +205,16 @@ $nextArtifactToOpen = $null
 if ($manifestError) {
     $status = 'manifest-unreadable'
     $reason = 'The saved manifest could not be read cleanly, so the current handoff helper cannot rely on manifest-backed runner contract recovery.'
-    $nextFocus = 'Regenerate the manifest from the recommended runner, then reopen the runner wiring audit before trusting the existing handoff helper.'
+    $nextFocus = 'Regenerate the manifest from the recommended runner, then reopen the safe runner wiring audit before trusting the existing handoff helper.'
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $runnerWiringStatusCommand
+    $recommendedGuideCommand = $runnerWiringStatusSafeCommand
     $nextArtifactToOpen = if ($manifestExists) { $manifestPath } else { $SummaryPath }
 } elseif ($runnerContractMissing) {
     $status = 'runner-contract-missing'
     $reason = 'The current summary or manifest still omits at least one direct refresh or handoff field that the existing handoff helper reads under strict mode, but the branch now includes a bounded repair helper for normalizing those saved outputs immediately after a run.'
-    $nextFocus = 'Run the runner-output contract repair helper first, then rerun the wiring audit before trusting the existing handoff helper again.'
+    $nextFocus = 'Run the runner-output contract repair helper first, then rerun the safe wiring audit before trusting the existing handoff helper again.'
     $recommendedCommand = $runnerContractRepairCommand
-    $recommendedGuideCommand = $runnerWiringStatusCommand
+    $recommendedGuideCommand = $runnerWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ((-not $refreshExists) -or (-not $refreshMatchesSummary) -or $refreshError) {
     $status = 'refresh-state-needs-rebuild'
@@ -263,6 +264,7 @@ $report = [ordered]@{
     recommended_guide_command = $recommendedGuideCommand
     broader_runner_command = $recommendedRunnerCommand
     runner_wiring_status_command = $runnerWiringStatusCommand
+    runner_wiring_status_safe_command = $runnerWiringStatusSafeCommand
     runner_patch_targets_command = $runnerPatchTargetsCommand
     runner_contract_repair_command = $runnerContractRepairCommand
     refresh_status_command = $refreshStatusCommand
