@@ -113,9 +113,11 @@ if (-not $ArtifactPath) {
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $runnerRefreshWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_refresh_wiring_status.ps1'
 $runnerOutputWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$runnerOutputWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 
 $summaryHasManifestPathField = Test-HasProperty -Object $summary -Name 'manifest_artifact_path'
@@ -214,37 +216,37 @@ $nextArtifactToOpen = $null
 if (-not $summaryHasManifestPathField) {
     $status = 'summary-manifest-path-field-missing'
     $reason = 'The saved summary still omits manifest_artifact_path, so the existing runner refresh wiring helper can fail immediately under strict mode before it reaches any refresh guidance.'
-    $nextFocus = 'Regenerate the broader runner outputs first, then reopen the runner-output wiring audit before trusting the narrower refresh wiring helper again.'
+    $nextFocus = 'Regenerate the broader runner outputs first, then reopen the safe runner-output wiring audit before trusting the narrower refresh wiring helper again.'
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $runnerOutputWiringStatusCommand
+    $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ($manifestError) {
     $status = 'manifest-unreadable'
     $reason = 'The saved manifest could not be read cleanly, so the existing runner refresh wiring helper cannot rely on manifest-backed pointer recovery for this summary.'
-    $nextFocus = 'Regenerate the saved runner outputs, then reopen the runner-output wiring audit before trusting the narrower refresh wiring helper.'
+    $nextFocus = 'Regenerate the saved runner outputs, then reopen the safe runner-output wiring audit before trusting the narrower refresh wiring helper.'
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $runnerOutputWiringStatusCommand
+    $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
     $nextArtifactToOpen = if ($manifestExists) { $manifestPath } else { $SummaryPath }
 } elseif ($runnerContractMissing) {
     $status = 'runner-pointer-fields-missing'
     $reason = 'The summary or manifest still omits at least one refresh or handoff pointer field that the existing runner refresh wiring helper reads directly under strict mode.'
-    $nextFocus = 'Repair the saved runner-output contract first, then rerun the existing wiring helper to confirm the contract is fully wired.'
+    $nextFocus = 'Repair the saved runner-output contract first, then rerun the safe wiring audit to confirm the contract is fully wired.'
     $recommendedCommand = $runnerContractRepairCommand
-    $recommendedGuideCommand = $runnerOutputWiringStatusCommand
+    $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ((-not $refreshExists) -or $refreshError -or (-not $refreshMatchesSummary)) {
     $status = 'refresh-state-needs-rebuild'
     $reason = 'The saved refresh artifact is missing, unreadable, or belongs to a different summary, so the helper chain should be refreshed before relying on the existing runner refresh wiring helper.'
     $nextFocus = 'Refresh the issue #3 helper chain from the current summary before trusting the runner refresh wiring helper output.'
     $recommendedCommand = $refreshChainCommand
-    $recommendedGuideCommand = $refreshStatusCommand
+    $recommendedGuideCommand = $refreshStatusSafeCommand
     $nextArtifactToOpen = if ($refreshExists) { $refreshPath } else { $SummaryPath }
 } else {
     $status = 'safe-to-run-existing-helper'
     $reason = 'The current summary and manifest expose the pointer fields the existing runner refresh wiring helper expects, and the saved refresh artifact matches the current summary.'
-    $nextFocus = 'Use the existing runner refresh wiring helper or refresh-status helper for the next narrowed Windows replay step.'
+    $nextFocus = 'Use the existing runner refresh wiring helper or safe refresh-status helper for the next narrowed Windows replay step.'
     $recommendedCommand = $runnerRefreshWiringStatusCommand
-    $recommendedGuideCommand = $refreshStatusCommand
+    $recommendedGuideCommand = $refreshStatusSafeCommand
     $nextArtifactToOpen = if ($refreshExists) { $refreshPath } elseif ($manifestExists) { $manifestPath } else { $SummaryPath }
 }
 
@@ -284,9 +286,11 @@ $report = [ordered]@{
     broader_runner_command = $recommendedRunnerCommand
     runner_refresh_wiring_status_command = $runnerRefreshWiringStatusCommand
     runner_output_wiring_status_command = $runnerOutputWiringStatusCommand
+    runner_output_wiring_status_safe_command = $runnerOutputWiringStatusSafeCommand
     runner_patch_targets_command = $runnerPatchTargetsCommand
     runner_contract_repair_command = $runnerContractRepairCommand
     refresh_status_command = $refreshStatusCommand
+    refresh_status_safe_command = $refreshStatusSafeCommand
     refresh_chain_command = $refreshChainCommand
     next_focus = $nextFocus
     reason = $reason
