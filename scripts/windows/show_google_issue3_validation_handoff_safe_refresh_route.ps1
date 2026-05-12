@@ -215,7 +215,14 @@ $steps = [System.Collections.Generic.List[object]]::new()
 $handoffSafeStep = Invoke-JsonHelper -Name 'handoff-safe' -ScriptPath $handoffSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 $steps.Add($handoffSafeStep) | Out-Null
 
-$shouldRunRefreshStatusSafe = [bool]($handoffSafeStep.success -and $handoffSafeStep.recommended_command -eq $refreshStatusSafeCommand)
+$handoffSafeRoutesThroughRefreshSafe = [bool](
+    $handoffSafeStep.success -and (
+        $handoffSafeStep.recommended_command -eq $refreshStatusSafeCommand -or
+        $handoffSafeStep.recommended_command -eq $handoffSafeCommand -or
+        $handoffSafeStep.recommended_guide_command -eq $refreshStatusSafeCommand
+    )
+)
+$shouldRunRefreshStatusSafe = $handoffSafeRoutesThroughRefreshSafe
 $readyForHandoff = [bool]($handoffSafeStep.success -and $handoffSafeStep.recommended_command -eq $handoffGuideCommand)
 $refreshStatusSafeStep = $null
 if ($shouldRunRefreshStatusSafe) {
@@ -288,6 +295,7 @@ $report = [ordered]@{
     handoff_guide_command = $handoffGuideCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
     summary_guide_command = $summaryGuideCommand
+    handoff_safe_routes_through_refresh_safe = [bool]$handoffSafeRoutesThroughRefreshSafe
     refresh_safe_follow_up_ran = [bool]$shouldRunRefreshStatusSafe
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
@@ -328,6 +336,7 @@ Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
+Write-Host ("Handoff routes through refresh-safe: {0}" -f $report.handoff_safe_routes_through_refresh_safe)
 Write-Host ("Refresh follow-up ran: {0}" -f $report.refresh_safe_follow_up_ran)
 Write-Host ''
 foreach ($step in $report.steps) {
