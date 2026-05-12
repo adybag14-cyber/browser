@@ -114,6 +114,7 @@ $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\
 $runnerRefreshWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_refresh_wiring_status.ps1'
 $runnerOutputWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
+$runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 
@@ -227,8 +228,8 @@ if (-not $summaryHasManifestPathField) {
 } elseif ($runnerContractMissing) {
     $status = 'runner-pointer-fields-missing'
     $reason = 'The summary or manifest still omits at least one refresh or handoff pointer field that the existing runner refresh wiring helper reads directly under strict mode.'
-    $nextFocus = 'Patch the recommended runner output contract first, then rerun the wiring audit before trusting the narrower refresh wiring helper.'
-    $recommendedCommand = $runnerPatchTargetsCommand
+    $nextFocus = 'Repair the saved runner-output contract first, then rerun the existing wiring helper to confirm the contract is fully wired.'
+    $recommendedCommand = $runnerContractRepairCommand
     $recommendedGuideCommand = $runnerOutputWiringStatusCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ((-not $refreshExists) -or $refreshError -or (-not $refreshMatchesSummary)) {
@@ -284,6 +285,7 @@ $report = [ordered]@{
     runner_refresh_wiring_status_command = $runnerRefreshWiringStatusCommand
     runner_output_wiring_status_command = $runnerOutputWiringStatusCommand
     runner_patch_targets_command = $runnerPatchTargetsCommand
+    runner_contract_repair_command = $runnerContractRepairCommand
     refresh_status_command = $refreshStatusCommand
     refresh_chain_command = $refreshChainCommand
     next_focus = $nextFocus
@@ -334,3 +336,4 @@ Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Repair: {0}" -f $report.runner_contract_repair_command)
