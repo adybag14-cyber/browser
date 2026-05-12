@@ -44,6 +44,9 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_form_controls_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the dedicated form-controls Enter-order gate."),
     (New-ValidationReference -Path "scripts/windows/show_google_form_controls_enter_order_trace_guide.ps1" -Kind "file" -Purpose "Quick diagnosis helper for interpreting the dedicated Enter-order probe markers."),
     (New-ValidationReference -Path "scripts/windows/run_google_form_controls_enter_order_validation.ps1" -Kind "file" -Purpose "Dedicated form-controls Enter-order runner."),
+    (New-ValidationReference -Path "tmp-browser-smoke/form-controls/form_server.py" -Kind "file" -Purpose "Shared localhost form-controls server that the dedicated Enter-order probe boots before replay."),
+    (New-ValidationReference -Path "tmp-browser-smoke/common/Win32Input.ps1" -Kind "file" -Purpose "Shared Win32 input helper used by the dedicated Enter-order probe for click and text delivery."),
+    (New-ValidationReference -Path "tmp-browser-smoke/tabs/TabProbeCommon.ps1" -Kind "file" -Purpose "Shared tab-window helper used by the dedicated Enter-order probe for profile setup, window discovery, and owned-process cleanup."),
     (New-ValidationReference -Path "tmp-browser-smoke/form-controls/google-enter-order-probe.ps1" -Kind "file" -Purpose "Smallest shared form-controls Enter-order probe on the real headed surface."),
     (New-ValidationReference -Path "tmp-browser-smoke/form-controls/README.md" -Kind "file" -Purpose "Shared form-controls suite note for the dedicated Enter-order gate.")
 )
@@ -100,5 +103,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} dedicated form-controls Enter-order validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, router, or probe before trusting the dedicated form-controls Enter-order gate."
+Write-Host "Repair the missing guide, helper, router, probe, or supporting dependency before trusting the dedicated form-controls Enter-order gate."
 exit 1
