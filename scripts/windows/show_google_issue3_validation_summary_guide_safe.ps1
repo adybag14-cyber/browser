@@ -163,8 +163,8 @@ $manifestArtifactPath = Get-FirstNonEmptyValue -Values @(
     (Join-Path $artifactRoot 'google-issue3-recommended-validation-manifest.json')
 )
 $guideArtifactPath = Get-FirstNonEmptyValue -Values @(
-    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path',
-    $ArtifactPath
+    $ArtifactPath,
+    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path'
 )
 $boundaryArtifactPath = Get-FirstNonEmptyValue -Values @(
     Get-OptionalPropertyValue -Object $summary -Name 'boundary_artifact_path',
