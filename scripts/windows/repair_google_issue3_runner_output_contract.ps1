@@ -248,10 +248,16 @@ $status = if (-not $manifestExists) {
 
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$runnerOutputPatchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
 $runnerOutputPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
-$recommendedCommand = $runnerOutputWiringSafeCommand
-$recommendedGuideCommand = $runnerOutputWiringCommand
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+if ($status -eq 'updated' -or $status -eq 'noop') {
+    $recommendedCommand = $runnerOutputWiringSafeCommand
+    $recommendedGuideCommand = $runnerOutputWiringCommand
+} else {
+    $recommendedCommand = $broaderRunnerCommand
+    $recommendedGuideCommand = $runnerOutputPatchTargetsSafeCommand
+}
 $reason = if ($status -eq 'updated') {
     'The saved issue #3 summary and manifest now both advertise the refresh and handoff runner-output contract directly, so later helpers no longer need to infer those top-level fields from partial pointer recovery alone.'
 } elseif ($status -eq 'summary-updated-manifest-missing') {
@@ -268,7 +274,7 @@ $reason = if ($status -eq 'updated') {
 $nextFocus = if ($status -eq 'updated' -or $status -eq 'noop') {
     'Reopen the safe runner-output wiring audit first, then use the raw wiring helper only after the safe gate says the stricter check is appropriate.'
 } else {
-    'Regenerate the broader recommended-validation outputs first, then rerun this repair helper only if the runner still leaves a contract gap.'
+    'Regenerate the broader recommended-validation outputs first, then use the safe patch-target helper before reopening the stricter runner wiring checks if the runner still leaves a contract gap.'
 }
 
 $report = [ordered]@{
@@ -294,6 +300,7 @@ $report = [ordered]@{
     handoff_error_value_source = $handoffErrorValue.source
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
+    runner_output_patch_targets_safe_command = $runnerOutputPatchTargetsSafeCommand
     runner_output_patch_targets_command = $runnerOutputPatchTargetsCommand
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
@@ -337,5 +344,6 @@ Write-Host ("Reason: {0}" -f $report.reason)
 Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Verify: {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Safe patch targets: {0}" -f $report.runner_output_patch_targets_safe_command)
 Write-Host ("Patch targets: {0}" -f $report.runner_output_patch_targets_command)
 Write-Host ("Runner: {0}" -f $report.broader_runner_command)
