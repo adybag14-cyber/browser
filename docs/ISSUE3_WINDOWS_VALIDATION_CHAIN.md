@@ -86,7 +86,8 @@ Only trust the stricter raw helper after its safe wrapper says the state is read
 - `show_google_issue3_validation_handoff.ps1` after `show_google_issue3_validation_handoff_safe.ps1` reports `safe-to-run-handoff`, or after the handoff safe refresh route reports `ready-for-handoff`.
 - `show_google_issue3_validation_artifact_bundle.ps1` after `show_google_issue3_validation_artifact_bundle_safe.ps1` reports `safe-to-run-existing-helper`, or after the bundle safe path route reports `ready-for-bundle-follow-up`.
 - `show_google_issue3_runner_output_wiring_status.ps1` after the runner-output safe chain reports `ready-for-runner-output-wiring`.
-- `show_google_issue3_runner_output_patch_targets.ps1` only after `show_google_issue3_runner_output_patch_targets_safe.ps1` or `show_google_issue3_runner_output_patch_targets_safe_route.ps1` reports a raw patch-target-ready state.
+- `show_google_issue3_runner_output_patch_handoff.ps1` after `show_google_issue3_runner_output_patch_targets_safe_route.ps1` reports `ready-for-runner-patch`.
+- `show_google_issue3_runner_output_patch_targets.ps1` only after `show_google_issue3_runner_output_patch_targets_safe.ps1` or `show_google_issue3_runner_output_patch_targets_safe_route.ps1` reports that the raw patch-target helper itself is still the next safe checkpoint.
 
 ## If the runner-output contract still needs a patch
 
@@ -95,9 +96,10 @@ Stay on the wrapper and safe-route chain instead of starting from the raw patch-
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_handoff.ps1
 ```
+
+If the safe route still says the raw patch-target helper is the next safe checkpoint, let that helper be reopened through the safe-route wrapper instead of launching it by hand first.
 
 Patch target:
 - `scripts/windows/run_google_issue3_recommended_validation.ps1`
@@ -108,7 +110,10 @@ When the top-level wrapper reports `ready-for-runner-patch`, open its combined a
 When the runner-output repair plus patch-target wrapper is the entrypoint, its combined artifact is:
 - `tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-repair-runner-output-patch-targets.json`
 
-Use the preserved summary and manifest snippet lines from those combined artifacts before reopening lower-level helpers by hand.
+When the patch handoff helper is the entrypoint, its artifact is:
+- `tmp-browser-smoke\headed-probe\google-issue3-runner-output-patch-handoff.json`
+
+Use the preserved summary and manifest snippet lines from the newest wrapper or patch-handoff artifact before reopening lower-level helpers by hand.
 
 Verify after any runner-output patch:
 
@@ -128,17 +133,18 @@ Required direct fields in both the summary artifact and the manifest artifact:
 - `handoff_artifact_error`
 
 Patch rules:
-- Use the values emitted by `show_google_issue3_runner_output_patch_targets_safe_route.ps1` or `show_google_issue3_runner_output_patch_targets.ps1` instead of inventing paths.
+- Use the values emitted by `show_google_issue3_runner_output_patch_targets_safe_route.ps1` or `show_google_issue3_runner_output_patch_handoff.ps1` instead of inventing paths.
 - Keep the error fields present even when the value is empty or `$null`; the newer audits distinguish between a missing field and a recorded empty value.
 - Recheck both object writers after editing. The helper-chain audits treat the summary and manifest as separate contracts.
 
 Recommended patch loop:
 1. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1` or `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1`.
-2. Open the emitted combined wrapper artifact and copy the suggested field lines for both saved output objects in `scripts/windows/run_google_issue3_recommended_validation.ps1`.
-3. Rerun `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`.
-4. Verify with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`.
-5. Confirm the raw audit with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1`.
-6. Continue into `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1` only after the wiring audit reports the runner output is ready.
+2. If the safe route reports `ready-for-runner-patch`, run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_handoff.ps1`.
+3. Open the newest wrapper or patch-handoff artifact and copy the suggested field lines for both saved output objects in `scripts/windows/run_google_issue3_recommended_validation.ps1`.
+4. Rerun `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`.
+5. Verify with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`.
+6. Confirm the raw audit with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1`.
+7. Continue into `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1` only after the wiring audit reports the runner output is ready.
 
 ## Practical rule
 
