@@ -54,6 +54,16 @@ function Read-ArtifactJson {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function Test-HasProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
 function Set-ObjectProperty {
     param(
         [Parameter(Mandatory = $true)]
@@ -97,7 +107,12 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
     Split-Path -Parent $SummaryPath
 }
 if (-not $ManifestPath) {
-    $ManifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
+    $configuredManifestPath = if (Test-HasProperty -Object $summary -Name 'manifest_artifact_path') {
+        $summary.manifest_artifact_path
+    } else {
+        $null
+    }
+    $ManifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredManifestPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
 }
 $manifestExists = Test-Path -LiteralPath $ManifestPath -PathType Leaf
 $manifest = if ($manifestExists) {
@@ -109,8 +124,16 @@ $manifest = if ($manifestExists) {
 } else {
     $null
 }
-$configuredSummaryHandoffPath = $summary.handoff_artifact_path
-$configuredManifestHandoffPath = if ($manifest) { $manifest.handoff_artifact_path } else { $null }
+$configuredSummaryHandoffPath = if (Test-HasProperty -Object $summary -Name 'handoff_artifact_path') {
+    $summary.handoff_artifact_path
+} else {
+    $null
+}
+$configuredManifestHandoffPath = if (Test-HasProperty -Object $manifest -Name 'handoff_artifact_path') {
+    $manifest.handoff_artifact_path
+} else {
+    $null
+}
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)
 $manifestRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)
 $handoffPointerUsesManifest = (-not $summaryRecordsHandoffArtifactPath) -and $manifestRecordsHandoffArtifactPath
