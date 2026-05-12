@@ -131,6 +131,7 @@ $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\wind
 $artifactPathRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_artifact_paths.ps1'
 $runnerOutputPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $runnerOutputWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_safe.ps1'
 
 $configuredManifestPath = Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path'
@@ -207,12 +208,19 @@ if (-not $summaryHasArtifactRootField) {
     $recommendedCommand = $runnerOutputPatchTargetsCommand
     $recommendedGuideCommand = $broaderRunnerCommand
     $nextArtifactToOpen = $manifestPath
-} else {
-    $status = 'safe-to-run-patch-targets'
-    $reason = 'The summary already carries the strict-mode prerequisite fields the raw patch-target helper expects, so it is safe to use for the next runner-contract patch.'
-    $nextFocus = 'Run the raw patch-target helper, land the suggested direct runner-output fields if they are still missing, then confirm the result with the safe wiring audit.'
-    $recommendedCommand = $runnerOutputPatchTargetsCommand
+} elseif ($runnerContractMissing) {
+    $status = 'runner-contract-missing-safe-repair'
+    $reason = 'The saved summary and manifest are safe enough to inspect, but they still omit part of the direct refresh or handoff runner-output contract.'
+    $nextFocus = 'Run the bounded runner-output contract repair helper first, then reopen the safe wiring audit to confirm the saved outputs are fully wired before trusting narrower refresh or handoff helpers.'
+    $recommendedCommand = $runnerContractRepairCommand
     $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
+    $nextArtifactToOpen = $SummaryPath
+} else {
+    $status = 'already-direct'
+    $reason = 'The summary and manifest already expose the direct refresh and handoff runner-output contract, so there is nothing left for the raw patch-target helper to prepare.'
+    $nextFocus = 'Skip patch-target work and move straight to the safe wiring audit or the narrower refresh-status helper chain.'
+    $recommendedCommand = $runnerOutputWiringStatusSafeCommand
+    $recommendedGuideCommand = $refreshStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 }
 
@@ -247,6 +255,7 @@ $report = [ordered]@{
     artifact_path_repair_command = $artifactPathRepairCommand
     runner_output_patch_targets_command = $runnerOutputPatchTargetsCommand
     runner_output_wiring_status_safe_command = $runnerOutputWiringStatusSafeCommand
+    runner_contract_repair_command = $runnerContractRepairCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
     next_artifact_to_open = $nextArtifactToOpen
     status = $status
