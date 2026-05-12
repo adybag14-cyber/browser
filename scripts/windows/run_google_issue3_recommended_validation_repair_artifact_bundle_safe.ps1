@@ -193,7 +193,7 @@ $artifactBundleSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validati
 $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_chain.ps1'
 $artifactBundleSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
 $artifactBundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 foreach ($helperPath in @($repairChainScript, $artifactBundleSafeScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -251,6 +251,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $repairChainCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-artifact-bundle') { $artifactBundleCommand },
     if ($artifactBundleSafeStep) { $artifactBundleSafeStep.recommended_guide_command },
     if ($repairChainStep) { $repairChainStep.recommended_guide_command },
     $summaryGuideCommand
