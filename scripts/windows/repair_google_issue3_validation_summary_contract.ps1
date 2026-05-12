@@ -271,7 +271,7 @@ $guideSources = @(
     if ($wiringSafeStep) { $wiringSafeStep.recommended_guide_command },
     if ($errorFieldRepairStep) { $errorFieldRepairStep.recommended_guide_command },
     if ($pointerRepairStep) { $pointerRepairStep.recommended_guide_command },
-    'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+    'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 )
 $focusSources = @(
     if ($wiringStep) { $wiringStep.next_focus },
