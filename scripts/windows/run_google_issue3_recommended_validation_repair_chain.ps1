@@ -191,6 +191,7 @@ if (-not $ArtifactPath) {
 $recommendedRunnerScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation.ps1'
 $repairChainScript = Join-Path $PSScriptRoot 'repair_google_issue3_validation_helper_chain.ps1'
 $wiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_helper_chain.ps1'
 
@@ -216,7 +217,7 @@ if ($summaryExistsAfterRunner) {
     $repairStep = Invoke-ScriptStep -Name 'validation-helper-chain-repair' -ScriptPath $repairChainScript -Arguments $repairArguments -ExpectJson
     $steps.Add($repairStep) | Out-Null
 } else {
-    $repairStep = New-SkippedStep -Name 'validation-helper-chain-repair' -ScriptPath $repairChainScript -Arguments $repairArguments -Reason 'The broader recommended runner did not leave a summary artifact, so the helper-chain repair step had no current state to normalize.' -RecommendedCommand $recommendedRunnerCommand -RecommendedGuideCommand $wiringStatusSafeCommand -NextFocus 'Get the broader issue #3 recommended runner to produce a fresh summary artifact first.' -NextArtifactToOpen $ArtifactPath
+    $repairStep = New-SkippedStep -Name 'validation-helper-chain-repair' -ScriptPath $repairChainScript -Arguments $repairArguments -Reason 'The broader recommended runner did not leave a summary artifact, so the helper-chain repair step had no current state to normalize.' -RecommendedCommand $recommendedRunnerCommand -RecommendedGuideCommand $summaryGuideSafeCommand -NextFocus 'Get the broader issue #3 recommended runner to produce a fresh summary artifact first.' -NextArtifactToOpen $ArtifactPath
     $steps.Add($repairStep) | Out-Null
 }
 
@@ -250,7 +251,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($repairStep) { $repairStep.recommended_guide_command },
-    $wiringStatusSafeCommand
+    $summaryGuideSafeCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
     if ($repairStep) { $repairStep.next_focus },
