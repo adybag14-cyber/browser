@@ -57,6 +57,20 @@ function Get-TraceSummary([string]$Path) {
     return (($lines[-6..-1]) -join "`n")
 }
 
+function Get-TraceTailSummaries([string]$Root, [string]$Pattern) {
+    $summaries = @()
+    $files = Get-ChildItem -Path $Root -Filter $Pattern -File -ErrorAction SilentlyContinue |
+        Sort-Object FullName
+    foreach ($file in $files) {
+        $summaries += [pscustomobject]@{
+            name = $file.Name
+            path = $file.FullName
+            tail = Get-TraceSummary $file.FullName
+        }
+    }
+    return $summaries
+}
+
 function Get-TraceArtifactPaths([string]$Root) {
     $artifacts = @()
     $patterns = @(
@@ -236,6 +250,8 @@ try {
         trace_artifacts = @(Get-TraceArtifactPaths $scriptRoot)
         backend_trace_files = @(Get-ChildItem -Path $scriptRoot -Filter "runtime-input-backend-*.log" -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -ExpandProperty Name)
         wndproc_trace_files = @(Get-ChildItem -Path $scriptRoot -Filter "wndproc-input-*.log" -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -ExpandProperty Name)
+        backend_trace_tails = @(Get-TraceTailSummaries $scriptRoot "runtime-input-backend-*.log")
+        wndproc_trace_tails = @(Get-TraceTailSummaries $scriptRoot "wndproc-input-*.log")
         server_stdout = if (Test-Path -LiteralPath $serverOut) { Get-Content -LiteralPath $serverOut -Raw } else { $null }
         server_stderr = if (Test-Path -LiteralPath $serverErr) { Get-Content -LiteralPath $serverErr -Raw } else { $null }
     }
