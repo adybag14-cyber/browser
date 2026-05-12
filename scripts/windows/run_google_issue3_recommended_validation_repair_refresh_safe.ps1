@@ -189,14 +189,16 @@ if (-not $ArtifactPath) {
 }
 
 $repairChainScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation_repair_chain.ps1'
-$refreshSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_refresh_status_safe.ps1'
+$handoffSafeRefreshRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_chain.ps1'
+$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $refreshSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 
-foreach ($helperPath in @($repairChainScript, $refreshSafeScript)) {
+foreach ($helperPath in @($repairChainScript, $handoffSafeRefreshRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
     }
@@ -207,83 +209,86 @@ if ($RunnerArgument) {
     $repairChainArguments += '-RunnerArgument'
     $repairChainArguments += $RunnerArgument
 }
-$refreshSafeArguments = @('-SummaryPath', $SummaryPath, '-Json')
+$routeArguments = @('-SummaryPath', $SummaryPath, '-Json')
 
 $steps = [System.Collections.Generic.List[object]]::new()
 $repairChainStep = Invoke-ScriptStep -Name 'recommended-validation-repair-chain' -ScriptPath $repairChainScript -Arguments $repairChainArguments -ExpectJson
 $steps.Add($repairChainStep) | Out-Null
 
 $summaryExistsAfterRepairChain = Test-Path -LiteralPath $SummaryPath -PathType Leaf
-$refreshSafeStep = $null
+$handoffSafeRefreshRouteStep = $null
 if ($summaryExistsAfterRepairChain) {
-    $refreshSafeStep = Invoke-ScriptStep -Name 'refresh-status-safe' -ScriptPath $refreshSafeScript -Arguments $refreshSafeArguments -ExpectJson
-    $steps.Add($refreshSafeStep) | Out-Null
+    $handoffSafeRefreshRouteStep = Invoke-ScriptStep -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments $routeArguments -ExpectJson
+    $steps.Add($handoffSafeRefreshRouteStep) | Out-Null
 } else {
-    $refreshSafeStep = New-SkippedStep -Name 'refresh-status-safe' -ScriptPath $refreshSafeScript -Arguments $refreshSafeArguments -Reason 'The combined repair chain did not leave a current summary artifact, so the refresh-status-safe check had no replay state to inspect.' -RecommendedCommand $repairChainCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 validation chain to leave a fresh summary artifact before checking the refresh-status-safe gate.' -NextArtifactToOpen $ArtifactPath
-    $steps.Add($refreshSafeStep) | Out-Null
+    $handoffSafeRefreshRouteStep = New-SkippedStep -Name 'handoff-safe-refresh-route' -ScriptPath $handoffSafeRefreshRouteScript -Arguments $routeArguments -Reason 'The combined repair chain did not leave a current summary artifact, so the handoff-safe refresh-route check had no replay state to inspect.' -RecommendedCommand $repairChainCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 validation chain to leave a fresh summary artifact before checking the handoff-safe refresh route.' -NextArtifactToOpen $ArtifactPath
+    $steps.Add($handoffSafeRefreshRouteStep) | Out-Null
 }
 
 $status = $null
 $reason = $null
 if (-not $summaryExistsAfterRepairChain) {
     $status = 'repair-chain-no-summary'
-    $reason = 'The broader issue #3 validation repair chain did not leave a summary artifact, so the follow-up refresh-status-safe check could not continue.'
+    $reason = 'The broader issue #3 validation repair chain did not leave a summary artifact, so the follow-up handoff-safe refresh route could not continue.'
 } elseif (-not $repairChainStep.success) {
     $status = 'repair-chain-failed'
-    $reason = 'The broader issue #3 validation repair chain did not finish cleanly, so the next replay still needs direct repair-chain attention before the refresh path is trusted.'
-} elseif (-not $refreshSafeStep.success) {
-    $status = 'refresh-safe-check-failed'
-    $reason = 'The validation repair chain completed, but the refresh-status-safe helper did not finish cleanly, so the next replay should stay on the saved repair artifact first.'
-} elseif ($refreshSafeStep.status -eq 'safe-to-run-existing-helper') {
-    $status = 'ready-for-refresh-status-helper'
-    $reason = 'The broader validation repair chain completed, and the refresh-status-safe helper says the raw issue #3 refresh-status helper is ready for the next Windows replay.'
+    $reason = 'The broader issue #3 validation repair chain did not finish cleanly, so the next replay still needs direct repair-chain attention before the narrower handoff path is trusted.'
+} elseif (-not $handoffSafeRefreshRouteStep.success) {
+    $status = 'handoff-safe-refresh-route-failed'
+    $reason = 'The validation repair chain completed, but the handoff-safe refresh route did not finish cleanly, so the next replay should stay on that safer route checkpoint first.'
+} elseif ($handoffSafeRefreshRouteStep.status -eq 'ready-for-handoff') {
+    $status = 'ready-for-handoff'
+    $reason = 'The broader validation repair chain completed, and the handoff-safe refresh route says the narrower issue #3 handoff path is ready for the next Windows replay.'
 } else {
     $status = 'follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
-        if ($refreshSafeStep) { $refreshSafeStep.reason },
+        if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.reason },
         if ($repairChainStep) { $repairChainStep.reason },
-        'The broader validation repair chain and refresh-status-safe check completed, but the next issue #3 replay still needs the follow-up command reported by the saved artifacts.'
+        'The broader validation repair chain and handoff-safe refresh route completed, but the next issue #3 replay still needs the follow-up command reported by the saved artifacts.'
     )
 }
 
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
-    if ($refreshSafeStep) { $refreshSafeStep.recommended_command },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.recommended_command },
     if ($repairChainStep) { $repairChainStep.recommended_command },
     $repairChainCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($refreshSafeStep) { $refreshSafeStep.recommended_guide_command },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.recommended_guide_command },
     if ($repairChainStep) { $repairChainStep.recommended_guide_command },
     $summaryGuideCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
-    if ($refreshSafeStep) { $refreshSafeStep.next_focus },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.next_focus },
     if ($repairChainStep) { $repairChainStep.next_focus },
-    if (-not $summaryExistsAfterRepairChain) { 'Regenerate the issue #3 recommended validation summary before asking the refresh-status-safe helper to narrow the next replay.' }
+    if (-not $summaryExistsAfterRepairChain) { 'Regenerate the issue #3 recommended validation summary before asking the handoff-safe refresh route to narrow the next replay.' }
 )
 $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
-    if ($refreshSafeStep) { $refreshSafeStep.next_artifact_to_open },
+    if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.next_artifact_to_open },
     if ($repairChainStep) { $repairChainStep.next_artifact_to_open },
     if ($summaryExistsAfterRepairChain) { $SummaryPath },
     $ArtifactPath
 )
 
 $report = [ordered]@{
-    issue = 'Google issue #3 recommended validation repair plus refresh-status-safe gate'
-    purpose = 'Run the broader issue #3 validation repair chain, then immediately confirm whether the refresh-status-safe checkpoint is clear enough for the next Windows replay to trust the raw refresh-status helper.'
+    issue = 'Google issue #3 recommended validation repair plus handoff-safe refresh route'
+    purpose = 'Run the broader issue #3 validation repair chain, then immediately confirm whether the handoff-safe refresh route is clear enough for the next Windows replay to trust the narrower handoff helper.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     runner_argument_passthrough = @($RunnerArgument)
     summary_exists_after_repair_chain = [bool]$summaryExistsAfterRepairChain
     repair_chain_status = $repairChainStep.status
-    refresh_safe_status = $refreshSafeStep.status
+    handoff_safe_refresh_route_status = $handoffSafeRefreshRouteStep.status
+    refresh_safe_status = $handoffSafeRefreshRouteStep.status
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     repair_chain_command = $repairChainCommand
+    handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     refresh_safe_command = $refreshSafeCommand
     refresh_status_command = $refreshStatusCommand
     handoff_safe_command = $handoffSafeCommand
+    handoff_guide_command = $handoffGuideCommand
     summary_guide_command = $summaryGuideCommand
     next_focus = $nextFocus
     next_artifact_to_open = $nextArtifactToOpen
@@ -311,20 +316,20 @@ $report | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding As
 
 if ($Json) {
     $report | ConvertTo-Json -Depth 8
-    if (@('repair-chain-no-summary', 'repair-chain-failed', 'refresh-safe-check-failed') -contains $status) {
+    if (@('repair-chain-no-summary', 'repair-chain-failed', 'handoff-safe-refresh-route-failed') -contains $status) {
         exit 1
     }
     exit 0
 }
 
-Write-Host 'Google issue #3 recommended validation repair plus refresh-status-safe gate'
+Write-Host 'Google issue #3 recommended validation repair plus handoff-safe refresh route'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
 Write-Host ("Summary exists after repair chain: {0}" -f $report.summary_exists_after_repair_chain)
 Write-Host ("Repair chain: {0}" -f $report.repair_chain_status)
-Write-Host ("Refresh safe: {0}" -f $report.refresh_safe_status)
+Write-Host ("Handoff-safe refresh route: {0}" -f $report.handoff_safe_refresh_route_status)
 Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
@@ -343,6 +348,6 @@ Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
 
-if (@('repair-chain-no-summary', 'repair-chain-failed', 'refresh-safe-check-failed') -contains $status) {
+if (@('repair-chain-no-summary', 'repair-chain-failed', 'handoff-safe-refresh-route-failed') -contains $status) {
     exit 1
 }
