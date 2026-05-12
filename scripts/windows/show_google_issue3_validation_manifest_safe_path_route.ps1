@@ -215,12 +215,13 @@ $steps = [System.Collections.Generic.List[object]]::new()
 $manifestSafeStep = Invoke-JsonHelper -Name 'manifest-safe' -ScriptPath $manifestSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 $steps.Add($manifestSafeStep) | Out-Null
 
-$shouldRunManifestPathCoherency = [bool]($manifestSafeStep.success -and $manifestSafeStep.status -eq 'safe-to-run-manifest-guide')
+$readyForManifestGuide = [bool]($manifestSafeStep.success -and $manifestSafeStep.recommended_command -eq $manifestGuideCommand)
+$shouldRunManifestPathCoherency = [bool]$readyForManifestGuide
 $manifestPathCoherencyStep = $null
 if ($shouldRunManifestPathCoherency) {
     $manifestPathCoherencyStep = Invoke-JsonHelper -Name 'manifest-path-coherency' -ScriptPath $manifestPathCoherencyScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 } else {
-    $manifestPathCoherencyStep = New-SkippedHelperStep -Name 'manifest-path-coherency' -ScriptPath $manifestPathCoherencyScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.recommended_command, $manifestSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.next_focus, 'Use the current manifest-safe guidance; the extra manifest path-coherency checkpoint is only needed when the safe helper says the raw manifest guide is ready.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The manifest-safe checkpoint did not report safe-to-run-manifest-guide, so the raw manifest path-coherency helper was not reopened yet.'
+    $manifestPathCoherencyStep = New-SkippedHelperStep -Name 'manifest-path-coherency' -ScriptPath $manifestPathCoherencyScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.recommended_command, $manifestSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.next_focus, 'Use the current manifest-safe guidance; the extra manifest path-coherency checkpoint is only needed when the safe helper says the raw manifest guide is ready.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($manifestSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The manifest-safe checkpoint did not route the next replay back to the raw manifest guide, so the extra manifest path-coherency helper was not reopened yet.'
 }
 $steps.Add($manifestPathCoherencyStep) | Out-Null
 
@@ -256,7 +257,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $manifestSafeCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($shouldRunManifestPathCoherency -and $manifestPathCoherencyStep.status -eq 'coherent') { $manifestGuideCommand },
+    if ($readyForManifestGuide -and $manifestPathCoherencyStep.status -eq 'coherent') { $manifestGuideCommand },
     if ($shouldRunManifestPathCoherency) { $manifestPathCoherencyStep.recommended_guide_command },
     $manifestSafeStep.recommended_guide_command,
     $summaryGuideSafeCommand
