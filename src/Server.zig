@@ -601,7 +601,7 @@ test "Client: http invalid request" {
     var c = try createTestClient();
     defer c.deinit();
 
-    const res = try c.httpRequest("GET /over/9000 HTTP/1.1\r\n" ++ "Header: " ++ ("a"**4100) ++ "\r\n\r\n");
+    const res = try c.httpRequest("GET /over/9000 HTTP/1.1\r\n" ++ "Header: " ++ ("a" * *4100) ++ "\r\n\r\n");
     try testing.expectEqualStrings("HTTP/1.1 413 \r\n" ++
         "Connection: Close\r\n" ++
         "Content-Length: 17\r\n\r\n" ++
@@ -1008,4 +1008,4 @@ const TestClient = struct {
             }
         }
     }
-}
+};
