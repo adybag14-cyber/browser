@@ -165,7 +165,7 @@ $artifactPathRepairScript = Join-Path $PSScriptRoot 'repair_google_issue3_valida
 $runnerContractRepairScript = Join-Path $PSScriptRoot 'repair_google_issue3_runner_output_contract.ps1'
 $refreshChainScript = Join-Path $PSScriptRoot 'refresh_google_issue3_validation_handoff_chain.ps1'
 $wiringStatusScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_wiring_status.ps1'
-$refreshStatusScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_refresh_status.ps1'
+$refreshStatusScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_refresh_status_safe.ps1'
 $handoffSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe.ps1'
 
 $requiredHelpers = @(
