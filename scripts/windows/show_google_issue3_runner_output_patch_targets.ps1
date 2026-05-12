@@ -167,7 +167,28 @@ function New-PatchSnippetLine {
     return ('        {0} = {1}' -f $FieldRecord.field, (Convert-ToPowerShellLiteral -Value $FieldRecord.suggested_value))
 }
 
+function Get-DirectFieldAssignmentCount {
+    param(
+        [string]$SourceText,
+        [Parameter(Mandatory = $true)]
+        [string]$AssignmentText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SourceText)) {
+        return 0
+    }
+
+    return [regex]::Matches($SourceText, [regex]::Escape($AssignmentText)).Count
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
+$runnerScriptPath = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation.ps1'
+$runnerScriptExists = Test-Path -LiteralPath $runnerScriptPath -PathType Leaf
+$runnerScriptSource = if ($runnerScriptExists) {
+    Get-Content -LiteralPath $runnerScriptPath -Raw
+} else {
+    $null
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -226,6 +247,18 @@ $summaryNeedsPatch = $summaryMissingFields.Count -gt 0
 $manifestNeedsPatch = $manifestMissingFields.Count -gt 0
 $patchReady = [bool]($resolvedRefreshPath -and $resolvedHandoffPath)
 $usesFallbackTargets = [bool]((-not $refreshConfigured) -or (-not $handoffConfigured))
+$repairRunnerOutputContractCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
+$runnerRefreshPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_path = $RefreshChainArtifactPath'
+$runnerRefreshErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_error = $RefreshChainArtifactError'
+$runnerHandoffPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_path = $HandoffArtifactPath'
+$runnerHandoffErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_error = $HandoffArtifactError'
+$runnerSourceIndicatesDirectFieldWiring = [bool](
+    $runnerRefreshPathAssignmentCount -ge 2 -and
+    $runnerRefreshErrorAssignmentCount -ge 2 -and
+    $runnerHandoffPathAssignmentCount -ge 2 -and
+    $runnerHandoffErrorAssignmentCount -ge 2
+)
+$runnerPatchStillRequired = [bool](($summaryNeedsPatch -or $manifestNeedsPatch) -and (-not $runnerSourceIndicatesDirectFieldWiring))
 
 $status = $null
 $reason = $null
@@ -242,6 +275,10 @@ if (-not $manifestExists) {
     $status = 'fully-wired'
     $reason = 'Both the summary and manifest already expose the direct refresh and handoff runner-output fields.'
     $nextFocus = 'Use the existing refresh and handoff helpers for the next narrowed issue #3 replay instead of editing the runner contract again.'
+} elseif ($runnerSourceIndicatesDirectFieldWiring) {
+    $status = 'saved-artifacts-stale-runner-already-wired'
+    $reason = 'The saved summary or manifest still omits at least one direct refresh or handoff field, but the current runner source already writes those fields into both output objects.'
+    $nextFocus = 'Regenerate the recommended validation outputs on Windows, or run the saved-output repair helper on the current artifacts before trusting patch-target guidance again.'
 } elseif ($summaryNeedsPatch -and $manifestNeedsPatch) {
     $status = 'summary-and-manifest-need-direct-fields'
     $reason = 'Both saved runner outputs still omit at least one top-level refresh or handoff field, but the helper now resolves the exact values needed for a direct runner contract patch.'
@@ -279,7 +316,19 @@ $report = [ordered]@{
     manifest_patch_fields = @($manifestPatchFields)
     summary_patch_snippet_lines = @($summaryPatchSnippetLines)
     manifest_patch_snippet_lines = @($manifestPatchSnippetLines)
-    recommended_patch_target = 'scripts/windows/run_google_issue3_recommended_validation.ps1'
+    runner_script_path = $runnerScriptPath
+    runner_script_exists = [bool]$runnerScriptExists
+    runner_source_indicates_direct_field_wiring = [bool]$runnerSourceIndicatesDirectFieldWiring
+    runner_patch_still_required = [bool]$runnerPatchStillRequired
+    runner_direct_field_assignment_counts = [ordered]@{
+        refresh_chain_artifact_path = $runnerRefreshPathAssignmentCount
+        refresh_chain_artifact_error = $runnerRefreshErrorAssignmentCount
+        handoff_artifact_path = $runnerHandoffPathAssignmentCount
+        handoff_artifact_error = $runnerHandoffErrorAssignmentCount
+    }
+    recommended_patch_target = if ($runnerPatchStillRequired) { 'scripts/windows/run_google_issue3_recommended_validation.ps1' } else { $null }
+    recommended_repair_command = $repairRunnerOutputContractCommand
+    recommended_regeneration_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
     recommended_verification_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
     runner_output_status_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
     broader_runner_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
@@ -303,6 +352,9 @@ Write-Host ("Patch ready: {0}" -f $report.patch_ready)
 Write-Host ("Uses fallback targets: {0}" -f $report.uses_fallback_targets)
 Write-Host ("Summary needs patch: {0}" -f $report.summary_needs_patch)
 Write-Host ("Manifest needs patch: {0}" -f $report.manifest_needs_patch)
+Write-Host ("Runner script: {0}" -f $report.runner_script_path)
+Write-Host ("Runner source wired: {0}" -f $report.runner_source_indicates_direct_field_wiring)
+Write-Host ("Runner patch still required: {0}" -f $report.runner_patch_still_required)
 Write-Host ("Refresh target: {0}" -f $report.resolved_refresh_artifact_path)
 Write-Host ("Refresh source: {0}" -f $report.refresh_path_value_source)
 Write-Host ("Handoff target: {0}" -f $report.resolved_handoff_artifact_path)
@@ -344,5 +396,11 @@ if ($report.manifest_patch_snippet_lines.Count -gt 0) {
 Write-Host ''
 Write-Host ("Reason: {0}" -f $report.reason)
 Write-Host ("Focus:  {0}" -f $report.next_focus)
-Write-Host ("Patch:  {0}" -f $report.recommended_patch_target)
+if ($report.recommended_patch_target) {
+    Write-Host ("Patch:  {0}" -f $report.recommended_patch_target)
+} else {
+    Write-Host 'Patch:  Not required; regenerate or repair the saved outputs first.'
+}
+Write-Host ("Repair: {0}" -f $report.recommended_repair_command)
+Write-Host ("Rerun:  {0}" -f $report.recommended_regeneration_command)
 Write-Host ("Verify: {0}" -f $report.recommended_verification_command)
