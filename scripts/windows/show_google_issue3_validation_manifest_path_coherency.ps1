@@ -123,6 +123,7 @@ $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1'
 $manifestSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
+$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
 
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
@@ -242,8 +243,8 @@ if (-not $manifestExists) {
 } elseif ($driftLabels.Count -gt 0) {
     $status = 'path-drift-detected'
     $reason = 'One or more manifest-backed artifact paths now differ from the current summary-backed paths, so the raw manifest guide may reopen stale helper artifacts.'
-    $nextFocus = 'Use the safe manifest or refresh-status checkpoints while the current summary and manifest paths are brought back into alignment.'
-    $recommendedCommand = if ($driftLabels -contains 'refresh' -or $driftLabels -contains 'handoff') { $refreshStatusCommand } else { $refreshChainCommand }
+    $nextFocus = 'Use the safe manifest or safe refresh-status checkpoints while the current summary and manifest paths are brought back into alignment.'
+    $recommendedCommand = if ($driftLabels -contains 'refresh' -or $driftLabels -contains 'handoff') { $refreshStatusSafeCommand } else { $refreshChainCommand }
     $recommendedGuideCommand = $manifestSafeCommand
     $nextArtifactToOpen = if ($driftLabels -contains 'refresh') {
         ($pathRecords | Where-Object { $_.label -eq 'refresh' } | Select-Object -First 1).summary_preferred_path
@@ -285,6 +286,7 @@ $report = [ordered]@{
     manifest_guide_command = $manifestGuideCommand
     manifest_safe_command = $manifestSafeCommand
     refresh_status_command = $refreshStatusCommand
+    refresh_status_safe_command = $refreshStatusSafeCommand
     refresh_chain_command = $refreshChainCommand
     broader_runner_command = $recommendedRunnerCommand
 }
