@@ -67,6 +67,20 @@ function Test-HasProperty {
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -76,18 +90,25 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
-    $summary.artifact_root
+$configuredArtifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($configuredArtifactRoot)) {
+    $configuredArtifactRoot
 } else {
     Split-Path -Parent $SummaryPath
 }
 
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$configuredManifestPath = Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path'
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredManifestPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = Read-ArtifactJson $manifestPath
 
-$refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summary.refresh_chain_artifact_path) { $summary.refresh_chain_artifact_path } elseif ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
-$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if ($summary.handoff_artifact_path) { $summary.handoff_artifact_path } elseif ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
+$configuredSummaryRefreshPath = Get-OptionalPropertyValue -Object $summary -Name 'refresh_chain_artifact_path'
+$configuredSummaryHandoffPath = Get-OptionalPropertyValue -Object $summary -Name 'handoff_artifact_path'
+$configuredManifestRefreshPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'refresh_chain_artifact_path'
+$configuredManifestHandoffPath = Get-OptionalPropertyValue -Object $manifestRecord -Name 'handoff_artifact_path'
+
+$refreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (-not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)) { $configuredSummaryRefreshPath } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)) { $configuredManifestRefreshPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff-chain-refresh.json'
+$handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (-not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)) { $configuredSummaryHandoffPath } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)) { $configuredManifestHandoffPath } else { $null }) -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
 $repairReportPath = Join-Path $artifactRoot 'google-issue3-summary-pointer-repair.json'
 
 $refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
@@ -96,38 +117,41 @@ $repairReportExists = Test-Path -LiteralPath $repairReportPath -PathType Leaf
 $repairReport = Read-ArtifactJson $repairReportPath
 $refreshRecord = Read-ArtifactJson $refreshPath
 $handoffRecord = Read-ArtifactJson $handoffPath
+$repairReportStatus = Get-OptionalPropertyValue -Object $repairReport -Name 'status'
+$refreshSummaryPath = Get-OptionalPropertyValue -Object $refreshRecord -Name 'summary_path'
+$handoffSummaryPath = Get-OptionalPropertyValue -Object $handoffRecord -Name 'summary_path'
 
 $refreshMatchesSummary = $false
-if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
-    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+if (-not [string]::IsNullOrWhiteSpace($refreshSummaryPath)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 $handoffMatchesSummary = $false
-if ($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_path)) {
-    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+if (-not [string]::IsNullOrWhiteSpace($handoffSummaryPath)) {
+    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 $summaryHasRefreshArtifactPathField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path'
 $summaryHasHandoffArtifactPathField = Test-HasProperty -Object $summary -Name 'handoff_artifact_path'
 $summaryHasRefreshArtifactErrorField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_error'
 $summaryHasHandoffArtifactErrorField = Test-HasProperty -Object $summary -Name 'handoff_artifact_error'
-$summaryRecordsRefreshArtifactPath = [bool]($summaryHasRefreshArtifactPathField -and -not [string]::IsNullOrWhiteSpace($summary.refresh_chain_artifact_path))
-$summaryRecordsHandoffArtifactPath = [bool]($summaryHasHandoffArtifactPathField -and -not [string]::IsNullOrWhiteSpace($summary.handoff_artifact_path))
+$summaryRecordsRefreshArtifactPath = [bool]($summaryHasRefreshArtifactPathField -and -not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath))
+$summaryRecordsHandoffArtifactPath = [bool]($summaryHasHandoffArtifactPathField -and -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath))
 $summaryRecordsRefreshArtifactError = [bool]$summaryHasRefreshArtifactErrorField
 $summaryRecordsHandoffArtifactError = [bool]$summaryHasHandoffArtifactErrorField
-$summaryRefreshArtifactErrorPopulated = [bool]($summaryHasRefreshArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$summary.refresh_chain_artifact_error))
-$summaryHandoffArtifactErrorPopulated = [bool]($summaryHasHandoffArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$summary.handoff_artifact_error))
+$summaryRefreshArtifactErrorPopulated = [bool]($summaryHasRefreshArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string](Get-OptionalPropertyValue -Object $summary -Name 'refresh_chain_artifact_error')))
+$summaryHandoffArtifactErrorPopulated = [bool]($summaryHasHandoffArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string](Get-OptionalPropertyValue -Object $summary -Name 'handoff_artifact_error')))
 
-$configuredManifestRefreshPath = if ($manifestRecord -and (Test-HasProperty -Object $manifestRecord -Name 'refresh_chain_artifact_path')) { $manifestRecord.refresh_chain_artifact_path } else { $null }
-$configuredManifestHandoffPath = if ($manifestRecord -and (Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_path')) { $manifestRecord.handoff_artifact_path } else { $null }
 $manifestHasRefreshArtifactErrorField = Test-HasProperty -Object $manifestRecord -Name 'refresh_chain_artifact_error'
 $manifestHasHandoffArtifactErrorField = Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_error'
 $manifestRecordsRefreshArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)
 $manifestRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)
 $manifestRecordsRefreshArtifactError = [bool]$manifestHasRefreshArtifactErrorField
 $manifestRecordsHandoffArtifactError = [bool]$manifestHasHandoffArtifactErrorField
-$manifestRefreshArtifactErrorPopulated = [bool]($manifestHasRefreshArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$manifestRecord.refresh_chain_artifact_error))
-$manifestHandoffArtifactErrorPopulated = [bool]($manifestHasHandoffArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$manifestRecord.handoff_artifact_error))
+$manifestRefreshArtifactError = Get-OptionalPropertyValue -Object $manifestRecord -Name 'refresh_chain_artifact_error'
+$manifestHandoffArtifactError = Get-OptionalPropertyValue -Object $manifestRecord -Name 'handoff_artifact_error'
+$manifestRefreshArtifactErrorPopulated = [bool]($manifestHasRefreshArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$manifestRefreshArtifactError))
+$manifestHandoffArtifactErrorPopulated = [bool]($manifestHasHandoffArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$manifestHandoffArtifactError))
 
 $runnerRefreshPathFullyWired = [bool]($summaryRecordsRefreshArtifactPath -and $manifestRecordsRefreshArtifactPath)
 $runnerHandoffPathFullyWired = [bool]($summaryRecordsHandoffArtifactPath -and $manifestRecordsHandoffArtifactPath)
@@ -136,7 +160,7 @@ $refreshPointerRecoverable = [bool]($manifestRecordsRefreshArtifactPath -or ($re
 $handoffPointerRecoverable = [bool]($manifestRecordsHandoffArtifactPath -or ($handoffExists -and $handoffMatchesSummary))
 $repairCouldPromotePointers = [bool](((-not $summaryRecordsRefreshArtifactPath) -and $refreshPointerRecoverable) -or ((-not $summaryRecordsHandoffArtifactPath) -and $handoffPointerRecoverable))
 $implicitPointerChainUsable = [bool]($repairCouldPromotePointers -and (($summaryRecordsRefreshArtifactPath -or $refreshPointerRecoverable) -and ($summaryRecordsHandoffArtifactPath -or $handoffPointerRecoverable) -and (($refreshExists -and $refreshMatchesSummary) -or ($handoffExists -and $handoffMatchesSummary))))
-$pointerRepairAlreadyRan = [bool]($repairReportExists -and $repairReport -and $repairReport.status -eq 'updated')
+$pointerRepairAlreadyRan = [bool]($repairReportExists -and $repairReport -and $repairReportStatus -eq 'updated')
 $refreshPointerMissing = -not $summaryRecordsRefreshArtifactPath
 $handoffPointerMissing = -not $summaryRecordsHandoffArtifactPath
 
@@ -265,7 +289,7 @@ $report = [ordered]@{
     handoff_matches_summary = [bool]$handoffMatchesSummary
     repair_report_path = $repairReportPath
     repair_report_exists = [bool]$repairReportExists
-    repair_report_status = if ($repairReport) { $repairReport.status } else { $null }
+    repair_report_status = $repairReportStatus
     summary_has_refresh_artifact_path_field = [bool]$summaryHasRefreshArtifactPathField
     summary_has_handoff_artifact_path_field = [bool]$summaryHasHandoffArtifactPathField
     summary_has_refresh_artifact_error_field = [bool]$summaryHasRefreshArtifactErrorField
