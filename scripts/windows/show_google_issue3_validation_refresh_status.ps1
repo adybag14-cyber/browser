@@ -316,7 +316,7 @@ $reason = if ($refreshReady -and $handoffReady) {
     'The saved handoff artifact is missing for the current summary, so rebuild the helper chain before trusting narrower replay guidance.'
 } elseif ($handoffExists -and -not $handoffReady) {
     'The saved handoff artifact exists for the current summary, but it still lacks the next-artifact pointer needed for narrow replay.'
-} elseif ($handoffPointerUsesManifest) {
+} elseif ($handoffPointerUsesManifest -and $handoffExists -and $handoffMatchesSummary) {
     'The current summary omitted its handoff artifact path, but the saved manifest still records the matching handoff artifact for this summary, so pointer repair is follow-up cleanup instead of a blocker.'
 } elseif ($handoffPointerUsesFallback) {
     'Neither the current summary nor the saved manifest records the handoff artifact path yet, so this helper is trusting the matching saved handoff artifact at the default location until pointer repair catches up.'
