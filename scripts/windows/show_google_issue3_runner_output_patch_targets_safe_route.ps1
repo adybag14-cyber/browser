@@ -73,6 +73,21 @@ function Get-FirstNonEmptyValue {
     return $null
 }
 
+function Get-ArrayValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $value = Get-OptionalPropertyValue -Object $Object -Name $Name
+    if ($null -eq $value) {
+        return @()
+    }
+
+    return @($value)
+}
+
 function Invoke-JsonHelper {
     param(
         [Parameter(Mandatory = $true)]
@@ -236,11 +251,19 @@ $recommendedPatchTarget = $null
 $recommendedRegenerationCommand = $null
 $recommendedVerificationCommand = $null
 $recommendedRepairCommand = $null
+$runnerPatchStillRequired = $false
+$missingRunnerFields = @()
+$summaryPatchSnippetLines = @()
+$manifestPatchSnippetLines = @()
 if ($patchTargetsStep.record) {
     $recommendedPatchTarget = Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_patch_target'
     $recommendedRegenerationCommand = Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_regeneration_command'
     $recommendedVerificationCommand = Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_verification_command'
     $recommendedRepairCommand = Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_repair_command'
+    $runnerPatchStillRequired = [bool](Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'runner_patch_still_required')
+    $missingRunnerFields = @(Get-ArrayValue -Object $patchTargetsStep.record -Name 'missing_runner_fields')
+    $summaryPatchSnippetLines = @(Get-ArrayValue -Object $patchTargetsStep.record -Name 'summary_patch_snippet_lines')
+    $manifestPatchSnippetLines = @(Get-ArrayValue -Object $patchTargetsStep.record -Name 'manifest_patch_snippet_lines')
 }
 
 $status = $null
@@ -251,7 +274,7 @@ if (-not $patchTargetsSafeStep.success) {
 } elseif ($shouldRunRawPatchTargets -and -not $patchTargetsStep.success) {
     $status = 'patch-target-helper-failed'
     $reason = 'The safe helper said the saved outputs were ready for raw patch-target guidance, but the raw patch-target helper did not finish cleanly.'
-} elseif ($shouldRunRawPatchTargets -and $patchTargetsStep.record -and (Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'runner_patch_still_required')) {
+} elseif ($shouldRunRawPatchTargets -and $patchTargetsStep.record -and $runnerPatchStillRequired) {
     $status = 'ready-for-runner-patch'
     $reason = 'The safe gate passed and the raw patch-target helper surfaced the direct runner-output fields that still need to land in the recommended validation runner.'
 } elseif ($shouldRunRawPatchTargets -and $patchTargetsStep.status -eq 'saved-artifacts-stale-runner-already-wired') {
@@ -284,7 +307,7 @@ $nextArtifactToOpen = $null
 if ($status -eq 'ready-for-runner-patch') {
     $recommendedCommand = $patchTargetsCommand
     $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @($recommendedVerificationCommand, $runnerOutputWiringSafeCommand)
-    $nextFocus = 'Inspect the emitted patch-target lines and land the direct refresh and handoff runner-output fields in scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the safe wiring audit.'
+    $nextFocus = 'Inspect the patch-target lines now preserved in this wrapper artifact, land the direct refresh and handoff runner-output fields in scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the safe wiring audit.'
     $nextArtifactToOpen = $ArtifactPath
 } elseif ($status -eq 'runner-already-wired-regenerate-outputs') {
     $recommendedCommand = Get-FirstNonEmptyValue -Values @($recommendedRepairCommand, $repairRunnerOutputContractCommand, $broaderRunnerCommand)
@@ -333,6 +356,10 @@ $report = [ordered]@{
     recommended_regeneration_command = $recommendedRegenerationCommand
     recommended_verification_command = $recommendedVerificationCommand
     recommended_repair_command = $recommendedRepairCommand
+    runner_patch_still_required = [bool]$runnerPatchStillRequired
+    missing_runner_fields = @($missingRunnerFields)
+    summary_patch_snippet_lines = @($summaryPatchSnippetLines)
+    manifest_patch_snippet_lines = @($manifestPatchSnippetLines)
     next_focus = $nextFocus
     next_artifact_to_open = $nextArtifactToOpen
     status = $status
@@ -350,6 +377,10 @@ $report = [ordered]@{
             next_focus = $_.next_focus
             next_artifact_to_open = $_.next_artifact_to_open
             reason = $_.reason
+            runner_patch_still_required = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'runner_patch_still_required') } else { $false }
+            missing_runner_fields = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'missing_runner_fields') } else { @() }
+            summary_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'summary_patch_snippet_lines') } else { @() }
+            manifest_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'manifest_patch_snippet_lines') } else { @() }
             output_preview = @($_.output_preview)
         }
     })
@@ -380,6 +411,26 @@ if ($report.recommended_regeneration_command) {
 if ($report.recommended_verification_command) {
     Write-Host ("Verify:      {0}" -f $report.recommended_verification_command)
 }
+if ($report.missing_runner_fields.Count -gt 0) {
+    Write-Host 'Missing runner fields:'
+    foreach ($fieldName in $report.missing_runner_fields) {
+        Write-Host ("- {0}" -f $fieldName)
+    }
+}
+if ($report.summary_patch_snippet_lines.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Summary patch snippet:'
+    foreach ($line in $report.summary_patch_snippet_lines) {
+        Write-Host $line
+    }
+}
+if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Manifest patch snippet:'
+    foreach ($line in $report.manifest_patch_snippet_lines) {
+        Write-Host $line
+    }
+}
 Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
@@ -389,6 +440,9 @@ foreach ($step in $report.steps) {
     }
     if ($step.parse_error) {
         Write-Host ("  Parse error: {0}" -f $step.parse_error)
+    }
+    if ($step.missing_runner_fields.Count -gt 0) {
+        Write-Host ("  Missing fields: {0}" -f ($step.missing_runner_fields -join ', '))
     }
 }
 Write-Host ''
