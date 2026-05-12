@@ -254,8 +254,8 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
     if ($shouldRunRefreshStatusSafe) { $refreshStatusSafeStep.recommended_guide_command },
-    $handoffSafeStep.recommended_guide_command,
     if ($handoffSafeStep.status -eq 'safe-to-run-handoff') { $handoffGuideCommand },
+    $handoffSafeStep.recommended_guide_command,
     $summaryGuideCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
