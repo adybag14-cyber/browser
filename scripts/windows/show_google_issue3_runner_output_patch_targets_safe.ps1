@@ -243,9 +243,9 @@ if (-not $summaryHasArtifactRootField) {
     $nextArtifactToOpen = $manifestPath
 } elseif ($runnerContractMissing -and $runnerSourceIndicatesDirectFieldWiring) {
     $status = 'runner-source-already-wired-artifacts-stale'
-    $reason = 'The saved summary or manifest still omits direct runner-output fields, but the live recommended runner source already writes those fields into both output objects, so raw patch-target work would only rediscover stale saved artifacts.'
-    $nextFocus = 'Regenerate or repair the saved issue #3 outputs first, then reopen the safe runner-output wiring audit instead of routing back through raw patch-target guidance.'
-    $recommendedCommand = $broaderRunnerCommand
+    $reason = 'The saved summary or manifest still omits direct runner-output fields, but the live recommended runner source already writes those fields into both output objects, and the branch now includes a bounded repair helper for normalizing the stale saved artifacts without reopening the broader runner.'
+    $nextFocus = 'Run the runner-output contract repair helper first, then reopen the safe wiring audit instead of routing back through raw patch-target guidance.'
+    $recommendedCommand = $runnerContractRepairCommand
     $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif (-not $manifestExists) {
