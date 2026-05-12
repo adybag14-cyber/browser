@@ -188,8 +188,11 @@ $status = if (-not $manifestExists) {
     'noop'
 }
 
-$recommendedCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
-$recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_refresh_wiring_status.ps1'
+$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
+$runnerRefreshWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_refresh_wiring_status.ps1'
+$recommendedCommand = $runnerOutputWiringSafeCommand
+$recommendedGuideCommand = $runnerOutputWiringCommand
 $summaryPointerRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_summary_pointers.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
@@ -208,9 +211,9 @@ $reason = if ($status -eq 'updated') {
 }
 
 $nextFocus = if ($status -eq 'updated' -or $status -eq 'noop') {
-    'Reopen the runner-output wiring helpers and confirm the current saved outputs now report the direct contract cleanly before widening back out to the later refresh or handoff helpers.'
+    'Reopen the safe runner-output wiring audit first, then use the raw runner-output wiring helper only after the safe gate says the stricter check is appropriate.'
 } else {
-    'Regenerate the broader recommended-validation outputs first, then rerun the wiring helpers only if the saved contract is still incomplete.'
+    'Regenerate the broader recommended-validation outputs first, then rerun the safe runner-output wiring audit before reopening the stricter runner helpers if the saved contract is still incomplete.'
 }
 
 $report = [ordered]@{
@@ -231,6 +234,9 @@ $report = [ordered]@{
     manifest_updated_fields = @($manifestUpdatedFields)
     resolved_refresh_error = $resolvedRefreshError
     resolved_handoff_error = $resolvedHandoffError
+    runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
+    runner_output_wiring_command = $runnerOutputWiringCommand
+    runner_refresh_wiring_command = $runnerRefreshWiringCommand
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     summary_pointer_repair_command = $summaryPointerRepairCommand
@@ -273,6 +279,7 @@ Write-Host ("Reason: {0}" -f $report.reason)
 Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Verify: {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
+Write-Host ("Refresh audit: {0}" -f $report.runner_refresh_wiring_command)
 Write-Host ("Pointer repair: {0}" -f $report.summary_pointer_repair_command)
 Write-Host ("Runner: {0}" -f $report.broader_runner_command)
 
