@@ -193,7 +193,7 @@ $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts
 $runnerRefreshWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_refresh_wiring_status_safe.ps1'
 $runnerRefreshWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_refresh_wiring_status.ps1'
 $recommendedCommand = $runnerOutputWiringSafeCommand
-$recommendedGuideCommand = $runnerRefreshWiringSafeCommand
+$recommendedGuideCommand = $runnerOutputWiringSafeCommand
 $summaryPointerRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_summary_pointers.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
