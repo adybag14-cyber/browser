@@ -147,7 +147,15 @@ Set-ObjectProperty -Object $summary -Name 'refresh_pointer_repair_command' -Valu
 Write-ArtifactJson -Object $summary -Path $SummaryPath
 
 $manifestExists = Test-Path -LiteralPath $ManifestPath -PathType Leaf
-$manifest = if ($manifestExists) { Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json } else { $null }
+$manifest = $null
+$manifestError = $null
+if ($manifestExists) {
+    try {
+        $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    } catch {
+        $manifestError = $_.Exception.Message
+    }
+}
 if ($manifest) {
     Set-ObjectProperty -Object $manifest -Name 'refresh_chain_artifact_path' -Value $RefreshPath
     Set-ObjectProperty -Object $manifest -Name 'refresh_chain_artifact_error' -Value $refreshArtifactError
@@ -165,12 +173,16 @@ if ($manifest) {
 
 $status = if (-not $manifestExists) {
     'summary-only'
+} elseif ($manifestError) {
+    'summary-synced-manifest-unreadable'
 } elseif ($refreshArtifactError) {
     'synced-with-refresh-error'
 } else {
     'synced'
 }
-$nextFocus = if ($refreshArtifactError) {
+$nextFocus = if ($manifestError) {
+    'Repair or regenerate the saved manifest JSON, then rerun this repair helper so both outputs advertise the same direct refresh-pointer contract.'
+} elseif ($refreshArtifactError) {
     'Regenerate or reread the saved refresh artifact, then rerun this repair helper so the summary and manifest stop depending on fallback refresh-location guesses.'
 } elseif ($refreshStatus -and $refreshStatus -ne 'refreshed') {
     'Open the saved refresh artifact first, then rerun the narrower handoff helper once the helper chain reports a stable refreshed state.'
@@ -179,7 +191,7 @@ $nextFocus = if ($refreshArtifactError) {
 }
 $recommendedCommand = if ($refreshRecommendedCommand) {
     $refreshRecommendedCommand
-} elseif ($refreshArtifactError) {
+} elseif ($manifestError -or $refreshArtifactError) {
     $refreshChainCommand
 } else {
     $repairCommand
@@ -192,6 +204,7 @@ $report = [ordered]@{
     summary_path = $SummaryPath
     manifest_path = $ManifestPath
     manifest_exists = [bool]$manifestExists
+    manifest_error = $manifestError
     refresh_artifact_path = $RefreshPath
     refresh_artifact_exists = [bool]$refreshArtifactExists
     refresh_chain_status = $refreshStatus
@@ -211,7 +224,7 @@ $report = [ordered]@{
 
 if ($Json) {
     $report | ConvertTo-Json -Depth 6
-    if ($refreshArtifactError) {
+    if ($manifestError -or $refreshArtifactError) {
         exit 1
     }
     exit 0
@@ -224,6 +237,9 @@ Write-Host ("Manifest: {0}" -f $report.manifest_path)
 Write-Host ("Refresh:  {0}" -f $report.refresh_artifact_path)
 Write-Host ("Status:   {0}" -f $report.status)
 Write-Host ("Refresh status: {0}" -f $report.refresh_chain_status)
+if ($report.manifest_error) {
+    Write-Host ("Manifest error: {0}" -f $report.manifest_error)
+}
 if ($report.refresh_chain_artifact_error) {
     Write-Host ("Refresh error: {0}" -f $report.refresh_chain_artifact_error)
 }
@@ -239,6 +255,6 @@ if ($report.refresh_chain_next_artifact_to_open) {
 Write-Host ("Run next: {0}" -f $report.recommended_command)
 Write-Host ("Focus:    {0}" -f $report.next_focus)
 
-if ($report.refresh_chain_artifact_error) {
+if ($report.manifest_error -or $report.refresh_chain_artifact_error) {
     exit 1
 }
