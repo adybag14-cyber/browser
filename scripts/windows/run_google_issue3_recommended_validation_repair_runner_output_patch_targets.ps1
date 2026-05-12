@@ -194,7 +194,7 @@ $runnerOutputSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\w
 $patchTargetsSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
 foreach ($helperPath in @($runnerOutputSafeScript, $patchTargetsSafeRouteScript)) {
@@ -241,10 +241,7 @@ $patchTargetsVerificationCommand = if ($patchTargetsStep.record) {
     $null
 }
 $patchTargetsRepairCommand = if ($patchTargetsStep.record) {
-    Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_repair_command'
-} else {
-    $null
-}
+    Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_repair_command' } else { $null }
 $patchTargetsRegenerationCommand = if ($patchTargetsStep.record) {
     Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_regeneration_command'
 } else {
