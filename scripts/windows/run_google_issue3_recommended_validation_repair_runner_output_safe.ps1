@@ -288,6 +288,8 @@ $nextFocus = Get-FirstNonEmptyValue -Values @(
 )
 $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
     if ($runnerWiringSafeStep) { $runnerWiringSafeStep.next_artifact_to_open },
+    if ($runnerContractRepairStep) { $runnerContractRepairStep.next_artifact_to_open },
+    if ($repairChainStep) { $repairChainStep.next_artifact_to_open },
     if ($summaryExistsAfterContractRepair) { $SummaryPath },
     if (Test-Path -LiteralPath $runnerContractRepairArtifactPath -PathType Leaf) { $runnerContractRepairArtifactPath },
     $ArtifactPath
