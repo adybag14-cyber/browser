@@ -63,6 +63,20 @@ function Test-HasProperty {
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 function Get-PhaseReplayCommand([string]$PhaseName) {
     if ([string]::IsNullOrWhiteSpace($PhaseName)) {
         return $null
@@ -108,10 +122,11 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
-    $summary.artifact_root
+$artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
+if (-not [string]::IsNullOrWhiteSpace($artifactRoot)) {
+    $artifactRoot = $artifactRoot
 } else {
-    Split-Path -Parent $SummaryPath
+    $artifactRoot = Split-Path -Parent $SummaryPath
 }
 
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
@@ -123,8 +138,8 @@ $manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\wind
 $boundaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
 $bundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
 
-$guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.guide_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = $null
 $manifestError = $null
@@ -136,8 +151,8 @@ if ($manifestExists) {
     }
 }
 
-$boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.boundary_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
-$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
+$boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'boundary_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
+$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'artifact_bundle_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
 $configuredSummaryHandoffPath = if (Test-HasProperty -Object $summary -Name 'handoff_artifact_path') {
     $summary.handoff_artifact_path
 } else {
@@ -266,8 +281,9 @@ $refreshStatus = if ($refreshRecord -and $refreshRecord.status) {
     'missing'
 }
 $refreshMatchesSummary = $false
-if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary_path)) {
-    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+$refreshSummaryPath = Get-OptionalPropertyValue -Object $refreshRecord -Name 'summary_path'
+if (-not [string]::IsNullOrWhiteSpace($refreshSummaryPath)) {
+    $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 $refreshPointerUsesFallback = (-not $summaryRecordsRefreshArtifactPath) -and (-not $manifestRecordsRefreshArtifactPath) -and $refreshExists
 $refreshPointerUsesManifest = (-not $summaryRecordsRefreshArtifactPath) -and $manifestRecordsRefreshArtifactPath
@@ -292,8 +308,9 @@ if ($handoffExists) {
     }
 }
 $handoffMatchesSummary = $false
-if ($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary_path)) {
-    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+$handoffSummaryPath = Get-OptionalPropertyValue -Object $handoffRecord -Name 'summary_path'
+if (-not [string]::IsNullOrWhiteSpace($handoffSummaryPath)) {
+    $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 $handoffPointerUsesFallback = (-not $summaryRecordsHandoffArtifactPath) -and (-not $manifestRecordsHandoffArtifactPath) -and $handoffExists
 $handoffPointerUsesManifest = (-not $summaryRecordsHandoffArtifactPath) -and $manifestRecordsHandoffArtifactPath
@@ -546,7 +563,7 @@ $handoff = [ordered]@{
     refresh_status = $refreshStatus
     refresh_error = $refreshError
     refresh_matches_summary = [bool]$refreshMatchesSummary
-    refresh_summary_path = if ($refreshRecord) { $refreshRecord.summary_path } else { $null }
+    refresh_summary_path = $refreshSummaryPath
     refresh_reason = if ($refreshRecord) { $refreshRecord.reason } else { $null }
     refresh_failed_step_count = if ($refreshRecord -and $null -ne $refreshRecord.failed_step_count) { [int]$refreshRecord.failed_step_count } else { $null }
     refresh_failed_step_names = if ($refreshRecord) { @($refreshRecord.failed_step_names) } else { @() }
