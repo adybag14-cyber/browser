@@ -42,6 +42,20 @@ function Read-ArtifactJson {
     }
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($Object -and $Object.PSObject.Properties[$Name]) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 function Invoke-JsonHelper {
     param(
         [Parameter(Mandatory = $true)]
@@ -83,8 +97,9 @@ if (-not $SummaryPath) {
 }
 
 $summaryRecord = Read-ArtifactJson $SummaryPath
-$artifactRoot = if ($summaryRecord -and -not [string]::IsNullOrWhiteSpace($summaryRecord.artifact_root)) {
-    $summaryRecord.artifact_root
+$configuredArtifactRoot = Get-OptionalPropertyValue -Object $summaryRecord -Name 'artifact_root'
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($configuredArtifactRoot)) {
+    $configuredArtifactRoot
 } else {
     Split-Path -Parent $SummaryPath
 }
