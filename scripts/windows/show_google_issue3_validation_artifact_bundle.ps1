@@ -565,7 +565,7 @@ if ($bundle.stale_cross_reference_detected) {
         Write-Host ("  Refresh: {0}" -f $mismatch.repair_command)
     }
 }
-if ($bundle.staleSummaryArtifactDetected) {
+if ($bundle.stale_summary_artifact_detected) {
     Write-Host ''
     Write-Host 'Stale summary-derived helpers:'
     foreach ($detail in $bundle.stale_summary_artifact_details) {
