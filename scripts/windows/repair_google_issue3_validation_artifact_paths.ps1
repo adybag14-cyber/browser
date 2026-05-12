@@ -162,12 +162,16 @@ if ($manifestReadable) {
 
 $status = $null
 $reason = $null
-$recommendedCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
-$recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
+$summaryContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_summary_contract.ps1'
+$summaryContractGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
+$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
-$nextFocus = 'Reopen the safe handoff gate against the repaired summary and manifest first, then use the raw handoff helper only after the safe gate says the stricter check is appropriate. If the repaired outputs still show runner-contract gaps, repair that contract and route verification through the safe runner-output wiring helper before reopening the raw audit.'
+$recommendedCommand = $summaryContractRepairCommand
+$recommendedGuideCommand = $summaryContractGuideCommand
+$nextFocus = 'Run the summary-contract checkpoint against the repaired summary and manifest first, then follow its safer route guidance before reopening the raw handoff or runner-output helpers. If the summary-contract helper still reports a broader runner-contract gap, keep the replay on that checkpoint and then route verification through the safe runner-output wiring helper.'
 if (-not $manifestExists) {
     $status = 'summary-repaired-manifest-missing'
     $reason = 'The summary was normalized, but the manifest file was still missing, so only the summary artifact-path contract could be repaired in this pass.'
@@ -201,6 +205,10 @@ $report = [ordered]@{
     manifest_changed_fields = @($manifestChangedFields)
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
+    summary_contract_repair_command = $summaryContractRepairCommand
+    summary_contract_guide_command = $summaryContractGuideCommand
+    handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
+    handoff_guide_command = $handoffGuideCommand
     runner_contract_repair_command = $runnerContractRepairCommand
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
@@ -241,6 +249,10 @@ Write-Host ("Reason: {0}" -f $report.reason)
 Write-Host ("Focus:  {0}" -f $report.next_focus)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
-Write-Host ("Runner contract repair: {0}" -f $report.runner_contract_repair_command)
-Write-Host ("Runner wiring safe:     {0}" -f $report.runner_output_wiring_safe_command)
-Write-Host ("Runner wiring raw:      {0}" -f $report.runner_output_wiring_command)
+Write-Host ("Summary contract repair: {0}" -f $report.summary_contract_repair_command)
+Write-Host ("Summary contract guide:  {0}" -f $report.summary_contract_guide_command)
+Write-Host ("Handoff safe route:      {0}" -f $report.handoff_safe_refresh_route_command)
+Write-Host ("Handoff raw guide:       {0}" -f $report.handoff_guide_command)
+Write-Host ("Runner contract repair:  {0}" -f $report.runner_contract_repair_command)
+Write-Host ("Runner wiring safe:      {0}" -f $report.runner_output_wiring_safe_command)
+Write-Host ("Runner wiring raw:       {0}" -f $report.runner_output_wiring_command)
