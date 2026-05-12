@@ -138,6 +138,10 @@ $artifactRoot = Get-FirstNonEmptyValue -Values @(
 if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-recommended-validation-guide-safe.json'
 }
+$guideArtifactPath = Get-FirstNonEmptyValue -Values @(
+    $ArtifactPath,
+    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path'
+)
 
 $surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
@@ -224,7 +228,7 @@ $reason = 'The safe guide did not need to correct the saved issue #3 summary, so
 if ($missingSummaryContractFields.Count -gt 0) {
     $recommendedCommand = $artifactPathRepairCommand
     $recommendedGuideCommand = $summaryContractRepairCommand
-    $nextFocus = 'Repair the saved summary contract first so older issue #3 artifacts can be reopened safely under strict mode.'
+    $nextFocus = 'Repair the saved summary contract first so older issue #3 artifacts can still be reopened safely under strict mode.'
     $reason = 'The saved summary still omits one or more optional artifact-path fields that newer helpers expect to read directly.'
 } elseif ($surfaceCheckStatus -and $surfaceCheckStatus -ne 'passed') {
     $recommendedCommand = $surfaceCheckCommand
