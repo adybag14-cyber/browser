@@ -302,12 +302,12 @@ if ($refreshError) {
     if (-not $firstUnsafeArtifactPath) { $firstUnsafeArtifactPath = $refreshPath }
 }
 
-$helperMissingFields = @(
-    @($manifestMissingFields),
-    @($guideMissingFields),
-    @($boundaryMissingFields),
-    @($handoffMissingFields),
-    @($refreshMissingFields)
+$helperArtifactsMissingFields = [bool](
+    $manifestMissingFields.Count -gt 0 -or
+    $guideMissingFields.Count -gt 0 -or
+    $boundaryMissingFields.Count -gt 0 -or
+    $handoffMissingFields.Count -gt 0 -or
+    $refreshMissingFields.Count -gt 0
 )
 if (-not $firstUnsafeArtifactPath) {
     if ($manifestMissingFields.Count -gt 0) {
@@ -351,7 +351,7 @@ if (-not $summaryHasArtifactRootField) {
     $recommendedGuideCommand = $refreshStatusSafeCommand
     $nextFocus = 'Refresh the saved guide, boundary, bundle, handoff, and refresh artifacts from the current summary before trusting the raw artifact-bundle helper.'
     $nextArtifactToOpen = $firstUnsafeArtifactPath
-} elseif ($helperMissingFields.Count -gt 0) {
+} elseif ($helperArtifactsMissingFields) {
     $status = 'helper-artifact-contract-missing'
     $reason = 'At least one saved helper artifact exists but still omits fields that the raw artifact-bundle helper reads directly under strict mode.'
     $recommendedCommand = $refreshChainCommand
