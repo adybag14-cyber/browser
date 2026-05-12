@@ -189,15 +189,15 @@ if (-not $ArtifactPath) {
 }
 
 $runnerOutputSafeScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1'
-$patchTargetsScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets.ps1'
+$patchTargetsSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets_safe_route.ps1'
 $runnerOutputSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1'
-$patchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
+$patchTargetsSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
-foreach ($helperPath in @($runnerOutputSafeScript, $patchTargetsScript)) {
+foreach ($helperPath in @($runnerOutputSafeScript, $patchTargetsSafeRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
     }
@@ -208,7 +208,7 @@ if ($RunnerArgument) {
     $runnerOutputSafeArguments += '-RunnerArgument'
     $runnerOutputSafeArguments += $RunnerArgument
 }
-$patchTargetsArguments = @('-SummaryPath', $SummaryPath, '-Json')
+$patchTargetsSafeRouteArguments = @('-SummaryPath', $SummaryPath, '-Json')
 
 $steps = [System.Collections.Generic.List[object]]::new()
 $runnerOutputSafeStep = Invoke-ScriptStep -Name 'runner-output-contract-safe' -ScriptPath $runnerOutputSafeScript -Arguments $runnerOutputSafeArguments -ExpectJson
@@ -217,18 +217,19 @@ $steps.Add($runnerOutputSafeStep) | Out-Null
 $summaryExistsAfterRunnerOutputSafe = Test-Path -LiteralPath $SummaryPath -PathType Leaf
 $patchTargetsStep = $null
 if ($summaryExistsAfterRunnerOutputSafe) {
-    $patchTargetsStep = Invoke-ScriptStep -Name 'runner-output-patch-targets' -ScriptPath $patchTargetsScript -Arguments $patchTargetsArguments -ExpectJson
+    $patchTargetsStep = Invoke-ScriptStep -Name 'runner-output-patch-targets-safe-route' -ScriptPath $patchTargetsSafeRouteScript -Arguments $patchTargetsSafeRouteArguments -ExpectJson
     $steps.Add($patchTargetsStep) | Out-Null
 } else {
-    $patchTargetsStep = New-SkippedStep -Name 'runner-output-patch-targets' -ScriptPath $patchTargetsScript -Arguments $patchTargetsArguments -Reason 'The runner-output contract safe wrapper did not leave a current summary artifact, so the patch-target helper had no current saved state to inspect.' -RecommendedCommand $runnerOutputSafeCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 runner-output repair flow to leave a fresh summary artifact before asking for exact runner patch targets.' -NextArtifactToOpen $ArtifactPath
+    $patchTargetsStep = New-SkippedStep -Name 'runner-output-patch-targets-safe-route' -ScriptPath $patchTargetsSafeRouteScript -Arguments $patchTargetsSafeRouteArguments -Reason 'The runner-output contract safe wrapper did not leave a current summary artifact, so the safe patch-target route had no current saved state to inspect.' -RecommendedCommand $runnerOutputSafeCommand -RecommendedGuideCommand $summaryGuideCommand -NextFocus 'Get the broader issue #3 runner-output repair flow to leave a fresh summary artifact before asking for exact runner patch targets.' -NextArtifactToOpen $ArtifactPath
     $steps.Add($patchTargetsStep) | Out-Null
 }
 
-$runnerPatchStillRequired = if ($patchTargetsStep.record) {
-    [bool](Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'runner_patch_still_required')
+$patchTargetsStatus = if ($patchTargetsStep.record) {
+    Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'status'
 } else {
-    $false
+    $patchTargetsStep.status
 }
+$runnerPatchStillRequired = [bool]($patchTargetsStatus -eq 'ready-for-runner-patch')
 $recommendedPatchTarget = if ($patchTargetsStep.record) {
     Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_patch_target'
 } else {
@@ -254,46 +255,50 @@ $status = $null
 $reason = $null
 if (-not $summaryExistsAfterRunnerOutputSafe) {
     $status = 'runner-output-safe-no-summary'
-    $reason = 'The issue #3 runner-output contract safe wrapper did not leave a summary artifact, so the patch-target helper could not narrow the next runner-side edit.'
+    $reason = 'The issue #3 runner-output contract safe wrapper did not leave a summary artifact, so the patch-target route could not narrow the next runner-side edit.'
 } elseif (-not $runnerOutputSafeStep.success) {
     $status = 'runner-output-safe-failed'
     $reason = 'The issue #3 runner-output contract safe wrapper did not finish cleanly, so the next replay should stay on that bounded repair flow before trusting patch-target guidance.'
 } elseif (-not $patchTargetsStep.success) {
-    $status = 'patch-targets-failed'
-    $reason = 'The runner-output repair flow completed, but the patch-target helper did not finish cleanly, so the next replay should reopen the saved runner-output repair artifact first.'
+    $status = 'patch-target-route-failed'
+    $reason = 'The runner-output repair flow completed, but the safe patch-target route did not finish cleanly, so the next replay should reopen that bounded route first.'
 } elseif ($runnerPatchStillRequired) {
     $status = 'patch-targets-ready'
-    $reason = 'The runner-output repair flow completed and the patch-target helper narrowed the remaining direct runner-output contract gap to exact fields in the recommended validation runner.'
-} elseif ($patchTargetsStep.status -eq 'fully-wired' -or $patchTargetsStep.status -eq 'saved-artifacts-stale-runner-already-wired') {
+    $reason = 'The runner-output repair flow completed and the safe patch-target route narrowed the remaining direct runner-output contract gap to exact fields in the recommended validation runner.'
+} elseif ($patchTargetsStatus -eq 'already-direct') {
     $status = 'ready-for-runner-output-wiring'
-    $reason = 'The saved runner outputs no longer need another direct runner contract edit, so the next Windows replay can trust the runner-output wiring checks instead of reopening patch-target guidance.'
+    $reason = 'The safe patch-target route says the saved outputs already carry the direct runner-output contract, so the next Windows replay can reopen runner-output wiring guidance instead of another patch-target pass.'
+} elseif ($patchTargetsStatus -eq 'runner-already-wired-regenerate-outputs') {
+    $status = 'runner-already-wired-regenerate-outputs'
+    $reason = 'The safe patch-target route says the live runner source is already wired and the saved outputs just need regeneration, so the next replay should regenerate the artifacts before trusting another patch-target pass.'
 } else {
     $status = 'follow-up-needed'
     $reason = Get-FirstNonEmptyValue -Values @(
         if ($patchTargetsStep) { $patchTargetsStep.reason },
         if ($runnerOutputSafeStep) { $runnerOutputSafeStep.reason },
-        'The runner-output repair flow and patch-target helper completed, but the next replay still needs the follow-up command reported by the saved artifacts.'
+        'The runner-output repair flow and safe patch-target route completed, but the next replay still needs the follow-up command reported by the saved artifacts.'
     )
 }
 
 $recommendedCommand = Get-FirstNonEmptyValue -Values @(
-    if ($runnerPatchStillRequired) { $patchTargetsRepairCommand },
-    if ($patchTargetsStep.status -eq 'fully-wired' -or $patchTargetsStep.status -eq 'saved-artifacts-stale-runner-already-wired') { $patchTargetsVerificationCommand },
+    if ($patchTargetsStep) { $patchTargetsStep.recommended_command },
     if ($runnerOutputSafeStep) { $runnerOutputSafeStep.recommended_command },
+    $patchTargetsSafeRouteCommand,
     $patchTargetsRegenerationCommand,
     $recommendedRunnerCommand,
     $runnerOutputSafeCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($runnerPatchStillRequired) { $patchTargetsCommand },
-    if ($patchTargetsStep.status -eq 'fully-wired' -or $patchTargetsStep.status -eq 'saved-artifacts-stale-runner-already-wired') { $runnerOutputWiringCommand },
+    if ($patchTargetsStep) { $patchTargetsStep.recommended_guide_command },
     if ($runnerOutputSafeStep) { $runnerOutputSafeStep.recommended_guide_command },
+    if ($status -eq 'ready-for-runner-output-wiring') { $patchTargetsVerificationCommand },
     $runnerOutputWiringSafeCommand,
     $summaryGuideCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
-    if ($runnerPatchStillRequired) { 'Use the saved patch-target artifact to wire the remaining direct refresh and handoff fields into scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the narrower runner-output wiring audit.' },
-    if ($patchTargetsStep.status -eq 'fully-wired' -or $patchTargetsStep.status -eq 'saved-artifacts-stale-runner-already-wired') { 'The direct runner-output contract looks wired, so reopen the runner-output wiring helpers or regenerate the saved outputs on Windows instead of reopening the patch-target audit.' },
+    if ($runnerPatchStillRequired) { 'Use the emitted safe-route artifact to wire the remaining direct refresh and handoff fields into scripts/windows/run_google_issue3_recommended_validation.ps1, then rerun the narrower runner-output wiring audit.' },
+    if ($status -eq 'ready-for-runner-output-wiring') { 'The direct runner-output contract looks wired, so reopen the runner-output wiring helpers instead of reopening the patch-target route.' },
+    if ($status -eq 'runner-already-wired-regenerate-outputs') { 'Regenerate or repair the saved issue #3 outputs on Windows now that the live runner source already carries the direct contract fields.' },
     if ($patchTargetsStep) { $patchTargetsStep.next_focus },
     if ($runnerOutputSafeStep) { $runnerOutputSafeStep.next_focus },
     if (-not $summaryExistsAfterRunnerOutputSafe) { 'Regenerate the issue #3 recommended validation summary before asking for exact runner patch targets.' }
@@ -307,14 +312,14 @@ $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
 
 $report = [ordered]@{
     issue = 'Google issue #3 recommended validation repair plus runner output patch targets'
-    purpose = 'Run the issue #3 runner-output contract safe flow, then immediately surface the exact remaining patch targets for the recommended validation runner when direct runner-output wiring is still incomplete.'
+    purpose = 'Run the issue #3 runner-output contract safe flow, then immediately reopen the safe patch-target route so the next Windows replay stays on strict-mode-safe guidance before any raw patch-target step is trusted.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     runner_argument_passthrough = @($RunnerArgument)
     summary_exists_after_runner_output_safe = [bool]$summaryExistsAfterRunnerOutputSafe
     runner_output_safe_status = $runnerOutputSafeStep.status
-    patch_targets_status = $patchTargetsStep.status
+    patch_targets_status = $patchTargetsStatus
     runner_patch_still_required = [bool]$runnerPatchStillRequired
     recommended_patch_target = $recommendedPatchTarget
     recommended_command = $recommendedCommand
@@ -322,7 +327,9 @@ $report = [ordered]@{
     next_focus = $nextFocus
     next_artifact_to_open = $nextArtifactToOpen
     runner_output_safe_command = $runnerOutputSafeCommand
-    patch_targets_command = $patchTargetsCommand
+    patch_targets_safe_route_command = $patchTargetsSafeRouteCommand
+    patch_targets_repair_command = $patchTargetsRepairCommand
+    patch_targets_regeneration_command = $patchTargetsRegenerationCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     recommended_runner_command = $recommendedRunnerCommand
@@ -350,7 +357,7 @@ $report | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding As
 
 if ($Json) {
     $report | ConvertTo-Json -Depth 8
-    if (@('runner-output-safe-no-summary', 'runner-output-safe-failed', 'patch-targets-failed') -contains $status) {
+    if (@('runner-output-safe-no-summary', 'runner-output-safe-failed', 'patch-target-route-failed') -contains $status) {
         exit 1
     }
     exit 0
@@ -363,7 +370,7 @@ Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
 Write-Host ("Summary exists after runner-output safe flow: {0}" -f $report.summary_exists_after_runner_output_safe)
 Write-Host ("Runner-output safe status: {0}" -f $report.runner_output_safe_status)
-Write-Host ("Patch targets status: {0}" -f $report.patch_targets_status)
+Write-Host ("Patch-target route status: {0}" -f $report.patch_targets_status)
 Write-Host ("Runner patch still required: {0}" -f $report.runner_patch_still_required)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
@@ -386,6 +393,6 @@ Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
 
-if (@('runner-output-safe-no-summary', 'runner-output-safe-failed', 'patch-targets-failed') -contains $status) {
+if (@('runner-output-safe-no-summary', 'runner-output-safe-failed', 'patch-target-route-failed') -contains $status) {
     exit 1
 }
