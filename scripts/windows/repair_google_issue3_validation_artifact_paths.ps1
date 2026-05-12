@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$SummaryPath,
+    [string]$ArtifactPath,
     [switch]$Json
 )
 
@@ -125,6 +126,9 @@ $artifactRoot = if ((Test-HasProperty -Object $summary -Name 'artifact_root') -a
 } else {
     Split-Path -Parent $SummaryPath
 }
+if (-not $ArtifactPath) {
+    $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-artifact-path-repair.json'
+}
 
 $configuredManifestPath = Get-ConfiguredValue -Primary $summary -Fallback $null -FieldName 'manifest_artifact_path'
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredManifestPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
@@ -197,6 +201,7 @@ $report = [ordered]@{
     purpose = 'Backfill missing summary and manifest artifact-path fields so the issue #3 helper chain can reopen older saved outputs without strict-mode path failures.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
+    artifact_path = $ArtifactPath
     manifest_artifact_path = $manifestPath
     manifest_artifact_exists = [bool]$manifestExists
     manifest_artifact_readable = [bool]$manifestReadable
@@ -217,6 +222,8 @@ $report = [ordered]@{
     reason = $reason
 }
 
+$report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $ArtifactPath -Encoding Ascii
+
 if ($Json) {
     $report | ConvertTo-Json -Depth 6
     exit 0
@@ -225,6 +232,7 @@ if ($Json) {
 Write-Host 'Google issue #3 validation artifact path repair'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
+Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
 Write-Host ("Manifest exists: {0}" -f $report.manifest_artifact_exists)
 Write-Host ("Manifest readable: {0}" -f $report.manifest_artifact_readable)
