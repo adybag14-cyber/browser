@@ -139,8 +139,8 @@ if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-recommended-validation-guide-safe.json'
 }
 $guideArtifactPath = Get-FirstNonEmptyValue -Values @(
-    $ArtifactPath,
-    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path'
+    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path',
+    (Join-Path $artifactRoot 'google-issue3-recommended-validation-guide.json')
 )
 
 $surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1'
@@ -163,8 +163,8 @@ $manifestArtifactPath = Get-FirstNonEmptyValue -Values @(
     (Join-Path $artifactRoot 'google-issue3-recommended-validation-manifest.json')
 )
 $guideArtifactPath = Get-FirstNonEmptyValue -Values @(
-    $ArtifactPath,
-    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path'
+    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path',
+    (Join-Path $artifactRoot 'google-issue3-recommended-validation-guide.json')
 )
 $boundaryArtifactPath = Get-FirstNonEmptyValue -Values @(
     Get-OptionalPropertyValue -Object $summary -Name 'boundary_artifact_path',
