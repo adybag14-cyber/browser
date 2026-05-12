@@ -118,6 +118,7 @@ if ($refreshRecord -and -not [string]::IsNullOrWhiteSpace($refreshRecord.summary
     $refreshMatchesSummary = ([System.IO.Path]::GetFullPath($refreshRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 $refreshPointerSource = Get-PointerSource -SummaryRecorded $summaryRecordsRefreshArtifactPath -ManifestRecorded $manifestRecordsRefreshArtifactPath -ArtifactExists $refreshExists
+$refreshArtifactUsable = [bool]($refreshExists -and $refreshMatchesSummary)
 
 $configuredSummaryHandoffPath = $summary.handoff_artifact_path
 $configuredManifestHandoffPath = if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }
@@ -138,14 +139,15 @@ if ($handoffRecord -and -not [string]::IsNullOrWhiteSpace($handoffRecord.summary
     $handoffMatchesSummary = ([System.IO.Path]::GetFullPath($handoffRecord.summary_path)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
 $handoffPointerSource = Get-PointerSource -SummaryRecorded $summaryRecordsHandoffArtifactPath -ManifestRecorded $manifestRecordsHandoffArtifactPath -ArtifactExists $handoffExists
+$handoffArtifactUsable = [bool]($handoffExists -and $handoffMatchesSummary)
 
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
-$preferredStartHelper = if ($handoffExists -and $handoffMatchesSummary) {
+$preferredStartHelper = if ($handoffArtifactUsable) {
     'handoff'
-} elseif ($refreshExists) {
+} elseif ($refreshArtifactUsable) {
     'refresh-status'
 } else {
     'recommended-runner'
@@ -161,13 +163,20 @@ $recommendedCommand = if ($preferredStartHelper -eq 'handoff' -and $handoffRecor
 
 $nextArtifactToOpen = if ($preferredStartHelper -eq 'handoff' -and $handoffRecord -and $handoffRecord.next_artifact_to_open) {
     $handoffRecord.next_artifact_to_open
+} elseif ($preferredStartHelper -eq 'handoff') {
+    $handoffPath
 } elseif ($preferredStartHelper -eq 'refresh-status') {
     $refreshPath
+} elseif ($manifestExists) {
+    $manifestPath
 } else {
     $SummaryPath
 }
 
-$reason = if ($refreshPointerSource -eq 'manifest' -or $handoffPointerSource -eq 'manifest') {
+$staleHelperArtifactDetected = [bool](($refreshExists -and -not $refreshMatchesSummary) -or ($handoffExists -and -not $handoffMatchesSummary))
+$reason = if ($staleHelperArtifactDetected) {
+    'At least one saved helper artifact exists but belongs to a different recommended-validation summary, so this helper now falls back to the current summary or manifest instead of trusting stale replay guidance.'
+} elseif ($refreshPointerSource -eq 'manifest' -or $handoffPointerSource -eq 'manifest') {
     'At least one current helper pointer is being recovered from the saved manifest instead of the summary, which is useful for replay but also a sign that the summary still needs pointer cleanup.'
 } elseif ($refreshPointerSource -eq 'fallback' -or $handoffPointerSource -eq 'fallback') {
     'At least one current helper pointer is being inferred from the default artifact location instead of an explicit saved path, so the next replay should treat pointer repair as follow-up work.'
@@ -193,6 +202,7 @@ $report = [ordered]@{
     refresh_pointer_fallback_used = [bool]($refreshPointerSource -eq 'fallback')
     refresh_artifact_exists = [bool]$refreshExists
     refresh_artifact_matches_summary = [bool]$refreshMatchesSummary
+    refresh_artifact_usable = [bool]$refreshArtifactUsable
     refresh_artifact_summary_path = if ($refreshRecord) { $refreshRecord.summary_path } else { $null }
     handoff_pointer_source = $handoffPointerSource
     handoff_pointer_path = $handoffPath
@@ -203,7 +213,9 @@ $report = [ordered]@{
     handoff_pointer_fallback_used = [bool]($handoffPointerSource -eq 'fallback')
     handoff_artifact_exists = [bool]$handoffExists
     handoff_artifact_matches_summary = [bool]$handoffMatchesSummary
+    handoff_artifact_usable = [bool]$handoffArtifactUsable
     handoff_artifact_summary_path = if ($handoffRecord) { $handoffRecord.summary_path } else { $null }
+    stale_helper_artifact_detected = [bool]$staleHelperArtifactDetected
     preferred_start_helper = $preferredStartHelper
     next_artifact_to_open = $nextArtifactToOpen
     recommended_command = $recommendedCommand
@@ -227,6 +239,7 @@ Write-Host ("Refresh source: {0}" -f $report.refresh_pointer_source)
 Write-Host ("Refresh path:   {0}" -f $report.refresh_pointer_path)
 Write-Host ("Refresh exists: {0}" -f $report.refresh_artifact_exists)
 Write-Host ("Refresh matches summary: {0}" -f $report.refresh_artifact_matches_summary)
+Write-Host ("Refresh usable: {0}" -f $report.refresh_artifact_usable)
 if ($report.summary_refresh_artifact_path) {
     Write-Host ("Summary refresh path: {0}" -f $report.summary_refresh_artifact_path)
 }
@@ -237,12 +250,14 @@ Write-Host ("Handoff source: {0}" -f $report.handoff_pointer_source)
 Write-Host ("Handoff path:   {0}" -f $report.handoff_pointer_path)
 Write-Host ("Handoff exists: {0}" -f $report.handoff_artifact_exists)
 Write-Host ("Handoff matches summary: {0}" -f $report.handoff_artifact_matches_summary)
+Write-Host ("Handoff usable: {0}" -f $report.handoff_artifact_usable)
 if ($report.summary_handoff_artifact_path) {
     Write-Host ("Summary handoff path: {0}" -f $report.summary_handoff_artifact_path)
 }
 if ($report.manifest_handoff_artifact_path) {
     Write-Host ("Manifest handoff path: {0}" -f $report.manifest_handoff_artifact_path)
 }
+Write-Host ("Stale helper artifacts detected: {0}" -f $report.stale_helper_artifact_detected)
 Write-Host ("Preferred helper: {0}" -f $report.preferred_start_helper)
 Write-Host ''
 Write-Host ("Reason: {0}" -f $report.reason)
