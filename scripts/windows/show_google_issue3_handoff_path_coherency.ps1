@@ -64,14 +64,6 @@ function PathsMatch([string]$Left, [string]$Right) {
     return ([System.IO.Path]::GetFullPath($Left)).Equals([System.IO.Path]::GetFullPath($Right), [System.StringComparison]::OrdinalIgnoreCase)
 }
 
-function Quote-PowerShellLiteral([string]$Value) {
-    if ($null -eq $Value) {
-        return "''"
-    }
-
-    return "'" + $Value.Replace("'", "''") + "'"
-}
-
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
@@ -85,7 +77,7 @@ $summaryExists = Test-Path -LiteralPath $SummaryPath -PathType Leaf
 if (-not $summaryExists) {
     $report = [ordered]@{
         issue = 'Google issue #3 handoff path coherency'
-        purpose = 'Tell the next Windows replay whether the saved handoff artifact path needs an explicit -ArtifactPath override before reusing the existing handoff helper.'
+        purpose = 'Tell the next Windows replay whether the current handoff helper can safely reuse the saved handoff artifact path without an explicit -ArtifactPath override.'
         generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
         summary_path = $SummaryPath
         summary_exists = $false
@@ -95,7 +87,7 @@ if (-not $summaryExists) {
         path_coherent = $false
         explicit_artifact_path_required = $false
         reason = 'No saved issue #3 recommended-validation summary exists yet, so create the first summary before checking handoff path coherency.'
-        next_focus = 'Run the bounded issue #3 validation runner first, then reopen this helper to see whether the handoff path needs an explicit override.'
+        next_focus = 'Run the bounded issue #3 validation runner first, then reopen this helper to see whether the existing handoff helper can safely reuse the saved handoff path.'
         next_artifact_to_open = $SummaryPath
     }
 
@@ -141,24 +133,22 @@ $fallbackHandoffPath = Join-Path $artifactRoot 'google-issue3-validation-handoff
 $resolvedHandoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-handoff.json'
 $resolvedHandoffExists = Test-Path -LiteralPath $resolvedHandoffPath -PathType Leaf
 $fallbackHandoffExists = Test-Path -LiteralPath $fallbackHandoffPath -PathType Leaf
-$pathCoherent = PathsMatch $resolvedHandoffPath $fallbackHandoffPath
-$explicitArtifactPathRequired = [bool]((-not $pathCoherent) -and (-not [string]::IsNullOrWhiteSpace($configuredHandoffPath)))
-$safeHandoffCommand = if ($explicitArtifactPathRequired) {
-    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_handoff.ps1 -ArtifactPath $(Quote-PowerShellLiteral $resolvedHandoffPath)"
-} else {
-    $handoffGuideCommand
-}
+$resolvedPathMatchesFallback = PathsMatch $resolvedHandoffPath $fallbackHandoffPath
+$configuredPathDiffersFromFallback = [bool]((-not $resolvedPathMatchesFallback) -and (-not [string]::IsNullOrWhiteSpace($configuredHandoffPath)))
+$pathCoherent = $true
+$explicitArtifactPathRequired = $false
+$safeHandoffCommand = $handoffGuideCommand
 
-$reason = if ($explicitArtifactPathRequired) {
-    'The saved issue #3 summary or manifest points the handoff helper at a non-default artifact path, so the existing handoff helper should be called with an explicit -ArtifactPath to avoid writing back to the fallback default location.'
+$reason = if ($configuredPathDiffersFromFallback) {
+    'The saved issue #3 summary or manifest points the handoff helper at a non-default artifact path, and the current handoff helper now reuses that resolved configured path as its default write target, so no explicit -ArtifactPath override is required.'
 } elseif ($summaryRecordsHandoffArtifactPath -or $manifestRecordsHandoffArtifactPath) {
     'The saved issue #3 helper chain records a handoff artifact path, and it already matches the default handoff location, so the existing handoff helper can be reused without an explicit -ArtifactPath override.'
 } else {
     'The saved issue #3 helper chain does not record a custom handoff artifact path, so the default handoff location remains the current source of truth.'
 }
 
-$nextFocus = if ($explicitArtifactPathRequired) {
-    'Reuse the existing handoff helper with the explicit safe command below so reads and writes stay on the same configured handoff artifact path until the helper itself is updated.'
+$nextFocus = if ($configuredPathDiffersFromFallback) {
+    'Reuse the existing handoff helper normally. It now keeps reads and writes on the same resolved configured handoff artifact path even when that path differs from the fallback default.'
 } else {
     'Reuse the existing handoff helper normally. No explicit -ArtifactPath override is needed for the current saved issue #3 summary.'
 }
@@ -173,7 +163,7 @@ $nextArtifactToOpen = if ($resolvedHandoffExists) {
 
 $report = [ordered]@{
     issue = 'Google issue #3 handoff path coherency'
-    purpose = 'Tell the next Windows replay whether the saved handoff artifact path needs an explicit -ArtifactPath override before reusing the existing handoff helper.'
+    purpose = 'Tell the next Windows replay whether the current handoff helper can safely reuse the saved handoff artifact path without an explicit -ArtifactPath override.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
     summary_exists = $true
@@ -186,6 +176,8 @@ $report = [ordered]@{
     manifest_records_handoff_artifact_path = [bool]$manifestRecordsHandoffArtifactPath
     manifest_handoff_artifact_path = if ($manifestRecordsHandoffArtifactPath) { $configuredManifestHandoffPath } else { $null }
     configured_handoff_artifact_path = $configuredHandoffPath
+    configured_path_differs_from_fallback = [bool]$configuredPathDiffersFromFallback
+    resolved_path_matches_fallback = [bool]$resolvedPathMatchesFallback
     resolved_handoff_artifact_path = $resolvedHandoffPath
     resolved_handoff_artifact_exists = [bool]$resolvedHandoffExists
     fallback_handoff_artifact_path = $fallbackHandoffPath
