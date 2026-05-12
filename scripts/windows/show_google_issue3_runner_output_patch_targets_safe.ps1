@@ -108,6 +108,20 @@ function Add-MissingField {
     }
 }
 
+function Get-DirectFieldAssignmentCount {
+    param(
+        [string]$SourceText,
+        [Parameter(Mandatory = $true)]
+        [string]$AssignmentText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SourceText)) {
+        return 0
+    }
+
+    return [regex]::Matches($SourceText, [regex]::Escape($AssignmentText)).Count
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -147,6 +161,24 @@ if ($manifestExists) {
     }
 }
 $manifestReadable = [bool]$manifestRecord
+
+$runnerScriptPath = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation.ps1'
+$runnerScriptExists = Test-Path -LiteralPath $runnerScriptPath -PathType Leaf
+$runnerScriptSource = if ($runnerScriptExists) {
+    Get-Content -LiteralPath $runnerScriptPath -Raw
+} else {
+    $null
+}
+$runnerRefreshPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_path = $RefreshChainArtifactPath'
+$runnerRefreshErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'refresh_chain_artifact_error = $RefreshChainArtifactError'
+$runnerHandoffPathAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_path = $HandoffArtifactPath'
+$runnerHandoffErrorAssignmentCount = Get-DirectFieldAssignmentCount -SourceText $runnerScriptSource -AssignmentText 'handoff_artifact_error = $HandoffArtifactError'
+$runnerSourceIndicatesDirectFieldWiring = [bool](
+    $runnerRefreshPathAssignmentCount -ge 2 -and
+    $runnerRefreshErrorAssignmentCount -ge 2 -and
+    $runnerHandoffPathAssignmentCount -ge 2 -and
+    $runnerHandoffErrorAssignmentCount -ge 2
+)
 
 $summaryHasRefreshPathField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path'
 $summaryHasRefreshErrorField = Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_error'
@@ -193,6 +225,27 @@ if (-not $summaryHasArtifactRootField) {
     $nextFocus = 'Repair the saved validation artifact paths first, then reopen the raw patch-target helper.'
     $recommendedCommand = $artifactPathRepairCommand
     $recommendedGuideCommand = $runnerOutputPatchTargetsCommand
+    $nextArtifactToOpen = $SummaryPath
+} elseif ((-not $manifestExists) -and $runnerSourceIndicatesDirectFieldWiring) {
+    $status = 'runner-source-already-wired-manifest-missing'
+    $reason = 'The live recommended runner source already writes the direct refresh and handoff fields into both output objects, so the remaining gap is a missing saved manifest rather than a patch-target problem.'
+    $nextFocus = 'Regenerate the broader issue #3 runner outputs first, then reopen the safe wiring audit once the manifest exists for the same replay.'
+    $recommendedCommand = $broaderRunnerCommand
+    $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
+    $nextArtifactToOpen = $manifestPath
+} elseif ((-not $manifestReadable) -and $runnerSourceIndicatesDirectFieldWiring) {
+    $status = 'runner-source-already-wired-manifest-unreadable'
+    $reason = 'The live recommended runner source already writes the direct refresh and handoff fields into both output objects, so the remaining gap is an unreadable saved manifest rather than a patch-target problem.'
+    $nextFocus = 'Regenerate the broader issue #3 runner outputs first, then reopen the safe wiring audit once the manifest is readable again.'
+    $recommendedCommand = $broaderRunnerCommand
+    $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
+    $nextArtifactToOpen = $manifestPath
+} elseif ($runnerContractMissing -and $runnerSourceIndicatesDirectFieldWiring) {
+    $status = 'runner-source-already-wired-artifacts-stale'
+    $reason = 'The saved summary or manifest still omits direct runner-output fields, but the live recommended runner source already writes those fields into both output objects, so raw patch-target work would only rediscover stale saved artifacts.'
+    $nextFocus = 'Regenerate or repair the saved issue #3 outputs first, then reopen the safe runner-output wiring audit instead of routing back through raw patch-target guidance.'
+    $recommendedCommand = $broaderRunnerCommand
+    $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif (-not $manifestExists) {
     $status = 'safe-to-run-patch-targets-manifest-missing'
@@ -247,6 +300,15 @@ $report = [ordered]@{
     manifest_has_refresh_artifact_error_field = [bool]$manifestHasRefreshErrorField
     manifest_has_handoff_artifact_path_field = [bool]$manifestHasHandoffPathField
     manifest_has_handoff_artifact_error_field = [bool]$manifestHasHandoffErrorField
+    runner_script_path = $runnerScriptPath
+    runner_script_exists = [bool]$runnerScriptExists
+    runner_source_indicates_direct_field_wiring = [bool]$runnerSourceIndicatesDirectFieldWiring
+    runner_direct_field_assignment_counts = [ordered]@{
+        refresh_chain_artifact_path = $runnerRefreshPathAssignmentCount
+        refresh_chain_artifact_error = $runnerRefreshErrorAssignmentCount
+        handoff_artifact_path = $runnerHandoffPathAssignmentCount
+        handoff_artifact_error = $runnerHandoffErrorAssignmentCount
+    }
     runner_contract_missing = [bool]$runnerContractMissing
     missing_runner_fields = @($missingFields)
     recommended_command = $recommendedCommand
@@ -282,6 +344,7 @@ if ($report.manifest_artifact_error) {
 }
 Write-Host ("Summary has artifact_root: {0}" -f $report.summary_has_artifact_root_field)
 Write-Host ("Summary has manifest_artifact_path: {0}" -f $report.summary_has_manifest_artifact_path_field)
+Write-Host ("Runner source wired: {0}" -f $report.runner_source_indicates_direct_field_wiring)
 Write-Host ("Runner contract missing: {0}" -f $report.runner_contract_missing)
 if ($report.missing_runner_fields.Count -gt 0) {
     Write-Host 'Missing runner-contract fields:'
