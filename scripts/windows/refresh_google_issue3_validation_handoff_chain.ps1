@@ -53,6 +53,16 @@ function Read-ArtifactJson {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function Test-HasProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
 function Invoke-RefreshStep {
     param(
         [Parameter(Mandatory = $true)]
@@ -112,11 +122,21 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
 } else {
     Split-Path -Parent $SummaryPath
 }
+$summarySurfaceCheckStatus = if (Test-HasProperty -Object $summary -Name 'surface_check_status') {
+    $summary.surface_check_status
+} else {
+    $null
+}
+$summaryFirstFailedPhase = if (Test-HasProperty -Object $summary -Name 'first_failed_phase') {
+    $summary.first_failed_phase
+} else {
+    $null
+}
 
-$guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.guide_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-guide.json"
-$boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.boundary_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-phase-boundary.json"
-$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-artifact-bundle.json"
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
+$guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (Test-HasProperty -Object $summary -Name 'guide_artifact_path') { $summary.guide_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-guide.json"
+$boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (Test-HasProperty -Object $summary -Name 'boundary_artifact_path') { $summary.boundary_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName "google-issue3-phase-boundary.json"
+$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (Test-HasProperty -Object $summary -Name 'artifact_bundle_path') { $summary.artifact_bundle_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-artifact-bundle.json"
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (Test-HasProperty -Object $summary -Name 'manifest_artifact_path') { $summary.manifest_artifact_path } else { $null }) -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
 $manifestRecord = $null
 if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
     try {
@@ -125,8 +145,8 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
         $manifestRecord = $null
     }
 }
-$configuredSummaryHandoffPath = $summary.handoff_artifact_path
-$configuredManifestHandoffPath = if ($manifestRecord) { $manifestRecord.handoff_artifact_path } else { $null }
+$configuredSummaryHandoffPath = if (Test-HasProperty -Object $summary -Name 'handoff_artifact_path') { $summary.handoff_artifact_path } else { $null }
+$configuredManifestHandoffPath = if (Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_path') { $manifestRecord.handoff_artifact_path } else { $null }
 $configuredHandoffPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)) {
     $configuredSummaryHandoffPath
 } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)) {
@@ -136,8 +156,8 @@ $configuredHandoffPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummar
 }
 $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
 if (-not $ArtifactPath) {
-    $configuredSummaryRefreshPath = $summary.refresh_chain_artifact_path
-    $configuredManifestRefreshPath = if ($manifestRecord) { $manifestRecord.refresh_chain_artifact_path } else { $null }
+    $configuredSummaryRefreshPath = if (Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path') { $summary.refresh_chain_artifact_path } else { $null }
+    $configuredManifestRefreshPath = if (Test-HasProperty -Object $manifestRecord -Name 'refresh_chain_artifact_path') { $manifestRecord.refresh_chain_artifact_path } else { $null }
     $configuredRefreshPath = if (-not [string]::IsNullOrWhiteSpace($configuredSummaryRefreshPath)) {
         $configuredSummaryRefreshPath
     } elseif (-not [string]::IsNullOrWhiteSpace($configuredManifestRefreshPath)) {
@@ -257,8 +277,8 @@ $preRepairReport = [ordered]@{
     artifact_bundle_path = $bundlePath
     handoff_artifact_path = $handoffPath
     status = $status
-    surface_check_status = $summary.surface_check_status
-    first_failed_phase = $summary.first_failed_phase
+    surface_check_status = $summarySurfaceCheckStatus
+    first_failed_phase = $summaryFirstFailedPhase
     failed_step_count = $failedSteps.Count
     failed_step_names = @($failedSteps | ForEach-Object { $_.name })
     bundle_status = $bundleStatus
@@ -283,8 +303,8 @@ $steps.Add($repairHandoffStep) | Out-Null
 
 $updatedSummary = Read-ArtifactJson $SummaryPath
 $updatedManifest = Read-ArtifactJson $manifestPath
-$summaryRefreshArtifactPath = if ($updatedSummary) { $updatedSummary.refresh_chain_artifact_path } else { $null }
-$manifestRefreshArtifactPath = if ($updatedManifest) { $updatedManifest.refresh_chain_artifact_path } else { $null }
+$summaryRefreshArtifactPath = if (Test-HasProperty -Object $updatedSummary -Name 'refresh_chain_artifact_path') { $updatedSummary.refresh_chain_artifact_path } else { $null }
+$manifestRefreshArtifactPath = if (Test-HasProperty -Object $updatedManifest -Name 'refresh_chain_artifact_path') { $updatedManifest.refresh_chain_artifact_path } else { $null }
 $summaryRefreshPointerRecorded = -not [string]::IsNullOrWhiteSpace($summaryRefreshArtifactPath)
 $manifestRefreshPointerRecorded = -not [string]::IsNullOrWhiteSpace($manifestRefreshArtifactPath)
 $summaryRefreshPointerMatches = $false
@@ -295,8 +315,8 @@ $manifestRefreshPointerMatches = $false
 if ($manifestRefreshPointerRecorded) {
     $manifestRefreshPointerMatches = ([System.IO.Path]::GetFullPath($manifestRefreshArtifactPath)).Equals([System.IO.Path]::GetFullPath($ArtifactPath), [System.StringComparison]::OrdinalIgnoreCase)
 }
-$summaryHandoffArtifactPath = if ($updatedSummary) { $updatedSummary.handoff_artifact_path } else { $null }
-$manifestHandoffArtifactPath = if ($updatedManifest) { $updatedManifest.handoff_artifact_path } else { $null }
+$summaryHandoffArtifactPath = if (Test-HasProperty -Object $updatedSummary -Name 'handoff_artifact_path') { $updatedSummary.handoff_artifact_path } else { $null }
+$manifestHandoffArtifactPath = if (Test-HasProperty -Object $updatedManifest -Name 'handoff_artifact_path') { $updatedManifest.handoff_artifact_path } else { $null }
 $summaryHandoffPointerRecorded = -not [string]::IsNullOrWhiteSpace($summaryHandoffArtifactPath)
 $manifestHandoffPointerRecorded = -not [string]::IsNullOrWhiteSpace($manifestHandoffArtifactPath)
 $summaryHandoffPointerMatches = $false
@@ -337,8 +357,8 @@ $report = [ordered]@{
     artifact_bundle_path = $bundlePath
     handoff_artifact_path = $handoffPath
     status = $status
-    surface_check_status = $summary.surface_check_status
-    first_failed_phase = $summary.first_failed_phase
+    surface_check_status = $summarySurfaceCheckStatus
+    first_failed_phase = $summaryFirstFailedPhase
     failed_step_count = @($steps | Where-Object { -not $_.success }).Count
     failed_step_names = @($steps | Where-Object { -not $_.success } | ForEach-Object { $_.name })
     bundle_status = $bundleStatus
