@@ -67,6 +67,20 @@ function Test-HasProperty {
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 function Add-MissingField {
     param(
         [Parameter(Mandatory = $true)]
@@ -91,13 +105,15 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
-    $summary.artifact_root
+$configuredArtifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
+$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($configuredArtifactRoot)) {
+    $configuredArtifactRoot
 } else {
     Split-Path -Parent $SummaryPath
 }
 
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$configuredManifestPath = Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path'
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredManifestPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = Read-ArtifactJson $manifestPath
 $manifestReadable = [bool]$manifestRecord
