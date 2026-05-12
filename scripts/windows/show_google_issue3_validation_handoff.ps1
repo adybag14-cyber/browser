@@ -103,9 +103,6 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
 } else {
     Split-Path -Parent $SummaryPath
 }
-if (-not $ArtifactPath) {
-    $ArtifactPath = Join-Path $artifactRoot "google-issue3-validation-handoff.json"
-}
 
 $recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
