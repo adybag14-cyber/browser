@@ -54,6 +54,16 @@ function Read-ArtifactJson {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function Test-HasProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return [bool]($Object -and $Object.PSObject.Properties[$Name])
+}
+
 function Set-ObjectProperty {
     param(
         [Parameter(Mandatory = $true)]
@@ -97,10 +107,20 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
     Split-Path -Parent $SummaryPath
 }
 if (-not $ManifestPath) {
-    $ManifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
+    $configuredManifestPath = if (Test-HasProperty -Object $summary -Name 'manifest_artifact_path') {
+        $summary.manifest_artifact_path
+    } else {
+        $null
+    }
+    $ManifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredManifestPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
 }
 if (-not $RefreshPath) {
-    $RefreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.refresh_chain_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff-chain-refresh.json"
+    $configuredRefreshPath = if (Test-HasProperty -Object $summary -Name 'refresh_chain_artifact_path') {
+        $summary.refresh_chain_artifact_path
+    } else {
+        $null
+    }
+    $RefreshPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredRefreshPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff-chain-refresh.json"
 }
 
 $refreshRecord = $null
