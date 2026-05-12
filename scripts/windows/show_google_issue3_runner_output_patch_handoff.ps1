@@ -114,9 +114,9 @@ $manifestPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'man
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $postPatchCommand = Get-FirstNonEmptyValue -Values @(
+    $runnerOutputWiringSafeCommand,
     $recommendedVerificationCommand,
-    $recommendedSourceGuideCommand,
-    $runnerOutputWiringSafeCommand
+    $recommendedSourceGuideCommand
 )
 
 $status = $null
