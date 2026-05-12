@@ -99,8 +99,31 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
 if (-not $ManifestPath) {
     $ManifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-recommended-validation-manifest.json"
 }
+$manifestExists = Test-Path -LiteralPath $ManifestPath -PathType Leaf
+$manifest = if ($manifestExists) {
+    try {
+        Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    } catch {
+        $null
+    }
+} else {
+    $null
+}
+$configuredSummaryHandoffPath = $summary.handoff_artifact_path
+$configuredManifestHandoffPath = if ($manifest) { $manifest.handoff_artifact_path } else { $null }
+$summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)
+$manifestRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredManifestHandoffPath)
+$handoffPointerUsesManifest = (-not $summaryRecordsHandoffArtifactPath) -and $manifestRecordsHandoffArtifactPath
+$handoffPointerUsesFallback = (-not $summaryRecordsHandoffArtifactPath) -and (-not $manifestRecordsHandoffArtifactPath)
 if (-not $HandoffPath) {
-    $HandoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.handoff_artifact_path -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
+    $configuredHandoffPath = if ($summaryRecordsHandoffArtifactPath) {
+        $configuredSummaryHandoffPath
+    } elseif ($manifestRecordsHandoffArtifactPath) {
+        $configuredManifestHandoffPath
+    } else {
+        $null
+    }
+    $HandoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredHandoffPath -ArtifactRoot $artifactRoot -FallbackName "google-issue3-validation-handoff.json"
 }
 
 $handoffRecord = $null
@@ -124,7 +147,7 @@ $handoffStatus = if ($handoffArtifactError) {
 } else {
     "incomplete"
 }
-$handoffReason = if ($handoffRecord -and $handoffRecord.reason) { $handoffRecord.reason } else { $null }
+$handoffReason = if ($handoffRecord) { $handoffRecord.reason } else { $null }
 $handoffNextArtifactToOpen = if ($handoffRecord) { $handoffRecord.next_artifact_to_open } else { $null }
 $handoffRecommendedCommand = if ($handoffRecord) { $handoffRecord.recommended_command } else { $null }
 $handoffRecommendedGuideCommand = if ($handoffRecord) { $handoffRecord.recommended_guide_command } else { $null }
@@ -153,8 +176,6 @@ Set-ObjectProperty -Object $summary -Name 'handoff_pointer_repaired_at_utc' -Val
 Set-ObjectProperty -Object $summary -Name 'handoff_pointer_repair_command' -Value $repairCommand
 Write-ArtifactJson -Object $summary -Path $SummaryPath
 
-$manifestExists = Test-Path -LiteralPath $ManifestPath -PathType Leaf
-$manifest = if ($manifestExists) { Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json } else { $null }
 if ($manifest) {
     Set-ObjectProperty -Object $manifest -Name 'handoff_artifact_path' -Value $HandoffPath
     Set-ObjectProperty -Object $manifest -Name 'handoff_artifact_error' -Value $handoffArtifactError
@@ -184,6 +205,8 @@ $nextFocus = if ($handoffArtifactError) {
     'Regenerate or reread the saved handoff artifact, then rerun this repair helper so the summary and manifest stop depending on the fallback handoff location.'
 } elseif (-not $handoffReady) {
     'Open the saved handoff artifact first, then rerun the narrower helper chain once the handoff record exposes the next artifact to open.'
+} elseif ($handoffPointerUsesManifest) {
+    'The saved manifest already carries the current handoff artifact path, so the summary is now aligned and the next bounded replay can continue without another handoff path guess.'
 } else {
     'Open the repaired summary, manifest, or handoff helper and continue with the next bounded Windows replay step.'
 }
@@ -202,6 +225,12 @@ $report = [ordered]@{
     summary_path = $SummaryPath
     manifest_path = $ManifestPath
     manifest_exists = [bool]$manifestExists
+    summary_records_handoff_artifact_path = [bool]$summaryRecordsHandoffArtifactPath
+    summary_handoff_artifact_path = if ($summaryRecordsHandoffArtifactPath) { $configuredSummaryHandoffPath } else { $null }
+    manifest_records_handoff_artifact_path = [bool]$manifestRecordsHandoffArtifactPath
+    manifest_handoff_artifact_path = if ($manifestRecordsHandoffArtifactPath) { $configuredManifestHandoffPath } else { $null }
+    handoff_pointer_uses_manifest = [bool]$handoffPointerUsesManifest
+    handoff_pointer_uses_fallback = [bool]$handoffPointerUsesFallback
     handoff_artifact_path = $HandoffPath
     handoff_artifact_exists = [bool]$handoffArtifactExists
     handoff_status = $handoffStatus
@@ -235,6 +264,20 @@ Write-Host 'Google issue #3 validation handoff pointer repair'
 Write-Host ''
 Write-Host ("Summary:  {0}" -f $report.summary_path)
 Write-Host ("Manifest: {0}" -f $report.manifest_path)
+Write-Host ("Summary handoff recorded: {0}" -f $report.summary_records_handoff_artifact_path)
+Write-Host ("Manifest handoff recorded: {0}" -f $report.manifest_records_handoff_artifact_path)
+if ($report.summary_handoff_artifact_path) {
+    Write-Host ("Summary handoff path: {0}" -f $report.summary_handoff_artifact_path)
+}
+if ($report.manifest_handoff_artifact_path) {
+    Write-Host ("Manifest handoff path: {0}" -f $report.manifest_handoff_artifact_path)
+}
+if ($report.handoff_pointer_uses_manifest) {
+    Write-Host 'Handoff pointer source: Manifest'
+}
+if ($report.handoff_pointer_uses_fallback) {
+    Write-Host 'Handoff pointer fallback: True'
+}
 Write-Host ("Handoff:  {0}" -f $report.handoff_artifact_path)
 Write-Host ("Status:   {0}" -f $report.status)
 Write-Host ("Handoff status: {0}" -f $report.handoff_status)
