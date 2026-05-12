@@ -201,6 +201,7 @@ if (-not $ArtifactPath) {
 $handoffSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe.ps1'
 $refreshStatusSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_refresh_status_safe.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
@@ -218,7 +219,7 @@ $steps.Add($handoffSafeStep) | Out-Null
 $handoffSafeRoutesThroughRefreshSafe = [bool](
     $handoffSafeStep.success -and (
         $handoffSafeStep.recommended_command -eq $refreshStatusSafeCommand -or
-        $handoffSafeStep.recommended_command -eq $handoffSafeCommand -or
+        $handoffSafeStep.recommended_command -eq $handoffSafeRefreshRouteCommand -or
         $handoffSafeStep.recommended_guide_command -eq $refreshStatusSafeCommand
     )
 )
@@ -292,6 +293,7 @@ $report = [ordered]@{
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     handoff_safe_command = $handoffSafeCommand
+    handoff_safe_refresh_route_command = $handoffSafeRefreshRouteCommand
     handoff_guide_command = $handoffGuideCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
     summary_guide_command = $summaryGuideCommand
