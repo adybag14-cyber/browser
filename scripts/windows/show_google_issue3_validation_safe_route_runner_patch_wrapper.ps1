@@ -285,12 +285,22 @@ $steps = [System.Collections.Generic.List[object]]::new()
 $validationStep = Invoke-JsonHelper -Name 'validation-safe-route' -ScriptPath $validationSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 $steps.Add($validationStep) | Out-Null
 
-$shouldRunRunnerPatchRoute = [bool]$validationStep.success
+$validationSummaryCompleted = [bool](Get-OptionalPropertyValue -Object $validationStep.record -Name 'summary_completed')
+$validationSummaryNeedsRepair = [bool](Get-OptionalPropertyValue -Object $validationStep.record -Name 'summary_needs_repair')
+$validationSummaryNeedsBroaderReplay = [bool](Get-OptionalPropertyValue -Object $validationStep.record -Name 'summary_needs_broader_replay')
+$validationHandoffSafeRouteRan = [bool](Get-OptionalPropertyValue -Object $validationStep.record -Name 'handoff_safe_route_ran')
+$shouldRunRunnerPatchRoute = [bool](
+    $validationStep.success -and
+    $validationHandoffSafeRouteRan -and
+    -not $validationSummaryNeedsRepair -and
+    -not $validationSummaryNeedsBroaderReplay -and
+    -not $validationSummaryCompleted
+)
 $runnerPatchStep = $null
 if ($shouldRunRunnerPatchRoute) {
     $runnerPatchStep = Invoke-JsonHelper -Name 'runner-output-patch-targets-safe-route' -ScriptPath $runnerPatchSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
 } else {
-    $runnerPatchStep = New-SkippedHelperStep -Name 'runner-output-patch-targets-safe-route' -ScriptPath $runnerPatchSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_command, $validationSafeRouteCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_guide_command, $validationSafeRouteCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($validationStep.next_focus, 'Reopen the validation-safe route first; the runner patch wrapper only adds value once that top-level route completes cleanly.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($validationStep.next_artifact_to_open, $SummaryPath)) -Reason 'The validation-safe route did not finish cleanly, so the wrapper preserved its guidance and skipped the narrower runner patch route.'
+    $runnerPatchStep = New-SkippedHelperStep -Name 'runner-output-patch-targets-safe-route' -ScriptPath $runnerPatchSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_command, $validationSafeRouteCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_guide_command, $validationSafeRouteCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($validationStep.next_focus, 'Reopen the validation-safe route first; the runner patch wrapper only adds value once that top-level route narrows to the handoff-safe branch.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($validationStep.next_artifact_to_open, $SummaryPath)) -Reason 'The validation-safe route either did not finish cleanly or kept the next replay on broader repair or replay guidance, so the wrapper preserved that upstream route and skipped the narrower runner patch helper.'
 }
 $steps.Add($runnerPatchStep) | Out-Null
 
