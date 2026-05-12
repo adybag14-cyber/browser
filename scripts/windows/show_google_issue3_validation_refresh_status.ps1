@@ -62,6 +62,20 @@ function Test-HasProperty {
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
 }
 
+function Get-OptionalPropertyValue {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (Test-HasProperty -Object $Object -Name $Name) {
+        return $Object.$Name
+    }
+
+    return $null
+}
+
 $repoRoot = Resolve-RepoRoot $PSScriptRoot
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
@@ -77,7 +91,8 @@ $artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
     Split-Path -Parent $SummaryPath
 }
 
-$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.manifest_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
+$configuredManifestPath = Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path'
+$manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredManifestPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
 $manifestRecord = $null
 $manifestError = $null
@@ -89,9 +104,12 @@ if ($manifestExists) {
     }
 }
 
-$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.artifact_bundle_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
-$guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.guide_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
-$boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $summary.boundary_artifact_path -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
+$configuredBundlePath = Get-OptionalPropertyValue -Object $summary -Name 'artifact_bundle_path'
+$configuredGuidePath = Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path'
+$configuredBoundaryPath = Get-OptionalPropertyValue -Object $summary -Name 'boundary_artifact_path'
+$bundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredBundlePath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-validation-artifact-bundle.json'
+$guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredGuidePath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
+$boundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredBoundaryPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
 $configuredSummaryHandoffPath = if (Test-HasProperty -Object $summary -Name 'handoff_artifact_path') { $summary.handoff_artifact_path } else { $null }
 $configuredManifestHandoffPath = if ($manifestRecord -and (Test-HasProperty -Object $manifestRecord -Name 'handoff_artifact_path')) { $manifestRecord.handoff_artifact_path } else { $null }
 $summaryRecordsHandoffArtifactPath = -not [string]::IsNullOrWhiteSpace($configuredSummaryHandoffPath)
@@ -298,7 +316,7 @@ $reason = if ($refreshReady -and $handoffReady) {
     'The saved handoff artifact is missing for the current summary, so rebuild the helper chain before trusting narrower replay guidance.'
 } elseif ($handoffExists -and -not $handoffReady) {
     'The saved handoff artifact exists for the current summary, but it still lacks the next-artifact pointer needed for narrow replay.'
-} elseif ($handoffPointerUsesManifest -and $handoffExists -and $handoffMatchesSummary) {
+} elseif ($handoffPointerUsesManifest) {
     'The current summary omitted its handoff artifact path, but the saved manifest still records the matching handoff artifact for this summary, so pointer repair is follow-up cleanup instead of a blocker.'
 } elseif ($handoffPointerUsesFallback) {
     'Neither the current summary nor the saved manifest records the handoff artifact path yet, so this helper is trusting the matching saved handoff artifact at the default location until pointer repair catches up.'
@@ -350,20 +368,25 @@ $status = if ($refreshReady -and $handoffReady) {
     'ready'
 }
 
+$summaryGeneratedAtUtc = Get-OptionalPropertyValue -Object $summary -Name 'generated_at_utc'
+$summaryCompleted = [bool](Get-OptionalPropertyValue -Object $summary -Name 'completed')
+$surfaceCheckStatus = Get-OptionalPropertyValue -Object $summary -Name 'surface_check_status'
+$firstFailedPhase = Get-OptionalPropertyValue -Object $summary -Name 'first_failed_phase'
+
 $report = [ordered]@{
     issue = 'Google issue #3 validation refresh status'
     purpose = 'Tell the next Windows headed replay whether the saved issue #3 helper chain is fresh enough to trust or whether it should be refreshed first from the current recommended-validation summary.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     summary_path = $SummaryPath
-    summary_generated_at_utc = $summary.generated_at_utc
+    summary_generated_at_utc = $summaryGeneratedAtUtc
     artifact_root = $artifactRoot
     manifest_artifact_path = $manifestPath
     manifest_artifact_exists = [bool]$manifestExists
     manifest_artifact_error = $manifestError
     status = $status
-    completed = [bool]$summary.completed
-    surface_check_status = $summary.surface_check_status
-    first_failed_phase = $summary.first_failed_phase
+    completed = $summaryCompleted
+    surface_check_status = $surfaceCheckStatus
+    first_failed_phase = $firstFailedPhase
     summary_has_refresh_artifact_error_field = [bool]$summaryHasRefreshArtifactErrorField
     summary_has_handoff_artifact_error_field = [bool]$summaryHasHandoffArtifactErrorField
     summary_refresh_artifact_error_populated = [bool]$summaryRefreshArtifactErrorPopulated
