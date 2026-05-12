@@ -209,10 +209,10 @@ if (-not $summaryHasArtifactRootField) {
     $recommendedGuideCommand = $broaderRunnerCommand
     $nextArtifactToOpen = $manifestPath
 } elseif ($runnerContractMissing) {
-    $status = 'runner-contract-missing-safe-repair'
-    $reason = 'The saved summary and manifest are safe enough to inspect, but they still omit part of the direct refresh or handoff runner-output contract.'
-    $nextFocus = 'Run the bounded runner-output contract repair helper first, then reopen the safe wiring audit to confirm the saved outputs are fully wired before trusting narrower refresh or handoff helpers.'
-    $recommendedCommand = $runnerContractRepairCommand
+    $status = 'safe-to-run-patch-targets'
+    $reason = 'The saved summary and manifest are safe enough to inspect under strict mode, and the remaining gap is the direct refresh or handoff runner-output contract the raw patch-target helper is meant to surface.'
+    $nextFocus = 'Run the raw patch-target helper to capture the exact direct runner fields for the next branch patch, then reopen the safe wiring audit after the runner-side fix lands or the saved outputs are repaired.'
+    $recommendedCommand = $runnerOutputPatchTargetsCommand
     $recommendedGuideCommand = $runnerOutputWiringStatusSafeCommand
     $nextArtifactToOpen = $SummaryPath
 } else {
