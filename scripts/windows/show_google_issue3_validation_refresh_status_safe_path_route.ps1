@@ -256,8 +256,8 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $refreshStatusSafeCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($shouldRunRawRefreshStatus) { $refreshStatusStep.recommended_guide_command },
     if ($shouldRunRawRefreshStatus -and $refreshStatusStep.status -eq 'ready') { $handoffSafeCommand },
+    if ($shouldRunRawRefreshStatus) { $refreshStatusStep.recommended_guide_command },
     $refreshStatusSafeStep.recommended_guide_command,
     $summaryGuideSafeCommand
 )
