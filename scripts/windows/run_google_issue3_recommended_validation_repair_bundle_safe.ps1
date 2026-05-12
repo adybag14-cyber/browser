@@ -194,7 +194,7 @@ $repairChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\window
 $bundleSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
 $bundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 foreach ($helperPath in @($repairChainScript, $bundleSafeScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
