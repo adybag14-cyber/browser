@@ -232,7 +232,7 @@ if ($manifestError) {
     $reason = 'The direct runner contract fields are present and the refresh artifact matches the current summary, so the existing handoff helper is the right next checkpoint.'
     $nextFocus = 'Use the existing handoff helper or open the saved handoff artifact to continue the next narrowed Windows replay.'
     $recommendedCommand = $handoffGuideCommand
-    $recommendedGuideCommand = $summaryGuideCommand
+    $recommendedGuideCommand = $handoffGuideCommand
     $nextArtifactToOpen = if ($handoffExists) { $handoffPath } else { $SummaryPath }
 }
 
