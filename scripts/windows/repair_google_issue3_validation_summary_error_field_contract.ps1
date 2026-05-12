@@ -101,7 +101,7 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
 }
 
 $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
-$artifactRoot = if (-not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
+$artifactRoot = if ((Test-HasProperty -Object $summary -Name 'artifact_root') -and -not [string]::IsNullOrWhiteSpace($summary.artifact_root)) {
     $summary.artifact_root
 } else {
     Split-Path -Parent $SummaryPath
