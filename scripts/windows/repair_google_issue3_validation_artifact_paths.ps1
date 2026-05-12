@@ -162,9 +162,9 @@ if ($manifestReadable) {
 
 $status = $null
 $reason = $null
-$recommendedCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
-$recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
-$nextFocus = 'Re-run the handoff helper against the repaired summary and manifest so the issue #3 helper chain can trust the resolved artifact paths.'
+$recommendedCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$recommendedGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
+$nextFocus = 'Reopen the safe handoff gate against the repaired summary and manifest first, then use the raw handoff helper only after the safe gate says the stricter check is appropriate.'
 if (-not $manifestExists) {
     $status = 'summary-repaired-manifest-missing'
     $reason = 'The summary was normalized, but the manifest file was still missing, so only the summary artifact-path contract could be repaired in this pass.'
