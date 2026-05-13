@@ -131,8 +131,8 @@ $manifestPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'man
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 $postPatchCommand = Get-FirstNonEmptyValue -Values @(
-    $runnerOutputWiringSafeCommand,
     $recommendedVerificationCommand,
+    $runnerOutputWiringSafeCommand,
     $recommendedSourceGuideCommand
 )
 
@@ -267,10 +267,10 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifest_patchSnippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
-    foreach ($line in $report.manifest_patch_snippet_lines) {
+    foreach ($line in $report.manifestPatchSnippetLines) {
         Write-Host $line
     }
 }
