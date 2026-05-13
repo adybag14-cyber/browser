@@ -16,6 +16,11 @@ Treat `docs/GOOGLE_HOMEPAGE_FIXTURE_VALIDATION.md` as the read-first note for
 the bounded saved-homepage checkpoint that now lives directly in front of this
 later submit-path ladder.
 
+Treat `docs/GOOGLE_REDUCED_HOME_KEYPRESS_VALIDATION.md` as the read-first note
+for the smaller real-surface keypress-before-submit checkpoint that now sits
+between the saved-homepage fixture wrapper and the broader reduced Enter-trace,
+submit-timing, and shared Enter-order ladders.
+
 ## When To Use It
 
 Reach for this note when all of these are true:
@@ -50,9 +55,10 @@ the current command order printed before you run it:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
 ```
 
-That helper keeps the saved homepage fixture checkpoint, the reduced Enter-trace
-diagnosis artifact, the submit-timing wrapper, and the shared Enter-order ladder
-aligned on one reusable command surface.
+That helper keeps the saved homepage fixture checkpoint, the reduced-home
+keypress checkpoint, the reduced Enter-trace diagnosis artifact, the submit-
+timing wrapper, and the shared Enter-order ladder aligned on one reusable
+command surface.
 
 ## Read the trace guide before widening again
 
@@ -63,10 +69,10 @@ explanation of what failed before you rerun anything, print the trace guide:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1
 ```
 
-Use this helper when you want the saved homepage fixture fields, the reduced
-Enter-trace analysis JSON, the submit-timing output, and the shared Enter-order
-result translated into the next narrowing step without reopening the longer
-notes by hand.
+Use this helper when you want the saved homepage fixture fields, the reduced-
+home keypress checkpoint, the reduced Enter-trace analysis JSON, the submit-
+timing output, and the shared Enter-order result translated into the next
+narrowing step without reopening the longer notes by hand.
 
 ## One-command runner for the later submit path
 
@@ -87,6 +93,22 @@ That runner now auto-saves the reduced Enter-trace diagnosis artifact at:
 Open that JSON first whenever the saved homepage fixture is green but the later
 submit-path slices still disagree about whether the gap is before keypress,
 after keypress, or in the shared Enter-order handoff.
+
+## Smaller real-surface checkpoint before the trace analyzer
+
+When the saved homepage fixture is already green and you want one smaller real-
+surface proof before you reopen the reduced Enter-trace analyzer or submit-
+timing wrapper, use the dedicated reduced-home keypress note and helpers:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_reduced_home_keypress_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_reduced_home_keypress_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_reduced_home_keypress_validation.ps1
+```
+
+Use this smaller gate when the question is still just whether the reduced
+Google-style homepage records the held Enter keydown state before final submit
+on the real headed surface.
 
 ## Narrowing order
 
@@ -128,37 +150,55 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
 ```
 
-7. Reduced Enter-trace analysis refresh
+7. Reduced-home keypress surface checker
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_reduced_home_keypress_validation_surface.ps1
+```
+
+8. Reduced-home keypress flow helper
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_reduced_home_keypress_validation_flow.ps1
+```
+
+9. Reduced-home keypress runner
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_reduced_home_keypress_validation.ps1
+```
+
+10. Reduced Enter-trace analysis refresh
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-investigation-next\analyze-google-enter-trace.ps1 -OutputPath .\tmp-browser-smoke\headed-probe\google-enter-trace-analysis.json
 ```
 
-8. Submit-timing flow helper
+11. Submit-timing flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1
 ```
 
-9. Submit-timing runner
+12. Submit-timing runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_submit_timing_validation.ps1
 ```
 
-10. Shared Enter-order flow helper
+13. Shared Enter-order flow helper
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1
 ```
 
-11. Shared Enter-order runner
+14. Shared Enter-order runner
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_enter_order_validation.ps1
 ```
 
-12. Dedicated shared form-controls Enter-order gate when you need the smallest
+15. Dedicated shared form-controls Enter-order gate when you need the smallest
 shared end-state proof
 
 ```powershell
@@ -171,6 +211,9 @@ Treat the later submit path as green only when all of these remain true:
 
 - the saved homepage fixture still reaches the expected title, focus, text, and
   Enter-submit markers
+- the smaller reduced-home keypress checkpoint still records
+  `keydown_observed = true` and `submit_observed = true` on the real headed
+  surface
 - the saved reduced Enter-trace analysis keeps `keypress_before_submit = true`
   and preserves the query value through submit in
   `tmp-browser-smoke\headed-probe\google-enter-trace-analysis.json`
@@ -197,7 +240,7 @@ After this submit-path slice is green:
 Do not jump from the reduced homepage pass straight to the live Google homepage
 when the branch already provides narrower later-stage submit checkpoints.
 
-Keep the saved homepage fixture, reduced Enter-trace analysis, submit-timing
-slice, and shared Enter-order ladder green first, use the trace guide when the
-later-stage checkpoints diverge, then widen back out to attached HTML or the
-live headed homepage.
+Keep the saved homepage fixture, reduced-home keypress checkpoint, reduced
+Enter-trace analysis, submit-timing slice, and shared Enter-order ladder green
+first, use the trace guide when the later-stage checkpoints diverge, then widen
+back out to attached HTML or the live headed homepage.
