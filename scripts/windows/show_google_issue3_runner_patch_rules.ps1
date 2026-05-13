@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SourceArtifactPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -78,8 +79,12 @@ function Get-ArrayValue {
     return @($value)
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
-$artifactRoot = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe'
+$resolvedRepoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
+$artifactRoot = Join-Path $resolvedRepoRoot 'tmp-browser-smoke\headed-probe'
 $rulesNotePath = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
 $runnerPatchTarget = 'scripts/windows/run_google_issue3_recommended_validation.ps1'
 $generatePatchArtifactCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1'
@@ -94,13 +99,13 @@ $preferredArtifacts = @(
 )
 if (-not $SourceArtifactPath) {
     $resolvedArtifact = $preferredArtifacts |
-        ForEach-Object { Join-Path $repoRoot $_ } |
+        ForEach-Object { Join-Path $resolvedRepoRoot $_ } |
         Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
         Select-Object -First 1
     if ($resolvedArtifact) {
         $SourceArtifactPath = $resolvedArtifact
     } else {
-        $SourceArtifactPath = Join-Path $repoRoot $preferredArtifacts[0]
+        $SourceArtifactPath = Join-Path $resolvedRepoRoot $preferredArtifacts[0]
     }
 }
 if (-not $ArtifactPath) {
@@ -268,6 +273,7 @@ $report = [ordered]@{
     issue = 'Google issue #3 runner patch rules entrypoint'
     purpose = 'Turn the newest issue #3 runner-patch artifact into an explicit patch-entry handoff with the focused rules note, patch target, preferred artifact order, and post-patch audit commands.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $resolvedRepoRoot
     artifact_path = $ArtifactPath
     source_artifact_path = $SourceArtifactPath
     source_artifact_exists = [bool]$sourceArtifactExists
@@ -310,6 +316,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 runner patch rules entrypoint'
 Write-Host ''
+Write-Host ("Repo root:       {0}" -f $report.repo_root)
 Write-Host ("Artifact:        {0}" -f $report.artifact_path)
 Write-Host ("Source artifact: {0}" -f $report.source_artifact_path)
 Write-Host ("Source status:   {0}" -f $report.source_status)
