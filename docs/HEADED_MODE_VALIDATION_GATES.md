@@ -78,20 +78,30 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_quick_vali
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_validation.ps1
 ```
 
-4. Move into the saved homepage fixture and later submit-path slices.
+4. Move into the saved homepage fixture, reduced-home keypress, and later
+   submit-path slices.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile homepage-fixture
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_home_keypress_submit_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_home_keypress_submit_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_keypress_submit_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile submit-path
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
 ```
 
-If the saved homepage fixture is already green and you only need the narrower
-keydown, keypress, and submit-order slice before the shared Enter-order ladder,
-use `show_google_submit_timing_validation_flow.ps1` or
+If the saved homepage fixture is already green and you only need the smaller
+real-surface keypress-before-submit proof before the broader submit-path
+wrappers, start with `check_google_home_keypress_submit_validation_surface.ps1`,
+`show_google_home_keypress_submit_validation_flow.ps1`, or
+`run_google_home_keypress_submit_validation.ps1` instead of jumping straight to
+the wider later-stage wrapper. If that reduced-home keypress route is already
+green and you only need the narrower keydown, keypress, and submit-order slice
+before the shared Enter-order ladder, use
+`show_google_submit_timing_validation_flow.ps1` or
 `run_google_submit_timing_validation.ps1` inside this later submit-path phase
 instead of jumping back to the earlier title gates.
 
@@ -203,7 +213,8 @@ Examples:
 - `form-controls` failure that only affects wrapped later-row controls: widen to
   `inline-flow`.
 - `google-home` failure that only appears after the saved homepage fixture:
-  widen to `google-homepage-fixture`, not straight to live trace.
+  widen to `google-homepage-fixture`, then `google-home-keypress-submit`, not
+  straight to live trace.
 - issue `#3` helper-chain mismatch where the saved refresh or handoff artifact no longer matches the current summary: run `refresh_google_issue3_validation_handoff_chain.ps1`, reopen the saved handoff JSON, then choose the narrower replay from there.
 - attached HTML bundle failure on just one page script path: keep the bundle
   runner, then widen to `manual-user` only after the pinned bundle route is
