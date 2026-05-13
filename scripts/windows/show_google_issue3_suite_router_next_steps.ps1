@@ -172,7 +172,7 @@ $matrix = @(
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
         default_next_helper = 'show_google_issue3_attached_bundle_first_entrypoint.ps1'
         command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
-        use_when = 'The current saved or attached inputs are still the pinned three-page compatibility bundle and you want the one-command bundle-first helper to keep that locked route plus the safe-route return visible before the broader Google-only wrappers reopen.'
+        use_when = 'The current saved or attached inputs are still the pinned three-page compatibility bundle and you want the one-command bundle-first helper to keep that locked route plus the safe-route return visible before the broader Google-only wrappers.'
     }
     [ordered]@{
         start_point = 'show_google_issue3_suite_router_handoff.ps1'
@@ -242,6 +242,7 @@ $helper = [ordered]@{
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     decision_table_note_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
+    windows_runbook_path = 'docs/WINDOWS_FULL_USE.md'
     notes = @(
         'Use this helper when issue #3 work starts from the higher-level Windows validation router and you want the next helper chosen quickly without reopening the longer chain notes first.',
         'When RepoRoot is supplied, the top-level suite-router and Google-flow commands preserve that same LIGHTPANDA_REPO_ROOT context instead of falling back to the default checkout path.',
@@ -249,7 +250,7 @@ $helper = [ordered]@{
         'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, and attached-bundle-first helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
         'Use attached_bundle_first when the saved or attached pages are still the known three-page compatibility set and you want that route exercised before reopening the broader Google-only safe-route ladder.',
         'Use safe_route_entrypoints after the suite-router work is already out of the way and you want the current wrapper-heavy issue #3 commands, notes, and next-state helper surfaced in one place.',
-        'Keep suite_router_bridge_note_path open for the prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence, and decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
+        'Keep suite_router_bridge_note_path open for the prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
     )
 }
 
@@ -303,6 +304,7 @@ Write-Host (("Quickstart note:         {0}") -f $helper.quickstart_note_path)
 Write-Host (("Suite-router bridge note:{0}") -f (' ' + $helper.suite_router_bridge_note_path))
 Write-Host (("Validation chain note:   {0}") -f $helper.validation_chain_note_path)
 Write-Host (("Decision table:          {0}") -f $helper.decision_table_note_path)
+Write-Host (("Windows runbook:         {0}") -f $helper.windows_runbook_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
