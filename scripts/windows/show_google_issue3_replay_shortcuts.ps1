@@ -144,6 +144,11 @@ $bundleRouteArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleRouteArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleRouteArguments -Name InputPath -Values $InputPath
 
+$safeRouteArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $safeRouteArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $safeRouteArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $safeRouteArguments -Name InputPath -Values $InputPath
+
 $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
 
 $recommendedFirstHelperKey = 'fresh_safe_route_replay'
@@ -190,7 +195,7 @@ $shortcuts = [ordered]@{
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleFirstArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleFirstArguments
         contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleFirstArguments
-        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
+        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $safeRouteArguments
         runner_patch_next_step = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
             SummaryPath = $SummaryPath
             State = $runnerPatchStatePlaceholder
@@ -210,12 +215,12 @@ $shortcuts = [ordered]@{
         'Use suite_router_next_steps when you want the compact next-step matrix that keeps the current start points, replay-route branch, attached-bundle branch, contextual-flow branch, and runner-state helper choices together before you pick one narrower replay path.',
         'Use replay_route when you want the attached-bundle branch, the safe-route bridge, the context-preserving helper, and the repo-root-aware runner next-step helper printed in one slightly broader surface before you return to the narrower replay-shortcuts helper.',
         'Use contextual_flow when you already know repo-root overrides, saved-summary state, or pinned attached pages should stay visible while you choose between the recommended runner, replay shortcuts, live trace, or bundle follow-up commands.',
-        'Use safe_route_entrypoints when outputs may already exist and you want the newest issue #3 wrapper commands, notes, and next-state helpers printed in one place.',
+        'Use safe_route_entrypoints when outputs may already exist and you want the newest issue #3 wrapper commands, notes, and next-state helpers printed in one place. When InputPath is already pinned, this helper now preserves that same fixed bundle context instead of falling back to auto-discovery.',
         'Use runner_patch_next_step after the safe-route wrapper or reuse-current-outputs helper names one of the three current runner-patch states; when RepoRoot or SummaryPath is already in play, this command now keeps that same replay context attached to the next-step helper.',
-        'Use attached_bundle_first when the current saved or attached pages are the known three-page compatibility bundle and you want that route exercised before the broader Google-only wrapper chain.',
+        'Use attached_bundle_first when explicit input paths are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only safe-route ladder.',
         'Use attached_bundle_suite when you want the higher-level suite router itself to reopen on the pinned bundle branch before widening back into the broader Google-only helpers.',
         'Use fresh_safe_route_replay when current issue #3 outputs may be stale or missing and no explicit bundle inputs are already pinned. Use reuse_current_outputs only when the current saved outputs are already trusted.',
-        'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, suite_router_bridge_note_path for the narrow prose bridge into replay shortcuts, suite_catalog_entrypoint_note_path for the shortest bridge from the top-level suite router into the current helper chain, decision_table_note_path when the runner patch handoff lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and patch_rules_note_path when the replay is already narrowed to a direct runner-source edit.'
+        'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, suite_router_bridge_note_path for the narrow prose bridge into replay shortcuts, suite_catalog_entrypoint_note_path for the shortest bridge from the top-level suite router into the current helper chain, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and patch_rules_note_path when the replay is already narrowed to a direct runner-source edit.'
     )
 }
 
