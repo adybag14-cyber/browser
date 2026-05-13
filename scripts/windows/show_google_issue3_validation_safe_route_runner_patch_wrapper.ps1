@@ -286,10 +286,10 @@ $freshPatchHandoffCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run
     BrowserExe = $BrowserExe
     SummaryPath = $SummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
-$broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
-    RepoRoot = $recommendedRepoRoot
+$broaderRunnerCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
     BrowserExe = $BrowserExe
-})
+    SummaryPath = $SummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 $validationStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
 if ($RepoRoot) {
     $validationStepArguments += @('-RepoRoot', $repoRoot)
@@ -528,11 +528,11 @@ if ($Json) {
 Write-Host 'Google issue #3 validation safe route runner patch wrapper'
 Write-Host ''
 Write-Host ("Summary:   {0}" -f $report.summary_path)
-Write-Host ("Artifact:  {0}" -f $report.artifact_path)
-Write-Host ("Status:    {0}" -f $report.status)
-Write-Host ("Runner patch route ran: {0}" -f $report.runner_patch_route_ran)
-Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_already_wired_needs_regeneration)
-Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
+    Write-Host ("Artifact:  {0}" -f $report.artifact_path)
+    Write-Host ("Status:    {0}" -f $report.status)
+    Write-Host ("Runner patch route ran: {0}" -f $report.runner_patch_route_ran)
+    Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_already_wired_needs_regeneration)
+    Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
 }
