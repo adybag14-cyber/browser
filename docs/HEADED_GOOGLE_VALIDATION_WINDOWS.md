@@ -92,8 +92,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_f
 
 That slice now starts with its dedicated homepage-fixture surface checker before
 the printed flow or wrapper runs, while keeping the saved homepage fixture on
-the same issue `#3` route as the reduced title, reduced home, submit-timing,
-and shared Enter-order checks.
+the same issue `#3` route as the reduced title, reduced home, reduced-home
+keypress-submit, submit-timing, and shared Enter-order checks.
+
+When the saved homepage fixture is already green and you want the smaller
+real-surface keypress-before-submit checkpoint before the broader later
+submit-path wrappers, use the dedicated reduced-home keypress-submit helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_home_keypress_submit_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_home_keypress_submit_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_keypress_submit_validation.ps1
+```
+
+That helper stack keeps the smaller reduced-home keydown-then-submit proof on
+its own reusable command surface before you widen back out.
 
 When the earlier title gates are already green and you want the narrower saved
 homepage fixture, submit-timing, and shared Enter-order stack in one command
@@ -154,11 +167,12 @@ Run the stepwise flow when you want to narrow the failure one phase at a time:
 4. `quick`
 5. `google-home`
 6. `google-homepage-fixture`
-7. `submit-path`
-8. `submit-timing`
-9. `shared-enter-order`
-10. `manual`
-11. `trace`
+7. `google-home-keypress-submit`
+8. `submit-path`
+9. `submit-timing`
+10. `shared-enter-order`
+11. `manual`
+12. `trace`
 
 Use these commands through the main runner or the bounded helpers directly:
 
@@ -171,6 +185,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_vali
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_homepage_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_home_keypress_submit_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_home_keypress_submit_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_keypress_submit_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_submit_path_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_submit_timing_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1
@@ -218,6 +235,11 @@ Only move to `manual` or `trace` after those bounded phases are green.
   saved-page or attached-page manual follow-up, and its dedicated surface
   checker now fails fast if the narrower guide, wrapper, or probe drift out of
   sync.
+- `google-home-keypress-submit`: the dedicated surface checker now fails fast if
+  the narrower guide, helper, wrapper, or raw reduced-home keypress probe drift
+  out of sync before you trust this smaller real-surface bridge, and the headed
+  Win32 reduced-home probe still pauses at `KEYDOWN:<text>` before it finally
+  reaches `SUBMIT:<text>` on the same page.
 - `submit-path`: the dedicated issue `#3` submit-path runner still bundles the
   saved homepage fixture, bounded submit-timing check, and shared Enter-order
   ladder into one later-stage command surface after the earlier title gates are
@@ -314,8 +336,9 @@ attached-page command map, override patterns, and staging rules in one place.
 Do not treat a saved-page manual pass as the first evidence for issue `#3`.
 
 Use the bounded localhost, reduced homepage, saved homepage fixture,
-submit-path, submit-timing, and shared Enter-order passes first, then use the
-saved-page or live-Google follow-up only when those gates already agree.
+reduced-home keypress-submit, submit-path, submit-timing, and shared
+Enter-order passes first, then use the saved-page or live-Google follow-up only
+when those gates already agree.
 
 Use `run_google_issue3_recommended_validation.ps1` when you want the current
 bounded issue `#3` flow in one reusable command. Drop back to the stepwise
@@ -324,6 +347,10 @@ that regressed.
 
 Use `show_google_quick_validation_flow.ps1` when you want the fast title-plus-watch
 stack spelled out before you run the quicker wrapper entrypoint.
+
+Use `run_google_home_keypress_submit_validation.ps1` when the saved homepage
+fixture is already green and you want one smaller real-surface keypress-before-
+submit proof before the broader later submit-path wrappers.
 
 Use `run_google_issue3_submit_path_validation.ps1` when the earlier title and
 reduced homepage gates are already green and you want one later-stage command
