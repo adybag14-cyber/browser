@@ -258,11 +258,11 @@ $readyForRunnerPatchHandoff = [bool](
         $patchHandoffStep.status -eq 'ready-for-runner-patch-handoff'
     )
 )
-$recommendedPostPatchCommand = if ($patchHandoffStep.record) {
-    Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_post_patch_command'
-} else {
-    $null
-}
+$recommendedPostPatchCommand = Get-FirstNonEmptyValue -Values @(
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_post_patch_command' },
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_verification_command' },
+    $patchHandoffStep.recommended_guide_command
+)
 $missingRunnerFields = if ($patchHandoffStep.record) {
     @(Get-ArrayValue -Object $patchHandoffStep.record -Name 'missing_runner_fields')
 } elseif ($patchTargetsWrapperStep.record) {
@@ -374,6 +374,7 @@ $report = [ordered]@{
             next_artifact_to_open = $_.next_artifact_to_open
             reason = $_.reason
             recommended_patch_target = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_patch_target' } else { $null }
+            recommended_post_patch_command = if ($_.record) { Get-FirstNonEmptyValue -Values @((Get-OptionalPropertyValue -Object $_.record -Name 'recommended_post_patch_command'), (Get-OptionalPropertyValue -Object $_.record -Name 'recommended_verification_command'), $_.recommended_guide_command) } else { $null }
             runner_patch_still_required = if ($_.record -and $_.record.PSObject.Properties['runner_patch_still_required']) { [bool]$_.record.runner_patch_still_required } else { $false }
             missing_runner_fields = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'missing_runner_fields') } else { @() }
             summary_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'summary_patch_snippet_lines') } else { @() }
@@ -405,6 +406,9 @@ Write-Host ("Runner patch still required: {0}" -f $report.runner_patch_still_req
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
 }
+if ($report.recommended_post_patch_command) {
+    Write-Host ("Post-patch audit: {0}" -f $report.recommended_post_patch_command)
+}
 if ($report.missing_runner_fields.Count -gt 0) {
     Write-Host 'Missing runner fields:'
     foreach ($fieldName in $report.missing_runner_fields) {
@@ -418,7 +422,7 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifestPatchSnippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
     foreach ($line in $report.manifest_patch_snippet_lines) {
@@ -434,6 +438,9 @@ foreach ($step in $report.steps) {
     }
     if ($step.parse_error) {
         Write-Host ("  Parse error: {0}" -f $step.parse_error)
+    }
+    if ($step.recommended_post_patch_command) {
+        Write-Host ("  Post-patch audit: {0}" -f $step.recommended_post_patch_command)
     }
 }
 Write-Host ''
