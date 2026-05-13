@@ -11,12 +11,23 @@ Keep these companion notes nearby when the replay needs more detail:
 
 ## Read-first discovery
 
-Use these when you are re-entering issue `#3` from the higher-level headed validation catalog before choosing a narrower safe-route helper:
+Use these when you are re-entering issue `#3` from the higher-level headed validation catalog and want the top-level suite router to hand off back into the current shortcut surface before reopening the broader localhost-first ladder:
 
 ```powershell
 .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+```
+
+If the replay still stays inside issue `#3` and no saved summary or explicit bundle path is already pinned, reopen the current shortcut surface immediately after those top-level router commands:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+```
+
+If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that context directly in the shortcut helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
 If you want the shortest command matrix that tells you which issue `#3` helper to open next after those top-level router commands, use:
@@ -37,6 +48,12 @@ If you want that same read-first bridge plus the current replay-shortcuts, bundl
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1
 ```
 
+If you want the broader localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+```
+
 If you want those read-first commands plus the attached three-page bundle branch, the current safe-route map, and the repo-root-aware runner next-step helper printed together in one place, use:
 
 ```powershell
@@ -49,22 +66,10 @@ If the replay is running from a non-default checkout or from an already-saved su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
 ```
 
-If you want those read-first commands plus the attached three-page bundle branch and the current safe-route shortcuts printed together in one place, use:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
-```
-
-If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that context directly in the suite-router handoff helper:
+If the replay is running from a non-default checkout or from an already-saved summary, preserve that context directly in the suite-router handoff helper:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-```
-
-If you already know you want the narrower shortcut helper right away, preserve that same context directly in:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
 These match the `read_first_*` commands printed by `show_google_issue3_safe_route_entrypoints.ps1`.
@@ -72,11 +77,11 @@ These match the `read_first_*` commands printed by `show_google_issue3_safe_rout
 Use them in this order when helpful:
 - `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first
 - `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay
-- `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes
+- `show_google_issue3_replay_shortcuts.ps1` when the replay is already known to stay inside issue `#3` and you want the narrowest current shortcut surface before deciding whether to widen into the handoff, replay-route, bundle-first, or safe-route helpers
 - `show_google_issue3_suite_router_next_steps.ps1` when you want the fastest command matrix from the top-level suite router before deciding between the handoff, replay-route, bundle-first, shortcut, or safe-route branches
 - `show_google_issue3_suite_router_handoff.ps1` when you want the suite-router read-first commands plus the current replay-shortcuts, bundle-first, and safe-route-map helpers surfaced together before you decide whether the next replay should stay broad or narrow
+- `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes
 - `show_google_issue3_replay_route.ps1` when you want the same read-first bridge plus the attached three-page bundle branch, the current safe-route map, and the repo-root-aware runner next-step helper preserved together in one route
-- `show_google_issue3_replay_shortcuts.ps1` when you already want the broader Google route, the attached three-page bundle branch, and the current safe-route shortcuts together without reopening the bridge helper first
 - `-ChangeArea attached-html-target-bundle` when the next replay should stay pinned to the known three-page compatibility bundle before you reopen the broader attached-page or wrapper-heavy issue `#3` helpers
 
 ## One-command entrypoints map
