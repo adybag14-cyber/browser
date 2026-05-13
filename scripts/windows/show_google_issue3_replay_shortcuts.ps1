@@ -69,7 +69,7 @@ function Format-HelperCommand {
         [string[]]$Switches = @()
     )
 
-    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
     if ($Arguments -and $Arguments.Count -gt 0) {
         $command += " " + ($Arguments -join ' ')
     }
@@ -82,6 +82,49 @@ function Format-HelperCommand {
     }
 
     return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string[]]$Switches = @(),
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        $fallbackArguments = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in $Arguments.GetEnumerator()) {
+            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+        }
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
+    }
+
+    $command = "& '.\scripts\windows\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -112,14 +155,20 @@ $shortcuts = [ordered]@{
     decision_table_note_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
     patch_rules_note_path = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
     read_first_commands = [ordered]@{
-        suite_router = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended'
-        change_area = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input'
-        google_flow = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1'
-        attached_bundle_suite = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+        suite_router = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            SuiteName = 'google-recommended'
+        }) -RepoRootOverride $RepoRoot
+        change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'google-input'
+        }) -RepoRootOverride $RepoRoot
+        google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
+        attached_bundle_suite = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'attached-html-target-bundle'
+        }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
-        runner_patch_next_step = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
+        runner_patch_next_step = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleFirstArguments
         attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleRouteArguments
         attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleRouteArguments -Switches @('Wait')
@@ -127,12 +176,13 @@ $shortcuts = [ordered]@{
         reuse_current_outputs = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments $sharedArguments
     }
     notes = @(
-        'Start with suite_router when you want the higher-level catalog to surface the broader issue #3 runner first.',
-        'Use change_area when you may need a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace branch instead of the broader recommended replay.',
-        'Use google_flow when you want the current localhost-first issue #3 ladder printed before you choose between the narrower safe-route replay, the attached bundle route, or a later-stage Google slice.',
+        'Start with suite_router when you want the higher-level catalog to surface the broader issue #3 runner first, while preserving LIGHTPANDA_REPO_ROOT for a non-default checkout when it is already set.',
+        'Use change_area when you may need a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace branch instead of the broader recommended replay, without dropping the current repo-root context.',
+        'Use google_flow when you want the current localhost-first issue #3 ladder printed before you choose between the narrower safe-route replay, the attached bundle route, or a later-stage Google slice, while keeping the same repo-root context.',
         'Use safe_route_entrypoints when outputs may already exist and you want the newest issue #3 wrapper commands, notes, and next-state helpers printed in one place.',
         'Use runner_patch_next_step after the safe-route wrapper or reuse-current-outputs helper names one of the three current runner-patch states and you want the exact next move without reopening the longer decision table first.',
         'Use attached_bundle_first when the current saved or attached pages are the known three-page compatibility bundle and you want that route exercised before reopening the broader Google-only wrapper chain.',
+        'Use attached_bundle_suite when you want the higher-level suite router itself to reopen on the pinned bundle branch before widening back into the broader Google-only helpers.',
         'Use fresh_safe_route_replay when current issue #3 outputs may be stale or missing. Use reuse_current_outputs only when the current saved outputs are already trusted.',
         'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, decision_table_note_path when the runner patch handoff lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and patch_rules_note_path when the replay is already narrowed to a direct runner-source edit.'
     )
