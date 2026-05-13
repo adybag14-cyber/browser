@@ -198,9 +198,10 @@ $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_reco
     SummaryPath = $summaryPath
 })
 $runnerPatchRulesNotePath = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
-$postPatchCommand = Get-FirstNonEmptyValue -Values @(
-    $runnerOutputWiringSafeCommand,
+$postPatchCommand = $broaderRunnerCommand
+$postPatchVerificationCommand = Get-FirstNonEmptyValue -Values @(
     $recommendedVerificationCommand,
+    $runnerOutputWiringSafeCommand,
     $recommendedSourceGuideCommand
 )
 
@@ -213,8 +214,8 @@ $nextArtifactToOpen = $null
 if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommendedPatchTarget)) {
     $status = 'ready-for-runner-patch-handoff'
     $reason = 'The saved issue #3 patch-route artifact has already narrowed the next replay to a direct runner update, so the next step is to patch the recommended validation runner rather than rerun the raw patch-target helper.'
-    $recommendedCommand = $recommendedPatchTarget
-    $recommendedGuideCommand = $postPatchCommand
+    $recommendedCommand = $postPatchCommand
+    $recommendedGuideCommand = $postPatchVerificationCommand
     $nextFocus = 'Open docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md beside the saved patch-handoff artifact, apply the preserved summary and manifest patch snippet lines to the recommended validation runner, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the stricter raw wiring helper again.'
     $nextArtifactToOpen = $SourceArtifactPath
 } elseif ($alreadyDirectFromRawPatchTargets) {
@@ -280,7 +281,7 @@ $report = [ordered]@{
     recommended_patch_target = $recommendedPatchTarget
     recommended_reference_note_path = if ($status -eq 'ready-for-runner-patch-handoff') { $runnerPatchRulesNotePath } else { $null }
     recommended_post_patch_command = $postPatchCommand
-    recommended_verification_command = $recommendedVerificationCommand
+    recommended_verification_command = $postPatchVerificationCommand
     recommended_regeneration_command = $recommendedRegenerationCommand
     recommended_repair_command = $recommendedRepairCommand
     runner_patch_still_required = [bool]$runnerPatchStillRequired
