@@ -53,11 +53,21 @@ $surfaceCheck = '.\scripts\windows\check_google_form_controls_enter_order_valida
 $traceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
 $runner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
 $rawProbe = '.\tmp-browser-smoke\form-controls\google-enter-order-probe.ps1'
+$broaderStack = '.\scripts\windows\show_google_shared_enter_order_validation_flow.ps1'
 
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
 
 $traceGuideArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $traceGuideArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $traceGuideArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $traceGuideArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $traceGuideArgs -Name SharedInputText -Value $SharedInputText
+Add-SharedArgument -Arguments $traceGuideArgs -Name SharedEnterOrderPort -Value $SharedEnterOrderPort
+Add-SharedArgument -Arguments $traceGuideArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
+Add-SharedArgument -Arguments $traceGuideArgs -Name HomeWindowReadyAttempts -Value $HomeWindowReadyAttempts
+Add-SharedArgument -Arguments $traceGuideArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
+Add-SharedArgument -Arguments $traceGuideArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
 
 $runnerArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $runnerArgs -Name RepoRoot -Value $RepoRoot
@@ -80,6 +90,17 @@ Add-SharedArgument -Arguments $rawProbeArgs -Name ServerReadyTimeoutSeconds -Val
 Add-SharedArgument -Arguments $rawProbeArgs -Name WindowReadyAttempts -Value $HomeWindowReadyAttempts
 Add-SharedArgument -Arguments $rawProbeArgs -Name TitleWaitAttempts -Value $HomeTitleWaitAttempts
 Add-SharedArgument -Arguments $rawProbeArgs -Name PollMilliseconds -Value $HomePollMilliseconds
+
+$broaderStackArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $broaderStackArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $broaderStackArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $broaderStackArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $broaderStackArgs -Name SharedInputText -Value $SharedInputText
+Add-SharedArgument -Arguments $broaderStackArgs -Name SharedEnterOrderPort -Value $SharedEnterOrderPort
+Add-SharedArgument -Arguments $broaderStackArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
+Add-SharedArgument -Arguments $broaderStackArgs -Name HomeWindowReadyAttempts -Value $HomeWindowReadyAttempts
+Add-SharedArgument -Arguments $broaderStackArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
+Add-SharedArgument -Arguments $broaderStackArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
 
 $flow = [ordered]@{
     issue = "Headed Windows Google form-controls Enter-order validation flow"
@@ -111,7 +132,7 @@ $flow = [ordered]@{
         [ordered]@{
             name = "broader-stack"
             goal = "Escalate to the wider shared Enter-order ladder only after the dedicated form-controls gate is green or when you need the reduced homepage and localhost wrappers in the same pass."
-            command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1"
+            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $broaderStack, $(if ($broaderStackArgs.Count -gt 0) { " " + ($broaderStackArgs -join " ") } else { "" }))
         }
     )
     notes = @(
