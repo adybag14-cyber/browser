@@ -146,6 +146,13 @@ Add-SharedPathArrayArgument -Arguments $bundleRouteArguments -Name InputPath -Va
 
 $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
 
+$recommendedFirstHelperKey = 'fresh_safe_route_replay'
+$recommendedFirstHelperReason = 'Current issue #3 outputs may be stale or missing, so start with the fresh safe-route replay that regenerates the current handoff artifact in one command.'
+if (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
+    $recommendedFirstHelperKey = 'reuse_current_outputs'
+    $recommendedFirstHelperReason = 'A saved SummaryPath is already in play, so reopen the safe-route wrapper against the current outputs before widening into a broader regeneration pass.'
+}
+
 $shortcuts = [ordered]@{
     issue = 'Google issue #3 replay shortcuts'
     purpose = 'Keep the top-level issue #3 read-first commands, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
@@ -196,6 +203,10 @@ $shortcuts = [ordered]@{
     )
 }
 
+$shortcuts.recommended_first_helper_key = $recommendedFirstHelperKey
+$shortcuts.recommended_first_helper_reason = $recommendedFirstHelperReason
+$shortcuts.recommended_first_helper_command = $shortcuts.helper_commands[$recommendedFirstHelperKey]
+
 if ($Json) {
     $shortcuts | ConvertTo-Json -Depth 5
     exit 0
@@ -212,6 +223,9 @@ if ($shortcuts.summary_path) {
 if ($shortcuts.explicit_input_path_count -gt 0) {
     Write-Host ("Input paths: {0}" -f $shortcuts.explicit_input_path_count)
 }
+Write-Host ''
+Write-Host ("Recommended first helper: {0}" -f $shortcuts.recommended_first_helper_command)
+Write-Host ("Why:                     {0}" -f $shortcuts.recommended_first_helper_reason)
 Write-Host ''
 Write-Host 'Read-first discovery:'
 Write-Host ("  Suite router:         {0}" -f $shortcuts.read_first_commands.suite_router)
