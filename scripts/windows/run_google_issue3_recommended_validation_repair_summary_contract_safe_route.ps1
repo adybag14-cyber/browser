@@ -193,13 +193,15 @@ if (-not $ArtifactPath) {
 
 $summaryContractRepairScript = Join-Path $PSScriptRoot 'repair_google_issue3_validation_summary_contract.ps1'
 $validationSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route.ps1'
+$validationSafeRouteSafeGuideScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route_safe_guide.ps1'
 $summaryContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_summary_contract.ps1'
 $validationSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route.ps1'
+$validationSafeRouteSafeGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_safe_guide.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 
-foreach ($helperPath in @($summaryContractRepairScript, $validationSafeRouteScript)) {
+foreach ($helperPath in @($summaryContractRepairScript, $validationSafeRouteScript, $validationSafeRouteSafeGuideScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
     }
@@ -251,10 +253,9 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $summaryContractRepairCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($summaryContractReadyForSafeRoute) { $validationSafeRouteStep.recommended_guide_command },
+    if ($summaryContractReadyForSafeRoute -and $validationSafeRouteStep.success) { $validationSafeRouteSafeGuideCommand },
     $summaryContractStep.recommended_guide_command,
     if ($summaryContractStep.status -eq 'safe-gate-cleared') { $runnerOutputWiringCommand },
-    if ($summaryContractReadyForSafeRoute) { $validationSafeRouteCommand },
     $runnerOutputWiringSafeCommand,
     $summaryGuideCommand
 )
@@ -279,6 +280,7 @@ $report = [ordered]@{
     artifact_path = $ArtifactPath
     summary_contract_repair_command = $summaryContractRepairCommand
     validation_safe_route_command = $validationSafeRouteCommand
+    validation_safe_route_safe_guide_command = $validationSafeRouteSafeGuideCommand
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
     summary_contract_ready_for_safe_route = [bool]$summaryContractReadyForSafeRoute
