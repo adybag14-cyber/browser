@@ -162,6 +162,7 @@ $handoff = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $sharedArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
@@ -171,6 +172,7 @@ $handoff = [ordered]@{
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the full recommended runner.',
+        'Use suite_router_next_steps when you want the one-command next-step matrix that keeps the current suite-router start points, replay-route branch, attached-bundle branch, and runner-state helper choices together before you pick one route.',
         'Use the read-first bridge when you want the exact route from the higher-level suite router into the replay-route helper printed in one place before reopening any longer notes.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
         'Use replay_route when you still want the compact next step that keeps the attached-bundle branch, the replay-shortcuts helper, the safe-route map, and the repo-root-aware runner-next-step helper together before narrowing further.',
@@ -238,11 +240,12 @@ Write-Host ("  Google input:       {0}" -f $handoff.suite_router_commands.google
 Write-Host ("  Attached bundle:    {0}" -f $handoff.suite_router_commands.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Shortcut helpers:'
-Write-Host ("  Google flow:        {0}" -f $handoff.helper_commands.google_flow)
-Write-Host ("  Replay route:       {0}" -f $handoff.helper_commands.replay_route)
-Write-Host ("  Replay shortcuts:   {0}" -f $handoff.helper_commands.replay_shortcuts)
-Write-Host ("  Bundle first:       {0}" -f $handoff.helper_commands.attached_bundle_first)
-Write-Host ("  Safe route map:     {0}" -f $handoff.helper_commands.safe_route_entrypoints)
+Write-Host ("  Next-step matrix:  {0}" -f $handoff.helper_commands.suite_router_next_steps)
+Write-Host ("  Google flow:       {0}" -f $handoff.helper_commands.google_flow)
+Write-Host ("  Replay route:      {0}" -f $handoff.helper_commands.replay_route)
+Write-Host ("  Replay shortcuts:  {0}" -f $handoff.helper_commands.replay_shortcuts)
+Write-Host ("  Bundle first:      {0}" -f $handoff.helper_commands.attached_bundle_first)
+Write-Host ("  Safe route map:    {0}" -f $handoff.helper_commands.safe_route_entrypoints)
 Write-Host ''
 Write-Host ("Quickstart note:      {0}" -f $handoff.quickstart_note_path)
 Write-Host ("Windows runbook:      {0}" -f $handoff.windows_runbook_note_path)
