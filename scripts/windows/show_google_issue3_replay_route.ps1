@@ -103,12 +103,16 @@ $recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
 
 $route = [ordered]@{
     issue = 'Google issue #3 replay route'
-    purpose = 'Bridge the high-level headed validation catalog, the bounded Google flow helper, and the current safe-route replay wrappers in one place.'
+    purpose = 'Bridge the high-level headed validation catalog, the bounded Google flow helper, the attached three-page compatibility bundle branch, and the current safe-route replay wrappers in one place.'
     repo_root = $resolvedRepoRoot
     summary_path = $recommendedSummaryPath
     read_first_suite_command = '.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended'
     read_first_change_area_command = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input'
     read_first_google_flow_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1'
+    attached_bundle_change_area_command = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+    attached_bundle_entrypoint_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments ([ordered]@{
+        SummaryPath = $recommendedSummaryPath
+    }) -RepoRootOverride $recommendedRepoRoot
     safe_route_entrypoints_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments ([ordered]@{
         SummaryPath = $recommendedSummaryPath
     }) -RepoRootOverride $recommendedRepoRoot
@@ -120,12 +124,13 @@ $route = [ordered]@{
     }) -RepoRootOverride $recommendedRepoRoot
     runner_patch_next_step_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
     notes = @(
-        'Start with read_first_suite_command when you want the broadest current issue #3 runner surfaced first.'
-        'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice.'
-        'Use read_first_google_flow_command when you want the full bounded localhost-first ladder printed before you choose a narrower replay.'
-        'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.'
-        'Use fresh_replay_command when issue #3 outputs may be stale or missing.'
-        'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.'
+        'Start with read_first_suite_command when you want the broadest current issue #3 runner surfaced first.',
+        'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice.',
+        'Use read_first_google_flow_command when you want the full bounded localhost-first ladder printed before you choose a narrower replay.',
+        'If the current saved or attached pages are the known three-page compatibility bundle, use attached_bundle_change_area_command and attached_bundle_entrypoint_command before reopening the broader wrapper-heavy safe route.',
+        'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.',
+        'Use fresh_replay_command when issue #3 outputs may be stale or missing.',
+        'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.',
         'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state.'
     )
 }
@@ -144,6 +149,10 @@ Write-Host 'Read-first:'
 Write-Host ("  Suite router:        {0}" -f $route.read_first_suite_command)
 Write-Host ("  Change-area view:    {0}" -f $route.read_first_change_area_command)
 Write-Host ("  Google flow helper:  {0}" -f $route.read_first_google_flow_command)
+Write-Host ''
+Write-Host 'Attached-bundle branch:'
+Write-Host ("  Bundle route:        {0}" -f $route.attached_bundle_change_area_command)
+Write-Host ("  Bundle helper:       {0}" -f $route.attached_bundle_entrypoint_command)
 Write-Host ''
 Write-Host 'Safe-route bridge:'
 Write-Host ("  Entrypoints helper:  {0}" -f $route.safe_route_entrypoints_command)
