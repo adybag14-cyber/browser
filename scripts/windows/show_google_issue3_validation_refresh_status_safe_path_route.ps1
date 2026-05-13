@@ -284,6 +284,18 @@ $summaryGuideSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show
     SummaryPath = $recommendedSummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
 
+$refreshStatusSafeHelperArguments = @()
+if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $refreshStatusSafeHelperArguments += @('-RepoRoot', $repoRoot)
+}
+$refreshStatusSafeHelperArguments += @('-SummaryPath', $SummaryPath, '-Json')
+
+$refreshStatusHelperArguments = @()
+if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $refreshStatusHelperArguments += @('-RepoRoot', $repoRoot)
+}
+$refreshStatusHelperArguments += @('-SummaryPath', $SummaryPath, '-Json')
+
 foreach ($helperPath in @($refreshStatusSafeScript, $refreshStatusScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
@@ -291,15 +303,15 @@ foreach ($helperPath in @($refreshStatusSafeScript, $refreshStatusScript)) {
 }
 
 $steps = [System.Collections.Generic.List[object]]::new()
-$refreshStatusSafeStep = Invoke-JsonHelper -Name 'refresh-status-safe' -ScriptPath $refreshStatusSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+$refreshStatusSafeStep = Invoke-JsonHelper -Name 'refresh-status-safe' -ScriptPath $refreshStatusSafeScript -Arguments $refreshStatusSafeHelperArguments
 $steps.Add($refreshStatusSafeStep) | Out-Null
 
 $shouldRunRawRefreshStatus = [bool]($refreshStatusSafeStep.success -and $refreshStatusSafeStep.status -eq 'safe-to-run-existing-helper')
 $refreshStatusStep = $null
 if ($shouldRunRawRefreshStatus) {
-    $refreshStatusStep = Invoke-JsonHelper -Name 'refresh-status' -ScriptPath $refreshStatusScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+    $refreshStatusStep = Invoke-JsonHelper -Name 'refresh-status' -ScriptPath $refreshStatusScript -Arguments $refreshStatusHelperArguments
 } else {
-    $refreshStatusStep = New-SkippedHelperStep -Name 'refresh-status' -ScriptPath $refreshStatusScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.recommended_command, $refreshStatusSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.next_focus, 'Use the current refresh-status-safe guidance; the raw refresh-status helper should only reopen after the safe checkpoint says the saved artifacts are ready.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The refresh-status-safe checkpoint did not report safe-to-run-existing-helper, so the raw refresh-status helper was not reopened yet.'
+    $refreshStatusStep = New-SkippedHelperStep -Name 'refresh-status' -ScriptPath $refreshStatusScript -Arguments $refreshStatusHelperArguments -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.recommended_command, $refreshStatusSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.next_focus, 'Use the current refresh-status-safe guidance; the raw refresh-status helper should only reopen after the safe checkpoint says the saved artifacts are ready.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($refreshStatusSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The refresh-status-safe checkpoint did not report safe-to-run-existing-helper, so the raw refresh-status helper was not reopened yet.'
 }
 $steps.Add($refreshStatusStep) | Out-Null
 
