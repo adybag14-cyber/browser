@@ -148,7 +148,10 @@ $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-al
 
 $recommendedFirstHelperKey = 'fresh_safe_route_replay'
 $recommendedFirstHelperReason = 'Current issue #3 outputs may be stale or missing, so start with the fresh safe-route replay that regenerates the current handoff artifact in one command.'
-if (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
+if ($InputPath -and @($InputPath).Count -gt 0) {
+    $recommendedFirstHelperKey = 'attached_bundle_first'
+    $recommendedFirstHelperReason = 'Explicit input paths are already in play, so start with the pinned three-page bundle route before widening back into the broader Google-only helper chain.'
+} elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
     $recommendedFirstHelperKey = 'reuse_current_outputs'
     $recommendedFirstHelperReason = 'A saved SummaryPath is already in play, so reopen the safe-route wrapper against the current outputs before widening into a broader regeneration pass.'
 }
@@ -198,7 +201,7 @@ $shortcuts = [ordered]@{
         'Use runner_patch_next_step after the safe-route wrapper or reuse-current-outputs helper names one of the three current runner-patch states; when RepoRoot or SummaryPath is already in play, this command now keeps that same replay context attached to the next-step helper.',
         'Use attached_bundle_first when the current saved or attached pages are the known three-page compatibility bundle and you want that route exercised before reopening the broader Google-only wrapper chain.',
         'Use attached_bundle_suite when you want the higher-level suite router itself to reopen on the pinned bundle branch before widening back into the broader Google-only helpers.',
-        'Use fresh_safe_route_replay when current issue #3 outputs may be stale or missing. Use reuse_current_outputs only when the current saved outputs are already trusted.',
+        'Use fresh_safe_route_replay when current issue #3 outputs may be stale or missing and no explicit bundle inputs are already pinned. Use reuse_current_outputs only when the current saved outputs are already trusted.',
         'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, suite_router_bridge_note_path when you want the shortest read-first bridge from the suite router into these replay shortcuts, decision_table_note_path when the runner patch handoff lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and patch_rules_note_path when the replay is already narrowed to a direct runner-source edit.'
     )
 }
@@ -215,41 +218,41 @@ if ($Json) {
 Write-Host 'Google issue #3 replay shortcuts'
 Write-Host ''
 if ($shortcuts.repo_root) {
-    Write-Host ("Repo root:   {0}" -f $shortcuts.repo_root)
+    Write-Host (("Repo root:   {0}") -f $shortcuts.repo_root)
 }
 if ($shortcuts.summary_path) {
-    Write-Host ("Summary path:{0}" -f " $($shortcuts.summary_path)")
+    Write-Host (("Summary path:{0}") -f (" $($shortcuts.summary_path)"))
 }
 if ($shortcuts.explicit_input_path_count -gt 0) {
-    Write-Host ("Input paths: {0}" -f $shortcuts.explicit_input_path_count)
+    Write-Host (("Input paths: {0}") -f $shortcuts.explicit_input_path_count)
 }
 Write-Host ''
-Write-Host ("Recommended first helper: {0}" -f $shortcuts.recommended_first_helper_command)
-Write-Host ("Why:                     {0}" -f $shortcuts.recommended_first_helper_reason)
+Write-Host (("Recommended first helper: {0}") -f $shortcuts.recommended_first_helper_command)
+Write-Host (("Why:                     {0}") -f $shortcuts.recommended_first_helper_reason)
 Write-Host ''
 Write-Host 'Read-first discovery:'
-Write-Host ("  Suite router:         {0}" -f $shortcuts.read_first_commands.suite_router)
-Write-Host ("  Change-area view:     {0}" -f $shortcuts.read_first_commands.change_area)
-Write-Host ("  Google flow helper:   {0}" -f $shortcuts.read_first_commands.google_flow)
-Write-Host ("  Bundle suite route:   {0}" -f $shortcuts.read_first_commands.attached_bundle_suite)
+Write-Host (("  Suite router:         {0}") -f $shortcuts.read_first_commands.suite_router)
+Write-Host (("  Change-area view:     {0}") -f $shortcuts.read_first_commands.change_area)
+Write-Host (("  Google flow helper:   {0}") -f $shortcuts.read_first_commands.google_flow)
+Write-Host (("  Bundle suite route:   {0}") -f $shortcuts.read_first_commands.attached_bundle_suite)
 Write-Host ''
 Write-Host 'Shortcut helpers:'
-Write-Host ("  Suite-router handoff:   {0}" -f $shortcuts.helper_commands.suite_router_handoff)
-Write-Host ("  Safe route entrypoints: {0}" -f $shortcuts.helper_commands.safe_route_entrypoints)
-Write-Host ("  Runner next-step helper:{0}" -f (' ' + $shortcuts.helper_commands.runner_patch_next_step))
-Write-Host ("  Bundle-first helper:    {0}" -f $shortcuts.helper_commands.attached_bundle_first)
-Write-Host ("  Bundle flow helper:     {0}" -f $shortcuts.helper_commands.attached_bundle_flow)
-Write-Host ("  Bundle runner:          {0}" -f $shortcuts.helper_commands.attached_bundle_runner)
-Write-Host ("  Fresh safe replay:      {0}" -f $shortcuts.helper_commands.fresh_safe_route_replay)
-Write-Host ("  Reuse current outputs:  {0}" -f $shortcuts.helper_commands.reuse_current_outputs)
+Write-Host (("  Suite-router handoff:   {0}") -f $shortcuts.helper_commands.suite_router_handoff)
+Write-Host (("  Safe route entrypoints: {0}") -f $shortcuts.helper_commands.safe_route_entrypoints)
+Write-Host (("  Runner next-step helper:{0}") -f (' ' + $shortcuts.helper_commands.runner_patch_next_step))
+Write-Host (("  Bundle-first helper:    {0}") -f $shortcuts.helper_commands.attached_bundle_first)
+Write-Host (("  Bundle flow helper:     {0}") -f $shortcuts.helper_commands.attached_bundle_flow)
+Write-Host (("  Bundle runner:          {0}") -f $shortcuts.helper_commands.attached_bundle_runner)
+Write-Host (("  Fresh safe replay:      {0}") -f $shortcuts.helper_commands.fresh_safe_route_replay)
+Write-Host (("  Reuse current outputs:  {0}") -f $shortcuts.helper_commands.reuse_current_outputs)
 Write-Host ''
-Write-Host ("Quickstart note:         {0}" -f $shortcuts.quickstart_note_path)
-Write-Host ("Validation chain note:   {0}" -f $shortcuts.validation_chain_note_path)
-Write-Host ("Suite-router bridge note:{0}" -f (' ' + $shortcuts.suite_router_bridge_note_path))
-Write-Host ("Decision table:          {0}" -f $shortcuts.decision_table_note_path)
-Write-Host ("Patch rules note:        {0}" -f $shortcuts.patch_rules_note_path)
+Write-Host (("Quickstart note:         {0}") -f $shortcuts.quickstart_note_path)
+Write-Host (("Validation chain note:   {0}") -f $shortcuts.validation_chain_note_path)
+Write-Host (("Suite-router bridge note:{0}") -f (' ' + $shortcuts.suite_router_bridge_note_path))
+Write-Host (("Decision table:          {0}") -f $shortcuts.decision_table_note_path)
+Write-Host (("Patch rules note:        {0}") -f $shortcuts.patch_rules_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $shortcuts.notes) {
-    Write-Host ("- {0}" -f $note)
+    Write-Host (("- {0}") -f $note)
 }
