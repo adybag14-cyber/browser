@@ -2,6 +2,18 @@
 
 Use this note when issue `#3` work starts from the higher-level Windows validation router and the next replay should move quickly into the repo-root-aware replay-route and shortcut surfaces instead of reopening the longer chain notes first.
 
+If you want that suite-router next-step matrix printed in one command before choosing between the handoff, replay-route, bundle-first, and safe-route branches, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+```
+
+If the replay is already running from a non-default checkout, from an already-saved summary, or from an explicit attached-bundle path, preserve that context directly in the helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
 ## Goal
 
 Keep the first issue `#3` commands stable when you start from:
@@ -44,6 +56,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 ## Suite-router next-step matrix
 
 Use this compact map when you are starting from the top-level suite router and want the fastest correct next helper without reopening the longer chain notes first.
+
+If you want the same matrix as executable commands in one compact helper, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+```
 
 - `show_headed_validation_suites.ps1 -SuiteName google-recommended`
   Default next helper: `show_google_issue3_suite_router_handoff.ps1`
