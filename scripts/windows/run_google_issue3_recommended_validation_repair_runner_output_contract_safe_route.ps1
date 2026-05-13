@@ -193,13 +193,15 @@ if (-not $ArtifactPath) {
 
 $runnerOutputContractRepairScript = Join-Path $PSScriptRoot 'repair_google_issue3_runner_output_contract.ps1'
 $validationSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route.ps1'
+$validationSafeRouteSafeGuideScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route_safe_guide.ps1'
 $runnerOutputContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $validationSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route.ps1'
+$validationSafeRouteSafeGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_safe_guide.ps1'
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
-foreach ($helperPath in @($runnerOutputContractRepairScript, $validationSafeRouteScript)) {
+foreach ($helperPath in @($runnerOutputContractRepairScript, $validationSafeRouteScript, $validationSafeRouteSafeGuideScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
         throw "Issue #3 helper not found: $helperPath"
     }
@@ -248,10 +250,9 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $runnerOutputContractRepairCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($runnerOutputContractReadyForSafeRoute) { $validationSafeRouteStep.recommended_guide_command },
+    if ($runnerOutputContractReadyForSafeRoute -and $validationSafeRouteStep.success) { $validationSafeRouteSafeGuideCommand },
     $runnerOutputContractStep.recommended_guide_command,
-    if ($runnerOutputContractReadyForSafeRoute) { $validationSafeRouteCommand },
-    $runnerOutputWiringCommand,
+    if ($runnerOutputContractReadyForSafeRoute) { $runnerOutputWiringCommand },
     $runnerOutputWiringSafeCommand
 )
 $nextFocus = Get-FirstNonEmptyValue -Values @(
@@ -275,6 +276,7 @@ $report = [ordered]@{
     artifact_path = $ArtifactPath
     runner_output_contract_repair_command = $runnerOutputContractRepairCommand
     validation_safe_route_command = $validationSafeRouteCommand
+    validation_safe_route_safe_guide_command = $validationSafeRouteSafeGuideCommand
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
     broader_runner_command = $broaderRunnerCommand
