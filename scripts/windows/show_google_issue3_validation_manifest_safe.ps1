@@ -298,6 +298,10 @@ $resolvedBundlePath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredA
 $resolvedGuidePath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredGuidePath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
 $resolvedBoundaryPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredBoundaryPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-phase-boundary.json'
 $resolvedManifestSummaryPath = if (-not [string]::IsNullOrWhiteSpace($configuredManifestSummaryPath)) { $configuredManifestSummaryPath } else { $SummaryPath }
+$manifestMatchesSummary = $false
+if (-not [string]::IsNullOrWhiteSpace($resolvedManifestSummaryPath)) {
+    $manifestMatchesSummary = ([System.IO.Path]::GetFullPath($resolvedManifestSummaryPath)).Equals([System.IO.Path]::GetFullPath($SummaryPath), [System.StringComparison]::OrdinalIgnoreCase)
+}
 
 $refreshExists = Test-Path -LiteralPath $resolvedRefreshPath -PathType Leaf
 $refreshRecord = $null
@@ -322,7 +326,7 @@ $handoffExists = Test-Path -LiteralPath $resolvedHandoffPath -PathType Leaf
 
 $runnerContractMissing = [bool]($summaryMissingFields.Count -gt 0 -or ($manifestMissingFields | Where-Object { $_ -like 'manifest.refresh_*' -or $_ -like 'manifest.handoff_*' }).Count -gt 0)
 $manifestGuideContractMissing = [bool]($summaryMissingFields.Count -gt 0 -or $manifestMissingFields.Count -gt 0)
-$existingManifestGuideLikelySafe = [bool]((-not $manifestError) -and (-not $manifestGuideContractMissing))
+$existingManifestGuideLikelySafe = [bool]((-not $manifestError) -and (-not $manifestGuideContractMissing) -and $manifestMatchesSummary)
 
 $status = $null
 $reason = $null
@@ -359,6 +363,13 @@ if (-not $manifestExists) {
     $recommendedCommand = $manifestContractRepairCommand
     $recommendedGuideCommand = $manifestSafeCommand
     $nextArtifactToOpen = $manifestPath
+} elseif (-not $manifestMatchesSummary) {
+    $status = 'manifest-summary-mismatch'
+    $reason = 'The saved manifest points at a different summary path than the one selected for this replay, so the existing manifest guide should not be trusted until that drift is repaired.'
+    $nextFocus = 'Repair the manifest contract from the current summary, then rerun the safe manifest audit before reopening the existing manifest guide.'
+    $recommendedCommand = $manifestContractRepairCommand
+    $recommendedGuideCommand = $manifestSafeCommand
+    $nextArtifactToOpen = $manifestPath
 } elseif ((-not $refreshExists) -or (-not $refreshMatchesSummary) -or $refreshError) {
     $status = 'refresh-state-needs-rebuild'
     $reason = 'The saved refresh artifact is missing, unreadable, or belongs to a different summary, so the helper chain should be refreshed before relying on the manifest guide.'
@@ -368,7 +379,7 @@ if (-not $manifestExists) {
     $nextArtifactToOpen = if ($refreshExists) { $resolvedRefreshPath } else { $SummaryPath }
 } else {
     $status = 'safe-to-run-manifest-guide'
-    $reason = 'The manifest carries the fields the existing manifest guide expects, and the saved refresh artifact matches the current summary.'
+    $reason = 'The manifest carries the fields the existing manifest guide expects, and both the manifest and refresh artifacts match the current summary.'
     $nextFocus = 'Use the existing manifest guide or move on to the newer handoff-safe refresh route for the next narrowed Windows replay.'
     $recommendedCommand = $manifestGuideCommand
     $recommendedGuideCommand = $handoffSafeRefreshRouteCommand
@@ -386,6 +397,7 @@ $report = [ordered]@{
     manifest_artifact_exists = [bool]$manifestExists
     manifest_artifact_error = $manifestError
     manifest_summary_path = $resolvedManifestSummaryPath
+    manifest_matches_summary = [bool]$manifestMatchesSummary
     refresh_artifact_path = $resolvedRefreshPath
     refresh_artifact_exists = [bool]$refreshExists
     refresh_artifact_error = $refreshError
@@ -447,6 +459,7 @@ if ($report.manifest_artifact_error) {
     Write-Host ("Manifest error: {0}" -f $report.manifest_artifact_error)
 }
 Write-Host ("Manifest summary: {0}" -f $report.manifest_summary_path)
+Write-Host ("Manifest matches summary: {0}" -f $report.manifest_matches_summary)
 Write-Host ("Refresh:   {0}" -f $report.refresh_artifact_path)
 Write-Host ("Refresh exists: {0}" -f $report.refresh_artifact_exists)
 Write-Host ("Refresh matches summary: {0}" -f $report.refresh_matches_summary)
