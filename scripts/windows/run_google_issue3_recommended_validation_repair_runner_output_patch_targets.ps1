@@ -244,11 +244,21 @@ $patchTargetsStatus = if ($patchTargetsStep.record) {
 } else {
     $patchTargetsStep.status
 }
-$runnerPatchStillRequired = [bool]($patchTargetsStatus -eq 'ready-for-runner-patch')
 $recommendedPatchTarget = if ($patchTargetsStep.record) {
     Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_patch_target'
 } else {
     $null
+}
+$runnerPatchStillRequired = [bool](-not [string]::IsNullOrWhiteSpace($recommendedPatchTarget))
+$runnerAlreadyWiredNeedsRegeneration = if ($patchTargetsStep.record -and $patchTargetsStep.record.PSObject.Properties['runner_already_wired_needs_regeneration']) {
+    [bool]$patchTargetsStep.record.runner_already_wired_needs_regeneration
+} else {
+    [bool]($patchTargetsStatus -eq 'runner-already-wired-regenerate-outputs')
+}
+$alreadyDirectFromRawPatchTargets = if ($patchTargetsStep.record -and $patchTargetsStep.record.PSObject.Properties['already_direct_from_raw_patch_targets']) {
+    [bool]$patchTargetsStep.record.already_direct_from_raw_patch_targets
+} else {
+    [bool]($patchTargetsStatus -eq 'already-direct')
 }
 $patchTargetsVerificationCommand = if ($patchTargetsStep.record) {
     Get-OptionalPropertyValue -Object $patchTargetsStep.record -Name 'recommended_verification_command'
@@ -295,10 +305,10 @@ if (-not $summaryExistsAfterRunnerOutputSafe) {
 } elseif ($runnerPatchStillRequired) {
     $status = 'patch-targets-ready'
     $reason = 'The runner-output repair flow completed and the safe patch-target route narrowed the remaining direct runner-output contract gap to exact fields in the recommended validation runner.'
-} elseif ($patchTargetsStatus -eq 'already-direct') {
+} elseif ($alreadyDirectFromRawPatchTargets) {
     $status = 'ready-for-runner-output-wiring'
     $reason = 'The safe patch-target route says the saved outputs already carry the direct runner-output contract, so the next Windows replay can reopen runner-output wiring guidance instead of another patch-target pass.'
-} elseif ($patchTargetsStatus -eq 'runner-already-wired-regenerate-outputs') {
+} elseif ($runnerAlreadyWiredNeedsRegeneration) {
     $status = 'runner-already-wired-regenerate-outputs'
     $reason = 'The safe patch-target route says the live runner source is already wired and the saved outputs just need regeneration, so the next replay should regenerate the artifacts before trusting another patch-target pass.'
 } else {
@@ -353,6 +363,8 @@ $report = [ordered]@{
     runner_output_safe_status = $runnerOutputSafeStep.status
     patch_targets_status = $patchTargetsStatus
     runner_patch_still_required = [bool]$runnerPatchStillRequired
+    runner_already_wired_needs_regeneration = [bool]$runnerAlreadyWiredNeedsRegeneration
+    already_direct_from_raw_patch_targets = [bool]$alreadyDirectFromRawPatchTargets
     recommended_patch_target = $recommendedPatchTarget
     recommended_verification_command = $patchTargetsVerificationCommand
     recommended_repair_command = $patchTargetsRepairCommand
@@ -389,6 +401,8 @@ $report = [ordered]@{
             missing_runner_fields = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'missing_runner_fields') } else { @() }
             summary_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'summary_patch_snippet_lines') } else { @() }
             manifest_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'manifest_patch_snippet_lines') } else { @() }
+            runner_already_wired_needs_regeneration = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'runner_already_wired_needs_regeneration') } else { $false }
+            already_direct_from_raw_patch_targets = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'already_direct_from_raw_patch_targets') } else { $false }
             output_preview = @($_.output_preview)
         }
     })
@@ -413,6 +427,8 @@ Write-Host ("Summary exists after runner-output safe flow: {0}" -f $report.summa
 Write-Host ("Runner-output safe status: {0}" -f $report.runner_output_safe_status)
 Write-Host ("Patch-target route status: {0}" -f $report.patch_targets_status)
 Write-Host ("Runner patch still required: {0}" -f $report.runner_patch_still_required)
+Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_already_wired_needs_regeneration)
+Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
 }
