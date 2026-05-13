@@ -4,6 +4,15 @@ Use this note when the current issue `#3` safe-route wrapper or patch-handoff ar
 
 The goal is to keep the direct runner-output contract aligned with the latest helper behavior before the next Windows replay regenerates artifacts.
 
+Pair this note with `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`.
+Use the validation-chain guide to choose the next safe-route wrapper, replay state, and raw-helper reopening order.
+Use this focused patch-rules note once the newest wrapper or patch-handoff artifact has already narrowed the replay to a direct runner patch, or when you are reviewing an existing direct runner patch by hand.
+
+## Companion use
+
+- `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`: route selection, safe-wrapper precedence, and replay-state branching.
+- `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`: direct source-edit rules, artifact precedence, nullable `$null` handling, blank-path guidance, and post-patch verification.
+
 ## Patch target
 
 - `scripts/windows/run_google_issue3_recommended_validation.ps1`
