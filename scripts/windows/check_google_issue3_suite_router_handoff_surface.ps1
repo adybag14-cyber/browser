@@ -42,7 +42,9 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md" -Kind "file" -Purpose "Repo-root-aware replay note for preserving non-default checkout context through the issue #3 helper chain."),
     (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Top-level headed validation router that exposes the issue #3 suite and change-area entry points."),
     (New-ValidationReference -Path "scripts/windows/show_google_input_validation_flow.ps1" -Kind "file" -Purpose "Bounded localhost-first Google flow helper printed before the narrower issue #3 replay helpers."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_catalog_entrypoints.ps1" -Kind "file" -Purpose "Compact issue #3 surface that keeps the exact top-level suite catalog entrypoints and current replay helpers together before the route narrows."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_handoff.ps1" -Kind "file" -Purpose "Compact helper that keeps the higher-level suite-router entrypoints and the current issue #3 replay helpers together."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Kind "file" -Purpose "Compact issue #3 next-step matrix that chooses the fastest helper after the top-level suite router."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_route.ps1" -Kind "file" -Purpose "Broader issue #3 replay route helper that bridges the suite router, attached-bundle branch, and safe-route next steps."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_shortcuts.ps1" -Kind "file" -Purpose "Narrower issue #3 replay helper that keeps the direct shortcut map, attached bundle route, and safe-route bridge together."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_bundle_first_entrypoint.ps1" -Kind "file" -Purpose "Pinned three-page compatibility-bundle entrypoint for the current issue #3 replay family."),
@@ -108,5 +110,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} issue #3 suite-router handoff path(s)." -f $missing.Count)
-Write-Host "Repair the missing runbook, replay note, suite router, helper, bundle path, or safe-route script before trusting the higher-level issue #3 replay chain."
+Write-Host "Repair the missing runbook, replay note, suite router, suite-catalog helper, next-step matrix, bundle path, or safe-route script before trusting the higher-level issue #3 replay chain."
 exit 1
