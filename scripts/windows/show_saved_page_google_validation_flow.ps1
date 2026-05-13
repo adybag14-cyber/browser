@@ -3,6 +3,9 @@ param(
     [string]$PageRoot,
     [string[]]$InputPath,
     [string]$PreferredInitialPage,
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$Host = "127.0.0.1",
     [int]$Port = 8123,
     [switch]$Json,
     [switch]$LeaveOpen,
@@ -25,22 +28,43 @@ $leaveOpenArgument = if ($LeaveOpen) { " -LeaveOpen" } else { "" }
 $leaveServerRunningArgument = if ($LeaveOpen) { " -LeaveServerRunning" } else { "" }
 $manualGoogleStyleArgument = if ($ManualGoogleStyle) { " -ManualGoogleStyle" } else { "" }
 
+$sharedSummaryArguments = ""
+$sharedLaunchArguments = ""
+$sharedGoogleArguments = ""
+if ($RepoRoot) {
+    $quotedRepoRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot
+    $sharedSummaryArguments += " -RepoRoot $quotedRepoRoot"
+    $sharedLaunchArguments += " -RepoRoot $quotedRepoRoot"
+    $sharedGoogleArguments += " -RepoRoot $quotedRepoRoot"
+}
+if ($BrowserExe) {
+    $quotedBrowserExe = ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe
+    $sharedLaunchArguments += " -BrowserExe $quotedBrowserExe"
+    $sharedGoogleArguments += " -BrowserExe $quotedBrowserExe"
+}
+if ($Host) {
+    $quotedHost = ConvertTo-PowerShellSingleQuotedLiteral -Value $Host
+    $sharedSummaryArguments += " -Host $quotedHost"
+    $sharedLaunchArguments += " -Host $quotedHost"
+    $sharedGoogleArguments += " -Host $quotedHost"
+}
+
 $summaryHelper = '.\\scripts\\windows\\summarize_localhost_html_pages.ps1'
 $directHelper = '.\\scripts\\windows\\start_localhost_html_validation.ps1'
 $stagedHelper = '.\\scripts\\windows\\start_staged_localhost_html_validation.ps1'
 $googleFlowHelper = '.\\scripts\\windows\\show_google_input_validation_flow.ps1'
 $googleRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
-$titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
-$titleCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_title_validation.ps1"
-$quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase quick"
-$homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase home"
-$homepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
-$homepageFixtureCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1"
-$submitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1"
-$submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase submit-timing"
-$sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase shared-enter-order"
-$fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$manualGoogleStyleArgument$leaveOpenArgument"
-$traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase trace$leaveOpenArgument"
+$titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1$sharedGoogleArguments"
+$titleCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_title_validation.ps1$sharedGoogleArguments"
+$quickCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase quick"
+$homeCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase home"
+$homepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1$sharedGoogleArguments$leaveOpenArgument"
+$homepageFixtureCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1$sharedGoogleArguments$leaveOpenArgument"
+$submitTimingFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1$sharedGoogleArguments"
+$submitTimingCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase submit-timing"
+$sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase shared-enter-order"
+$fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch$manualGoogleStyleArgument$leaveOpenArgument"
+$traceCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase trace$leaveOpenArgument"
 $preferredInitialPageArgument = ""
 if ($PreferredInitialPage) {
     $quotedPreferredInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $PreferredInitialPage
@@ -59,30 +83,30 @@ $launchInitialPageArgument = if ($PreferredInitialPage) {
 
 if ($PageRoot) {
     $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $PageRoot
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot -Port $Port$preferredInitialPageArgument"
-    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot $quotedPageRoot -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot $quotedPageRoot$sharedSummaryArguments -Port $Port$preferredInitialPageArgument"
+    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot $quotedPageRoot$sharedLaunchArguments -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
 } else {
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>' -Port $Port -PreferredInitialPage '<preferred-initial-page>'"
-    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '<saved-page-dir>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -PageRoot '<saved-page-dir>'$sharedSummaryArguments -Port $Port -PreferredInitialPage '<preferred-initial-page>'"
+    $directCommand = "powershell -ExecutionPolicy Bypass -File $directHelper -PageRoot '<saved-page-dir>'$sharedLaunchArguments -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
 }
 
 if ($InputPath -and $InputPath.Count -gt 0) {
     $quotedPaths = $InputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $joinedPaths = $quotedPaths -join ", "
-    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -InputPath $joinedPaths -Port $Port$preferredInitialPageArgument"
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
-    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
+    $summaryCommand = "powershell -ExecutionPolicy Bypass -File $summaryHelper -InputPath $joinedPaths$sharedSummaryArguments -Port $Port$preferredInitialPageArgument"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath $joinedPaths$sharedLaunchArguments -Port $Port$launchInitialPageArgument -LaunchBrowser -Wait$leaveServerRunningArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper$sharedGoogleArguments -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualInputPath $joinedPaths$manualGoogleStyleArgument$leaveOpenArgument"
 } elseif ($ManualGoogleStyle) {
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_localhost_validation.ps1 -Port $Port$preferredInitialPageArgument -GoogleStyle -Wait$leaveServerRunningArgument"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
-    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
-    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_localhost_validation.ps1$sharedGoogleArguments -Port $Port$preferredInitialPageArgument -GoogleStyle -Wait$leaveServerRunningArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase manual -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper$sharedGoogleArguments -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
+    $fullCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
 } else {
-    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>' -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
-    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
-    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
+    $stagedCommand = "powershell -ExecutionPolicy Bypass -File $stagedHelper -InputPath '<saved-html-or-folder>'$sharedLaunchArguments -Port $Port -InitialPage '<preferred-initial-page>' -LaunchBrowser -Wait$leaveServerRunningArgument"
+    $manualCommand = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase manual -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
+    $flowMapCommand = "powershell -ExecutionPolicy Bypass -File $googleFlowHelper$sharedGoogleArguments -ManualPort $Port -ManualInitialPage '<preferred-initial-page>' -ManualInputPath '<saved-html-or-folder>'$leaveOpenArgument"
 }
 
 $flow = [ordered]@{
@@ -100,7 +124,7 @@ $flow = [ordered]@{
         [ordered]@{
             name = "google-localhost"
             goal = "Run the reduced localhost Google-style probes before any saved-page manual pass."
-            command = "powershell -ExecutionPolicy Bypass -File $googleRunner -Phase localhost"
+            command = "powershell -ExecutionPolicy Bypass -File $googleRunner$sharedGoogleArguments -Phase localhost"
         }
         [ordered]@{
             name = "google-title-flow"
@@ -199,7 +223,8 @@ $flow = [ordered]@{
         "When PreferredInitialPage is set, the inventory, direct, staged, Google manual, and broader flow-map commands keep that page as the first headed target instead of falling back to a generated index or another arbitrary file.",
         "When InputPath is provided, the broader flow-map command also preserves the same manual port, initial page, and saved-page inputs for the next printed handoff.",
         "When ManualGoogleStyle is set, the Google manual, Google full, staged-headed, and broader flow-map commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when PreferredInitialPage is not set.",
-        "When LeaveOpen is set, the printed Google manual, Google full, Google trace, direct-headed, and staged-headed commands keep the browser or localhost session open so you can inspect the same headed state after the bounded automation phases finish.",
+        "When LeaveOpen is set, the printed Google manual, Google full, Google trace, direct-headed, staged-headed, and homepage-fixture commands keep the browser or localhost session open so you can inspect the same headed state after the bounded automation phases finish.",
+        "The printed inventory, bounded Google, manual, trace, direct, staged, and broader flow-map commands now preserve the current repo root, browser path, host, and saved-page follow-up context where those later helpers support it.",
         "Use direct-headed when the saved pages already live in one clean directory, and staged-headed when they are spread across standalone files or folders."
     )
 }
