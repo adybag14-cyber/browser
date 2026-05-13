@@ -171,7 +171,7 @@ $entrypoints = [ordered]@{
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
-        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
+        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
     }
     bridge_sequence = [ordered]@{
         google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
@@ -197,7 +197,7 @@ $entrypoints = [ordered]@{
         'Use replay_route when you want the smallest read-first helper that keeps the suite catalog entrypoints, Google flow, contextual flow, attached-bundle branch, replay-shortcuts helper, and safe-route bridge on one surface before narrowing further.',
         'Use replay_shortcuts after replay_route when you want the narrower shortcut map for the attached-bundle-first route and the wrapper-heavy safe-route branches.',
         'Use attached_bundle_first when explicit input paths are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only issue #3 path.',
-        'Use safe_route_entrypoints only after the suite catalog, Google flow, contextual flow, suite-router next-step helper, suite-router handoff, replay-route helper, or replay-shortcuts helper has already narrowed the replay into the current wrapper-heavy issue #3 path.',
+        'Use safe_route_entrypoints only after the suite catalog, Google flow, contextual flow, suite-router next-step helper, suite-router handoff, replay-route helper, or replay-shortcuts helper has already narrowed the replay into the current wrapper-heavy issue #3 path, while keeping the current repo root, summary path, and pinned bundle inputs attached when they are already in play.',
         'Keep the quickstart, suite-router bridge, and validation-chain notes nearby when you want the written route beside these commands without reopening the broader Windows runbook first.'
     )
 }
