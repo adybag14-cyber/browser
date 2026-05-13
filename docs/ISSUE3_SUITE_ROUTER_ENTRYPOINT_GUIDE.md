@@ -16,6 +16,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
 ```
 
+If the replay is already running from a non-default checkout, keep that same
+repo-root context attached to those top-level entrypoints:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:LIGHTPANDA_REPO_ROOT = '<repo-root>'; & '.\scripts\windows\show_headed_validation_suites.ps1' -SuiteName 'google-recommended'"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:LIGHTPANDA_REPO_ROOT = '<repo-root>'; & '.\scripts\windows\show_headed_validation_suites.ps1' -ChangeArea 'google-input'"
+```
+
 If the next replay should stay pinned to the known attached three-page
 compatibility bundle, keep this change-area entrypoint nearby as well:
 
@@ -42,13 +50,17 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 
 The current default is:
 
-- `show_google_issue3_replay_shortcuts.ps1` when no pinned bundle inputs are in play yet
-- `show_google_issue3_replay_shortcuts.ps1` when a `SummaryPath` is already available and the replay should stay narrow
+- `show_google_issue3_replay_shortcuts.ps1` when no pinned bundle inputs or saved summary are already in play
+- `show_google_issue3_replay_route.ps1` when a `SummaryPath` is already available and the replay should stay narrow on the current saved-output context
 - `show_google_issue3_attached_bundle_first_entrypoint.ps1` when explicit `InputPath` values are already pinned to the current three-page compatibility set
 
-Use `show_google_issue3_replay_route.ps1` instead when you want the broader
+Use `show_google_issue3_replay_route.ps1` whenever you want the broader
 attached-bundle branch, the current safe-route map, and the repo-root-aware
 runner next-step helper printed together before narrowing again.
+
+Use `show_google_issue3_replay_shortcuts.ps1` after replay-route when you want
+the narrower shortcut surface for the attached-bundle branch, bundle-first
+helper, and safe-route entrypoints before choosing a wrapper-heavy next step.
 
 ## Read-first helper order
 
@@ -61,6 +73,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+```
+
+Use this compact sequence when a saved summary is already in play and the replay
+should stay on the current saved-output context before narrowing further:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
 ```
 
 Use this compact sequence when the replay should stay pinned to the current
@@ -84,6 +105,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 
 Start from the top-level headed validation suite router, move immediately into
 `show_google_issue3_suite_router_next_steps.ps1`, then let current context pick
-between replay shortcuts, the broader replay route, or the bundle-first helper.
+between replay shortcuts, replay route, or the bundle-first helper.
+
+- no saved summary and no explicit bundle paths: go straight to replay shortcuts
+- saved summary already present: go to replay route first, then narrow into replay shortcuts only if needed
+- explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
+
 Only reopen the longer validation-chain notes after the route has narrowed into
 the wrapper-heavy safe path.
