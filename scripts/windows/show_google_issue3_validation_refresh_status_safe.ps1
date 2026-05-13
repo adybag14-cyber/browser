@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -149,7 +150,12 @@ function Add-MissingField {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
+$artifactPathExplicit = -not [string]::IsNullOrWhiteSpace($ArtifactPath)
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -163,17 +169,28 @@ $artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
 if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
     $artifactRoot = Split-Path -Parent $SummaryPath
 }
-if (-not $ArtifactPath) {
+if (-not $artifactPathExplicit) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-refresh-status-safe.json'
 }
-$recommendedRepoRoot = if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
-    $env:LIGHTPANDA_REPO_ROOT
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $repoRoot
+} else {
+    $null
+}
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+    $SummaryPath
 } else {
     $null
 }
 
-$recommendedRunnerCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$runnerWiringStatusSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$recommendedRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+})
+$runnerWiringStatusSafeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+})
 $runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
 $refreshStatusCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
 $refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
@@ -340,6 +357,7 @@ $report = [ordered]@{
     issue = 'Google issue #3 validation refresh status safe helper'
     purpose = 'Check whether the existing refresh-status helper is safe to trust under strict mode for the current issue #3 summary and saved helper-chain artifacts.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     artifact_root = $artifactRoot
@@ -399,6 +417,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 validation refresh status safe helper'
 Write-Host ''
+Write-Host ("Repo root: {0}" -f $report.repo_root)
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Refresh:   {0}" -f $report.refresh_artifact_path)
