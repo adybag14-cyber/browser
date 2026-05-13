@@ -35,6 +35,24 @@ Why this bridge matters:
 - the replay-shortcuts helper is still the compact place that keeps the attached three-page bundle route, safe-route entrypoints, and runner next-step helper together
 - reopening the shortcut helper immediately avoids drifting back through the longer validation-chain note when the next replay already knows it is on issue `#3`
 
+## Bundle-first read-first sequence
+
+Use this alternate route when the current saved or attached pages are still the known three-page compatibility bundle and the replay should stay pinned to that bundle before reopening the broader Google-only helpers:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
+Use that bundle-first route when:
+
+- the current replay inputs are the pinned three-page compatibility set rather than a broader saved-page or live Google retest
+- you want the attached-bundle surface check, flow helper, and delegated localhost runner to stay on one locked route from the higher-level suite router
+- you only want to reopen `show_google_issue3_replay_shortcuts.ps1` or `show_google_issue3_safe_route_entrypoints.ps1` after the bundle replay makes the next Google-style input or submit failure state clear
+
 ## Preserve non-default replay context
 
 If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit attached bundle path, preserve that context directly in the suite-router handoff helper first:
