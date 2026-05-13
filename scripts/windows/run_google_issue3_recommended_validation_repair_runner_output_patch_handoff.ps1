@@ -476,7 +476,7 @@ if ($report.missing_runner_fields.Count -gt 0) {
         Write-Host ("- {0}" -f $fieldName)
     }
 }
-if ($report.summary_patch_snippetLines.Count -gt 0) {
+if ($report.summary_patch_snippet_lines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Summary patch snippet:'
     foreach ($line in $report.summary_patch_snippet_lines) {
