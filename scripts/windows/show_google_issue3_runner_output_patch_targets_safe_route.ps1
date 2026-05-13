@@ -343,10 +343,7 @@ if ($status -eq 'ready-for-runner-patch') {
     $nextArtifactToOpen = $ArtifactPath
 } elseif ($status -eq 'already-direct') {
     $recommendedCommand = $runnerOutputWiringSafeCommand
-    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-        $recommendedVerificationCommand,
-        $runnerOutputWiringSafeCommand
-    )
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextFocus = 'Reopen the safe runner-output wiring audit now that the saved summary and manifest already expose the direct contract, and only widen back out if that audit reports a fresh gap.'
     $nextArtifactToOpen = $SummaryPath
 } elseif ($status -eq 'runner-already-wired-regenerate-outputs') {
