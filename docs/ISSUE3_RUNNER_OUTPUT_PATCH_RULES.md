@@ -4,13 +4,15 @@ Use this note when the current issue `#3` safe-route wrapper or patch-handoff ar
 
 The goal is to keep the direct runner-output contract aligned with the latest helper behavior before the next Windows replay regenerates artifacts.
 
-Pair this note with `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`.
+Pair this note with `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` and `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`.
 Use the validation-chain guide to choose the next safe-route wrapper, replay state, and raw-helper reopening order.
+Use the decision table when the wrapper already emitted `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs` and you want the shortest next-step command map.
 Use this focused patch-rules note once the newest wrapper or patch-handoff artifact has already narrowed the replay to a direct runner patch, or when you are reviewing an existing direct runner patch by hand.
 
 ## Companion use
 
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`: route selection, safe-wrapper precedence, and replay-state branching.
+- `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`: shortest next-step command map for `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`.
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`: direct source-edit rules, artifact precedence, nullable `$null` handling, blank-path guidance, and post-patch verification.
 
 ## Patch target
@@ -46,9 +48,11 @@ Use the newest artifact that already narrowed the replay to a direct runner patc
 3. `tmp-browser-smoke\headed-probe\google-issue3-runner-output-patch-targets-safe-route.json`
 4. `tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-repair-runner-output-patch-targets.json`
 
-If the newest artifact reports `already-direct`, skip the source edit and go straight back to the safe wiring audit.
+## Replay state handoff
 
-If it reports `runner-already-wired-regenerate-outputs`, regenerate or repair the saved outputs before trying to patch the runner again.
+- If the newest wrapper or artifact reports `ready-for-runner-patch`, use `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` to pick the right patch-loop command path, then use this note for the field-level source edit itself.
+- If it reports `already-direct`, skip the source edit and go straight back to the safe wiring audit.
+- If it reports `runner-already-wired-regenerate-outputs`, use the decision table or validation-chain guide to regenerate or repair the saved outputs before trying to patch the runner again.
 
 ## Verification order
 
