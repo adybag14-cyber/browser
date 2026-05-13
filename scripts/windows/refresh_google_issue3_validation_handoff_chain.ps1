@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -63,6 +64,62 @@ function Test-HasProperty {
     return [bool]($Object -and $Object.PSObject.Properties[$Name])
 }
 
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
 function Invoke-RefreshStep {
     param(
         [Parameter(Mandatory = $true)]
@@ -71,7 +128,8 @@ function Invoke-RefreshStep {
         [string]$ScriptPath,
         [Parameter(Mandatory = $true)]
         [string[]]$Arguments,
-        [string]$ArtifactPath
+        [string]$ArtifactPath,
+        [string]$RepoRootOverride
     )
 
     $startedAt = (Get-Date).ToUniversalTime().ToString('o')
@@ -80,9 +138,23 @@ function Invoke-RefreshStep {
     $errorMessage = $null
 
     try {
-        $output = @(
-            & powershell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments 2>&1
-        )
+        if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+            $output = @(
+                & powershell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments 2>&1
+            )
+        } else {
+            $escapedScriptPath = ("$ScriptPath") -replace "'", "''"
+            $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+            $argumentLiteral = if ($Arguments.Count -gt 0) {
+                "@(" + (($Arguments | ForEach-Object { "'" + ("$_" -replace "'", "''") + "'" }) -join ', ') + ")"
+            } else {
+                '@()'
+            }
+            $commandText = "`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; `$codexArgs = $argumentLiteral; & '$escapedScriptPath' @codexArgs"
+            $output = @(
+                & powershell -NoProfile -ExecutionPolicy Bypass -Command $commandText 2>&1
+            )
+        }
         $exitCode = $LASTEXITCODE
         if ($exitCode -ne 0) {
             $errorMessage = "Helper exited with code $exitCode."
@@ -108,7 +180,11 @@ function Invoke-RefreshStep {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -175,11 +251,27 @@ $handoffScript = Join-Path $PSScriptRoot "show_google_issue3_validation_handoff.
 $manifestScript = Join-Path $PSScriptRoot "show_google_issue3_validation_manifest.ps1"
 $repairRefreshPointerScript = Join-Path $PSScriptRoot "repair_google_issue3_validation_refresh_pointer.ps1"
 $repairHandoffPointerScript = Join-Path $PSScriptRoot "repair_google_issue3_validation_handoff_pointer.ps1"
-$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$repairPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_refresh_pointer.ps1'
-$repairHandoffPointerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_handoff_pointer.ps1'
-$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
-$handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
+$recommendedRunnerCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+    SummaryPath = $SummaryPath
+}) -RepoRootOverride $repoRoot
+$repairPointerCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_validation_refresh_pointer.ps1' -Arguments ([ordered]@{
+    SummaryPath = $SummaryPath
+    ManifestPath = $manifestPath
+    RefreshPath = $ArtifactPath
+}) -RepoRootOverride $repoRoot
+$repairHandoffPointerCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_validation_handoff_pointer.ps1' -Arguments ([ordered]@{
+    SummaryPath = $SummaryPath
+    ManifestPath = $manifestPath
+    HandoffPath = $handoffPath
+}) -RepoRootOverride $repoRoot
+$refreshStatusSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $SummaryPath
+    ArtifactPath = $ArtifactPath
+}) -RepoRootOverride $repoRoot
+$handoffSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $SummaryPath
+    ArtifactPath = $handoffPath
+}) -RepoRootOverride $repoRoot
 
 $requiredHelpers = @($summaryGuideScript, $boundaryScript, $bundleScript, $handoffScript, $manifestScript, $repairRefreshPointerScript, $repairHandoffPointerScript)
 foreach ($helperPath in $requiredHelpers) {
@@ -189,16 +281,16 @@ foreach ($helperPath in $requiredHelpers) {
 }
 
 $steps = [System.Collections.Generic.List[object]]::new()
-$steps.Add((Invoke-RefreshStep -Name 'summary-guide' -ScriptPath $summaryGuideScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -ArtifactPath $guidePath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'phase-boundary' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'manifest' -ScriptPath $manifestScript -Arguments @('-ManifestPath', $manifestPath, '-Json') -ArtifactPath $manifestPath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'handoff' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'summary-guide-final' -ScriptPath $summaryGuideScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -ArtifactPath $guidePath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'phase-boundary-final' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'manifest-final' -ScriptPath $manifestScript -Arguments @('-ManifestPath', $manifestPath, '-Json') -ArtifactPath $manifestPath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'artifact-bundle-final' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath)) | Out-Null
-$steps.Add((Invoke-RefreshStep -Name 'handoff-final' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'summary-guide' -ScriptPath $summaryGuideScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -ArtifactPath $guidePath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'phase-boundary' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'manifest' -ScriptPath $manifestScript -Arguments @('-ManifestPath', $manifestPath, '-Json') -ArtifactPath $manifestPath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'handoff' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'summary-guide-final' -ScriptPath $summaryGuideScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -ArtifactPath $guidePath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'phase-boundary-final' -ScriptPath $boundaryScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $boundaryPath, '-Json') -ArtifactPath $boundaryPath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'manifest-final' -ScriptPath $manifestScript -Arguments @('-ManifestPath', $manifestPath, '-Json') -ArtifactPath $manifestPath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'artifact-bundle-final' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $bundlePath, '-Json') -ArtifactPath $bundlePath -RepoRootOverride $repoRoot)) | Out-Null
+$steps.Add((Invoke-RefreshStep -Name 'handoff-final' -ScriptPath $handoffScript -Arguments @('-SummaryPath', $SummaryPath, '-ArtifactPath', $handoffPath, '-Json') -ArtifactPath $handoffPath -RepoRootOverride $repoRoot)) | Out-Null
 
 $guideRecord = Read-ArtifactJson $guidePath
 $boundaryRecord = Read-ArtifactJson $boundaryPath
@@ -233,7 +325,9 @@ $recommendedGuideCommand = if ($handoffRecord -and $handoffRecord.recommended_gu
 } elseif ($bundleRecord -and $bundleRecord.recommended_guide_command) {
     $bundleRecord.recommended_guide_command
 } else {
-    'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
+    Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{
+        SummaryPath = $SummaryPath
+    }) -RepoRootOverride $repoRoot
 }
 $nextArtifactToOpen = if ($handoffRecord -and $handoffRecord.next_artifact_to_open) {
     $handoffRecord.next_artifact_to_open
@@ -298,9 +392,9 @@ $preRepairReport = [ordered]@{
 
 $preRepairReport | ConvertTo-Json -Depth 8 | Set-Content -Path $ArtifactPath -Encoding Ascii
 
-$repairStep = Invoke-RefreshStep -Name 'repair-refresh-pointer' -ScriptPath $repairRefreshPointerScript -Arguments @('-SummaryPath', $SummaryPath, '-ManifestPath', $manifestPath, '-RefreshPath', $ArtifactPath, '-Json') -ArtifactPath $SummaryPath
+$repairStep = Invoke-RefreshStep -Name 'repair-refresh-pointer' -ScriptPath $repairRefreshPointerScript -Arguments @('-SummaryPath', $SummaryPath, '-ManifestPath', $manifestPath, '-RefreshPath', $ArtifactPath, '-Json') -ArtifactPath $SummaryPath -RepoRootOverride $repoRoot
 $steps.Add($repairStep) | Out-Null
-$repairHandoffStep = Invoke-RefreshStep -Name 'repair-handoff-pointer' -ScriptPath $repairHandoffPointerScript -Arguments @('-SummaryPath', $SummaryPath, '-ManifestPath', $manifestPath, '-HandoffPath', $handoffPath, '-Json') -ArtifactPath $SummaryPath
+$repairHandoffStep = Invoke-RefreshStep -Name 'repair-handoff-pointer' -ScriptPath $repairHandoffPointerScript -Arguments @('-SummaryPath', $SummaryPath, '-ManifestPath', $manifestPath, '-HandoffPath', $handoffPath, '-Json') -ArtifactPath $SummaryPath -RepoRootOverride $repoRoot
 $steps.Add($repairHandoffStep) | Out-Null
 
 $updatedSummary = Read-ArtifactJson $SummaryPath
