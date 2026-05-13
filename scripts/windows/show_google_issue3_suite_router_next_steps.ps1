@@ -239,6 +239,7 @@ $helper = [ordered]@{
     }
     suite_router_matrix = $matrix
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    discovery_handoff_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     decision_table_note_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
@@ -250,7 +251,7 @@ $helper = [ordered]@{
         'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, and attached-bundle-first helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
         'Use attached_bundle_first when the saved or attached pages are still the known three-page compatibility set and you want that route exercised before reopening the broader Google-only safe-route ladder.',
         'Use safe_route_entrypoints after the suite-router work is already out of the way and you want the current wrapper-heavy issue #3 commands, notes, and next-state helper surfaced in one place.',
-        'Keep suite_router_bridge_note_path open for the prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
+        'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
     )
 }
 
@@ -301,6 +302,7 @@ Write-Host (("  Reuse current outputs:  {0}") -f $helper.helper_commands.reuse_c
 Write-Host (("  Runner next-step helper:{0}") -f (' ' + $helper.helper_commands.runner_patch_next_step))
 Write-Host ''
 Write-Host (("Quickstart note:         {0}") -f $helper.quickstart_note_path)
+Write-Host (("Replay-discovery note:  {0}") -f $helper.discovery_handoff_note_path)
 Write-Host (("Suite-router bridge note:{0}") -f (' ' + $helper.suite_router_bridge_note_path))
 Write-Host (("Validation chain note:   {0}") -f $helper.validation_chain_note_path)
 Write-Host (("Decision table:          {0}") -f $helper.decision_table_note_path)
