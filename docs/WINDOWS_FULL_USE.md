@@ -137,6 +137,29 @@ directly in the helper:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
+If the current saved or attached pages are already the known three-page
+compatibility bundle and you want that pinned bundle route plus the return
+commands printed in one helper before reopening the broader Google-only safe
+route, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+```
+
+If the replay is running from a non-default checkout, from an already-saved
+summary, or from an explicit attached-bundle path, preserve that context
+directly in the helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+Use this helper when the next replay should stay pinned to the known three-page
+compatibility bundle before widening back into the wrapper-heavy issue `#3`
+chain. It keeps the bundle suite-router command, the bundle flow helper, the
+delegated bundle runner, the replay-shortcuts helper, and the safe-route return
+command on one compact command surface.
+
 When those commands narrow the replay into the wrapper-heavy issue `#3` safe
 route, print the dedicated safe-route entrypoints map next:
 
@@ -217,6 +240,7 @@ Routing rules:
 - Use `show_headed_validation_suites.ps1 -ChangeArea google-input` when the next replay may need the narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
 - Use `show_google_issue3_replay_shortcuts.ps1` when you want the same read-first commands, the attached three-page bundle route, and the current safe-route helpers printed together before deciding whether the next replay should stay on the pinned compatibility bundle or reopen the broader wrapper-heavy issue `#3` path.
+- Use `show_google_issue3_attached_bundle_first_entrypoint.ps1` when the current saved or attached inputs are the known three-page compatibility bundle and you want the pinned bundle-first route plus the replay-shortcuts helper and safe-route return command printed together before widening back into the broader Google-only wrapper chain.
 - Use `show_google_issue3_safe_route_entrypoints.ps1` after the shared suite router or broader Google flow has already narrowed into the current wrapper-heavy issue `#3` replay and you want the fresh replay, reuse-current-outputs, refresh-status, handoff-safe, summary-guide, and runner-wiring commands printed in one place.
 - Use `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` when you want the shortest current safe-route replay note before reopening the longer validation-chain or decision-table guidance.
 - Use `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` as the wrapper-order reference once the issue `#3` replay narrows into safe-route, handoff, or repair helpers.
