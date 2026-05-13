@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -77,6 +78,62 @@ function Get-OptionalPropertyValue {
     return $null
 }
 
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
 function Get-PhaseReplayCommand([string]$PhaseName) {
     if ([string]::IsNullOrWhiteSpace($PhaseName)) {
         return $null
@@ -113,7 +170,11 @@ function Get-PhaseReplayCommand([string]$PhaseName) {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -129,14 +190,21 @@ if (-not [string]::IsNullOrWhiteSpace($artifactRoot)) {
     $artifactRoot = Split-Path -Parent $SummaryPath
 }
 
-$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
-$refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
-$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
-$manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
-$boundaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
-$bundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $repoRoot
+} else {
+    $null
+}
+$recommendedRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+})
+$refreshStatusCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$handoffGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$summaryGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$manifestGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_manifest_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$boundaryGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_phase_boundary.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$bundleGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
 
 $guidePath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-guide.json'
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
@@ -427,7 +495,7 @@ if ($summary.surface_check_status -and $summary.surface_check_status -ne 'passed
     $recommendedCommand = $refreshChainCommand
     $recommendedGuideCommand = $refreshStatusCommand
     $nextFocus = 'Neither the summary nor the manifest records the refresh pointer yet, so keep the helper chain aligned on the fallback refresh artifact until pointer repair catches up.'
-    $reason = 'Neither the current summary nor the saved manifest records refresh_chain_artifact_path yet, so this helper is using the fallback refresh location while repair catches up.'
+    $reason = 'Neither the current summary nor the saved manifest records refresh_chain_artifact_path yet, so this helper is using the fallback refresh location while keeping the runner and helper chain aligned.'
     $nextArtifactToOpen = $refreshPath
 } elseif ($handoffPointerUsesFallback) {
     $recommendedCommand = if ($handoffRecord -and $handoffRecord.recommended_command) {
@@ -525,6 +593,7 @@ $handoff = [ordered]@{
     issue = 'Google issue #3 validation handoff'
     purpose = 'Save one refresh-aware handoff artifact that tells the next Windows headed replay whether to trust the narrow replay guidance yet or repair the saved helper chain first.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
     summary_path = $SummaryPath
     handoff_artifact_path = $ArtifactPath
     handoff_artifact_exists = [bool]$true
@@ -623,6 +692,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 validation handoff'
 Write-Host ''
+Write-Host ("Repo root: {0}" -f $handoff.repo_root)
 Write-Host ("Summary:   {0}" -f $handoff.summary_path)
 Write-Host ("Manifest:  {0}" -f $handoff.manifest_artifact_path)
 Write-Host ("Handoff:   {0}" -f $handoff.handoff_artifact_path)
