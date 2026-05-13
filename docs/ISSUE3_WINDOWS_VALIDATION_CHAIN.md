@@ -76,9 +76,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe_path_route.ps1
 ```
 
-2. Manifest and handoff routing
+2. Manifest, refresh, and handoff routing
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe_path_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1
 ```
@@ -97,6 +99,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_ru
 Only trust the stricter raw helper after its safe wrapper says the state is ready:
 
 - `show_google_issue3_validation_manifest.ps1` after `show_google_issue3_validation_manifest_safe.ps1` reports `safe-to-run-manifest-guide`.
+- `show_google_issue3_validation_refresh_status.ps1` after `show_google_issue3_validation_refresh_status_safe.ps1` reports `safe-to-run-existing-helper`.
 - `show_google_issue3_validation_handoff.ps1` after `show_google_issue3_validation_handoff_safe.ps1` reports `safe-to-run-handoff`, or after the handoff safe refresh route reports `ready-for-handoff`.
 - `show_google_issue3_validation_artifact_bundle.ps1` after `show_google_issue3_validation_artifact_bundle_safe.ps1` reports `safe-to-run-existing-helper`, or after the bundle safe path route reports `ready-for-bundle-follow-up`.
 - `show_google_issue3_runner_output_wiring_status.ps1` after `run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1` reports `runner-output-fully-wired`, or after the runner-output safe chain reports `ready-for-runner-output-wiring` and you intentionally want the raw helper by itself.
@@ -206,13 +209,15 @@ Recommended patch loop:
 6. Rerun `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`.
 7. Prefer `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1` so the safe contract wrapper reruns first and the raw audit only reopens when the saved summary is ready.
 8. If you intentionally need the narrower checks by themselves, verify with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`, then confirm with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1`.
-9. Continue into `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1` only after the wiring audit reports the runner output is ready.
+9. Prefer `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe_path_route.ps1` so the safe checkpoint reopens the raw refresh-status helper for you and carries the replay straight into the next handoff-safe step when the refresh chain is ready.
+10. If you intentionally need the narrower raw helper by itself, continue into `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1` only after the safe checkpoint reports `safe-to-run-existing-helper`.
 
 ## Practical rule
 
 If two helpers disagree:
 - prefer the wrapper over the raw command when a wrapper already exists for that checkpoint
 - prefer `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the default fresh replay entrypoint; use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` when reusing current saved outputs is intentional
+- if a `safe_path_route` wrapper already exists for the current checkpoint, prefer it when you want the safe helper and its bounded raw follow-up reopened in one step
 - otherwise prefer the helper with `safe` in the name unless the safe helper explicitly says the raw helper is ready
 - if the raw wiring audit says `saved-artifacts-stale-runner-already-wired`, prefer saved-output regeneration or repair over another direct runner patch
 - if the safe-route patch-handoff wrapper says `already-direct`, go straight to the safe wiring audit
