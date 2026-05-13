@@ -237,12 +237,14 @@ if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-recommended-validation-guide-safe.json'
 }
 
-$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+$shouldPreserveRepoRoot = $PSBoundParameters.ContainsKey('RepoRoot') -or -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)
+$recommendedRepoRoot = if ($shouldPreserveRepoRoot) {
     $repoRoot
 } else {
     $null
 }
-$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+$shouldPreserveSummaryPath = $PSBoundParameters.ContainsKey('SummaryPath') -or $shouldPreserveRepoRoot
+$recommendedSummaryPath = if ($shouldPreserveSummaryPath) {
     $SummaryPath
 } else {
     $null
