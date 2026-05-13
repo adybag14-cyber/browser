@@ -187,6 +187,8 @@ Use the combined safe-route wrapper first when you want the repair flow and reop
 
 When the runner still needs a direct contract fix, patch both saved output objects inside `scripts/windows/run_google_issue3_recommended_validation.ps1`, not just one of them.
 
+Keep `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` open beside this checklist during the source edit. Use that focused note as the source of truth for artifact order, nullable `$null` handling, blank-path handling, and post-patch verification; use this section to keep the replay loop on the current safe-route wrappers.
+
 Required direct fields in both the summary artifact and the manifest artifact:
 - `refresh_chain_artifact_path`
 - `refresh_chain_artifact_error`
