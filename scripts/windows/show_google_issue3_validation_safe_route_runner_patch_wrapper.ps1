@@ -1,5 +1,7 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
+    [string]$BrowserExe,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -197,7 +199,11 @@ function New-SkippedHelperStep {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
 $artifactPathExplicit = -not [string]::IsNullOrWhiteSpace($ArtifactPath)
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json'
@@ -221,6 +227,8 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
         issue = 'Google issue #3 validation safe route runner patch wrapper'
         purpose = 'Run the top-level issue #3 validation safe route first and preserve the exact runner patch-target details from the narrower safe patch route in one combined artifact.'
         generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+        repo_root = $repoRoot
+        browser_exe = $BrowserExe
         summary_path = $SummaryPath
         artifact_path = $ArtifactPath
         validation_safe_route_command = $validationSafeRouteCommand
@@ -375,6 +383,8 @@ $report = [ordered]@{
     issue = 'Google issue #3 validation safe route runner patch wrapper'
     purpose = 'Run the top-level issue #3 validation safe route first and preserve the exact runner patch-target details from the narrower safe patch route in one combined artifact.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
+    browser_exe = $BrowserExe
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     validation_safe_route_command = $validationSafeRouteCommand
