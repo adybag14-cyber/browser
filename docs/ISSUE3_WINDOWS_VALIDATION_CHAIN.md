@@ -45,6 +45,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 ```
 Use this when the next replay is likely to end in a direct runner-side patch and you want one artifact that preserves the exact patch-target lines.
 
+6. Fresh replay plus runner-output wiring safe-route reopen
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1
+```
+Use this when the next replay should regenerate or repair the runner-output contract and only reopen the raw wiring audit after the safe wrapper says the saved summary is ready.
+
 ## Raw runner
 
 The underlying runner is still:
@@ -82,6 +88,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1
 ```
 
@@ -92,7 +99,7 @@ Only trust the stricter raw helper after its safe wrapper says the state is read
 - `show_google_issue3_validation_manifest.ps1` after `show_google_issue3_validation_manifest_safe.ps1` reports `safe-to-run-manifest-guide`.
 - `show_google_issue3_validation_handoff.ps1` after `show_google_issue3_validation_handoff_safe.ps1` reports `safe-to-run-handoff`, or after the handoff safe refresh route reports `ready-for-handoff`.
 - `show_google_issue3_validation_artifact_bundle.ps1` after `show_google_issue3_validation_artifact_bundle_safe.ps1` reports `safe-to-run-existing-helper`, or after the bundle safe path route reports `ready-for-bundle-follow-up`.
-- `show_google_issue3_runner_output_wiring_status.ps1` after the runner-output safe chain reports `ready-for-runner-output-wiring`.
+- `show_google_issue3_runner_output_wiring_status.ps1` after `run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1` reports `runner-output-fully-wired`, or after the runner-output safe chain reports `ready-for-runner-output-wiring` and you intentionally want the raw helper by itself.
 - `show_google_issue3_runner_output_patch_handoff.ps1` after `show_google_issue3_runner_output_patch_targets_safe_route.ps1` or `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` reports `ready-for-runner-patch`.
 - `show_google_issue3_runner_output_patch_targets.ps1` only after `show_google_issue3_runner_output_patch_targets_safe.ps1` or `show_google_issue3_runner_output_patch_targets_safe_route.ps1` reports that the raw patch-target helper itself is still the next safe checkpoint.
 - `show_google_issue3_runner_output_wiring_status_safe.ps1` directly when the safe-route patch-target or safe-route patch-handoff chain reports `already-direct`, instead of reopening another runner patch step first.
@@ -136,6 +143,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1
 ```
 
+If you want one combined replay that repairs the runner-output contract and only reopens the raw wiring audit when the safe gate says the summary is ready, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1
+```
+
 If `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` reports `already-direct`, go straight to the safe wiring audit. If it reports `runner-already-wired-regenerate-outputs`, follow its emitted regeneration or repair command before reopening the safe wiring audit.
 
 Only come back to the raw runner-output wiring audit after the safe wiring helper routes there again. The goal is to regenerate or normalize the saved summary and manifest before spending another replay on a direct runner patch that is already present in source.
@@ -160,9 +173,12 @@ Use the preserved summary and manifest snippet lines from the newest wrapper or 
 Verify after any runner-output patch:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1
 ```
+
+Use the combined safe-route wrapper first when you want the repair flow and reopened raw audit state preserved in one artifact. Keep the standalone safe and raw wiring commands for narrower follow-ups when the current outputs are already trustworthy.
 
 ## Direct Runner Patch Checklist
 
@@ -188,8 +204,8 @@ Recommended patch loop:
 4. If the wrapper reports `runner-already-wired-regenerate-outputs`, follow its emitted regeneration or repair command before reopening the safe wiring audit.
 5. Otherwise, if you are intentionally reusing current saved outputs, run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1` or `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1`.
 6. Rerun `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`.
-7. Verify with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`.
-8. Confirm the raw audit with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1`.
+7. Prefer `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_wiring_safe_route.ps1` so the safe contract wrapper reruns first and the raw audit only reopens when the saved summary is ready.
+8. If you intentionally need the narrower checks by themselves, verify with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`, then confirm with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1`.
 9. Continue into `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1` only after the wiring audit reports the runner output is ready.
 
 ## Practical rule
