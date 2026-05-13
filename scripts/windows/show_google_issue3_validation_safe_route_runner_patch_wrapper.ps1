@@ -283,6 +283,14 @@ $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_reco
     RepoRoot = $recommendedRepoRoot
     BrowserExe = $BrowserExe
 })
+$validationStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $validationStepArguments += @('-RepoRoot', $resolvedRepoRoot)
+}
+$runnerPatchStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $runnerPatchStepArguments += @('-RepoRoot', $resolvedRepoRoot)
+}
 
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
     $status = 'summary-missing-broader-replay-first'
@@ -357,7 +365,7 @@ foreach ($helperPath in @($validationSafeRouteScript, $runnerPatchSafeRouteScrip
 }
 
 $steps = [System.Collections.Generic.List[object]]::new()
-$validationStep = Invoke-JsonHelper -Name 'validation-safe-route' -ScriptPath $validationSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+$validationStep = Invoke-JsonHelper -Name 'validation-safe-route' -ScriptPath $validationSafeRouteScript -Arguments $validationStepArguments
 $steps.Add($validationStep) | Out-Null
 
 $validationSummaryCompleted = [bool](Get-OptionalPropertyValue -Object $validationStep.record -Name 'summary_completed')
@@ -373,9 +381,9 @@ $shouldRunRunnerPatchRoute = [bool](
 )
 $runnerPatchStep = $null
 if ($shouldRunRunnerPatchRoute) {
-    $runnerPatchStep = Invoke-JsonHelper -Name 'runner-output-patch-targets-safe-route' -ScriptPath $runnerPatchSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+    $runnerPatchStep = Invoke-JsonHelper -Name 'runner-output-patch-targets-safe-route' -ScriptPath $runnerPatchSafeRouteScript -Arguments $runnerPatchStepArguments
 } else {
-    $runnerPatchStep = New-SkippedHelperStep -Name 'runner-output-patch-targets-safe-route' -ScriptPath $runnerPatchSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_command, $validationSafeRouteCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_guide_command, $validationSafeRouteCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($validationStep.next_focus, 'Reopen the validation-safe route first; the runner patch wrapper only adds value once that top-level route narrows to the handoff-safe branch.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($validationStep.next_artifact_to_open, $SummaryPath)) -Reason 'The validation-safe route either did not finish cleanly or kept the next replay on broader repair or replay guidance, so the wrapper preserved that upstream route and skipped the narrower runner patch helper.'
+    $runnerPatchStep = New-SkippedHelperStep -Name 'runner-output-patch-targets-safe-route' -ScriptPath $runnerPatchSafeRouteScript -Arguments $runnerPatchStepArguments -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_command, $validationSafeRouteCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($validationStep.recommended_guide_command, $validationSafeRouteCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($validationStep.next_focus, 'Reopen the validation-safe route first; the runner patch wrapper only adds value once that top-level route narrows to the handoff-safe branch.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($validationStep.next_artifact_to_open, $SummaryPath)) -Reason 'The validation-safe route either did not finish cleanly or kept the next replay on broader repair or replay guidance, so the wrapper preserved that upstream route and skipped the narrower runner patch helper.'
 }
 $steps.Add($runnerPatchStep) | Out-Null
 
@@ -543,10 +551,10 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifestPatchSnippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
-    foreach ($line in $report.manifest_patch_snippet_lines) {
+    foreach ($line in $report.manifestPatchSnippetLines) {
         Write-Host $line
     }
 }
