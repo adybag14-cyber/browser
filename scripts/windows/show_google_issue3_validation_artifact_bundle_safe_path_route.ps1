@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -71,6 +72,62 @@ function Get-FirstNonEmptyValue {
     }
 
     return $null
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
 function Invoke-JsonHelper {
@@ -181,7 +238,11 @@ function New-SkippedHelperStep {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -197,14 +258,42 @@ if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
 if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-artifact-bundle-safe-path-route.json'
 }
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $repoRoot
+} else {
+    $null
+}
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+    $SummaryPath
+} else {
+    $null
+}
 
 $bundleSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artifact_bundle_safe.ps1'
 $bundleScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_artifact_bundle.ps1'
-$bundleSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
-$bundleCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle.ps1'
-$bundleSafePathRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe_path_route.ps1'
-$handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
-$summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
+$bundleSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$bundleCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$bundleSafePathRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle_safe_path_route.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$handoffSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$summaryGuideSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$bundleSafeStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $bundleSafeStepArguments += @('-RepoRoot', $repoRoot)
+}
+$bundleStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $bundleStepArguments += @('-RepoRoot', $repoRoot)
+}
 
 foreach ($helperPath in @($bundleSafeScript, $bundleScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -213,7 +302,7 @@ foreach ($helperPath in @($bundleSafeScript, $bundleScript)) {
 }
 
 $steps = [System.Collections.Generic.List[object]]::new()
-$bundleSafeStep = Invoke-JsonHelper -Name 'artifact-bundle-safe' -ScriptPath $bundleSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+$bundleSafeStep = Invoke-JsonHelper -Name 'artifact-bundle-safe' -ScriptPath $bundleSafeScript -Arguments $bundleSafeStepArguments
 $steps.Add($bundleSafeStep) | Out-Null
 
 $shouldRunRawBundle = [bool](
@@ -222,9 +311,9 @@ $shouldRunRawBundle = [bool](
 )
 $bundleStep = $null
 if ($shouldRunRawBundle) {
-    $bundleStep = Invoke-JsonHelper -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+    $bundleStep = Invoke-JsonHelper -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments $bundleStepArguments
 } else {
-    $bundleStep = New-SkippedHelperStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_command, $bundleSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_focus, 'Use the current artifact-bundle-safe guidance; the raw artifact-bundle audit should only reopen after the safe checkpoint actively recommends it.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The artifact-bundle-safe checkpoint did not currently recommend the raw artifact-bundle audit, so the raw artifact-bundle helper was not reopened yet.'
+    $bundleStep = New-SkippedHelperStep -Name 'artifact-bundle' -ScriptPath $bundleScript -Arguments $bundleStepArguments -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_command, $bundleSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.recommended_guide_command, $summaryGuideSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_focus, 'Use the current artifact-bundle-safe guidance; the raw artifact-bundle audit should only reopen after the safe checkpoint actively recommends it.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($bundleSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The artifact-bundle-safe checkpoint did not currently recommend the raw artifact-bundle audit, so the raw artifact-bundle helper was not reopened yet.'
 }
 $steps.Add($bundleStep) | Out-Null
 
@@ -287,6 +376,7 @@ $report = [ordered]@{
     issue = 'Google issue #3 artifact bundle safe path route'
     purpose = 'Run the issue #3 artifact-bundle-safe checkpoint first and, when it recommends that the raw artifact-bundle audit is ready, immediately reopen that raw helper so the next Windows replay can continue from the narrowest trustworthy bundle checkpoint.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     artifact_bundle_safe_command = $bundleSafeCommand
@@ -331,6 +421,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 artifact bundle safe path route'
 Write-Host ''
+Write-Host ("Repo root: {0}" -f $report.repo_root)
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
