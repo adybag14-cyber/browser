@@ -127,6 +127,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validati
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_wrapper.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile submit-path
@@ -183,6 +184,7 @@ Routing rules:
 - Use `show_google_title_probe_trace_guide.ps1` when you want the title markers translated into focus, text-commit, and Enter-submit stages without opening the saved markdown guide by hand.
 - Use `run_google_title_validation.ps1` when you want the bounded title wrapper by itself before the faster quick pass, reduced homepage pass, or shared Enter-order follow-up.
 - Use `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the default fresh replay entrypoint when current issue `#3` outputs may be stale or missing and you want the newest safe-route plus final runner-patch handoff artifact in one command.
+- Use `run_google_issue3_recommended_validation_safe_route_runner_patch_wrapper.ps1` when you want the broader safe-summary route to refresh the current replay first and then preserve the narrower safe-route runner-patch guidance in one artifact before deciding between `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`.
 - Use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` when the current issue `#3` outputs are already present and you want to reopen the safe-route plus narrower runner-patch guidance without a broader regeneration first.
 - Use `run_google_issue3_recommended_validation.ps1` when you intentionally want the broader one-command issue `#3` flow to regenerate the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
 - Use `check_google_validation_surface.ps1 -Profile submit-path` before `show_google_submit_path_validation_flow.ps1` or `run_google_issue3_submit_path_validation.ps1` so missing guides, helpers, or bounded probes fail fast before you depend on the later issue `#3` submit-path ladder.
