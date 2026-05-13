@@ -125,6 +125,10 @@ $readFirstChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 's
     ChangeArea = 'google-input'
 }) -RepoRootOverride $recommendedRepoRoot
 $readFirstGoogleFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $recommendedRepoRoot
+$replayShortcutsCommand = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+})
 $attachedBundleSuiteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
     ChangeArea = 'attached-html-target-bundle'
 }) -RepoRootOverride $recommendedRepoRoot
@@ -149,6 +153,7 @@ $entrypoints = [ordered]@{
     read_first_suite_command = $readFirstSuiteCommand
     read_first_change_area_command = $readFirstChangeAreaCommand
     read_first_google_flow_command = $readFirstGoogleFlowCommand
+    replay_shortcuts_command = $replayShortcutsCommand
     attached_bundle_suite_command = $attachedBundleSuiteCommand
     attached_bundle_first_entrypoint_command = $attachedBundleFirstEntrypointCommand
     attached_bundle_flow_command = $attachedBundleFlowCommand
@@ -177,6 +182,7 @@ $entrypoints = [ordered]@{
         'Use read_first_suite_command when re-entering issue #3 from the top-level headed validation suite catalog and you want the broader localhost-first runner surfaced quickly, with RepoRoot carried through for non-default checkouts.'
         'Use read_first_change_area_command when the next replay may need one of the narrower Google title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner, while preserving RepoRoot when set.'
         'Use read_first_google_flow_command when you want the broader bounded Google flow printed before deciding whether to stay on the safe-route entrypoints or drop to another narrower helper, without losing the selected RepoRoot context.'
+        'Use replay_shortcuts_command when you want the broader discovery route, the attached three-page bundle branch, and the current safe-route shortcuts surfaced together in one compact helper before choosing whether to stay broad or narrow next.'
         'Use attached_bundle_suite_command when the next replay should stay pinned to the current attached three-page compatibility bundle instead of the broader Google-only ladder, while preserving RepoRoot when set.'
         'Use attached_bundle_first_entrypoint_command when you want the pinned three-page compatibility bundle route plus the return-to-safe-route command printed in one helper before deciding whether to widen back into the wrapper-heavy chain.'
         'Use attached_bundle_flow_command before the attached-page bundle rerun when you want the pinned checker, flow helper, and delegated localhost runner printed in one place, with RepoRoot carried through for non-default checkouts.'
@@ -186,7 +192,7 @@ $entrypoints = [ordered]@{
         'Open quickstart_note_path for the shortest current replay note, validation_chain_note_path for wrapper precedence, and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
         'Use runner_patch_next_step_helper_command when the wrapper has already named one of those three states and you want the exact next move printed without reopening the longer decision-table note first.'
         'Use refresh_status_route_command before reopening narrower refresh or handoff helpers from a non-default summary.'
-        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted read-first discovery commands, attached-bundle suite router, and safe-route wrappers now preserve that same repo-root context instead of falling back to the default checkout.'
+        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted read-first discovery commands, replay-shortcuts helper, attached-bundle suite router, and safe-route wrappers now preserve that same repo-root context instead of falling back to the default checkout.'
     )
 }
 
@@ -204,6 +210,7 @@ Write-Host 'Read-first discovery:'
 Write-Host ("  Suite router:       {0}" -f $entrypoints.read_first_suite_command)
 Write-Host ("  Change-area view:   {0}" -f $entrypoints.read_first_change_area_command)
 Write-Host ("  Google flow helper: {0}" -f $entrypoints.read_first_google_flow_command)
+Write-Host ("  Replay shortcuts:   {0}" -f $entrypoints.replay_shortcuts_command)
 Write-Host ''
 Write-Host 'Attached-page bundle route:'
 Write-Host ("  Suite router:         {0}" -f $entrypoints.attached_bundle_suite_command)
