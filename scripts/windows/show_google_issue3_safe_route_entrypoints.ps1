@@ -111,6 +111,9 @@ $entrypoints = [ordered]@{
     read_first_suite_command = '.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended'
     read_first_change_area_command = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input'
     read_first_google_flow_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1'
+    attached_bundle_suite_command = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+    attached_bundle_flow_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1'
+    attached_bundle_runner_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait'
     repo_root = $resolvedRepoRoot
     summary_path = $recommendedSummaryPath
     fresh_replay_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments ([ordered]@{
@@ -135,6 +138,9 @@ $entrypoints = [ordered]@{
         'Use read_first_suite_command when re-entering issue #3 from the top-level headed validation suite catalog and you want the broader localhost-first runner surfaced quickly.'
         'Use read_first_change_area_command when the next replay may need one of the narrower Google title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.'
         'Use read_first_google_flow_command when you want the broader bounded Google flow printed before deciding whether to stay on the safe-route entrypoints or drop to another narrower helper.'
+        'Use attached_bundle_suite_command when the next replay should stay pinned to the current attached three-page compatibility bundle instead of the broader Google-only ladder.'
+        'Use attached_bundle_flow_command before the attached-page bundle rerun when you want the pinned checker, flow helper, and delegated localhost runner printed in one place.'
+        'Use attached_bundle_runner_command after the attached bundle flow when you want the current three-page compatibility targets exercised on the same narrower route.'
         'Use fresh_replay_command when outputs may be stale or missing.'
         'Use reuse_current_outputs_command only when the current issue #3 artifacts are already present and trusted.'
         'Open quickstart_note_path for the shortest current replay note, validation_chain_note_path for wrapper precedence, and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
@@ -158,6 +164,11 @@ Write-Host 'Read-first discovery:'
 Write-Host ("  Suite router:       {0}" -f $entrypoints.read_first_suite_command)
 Write-Host ("  Change-area view:   {0}" -f $entrypoints.read_first_change_area_command)
 Write-Host ("  Google flow helper: {0}" -f $entrypoints.read_first_google_flow_command)
+Write-Host ''
+Write-Host 'Attached-page bundle route:'
+Write-Host ("  Suite router:       {0}" -f $entrypoints.attached_bundle_suite_command)
+Write-Host ("  Flow helper:        {0}" -f $entrypoints.attached_bundle_flow_command)
+Write-Host ("  Runner:             {0}" -f $entrypoints.attached_bundle_runner_command)
 Write-Host ''
 Write-Host ("Fresh replay:          {0}" -f $entrypoints.fresh_replay_command)
 Write-Host ("Reuse current outputs: {0}" -f $entrypoints.reuse_current_outputs_command)
