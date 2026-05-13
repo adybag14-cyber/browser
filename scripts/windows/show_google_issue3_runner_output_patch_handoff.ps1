@@ -85,16 +85,18 @@ $resolvedRepoRoot = if ($RepoRoot) {
     Resolve-RepoRoot $PSScriptRoot
 }
 $artifactRoot = Join-Path $resolvedRepoRoot 'tmp-browser-smoke\headed-probe'
+$preferredSourceArtifactPaths = @(
+    (Join-Path $artifactRoot 'google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'),
+    (Join-Path $artifactRoot 'google-issue3-validation-safe-route-runner-patch-wrapper.json'),
+    (Join-Path $artifactRoot 'google-issue3-runner-output-patch-targets-safe-route.json'),
+    (Join-Path $artifactRoot 'google-issue3-recommended-validation-repair-runner-output-patch-targets.json')
+)
 if (-not $SourceArtifactPath) {
-    $candidateSourceArtifacts = @(
-        (Join-Path $artifactRoot 'google-issue3-recommended-validation-repair-runner-output-patch-targets.json'),
-        (Join-Path $artifactRoot 'google-issue3-runner-output-patch-targets-safe-route.json')
-    )
-    $SourceArtifactPath = $candidateSourceArtifacts |
+    $SourceArtifactPath = $preferredSourceArtifactPaths |
         Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
         Select-Object -First 1
     if (-not $SourceArtifactPath) {
-        $SourceArtifactPath = $candidateSourceArtifacts[0]
+        $SourceArtifactPath = $preferredSourceArtifactPaths[0]
     }
 }
 if (-not $ArtifactPath) {
@@ -199,6 +201,7 @@ $report = [ordered]@{
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     repo_root = $resolvedRepoRoot
     source_artifact_path = $SourceArtifactPath
+    preferred_source_artifact_paths = @($preferredSourceArtifactPaths)
     source_status = $sourceStatus
     artifact_path = $ArtifactPath
     status = $status
