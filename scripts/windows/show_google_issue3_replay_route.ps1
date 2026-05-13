@@ -143,6 +143,10 @@ $route = [ordered]@{
     summary_path = $recommendedSummaryPath
     input_paths = $recommendedInputPath
     explicit_input_path_count = if ($recommendedInputPath) { @($recommendedInputPath).Count } else { 0 }
+    quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
+    suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
+    validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     read_first_suite_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
         SuiteName = 'google-recommended'
     }) -RepoRootOverride $recommendedRepoRoot
@@ -151,6 +155,10 @@ $route = [ordered]@{
     }) -RepoRootOverride $recommendedRepoRoot
     read_first_google_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $recommendedRepoRoot
     suite_router_handoff_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments ([ordered]@{
+        SummaryPath = $recommendedSummaryPath
+        InputPath = $recommendedInputPath
+    }) -RepoRootOverride $recommendedRepoRoot
+    suite_router_next_steps_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments ([ordered]@{
         SummaryPath = $recommendedSummaryPath
         InputPath = $recommendedInputPath
     }) -RepoRootOverride $recommendedRepoRoot
@@ -183,13 +191,14 @@ $route = [ordered]@{
         'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice, without dropping the current RepoRoot context.',
         'Use read_first_google_flow_command when you want the full bounded localhost-first ladder printed before you choose a narrower replay, while keeping the same RepoRoot context as the later safe-route helpers.',
         'Use suite_router_handoff_command when you want the shortest printed bridge back into the higher-level suite-router entrypoints before reopening the narrower replay route, replay shortcuts, attached-bundle, or safe-route helpers with the same current context.',
+        'Use suite_router_next_steps_command when you want the compact next-step matrix from the higher-level suite router reprinted beside the current replay-route surface without reopening the longer Windows runbook or bridge note first.',
         'If the current saved or attached pages are the known three-page compatibility bundle, use attached_bundle_change_area_command and attached_bundle_entrypoint_command before reopening the broader wrapper-heavy safe route.',
         'Use replay_shortcuts_command when you want the same route narrowed around the bundle-aware shortcut map, the replay helpers, and the current safe-route bridge without reopening the longer suite-router handoff first.',
         'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.',
         'Use fresh_replay_command when issue #3 outputs may be stale or missing.',
         'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.',
         'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.',
-        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted read-first, suite-router-handoff, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay route stays aligned with the newer entrypoint helpers.'
+        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted read-first, suite-router-handoff, suite-router-next-steps, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay route stays aligned with the newer entrypoint helpers.'
     )
 }
 
@@ -225,6 +234,7 @@ Write-Host ("  Suite router:        {0}" -f $route.read_first_suite_command)
 Write-Host ("  Change-area view:    {0}" -f $route.read_first_change_area_command)
 Write-Host ("  Google flow helper:  {0}" -f $route.read_first_google_flow_command)
 Write-Host ("  Suite handoff:       {0}" -f $route.suite_router_handoff_command)
+Write-Host ("  Next-step matrix:    {0}" -f $route.suite_router_next_steps_command)
 Write-Host ''
 Write-Host 'Attached-bundle branch:'
 Write-Host ("  Bundle route:        {0}" -f $route.attached_bundle_change_area_command)
@@ -238,6 +248,12 @@ Write-Host ("  Reuse outputs:       {0}" -f $route.reuse_current_outputs_command
 Write-Host ("  Runner next step:    {0}" -f $route.runner_patch_next_step_command)
 Write-Host ''
 Write-Host 'Notes:'
+Write-Host ("  Quickstart note:     {0}" -f $route.quickstart_note_path)
+Write-Host ("  Windows runbook:     {0}" -f $route.windows_runbook_note_path)
+Write-Host ("  Suite-router bridge: {0}" -f $route.suite_router_bridge_note_path)
+Write-Host ("  Validation chain:    {0}" -f $route.validation_chain_note_path)
+Write-Host ''
+Write-Host 'Guidance:'
 foreach ($note in $route.notes) {
     Write-Host ("- {0}" -f $note)
 }
