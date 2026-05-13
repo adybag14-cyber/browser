@@ -155,6 +155,7 @@ $repoRoot = if ($RepoRoot) {
 } else {
     Resolve-RepoRoot $PSScriptRoot
 }
+$artifactPathExplicit = -not [string]::IsNullOrWhiteSpace($ArtifactPath)
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -167,7 +168,7 @@ $artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
 if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
     $artifactRoot = Split-Path -Parent $SummaryPath
 }
-if (-not $ArtifactPath) {
+if (-not $artifactPathExplicit) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-manifest-safe.json'
 }
 $recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
@@ -177,6 +178,11 @@ $recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
 }
 $recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
     $SummaryPath
+} else {
+    $null
+}
+$recommendedArtifactPath = if ($artifactPathExplicit) {
+    $ArtifactPath
 } else {
     $null
 }
@@ -210,7 +216,10 @@ $refreshStatusSafeCommand = Format-HelperCommand -ScriptName 'show_google_issue3
     RepoRoot = $recommendedRepoRoot
     SummaryPath = $recommendedSummaryPath
 })
-$refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+    ArtifactPath = $recommendedArtifactPath
+}) -RepoRootOverride $recommendedRepoRoot
 $runnerWiringStatusCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status.ps1' -Arguments ([ordered]@{
     SummaryPath = $recommendedSummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
@@ -227,8 +236,12 @@ $artifactBundleCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_g
 $summaryGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{
     SummaryPath = $recommendedSummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
-$manifestContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_validation_manifest_contract.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$manifestContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_validation_manifest_contract.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
