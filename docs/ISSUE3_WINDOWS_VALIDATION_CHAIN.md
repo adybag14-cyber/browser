@@ -61,7 +61,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay makes the next runner-output, handoff, or Google-style input state clear again.
+Return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay makes the next runner-output, handoff, or Google-style input state clear again. When that return still needs the same pinned bundle path, reopen `show_google_issue3_replay_shortcuts.ps1 -InputPath '<bundle-html-or-folder>'` first or pass the same `-InputPath` into the safe-route entrypoints helper so the next wrapper stays on the locked bundle instead of falling back to auto-discovery.
 
 ## One-command safe-route entrypoints map
 
@@ -69,8 +69,10 @@ When the replay is already narrowing into the wrapper-heavy issue `#3` handoff c
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
+
+When the replay is still pinned to the known attached three-page bundle, prefer reopening `show_google_issue3_replay_shortcuts.ps1 -InputPath '<bundle-html-or-folder>'` first. That helper now carries the same pinned bundle path into `show_google_issue3_safe_route_entrypoints.ps1`, so the safe-route entrypoint map stays on the locked input set instead of widening back out to auto-discovery.
 
 Use this helper when you want the current:
 - fresh replay command
