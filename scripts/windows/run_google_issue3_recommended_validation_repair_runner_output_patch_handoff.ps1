@@ -223,7 +223,7 @@ if ($RunnerArgument) {
     $patchTargetsWrapperArguments += '-RunnerArgument'
     $patchTargetsWrapperArguments += $RunnerArgument
 }
-$patchHandoffArguments = @('-SourceArtifactPath', $patchTargetsArtifactPath, '-Json')
+$patchHandoffArguments = @('-SourceArtifactPath', $patchTargetsArtifactPath, '-ArtifactPath', $ArtifactPath, '-Json')
 
 $steps = [System.Collections.Generic.List[object]]::new()
 $patchTargetsWrapperStep = Invoke-ScriptStep -Name 'patch-targets-wrapper' -ScriptPath $patchTargetsWrapperScript -Arguments $patchTargetsWrapperArguments -ExpectJson
@@ -422,7 +422,7 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifestPatchSnippetLines.Count -gt 0) {
+if ($report.manifest_patch_snippet_lines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
     foreach ($line in $report.manifest_patch_snippet_lines) {
