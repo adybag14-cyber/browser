@@ -243,7 +243,7 @@ $runnerAlreadyWiredNeedsRegeneration = if ($safeRouteRunnerPatchStep.record -and
     $false
 }
 $alreadyDirectFromRawPatchTargets = if ($safeRouteRunnerPatchStep.record -and $safeRouteRunnerPatchStep.record.PSObject.Properties['already_direct_from_raw_patch_targets']) {
-    [bool]$safeRouteRunnerPatchStep.record.already_direct_fromRawPatchTargets
+    [bool]$safeRouteRunnerPatchStep.record.already_direct_from_raw_patch_targets
 } else {
     $false
 }
@@ -444,7 +444,7 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifestPatchSnippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
     foreach ($line in $report.manifest_patch_snippet_lines) {
