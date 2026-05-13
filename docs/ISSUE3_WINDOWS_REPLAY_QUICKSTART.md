@@ -46,6 +46,7 @@ Use this when you want the helper to print the current:
 - handoff-safe helper
 - summary-guide safe helper
 - runner-wiring safe helper
+- runner-patch next-step helper for `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`
 
 ## Default fresh replay
 
@@ -59,6 +60,18 @@ Why this is the default:
 - reruns the recommended issue `#3` validation flow
 - preserves the newest runner-patch handoff artifact
 - narrows the next move to one of three states instead of reopening the full helper chain by hand
+
+## State helper
+
+Use this after the fresh replay or reuse-current-outputs wrapper tells you which state you landed on:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State ready-for-runner-patch
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State already-direct
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State runner-already-wired-regenerate-outputs
+```
+
+Use it when you want the exact next commands printed without reopening the longer decision table first.
 
 ## If the current saved outputs are already trustworthy
 
