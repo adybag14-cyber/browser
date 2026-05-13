@@ -238,6 +238,16 @@ if ($summaryExistsAfterRunnerOutputRepair) {
     $steps.Add($runnerOutputWiringSafeStep) | Out-Null
 }
 
+$runnerOutputWiringRecord = if ($runnerOutputWiringSafeStep.record) { $runnerOutputWiringSafeStep.record } else { $null }
+$runnerContractMissing = [bool](Get-OptionalPropertyValue -Object $runnerOutputWiringRecord -Name 'runner_contract_missing')
+$runnerContractMissingFields = if ($runnerOutputWiringRecord -and $runnerOutputWiringRecord.PSObject.Properties['runner_contract_missing_fields']) {
+    @($runnerOutputWiringRecord.runner_contract_missing_fields)
+} else {
+    @()
+}
+$prereqFieldsSafe = [bool](Get-OptionalPropertyValue -Object $runnerOutputWiringRecord -Name 'prereq_fields_safe')
+$readyForRawWiringHelper = [bool]($runnerOutputWiringSafeStep.status -eq 'safe-to-run-existing-helper')
+
 $status = $null
 $reason = $null
 if (-not $summaryExistsAfterRunner) {
@@ -249,7 +259,7 @@ if (-not $summaryExistsAfterRunner) {
 } elseif (-not $runnerOutputWiringSafeStep.success) {
     $status = 'runner-output-wiring-safe-check-failed'
     $reason = 'The runner-output contract repair step completed, but the safe wiring helper did not finish cleanly, so the next replay should stay on the saved repair artifact first.'
-} elseif ($runnerOutputWiringSafeStep.status -eq 'safe-to-run-existing-helper') {
+} elseif ($readyForRawWiringHelper) {
     $status = 'ready-for-runner-output-wiring'
     $reason = 'The broader runner completed, the runner-output contract repair normalized the saved summary and manifest, and the safe wiring helper says the stricter runner-output wiring audit is ready for the next Windows replay.'
 } elseif (-not $runnerStep.success) {
@@ -271,7 +281,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $runnerOutputContractRepairCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($runnerOutputWiringSafeStep -and $runnerOutputWiringSafeStep.status -eq 'safe-to-run-existing-helper') { $runnerOutputWiringCommand },
+    if ($readyForRawWiringHelper) { $runnerOutputWiringCommand },
     if ($runnerOutputWiringSafeStep) { $runnerOutputWiringSafeStep.recommended_guide_command },
     if ($runnerOutputContractRepairStep) { $runnerOutputContractRepairStep.recommended_guide_command },
     $runnerOutputPatchTargetsSafeRouteCommand,
@@ -302,6 +312,10 @@ $report = [ordered]@{
     runner_argument_passthrough = @($RunnerArgument)
     summary_exists_after_runner = [bool]$summaryExistsAfterRunner
     summary_exists_after_runner_output_repair = [bool]$summaryExistsAfterRunnerOutputRepair
+    runner_contract_missing = [bool]$runnerContractMissing
+    runner_contract_missing_fields = @($runnerContractMissingFields)
+    prereq_fields_safe = [bool]$prereqFieldsSafe
+    ready_for_raw_wiring_helper = [bool]$readyForRawWiringHelper
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     next_focus = $nextFocus
@@ -330,6 +344,9 @@ $report = [ordered]@{
             next_focus = $_.next_focus
             next_artifact_to_open = $_.next_artifact_to_open
             reason = $_.reason
+            runner_contract_missing = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'runner_contract_missing') } else { $false }
+            runner_contract_missing_fields = if ($_.record -and $_.record.PSObject.Properties['runner_contract_missing_fields']) { @($_.record.runner_contract_missing_fields) } else { @() }
+            prereq_fields_safe = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'prereq_fields_safe') } else { $false }
             output_preview = @($_.output_preview)
         }
     })
@@ -352,6 +369,15 @@ Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
 Write-Host ("Summary exists after runner: {0}" -f $report.summary_exists_after_runner)
 Write-Host ("Summary exists after runner-output repair: {0}" -f $report.summary_exists_after_runner_output_repair)
+Write-Host ("Runner contract missing: {0}" -f $report.runner_contract_missing)
+Write-Host ("Prereq fields safe: {0}" -f $report.prereq_fields_safe)
+Write-Host ("Ready for raw wiring helper: {0}" -f $report.ready_for_raw_wiring_helper)
+if ($report.runner_contract_missing_fields.Count -gt 0) {
+    Write-Host 'Runner contract missing fields:'
+    foreach ($fieldName in $report.runner_contract_missing_fields) {
+        Write-Host ("- {0}" -f $fieldName)
+    }
+}
 Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
@@ -361,6 +387,9 @@ foreach ($step in $report.steps) {
     }
     if ($step.parse_error) {
         Write-Host ("  Parse error: {0}" -f $step.parse_error)
+    }
+    if ($step.runner_contract_missing_fields.Count -gt 0) {
+        Write-Host ("  Missing fields: {0}" -f ($step.runner_contract_missing_fields -join ', '))
     }
 }
 Write-Host ''
