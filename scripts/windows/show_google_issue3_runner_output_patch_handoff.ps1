@@ -163,6 +163,7 @@ if (-not (Test-Path -LiteralPath $SourceArtifactPath -PathType Leaf)) {
 }
 
 $sourceArtifact = Get-Content -LiteralPath $SourceArtifactPath -Raw | ConvertFrom-Json
+$summaryPath = Get-OptionalPropertyValue -Object $sourceArtifact -Name 'summary_path'
 $sourceStatus = Get-OptionalPropertyValue -Object $sourceArtifact -Name 'status'
 $recommendedPatchTarget = Get-OptionalPropertyValue -Object $sourceArtifact -Name 'recommended_patch_target'
 $recommendedSourceCommand = Get-OptionalPropertyValue -Object $sourceArtifact -Name 'recommended_command'
@@ -189,9 +190,12 @@ $recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
 } else {
     $null
 }
-$runnerOutputWiringSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerOutputWiringSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $summaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
     RepoRoot = $recommendedRepoRoot
+    SummaryPath = $summaryPath
 })
 $runnerPatchRulesNotePath = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
 $postPatchCommand = Get-FirstNonEmptyValue -Values @(
@@ -230,7 +234,7 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
         $broaderRunnerCommand
     )
     $recommendedGuideCommand = $runnerOutputWiringSafeCommand
-    $nextFocus = 'Regenerate or repair the saved summary and manifest, then rerun the safe wiring audit before trusting the stricter raw verification command again.'
+    $nextFocus = 'Regenerate or repair the saved summary and manifest, then rerun the safe wiring audit before trusting another patch-target pass.'
     $nextArtifactToOpen = $SourceArtifactPath
 } else {
     $status = 'follow-source-artifact'
@@ -264,6 +268,7 @@ $report = [ordered]@{
     purpose = 'Turn the saved issue #3 patch-route artifact into an explicit runner patch handoff with the target file, preserved snippet lines, the focused patch-rules note, and the first post-patch audit command.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     repo_root = $resolvedRepoRoot
+    summary_path = $summaryPath
     source_artifact_path = $SourceArtifactPath
     preferred_source_artifact_paths = @($preferredSourceArtifactPaths)
     source_status = $sourceStatus
@@ -298,6 +303,7 @@ if ($Json) {
 Write-Host 'Google issue #3 runner output patch handoff'
 Write-Host ''
 Write-Host ("Repo root:       {0}" -f $report.repo_root)
+Write-Host ("Summary:         {0}" -f $report.summary_path)
 Write-Host ("Source artifact: {0}" -f $report.source_artifact_path)
 Write-Host ("Artifact:        {0}" -f $report.artifact_path)
 Write-Host ("Source status:   {0}" -f $report.source_status)
@@ -335,7 +341,7 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifest_patch_snippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
     foreach ($line in $report.manifest_patch_snippet_lines) {
