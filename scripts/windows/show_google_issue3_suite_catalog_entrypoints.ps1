@@ -191,10 +191,11 @@ $entrypoints = [ordered]@{
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, saved-page, or attached-page slices instead of the full recommended runner.',
-        'Use google_flow when you want the localhost-first issue #3 ladder printed before you decide whether to narrow into the context-preserving flow, the next-step matrix, replay-route, replay-shortcuts, or the wrapper-heavy safe-route branches, while keeping LIGHTPANDA_REPO_ROOT aligned to the current non-default checkout when RepoRoot is already in play.',
+        'Use google_flow when you want the localhost-first issue #3 ladder printed before you decide whether to narrow into the context-preserving flow, replay-shortcuts, the next-step matrix, replay-route, or the wrapper-heavy safe-route branches, while keeping LIGHTPANDA_REPO_ROOT aligned to the current non-default checkout when RepoRoot is already in play.',
         'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that context aligned while you choose between the recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite catalog itself to reopen on that pinned branch first.',
-        'Use suite_router_next_steps as the default next helper after the top-level suite catalog and Google flow when the current route is already known to be issue #3 and you want the fastest current helper recommendation without reopening the broader handoff surface first.',
+        'Use replay_shortcuts as the default next helper after the top-level suite catalog and Google flow when the current route is already known to be issue #3 and you want the narrowest current shortcut map first without reopening the broader handoff surface.',
+        'Use suite_router_next_steps when you want the compact current helper recommendation reprinted beside the replay shortcuts before reopening the broader handoff surface.',
         'Use suite_router_handoff when you want the wider compact bridge that keeps the exact top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
         'Use replay_route when you want the smallest read-first helper that keeps the suite catalog entrypoints, Google flow, contextual flow, attached-bundle branch, replay-shortcuts helper, and safe-route bridge on one surface before narrowing further.',
         'Use replay_shortcuts after replay_route when you want the narrower shortcut map for the attached-bundle-first route and the wrapper-heavy safe-route branches.',
@@ -209,19 +210,19 @@ $entrypoints.recommended_next_key = if ($entrypoints.explicit_input_path_count -
 } elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath) -or -not [string]::IsNullOrWhiteSpace($RepoRoot)) {
     'contextual_flow'
 } else {
-    'suite_router_next_steps'
+    'replay_shortcuts'
 }
 $entrypoints.recommended_next_command = switch ($entrypoints.recommended_next_key) {
     'attached_bundle_first' { $entrypoints.helper_commands.attached_bundle_first }
     'contextual_flow' { $entrypoints.helper_commands.contextual_flow }
-    default { $entrypoints.helper_commands.suite_router_next_steps }
+    default { $entrypoints.helper_commands.replay_shortcuts }
 }
 $entrypoints.recommended_next_reason = if ($entrypoints.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 helper chain.'
 } elseif ($entrypoints.recommended_next_key -eq 'contextual_flow') {
     'A non-default repo root or a saved SummaryPath is already in play, so reopen the context-preserving issue #3 flow next and keep that current replay context aligned while the route narrows.'
 } else {
-    'No pinned bundle inputs or current summary are in play yet, so start with the compact next-step matrix after the suite catalog and Google flow before widening into the broader handoff helper or narrowing into replay-route, replay-shortcuts, or the wrapper-heavy safe-route commands.'
+    'No pinned bundle inputs or current summary are in play yet, so jump straight from the suite catalog and Google flow into replay shortcuts, then reopen the next-step matrix or broader handoff helper only if the route still needs a wider reprint.'
 }
 
 if ($Json) {
@@ -249,10 +250,10 @@ Write-Host (("  1. Google recommended: {0}") -f $entrypoints.bridge_sequence.goo
 Write-Host (("  2. Google input:       {0}") -f $entrypoints.bridge_sequence.google_input_change_area)
 Write-Host (("  3. Google flow:        {0}") -f $entrypoints.bridge_sequence.google_flow)
 Write-Host (("  4. Contextual flow:    {0}") -f $entrypoints.bridge_sequence.contextual_flow)
-Write-Host (("  5. Next-step matrix:   {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
-Write-Host (("  6. Suite handoff:      {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
+Write-Host (("  5. Replay shortcuts:   {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
+Write-Host (("  6. Next-step matrix:   {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
 Write-Host (("  7. Replay route:       {0}") -f $entrypoints.bridge_sequence.replay_route)
-Write-Host (("  8. Replay shortcuts:   {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
+Write-Host (("  8. Suite handoff:      {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
 Write-Host (("  9. Bundle-first route: {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
 Write-Host ''
 Write-Host 'Top-level suite catalog entrypoints:'
@@ -263,10 +264,10 @@ Write-Host ''
 Write-Host 'Issue #3 replay helpers:'
 Write-Host (("  Google flow:        {0}") -f $entrypoints.helper_commands.google_flow)
 Write-Host (("  Contextual flow:    {0}") -f $entrypoints.helper_commands.contextual_flow)
-Write-Host (("  Next-step matrix:   {0}") -f $entrypoints.helper_commands.suite_router_next_steps)
-Write-Host (("  Suite handoff:      {0}") -f $entrypoints.helper_commands.suite_router_handoff)
-Write-Host (("  Replay route:       {0}") -f $entrypoints.helper_commands.replay_route)
 Write-Host (("  Replay shortcuts:   {0}") -f $entrypoints.helper_commands.replay_shortcuts)
+Write-Host (("  Next-step matrix:   {0}") -f $entrypoints.helper_commands.suite_router_next_steps)
+Write-Host (("  Replay route:       {0}") -f $entrypoints.helper_commands.replay_route)
+Write-Host (("  Suite handoff:      {0}") -f $entrypoints.helper_commands.suite_router_handoff)
 Write-Host (("  Bundle first:       {0}") -f $entrypoints.helper_commands.attached_bundle_first)
 Write-Host (("  Safe route map:     {0}") -f $entrypoints.helper_commands.safe_route_entrypoints)
 Write-Host ''
