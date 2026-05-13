@@ -4,16 +4,23 @@ Use this note when the current issue `#3` safe-route wrapper or patch-handoff ar
 
 The goal is to keep the direct runner-output contract aligned with the latest helper behavior before the next Windows replay regenerates artifacts.
 
-Pair this note with `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` and `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`.
+Pair this note with:
+- `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for wrapper precedence, replay routing, and safe-helper reopening order.
+- `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` for the shortest next-step command map after the wrapper reports `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`.
+- `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md` when the replay is running from a non-default checkout and must keep `LIGHTPANDA_REPO_ROOT` plus `SummaryPath` aligned through the helper chain.
+
 Use the validation-chain guide to choose the next safe-route wrapper, replay state, and raw-helper reopening order.
 Use the decision table when the wrapper already emitted `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs` and you want the shortest next-step command map.
 Use this focused patch-rules note once the newest wrapper or patch-handoff artifact has already narrowed the replay to a direct runner patch, or when you are reviewing an existing direct runner patch by hand.
 
-## Companion use
+## Keep Open Together
 
-- `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`: route selection, safe-wrapper precedence, and replay-state branching.
-- `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`: shortest next-step command map for `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`.
-- `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`: direct source-edit rules, artifact precedence, nullable `$null` handling, blank-path guidance, and post-patch verification.
+When the wrapper has already narrowed the replay to a direct runner patch, keep these side by side:
+
+- the newest patch-handoff artifact under `tmp-browser-smoke\headed-probe`
+- `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`
+- `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`
+- `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md` when the replay is using `LIGHTPANDA_REPO_ROOT` or a non-default checkout root
 
 ## Patch target
 
@@ -38,6 +45,7 @@ Patch both saved output objects inside the runner, not just one of them:
 - Only use an empty string when the emitted snippet line explicitly does so.
 - Treat blank path values as unresolved state, not as a finished direct contract.
 - Keep the path and error fields present in both output objects so later audits do not have to recover them indirectly from other artifacts.
+- If the replay is running from a non-default checkout, keep the emitted repo-root-aware helper commands intact instead of collapsing them back to repo-relative defaults.
 
 ## Preferred artifact order
 
