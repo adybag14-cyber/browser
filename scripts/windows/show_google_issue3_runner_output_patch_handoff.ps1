@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SourceArtifactPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -78,8 +79,12 @@ function Get-ArrayValue {
     return @($value)
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
-$artifactRoot = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe'
+$resolvedRepoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
+$artifactRoot = Join-Path $resolvedRepoRoot 'tmp-browser-smoke\headed-probe'
 if (-not $SourceArtifactPath) {
     $candidateSourceArtifacts = @(
         (Join-Path $artifactRoot 'google-issue3-recommended-validation-repair-runner-output-patch-targets.json'),
@@ -196,6 +201,7 @@ $report = [ordered]@{
     issue = 'Google issue #3 runner output patch handoff'
     purpose = 'Turn the saved issue #3 patch-route artifact into an explicit runner patch handoff with the target file, preserved snippet lines, and the first post-patch audit command.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $resolvedRepoRoot
     source_artifact_path = $SourceArtifactPath
     source_status = $sourceStatus
     artifact_path = $ArtifactPath
@@ -227,6 +233,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 runner output patch handoff'
 Write-Host ''
+Write-Host ("Repo root:       {0}" -f $report.repo_root)
 Write-Host ("Source artifact: {0}" -f $report.source_artifact_path)
 Write-Host ("Artifact:        {0}" -f $report.artifact_path)
 Write-Host ("Source status:   {0}" -f $report.source_status)
