@@ -176,21 +176,28 @@ $suiteCatalog = @(
         Category = "input"
         Path = "scripts/windows/run_google_homepage_fixture_validation.ps1"
         Purpose = "One-command bounded saved Google homepage fixture probe that serves the saved localhost page and separately checks focus, typed text, and Enter submit on the real headed surface."
-        RecommendedWith = @("google-home", "google-submit-timing")
+        RecommendedWith = @("google-home", "google-home-keypress-submit")
+    }
+    [pscustomobject]@{
+        Name = "google-home-keypress-submit"
+        Category = "input"
+        Path = "scripts/windows/run_google_home_keypress_submit_validation.ps1"
+        Purpose = "One-command reduced-home real-surface keypress-before-submit wrapper that bridges the saved homepage fixture checkpoint and the broader later submit-path wrappers."
+        RecommendedWith = @("google-homepage-fixture", "google-submit-path")
     }
     [pscustomobject]@{
         Name = "google-submit-path"
         Category = "input"
         Path = "scripts/windows/run_google_issue3_submit_path_validation.ps1"
         Purpose = "One-command issue #3 submit-path runner that jumps straight from the earlier title gates into the saved homepage fixture, submit-timing, and shared Enter-order slices."
-        RecommendedWith = @("google-homepage-fixture", "google-submit-timing")
+        RecommendedWith = @("google-home-keypress-submit", "google-submit-timing")
     }
     [pscustomobject]@{
         Name = "google-submit-timing"
         Category = "input"
         Path = "scripts/windows/run_google_submit_timing_validation.ps1"
         Purpose = "One-command wrapper for the bounded Google-shaped keydown, keypress, and submit-ordering probe on the real headed surface before the broader shared gates or manual Google pass. Use the dedicated flow helper when you want that read-first handoff printed before execution."
-        RecommendedWith = @("google-title", "google-shared-enter-order")
+        RecommendedWith = @("google-home-keypress-submit", "google-shared-enter-order")
     }
     [pscustomobject]@{
         Name = "google-form-controls-enter-order"
@@ -356,8 +363,8 @@ $changeRecommendations = @{
     network = @("fetch-credentials", "fetch-abort", "websocket-smoke")
     downloads = @("file-upload", "downloads", "attachment-downloads")
     graphics = @("canvas-smoke", "multi-image", "layout-smoke")
-    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-homepage-fixture", "google-submit-path", "google-submit-timing", "google-form-controls-enter-order", "google-shared-enter-order", "google-live-trace", "manual-user")
-    "google-submit-path" = @("google-homepage-fixture", "google-submit-path", "google-submit-timing", "google-form-controls-enter-order", "google-shared-enter-order", "google-live-trace")
+    "google-input" = @("google-investigation-next", "google-recommended", "google-title", "google-quick", "google-home", "google-homepage-fixture", "google-home-keypress-submit", "google-submit-path", "google-submit-timing", "google-form-controls-enter-order", "google-shared-enter-order", "google-live-trace", "manual-user")
+    "google-submit-path" = @("google-homepage-fixture", "google-home-keypress-submit", "google-submit-path", "google-submit-timing", "google-form-controls-enter-order", "google-shared-enter-order", "google-live-trace")
     "google-form-controls-enter-order" = @("google-form-controls-enter-order", "google-shared-enter-order", "google-submit-timing")
     "google-live-trace" = @("google-submit-timing", "google-shared-enter-order", "google-live-trace", "manual-user")
     "google-saved-html" = @("google-saved-html", "manual-user", "google-investigation-next", "google-recommended", "google-shared-enter-order")
@@ -374,6 +381,9 @@ $googleTitleGuideCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\
 $googleTitleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
 $googleHomepageFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_homepage_fixture_validation_surface.ps1"
 $googleHomepageFixtureFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
+$googleHomeKeypressSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_home_keypress_submit_validation_surface.ps1"
+$googleHomeKeypressFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_home_keypress_submit_validation_flow.ps1"
+$googleHomeKeypressRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_keypress_submit_validation.ps1"
 $googleSubmitPathSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_path_validation_surface.ps1"
 $googleSubmitPathFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 $googleSubmitPathRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1"
@@ -456,6 +466,11 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Surface checker: {0}" -f $googleHomepageFixtureSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleHomepageFixtureFlowCommand)
     }
+    if ($suite.Name -eq "google-home-keypress-submit") {
+        Write-Host ("Surface checker: {0}" -f $googleHomeKeypressSurfaceCheckCommand)
+        Write-Host ("Flow helper: {0}" -f $googleHomeKeypressFlowCommand)
+        Write-Host ("Runner: {0}" -f $googleHomeKeypressRunnerCommand)
+    }
     if ($suite.Name -eq "google-submit-path") {
         Write-Host ("Surface checker: {0}" -f $googleSubmitPathSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleSubmitPathFlowCommand)
@@ -507,9 +522,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper, then run the narrower title-surface checker and read the reduced title marker guide before widening into google-investigation-next, google-title, google-quick, google-home, the homepage-fixture surface checker plus flow helper, google-submit-path, google-submit-timing, the dedicated form-controls Enter-order gate, the broader shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_issue3_submit_path_validation.ps1 when the earlier title gates are already green and you want the later saved-homepage-fixture, submit-timing, and shared Enter-order slices in one narrower command before the live trace helper."
+        "Start with the dedicated Google-input flow helper, then run the narrower title-surface checker and read the reduced title marker guide before widening into google-investigation-next, google-title, google-quick, google-home, the homepage-fixture surface checker plus flow helper, the reduced-home keypress-submit surface checker plus flow helper, google-submit-path, google-submit-timing, the dedicated form-controls Enter-order gate, the broader shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_home_keypress_submit_validation.ps1 when the saved homepage fixture is already green and you want the smaller real-surface keypress-before-submit bridge before the broader later submit-path wrappers."
     } elseif ($ChangeArea -eq "google-submit-path") {
-        "Start with the dedicated submit-path surface checker so the later note, helper, and bounded probes fail fast if one was renamed or removed, then print the flow helper so the saved homepage fixture, submit-timing slice, the dedicated form-controls Enter-order gate, and the shared Enter-order ladder stay in order before you decide whether to run the one-command submit-path runner or isolate one later-stage slice by itself."
+        "Start with the reduced-home keypress-submit surface checker and flow helper when the saved homepage fixture is already green but you still want one smaller real-surface keypress-before-submit proof before the broader later submit-path wrappers. Then move into the dedicated submit-path surface checker so the later note, helper, and bounded probes fail fast if one was renamed or removed, and print the flow helper so the saved homepage fixture, submit-timing slice, the dedicated form-controls Enter-order gate, and the shared Enter-order ladder stay in order before you decide whether to run the one-command submit-path runner or isolate one later-stage slice by itself."
     } elseif ($ChangeArea -eq "google-form-controls-enter-order") {
         "Start with the dedicated form-controls Enter-order surface checker so the smallest shared keypress-before-submit note, helper, and raw probe chain fail fast, then print the dedicated flow helper so the narrowest shared Enter-order gate is spelled out before you run the dedicated wrapper, inspect the marker guide, or widen into the broader shared Enter-order ladder."
     } elseif ($ChangeArea -eq "google-live-trace") {
@@ -573,9 +588,14 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Investigation flow helper: {0}" -f $googleInvestigationNextFlowCommand)
         Write-Host ("Title surface checker: {0}" -f $googleTitleSurfaceCheckCommand)
         Write-Host ("Homepage fixture surface checker: {0}" -f $googleHomepageFixtureSurfaceCheckCommand)
+        Write-Host ("Reduced-home keypress surface checker: {0}" -f $googleHomeKeypressSurfaceCheckCommand)
+        Write-Host ("Reduced-home keypress flow helper: {0}" -f $googleHomeKeypressFlowCommand)
     }
     if ($ChangeArea -eq "google-submit-path") {
-        Write-Host ("Surface checker: {0}" -f $googleSubmitPathSurfaceCheckCommand)
+        Write-Host ("Reduced-home keypress surface checker: {0}" -f $googleHomeKeypressSurfaceCheckCommand)
+        Write-Host ("Reduced-home keypress flow helper: {0}" -f $googleHomeKeypressFlowCommand)
+        Write-Host ("Reduced-home keypress runner: {0}" -f $googleHomeKeypressRunnerCommand)
+        Write-Host ("Submit-path surface checker: {0}" -f $googleSubmitPathSurfaceCheckCommand)
     }
     if ($ChangeArea -eq "google-form-controls-enter-order") {
         Write-Host ("Surface checker: {0}" -f $googleFormControlsEnterOrderSurfaceCheckCommand)
@@ -634,6 +654,10 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_homepage_fixture_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_homepage_fixture_validation.ps1"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-home-keypress-submit"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_home_keypress_submit_validation_surface.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_home_keypress_submit_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_keypress_submit_validation.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-submit-path"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_submit_path_validation_surface.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
@@ -676,6 +700,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_homepage_fixture_validation_flow.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_home_keypress_submit_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_path_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1"
