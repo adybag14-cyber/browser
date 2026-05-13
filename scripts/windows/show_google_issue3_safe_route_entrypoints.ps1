@@ -104,10 +104,14 @@ $recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 safe-route entrypoints'
     purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root and summary-path context for non-default checkouts and env-anchored replays.'
-    repo_root = $resolvedRepoRoot
-    summary_path = $recommendedSummaryPath
+    quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     runner_patch_decision_table_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
+    read_first_suite_command = '.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended'
+    read_first_change_area_command = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input'
+    read_first_google_flow_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1'
+    repo_root = $resolvedRepoRoot
+    summary_path = $recommendedSummaryPath
     fresh_replay_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments ([ordered]@{
         SummaryPath = $recommendedSummaryPath
     }) -RepoRootOverride $recommendedRepoRoot
@@ -127,9 +131,12 @@ $entrypoints = [ordered]@{
         SummaryPath = $recommendedSummaryPath
     }) -RepoRootOverride $recommendedRepoRoot
     notes = @(
+        'Use read_first_suite_command when re-entering issue #3 from the top-level headed validation suite catalog and you want the broader localhost-first runner surfaced quickly.'
+        'Use read_first_change_area_command when the next replay may need one of the narrower Google title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.'
+        'Use read_first_google_flow_command when you want the broader bounded Google flow printed before deciding whether to stay on the safe-route entrypoints or drop to another narrower helper.'
         'Use fresh_replay_command when outputs may be stale or missing.'
         'Use reuse_current_outputs_command only when the current issue #3 artifacts are already present and trusted.'
-        'Open validation_chain_note_path for wrapper precedence and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
+        'Open quickstart_note_path for the shortest current replay note, validation_chain_note_path for wrapper precedence, and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
         'Use refresh_status_route_command before reopening narrower refresh or handoff helpers from a non-default summary.'
         'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted commands now preserve that same repo-root context instead of falling back to the default checkout.'
     )
@@ -145,6 +152,11 @@ Write-Host ''
 Write-Host ("Repo root:   {0}" -f $entrypoints.repo_root)
 Write-Host ("Summary path:{0}" -f $(if ($entrypoints.summary_path) { " $($entrypoints.summary_path)" } else { ' <default>' }))
 Write-Host ''
+Write-Host 'Read-first discovery:'
+Write-Host ("  Suite router:       {0}" -f $entrypoints.read_first_suite_command)
+Write-Host ("  Change-area view:   {0}" -f $entrypoints.read_first_change_area_command)
+Write-Host ("  Google flow helper: {0}" -f $entrypoints.read_first_google_flow_command)
+Write-Host ''
 Write-Host ("Fresh replay:          {0}" -f $entrypoints.fresh_replay_command)
 Write-Host ("Reuse current outputs: {0}" -f $entrypoints.reuse_current_outputs_command)
 Write-Host ("Refresh route:         {0}" -f $entrypoints.refresh_status_route_command)
@@ -152,6 +164,7 @@ Write-Host ("Handoff safe:          {0}" -f $entrypoints.handoff_safe_command)
 Write-Host ("Summary guide safe:    {0}" -f $entrypoints.summary_guide_safe_command)
 Write-Host ("Runner wiring safe:    {0}" -f $entrypoints.runner_wiring_safe_command)
 Write-Host ''
+Write-Host ("Quickstart note:       {0}" -f $entrypoints.quickstart_note_path)
 Write-Host ("Validation chain note: {0}" -f $entrypoints.validation_chain_note_path)
 Write-Host ("Decision table:        {0}" -f $entrypoints.runner_patch_decision_table_path)
 Write-Host ''
