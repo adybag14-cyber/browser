@@ -66,6 +66,8 @@ $submitTimingFlow = '.\\scripts\\windows\\show_google_submit_timing_validation_f
 $submitTimingRunner = '.\\scripts\\windows\\run_google_submit_timing_validation.ps1'
 $sharedEnterOrderFlow = '.\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1'
 $sharedEnterOrderRunner = '.\\scripts\\windows\\run_google_shared_enter_order_validation.ps1'
+$attachedHtmlFlow = '.\\scripts\\windows\\show_google_attached_html_validation_flow.ps1'
+$liveTraceFlow = '.\\scripts\\windows\\show_google_trace_validation_flow.ps1'
 $reducedEnterTraceArtifactPath = '.\\tmp-browser-smoke\\headed-probe\\google-enter-trace-analysis.json'
 $handoffArtifactPath = '.\\tmp-browser-smoke\\headed-probe\\google-submit-path-handoff.json'
 
@@ -134,6 +136,23 @@ Add-SharedArgument -Arguments $sharedEnterOrderArgs -Name HomeWindowReadyAttempt
 Add-SharedArgument -Arguments $sharedEnterOrderArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
 Add-SharedArgument -Arguments $sharedEnterOrderArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
 
+$submitPathHandoffArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $submitPathHandoffArgs -Name RepoRoot -Value $RepoRoot
+
+$attachedHtmlFlowArgs = [System.Collections.Generic.List[string]]::new()
+if ($LeaveOpen) {
+    $attachedHtmlFlowArgs.Add('-LeaveOpen')
+}
+
+$liveTraceFlowArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $liveTraceFlowArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $liveTraceFlowArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $liveTraceFlowArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $liveTraceFlowArgs -Name InputText -Value $SubmitTimingInputText
+if ($LeaveOpen) {
+    $liveTraceFlowArgs.Add('-LeaveOpen')
+}
+
 $flow = [ordered]@{
     issue = "Headed Windows Google submit-path validation flow"
     focus = "Print the later-stage issue #3 command ladder in one place once the earlier title and reduced-homepage gates are already green: saved homepage fixture, reduced Enter-trace diagnosis, the saved submit-path handoff artifact, bounded submit timing, the stricter shared Enter-order stack, and the read-first trace helper that explains where the later submit path diverged."
@@ -147,6 +166,7 @@ $flow = [ordered]@{
     shared_enter_order_port = $SharedEnterOrderPort
     reduced_enter_trace_artifact_path = $reducedEnterTraceArtifactPath
     handoff_artifact_path = $handoffArtifactPath
+    leave_open = [bool]$LeaveOpen
     steps = @(
         [ordered]@{
             name = "surface-check"
@@ -161,7 +181,7 @@ $flow = [ordered]@{
         [ordered]@{
             name = "submit-path-handoff"
             goal = "Read the saved reduced Enter analysis handoff after each bounded rerun so the next Windows replay reopens the right checkpoint without re-deriving the diagnosis."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $handoffGuide)
+            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $handoffGuide, $(if ($submitPathHandoffArgs.Count -gt 0) { " " + ($submitPathHandoffArgs -join " ") } else { "" }))
         }
         [ordered]@{
             name = "trace-guide"
@@ -205,11 +225,11 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
-        "Use .\\scripts\\windows\\show_google_submit_path_handoff.ps1 immediately after a submit-path rerun so the saved reduced Enter analysis points the next Windows replay at the right bounded checkpoint.",
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} immediately after a submit-path rerun so the saved reduced Enter analysis points the next Windows replay at the right bounded checkpoint without dropping the current repo-root context." -f $handoffGuide, $(if ($submitPathHandoffArgs.Count -gt 0) { " " + ($submitPathHandoffArgs -join " ") } else { "" })),
         "Use .\\scripts\\windows\\show_google_submit_path_trace_guide.ps1 after the handoff when you want the later submit-path outputs translated into the next smaller checkpoint before you rerun anything.",
         "Use .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1 when the earlier title or reduced-homepage gates are not green yet and you want the full localhost-first issue #3 ladder.",
-        "Use .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 after this slice is green when the current run has Google-like attached HTML snapshots to replay.",
-        "Use .\\scripts\\windows\\show_google_trace_validation_flow.ps1 only after the saved homepage fixture, reduced Enter-trace analysis, submit-timing, and shared Enter-order slices stay green together but the live homepage still diverges."
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} after this slice is green when the current run has Google-like attached HTML snapshots to replay and you want LeaveOpen preserved on that follow-up where supported." -f $attachedHtmlFlow, $(if ($attachedHtmlFlowArgs.Count -gt 0) { " " + ($attachedHtmlFlowArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} only after the saved homepage fixture, reduced Enter-trace analysis, submit-timing, and shared Enter-order slices stay green together but the live homepage still diverges." -f $liveTraceFlow, $(if ($liveTraceFlowArgs.Count -gt 0) { " " + ($liveTraceFlowArgs -join " ") } else { "" }))
     )
     notes = @(
         "Start with the submit-path surface check so missing notes, handoff helpers, trace helpers, runners, analyzer, or probes fail fast before the later issue #3 ladder looks trustworthy.",
@@ -217,7 +237,8 @@ $flow = [ordered]@{
         "The runner now auto-saves .\\tmp-browser-smoke\\headed-probe\\google-enter-trace-analysis.json and .\\tmp-browser-smoke\\headed-probe\\google-submit-path-handoff.json so the next replay can reopen the reduced diagnosis quickly.",
         "Keep the same host, shared input text, submit-timing input text, and port overrides here when you want the later submit-path checkpoints aligned with the broader issue #3 flow.",
         "Use the trace guide after the saved handoff when you need the quickest explanation of whether the remaining gap stayed in the saved homepage fixture, the reduced Enter-trace artifact, the Google-shaped submit-timing probe, or the stricter shared Enter-order ladder.",
-        "Use -LeaveOpen only on the saved homepage fixture slice or the one-command runner when you want the headed browser left open for live inspection after the bounded phases finish."
+        "Use -LeaveOpen only on the saved homepage fixture slice or the one-command runner when you want the headed browser left open for live inspection after the bounded phases finish.",
+        "The printed later-stage follow-up commands now preserve the current repo root, browser path, host, submit-timing input text, and LeaveOpen mode where those later helpers support them."
     )
 }
 
@@ -239,6 +260,7 @@ Write-Host ("Submit-timing port: {0}" -f $flow.submit_timing_port)
 Write-Host ("Shared Enter-order port: {0}" -f $flow.shared_enter_order_port)
 Write-Host ("Reduced Enter analysis JSON: {0}" -f $flow.reduced_enter_trace_artifact_path)
 Write-Host ("Submit-path handoff JSON: {0}" -f $flow.handoff_artifact_path)
+Write-Host ("Leave open after later-stage follow-up: {0}" -f $flow.leave_open)
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
