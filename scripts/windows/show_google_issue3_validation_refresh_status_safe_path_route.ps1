@@ -258,7 +258,8 @@ if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
 if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-refresh-status-safe-path-route.json'
 }
-$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+$shouldPreserveRepoRoot = $PSBoundParameters.ContainsKey('RepoRoot') -or -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)
+$recommendedRepoRoot = if ($shouldPreserveRepoRoot) {
     $repoRoot
 } else {
     $null
