@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [string[]]$RunnerArgument,
@@ -77,6 +78,62 @@ function Get-ArrayValue {
     }
 
     return @($value)
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
 function Invoke-ScriptStep {
@@ -194,7 +251,11 @@ function New-SkippedStep {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
 $artifactRoot = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe'
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $artifactRoot 'google-issue3-recommended-validation-summary.json'
@@ -202,15 +263,20 @@ if (-not $SummaryPath) {
 if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-recommended-validation-repair-runner-output-patch-targets.json'
 }
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $repoRoot
+} else {
+    $null
+}
 
 $runnerOutputSafeScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1'
 $patchTargetsSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets_safe_route.ps1'
-$runnerOutputSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1'
-$patchTargetsSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
-$runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
-$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
-$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$runnerOutputSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$patchTargetsSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets_safe_route.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerOutputWiringCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerOutputWiringSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$summaryGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$recommendedRunnerCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
 
 foreach ($helperPath in @($runnerOutputSafeScript, $patchTargetsSafeRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -219,11 +285,17 @@ foreach ($helperPath in @($runnerOutputSafeScript, $patchTargetsSafeRouteScript)
 }
 
 $runnerOutputSafeArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $runnerOutputSafeArguments += @('-RepoRoot', $repoRoot)
+}
 if ($RunnerArgument) {
     $runnerOutputSafeArguments += '-RunnerArgument'
     $runnerOutputSafeArguments += $RunnerArgument
 }
 $patchTargetsSafeRouteArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $patchTargetsSafeRouteArguments += @('-RepoRoot', $repoRoot)
+}
 
 $steps = [System.Collections.Generic.List[object]]::new()
 $runnerOutputSafeStep = Invoke-ScriptStep -Name 'runner-output-contract-safe' -ScriptPath $runnerOutputSafeScript -Arguments $runnerOutputSafeArguments -ExpectJson
@@ -356,6 +428,7 @@ $report = [ordered]@{
     issue = 'Google issue #3 recommended validation repair plus runner output patch targets'
     purpose = 'Run the issue #3 runner-output contract safe flow, then immediately reopen the safe patch-target route so the next Windows replay stays on strict-mode-safe guidance before any raw patch-target step is trusted.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     runner_argument_passthrough = @($RunnerArgument)
