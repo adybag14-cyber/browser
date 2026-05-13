@@ -142,7 +142,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 suite catalog entrypoints'
-    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints and the current issue #3 replay helpers on one compact command surface before the replay narrows into the shortcut or safe-route wrappers.'
+    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints and the current issue #3 replay helpers on one compact command surface before the route narrows into the next-step matrix, replay-route, or safe-route wrappers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -161,23 +161,34 @@ $entrypoints = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
-        suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
+        suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
     }
+    bridge_sequence = [ordered]@{
+        google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            SuiteName = 'google-recommended'
+        }) -RepoRootOverride $RepoRoot
+        google_input_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'google-input'
+        }) -RepoRootOverride $RepoRoot
+        suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
+        replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
+        replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
+    }
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, saved-page, or attached-page slices instead of the full recommended runner.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite catalog itself to reopen on that pinned branch first.',
-        'Use suite_router_handoff when you want the shortest compact bridge back into the higher-level suite-router route before reopening replay-route, replay-shortcuts, attached-bundle-first, or safe-route helpers with the same current context.',
-        'Use suite_router_next_steps when the broader suite catalog or suite-router context is already known and you want the fastest helper recommendation printed without reopening the longer bridge notes first.',
+        'Use suite_router_next_steps as the default next helper after the top-level suite catalog when the current route is already known to be issue #3 and you want the fastest current helper recommendation without reopening the broader handoff surface first.',
+        'Use suite_router_handoff when you want the wider compact bridge that keeps the exact top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
         'Use replay_route when you want the smallest read-first helper that keeps the suite catalog entrypoints, attached-bundle branch, replay-shortcuts helper, and safe-route bridge on one surface before narrowing further.',
         'Use replay_shortcuts after replay_route when you want the narrower shortcut map for the attached-bundle-first route and the wrapper-heavy safe-route branches.',
         'Use attached_bundle_first when explicit input paths are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only issue #3 path.',
-        'Use safe_route_entrypoints only after the suite catalog, suite-router handoff, suite-router next-step helper, replay-route helper, or replay-shortcuts helper has already narrowed the replay into the current wrapper-heavy issue #3 path.',
+        'Use safe_route_entrypoints only after the suite catalog, suite-router next-step helper, suite-router handoff, replay-route helper, or replay-shortcuts helper has already narrowed the replay into the current wrapper-heavy issue #3 path.',
         'Keep the quickstart, suite-router bridge, and validation-chain notes nearby when you want the written route beside these commands without reopening the broader Windows runbook first.'
     )
 }
@@ -187,15 +198,19 @@ $entrypoints.recommended_next_key = if ($entrypoints.explicit_input_path_count -
 } elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
     'replay_route'
 } else {
-    'suite_router_handoff'
+    'suite_router_next_steps'
 }
-$entrypoints.recommended_next_command = $entrypoints.helper_commands[$entrypoints.recommended_next_key]
+$entrypoints.recommended_next_command = switch ($entrypoints.recommended_next_key) {
+    'attached_bundle_first' { $entrypoints.helper_commands.attached_bundle_first }
+    'replay_route' { $entrypoints.helper_commands.replay_route }
+    default { $entrypoints.helper_commands.suite_router_next_steps }
+}
 $entrypoints.recommended_next_reason = if ($entrypoints.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 helper chain.'
 } elseif ($entrypoints.recommended_next_key -eq 'replay_route') {
     'A saved SummaryPath is already in play, so reopen the replay-route helper next to preserve that current replay context while keeping the suite catalog and safe-route bridge visible.'
 } else {
-    'No pinned bundle inputs or current summary are in play yet, so start with the compact suite-router handoff helper before narrowing into replay-route, replay-shortcuts, or the wrapper-heavy safe-route commands.'
+    'No pinned bundle inputs or current summary are in play yet, so start with the compact next-step matrix before widening into the broader handoff helper or narrowing into replay-route, replay-shortcuts, or the wrapper-heavy safe-route commands.'
 }
 
 if ($Json) {
@@ -206,36 +221,46 @@ if ($Json) {
 Write-Host 'Google issue #3 suite catalog entrypoints'
 Write-Host ''
 if ($entrypoints.repo_root) {
-    Write-Host ("Repo root:   {0}" -f $entrypoints.repo_root)
+    Write-Host (("Repo root:   {0}") -f $entrypoints.repo_root)
 }
 if ($entrypoints.summary_path) {
-    Write-Host ("Summary path:{0}" -f " $($entrypoints.summary_path)")
+    Write-Host (("Summary path:{0}") -f (" $($entrypoints.summary_path)"))
 }
 if ($entrypoints.explicit_input_path_count -gt 0) {
-    Write-Host ("Input paths: {0}" -f $entrypoints.explicit_input_path_count)
+    Write-Host (("Input paths: {0}") -f $entrypoints.explicit_input_path_count)
 }
 Write-Host ''
-Write-Host ("Recommended next helper: {0}" -f $entrypoints.recommended_next_command)
-Write-Host ("Why:                    {0}" -f $entrypoints.recommended_next_reason)
+Write-Host (("Recommended next helper: {0}") -f $entrypoints.recommended_next_command)
+Write-Host (("Why:                    {0}") -f $entrypoints.recommended_next_reason)
+Write-Host ''
+Write-Host 'Read-first bridge:'
+Write-Host (("  1. Google recommended: {0}") -f $entrypoints.bridge_sequence.google_recommended)
+Write-Host (("  2. Google input:       {0}") -f $entrypoints.bridge_sequence.google_input_change_area)
+Write-Host (("  3. Next-step matrix:   {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
+Write-Host (("  4. Replay route:       {0}") -f $entrypoints.bridge_sequence.replay_route)
+Write-Host (("  5. Replay shortcuts:   {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
+if ($entrypoints.explicit_input_path_count -gt 0) {
+    Write-Host (("  Bundle-first branch:   {0}") -f $entrypoints.helper_commands.attached_bundle_first)
+}
 Write-Host ''
 Write-Host 'Top-level suite catalog entrypoints:'
-Write-Host ("  Google recommended: {0}" -f $entrypoints.suite_catalog_commands.google_recommended)
-Write-Host ("  Google input:       {0}" -f $entrypoints.suite_catalog_commands.google_input_change_area)
-Write-Host ("  Attached bundle:    {0}" -f $entrypoints.suite_catalog_commands.attached_bundle_change_area)
+Write-Host (("  Google recommended: {0}") -f $entrypoints.suite_catalog_commands.google_recommended)
+Write-Host (("  Google input:       {0}") -f $entrypoints.suite_catalog_commands.google_input_change_area)
+Write-Host (("  Attached bundle:    {0}") -f $entrypoints.suite_catalog_commands.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Issue #3 replay helpers:'
-Write-Host ("  Suite handoff:      {0}" -f $entrypoints.helper_commands.suite_router_handoff)
-Write-Host ("  Next-step matrix:   {0}" -f $entrypoints.helper_commands.suite_router_next_steps)
-Write-Host ("  Replay route:       {0}" -f $entrypoints.helper_commands.replay_route)
-Write-Host ("  Replay shortcuts:   {0}" -f $entrypoints.helper_commands.replay_shortcuts)
-Write-Host ("  Bundle first:       {0}" -f $entrypoints.helper_commands.attached_bundle_first)
-Write-Host ("  Safe route map:     {0}" -f $entrypoints.helper_commands.safe_route_entrypoints)
+Write-Host (("  Next-step matrix:   {0}") -f $entrypoints.helper_commands.suite_router_next_steps)
+Write-Host (("  Suite handoff:      {0}") -f $entrypoints.helper_commands.suite_router_handoff)
+Write-Host (("  Replay route:       {0}") -f $entrypoints.helper_commands.replay_route)
+Write-Host (("  Replay shortcuts:   {0}") -f $entrypoints.helper_commands.replay_shortcuts)
+Write-Host (("  Bundle first:       {0}") -f $entrypoints.helper_commands.attached_bundle_first)
+Write-Host (("  Safe route map:     {0}") -f $entrypoints.helper_commands.safe_route_entrypoints)
 Write-Host ''
-Write-Host ("Quickstart note:      {0}" -f $entrypoints.quickstart_note_path)
-Write-Host ("Suite-router bridge:  {0}" -f $entrypoints.suite_router_bridge_note_path)
-Write-Host ("Validation chain:     {0}" -f $entrypoints.validation_chain_note_path)
+Write-Host (("Quickstart note:      {0}") -f $entrypoints.quickstart_note_path)
+Write-Host (("Suite-router bridge:  {0}") -f $entrypoints.suite_router_bridge_note_path)
+Write-Host (("Validation chain:     {0}") -f $entrypoints.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $entrypoints.notes) {
-    Write-Host ("- {0}" -f $note)
+    Write-Host (("- {0}") -f $note)
 }
