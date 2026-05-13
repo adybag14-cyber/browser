@@ -120,6 +120,9 @@ $quickstartNotePath = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
 $sharedArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $sharedArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $SummaryPath
+$repoRootAwareSummaryArguments = [ordered]@{
+    SummaryPath = $SummaryPath
+}
 
 $safeRouteEntrypointsCommand = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
 $replayShortcutsCommand = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $sharedArguments
@@ -129,11 +132,15 @@ $suiteRouterCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_head
 $changeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
     ChangeArea = 'google-input'
 }) -RepoRootOverride $RepoRoot
+$recommendedValidationRunnerCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments $repoRootAwareSummaryArguments -RepoRootOverride $RepoRoot
+$safeWiringAuditCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments $repoRootAwareSummaryArguments -RepoRootOverride $RepoRoot
+$rawWiringAuditCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status.ps1' -Arguments $repoRootAwareSummaryArguments -RepoRootOverride $RepoRoot
+$runnerOutputContractSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_repair_runner_output_contract_safe_route.ps1' -Arguments $repoRootAwareSummaryArguments -RepoRootOverride $RepoRoot
 $wrapperArtifactPaths = @(
-    'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json',
-    'tmp-browser-smoke\headed-probe\google-issue3-runner-output-patch-handoff.json',
-    'tmp-browser-smoke\headed-probe\google-issue3-runner-output-patch-targets-safe-route.json',
-    'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-repair-runner-output-patch-targets.json'
+    'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json',
+    'tmp-browser-smoke\\headed-probe\\google-issue3-runner-output-patch-handoff.json',
+    'tmp-browser-smoke\\headed-probe\\google-issue3-runner-output-patch-targets-safe-route.json',
+    'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-repair-runner-output-patch-targets.json'
 )
 
 $stateCatalog = [ordered]@{
@@ -142,14 +149,15 @@ $stateCatalog = [ordered]@{
         next_goal = 'Patch the runner output contract in both saved output writers before reopening the safe wiring audit.'
         artifact_paths = $wrapperArtifactPaths
         commands = @(
-            'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1',
-            'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status_safe.ps1',
-            'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status.ps1'
+            $recommendedValidationRunnerCommand,
+            $safeWiringAuditCommand,
+            $rawWiringAuditCommand
         )
         notes = @(
             'Patch both saved output writers: Write-RecommendedSummaryArtifact and Write-RecommendedManifestArtifact.',
             'Keep refresh_chain_artifact_path, refresh_chain_artifact_error, handoff_artifact_path, and handoff_artifact_error in both objects.',
             'Preserve nullable error fields exactly as emitted. If the wrapper says $null, keep $null.',
+            'If RepoRoot or SummaryPath is already in play, keep that emitted context attached to the rerun and safe wiring commands instead of falling back to default checkout discovery.',
             'If you need to restart from the top-level issue #3 discovery path before patching, reopen the repo-root-aware safe-route entrypoints helper or replay shortcuts helper first.'
         )
     }
@@ -157,13 +165,14 @@ $stateCatalog = [ordered]@{
         meaning = 'The runner source already carries the direct contract fields that the safe-route wrapper expected.'
         next_goal = 'Skip another direct source patch and reopen the safe wiring audit immediately.'
         artifact_paths = @(
-            'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
+            'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
         )
         commands = @(
-            'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status_safe.ps1'
+            $safeWiringAuditCommand
         )
         notes = @(
             'Do not patch scripts/windows/run_google_issue3_recommended_validation.ps1 again for this state.',
+            'Reopen the safe wiring audit with the same RepoRoot and SummaryPath when that replay context is already in play.',
             'Only reopen the raw wiring helper after the safe audit routes there.',
             'If the saved handoff artifact is stale or missing, reopen the repo-root-aware safe-route entrypoints helper or replay shortcuts helper before widening back out to the broader validation chain.'
         )
@@ -172,14 +181,15 @@ $stateCatalog = [ordered]@{
         meaning = 'The source is already wired, but the saved outputs are stale or still missing the repaired contract.'
         next_goal = 'Treat this as an output-regeneration problem, not another direct source edit.'
         artifact_paths = @(
-            'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
+            'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
         )
         commands = @(
-            'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation_repair_runner_output_contract_safe_route.ps1',
-            'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status_safe.ps1'
+            $runnerOutputContractSafeRouteCommand,
+            $safeWiringAuditCommand
         )
         notes = @(
             'Prefer the emitted repair or regeneration command from the wrapper artifact when one is present.',
+            'Preserve RepoRoot and SummaryPath on the regeneration command and the follow-up safe wiring audit when that replay context is already in play.',
             'Return to the safe wiring audit after regeneration before widening back out to refresh-status or attached HTML follow-up.',
             'If the replay context is no longer clear, reopen the repo-root-aware safe-route entrypoints helper or replay shortcuts helper so the current fresh-replay and reuse-current-outputs routes are printed together again.'
         )
@@ -249,7 +259,7 @@ if ($PSCmdlet.ParameterSetName -eq 'State') {
 }
 
 $guide = [ordered]@{
-    purpose = 'Translate the issue #3 safe-route runner-patch handoff state into the exact next move without reopening the longer decision-table note first.'
+    purpose = 'Translate the issue #3 safe-route runner-patch handoff state into the exact next move without reopening the longer decision-table note first, while preserving repo-root and summary-path context when it is already set.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     decision_table_path = $decisionTablePath
