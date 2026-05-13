@@ -183,8 +183,10 @@ $entrypoints = [ordered]@{
         google_flow = $googleFlowCommand
         contextual_flow = $contextualFlowCommand
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
+        suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
+        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
     }
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
@@ -248,11 +250,10 @@ Write-Host (("  2. Google input:       {0}") -f $entrypoints.bridge_sequence.goo
 Write-Host (("  3. Google flow:        {0}") -f $entrypoints.bridge_sequence.google_flow)
 Write-Host (("  4. Contextual flow:    {0}") -f $entrypoints.bridge_sequence.contextual_flow)
 Write-Host (("  5. Next-step matrix:   {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
-Write-Host (("  6. Replay route:       {0}") -f $entrypoints.bridge_sequence.replay_route)
-Write-Host (("  7. Replay shortcuts:   {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
-if ($entrypoints.explicit_input_path_count -gt 0) {
-    Write-Host (("  Bundle-first branch:   {0}") -f $entrypoints.helper_commands.attached_bundle_first)
-}
+Write-Host (("  6. Suite handoff:      {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
+Write-Host (("  7. Replay route:       {0}") -f $entrypoints.bridge_sequence.replay_route)
+Write-Host (("  8. Replay shortcuts:   {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
+Write-Host (("  9. Bundle-first route: {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
 Write-Host ''
 Write-Host 'Top-level suite catalog entrypoints:'
 Write-Host (("  Google recommended: {0}") -f $entrypoints.suite_catalog_commands.google_recommended)
