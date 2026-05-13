@@ -111,6 +111,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 ```
 
+For the current Google search-box work behind issue `#3`, print the dedicated safe-route entrypoints map once the shared suite router or broader Google flow has narrowed the replay there:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
+```
+
 For the current Google search-box work behind issue `#3`, use these helpers in
 order.
 
@@ -123,6 +130,7 @@ Keep these notes open once the replay narrows into the wrapper-heavy safe route:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile title
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1
@@ -177,6 +185,7 @@ Routing rules:
 
 - Start with the smallest bounded localhost suite before a saved-page or live-site pass.
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
+- Use `show_google_issue3_safe_route_entrypoints.ps1` when the shared suite router or broader Google flow has already narrowed into the current wrapper-heavy issue `#3` replay and you want the fresh replay, reuse-current-outputs, refresh-status, handoff-safe, summary-guide, and runner-wiring commands printed in one place.
 - Use `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` as the wrapper-order reference once the issue `#3` replay narrows into safe-route, handoff, or repair helpers.
 - Use `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` when the replay lands on the direct runner patch loop and you want the next move for `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs` without reopening the longer chain note.
 - Use `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` beside the decision table when the replay is already on the direct runner source edit and you need the field-level rules for nullable `$null`, artifact order, blank-path handling, and post-patch verification.
