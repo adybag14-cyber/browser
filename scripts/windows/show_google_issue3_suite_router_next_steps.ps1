@@ -135,6 +135,11 @@ $sharedArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $sharedArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $SummaryPath
 
+$safeRouteArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $safeRouteArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $safeRouteArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $safeRouteArguments -Name InputPath -Values $InputPath
+
 $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
@@ -238,7 +243,7 @@ $helper = [ordered]@{
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleFlowArguments
         attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleFlowArguments -Switches @('Wait')
-        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
+        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $safeRouteArguments
         fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
         reuse_current_outputs = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments $sharedArguments
         runner_patch_next_step = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
@@ -257,7 +262,7 @@ $helper = [ordered]@{
         'Use this helper when issue #3 work starts from the higher-level Windows validation router and you want the next helper chosen quickly without reopening the longer chain notes first.',
         'When RepoRoot is supplied, the top-level suite-router and Google-flow commands preserve that same LIGHTPANDA_REPO_ROOT context instead of falling back to the default checkout path.',
         'When SummaryPath is supplied, the replay-route, replay-shortcuts, contextual-flow, safe-route entrypoints, fresh safe-route replay, reuse-current-outputs, and runner next-step helpers keep that same saved summary context attached.',
-        'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, contextual-flow, and attached-bundle-first helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
+        'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, contextual-flow, attached-bundle-first, and safe-route entrypoints helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
         'Use replay_shortcuts as the default next helper when the route is already known to be issue #3 and you want the narrowest shortcut map first.',
         'Use contextual_flow when saved summary state, repo-root overrides, or pinned attached pages should stay visible while you choose between the broader recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.',
         'Use replay_route when you want the slightly broader attached-bundle branch, safe-route bridge, and runner-state helper printed together before dropping back to the narrower replay-shortcuts map.',
