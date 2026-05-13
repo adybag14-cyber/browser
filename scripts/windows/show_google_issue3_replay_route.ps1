@@ -100,6 +100,7 @@ $recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
 } else {
     $null
 }
+$runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
 
 $route = [ordered]@{
     issue = 'Google issue #3 replay route'
@@ -122,7 +123,10 @@ $route = [ordered]@{
     reuse_current_outputs_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments ([ordered]@{
         SummaryPath = $recommendedSummaryPath
     }) -RepoRootOverride $recommendedRepoRoot
-    runner_patch_next_step_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
+    runner_patch_next_step_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
+        SummaryPath = $recommendedSummaryPath
+        State = $runnerPatchStatePlaceholder
+    }) -RepoRootOverride $recommendedRepoRoot
     notes = @(
         'Start with read_first_suite_command when you want the broadest current issue #3 runner surfaced first.',
         'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice.',
@@ -131,7 +135,7 @@ $route = [ordered]@{
         'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.',
         'Use fresh_replay_command when issue #3 outputs may be stale or missing.',
         'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.',
-        'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state.'
+        'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.'
     )
 }
 
