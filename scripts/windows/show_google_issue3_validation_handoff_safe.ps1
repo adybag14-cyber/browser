@@ -132,10 +132,12 @@ $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windo
 $handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
+$validationSafeRouteSafeGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_safe_guide.ps1'
 $runnerWiringStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $runnerWiringStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
+$runnerContractRepairSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_safe_route.ps1'
 
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
@@ -233,10 +235,10 @@ if ($manifestError) {
     $nextArtifactToOpen = if ($manifestExists) { $manifestPath } else { $SummaryPath }
 } elseif ($runnerContractMissing) {
     $status = 'runner-contract-missing'
-    $reason = 'The current summary or manifest still omits at least one direct refresh or handoff field that the existing handoff helper reads under strict mode, but the branch now includes a bounded repair helper for normalizing those saved outputs immediately after a run.'
-    $nextFocus = 'Run the runner-output contract repair helper first, then rerun the safe wiring audit before trusting the existing handoff helper again.'
-    $recommendedCommand = $runnerContractRepairCommand
-    $recommendedGuideCommand = $runnerWiringStatusSafeCommand
+    $reason = 'The current summary or manifest still omits at least one direct refresh or handoff field that the existing handoff helper reads under strict mode, but the branch now includes a bounded safe-route repair wrapper that repairs those saved outputs and immediately reopens the strict-mode-safe validation route.'
+    $nextFocus = 'Run the safe-route runner-output contract repair wrapper first, then follow the reopened validation-safe guidance before trusting the existing handoff helper again.'
+    $recommendedCommand = $runnerContractRepairSafeRouteCommand
+    $recommendedGuideCommand = $validationSafeRouteSafeGuideCommand
     $nextArtifactToOpen = $SummaryPath
 } elseif ((-not $refreshExists) -or (-not $refreshMatchesSummary) -or $refreshError) {
     $status = 'refresh-state-needs-rebuild'
@@ -289,6 +291,8 @@ $report = [ordered]@{
     runner_wiring_status_safe_command = $runnerWiringStatusSafeCommand
     runner_patch_targets_command = $runnerPatchTargetsCommand
     runner_contract_repair_command = $runnerContractRepairCommand
+    runner_contract_repair_safe_route_command = $runnerContractRepairSafeRouteCommand
+    validation_safe_route_safe_guide_command = $validationSafeRouteSafeGuideCommand
     refresh_status_command = $refreshStatusCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
     refresh_chain_command = $refreshChainCommand
