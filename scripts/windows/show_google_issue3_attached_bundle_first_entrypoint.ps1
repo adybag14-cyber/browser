@@ -84,6 +84,49 @@ function Format-HelperCommand {
     return $command
 }
 
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string[]]$Switches = @(),
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        $fallbackArguments = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in $Arguments.GetEnumerator()) {
+            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+        }
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
     $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
 }
@@ -107,7 +150,9 @@ $entrypoint = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
-    suite_router_command = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+    suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+        ChangeArea = 'attached-html-target-bundle'
+    }) -RepoRootOverride $RepoRoot
     bundle_flow_command = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
     bundle_runner_command = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
     replay_shortcuts_command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $replayShortcutsArguments
@@ -117,7 +162,7 @@ $entrypoint = [ordered]@{
     notes = @(
         'Use this helper when the current saved or attached pages are the known three-page compatibility bundle and you want that locked input set exercised before the broader Google-only wrapper chain.',
         'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the flow and runner commands instead of relying on auto-discovery.',
-        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-shortcuts and safe-route return commands to preserve that same context.',
+        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the suite-router, replay-shortcuts, and safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
         'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.'
     )
