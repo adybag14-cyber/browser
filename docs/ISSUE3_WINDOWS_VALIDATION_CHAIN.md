@@ -12,41 +12,38 @@ Keep the next Windows replay on the newest strict-mode-safe wrapper first, prese
 
 Use the smallest wrapper that matches the current state instead of starting from a raw helper by default.
 
-1. Top-level replay plus preserved runner-patch guidance
+1. Fresh replay plus final safe-route patch handoff
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
+```
+Use this as the default fresh Windows replay entrypoint when the current issue `#3` outputs may be stale or missing and you want one command that:
+- reruns the recommended validation flow
+- preserves the final runner patch handoff artifact
+- keeps the follow-up split between `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`
+
+2. Top-level route plus preserved runner-patch guidance
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1
 ```
-Use this when you want one current top-level command that:
-- reopens the strict-mode-safe validation route
-- preserves runner-output patch guidance when the chain narrows that far
-- writes one combined artifact at `tmp-browser-smoke\headed-probe\google-issue3-validation-safe-route-runner-patch-wrapper.json`
+Use this when the current saved outputs are already present and you want to reopen the strict-mode-safe validation route plus preserved runner-output patch guidance without another broader replay first.
 
-2. Summary-contract recovery plus safe-route reopen
+3. Summary-contract recovery plus safe-route reopen
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_summary_contract_safe_route.ps1
 ```
 Use this when older or partially repaired saved outputs still need summary-contract cleanup before the safe route should be trusted again.
 
-3. Fresh replay plus runner-output contract repair
+4. Fresh replay plus runner-output contract repair
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1
 ```
 Use this when the next replay should regenerate the current outputs, normalize the runner-output contract, and immediately confirm whether the raw wiring audit is ready.
 
-4. Fresh replay plus runner-output patch-target guidance
+5. Fresh replay plus runner-output patch-target guidance
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1
 ```
 Use this when the next replay is likely to end in a direct runner-side patch and you want one artifact that preserves the exact patch-target lines.
-
-5. Fresh replay plus safe-route runner patch handoff
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
-```
-Use this when you want the current safe-route runner-patch wrapper to flow straight into the final patch-handoff artifact in one command, especially when the next Windows replay needs to distinguish between:
-- `ready-for-runner-patch`
-- `already-direct`
-- `runner-already-wired-regenerate-outputs`
 
 ## Raw runner
 
@@ -105,10 +102,12 @@ Only trust the stricter raw helper after its safe wrapper says the state is read
 Stay on the wrapper and safe-route chain instead of starting from the raw patch-target helper:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
 ```
+
+When current outputs may be stale or missing, prefer the fresh replay handoff wrapper first. Use the show-only safe-route wrapper when you already trust the current saved outputs and only need to reopen the narrower guidance chain.
 
 If the safe route still says the raw patch-target helper is the next safe checkpoint, let that helper be reopened through the safe-route wrapper instead of launching it by hand first.
 
@@ -183,19 +182,21 @@ Patch rules:
 - If the safe-route patch-handoff wrapper reports `already-direct`, skip the source patch and move straight to the safe wiring audit.
 
 Recommended patch loop:
-1. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1` or `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1`.
-2. If the safe route reports `ready-for-runner-patch`, run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1`.
-3. If that wrapper reports `already-direct`, skip the runner patch and reopen `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`.
-4. Otherwise open the newest safe-route patch-handoff artifact or raw patch-handoff artifact and copy the suggested field lines for both saved output objects in `scripts/windows/run_google_issue3_recommended_validation.ps1`.
-5. Rerun `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`.
-6. Verify with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`.
-7. Confirm the raw audit with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1`.
-8. Continue into `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1` only after the wiring audit reports the runner output is ready.
+1. Run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1`.
+2. If the wrapper reports `ready-for-runner-patch`, open the newest safe-route patch-handoff artifact and copy the suggested field lines for both saved output objects in `scripts/windows/run_google_issue3_recommended_validation.ps1`.
+3. If the wrapper reports `already-direct`, skip the runner patch and reopen `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`.
+4. If the wrapper reports `runner-already-wired-regenerate-outputs`, follow its emitted regeneration or repair command before reopening the safe wiring audit.
+5. Otherwise, if you are intentionally reusing current saved outputs, run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1` or `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1`.
+6. Rerun `powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1`.
+7. Verify with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1`.
+8. Confirm the raw audit with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1`.
+9. Continue into `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1` only after the wiring audit reports the runner output is ready.
 
 ## Practical rule
 
 If two helpers disagree:
 - prefer the wrapper over the raw command when a wrapper already exists for that checkpoint
+- prefer `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the default fresh replay entrypoint; use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` when reusing current saved outputs is intentional
 - otherwise prefer the helper with `safe` in the name unless the safe helper explicitly says the raw helper is ready
 - if the raw wiring audit says `saved-artifacts-stale-runner-already-wired`, prefer saved-output regeneration or repair over another direct runner patch
 - if the safe-route patch-handoff wrapper says `already-direct`, go straight to the safe wiring audit
