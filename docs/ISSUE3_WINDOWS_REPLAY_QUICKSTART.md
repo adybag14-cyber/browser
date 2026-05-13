@@ -154,6 +154,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_ru
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State runner-already-wired-regenerate-outputs
 ```
 
+If the replay is already running from a non-default checkout or from an already-saved summary, preserve that context directly in the state helper too:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -State ready-for-runner-patch
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -State already-direct
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -State runner-already-wired-regenerate-outputs
+```
+
+Use that form when the safe-route wrapper already narrowed the replay inside a non-default checkout or a reused summary, so the state helper keeps the same replay context on its recovery commands.
+
 Use it when you want the exact next commands printed without reopening the longer decision table first.
 
 ## If the current saved outputs are already trustworthy
@@ -175,13 +185,14 @@ Meaning:
 
 Do this next:
 1. Open `tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json` first.
-2. Patch both saved output writers in `scripts/windows/run_google_issue3_recommended_validation.ps1`.
-3. Keep these fields present in both objects:
+2. Keep `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` and `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` open beside that artifact before editing the runner.
+3. Patch both saved output writers in `scripts/windows/run_google_issue3_recommended_validation.ps1`.
+4. Keep these fields present in both objects:
    - `refresh_chain_artifact_path`
    - `refresh_chain_artifact_error`
    - `handoff_artifact_path`
    - `handoff_artifact_error`
-4. Re-run:
+5. Re-run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
