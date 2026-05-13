@@ -144,7 +144,7 @@ $manifestRefreshArtifactErrorPopulated = [bool]($manifestHasRefreshArtifactError
 $manifestHandoffArtifactErrorPopulated = [bool]($manifestHasHandoffArtifactErrorField -and -not [string]::IsNullOrWhiteSpace([string]$manifestRecord.handoff_artifact_error))
 
 $refreshChainCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\refresh_google_issue3_validation_handoff_chain.ps1'
-$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
+$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $bundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
 $summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
