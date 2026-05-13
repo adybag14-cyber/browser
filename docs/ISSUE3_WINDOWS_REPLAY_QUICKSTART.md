@@ -8,6 +8,28 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`
 - `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md`
 
+## One-command entrypoints map
+
+Use this helper when you want the current issue `#3` safe-route commands printed in one place before choosing the next replay step:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+```
+
+If the replay is running from a non-default checkout or from an already-saved summary, preserve that context directly in the helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
+```
+
+Use this when you want the helper to print the current:
+- fresh replay command
+- reuse-current-outputs command
+- refresh-status safe-path route
+- handoff-safe helper
+- summary-guide safe helper
+- runner-wiring safe helper
+
 ## Default fresh replay
 
 Start here when current issue `#3` outputs may be stale or missing:
