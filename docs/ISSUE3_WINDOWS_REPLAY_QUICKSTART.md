@@ -8,6 +8,23 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`
 - `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md`
 
+## Read-first discovery
+
+Use these when you are re-entering issue `#3` from the higher-level headed validation catalog before choosing a narrower safe-route helper:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+```
+
+These match the `read_first_*` commands printed by `show_google_issue3_safe_route_entrypoints.ps1`.
+
+Use them in this order when helpful:
+- `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first
+- `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay
+- `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes
+
 ## One-command entrypoints map
 
 Use this helper when you want the current issue `#3` safe-route commands printed in one place before choosing the next replay step:
