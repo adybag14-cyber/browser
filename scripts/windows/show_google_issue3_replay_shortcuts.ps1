@@ -92,10 +92,14 @@ $sharedArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $sharedArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $SummaryPath
 
-$bundleArguments = [System.Collections.Generic.List[string]]::new()
-Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
-Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
-Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
+$bundleFirstArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleFirstArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $bundleFirstArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $bundleFirstArguments -Name InputPath -Values $InputPath
+
+$bundleRouteArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleRouteArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $bundleRouteArguments -Name InputPath -Values $InputPath
 
 $shortcuts = [ordered]@{
     issue = 'Google issue #3 replay shortcuts'
@@ -114,9 +118,9 @@ $shortcuts = [ordered]@{
     }
     helper_commands = [ordered]@{
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
-        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
-        attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
-        attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
+        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleFirstArguments
+        attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleRouteArguments
+        attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleRouteArguments -Switches @('Wait')
         fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
         reuse_current_outputs = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments $sharedArguments
     }
