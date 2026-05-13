@@ -66,6 +66,7 @@ $localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-or
 $formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
 $formControlsFlow = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
 $formControlsTraceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
+$recommendedValidation = '.\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
@@ -125,6 +126,25 @@ Add-SharedArgument -Arguments $formControlsGuideArgs -Name HomeWindowReadyAttemp
 Add-SharedArgument -Arguments $formControlsGuideArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
 Add-SharedArgument -Arguments $formControlsGuideArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
 
+$recommendedValidationArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name SharedInputText -Value $SharedInputText
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name EnterMutationSuffix -Value $EnterMutationSuffix
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name TitleProbePort -Value $TitleProbePort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name SharedLabelPort -Value $SharedLabelPort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name SharedDefaultPort -Value $SharedDefaultPort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name SharedDeferredPort -Value $SharedDeferredPort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name InlineFlowPort -Value $InlineFlowPort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name SharedReducedGooglePort -Value $SharedReducedGooglePort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name SharedEnterOrderPort -Value $SharedEnterOrderPort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name ReducedHomeKeypressPort -Value $ReducedHomeKeypressPort
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name HomeWindowReadyAttempts -Value $HomeWindowReadyAttempts
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
+Add-SharedArgument -Arguments $recommendedValidationArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
+
 $flow = [ordered]@{
     issue = "Headed Windows Google shared Enter-order validation flow"
     focus = "Run the shared form-controls baseline, the localhost Google title probe, the reduced Google homepage keypress probe, the localhost Enter-order wrapper, and the dedicated shared Enter-order gate in the same order before a live Google manual pass."
@@ -180,9 +200,9 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
-        "Use .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1 when you want only the dedicated shared form-controls gate printed and parameterized before you run it.",
-        "Use .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1 when you want the dedicated gate markers translated into click-focus, typed-text, keypress, and submit failure stages.",
-        "Use .\scripts\windows\run_google_issue3_recommended_validation.ps1 when you want this stack folded into the broader localhost-first issue #3 flow.",
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want only the dedicated shared form-controls gate printed with the same repo-root, browser, host, shared input, and timing context before you run it." -f $formControlsFlow, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the dedicated gate markers translated into click-focus, typed-text, keypress, and submit failure stages without reconstructing the current shared Enter-order context by hand." -f $formControlsTraceGuide, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want this stack folded back into the broader localhost-first issue #3 flow with the same repo-root, browser, host, shared input, Enter mutation, and timing settings." -f $recommendedValidation, $(if ($recommendedValidationArgs.Count -gt 0) { " " + ($recommendedValidationArgs -join " ") } else { "" })),
         "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, and both Enter-order probes stay green together.",
         "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
     )
@@ -192,7 +212,8 @@ $flow = [ordered]@{
         "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
         "The localhost wrapper and the dedicated form-controls probe both default to the shared Enter-order port on purpose so one port override keeps the pair aligned.",
         "Use the dedicated form-controls flow helper when you only need the last shared keypress-before-submit gate without printing the wider shared Enter-order ladder.",
-        "Use the form-controls trace guide when you want a quick explanation of whether the remaining failure stayed before click focus, before visible text commit, or before keypress reached submit."
+        "Use the form-controls trace guide when you want a quick explanation of whether the remaining failure stayed before click focus, before visible text commit, or before keypress reached submit.",
+        "The printed next-step commands now preserve the current repo root, custom browser path, host, shared input, Enter mutation, and timing settings where those later helpers support them."
     )
 }
 
