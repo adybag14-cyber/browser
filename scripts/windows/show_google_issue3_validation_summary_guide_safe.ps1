@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -104,25 +105,122 @@ function Get-FirstNonEmptyValue {
     return $null
 }
 
-function Get-PhaseReplayCommand([string]$PhaseName) {
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\scripts\windows\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
+function Get-PhaseReplayCommand {
+    param(
+        [string]$PhaseName,
+        [string]$RepoRootOverride
+    )
+
     if ([string]::IsNullOrWhiteSpace($PhaseName)) {
         return $null
     }
 
     switch ($PhaseName) {
-        'localhost' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase localhost' }
-        'quick' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase quick' }
-        'home' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase home' }
-        'homepage-fixture' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_homepage_fixture_validation.ps1' }
-        'input-phase-localhost' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase input-phase-localhost' }
-        'submit-timing' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase submit-timing' }
-        'shared-enter-order' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order' }
-        'manual' { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1' }
-        default { return 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1' }
+        'localhost' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_input_validation.ps1' -Arguments ([ordered]@{
+                Phase = 'localhost'
+            }) -RepoRootOverride $RepoRootOverride
+        }
+        'quick' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_input_validation.ps1' -Arguments ([ordered]@{
+                Phase = 'quick'
+            }) -RepoRootOverride $RepoRootOverride
+        }
+        'home' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_input_validation.ps1' -Arguments ([ordered]@{
+                Phase = 'home'
+            }) -RepoRootOverride $RepoRootOverride
+        }
+        'homepage-fixture' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_homepage_fixture_validation.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $RepoRootOverride
+        }
+        'input-phase-localhost' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_input_validation.ps1' -Arguments ([ordered]@{
+                Phase = 'input-phase-localhost'
+            }) -RepoRootOverride $RepoRootOverride
+        }
+        'submit-timing' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_input_validation.ps1' -Arguments ([ordered]@{
+                Phase = 'submit-timing'
+            }) -RepoRootOverride $RepoRootOverride
+        }
+        'shared-enter-order' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_input_validation.ps1' -Arguments ([ordered]@{
+                Phase = 'shared-enter-order'
+            }) -RepoRootOverride $RepoRootOverride
+        }
+        'manual' {
+            return Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_manual_fixture_replay.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $RepoRootOverride
+        }
+        default {
+            return Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+                RepoRoot = $RepoRootOverride
+            })
+        }
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -138,25 +236,49 @@ $artifactRoot = Get-FirstNonEmptyValue -Values @(
 if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-recommended-validation-guide-safe.json'
 }
-$guideArtifactPath = Get-FirstNonEmptyValue -Values @(
-    Get-OptionalPropertyValue -Object $summary -Name 'guide_artifact_path',
-    (Join-Path $artifactRoot 'google-issue3-recommended-validation-guide.json')
-)
 
-$surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_recommended_validation_surface.ps1'
-$recommendedRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$titleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1'
-$submitGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_path_trace_guide.ps1'
-$formGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
-$probeTriageCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_probe_triage.ps1'
-$manualFixtureReplayCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_manual_fixture_replay.ps1'
-$artifactPathRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_artifact_paths.ps1'
-$summaryContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_summary_contract.ps1'
-$phaseBoundaryCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1'
-$manifestGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest_safe.ps1'
-$artifactBundleGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_artifact_bundle_safe.ps1'
-$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
-$refreshStatusGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $repoRoot
+} else {
+    $null
+}
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+    $SummaryPath
+} else {
+    $null
+}
+
+$surfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_recommended_validation_surface.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$recommendedRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+})
+$titleGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_title_probe_trace_guide.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$submitGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_submit_path_trace_guide.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$formGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_form_controls_enter_order_trace_guide.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$probeTriageCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_probe_triage.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$manualFixtureReplayCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_manual_fixture_replay.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$artifactPathRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_validation_artifact_paths.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$summaryContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_validation_summary_contract.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$phaseBoundaryCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_phase_boundary.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$manifestGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_manifest_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$artifactBundleGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$handoffGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$refreshStatusGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 
 $manifestArtifactPath = Get-FirstNonEmptyValue -Values @(
     Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path',
@@ -241,7 +363,7 @@ if ($missingSummaryContractFields.Count -gt 0) {
     }
 } elseif ($fixtureAssetsMissing -and $firstFailedPhase -eq 'manual') {
     $recommendedCommand = $recommendedRunnerCommand
-    $recommendedGuideCommand = $manualFixtureReplayCommand
+    $recommendedGuideCommand = if ($manualFixtureReplayAvailable) { $manualFixtureReplayCommand } else { $probeTriageCommand }
     $nextFocus = 'Restore the missing sibling assets for the saved Google-style manual fixtures before trusting the manual follow-up.'
     $reason = "The manual follow-up is still the first failing checkpoint, and $($fixturesWithMissingAssets.Count) fixture selection(s) reference missing local assets."
 } elseif ($completed) {
@@ -252,43 +374,43 @@ if ($missingSummaryContractFields.Count -gt 0) {
 } else {
     switch ($firstFailedPhase) {
         'localhost' {
-            $recommendedCommand = Get-PhaseReplayCommand 'localhost'
+            $recommendedCommand = Get-PhaseReplayCommand -PhaseName 'localhost' -RepoRootOverride $recommendedRepoRoot
             $recommendedGuideCommand = $titleGuideCommand
             $nextFocus = 'Restore the localhost fixture baseline before looking at the more Google-shaped phases.'
             $reason = 'The earliest failure happened at the plain localhost checkpoint.'
         }
         'quick' {
-            $recommendedCommand = Get-PhaseReplayCommand 'quick'
+            $recommendedCommand = Get-PhaseReplayCommand -PhaseName 'quick' -RepoRootOverride $recommendedRepoRoot
             $recommendedGuideCommand = $titleGuideCommand
             $nextFocus = 'Stay on the quick bounded title probe until focus and typed markers are stable.'
             $reason = 'The quick title-marker stage is the first failing checkpoint.'
         }
         'home' {
-            $recommendedCommand = Get-PhaseReplayCommand 'home'
+            $recommendedCommand = Get-PhaseReplayCommand -PhaseName 'home' -RepoRootOverride $recommendedRepoRoot
             $recommendedGuideCommand = $titleGuideCommand
             $nextFocus = 'Keep the investigation on the saved-home title path before widening to submit ordering or attached HTML.'
             $reason = 'The home checkpoint failed before the later submit-order phases had a chance to run.'
         }
         'homepage-fixture' {
-            $recommendedCommand = Get-PhaseReplayCommand 'homepage-fixture'
+            $recommendedCommand = Get-PhaseReplayCommand -PhaseName 'homepage-fixture' -RepoRootOverride $recommendedRepoRoot
             $recommendedGuideCommand = $titleGuideCommand
             $nextFocus = 'Fix the localhost homepage fixture behavior before trusting later Google-style checkpoints.'
             $reason = 'The dedicated homepage fixture phase is the first failing step in the saved ladder.'
         }
         'input-phase-localhost' {
-            $recommendedCommand = Get-PhaseReplayCommand 'input-phase-localhost'
+            $recommendedCommand = Get-PhaseReplayCommand -PhaseName 'input-phase-localhost' -RepoRootOverride $recommendedRepoRoot
             $recommendedGuideCommand = $titleGuideCommand
             $nextFocus = 'Keep the replay on the bounded localhost input phase until typed text and focus stay stable.'
             $reason = 'The saved summary says the failure happened at the localhost input phase before the Enter-order checks.'
         }
         'submit-timing' {
-            $recommendedCommand = Get-PhaseReplayCommand 'submit-timing'
+            $recommendedCommand = Get-PhaseReplayCommand -PhaseName 'submit-timing' -RepoRootOverride $recommendedRepoRoot
             $recommendedGuideCommand = $submitGuideCommand
             $nextFocus = 'Inspect the reduced-home submit timing path before reopening broader headed input changes.'
             $reason = 'The reduced-home submit timing phase is the first failing checkpoint in the saved summary.'
         }
         'shared-enter-order' {
-            $recommendedCommand = Get-PhaseReplayCommand 'shared-enter-order'
+            $recommendedCommand = Get-PhaseReplayCommand -PhaseName 'shared-enter-order' -RepoRootOverride $recommendedRepoRoot
             $recommendedGuideCommand = $formGuideCommand
             $nextFocus = 'Stay on the shared Enter-order checkpoint until keydown, keypress, and submit ordering are proven.'
             $reason = 'The bounded shared Enter-order phase failed, so the next replay should stay on that ordering proof.'
@@ -308,8 +430,9 @@ $lastPassedPhaseJson = if ($lastPassedPhaseResult) { Get-OptionalPropertyValue -
 
 $report = [ordered]@{
     issue = 'Google issue #3 validation summary guide safe helper'
-    purpose = 'Read the saved recommended-validation summary with optional-field guards so older issue #3 artifacts can still produce a bounded next-step recommendation under strict mode.'
+    purpose = 'Read the saved recommended-validation summary with optional-field guards so older issue #3 artifacts can still produce a bounded next-step recommendation under strict mode, while preserving the selected repo root and summary path in follow-up commands.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     artifact_root = $artifactRoot
@@ -330,11 +453,11 @@ $report = [ordered]@{
     first_failed_phase_error = $firstFailedPhaseError
     first_failed_phase_log_path = $firstFailedPhaseLogPath
     first_failed_phase_primary_json_artifact_path = $firstFailedPhasePrimaryJson
-    first_failed_phase_replay_command = Get-PhaseReplayCommand $firstFailedPhase
+    first_failed_phase_replay_command = Get-PhaseReplayCommand -PhaseName $firstFailedPhase -RepoRootOverride $recommendedRepoRoot
     last_passed_phase = $lastPassedPhaseName
     last_passed_phase_log_path = $lastPassedPhaseLogPath
     last_passed_phase_primary_json_artifact_path = $lastPassedPhaseJson
-    last_passed_phase_replay_command = Get-PhaseReplayCommand $lastPassedPhaseName
+    last_passed_phase_replay_command = Get-PhaseReplayCommand -PhaseName $lastPassedPhaseName -RepoRootOverride $recommendedRepoRoot
     manual_fixture_replay_available = [bool]$manualFixtureReplayAvailable
     manual_fixture_replay_command = if ($manualFixtureReplayAvailable) { $manualFixtureReplayCommand } else { $null }
     fixture_assets_missing = [bool]$fixtureAssetsMissing
@@ -362,6 +485,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 validation summary guide safe helper'
 Write-Host ''
+Write-Host ("Repo root: {0}" -f $report.repo_root)
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Completed: {0}" -f $report.completed)
