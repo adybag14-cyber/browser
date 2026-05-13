@@ -103,13 +103,14 @@ Add-SharedPathArrayArgument -Arguments $bundleRouteArguments -Name InputPath -Va
 
 $shortcuts = [ordered]@{
     issue = 'Google issue #3 replay shortcuts'
-    purpose = 'Keep the top-level issue #3 read-first commands, the narrower safe-route helper, and the attached three-page bundle route on one compact command surface.'
+    purpose = 'Keep the top-level issue #3 read-first commands, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     decision_table_note_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
+    patch_rules_note_path = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
     read_first_commands = [ordered]@{
         suite_router = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended'
         change_area = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input'
@@ -118,6 +119,7 @@ $shortcuts = [ordered]@{
     }
     helper_commands = [ordered]@{
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
+        runner_patch_next_step = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleFirstArguments
         attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleRouteArguments
         attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleRouteArguments -Switches @('Wait')
@@ -129,9 +131,10 @@ $shortcuts = [ordered]@{
         'Use change_area when you may need a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace branch instead of the broader recommended replay.',
         'Use google_flow when you want the current localhost-first issue #3 ladder printed before you choose between the narrower safe-route replay, the attached bundle route, or a later-stage Google slice.',
         'Use safe_route_entrypoints when outputs may already exist and you want the newest issue #3 wrapper commands, notes, and next-state helpers printed in one place.',
+        'Use runner_patch_next_step after the safe-route wrapper or reuse-current-outputs helper names one of the three current runner-patch states and you want the exact next move without reopening the longer decision table first.',
         'Use attached_bundle_first when the current saved or attached pages are the known three-page compatibility bundle and you want that route exercised before reopening the broader Google-only wrapper chain.',
         'Use fresh_safe_route_replay when current issue #3 outputs may be stale or missing. Use reuse_current_outputs only when the current saved outputs are already trusted.',
-        'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, and decision_table_note_path when the runner patch handoff lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
+        'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, decision_table_note_path when the runner patch handoff lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and patch_rules_note_path when the replay is already narrowed to a direct runner-source edit.'
     )
 }
 
@@ -160,6 +163,7 @@ Write-Host ("  Bundle suite route:   {0}" -f $shortcuts.read_first_commands.atta
 Write-Host ''
 Write-Host 'Shortcut helpers:'
 Write-Host ("  Safe route entrypoints: {0}" -f $shortcuts.helper_commands.safe_route_entrypoints)
+Write-Host ("  Runner next-step helper:{0}" -f (' ' + $shortcuts.helper_commands.runner_patch_next_step))
 Write-Host ("  Bundle-first helper:    {0}" -f $shortcuts.helper_commands.attached_bundle_first)
 Write-Host ("  Bundle flow helper:     {0}" -f $shortcuts.helper_commands.attached_bundle_flow)
 Write-Host ("  Bundle runner:          {0}" -f $shortcuts.helper_commands.attached_bundle_runner)
@@ -169,6 +173,7 @@ Write-Host ''
 Write-Host ("Quickstart note:       {0}" -f $shortcuts.quickstart_note_path)
 Write-Host ("Validation chain note: {0}" -f $shortcuts.validation_chain_note_path)
 Write-Host ("Decision table:        {0}" -f $shortcuts.decision_table_note_path)
+Write-Host ("Patch rules note:      {0}" -f $shortcuts.patch_rules_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $shortcuts.notes) {
