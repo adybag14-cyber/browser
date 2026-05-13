@@ -20,7 +20,34 @@ Use `-ChangeArea google-input` when the next replay may need one of the narrower
 
 Use `show_google_input_validation_flow.ps1` when you want the bounded localhost, title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, and safe-route patch-handoff order printed before deciding whether the next replay should stay broad or drop to a narrower helper.
 
+When the current saved or attached inputs are the known three-page compatibility bundle, also open the attached bundle route directly from the higher-level router before widening into the wrapper-heavy Google-only helpers:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
 After that read-first discovery pass, prefer the safe-route wrapper entrypoints below when the work is specifically resuming the saved runner-output handoff chain.
+
+## Attached three-page bundle route
+
+Use the attached bundle route before the wrapper-heavy issue `#3` safe route when the current work item is still the pinned three-page compatibility bundle.
+
+Why this route comes first in that case:
+- it keeps the surface check, flow helper, and delegated localhost runner pinned to the same locked input set
+- it avoids widening back into the broader Google-only wrapper chain before the current bundle replay has clarified the next failure state
+- it gives the next Windows replay one stable route for the attached compatibility targets before returning to the narrower safe-route entrypoints
+
+Use these commands in order:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
+Return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay makes the next runner-output, handoff, or Google-style input state clear again.
 
 ## One-command safe-route entrypoints map
 
