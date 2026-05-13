@@ -145,8 +145,8 @@ Add-SharedArgument -Arguments $bundleFlowArguments -Name RepoRoot -Value $RepoRo
 Add-SharedPathArrayArgument -Arguments $bundleFlowArguments -Name InputPath -Values $InputPath
 
 $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
-$recommendedHelperKey = 'suite_router_handoff'
-$recommendedHelperReason = 'Start from the higher-level suite-router handoff so the broader issue #3 entrypoints and the compact replay-route surface stay visible together before the replay narrows further.'
+$recommendedHelperKey = 'replay_route'
+$recommendedHelperReason = 'No pinned bundle inputs or saved summary are in play yet, so jump straight to the compact replay-route helper while the broader suite-router commands stay printed above for quick backtracking.'
 if ($InputPath -and @($InputPath).Count -gt 0) {
     $recommendedHelperKey = 'attached_bundle_first'
     $recommendedHelperReason = 'Explicit input paths are already pinned, so the fastest correct next step is the attached bundle-first helper before reopening the broader Google-only wrappers.'
@@ -158,9 +158,9 @@ if ($InputPath -and @($InputPath).Count -gt 0) {
 $matrix = @(
     [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -SuiteName google-recommended'
-        default_next_helper = 'show_google_issue3_suite_router_handoff.ps1'
-        command = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
-        use_when = 'Start from the top-level suite catalog and want the current issue #3 read-first commands, replay-route helper, replay-shortcuts helper, attached-bundle helper, and safe-route map reprinted together before choosing the next route.'
+        default_next_helper = 'show_google_issue3_replay_route.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
+        use_when = 'Start from the top-level suite catalog and want the compact replay-route surface right away while the wider suite-router handoff remains available below when you still need it.'
     }
     [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea google-input'
@@ -249,7 +249,9 @@ $helper = [ordered]@{
         'When RepoRoot is supplied, the top-level suite-router and Google-flow commands preserve that same LIGHTPANDA_REPO_ROOT context instead of falling back to the default checkout path.',
         'When SummaryPath is supplied, the replay-route, replay-shortcuts, safe-route entrypoints, fresh safe-route replay, reuse-current-outputs, and runner next-step helpers keep that same saved summary context attached.',
         'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, and attached-bundle-first helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
+        'Use replay_route as the default next helper when the route is already known to be issue #3 and you do not need the broader handoff surface first.',
         'Use attached_bundle_first when the saved or attached pages are still the known three-page compatibility set and you want that route exercised before reopening the broader Google-only safe-route ladder.',
+        'Use suite_router_handoff only when you explicitly want the wider compact bridge that keeps the top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
         'Use safe_route_entrypoints after the suite-router work is already out of the way and you want the current wrapper-heavy issue #3 commands, notes, and next-state helper surfaced in one place.',
         'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
     )
