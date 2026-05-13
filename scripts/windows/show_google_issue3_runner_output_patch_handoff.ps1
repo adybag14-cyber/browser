@@ -166,8 +166,8 @@ $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_reco
 })
 $runnerPatchRulesNotePath = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
 $postPatchCommand = Get-FirstNonEmptyValue -Values @(
-    $recommendedVerificationCommand,
     $runnerOutputWiringSafeCommand,
+    $recommendedVerificationCommand,
     $recommendedSourceGuideCommand
 )
 
