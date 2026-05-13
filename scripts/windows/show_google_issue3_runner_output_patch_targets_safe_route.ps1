@@ -271,6 +271,16 @@ $recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
 } else {
     $null
 }
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+    $SummaryPath
+} else {
+    $null
+}
+$recommendedSourceArtifactPath = if ($artifactPathExplicit) {
+    $ArtifactPath
+} else {
+    $null
+}
 
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
     throw "Issue #3 recommended validation summary not found: $SummaryPath"
@@ -287,15 +297,28 @@ if (-not $artifactPathExplicit) {
 
 $patchTargetsSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets_safe.ps1'
 $patchTargetsScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets.ps1'
-$patchTargetsSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$patchTargetsCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$patchHandoffCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_handoff.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$runnerOutputWiringSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$patchTargetsSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$patchTargetsCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$patchHandoffCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_handoff.ps1' -Arguments ([ordered]@{
+    SourceArtifactPath = $recommendedSourceArtifactPath
+}) -RepoRootOverride $recommendedRepoRoot
+$runnerOutputWiringSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
     RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
 })
-$repairRunnerOutputContractCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
-$repairArtifactPathsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_artifact_paths.ps1'
+$repairRunnerOutputContractCommand = Format-HelperCommand -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+})
+$repairArtifactPathsCommand = Format-HelperCommand -ScriptName 'repair_google_issue3_validation_artifact_paths.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+})
 
 foreach ($helperPath in @($patchTargetsSafeScript, $patchTargetsScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -539,7 +562,7 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifestPatchSnippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
     foreach ($line in $report.manifest_patch_snippet_lines) {
