@@ -230,7 +230,10 @@ $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_reco
     BrowserExe = $recommendedBrowserExe
     SummaryPath = $SummaryPath
 })
-$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
+$runnerOutputWiringSafeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $SummaryPath
+})
 
 foreach ($helperPath in @($safeRouteRunnerPatchWrapperScript, $patchHandoffScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
