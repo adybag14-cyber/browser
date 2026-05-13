@@ -37,7 +37,7 @@ function Format-HelperCommand {
         [string[]]$Switches = @()
     )
 
-    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
     foreach ($entry in $Arguments.GetEnumerator()) {
         $value = $entry.Value
         if ($null -eq $value) {
@@ -99,7 +99,7 @@ function Format-HelperCommandWithRepoRootEnv {
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments -Switches $Switches
     }
 
-    $command = "& '.\scripts\windows\$ScriptName'"
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
     foreach ($entry in $Arguments.GetEnumerator()) {
         $value = $entry.Value
         if ($null -eq $value) {
@@ -178,6 +178,11 @@ $readFirstChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 's
     ChangeArea = 'google-input'
 }) -RepoRootOverride $recommendedRepoRoot
 $readFirstGoogleFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $recommendedRepoRoot
+$suiteCatalogEntrypointsCommand = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+    InputPath = $recommendedInputPath
+})
 $suiteRouterHandoffCommand = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments ([ordered]@{
     RepoRoot = $recommendedRepoRoot
     SummaryPath = $recommendedSummaryPath
@@ -221,14 +226,16 @@ $runnerPatchNextStepCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 's
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 safe-route entrypoints'
-    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root, summary-path, and explicit bundle-input context for non-default checkouts and the attached three-page compatibility path.'
+    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving the newer suite-catalog bridge plus repo-root, summary-path, and explicit bundle-input context for non-default checkouts and the attached three-page compatibility path.'
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
+    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
     runner_patch_decision_table_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
     runner_patch_next_step_helper_command = $runnerPatchNextStepCommand
     read_first_suite_command = $readFirstSuiteCommand
     read_first_change_area_command = $readFirstChangeAreaCommand
     read_first_google_flow_command = $readFirstGoogleFlowCommand
+    suite_catalog_entrypoints_command = $suiteCatalogEntrypointsCommand
     suite_router_handoff_command = $suiteRouterHandoffCommand
     suite_router_next_steps_command = $suiteRouterNextStepsCommand
     replay_route_command = $replayRouteCommand
@@ -262,6 +269,7 @@ $entrypoints = [ordered]@{
         'Use read_first_suite_command when re-entering issue #3 from the top-level headed validation suite catalog and you want the broader localhost-first runner surfaced quickly, with RepoRoot carried through for non-default checkouts.'
         'Use read_first_change_area_command when the next replay may need one of the narrower Google title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner, while preserving RepoRoot when set.'
         'Use read_first_google_flow_command when you want the broader bounded Google flow printed before deciding whether to stay on the safe-route entrypoints or drop to another narrower helper, without losing the selected RepoRoot context.'
+        'Use suite_catalog_entrypoints_command when you want the shortest bridge from the top-level suite router into the newer issue #3 next-step matrix, replay-route helper, replay-shortcuts helper, or pinned bundle-first path while keeping RepoRoot, SummaryPath, and explicit InputPath values attached.'
         'Use suite_router_handoff_command when you want the suite-router read-first commands plus the current replay-shortcuts, bundle-first, and safe-route-map helpers surfaced together before deciding whether the next replay should stay broad or narrow, while preserving RepoRoot, SummaryPath, and explicit InputPath values when set.'
         'Use suite_router_next_steps_command when you want the compact matrix that maps the higher-level suite-router entrypoints to the right current issue #3 helper without reopening the longer chain notes first.'
         'Use replay_route_command when issue #3 context is already confirmed and you want the tighter route that keeps the attached-bundle branch, replay-shortcuts helper, and safe-route entrypoints together before dropping into the wrapper-heavy path.'
@@ -272,16 +280,16 @@ $entrypoints = [ordered]@{
         'Use attached_bundle_runner_command after the attached bundle flow when you want the current three-page compatibility targets exercised on the same narrower route, while preserving the selected RepoRoot and explicit InputPath values when the helper was opened from a non-default checkout or fixed input set.'
         'Use fresh_replay_command when outputs may be stale or missing.'
         'Use reuse_current_outputs_command only when the current issue #3 artifacts are already present and trusted.'
-        'Open quickstart_note_path for the shortest current replay note, validation_chain_note_path for wrapper precedence, and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
+        'Open quickstart_note_path for the shortest current replay note, validation_chain_note_path for wrapper precedence, suite_catalog_entrypoint_note_path for the shortest bridge from the top-level suite router into the current helper chain, and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
         'Use runner_patch_next_step_helper_command when the wrapper has already named one of those three states and you want the exact next move printed without reopening the longer decision-table note first.'
         'Use refresh_status_route_command before reopening narrower refresh or handoff helpers from a non-default summary.'
-        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted read-first discovery commands, suite-router handoff helper, suite-router next-step matrix, replay-route helper, replay-shortcuts helper, attached-bundle suite router, runner next-step helper, and safe-route wrappers now preserve that same repo-root context instead of falling back to the default checkout.'
-        'When InputPath already pins the current attached three-page bundle or another fixed saved-page set, the emitted suite-router handoff helper, replay-route helper, replay-shortcuts helper, attached-bundle-first helper, attached-bundle flow helper, and attached-bundle runner now preserve that same bundle context instead of falling back to auto-discovery.'
+        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted read-first discovery commands, suite-catalog helper, suite-router handoff helper, suite-router next-step matrix, replay-route helper, replay-shortcuts helper, attached-bundle suite router, runner next-step helper, and safe-route wrappers now preserve that same repo-root context instead of falling back to the default checkout.'
+        'When InputPath already pins the current attached three-page bundle or another fixed saved-page set, the emitted suite-catalog helper, suite-router handoff helper, replay-route helper, replay-shortcuts helper, attached-bundle-first helper, attached-bundle flow helper, and attached-bundle runner now preserve that same bundle context instead of falling back to auto-discovery.'
     )
 }
 
 $recommendedNextHelperKey = 'suite_router_next_steps'
-$recommendedNextHelperReason = 'The higher-level suite-router commands are already visible, so reopen the compact next-step matrix next to keep the current start points, replay-route branch, attached-bundle branch, and runner-state helper choices together before the replay narrows further.'
+$recommendedNextHelperReason = 'The higher-level suite-router commands are already visible, so reopen the compact next-step matrix next and keep the current start points, replay-route branch, attached-bundle branch, and runner-state helper choices together before the replay narrows further.'
 if ($entrypoints.explicit_input_path_count -gt 0) {
     $recommendedNextHelperKey = 'attached_bundle_first_entrypoint_command'
     $recommendedNextHelperReason = 'Explicit input paths are already pinned, so stay on the attached-bundle-first route before widening back into the broader Google-only issue #3 helper chain.'
@@ -314,6 +322,7 @@ Write-Host 'Read-first discovery:'
 Write-Host ("  Suite router:         {0}" -f $entrypoints.read_first_suite_command)
 Write-Host ("  Change-area view:     {0}" -f $entrypoints.read_first_change_area_command)
 Write-Host ("  Google flow helper:   {0}" -f $entrypoints.read_first_google_flow_command)
+Write-Host ("  Suite-catalog helper: {0}" -f $entrypoints.suite_catalog_entrypoints_command)
 Write-Host ("  Suite-router handoff: {0}" -f $entrypoints.suite_router_handoff_command)
 Write-Host ("  Next-step matrix:     {0}" -f $entrypoints.suite_router_next_steps_command)
 Write-Host ("  Replay route:         {0}" -f $entrypoints.replay_route_command)
@@ -334,6 +343,7 @@ Write-Host ("Runner wiring safe:    {0}" -f $entrypoints.runner_wiring_safe_comm
 Write-Host ''
 Write-Host ("Quickstart note:       {0}" -f $entrypoints.quickstart_note_path)
 Write-Host ("Validation chain note: {0}" -f $entrypoints.validation_chain_note_path)
+Write-Host ("Suite-catalog guide:   {0}" -f $entrypoints.suite_catalog_entrypoint_note_path)
 Write-Host ("Decision table:        {0}" -f $entrypoints.runner_patch_decision_table_path)
 Write-Host ("Runner patch helper:   {0}" -f $entrypoints.runner_patch_next_step_helper_command)
 Write-Host ''
