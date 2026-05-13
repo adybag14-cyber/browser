@@ -142,7 +142,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $handoff = [ordered]@{
     issue = 'Google issue #3 suite router handoff'
-    purpose = 'Keep the higher-level suite-router entrypoints, the compact next-step matrix, and the current issue #3 replay helpers on one command surface before the replay narrows further.'
+    purpose = 'Keep the higher-level suite-router entrypoints, the compact next-step matrix, and the current issue #3 replay helpers on one command surface before the replay narrows further, without dropping pinned bundle-input context.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -165,10 +165,10 @@ $handoff = [ordered]@{
     helper_commands = [ordered]@{
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
-        replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $sharedArguments
+        replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
-        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
+        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
     }
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
@@ -177,11 +177,11 @@ $handoff = [ordered]@{
         'Use the read-first bridge when you want the exact route from the higher-level suite router into the next-step matrix, replay-route helper, and replay-shortcuts helper printed in one place before reopening any longer notes.',
         'Keep replay_discovery_note_path nearby when you want the shortest written bridge from the top-level Windows validation catalog into this suite-router handoff, the next-step matrix, the replay-route helper, and the bundle-first branch without reopening the longer validation-chain notes first.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
-        'Use replay_route when the next route is already clear after the handoff or next-step matrix and you still want the compact helper that keeps the attached-bundle branch, the replay-shortcuts helper, the safe-route map, and the repo-root-aware runner-next-step helper together before narrowing further.',
+        'Use replay_route when the next route is already clear after the handoff or next-step matrix and you still want the compact helper that keeps the attached-bundle branch, the replay-shortcuts helper, the safe-route map, and the repo-root-aware runner-next-step helper together before narrowing further, while preserving any pinned InputPath values.',
         'Use replay_shortcuts when you want the narrower shortcut map for the attached-bundle-first route and the wrapper-heavy safe-route branches after the replay-route helper has already confirmed the broader issue #3 context.',
         'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into suite_router_next_steps, replay_route, or replay_shortcuts without reopening the longer Windows runbook or validation-chain notes first.',
         'Use attached_bundle_first when the replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 chain.',
-        'Use safe_route_entrypoints only after the higher-level suite router, next-step matrix, replay-route helper, or replay-shortcuts helper has already narrowed the replay into the current wrapper-heavy issue #3 path.'
+        'Use safe_route_entrypoints only after the higher-level suite router, next-step matrix, replay-route helper, or replay-shortcuts helper has already narrowed the replay into the current wrapper-heavy issue #3 path, and keep the same InputPath values attached when the bundle is already pinned.'
     )
 }
 
