@@ -185,12 +185,14 @@ $artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
 if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
     $artifactRoot = Split-Path -Parent $SummaryPath
 }
-$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+$shouldPreserveRepoRoot = $PSBoundParameters.ContainsKey('RepoRoot') -or -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)
+$recommendedRepoRoot = if ($shouldPreserveRepoRoot) {
     $repoRoot
 } else {
     $null
 }
-$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+$shouldPreserveSummaryPath = $PSBoundParameters.ContainsKey('SummaryPath') -or $shouldPreserveRepoRoot
+$recommendedSummaryPath = if ($shouldPreserveSummaryPath) {
     $SummaryPath
 } else {
     $null
@@ -206,7 +208,6 @@ $refreshStatusCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_go
 $refreshStatusSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status_safe.ps1' -Arguments ([ordered]@{
     SummaryPath = $recommendedSummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
-$refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
 $handoffSafeRefreshRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe_refresh_route.ps1' -Arguments ([ordered]@{
     SummaryPath = $recommendedSummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
@@ -228,7 +229,9 @@ $runnerWiringStatusSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName
 $runnerPatchTargetsCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets.ps1' -Arguments ([ordered]@{
     SummaryPath = $recommendedSummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
-$runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 $runnerContractRepairSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_repair_runner_output_contract_safe_route.ps1' -Arguments ([ordered]@{
     SummaryPath = $recommendedSummaryPath
 }) -RepoRootOverride $recommendedRepoRoot
@@ -277,6 +280,15 @@ $handoffPath = Resolve-ArtifactCandidatePath -ConfiguredPath $(if (-not [string]
 if (-not $ArtifactPath) {
     $ArtifactPath = Get-SiblingArtifactPath -Path $handoffPath -Suffix '-safe'
 }
+$recommendedRefreshArtifactPath = if ($shouldPreserveSummaryPath) {
+    $refreshPath
+} else {
+    $null
+}
+$refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+    ArtifactPath = $recommendedRefreshArtifactPath
+}) -RepoRootOverride $recommendedRepoRoot
 
 $refreshExists = Test-Path -LiteralPath $refreshPath -PathType Leaf
 $refreshRecord = $null
