@@ -112,7 +112,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 ```
 
 For the current Google search-box work behind issue `#3`, use these helpers in
-order:
+order.
+
+Keep these notes open once the replay narrows into the wrapper-heavy safe route:
+
+- `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for the current fresh replay entrypoints and wrapper precedence
+- `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` for the direct runner patch loop after the replay lands on `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
@@ -120,6 +125,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_val
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile title
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_title_probe_trace_guide.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile submit-path
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
@@ -167,11 +174,15 @@ Routing rules:
 
 - Start with the smallest bounded localhost suite before a saved-page or live-site pass.
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
+- Use `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` as the wrapper-order reference once the issue `#3` replay narrows into safe-route, handoff, or repair helpers.
+- Use `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` when the replay lands on the direct runner patch loop and you want the next move for `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs` without reopening the longer chain note.
 - Use `check_google_validation_surface.ps1 -Profile title` before `show_google_title_validation_flow.ps1` or `run_google_title_validation.ps1` so the narrower title guide, helper, direct probe, and fixture chain fails fast before you depend on that smaller issue `#3` ladder.
 - Use `show_google_title_validation_flow.ps1` when you want only the narrower bounded title-wrapper order printed before you run that slice.
 - Use `show_google_title_probe_trace_guide.ps1` when you want the title markers translated into focus, text-commit, and Enter-submit stages without opening the saved markdown guide by hand.
 - Use `run_google_title_validation.ps1` when you want the bounded title wrapper by itself before the faster quick pass, reduced homepage pass, or shared Enter-order follow-up.
-- Use `run_google_issue3_recommended_validation.ps1` when you want the one-command issue `#3` flow to include the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
+- Use `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the default fresh replay entrypoint when current issue `#3` outputs may be stale or missing and you want the newest safe-route plus final runner-patch handoff artifact in one command.
+- Use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` when the current issue `#3` outputs are already present and you want to reopen the safe-route plus narrower runner-patch guidance without a broader regeneration first.
+- Use `run_google_issue3_recommended_validation.ps1` when you intentionally want the broader one-command issue `#3` flow to regenerate the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
 - Use `check_google_validation_surface.ps1 -Profile submit-path` before `show_google_submit_path_validation_flow.ps1` or `run_google_issue3_submit_path_validation.ps1` so missing guides, helpers, or bounded probes fail fast before you depend on the later issue `#3` submit-path ladder.
 - Use `show_google_submit_path_validation_flow.ps1` when you want only the later-stage saved homepage fixture, submit-timing, and shared Enter-order ladder printed after the title gates are already green.
 - Use `show_google_submit_path_trace_guide.ps1` when you want the saved homepage fixture, submit-timing, and shared Enter-order outputs translated into the next smaller checkpoint before you rerun anything or widen back out to attached HTML or the live headed homepage.
