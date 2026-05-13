@@ -41,6 +41,29 @@ If you already know you want the narrower shortcut map right after the replay-ro
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
+## Suite-router next-step matrix
+
+Use this compact map when you are starting from the top-level suite router and want the fastest correct next helper without reopening the longer chain notes first.
+
+- `show_headed_validation_suites.ps1 -SuiteName google-recommended`
+  Default next helper: `show_google_issue3_suite_router_handoff.ps1`
+  Use this when you want the higher-level suite entrypoints and the newer issue `#3` replay helpers reprinted together before choosing the next route.
+- `show_headed_validation_suites.ps1 -ChangeArea google-input`
+  Default next helper: `show_google_issue3_replay_route.ps1`
+  Use this when you already know the work stays inside issue `#3` and want the compact replay-route surface right away.
+- `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`
+  Default next helper: `show_attached_html_target_bundle_validation_flow.ps1`
+  Use this when the current saved or attached inputs are still the pinned three-page compatibility bundle and the replay should stay on that locked route first.
+- `show_google_issue3_suite_router_handoff.ps1`
+  Default next helper: `show_google_issue3_replay_route.ps1`
+  Use this when the handoff helper has already confirmed the broader router state and you want the current replay-route, bundle branch, and safe-route entrypoints in one tighter surface.
+- `show_google_issue3_replay_route.ps1`
+  Default next helper: `show_google_issue3_replay_shortcuts.ps1`
+  Use this when you want the narrower shortcut map before deciding between the attached-bundle-first route, the fresh safe-route replay, or the wrapper-heavy safe-route entrypoints map.
+- Wrapper-emitted runner state already known
+  Default next helper: `show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>`
+  Use this when the current replay already has a saved summary path plus one of the three runner-patch states and you want the shortest exact next-step command map.
+
 ## Bundle-first read-first sequence
 
 Use this alternate route when the current saved or attached pages are still the known three-page compatibility bundle and the replay should stay pinned to that bundle before reopening the broader Google-only helpers:
