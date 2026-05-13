@@ -2,7 +2,7 @@
 
 Use this note when issue `#3` needs a quick read-first route back into the current Windows validation helpers on `fork/headed-mode-foundation`.
 
-It bridges the top-level headed validation catalog and the newer suite-catalog bridge helper into the suite-router next-step matrix, suite-router handoff, replay-route, and replay-shortcuts helpers before the replay narrows into the longer safe-route chain.
+It bridges the top-level headed validation catalog and the newer suite-catalog bridge helper into the suite-router next-step matrix, the context-preserving replay helper, the suite-router handoff, replay-route, and replay-shortcuts helpers before the replay narrows into the longer safe-route chain.
 
 Keep this note beside:
 - `docs/WINDOWS_FULL_USE.md` for the broader Windows validation catalog
@@ -52,6 +52,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 
 Use that helper when you want the quickest route from the top-level suite router into the current handoff, replay-route, bundle-first, and runner-state choices without reopening the longer bridge notes first.
 
+## When replay context already matters
+
+After the suite-catalog bridge or the next-step matrix, prefer the contextual flow when `RepoRoot`, `SummaryPath`, or fixed `InputPath` values should stay visible while you choose the next narrower helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1
+```
+
+Preserve the same context directly in the helper when needed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+Use that helper when you want the recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands to stay on one context-preserving command surface before the replay narrows further.
+
 ## Discovery helpers
 
 Use these helpers in this order when you want the narrowest stable bridge back into the current issue `#3` replay chain.
@@ -84,7 +100,21 @@ Preserve non-default replay context when needed:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-### 3. Suite-router handoff
+### 3. Context-preserving flow
+
+Use this when repo-root overrides, saved-summary state, or pinned bundle inputs should stay visible while you decide between replay shortcuts, the attached bundle route, the recommended runner, live trace, or the wrapper-heavy safe-route helpers:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1
+```
+
+Preserve non-default replay context when needed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+### 4. Suite-router handoff
 
 Use this when you want the read-first commands, replay shortcuts, bundle-first route, and safe-route entrypoints surfaced together on one command surface after the bridge or matrix has already narrowed the likely route:
 
@@ -98,7 +128,7 @@ Preserve non-default replay context when needed:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-### 4. Replay route bridge
+### 5. Replay route bridge
 
 Use this when you want the same read-first bridge plus the attached three-page bundle route, the current safe-route map, and the repo-root-aware runner next-step helper printed together before choosing the next replay path:
 
@@ -112,7 +142,7 @@ Preserve non-default replay context when needed:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-### 5. Replay shortcuts
+### 6. Replay shortcuts
 
 Use this when you already know the replay should stay on the narrower Google route, attached bundle branch, and return-to-safe-route helpers without reopening the broader bridge first:
 
@@ -142,7 +172,8 @@ After the bundle replay clarifies the next failure state, reopen `docs/ISSUE3_WI
 
 - Start with the suite-catalog bridge when you want the exact top-level Windows validation entrypoints plus the current issue `#3` replay helpers on one compact surface.
 - Move to the suite-router next-step matrix when you want the shortest executable bridge from the top-level Windows validation router into the current issue `#3` helper branches.
-- Move to the suite-router handoff when you want the wider read-first bridge reprinted after the bridge or matrix already narrowed the likely route.
+- Move to the contextual flow when repo-root, saved-summary, or pinned bundle state should stay visible while you choose the next narrower helper.
+- Move to the suite-router handoff when you want the wider read-first bridge reprinted after the bridge, matrix, or contextual flow already narrowed the likely route.
 - Move to the replay-route helper when the next choice depends on bundle routing, repo-root-aware state, or the runner next-step helper.
 - Use replay shortcuts when the replay is already narrowed and you want the shortest command surface.
 - Reopen the validation-chain note once the replay is ready to move from discovery into the wrapper-heavy safe-route and runner-patch stages.
