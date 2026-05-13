@@ -22,6 +22,24 @@ Use `show_google_input_validation_flow.ps1` when you want the bounded localhost,
 
 After that read-first discovery pass, prefer the safe-route wrapper entrypoints below when the work is specifically resuming the saved runner-output handoff chain.
 
+## One-command safe-route entrypoints map
+
+When the replay is already narrowing into the wrapper-heavy issue `#3` handoff chain and you want the current safe-route entrypoints in one place before choosing the next narrower helper, print:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
+```
+
+Use this helper when you want the current:
+- fresh replay command
+- reuse-current-outputs command
+- refresh-status safe-path route
+- handoff-safe helper
+- summary-guide safe helper
+- runner-wiring safe helper
+- runner-patch next-step helper for `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`
+
 ## Goal
 
 Keep the next Windows replay on the newest strict-mode-safe wrapper first, preserve the current runner-patch guidance in the saved artifacts, and only reopen the stricter raw helper after the corresponding safe checkpoint reports that the saved state is ready.
