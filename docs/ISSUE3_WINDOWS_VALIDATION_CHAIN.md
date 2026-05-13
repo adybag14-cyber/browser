@@ -44,6 +44,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_tar
 
 After that read-first discovery pass, prefer the safe-route wrapper entrypoints below when the work is specifically resuming the saved runner-output handoff chain.
 
+## Context-preserving lane handoffs
+
+Once the current replay already has a chosen checkout, browser binary, host, and input text, move from the generic suite catalog to the narrower flow helpers that preserve that context in their printed follow-up commands.
+
+Use these lane-specific helpers directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_submit_timing_validation_flow.ps1 -RepoRoot '<repo-root>' -BrowserExe '<browser-exe>' -Host '<host>' -InputText '<input-text>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1 -RepoRoot '<repo-root>' -BrowserExe '<browser-exe>' -Host '<host>' -SharedInputText '<input-text>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1 -RepoRoot '<repo-root>' -BrowserExe '<browser-exe>' -Host '<host>' -InputText '<input-text>' -LeaveOpen
+```
+
+Use the submit-timing helper first when the bounded keydown, keypress, and submit-ordering path still needs confirmation on the current checkout.
+
+Use the shared Enter-order helper next when the reduced-home and shared form-controls gates need to stay on the same host and input text before another live replay.
+
+Use the live-trace helper last when the bounded localhost and shared gates are already green and you want the reduced-home or live Google capture to keep the same replay context instead of reconstructing it by hand.
+
 ## Attached three-page bundle route
 
 Use the attached bundle route before the wrapper-heavy issue `#3` safe route when the current work item is still the pinned three-page compatibility bundle.
