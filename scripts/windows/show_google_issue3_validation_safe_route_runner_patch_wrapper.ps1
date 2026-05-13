@@ -276,9 +276,16 @@ $recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
 
 $validationSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route.ps1'
 $runnerPatchSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets_safe_route.ps1'
-$validationSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_safe_route.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$runnerPatchSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets_safe_route.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$freshPatchHandoffCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$validationSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_safe_route.ps1' -Arguments ([ordered]@{
+    SummaryPath = $SummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$runnerPatchSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets_safe_route.ps1' -Arguments ([ordered]@{
+    SummaryPath = $SummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$freshPatchHandoffCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments ([ordered]@{
+    BrowserExe = $BrowserExe
+    SummaryPath = $SummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
     RepoRoot = $recommendedRepoRoot
     BrowserExe = $BrowserExe
