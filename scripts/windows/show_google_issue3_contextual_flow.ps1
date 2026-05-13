@@ -204,7 +204,7 @@ Add-SharedPathArrayArgument -Arguments $shortcutArgs -Name InputPath -Values $In
 
 $flow = [ordered]@{
     issue = "Headed Windows Google issue #3 contextual flow"
-    focus = "Keep the broader issue #3 replay chain on one context-preserving command surface so repo-root, browser path, host, input text, trace text, and attached-page inputs stay aligned across the existing narrower helpers."
+    focus = "Keep the broader issue #3 replay chain on one context-preserving command surface so the top-level suite router, the suite-catalog bridge, the next-step matrix, repo root, browser path, host, input text, trace text, and attached-page inputs stay aligned across the existing narrower helpers."
     repo_root = $RepoRoot
     browser_exe = $BrowserExe
     host = $Host
@@ -216,10 +216,16 @@ $flow = [ordered]@{
     preferred_initial_page = $PreferredInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
+    suite_router_entrypoint_guide_path = "docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md"
+    suite_router_bridge_note_path = "docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md"
+    quickstart_note_path = "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"
     commands = [ordered]@{
         suite_router = Format-HelperCommandWithRepoRootEnv -ScriptName "show_headed_validation_suites.ps1" -RepoRootOverride $RepoRoot -Arguments ([ordered]@{
             ChangeArea = "google-input"
         })
+        suite_catalog_entrypoints = Format-HelperCommand -ScriptName "show_google_issue3_suite_catalog_entrypoints.ps1" -Arguments $shortcutArgs
+        suite_router_next_steps = Format-HelperCommand -ScriptName "show_google_issue3_suite_router_next_steps.ps1" -Arguments $shortcutArgs
+        suite_router_handoff = Format-HelperCommand -ScriptName "show_google_issue3_suite_router_handoff.ps1" -Arguments $shortcutArgs
         replay_shortcuts = Format-HelperCommand -ScriptName "show_google_issue3_replay_shortcuts.ps1" -Arguments $shortcutArgs
         safe_route_entrypoints = Format-HelperCommand -ScriptName "show_google_issue3_safe_route_entrypoints.ps1" -Arguments $shortcutArgs
         recommended_runner = Format-HelperCommand -ScriptName "run_google_issue3_recommended_validation.ps1" -Arguments $recommendedArgs -Switches $recommendedSwitches
@@ -232,14 +238,18 @@ $flow = [ordered]@{
     }
     notes = @(
         "Start with suite_router when you want the higher-level Google issue #3 catalog reopened on the same repo root before you decide whether to stay broad or drop to a narrower helper.",
-        "Use replay_shortcuts when the next replay still needs the broader read-first discovery surface, the attached bundle branch, and the current safe-route map together.",
-        "Use safe_route_entrypoints when a saved summary is already in play and you want the smaller wrapper-first commands reopened without another broad regeneration pass first.",
+        "Use suite_catalog_entrypoints when you want the exact top-level suite-router entrypoints, the Google flow helper, the next-step matrix, and the current replay helpers reprinted together on one compact surface while preserving RepoRoot, SummaryPath, and fixed InputPath context.",
+        "Use suite_router_next_steps when the route is already known to stay inside issue #3 and you want the fastest current helper recommendation without reopening the broader handoff surface first.",
+        "Use suite_router_handoff when you still want the wider read-first bridge after the catalog helper or next-step matrix has re-established the likely route.",
+        "Use replay_shortcuts after the next-step matrix or replay-route helper when you want the narrower issue #3 shortcut surface for the attached-bundle branch, the bundle-first helper, and the safe-route entrypoints before choosing a wrapper-heavy next step.",
+        "Use safe_route_entrypoints when a saved summary is already in play and you want the smaller wrapper-first commands reopened without another broad regeneration pass first, or after the route has already narrowed into the current safe-route stack.",
         "Use recommended_runner when you want one context-preserving command that keeps repo root, browser path, host, input text, shared input text, trace input text, summary path, and optional attached-page inputs aligned through the broader localhost-first issue #3 runner.",
         "Use submit_timing_flow when the saved homepage fixture or submit-path ladder is already green and you only want the bounded keydown, keypress, and submit-order slice reopened on the same host, browser, and repo-root context.",
         "Use shared_enter_order_flow when the next question is whether the stricter shared keypress-before-submit gate still agrees with the same host, browser, repo-root, and shared input context.",
         "Use live_trace_flow only after the bounded localhost and shared Enter-order gates are green and you want the reduced-home or live-trace handoff reopened without losing the current browser, host, trace text, or LeaveOpen mode.",
         "Use attached_google_flow when the next replay should keep the current attached-page set and preferred initial page pinned before widening back out to the broader manual follow-up.",
         "Use attached_bundle_flow and attached_bundle_runner when the current inputs are still the known three-page compatibility bundle and you want that narrower route exercised before another broader Google-only replay.",
+        "Keep suite_router_entrypoint_guide_path, suite_router_bridge_note_path, and quickstart_note_path nearby when you want the matching written bridge beside these commands without reopening the broader Windows runbook.",
         "When LeaveOpen is set, the emitted recommended runner, live trace flow, and attached Google flow preserve that same post-run inspection mode."
     )
 }
@@ -265,12 +275,18 @@ if ($flow.summary_path) {
 if ($flow.explicit_input_path_count -gt 0) {
     Write-Host ("Attached input paths: {0}" -f $flow.explicit_input_path_count)
 }
-if ($flow.preferred_initial_page) {
-    Write-Host ("Preferred initial page: {0}" -f $flow.preferred_initial_page)
-}
 Write-Host ""
 Write-Host "[suite-router] Reopen the higher-level issue #3 catalog"
 Write-Host ("  {0}" -f $flow.commands.suite_router)
+Write-Host ""
+Write-Host "[suite-catalog-entrypoints] Reprint the top-level router bridge with current context"
+Write-Host ("  {0}" -f $flow.commands.suite_catalog_entrypoints)
+Write-Host ""
+Write-Host "[suite-router-next-steps] Pick the fastest current helper from the routed issue #3 state"
+Write-Host ("  {0}" -f $flow.commands.suite_router_next_steps)
+Write-Host ""
+Write-Host "[suite-router-handoff] Reopen the broader read-first bridge if the route still needs more context"
+Write-Host ("  {0}" -f $flow.commands.suite_router_handoff)
 Write-Host ""
 Write-Host "[replay-shortcuts] Print the broader issue #3 discovery surface"
 Write-Host ("  {0}" -f $flow.commands.replay_shortcuts)
@@ -298,6 +314,10 @@ Write-Host ("  {0}" -f $flow.commands.attached_bundle_flow)
 Write-Host ""
 Write-Host "[attached-bundle-runner] Run the pinned three-page bundle route"
 Write-Host ("  {0}" -f $flow.commands.attached_bundle_runner)
+Write-Host ""
+Write-Host ("Suite-router guide: {0}" -f $flow.suite_router_entrypoint_guide_path)
+Write-Host ("Bridge note:        {0}" -f $flow.suite_router_bridge_note_path)
+Write-Host ("Quickstart note:    {0}" -f $flow.quickstart_note_path)
 Write-Host ""
 Write-Host "Notes:"
 foreach ($note in $flow.notes) {
