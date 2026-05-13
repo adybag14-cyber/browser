@@ -131,6 +131,13 @@ if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_R
     $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
 }
 
+$bundleSurfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleSurfaceCheckArguments -Name RepoRoot -Value $RepoRoot
+
+$bundleCheckerArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleCheckerArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $bundleCheckerArguments -Name InputPath -Values $InputPath
+
 $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
@@ -146,10 +153,12 @@ Add-SharedPathArrayArgument -Arguments $replayShortcutsArguments -Name InputPath
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached bundle first entrypoint'
-    purpose = 'Print the pinned three-page compatibility bundle route first, then keep both the broader replay-shortcuts helper and the narrower safe-route helper on one command surface for the next step.'
+    purpose = 'Print the pinned three-page compatibility bundle route first, including the fail-fast surface and bundle checks, then keep both the broader replay-shortcuts helper and the narrower safe-route helper on one command surface for the next step.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    bundle_surface_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
+    bundle_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle.ps1' -Arguments $bundleCheckerArguments
     suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
         ChangeArea = 'attached-html-target-bundle'
     }) -RepoRootOverride $RepoRoot
@@ -161,7 +170,9 @@ $entrypoint = [ordered]@{
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
         'Use this helper when the current saved or attached pages are the known three-page compatibility bundle and you want that locked input set exercised before the broader Google-only wrapper chain.',
-        'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the flow and runner commands instead of relying on auto-discovery.',
+        'Start with bundle_surface_check_command so the pinned bundle guide, checker, helper, runner, and delegated attached-HTML surfaces fail fast before localhost replay.',
+        'Run bundle_check_command next when you want the current saved-page set revalidated as the same three-page compatibility bundle before you trust the printed flow helper or runner.',
+        'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the surface check, bundle check, flow, and runner commands instead of relying on auto-discovery.',
         'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the suite-router, replay-shortcuts, and safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
         'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.'
@@ -186,9 +197,11 @@ if ($entrypoint.explicit_input_path_count -gt 0) {
 }
 Write-Host ''
 Write-Host 'Bundle-first route:'
-Write-Host ("  Suite router: {0}" -f $entrypoint.suite_router_command)
-Write-Host ("  Flow helper:  {0}" -f $entrypoint.bundle_flow_command)
-Write-Host ("  Runner:       {0}" -f $entrypoint.bundle_runner_command)
+Write-Host ("  Surface check: {0}" -f $entrypoint.bundle_surface_check_command)
+Write-Host ("  Bundle check:  {0}" -f $entrypoint.bundle_check_command)
+Write-Host ("  Suite router:  {0}" -f $entrypoint.suite_router_command)
+Write-Host ("  Flow helper:   {0}" -f $entrypoint.bundle_flow_command)
+Write-Host ("  Runner:        {0}" -f $entrypoint.bundle_runner_command)
 Write-Host ''
 Write-Host 'Return after bundle replay:'
 Write-Host ("  Replay shortcuts: {0}" -f $entrypoint.replay_shortcuts_command)
