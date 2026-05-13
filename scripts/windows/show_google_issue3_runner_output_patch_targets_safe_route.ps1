@@ -152,7 +152,8 @@ function Invoke-JsonHelper {
         [Parameter(Mandatory = $true)]
         [string]$ScriptPath,
         [Parameter(Mandatory = $true)]
-        [string[]]$Arguments
+        [string[]]$Arguments,
+        [string]$RepoRootOverride
     )
 
     $startedAt = (Get-Date).ToUniversalTime().ToString('o')
@@ -163,9 +164,23 @@ function Invoke-JsonHelper {
     $record = $null
 
     try {
-        $output = @(
-            & powershell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments 2>&1
-        )
+        if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+            $output = @(
+                & powershell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments 2>&1
+            )
+        } else {
+            $escapedScriptPath = ("$ScriptPath") -replace "'", "''"
+            $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+            $argumentLiteral = if ($Arguments.Count -gt 0) {
+                "@(" + (($Arguments | ForEach-Object { "'" + ("$_" -replace "'", "''") + "'" }) -join ', ') + ")"
+            } else {
+                '@()'
+            }
+            $commandText = "`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; `$codexArgs = $argumentLiteral; & '$escapedScriptPath' @codexArgs"
+            $output = @(
+                & powershell -NoProfile -ExecutionPolicy Bypass -Command $commandText 2>&1
+            )
+        }
         $exitCode = $LASTEXITCODE
         if ($exitCode -ne 0) {
             $errorMessage = "Helper exited with code $exitCode."
@@ -199,6 +214,7 @@ function Invoke-JsonHelper {
         name = $Name
         script_path = $ScriptPath
         arguments = @($Arguments)
+        repo_root_override = $RepoRootOverride
         started_at_utc = $startedAt
         completed_at_utc = (Get-Date).ToUniversalTime().ToString('o')
         exit_code = $exitCode
@@ -224,6 +240,7 @@ function New-SkippedHelperStep {
         [string]$ScriptPath,
         [Parameter(Mandatory = $true)]
         [string[]]$Arguments,
+        [string]$RepoRootOverride,
         [string]$RecommendedCommand,
         [string]$RecommendedGuideCommand,
         [string]$NextFocus,
@@ -236,6 +253,7 @@ function New-SkippedHelperStep {
         name = $Name
         script_path = $ScriptPath
         arguments = @($Arguments)
+        repo_root_override = $RepoRootOverride
         started_at_utc = $timestamp
         completed_at_utc = $timestamp
         exit_code = 0
@@ -319,6 +337,8 @@ $repairRunnerOutputContractCommand = Format-HelperCommand -ScriptName 'repair_go
 $repairArtifactPathsCommand = Format-HelperCommand -ScriptName 'repair_google_issue3_validation_artifact_paths.ps1' -Arguments ([ordered]@{
     SummaryPath = $recommendedSummaryPath
 })
+$patchTargetsSafeStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
+$patchTargetsStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
 
 foreach ($helperPath in @($patchTargetsSafeScript, $patchTargetsScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -327,7 +347,7 @@ foreach ($helperPath in @($patchTargetsSafeScript, $patchTargetsScript)) {
 }
 
 $steps = [System.Collections.Generic.List[object]]::new()
-$patchTargetsSafeStep = Invoke-JsonHelper -Name 'patch-targets-safe' -ScriptPath $patchTargetsSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+$patchTargetsSafeStep = Invoke-JsonHelper -Name 'patch-targets-safe' -ScriptPath $patchTargetsSafeScript -Arguments $patchTargetsSafeStepArguments -RepoRootOverride $recommendedRepoRoot
 $steps.Add($patchTargetsSafeStep) | Out-Null
 
 $shouldRunRawPatchTargets = [bool](
@@ -337,9 +357,9 @@ $shouldRunRawPatchTargets = [bool](
 
 $patchTargetsStep = $null
 if ($shouldRunRawPatchTargets) {
-    $patchTargetsStep = Invoke-JsonHelper -Name 'patch-targets' -ScriptPath $patchTargetsScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+    $patchTargetsStep = Invoke-JsonHelper -Name 'patch-targets' -ScriptPath $patchTargetsScript -Arguments $patchTargetsStepArguments -RepoRootOverride $recommendedRepoRoot
 } else {
-    $patchTargetsStep = New-SkippedHelperStep -Name 'patch-targets' -ScriptPath $patchTargetsScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_command, $patchTargetsSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_guide_command, $runnerOutputWiringSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_focus, 'Use the current safe patch-target guidance; the raw patch-target helper is only needed when the saved outputs are already strict-mode-safe.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The safe patch-target gate did not route the next replay to the raw patch-target helper, so the wrapper stayed on the safer routing helper.'
+    $patchTargetsStep = New-SkippedHelperStep -Name 'patch-targets' -ScriptPath $patchTargetsScript -Arguments $patchTargetsStepArguments -RepoRootOverride $recommendedRepoRoot -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_command, $patchTargetsSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.recommended_guide_command, $runnerOutputWiringSafeCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_focus, 'Use the current safe patch-target guidance; the raw patch-target helper is only needed when the saved outputs are already strict-mode-safe.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($patchTargetsSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The safe patch-target gate did not route the next replay to the raw patch-target helper, so the wrapper stayed on the safer routing helper.'
 }
 $steps.Add($patchTargetsStep) | Out-Null
 
@@ -510,6 +530,7 @@ $report = [ordered]@{
             exit_code = $_.exit_code
             parse_error = $_.parse_error
             error = $_.error
+            repo_root_override = $_.repo_root_override
             recommended_command = $_.recommended_command
             recommended_guide_command = $_.recommended_guide_command
             next_focus = $_.next_focus
@@ -573,6 +594,9 @@ Write-Host ''
 foreach ($step in $report.steps) {
     $marker = if ($step.success) { 'PASS' } else { 'FAIL' }
     Write-Host ("[{0}] {1} -> {2}" -f $marker, $step.name, $step.status)
+    if ($step.repo_root_override) {
+        Write-Host ("  Repo root: {0}" -f $step.repo_root_override)
+    }
     if ($step.error) {
         Write-Host ("  Error: {0}" -f $step.error)
     }
