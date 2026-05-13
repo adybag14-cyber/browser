@@ -105,6 +105,9 @@ Add-SharedArgument -Arguments $sharedEnterOrderFlowArgs -Name Host -Value $Host
 Add-SharedArgument -Arguments $sharedEnterOrderFlowArgs -Name SharedInputText -Value $InputText
 
 $attachedHtmlFlowArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $attachedHtmlFlowArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $attachedHtmlFlowArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $attachedHtmlFlowArgs -Name Host -Value $Host
 if ($LeaveOpen) {
     $attachedHtmlFlowArgs.Add('-LeaveOpen')
 }
