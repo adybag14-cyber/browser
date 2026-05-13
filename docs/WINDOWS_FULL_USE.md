@@ -118,6 +118,7 @@ Keep these notes open once the replay narrows into the wrapper-heavy safe route:
 
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for the current fresh replay entrypoints and wrapper precedence
 - `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` for the direct runner patch loop after the replay lands on `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`
+- `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` for the field-level runner patch rules once the safe-route handoff artifact says a direct source edit is still required
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
@@ -176,6 +177,7 @@ Routing rules:
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
 - Use `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` as the wrapper-order reference once the issue `#3` replay narrows into safe-route, handoff, or repair helpers.
 - Use `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` when the replay lands on the direct runner patch loop and you want the next move for `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs` without reopening the longer chain note.
+- Use `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` beside the decision table when the replay is already on the direct runner source edit and you need the field-level rules for nullable `$null`, artifact order, blank-path handling, and post-patch verification.
 - Use `check_google_validation_surface.ps1 -Profile title` before `show_google_title_validation_flow.ps1` or `run_google_title_validation.ps1` so the narrower title guide, helper, direct probe, and fixture chain fails fast before you depend on that smaller issue `#3` ladder.
 - Use `show_google_title_validation_flow.ps1` when you want only the narrower bounded title-wrapper order printed before you run that slice.
 - Use `show_google_title_probe_trace_guide.ps1` when you want the title markers translated into focus, text-commit, and Enter-submit stages without opening the saved markdown guide by hand.
