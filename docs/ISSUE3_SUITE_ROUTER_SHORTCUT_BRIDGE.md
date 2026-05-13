@@ -70,8 +70,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
   Default next helper: `show_google_issue3_replay_route.ps1`
   Use this when you already know the work stays inside issue `#3` and want the compact replay-route surface right away.
 - `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`
-  Default next helper: `show_attached_html_target_bundle_validation_flow.ps1`
-  Use this when the current saved or attached inputs are still the pinned three-page compatibility bundle and the replay should stay on that locked route first.
+  Default next helper: `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+  Use this when the current saved or attached inputs are still the pinned three-page compatibility bundle and you want the one-command bundle-first helper to keep that locked route plus the safe-route return visible before the broader Google-only wrappers.
 - `show_google_issue3_suite_router_handoff.ps1`
   Default next helper: `show_google_issue3_replay_route.ps1`
   Use this when the handoff helper has already confirmed the broader router state and you want the current replay-route, bundle branch, and safe-route entrypoints in one tighter surface.
