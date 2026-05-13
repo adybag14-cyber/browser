@@ -265,10 +265,12 @@ if ($patchTargetsStep.record) {
     $manifestPatchSnippetLines = @(Get-ArrayValue -Object $patchTargetsStep.record -Name 'manifest_patch_snippet_lines')
 }
 
-$runnerAlreadyWiredNeedsRegeneration = [bool](
+$rawPatchTargetsGuidesSafeWiring = [bool](
     $shouldRunRawPatchTargets -and
-    -not $runnerPatchStillRequired -and
-    $patchTargetsStep.recommended_guide_command -eq $runnerOutputWiringSafeCommand -and
+    $patchTargetsStep.recommended_guide_command -eq $runnerOutputWiringSafeCommand
+)
+$rawPatchTargetsSuggestsRegeneration = [bool](
+    $rawPatchTargetsGuidesSafeWiring -and
     @(
         $recommendedRepairCommand,
         $repairRunnerOutputContractCommand,
@@ -276,11 +278,24 @@ $runnerAlreadyWiredNeedsRegeneration = [bool](
         $broaderRunnerCommand
     ) -contains $patchTargetsStep.recommended_command
 )
+$runnerAlreadyWiredNeedsRegeneration = [bool](
+    $shouldRunRawPatchTargets -and
+    -not $runnerPatchStillRequired -and
+    (
+        $patchTargetsStep.status -eq 'saved-artifacts-stale-runner-already-wired' -or
+        $rawPatchTargetsSuggestsRegeneration
+    )
+)
 $alreadyDirectFromRawPatchTargets = [bool](
     $shouldRunRawPatchTargets -and
     -not $runnerPatchStillRequired -and
-    $patchTargetsStep.recommended_guide_command -eq $runnerOutputWiringSafeCommand -and
-    -not $runnerAlreadyWiredNeedsRegeneration
+    (
+        $patchTargetsStep.status -eq 'fully-wired' -or
+        (
+            $rawPatchTargetsGuidesSafeWiring -and
+            -not $runnerAlreadyWiredNeedsRegeneration
+        )
+    )
 )
 
 $status = $null
@@ -326,6 +341,14 @@ if ($status -eq 'ready-for-runner-patch') {
     $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextFocus = 'Run the explicit patch handoff helper now, then use its preserved snippet lines to wire the direct refresh and handoff fields into scripts/windows/run_google_issue3_recommended_validation.ps1 before rerunning the safe wiring audit and only later reopening the stricter raw verification command.'
     $nextArtifactToOpen = $ArtifactPath
+} elseif ($status -eq 'already-direct') {
+    $recommendedCommand = $runnerOutputWiringSafeCommand
+    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+        $recommendedVerificationCommand,
+        $runnerOutputWiringSafeCommand
+    )
+    $nextFocus = 'Reopen the safe runner-output wiring audit now that the saved summary and manifest already expose the direct contract, and only widen back out if that audit reports a fresh gap.'
+    $nextArtifactToOpen = $SummaryPath
 } elseif ($status -eq 'runner-already-wired-regenerate-outputs') {
     $recommendedCommand = Get-FirstNonEmptyValue -Values @($patchTargetsStep.recommended_command, $recommendedRepairCommand, $repairRunnerOutputContractCommand, $recommendedRegenerationCommand, $broaderRunnerCommand)
     $recommendedGuideCommand = $runnerOutputWiringSafeCommand
