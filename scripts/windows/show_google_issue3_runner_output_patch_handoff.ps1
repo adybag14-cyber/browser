@@ -151,11 +151,7 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
     $status = 'already-direct'
     $reason = 'The saved issue #3 patch-route artifact says the summary and manifest already carry the direct runner-output contract, so no runner-side patch handoff is needed before reopening the safe wiring audit.'
     $recommendedCommand = $runnerOutputWiringSafeCommand
-    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-        $recommendedVerificationCommand,
-        $recommendedSourceGuideCommand,
-        $runnerOutputWiringSafeCommand
-    )
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextFocus = 'Reopen the safe runner-output wiring audit now that the saved outputs already expose the direct contract, and only widen back out if that audit reports a new gap.'
     $nextArtifactToOpen = $SourceArtifactPath
 } elseif ($runnerAlreadyWiredNeedsRegeneration) {
