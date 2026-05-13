@@ -42,7 +42,19 @@ If the replay is running from a non-default checkout, from an already-saved summ
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-After the matrix narrows the route, reopen the shortcut surface when you want the tighter branch back into the live helper chain:
+If RepoRoot, a saved SummaryPath, or fixed bundle inputs are already in play and you want the broader issue `#3` route kept on one context-preserving command surface before narrowing again, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1
+```
+
+If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that same context directly in the contextual helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+After the contextual flow or the matrix narrows the route, reopen the shortcut surface when you want the tighter branch back into the live helper chain:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
@@ -91,7 +103,8 @@ Use them in this order when helpful:
 - `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first
 - `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay
 - `show_google_issue3_suite_router_next_steps.ps1` when you want the fastest command matrix from the top-level suite router before deciding between the handoff, replay-route, bundle-first, shortcut, or safe-route branches
-- `show_google_issue3_replay_shortcuts.ps1` when the matrix has already narrowed the replay back inside issue `#3` and you want the tightest current shortcut surface before deciding whether to widen into the handoff, replay-route, bundle-first, or safe-route helpers
+- `show_google_issue3_contextual_flow.ps1` when RepoRoot, SummaryPath, or fixed bundle inputs are already in play and you want the broader issue `#3` route kept on one context-preserving command surface before deciding between replay shortcuts, the later-stage probes, the attached-bundle route, or the wrapper-heavy safe-route helpers
+- `show_google_issue3_replay_shortcuts.ps1` when the matrix or contextual flow has already narrowed the replay back inside issue `#3` and you want the tightest current shortcut surface before deciding whether to widen into the handoff, replay-route, bundle-first, or safe-route helpers
 - `show_google_issue3_suite_router_handoff.ps1` when you want the suite-router read-first commands plus the current replay-shortcuts, bundle-first, and safe-route-map helpers surfaced together before you decide whether the next replay should stay broad or narrow
 - `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes
 - `show_google_issue3_replay_route.ps1` when you want the same read-first bridge plus the attached three-page bundle branch, the current safe-route map, and the repo-root-aware runner next-step helper preserved together in one route
