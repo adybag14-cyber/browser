@@ -108,6 +108,16 @@ $recommendedVerificationCommand = Get-OptionalPropertyValue -Object $sourceArtif
 $recommendedRegenerationCommand = Get-OptionalPropertyValue -Object $sourceArtifact -Name 'recommended_regeneration_command'
 $recommendedRepairCommand = Get-OptionalPropertyValue -Object $sourceArtifact -Name 'recommended_repair_command'
 $runnerPatchStillRequired = [bool](Get-OptionalPropertyValue -Object $sourceArtifact -Name 'runner_patch_still_required')
+$runnerAlreadyWiredNeedsRegeneration = if ($sourceArtifact.PSObject.Properties['runner_already_wired_needs_regeneration']) {
+    [bool]$sourceArtifact.runner_already_wired_needs_regeneration
+} else {
+    [bool]($sourceStatus -eq 'runner-already-wired-regenerate-outputs')
+}
+$alreadyDirectFromRawPatchTargets = if ($sourceArtifact.PSObject.Properties['already_direct_from_raw_patch_targets']) {
+    [bool]$sourceArtifact.already_direct_from_raw_patch_targets
+} else {
+    [bool]($sourceStatus -eq 'already-direct')
+}
 $missingRunnerFields = @(Get-ArrayValue -Object $sourceArtifact -Name 'missing_runner_fields')
 $summaryPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'summary_patch_snippet_lines')
 $manifestPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'manifest_patch_snippet_lines')
@@ -131,6 +141,29 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
     $recommendedCommand = $recommendedPatchTarget
     $recommendedGuideCommand = $postPatchCommand
     $nextFocus = 'Apply the preserved summary and manifest patch snippet lines to the recommended validation runner, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the stricter raw wiring helper again.'
+    $nextArtifactToOpen = $SourceArtifactPath
+} elseif ($alreadyDirectFromRawPatchTargets) {
+    $status = 'already-direct'
+    $reason = 'The saved issue #3 patch-route artifact says the summary and manifest already carry the direct runner-output contract, so no runner-side patch handoff is needed before reopening the safe wiring audit.'
+    $recommendedCommand = $runnerOutputWiringSafeCommand
+    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+        $recommendedVerificationCommand,
+        $recommendedSourceGuideCommand,
+        $runnerOutputWiringSafeCommand
+    )
+    $nextFocus = 'Reopen the safe runner-output wiring audit now that the saved outputs already expose the direct contract, and only widen back out if that audit reports a new gap.'
+    $nextArtifactToOpen = $SourceArtifactPath
+} elseif ($runnerAlreadyWiredNeedsRegeneration) {
+    $status = 'runner-already-wired-regenerate-outputs'
+    $reason = 'The saved issue #3 patch-route artifact says the live runner source is already wired and the remaining work is to regenerate or repair the saved outputs instead of patching the runner again.'
+    $recommendedCommand = Get-FirstNonEmptyValue -Values @(
+        $recommendedSourceCommand,
+        $recommendedRegenerationCommand,
+        $recommendedRepairCommand,
+        $broaderRunnerCommand
+    )
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
+    $nextFocus = 'Regenerate or repair the saved summary and manifest, then rerun the safe wiring audit before trusting the stricter raw verification command again.'
     $nextArtifactToOpen = $SourceArtifactPath
 } else {
     $status = 'follow-source-artifact'
@@ -172,9 +205,12 @@ $report = [ordered]@{
     recommended_guide_command = $recommendedGuideCommand
     recommended_patch_target = $recommendedPatchTarget
     recommended_post_patch_command = $postPatchCommand
+    recommended_verification_command = $recommendedVerificationCommand
     recommended_regeneration_command = $recommendedRegenerationCommand
     recommended_repair_command = $recommendedRepairCommand
     runner_patch_still_required = [bool]$runnerPatchStillRequired
+    runner_already_wired_needs_regeneration = [bool]$runnerAlreadyWiredNeedsRegeneration
+    already_direct_from_raw_patch_targets = [bool]$alreadyDirectFromRawPatchTargets
     missing_runner_fields = @($missingRunnerFields)
     summary_patch_snippet_lines = @($summaryPatchSnippetLines)
     manifest_patch_snippet_lines = @($manifestPatchSnippetLines)
@@ -195,11 +231,17 @@ Write-Host ("Source artifact: {0}" -f $report.source_artifact_path)
 Write-Host ("Artifact:        {0}" -f $report.artifact_path)
 Write-Host ("Source status:   {0}" -f $report.source_status)
 Write-Host ("Status:          {0}" -f $report.status)
+Write-Host ("Runner patch still required: {0}" -f $report.runner_patch_still_required)
+Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_already_wired_needs_regeneration)
+Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target:    {0}" -f $report.recommended_patch_target)
 }
 Write-Host ("Run:             {0}" -f $report.recommended_command)
 Write-Host ("Guide:           {0}" -f $report.recommended_guide_command)
+if ($report.recommended_verification_command) {
+    Write-Host ("Verify:          {0}" -f $report.recommended_verification_command)
+}
 if ($report.recommended_regeneration_command) {
     Write-Host ("Rerun:           {0}" -f $report.recommended_regeneration_command)
 }
