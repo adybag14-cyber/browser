@@ -130,6 +130,7 @@ $summaryPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'summ
 $manifestPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'manifest_patch_snippet_lines')
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$runnerPatchRulesNotePath = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
 $postPatchCommand = Get-FirstNonEmptyValue -Values @(
     $recommendedVerificationCommand,
     $runnerOutputWiringSafeCommand,
@@ -147,7 +148,7 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
     $reason = 'The saved issue #3 patch-route artifact has already narrowed the next replay to a direct runner update, so the next step is to patch the recommended validation runner rather than rerun the raw patch-target helper.'
     $recommendedCommand = $recommendedPatchTarget
     $recommendedGuideCommand = $postPatchCommand
-    $nextFocus = 'Apply the preserved summary and manifest patch snippet lines to the recommended validation runner, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the stricter raw wiring helper again.'
+    $nextFocus = 'Open docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md beside the saved patch-handoff artifact, apply the preserved summary and manifest patch snippet lines to the recommended validation runner, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the stricter raw wiring helper again.'
     $nextArtifactToOpen = $SourceArtifactPath
 } elseif ($alreadyDirectFromRawPatchTargets) {
     $status = 'already-direct'
@@ -197,7 +198,7 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
 
 $report = [ordered]@{
     issue = 'Google issue #3 runner output patch handoff'
-    purpose = 'Turn the saved issue #3 patch-route artifact into an explicit runner patch handoff with the target file, preserved snippet lines, and the first post-patch audit command.'
+    purpose = 'Turn the saved issue #3 patch-route artifact into an explicit runner patch handoff with the target file, preserved snippet lines, the focused patch-rules note, and the first post-patch audit command.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     repo_root = $resolvedRepoRoot
     source_artifact_path = $SourceArtifactPath
@@ -209,6 +210,7 @@ $report = [ordered]@{
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     recommended_patch_target = $recommendedPatchTarget
+    recommended_reference_note_path = if ($status -eq 'ready-for-runner-patch-handoff') { $runnerPatchRulesNotePath } else { $null }
     recommended_post_patch_command = $postPatchCommand
     recommended_verification_command = $recommendedVerificationCommand
     recommended_regeneration_command = $recommendedRegenerationCommand
@@ -242,6 +244,9 @@ Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_alr
 Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target:    {0}" -f $report.recommended_patch_target)
+}
+if ($report.recommended_reference_note_path) {
+    Write-Host ("Rules note:      {0}" -f $report.recommended_reference_note_path)
 }
 Write-Host ("Run:             {0}" -f $report.recommended_command)
 Write-Host ("Guide:           {0}" -f $report.recommended_guide_command)
