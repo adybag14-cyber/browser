@@ -176,6 +176,19 @@ $handoff = [ordered]@{
     )
 }
 
+$recommendedNextHelperKey = 'replay_shortcuts'
+$recommendedNextHelperReason = 'The higher-level suite-router commands are already visible, so reopen the replay-shortcuts helper next to keep the attached-bundle route, safe-route map, and runner-state helper together in one compact surface.'
+if ($handoff.explicit_input_path_count -gt 0) {
+    $recommendedNextHelperKey = 'attached_bundle_first'
+    $recommendedNextHelperReason = 'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle first before widening back into the broader Google-only issue #3 helper chain.'
+} elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
+    $recommendedNextHelperReason = 'A saved SummaryPath is already in play, so reopen the replay-shortcuts helper with that same context before deciding between reuse-current-outputs, bundle-first, or a fresh safe-route replay.'
+}
+
+$handoff.recommended_next_helper_key = $recommendedNextHelperKey
+$handoff.recommended_next_helper_reason = $recommendedNextHelperReason
+$handoff.recommended_next_helper_command = $handoff.helper_commands[$recommendedNextHelperKey]
+
 if ($Json) {
     $handoff | ConvertTo-Json -Depth 5
     exit 0
@@ -192,6 +205,9 @@ if ($handoff.summary_path) {
 if ($handoff.explicit_input_path_count -gt 0) {
     Write-Host ("Input paths: {0}" -f $handoff.explicit_input_path_count)
 }
+Write-Host ''
+Write-Host ("Recommended next helper: {0}" -f $handoff.recommended_next_helper_command)
+Write-Host ("Why:                    {0}" -f $handoff.recommended_next_helper_reason)
 Write-Host ''
 Write-Host 'Suite-router entrypoints:'
 Write-Host ("  Google recommended: {0}" -f $handoff.suite_router_commands.google_recommended)
