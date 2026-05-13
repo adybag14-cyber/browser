@@ -127,7 +127,8 @@ function New-PatchFieldRecord {
         [Parameter(Mandatory = $true)]
         [object]$CurrentObject,
         [Parameter(Mandatory = $true)]
-        [string]$SuggestedValue,
+        [AllowNull()]
+        $SuggestedValue,
         [Parameter(Mandatory = $true)]
         [string]$ValueSource,
         [Parameter(Mandatory = $true)]
@@ -369,7 +370,7 @@ Write-Host ''
 Write-Host 'Summary patch fields:'
 foreach ($field in $report.summary_patch_fields) {
     if (-not $field.present) {
-        Write-Host ("- {0}: {1} ({2})" -f $field.field, $field.suggested_value, $field.suggested_value_source)
+        Write-Host ("- {0}: {1} ({2})" -f $field.field, (Convert-ToPowerShellLiteral -Value $field.suggested_value), $field.suggested_value_source)
     }
 }
 if ($report.summary_patch_snippet_lines.Count -gt 0) {
@@ -383,7 +384,7 @@ Write-Host ''
 Write-Host 'Manifest patch fields:'
 foreach ($field in $report.manifest_patch_fields) {
     if (-not $field.present) {
-        Write-Host ("- {0}: {1} ({2})" -f $field.field, $field.suggested_value, $field.suggested_value_source)
+        Write-Host ("- {0}: {1} ({2})" -f $field.field, (Convert-ToPowerShellLiteral -Value $field.suggested_value), $field.suggested_value_source)
     }
 }
 if ($report.manifest_patch_snippet_lines.Count -gt 0) {
