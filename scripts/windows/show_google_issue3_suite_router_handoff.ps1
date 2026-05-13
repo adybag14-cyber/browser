@@ -170,12 +170,20 @@ $handoff = [ordered]@{
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the full recommended runner.',
+        'Use the read-first bridge when you want the exact four-command route from the higher-level suite router into replay_shortcuts printed in one place before reopening any longer notes.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
         'Use replay_shortcuts when you want the suite-router read-first commands, the attached-bundle route, and the current safe-route shortcuts printed together in one helper.',
         'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into replay_shortcuts without reopening the longer Windows runbook or validation-chain notes first.',
         'Use attached_bundle_first when the replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 chain.',
         'Use safe_route_entrypoints only after the higher-level suite router or replay shortcuts have already narrowed the replay into the current wrapper-heavy issue #3 path.'
     )
+}
+
+$handoff.bridge_sequence = [ordered]@{
+    google_recommended = $handoff.suite_router_commands.google_recommended
+    google_input_change_area = $handoff.suite_router_commands.google_input_change_area
+    google_flow = $handoff.helper_commands.google_flow
+    replay_shortcuts = $handoff.helper_commands.replay_shortcuts
 }
 
 $recommendedNextHelperKey = 'replay_shortcuts'
@@ -210,6 +218,15 @@ if ($handoff.explicit_input_path_count -gt 0) {
 Write-Host ''
 Write-Host ("Recommended next helper: {0}" -f $handoff.recommended_next_helper_command)
 Write-Host ("Why:                    {0}" -f $handoff.recommended_next_helper_reason)
+Write-Host ''
+Write-Host 'Read-first bridge:'
+Write-Host ("  1. Google recommended: {0}" -f $handoff.bridge_sequence.google_recommended)
+Write-Host ("  2. Google input:       {0}" -f $handoff.bridge_sequence.google_input_change_area)
+Write-Host ("  3. Google flow:        {0}" -f $handoff.bridge_sequence.google_flow)
+Write-Host ("  4. Replay shortcuts:   {0}" -f $handoff.bridge_sequence.replay_shortcuts)
+if ($handoff.explicit_input_path_count -gt 0) {
+    Write-Host ("  Bundle-first branch:   {0}" -f $handoff.suite_router_commands.attached_bundle_change_area)
+}
 Write-Host ''
 Write-Host 'Suite-router entrypoints:'
 Write-Host ("  Google recommended: {0}" -f $handoff.suite_router_commands.google_recommended)
