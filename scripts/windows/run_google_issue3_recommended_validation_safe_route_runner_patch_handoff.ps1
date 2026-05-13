@@ -208,15 +208,20 @@ $sourceArtifactPath = Get-FirstNonEmptyValue -Values @(
 )
 $sourceArtifactExists = [bool](-not [string]::IsNullOrWhiteSpace($sourceArtifactPath) -and (Test-Path -LiteralPath $sourceArtifactPath -PathType Leaf))
 
+$patchHandoffArguments = @('-SourceArtifactPath', $sourceArtifactPath, '-ArtifactPath', $ArtifactPath, '-Json')
+if ($RepoRoot) {
+    $patchHandoffArguments += @('-RepoRoot', $resolvedRepoRoot)
+}
+
 $patchHandoffStep = $null
 if ($sourceArtifactExists) {
-    $patchHandoffStep = Invoke-JsonHelper -Name 'runner-output-patch-handoff' -ScriptPath $patchHandoffScript -Arguments @('-SourceArtifactPath', $sourceArtifactPath, '-ArtifactPath', $ArtifactPath, '-Json')
+    $patchHandoffStep = Invoke-JsonHelper -Name 'runner-output-patch-handoff' -ScriptPath $patchHandoffScript -Arguments $patchHandoffArguments
 } else {
     $timestamp = (Get-Date).ToUniversalTime().ToString('o')
     $patchHandoffStep = [pscustomobject]@{
         name = 'runner-output-patch-handoff'
         script_path = $patchHandoffScript
-        arguments = @('-SourceArtifactPath', $sourceArtifactPath, '-ArtifactPath', $ArtifactPath, '-Json')
+        arguments = @($patchHandoffArguments)
         started_at_utc = $timestamp
         completed_at_utc = $timestamp
         exit_code = 0
