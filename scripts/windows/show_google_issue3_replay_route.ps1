@@ -214,42 +214,42 @@ if ($Json) {
 
 Write-Host 'Google issue #3 replay route'
 Write-Host ''
-Write-Host ("Repo root:   {0}" -f $route.repo_root)
-Write-Host ("Summary path:{0}" -f $(if ($route.summary_path) { " $($route.summary_path)" } else { ' <default>' }))
+Write-Host (("Repo root:   {0}") -f $route.repo_root)
+Write-Host (("Summary path:{0}") -f $(if ($route.summary_path) { " $($route.summary_path)" } else { ' <default>' }))
 if ($route.explicit_input_path_count -gt 0) {
-    Write-Host ("Input paths: {0}" -f $route.explicit_input_path_count)
+    Write-Host (("Input paths: {0}") -f $route.explicit_input_path_count)
 }
 Write-Host ''
-Write-Host ("Recommended next:    {0}" -f $route.recommended_next_command)
-Write-Host ("Why:                 {0}" -f $route.recommended_next_reason)
+Write-Host (("Recommended next:    {0}") -f $route.recommended_next_command)
+Write-Host (("Why:                 {0}") -f $route.recommended_next_reason)
 Write-Host ''
 Write-Host 'Read-first:'
-Write-Host ("  Suite router:          {0}" -f $route.read_first_suite_command)
-Write-Host ("  Change-area view:      {0}" -f $route.read_first_change_area_command)
-Write-Host ("  Google flow helper:    {0}" -f $route.read_first_google_flow_command)
-Write-Host ("  Suite-catalog bridge:  {0}" -f $route.suite_catalog_entrypoints_command)
-Write-Host ("  Suite handoff:         {0}" -f $route.suite_router_handoff_command)
-Write-Host ("  Next-step matrix:      {0}" -f $route.suite_router_next_steps_command)
+Write-Host (("  Suite router:          {0}") -f $route.read_first_suite_command)
+Write-Host (("  Change-area view:      {0}") -f $route.read_first_change_area_command)
+Write-Host (("  Google flow helper:    {0}") -f $route.read_first_google_flow_command)
+Write-Host (("  Suite-catalog bridge:  {0}") -f $route.suite_catalog_entrypoints_command)
+Write-Host (("  Suite handoff:         {0}") -f $route.suite_router_handoff_command)
+Write-Host (("  Next-step matrix:      {0}") -f $route.suite_router_next_steps_command)
 Write-Host ''
 Write-Host 'Attached-bundle branch:'
-Write-Host ("  Bundle route:        {0}" -f $route.attached_bundle_change_area_command)
-Write-Host ("  Bundle helper:       {0}" -f $route.attached_bundle_entrypoint_command)
-Write-Host ("  Replay shortcuts:    {0}" -f $route.replay_shortcuts_command)
+Write-Host (("  Bundle route:        {0}") -f $route.attached_bundle_change_area_command)
+Write-Host (("  Bundle helper:       {0}") -f $route.attached_bundle_entrypoint_command)
+Write-Host (("  Replay shortcuts:    {0}") -f $route.replay_shortcuts_command)
 Write-Host ''
 Write-Host 'Safe-route bridge:'
-Write-Host ("  Entrypoints helper:  {0}" -f $route.safe_route_entrypoints_command)
-Write-Host ("  Fresh replay:        {0}" -f $route.fresh_replay_command)
-Write-Host ("  Reuse outputs:       {0}" -f $route.reuse_current_outputs_command)
-Write-Host ("  Runner next step:    {0}" -f $route.runner_patch_next_step_command)
+Write-Host (("  Entrypoints helper:  {0}") -f $route.safe_route_entrypoints_command)
+Write-Host (("  Fresh replay:        {0}") -f $route.fresh_replay_command)
+Write-Host (("  Reuse outputs:       {0}") -f $route.reuse_current_outputs_command)
+Write-Host (("  Runner next step:    {0}") -f $route.runner_patch_next_step_command)
 Write-Host ''
 Write-Host 'Notes:'
-Write-Host ("  Quickstart note:     {0}" -f $route.quickstart_note_path)
-Write-Host ("  Replay discovery:    {0}" -f $route.replay_discovery_note_path)
-Write-Host ("  Windows runbook:     {0}" -f $route.windows_runbook_note_path)
-Write-Host ("  Suite-router bridge: {0}" -f $route.suite_router_bridge_note_path)
-Write-Host ("  Validation chain:    {0}" -f $route.validation_chain_note_path)
+Write-Host (("  Quickstart note:     {0}") -f $route.quickstart_note_path)
+Write-Host (("  Replay discovery:    {0}") -f $route.replay_discovery_note_path)
+Write-Host (("  Windows runbook:     {0}") -f $route.windows_runbook_note_path)
+Write-Host (("  Suite-router bridge: {0}") -f $route.suite_router_bridge_note_path)
+Write-Host (("  Validation chain:    {0}") -f $route.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Guidance:'
 foreach ($note in $route.notes) {
-    Write-Host ("- {0}" -f $note)
+    Write-Host (("- {0}") -f $note)
 }
