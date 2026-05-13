@@ -5,6 +5,7 @@ Use this note when the current issue `#3` replay has already narrowed to the dir
 Keep this note beside:
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for wrapper precedence and replay routing
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` for field-level patch rules and verification order
+- `docs/WINDOWS_FULL_USE.md` for the broader attached or saved localhost follow-up once the safe wiring and refresh route are green
 - `scripts/windows/show_google_issue3_runner_patch_next_step.ps1` when the wrapper has already named the current state and you want the exact next move printed without reopening the longer table first
 
 ## Default entrypoint
@@ -111,4 +112,14 @@ Continue with the next safe route rather than widening immediately:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe_path_route.ps1
 ```
 
-If the goal is to continue into attached or saved localhost HTML after the runner-output contract is ready, reopen the Google-style attached-page flow from `docs/WINDOWS_FULL_USE.md` only after the safe wiring and refresh-status helpers agree that the replay chain is ready.
+If the goal is to continue into attached or saved localhost HTML after the runner-output contract is ready, reopen the next route from `docs/WINDOWS_FULL_USE.md` only after the safe wiring and refresh-status helpers agree that the replay chain is ready.
+
+When the current pages are the known three-page compatibility bundle, use this narrower return route first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
+Use that bundle-aware route before the broader attached-page or Google-style follow-up when you want the pinned three-page compatibility set to stay locked through the checker, flow helper, and delegated localhost runner.
