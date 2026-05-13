@@ -145,6 +145,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 $safeRouteArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $safeRouteArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $safeRouteArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $safeRouteArguments -Name InputPath -Values $InputPath
 
 $replayShortcutsArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $replayShortcutsArguments -Name RepoRoot -Value $RepoRoot
@@ -153,7 +154,7 @@ Add-SharedPathArrayArgument -Arguments $replayShortcutsArguments -Name InputPath
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached bundle first entrypoint'
-    purpose = 'Print the pinned three-page compatibility bundle route first, including the fail-fast surface and bundle checks, then keep both the broader replay-shortcuts helper and the narrower safe-route helper on one command surface for the next step.'
+    purpose = 'Print the pinned three-page compatibility bundle route first, including the fail-fast surface and bundle checks, then keep both the broader replay-shortcuts helper and the narrower safe-route helper on one command surface without dropping fixed bundle inputs.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -172,7 +173,7 @@ $entrypoint = [ordered]@{
         'Use this helper when the current saved or attached pages are the known three-page compatibility bundle and you want that locked input set exercised before the broader Google-only wrapper chain.',
         'Start with bundle_surface_check_command so the pinned bundle guide, checker, helper, runner, and delegated attached-HTML surfaces fail fast before localhost replay.',
         'Run bundle_check_command next when you want the current saved-page set revalidated as the same three-page compatibility bundle before you trust the printed flow helper or runner.',
-        'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the surface check, bundle check, flow, and runner commands instead of relying on auto-discovery.',
+        'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the bundle check, flow, runner, replay-shortcuts helper, and safe-route return command instead of relying on auto-discovery.',
         'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the suite-router, replay-shortcuts, and safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
         'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.'
