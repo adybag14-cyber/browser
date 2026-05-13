@@ -1,21 +1,108 @@
 [CmdletBinding()]
 param(
-    [switch]$Json
+    [switch]$Json,
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$Host = "127.0.0.1",
+    [string]$SharedInputText = "Q",
+    [int]$SharedEnterOrderPort = 8157,
+    [int]$ServerReadyTimeoutSeconds = 15,
+    [int]$HomeWindowReadyAttempts = 60,
+    [int]$HomeTitleWaitAttempts = 80,
+    [int]$HomePollMilliseconds = 250
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Add-SharedArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return
+    }
+    if ($Value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    if ($Value -is [string]) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $Value))
+    } else {
+        $Arguments.Add([string]$Value)
+    }
+}
+
 $guidePath = 'docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md'
-$surfaceCheckCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1'
-$flowCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
-$wrapperCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
-$rawProbeCommand = 'powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\google-enter-order-probe.ps1'
+$surfaceCheckScript = '.\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1'
+$flowScript = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
+$wrapperScript = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
+$rawProbeScript = '.\tmp-browser-smoke\form-controls\google-enter-order-probe.ps1'
+
+$surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
+
+$sharedGuideArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $sharedGuideArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $sharedGuideArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $sharedGuideArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $sharedGuideArgs -Name SharedInputText -Value $SharedInputText
+Add-SharedArgument -Arguments $sharedGuideArgs -Name SharedEnterOrderPort -Value $SharedEnterOrderPort
+Add-SharedArgument -Arguments $sharedGuideArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
+Add-SharedArgument -Arguments $sharedGuideArgs -Name HomeWindowReadyAttempts -Value $HomeWindowReadyAttempts
+Add-SharedArgument -Arguments $sharedGuideArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
+Add-SharedArgument -Arguments $sharedGuideArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
+
+$wrapperArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $wrapperArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $wrapperArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $wrapperArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $wrapperArgs -Name SharedInputText -Value $SharedInputText
+Add-SharedArgument -Arguments $wrapperArgs -Name SharedEnterOrderPort -Value $SharedEnterOrderPort
+Add-SharedArgument -Arguments $wrapperArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
+Add-SharedArgument -Arguments $wrapperArgs -Name HomeWindowReadyAttempts -Value $HomeWindowReadyAttempts
+Add-SharedArgument -Arguments $wrapperArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
+Add-SharedArgument -Arguments $wrapperArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
+
+$rawProbeArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $rawProbeArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $rawProbeArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $rawProbeArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $rawProbeArgs -Name InputText -Value $SharedInputText
+Add-SharedArgument -Arguments $rawProbeArgs -Name Port -Value $SharedEnterOrderPort
+Add-SharedArgument -Arguments $rawProbeArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
+Add-SharedArgument -Arguments $rawProbeArgs -Name WindowReadyAttempts -Value $HomeWindowReadyAttempts
+Add-SharedArgument -Arguments $rawProbeArgs -Name TitleWaitAttempts -Value $HomeTitleWaitAttempts
+Add-SharedArgument -Arguments $rawProbeArgs -Name PollMilliseconds -Value $HomePollMilliseconds
+
+$surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File $surfaceCheckScript$(if ($surfaceCheckArgs.Count -gt 0) { ' ' + ($surfaceCheckArgs -join ' ') } else { '' })"
+$flowCommand = "powershell -ExecutionPolicy Bypass -File $flowScript$(if ($sharedGuideArgs.Count -gt 0) { ' ' + ($sharedGuideArgs -join ' ') } else { '' })"
+$wrapperCommand = "powershell -ExecutionPolicy Bypass -File $wrapperScript$(if ($wrapperArgs.Count -gt 0) { ' ' + ($wrapperArgs -join ' ') } else { '' })"
+$rawProbeCommand = "powershell -ExecutionPolicy Bypass -File $rawProbeScript$(if ($rawProbeArgs.Count -gt 0) { ' ' + ($rawProbeArgs -join ' ') } else { '' })"
 
 $guide = [ordered]@{
     issue = 'Google form-controls Enter-order trace guide'
     purpose = 'Translate the dedicated shared Google-style Enter-order probe markers and JSON fields into click-focus, typed-text, held-keydown, keypress, and submit stages before widening issue #3 validation again.'
     guide_path = $guidePath
+    host = $Host
+    shared_input_text = $SharedInputText
+    shared_enter_order_port = $SharedEnterOrderPort
     surface_check_command = $surfaceCheckCommand
     flow_command = $flowCommand
     wrapper_command = $wrapperCommand
@@ -42,6 +129,9 @@ Write-Host 'Google form-controls Enter-order trace guide'
 Write-Host ''
 Write-Host ("Purpose: {0}" -f $guide.purpose)
 Write-Host ("Guide:   {0}" -f $guide.guide_path)
+Write-Host ("Host:    {0}" -f $guide.host)
+Write-Host ("Input:   {0}" -f $guide.shared_input_text)
+Write-Host ("Port:    {0}" -f $guide.shared_enter_order_port)
 Write-Host ("Check:   {0}" -f $guide.surface_check_command)
 Write-Host ("Flow:    {0}" -f $guide.flow_command)
 Write-Host ("Run:     {0}" -f $guide.wrapper_command)
