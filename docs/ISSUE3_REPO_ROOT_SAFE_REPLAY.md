@@ -44,6 +44,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_va
 
 These helpers are the safest way to keep the replay on the selected checkout once the branch has already emitted current artifacts.
 
+## Repo-root-aware attached three-page bundle route
+
+When the current saved or attached inputs are still the known three-page compatibility bundle, start from the repo-root-aware safe-route entrypoints helper first so it prints the attached bundle commands with the same alternate-checkout context preserved:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot $repoRoot -SummaryPath $summaryPath
+```
+
+Then use the emitted `attached_bundle_suite_command`, `attached_bundle_flow_command`, and `attached_bundle_runner_command` before widening back into the broader Google-only safe-route chain.
+
+Use this route when:
+- the current work item is still the pinned three-page compatibility bundle
+- the replay should keep the same `RepoRoot` and `SummaryPath` through the bundle flow and delegated localhost runner
+- you want to return to the wrapper-heavy safe-route chain only after the bundle replay makes the next Google-style input or runner-output state clear again
+
 ## Status-to-next-step quick map
 
 ### `ready-for-runner-patch`
@@ -72,7 +87,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_ru
 
 - Prefer `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the fresh replay entrypoint for alternate-checkout runs.
 - Prefer the safe helper with `-RepoRoot $repoRoot -SummaryPath $summaryPath` over a raw helper that rediscovers paths.
-- Keep the same summary path all the way through the safe wiring, refresh, and handoff checkpoints.
+- Keep the same summary path all the way through the safe wiring, refresh, handoff, and attached-bundle checkpoints.
 - Reopen older raw helpers only after the corresponding safe helper says that checkpoint is ready.
 
 ## Keep These Notes Open
