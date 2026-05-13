@@ -145,7 +145,7 @@ $contextualFlowCommand = Format-HelperCommand -ScriptName 'show_google_issue3_co
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 suite catalog entrypoints'
-    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the current Google flow helper, the current issue #3 next-step matrix, the context-preserving issue #3 replay flow, and the current issue #3 replay helpers on one compact command surface before the route narrows into replay-route, replay-shortcuts, or the wrapper-heavy safe-route helpers.'
+    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the current Google flow helper, the current issue #3 next-step matrix, the context-preserving issue #3 replay flow, and the current safe-route replay helpers on one compact command surface before the route narrows into replay-route, replay-shortcuts, or the wrapper-heavy safe-route helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -172,6 +172,8 @@ $entrypoints = [ordered]@{
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
+        fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
+        reuse_current_outputs = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments $sharedArguments
     }
     bridge_sequence = [ordered]@{
         google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
@@ -199,7 +201,9 @@ $entrypoints = [ordered]@{
         'Use replay_shortcuts after the next-step matrix or replay_route when you want the narrower shortcut map for the attached-bundle-first route and the wrapper-heavy safe-route branches.',
         'Use suite_router_handoff when you want the wider compact bridge that keeps the exact top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
         'Use attached_bundle_first when explicit input paths are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only issue #3 path.',
-        'Use safe_route_entrypoints only after the suite catalog, Google flow, next-step matrix, contextual flow, suite-router handoff, replay-route helper, or replay-shortcuts helper has already narrowed the replay into the current wrapper-heavy issue #3 path, while keeping the current repo root, summary path, and pinned bundle inputs attached when they are already in play.',
+        'Use safe_route_entrypoints after the next-step matrix, contextual flow, suite-router handoff, replay-route helper, or replay-shortcuts helper when you want the current wrapper-heavy issue #3 path, notes, and next-state helpers surfaced in one place.',
+        'Use fresh_safe_route_replay when current issue #3 outputs may be stale or missing and you already know you want the one-command fresh wrapper instead of reopening the safe-route map first.',
+        'Use reuse_current_outputs only when the current issue #3 artifacts are already present and trusted and you want the narrower safe-route wrapper without another broader regeneration pass.',
         'Keep the quickstart, suite-router bridge, and validation-chain notes nearby when you want the written route beside these commands without reopening the broader Windows runbook first.'
     )
 }
@@ -256,14 +260,16 @@ Write-Host (("  Google input:       {0}") -f $entrypoints.suite_catalog_commands
 Write-Host (("  Attached bundle:    {0}") -f $entrypoints.suite_catalog_commands.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Issue #3 replay helpers:'
-Write-Host (("  Google flow:        {0}") -f $entrypoints.helper_commands.google_flow)
-Write-Host (("  Contextual flow:    {0}") -f $entrypoints.helper_commands.contextual_flow)
-Write-Host (("  Next-step matrix:   {0}") -f $entrypoints.helper_commands.suite_router_next_steps)
-Write-Host (("  Replay route:       {0}") -f $entrypoints.helper_commands.replay_route)
-Write-Host (("  Replay shortcuts:   {0}") -f $entrypoints.helper_commands.replay_shortcuts)
-Write-Host (("  Suite handoff:      {0}") -f $entrypoints.helper_commands.suite_router_handoff)
-Write-Host (("  Bundle first:       {0}") -f $entrypoints.helper_commands.attached_bundle_first)
-Write-Host (("  Safe route map:     {0}") -f $entrypoints.helper_commands.safe_route_entrypoints)
+Write-Host (("  Google flow:         {0}") -f $entrypoints.helper_commands.google_flow)
+Write-Host (("  Contextual flow:     {0}") -f $entrypoints.helper_commands.contextual_flow)
+Write-Host (("  Next-step matrix:    {0}") -f $entrypoints.helper_commands.suite_router_next_steps)
+Write-Host (("  Replay route:        {0}") -f $entrypoints.helper_commands.replay_route)
+Write-Host (("  Replay shortcuts:    {0}") -f $entrypoints.helper_commands.replay_shortcuts)
+Write-Host (("  Suite handoff:       {0}") -f $entrypoints.helper_commands.suite_router_handoff)
+Write-Host (("  Bundle first:        {0}") -f $entrypoints.helper_commands.attached_bundle_first)
+Write-Host (("  Safe-route map:      {0}") -f $entrypoints.helper_commands.safe_route_entrypoints)
+Write-Host (("  Fresh safe replay:   {0}") -f $entrypoints.helper_commands.fresh_safe_route_replay)
+Write-Host (("  Reuse current output:{0}") -f (' ' + $entrypoints.helper_commands.reuse_current_outputs))
 Write-Host ''
 Write-Host (("Quickstart note:      {0}") -f $entrypoints.quickstart_note_path)
 Write-Host (("Suite-router bridge:  {0}") -f $entrypoints.suite_router_bridge_note_path)
