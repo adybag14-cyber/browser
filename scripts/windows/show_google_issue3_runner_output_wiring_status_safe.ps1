@@ -117,6 +117,7 @@ $artifactPathRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts
 $runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
 $runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
 $runnerPatchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
+$runnerPatchTargetsSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
 $runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
 $runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
 $refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
@@ -194,9 +195,9 @@ if (-not $summaryHasArtifactRootField) {
 } elseif ($runnerContractMissing) {
     $status = 'runner-contract-missing'
     $reason = 'The saved summary and manifest are safe enough to inspect, but they still omit part of the direct refresh or handoff runner-output contract.'
-    $nextFocus = 'Repair the saved runner-output contract first, use the safe patch-target helper if the repair still leaves a gap, and only then rerun the existing wiring helper to confirm the contract is fully wired.'
+    $nextFocus = 'Repair the saved runner-output contract first, use the safe patch-target route if the repair still leaves a gap, and only then rerun the existing wiring helper to confirm the contract is fully wired.'
     $recommendedCommand = $runnerContractRepairCommand
-    $recommendedGuideCommand = $runnerPatchTargetsSafeCommand
+    $recommendedGuideCommand = $runnerPatchTargetsSafeRouteCommand
     $nextArtifactToOpen = $SummaryPath
 } else {
     $status = 'safe-to-run-existing-helper'
@@ -238,6 +239,7 @@ $report = [ordered]@{
     runner_output_wiring_safe_command = $runnerOutputWiringSafeCommand
     runner_output_wiring_command = $runnerOutputWiringCommand
     runner_patch_targets_safe_command = $runnerPatchTargetsSafeCommand
+    runner_patch_targets_safe_route_command = $runnerPatchTargetsSafeRouteCommand
     runner_patch_targets_command = $runnerPatchTargetsCommand
     runner_contract_repair_command = $runnerContractRepairCommand
     refresh_status_safe_command = $refreshStatusSafeCommand
@@ -279,4 +281,5 @@ Write-Host ("Open:   {0}" -f $report.next_artifact_to_open)
 Write-Host ("Run:    {0}" -f $report.recommended_command)
 Write-Host ("Guide:  {0}" -f $report.recommended_guide_command)
 Write-Host ("Safe wiring gate: {0}" -f $report.runner_output_wiring_safe_command)
+Write-Host ("Safe patch-target route: {0}" -f $report.runner_patch_targets_safe_route_command)
 Write-Host ("Safe patch targets: {0}" -f $report.runner_patch_targets_safe_command)
