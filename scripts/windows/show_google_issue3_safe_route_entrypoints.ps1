@@ -122,6 +122,10 @@ $readFirstSuiteCommand = '.\scripts\windows\show_headed_validation_suites.ps1 -S
 $readFirstChangeAreaCommand = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input'
 $readFirstGoogleFlowCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1'
 $attachedBundleSuiteCommand = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+$attachedBundleFirstEntrypointCommand = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+})
 $attachedBundleFlowCommand = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments ([ordered]@{
     RepoRoot = $recommendedRepoRoot
 })
@@ -131,7 +135,7 @@ $attachedBundleRunnerCommand = Format-HelperCommand -ScriptName 'run_attached_ht
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 safe-route entrypoints'
-    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root and summary-path context for non-default checkouts and keeping the attached three-page bundle route aligned with the same replay root when applicable.'
+    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root and summary-path context for non-default checkouts and surfacing the one-command attached-bundle-first helper beside the same replay root when applicable.'
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     runner_patch_decision_table_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
@@ -140,6 +144,7 @@ $entrypoints = [ordered]@{
     read_first_change_area_command = $readFirstChangeAreaCommand
     read_first_google_flow_command = $readFirstGoogleFlowCommand
     attached_bundle_suite_command = $attachedBundleSuiteCommand
+    attached_bundle_first_entrypoint_command = $attachedBundleFirstEntrypointCommand
     attached_bundle_flow_command = $attachedBundleFlowCommand
     attached_bundle_runner_command = $attachedBundleRunnerCommand
     repo_root = $resolvedRepoRoot
@@ -167,6 +172,7 @@ $entrypoints = [ordered]@{
         'Use read_first_change_area_command when the next replay may need one of the narrower Google title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.'
         'Use read_first_google_flow_command when you want the broader bounded Google flow printed before deciding whether to stay on the safe-route entrypoints or drop to another narrower helper.'
         'Use attached_bundle_suite_command when the next replay should stay pinned to the current attached three-page compatibility bundle instead of the broader Google-only ladder.'
+        'Use attached_bundle_first_entrypoint_command when you want the pinned three-page compatibility bundle route plus the return-to-safe-route command printed in one helper before deciding whether to widen back into the wrapper-heavy chain.'
         'Use attached_bundle_flow_command before the attached-page bundle rerun when you want the pinned checker, flow helper, and delegated localhost runner printed in one place, with RepoRoot carried through for non-default checkouts.'
         'Use attached_bundle_runner_command after the attached bundle flow when you want the current three-page compatibility targets exercised on the same narrower route, while preserving the selected RepoRoot when the helper was opened from a non-default checkout.'
         'Use fresh_replay_command when outputs may be stale or missing.'
@@ -194,9 +200,10 @@ Write-Host ("  Change-area view:   {0}" -f $entrypoints.read_first_change_area_c
 Write-Host ("  Google flow helper: {0}" -f $entrypoints.read_first_google_flow_command)
 Write-Host ''
 Write-Host 'Attached-page bundle route:'
-Write-Host ("  Suite router:       {0}" -f $entrypoints.attached_bundle_suite_command)
-Write-Host ("  Flow helper:        {0}" -f $entrypoints.attached_bundle_flow_command)
-Write-Host ("  Runner:             {0}" -f $entrypoints.attached_bundle_runner_command)
+Write-Host ("  Suite router:         {0}" -f $entrypoints.attached_bundle_suite_command)
+Write-Host ("  Bundle-first helper:  {0}" -f $entrypoints.attached_bundle_first_entrypoint_command)
+Write-Host ("  Flow helper:          {0}" -f $entrypoints.attached_bundle_flow_command)
+Write-Host ("  Runner:               {0}" -f $entrypoints.attached_bundle_runner_command)
 Write-Host ''
 Write-Host ("Fresh replay:          {0}" -f $entrypoints.fresh_replay_command)
 Write-Host ("Reuse current outputs: {0}" -f $entrypoints.reuse_current_outputs_command)
