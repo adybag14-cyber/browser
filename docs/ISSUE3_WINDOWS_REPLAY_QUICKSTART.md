@@ -3,6 +3,7 @@
 Use this note when you want the shortest current replay path for issue `#3` on `fork/headed-mode-foundation` without reopening the longer routing notes first.
 
 Keep these companion notes nearby when the replay needs more detail:
+- `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 - `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`
@@ -18,13 +19,25 @@ Use these when you are re-entering issue `#3` from the higher-level headed valid
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 ```
 
+If you want that same read-first bridge plus the current replay-shortcuts, bundle-first, and safe-route-map helpers printed together in one place, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1
+```
+
 If you want those read-first commands plus the attached three-page bundle branch and the current safe-route shortcuts printed together in one place, use:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that context directly in the helper:
+If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that context directly in the suite-router handoff helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+If you already know you want the narrower shortcut helper right away, preserve that same context directly in:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -36,7 +49,8 @@ Use them in this order when helpful:
 - `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first
 - `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay
 - `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes
-- `show_google_issue3_replay_shortcuts.ps1` when you want the broader Google route, the attached three-page bundle branch, and the current safe-route shortcuts surfaced together before deciding whether the next replay should stay on the pinned bundle route or reopen the wrapper-heavy safe route
+- `show_google_issue3_suite_router_handoff.ps1` when you want the suite-router read-first commands plus the current replay-shortcuts, bundle-first, and safe-route-map helpers surfaced together before you decide whether the next replay should stay broad or narrow
+- `show_google_issue3_replay_shortcuts.ps1` when you already want the broader Google route, the attached three-page bundle branch, and the current safe-route shortcuts together without reopening the bridge helper first
 - `-ChangeArea attached-html-target-bundle` when the next replay should stay pinned to the known three-page compatibility bundle before you reopen the broader attached-page or wrapper-heavy issue `#3` helpers
 
 ## One-command entrypoints map
