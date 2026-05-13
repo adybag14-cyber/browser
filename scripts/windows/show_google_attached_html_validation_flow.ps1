@@ -7,6 +7,9 @@ param(
     [string[]]$InputPath,
 
     [string]$PreferredInitialPage,
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$Host = "127.0.0.1",
     [int]$Port = 8123,
     [switch]$Json,
     [switch]$LeaveOpen,
@@ -23,11 +26,16 @@ function Get-AssetClosureCommand {
         [Parameter(Mandatory = $true)]
         [string]$ParameterSetName,
         [string[]]$ResolvedInputPath,
+        [string]$RepoRoot,
         [Parameter(Mandatory = $true)]
         [bool]$AllowMissingLocalAssets
     )
 
     $base = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle"
+    if ($RepoRoot) {
+        $quotedRepoRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot
+        $base += " -RepoRoot $quotedRepoRoot"
+    }
     if ($AllowMissingLocalAssets) {
         $base += " -AllowMissingAssets"
     }
@@ -57,9 +65,12 @@ function Get-GoogleAttachedHtmlHandoffCommands {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ParameterSetName,
+        [string]$ResolvedRepoRoot,
         [string]$ResolvedPageRoot,
         [string[]]$ResolvedInputPath,
         [string]$ResolvedPreferredInitialPage,
+        [string]$BrowserExe,
+        [string]$Host,
         [Parameter(Mandatory = $true)]
         [int]$Port,
         [Parameter(Mandatory = $true)]
@@ -71,6 +82,21 @@ function Get-GoogleAttachedHtmlHandoffCommands {
     $helperCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle -Port $Port"
     $runnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Port $Port -Wait"
 
+    if ($ResolvedRepoRoot) {
+        $quotedRepoRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedRepoRoot
+        $helperCommand += " -RepoRoot $quotedRepoRoot"
+        $runnerCommand += " -RepoRoot $quotedRepoRoot"
+    }
+    if ($BrowserExe) {
+        $quotedBrowserExe = ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe
+        $helperCommand += " -BrowserExe $quotedBrowserExe"
+        $runnerCommand += " -BrowserExe $quotedBrowserExe"
+    }
+    if ($Host) {
+        $quotedHost = ConvertTo-PowerShellSingleQuotedLiteral -Value $Host
+        $helperCommand += " -Host $quotedHost"
+        $runnerCommand += " -Host $quotedHost"
+    }
     if ($ResolvedPreferredInitialPage) {
         $quotedPreferredInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPreferredInitialPage
         $helperCommand += " -PreferredInitialPage $quotedPreferredInitialPage"
@@ -122,6 +148,9 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [string[]]$ResolvedInputPath,
         [string]$PreferredInitialPage,
         [string]$ResolvedPreferredInitialPage,
+        [string]$BrowserExe,
+        [Parameter(Mandatory = $true)]
+        [string]$Host,
         [Parameter(Mandatory = $true)]
         [bool]$LeaveOpen,
         [Parameter(Mandatory = $true)]
@@ -165,12 +194,15 @@ function Get-GoogleAttachedHtmlFlowMetadata {
 
     return [ordered]@{
         parameter_mode = $parameterMode
+        repo_root = $RepoRoot
         page_root = $PageRoot
         input_count = @($ResolvedInputPath).Count
         resolved_input_path = @($ResolvedInputPath)
         preferred_initial_page = $ResolvedPreferredInitialPage
         preferred_initial_page_mode = $preferredInitialPageMode
         validation_mode = "google-style"
+        browser_exe = $BrowserExe
+        host = $Host
         allow_missing_local_assets = $AllowMissingLocalAssets
         leave_open = $LeaveOpen
         port = $Port
@@ -183,9 +215,16 @@ function Get-GoogleAttachedHtmlFlowMetadata {
     }
 }
 
-$repoRoot = Resolve-LightpandaRepoRoot $PSScriptRoot
+$resolvedRepoRoot = if ($RepoRoot) {
+    (Resolve-Path -LiteralPath $RepoRoot).Path
+} else {
+    Resolve-LightpandaRepoRoot $PSScriptRoot
+}
 $helper = Join-Path $PSScriptRoot "show_saved_page_google_validation_flow.ps1"
-$surfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
+$surfaceCheck = '.\\scripts\\windows\\check_google_attached_html_validation_surface.ps1'
+$surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $resolvedRepoRoot
+$surfaceCheckCommand = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $surfaceCheck, $(if ($surfaceCheckArgs.Count -gt 0) { " " + ($surfaceCheckArgs -join " ") } else { "" }))
 if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
     throw "Google-style attached HTML flow helper not found: $helper"
 }
@@ -198,7 +237,7 @@ $resolvedPageRoot = if ($PageRoot) {
 $resolvedInputPath = switch ($PSCmdlet.ParameterSetName) {
     "PageRoot" { @() }
     "InputPath" { @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path }) }
-    default { Get-DefaultAttachedHtmlInputPath -RepoRoot $repoRoot -GoogleStyle }
+    default { Get-DefaultAttachedHtmlInputPath -RepoRoot $resolvedRepoRoot -GoogleStyle }
 }
 $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     if ($PSCmdlet.ParameterSetName -eq "PageRoot") {
@@ -211,12 +250,15 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
 } else {
     Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 }
-$assetClosureCommand = Get-AssetClosureCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedInputPath $resolvedInputPath -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
+$assetClosureCommand = Get-AssetClosureCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedInputPath $resolvedInputPath -RepoRoot $resolvedRepoRoot -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 $handoffCommands = Get-GoogleAttachedHtmlHandoffCommands `
     -ParameterSetName $PSCmdlet.ParameterSetName `
+    -ResolvedRepoRoot $resolvedRepoRoot `
     -ResolvedPageRoot $resolvedPageRoot `
     -ResolvedInputPath $resolvedInputPath `
     -ResolvedPreferredInitialPage $resolvedPreferredInitialPage `
+    -BrowserExe $BrowserExe `
+    -Host $Host `
     -Port $Port `
     -LeaveOpen ([bool]$LeaveOpen) `
     -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
@@ -231,7 +273,7 @@ $autoGoogleStyleFixture = if ($PSCmdlet.ParameterSetName -eq "Auto") {
 }
 
 if ($PSCmdlet.ParameterSetName -eq "Auto" -and -not $autoGoogleStyleFixture) {
-    $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $repoRoot)
+    $searchRoots = @(Get-AttachedHtmlSearchRoots -RepoRoot $resolvedRepoRoot)
     throw "No Google-style attached HTML files were found under: $($searchRoots -join '; '). Use .\\scripts\\windows\\show_attached_html_validation_flow.ps1 for the general attached-page flow, or pass -InputPath / -PageRoot to override auto-discovery."
 }
 
@@ -242,8 +284,13 @@ $attachedAssetAudit = if ($PSCmdlet.ParameterSetName -eq "PageRoot") {
 }
 
 $arguments = @{
+    Host = $Host
     Port = $Port
     ManualGoogleStyle = $true
+    RepoRoot = $resolvedRepoRoot
+}
+if ($BrowserExe) {
+    $arguments.BrowserExe = $BrowserExe
 }
 if ($resolvedPreferredInitialPage) {
     $arguments.PreferredInitialPage = $resolvedPreferredInitialPage
@@ -253,12 +300,14 @@ if ($LeaveOpen) {
 }
 
 $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
-    -RepoRoot $repoRoot `
+    -RepoRoot $resolvedRepoRoot `
     -ParameterSetName $PSCmdlet.ParameterSetName `
     -PageRoot $resolvedPageRoot `
     -ResolvedInputPath $resolvedInputPath `
     -PreferredInitialPage $PreferredInitialPage `
     -ResolvedPreferredInitialPage $resolvedPreferredInitialPage `
+    -BrowserExe $BrowserExe `
+    -Host $Host `
     -LeaveOpen ([bool]$LeaveOpen) `
     -Port $Port `
     -MissingAssetAudit $attachedAssetAudit `
@@ -272,6 +321,7 @@ if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
     Write-Host ""
     Write-Host "Mode: attached HTML auto-discovery with the Google-style localhost follow-up"
+    Write-Host ("Host: {0}" -f $Host)
     switch ($PSCmdlet.ParameterSetName) {
         "PageRoot" {
             Write-Host ("Mode detail: explicit page root ({0})" -f $resolvedPageRoot)
@@ -286,7 +336,7 @@ if (-not $Json) {
     if ($PSCmdlet.ParameterSetName -eq "Auto" -and $googleAttachedHtmlMetadata.search_roots.Count -gt 0) {
         Write-Host "Search roots:"
         foreach ($root in $googleAttachedHtmlMetadata.search_roots) {
-            Write-Host ("- {0}" -f (Convert-ToDisplayPath -Path $root -RepoRoot $repoRoot))
+            Write-Host ("- {0}" -f (Convert-ToDisplayPath -Path $root -RepoRoot $resolvedRepoRoot))
         }
     }
     Write-Host ""
@@ -301,8 +351,8 @@ if (-not $Json) {
     }
     if ($resolvedInputPath.Count -gt 0) {
         Write-Host ""
-        Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $repoRoot
-        Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $repoRoot
+        Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $resolvedRepoRoot
+        Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $resolvedRepoRoot
     }
     if ($resolvedPreferredInitialPage) {
         Write-Host ""
