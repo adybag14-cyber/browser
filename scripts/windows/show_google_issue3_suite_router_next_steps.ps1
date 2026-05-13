@@ -170,9 +170,9 @@ $matrix = @(
     }
     [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
-        default_next_helper = 'show_attached_html_target_bundle_validation_flow.ps1'
-        command = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleFlowArguments
-        use_when = 'The current saved or attached inputs are still the pinned three-page compatibility bundle and the replay should stay on that locked route first.'
+        default_next_helper = 'show_google_issue3_attached_bundle_first_entrypoint.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
+        use_when = 'The current saved or attached inputs are still the pinned three-page compatibility bundle and you want the one-command bundle-first helper to keep that locked route plus the safe-route return visible before the broader Google-only wrappers reopen.'
     }
     [ordered]@{
         start_point = 'show_google_issue3_suite_router_handoff.ps1'
