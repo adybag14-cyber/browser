@@ -142,6 +142,10 @@ $attachedBundleFlowCommand = Format-HelperCommand -ScriptName 'show_attached_htm
 $attachedBundleRunnerCommand = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments ([ordered]@{
     RepoRoot = $recommendedRepoRoot
 }) -Switches @('Wait')
+$runnerPatchNextStepCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+    State = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
+}) -RepoRootOverride $recommendedRepoRoot
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 safe-route entrypoints'
@@ -149,7 +153,7 @@ $entrypoints = [ordered]@{
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     runner_patch_decision_table_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
-    runner_patch_next_step_helper_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
+    runner_patch_next_step_helper_command = $runnerPatchNextStepCommand
     read_first_suite_command = $readFirstSuiteCommand
     read_first_change_area_command = $readFirstChangeAreaCommand
     read_first_google_flow_command = $readFirstGoogleFlowCommand
@@ -192,7 +196,7 @@ $entrypoints = [ordered]@{
         'Open quickstart_note_path for the shortest current replay note, validation_chain_note_path for wrapper precedence, and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
         'Use runner_patch_next_step_helper_command when the wrapper has already named one of those three states and you want the exact next move printed without reopening the longer decision-table note first.'
         'Use refresh_status_route_command before reopening narrower refresh or handoff helpers from a non-default summary.'
-        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted read-first discovery commands, replay-shortcuts helper, attached-bundle suite router, and safe-route wrappers now preserve that same repo-root context instead of falling back to the default checkout.'
+        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted read-first discovery commands, replay-shortcuts helper, attached-bundle suite router, runner next-step helper, and safe-route wrappers now preserve that same repo-root context instead of falling back to the default checkout.'
     )
 }
 
