@@ -1,0 +1,150 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$SummaryPath,
+    [string[]]$InputPath,
+    [switch]$Json
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Add-SharedArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return
+    }
+    if ($Value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    if ($Value -is [string]) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $Value))
+    } else {
+        $Arguments.Add([string]$Value)
+    }
+}
+
+function Add-SharedPathArrayArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string[]]$Values
+    )
+
+    if (-not $Values -or $Values.Count -eq 0) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    foreach ($value in $Values) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $value))
+    }
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [string[]]$Switches = @(),
+        [System.Collections.Generic.List[string]]$Arguments
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    if ($Arguments -and $Arguments.Count -gt 0) {
+        $command += " " + ($Arguments -join ' ')
+    }
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    return $command
+}
+
+if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
+}
+
+$bundleArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
+
+$safeRouteArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $safeRouteArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $safeRouteArguments -Name SummaryPath -Value $SummaryPath
+
+$entrypoint = [ordered]@{
+    issue = 'Google issue #3 attached bundle first entrypoint'
+    purpose = 'Print the pinned three-page compatibility bundle route first, then keep the return to the broader issue #3 safe-route helper on one command surface.'
+    repo_root = $RepoRoot
+    summary_path = $SummaryPath
+    explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    suite_router_command = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+    bundle_flow_command = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
+    bundle_runner_command = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
+    return_to_safe_route_command = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $safeRouteArguments
+    quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
+    notes = @(
+        'Use this helper when the current saved or attached pages are the known three-page compatibility bundle and you want that locked input set exercised before the broader Google-only wrapper chain.',
+        'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the flow and runner commands instead of relying on auto-discovery.',
+        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the return-to-safe-route command to preserve that same context.',
+        'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.'
+    )
+}
+
+if ($Json) {
+    $entrypoint | ConvertTo-Json -Depth 5
+    exit 0
+}
+
+Write-Host 'Google issue #3 attached bundle first entrypoint'
+Write-Host ''
+if ($entrypoint.repo_root) {
+    Write-Host ("Repo root:   {0}" -f $entrypoint.repo_root)
+}
+if ($entrypoint.summary_path) {
+    Write-Host ("Summary path:{0}" -f " $($entrypoint.summary_path)")
+}
+if ($entrypoint.explicit_input_path_count -gt 0) {
+    Write-Host ("Input paths: {0}" -f $entrypoint.explicit_input_path_count)
+}
+Write-Host ''
+Write-Host 'Bundle-first route:'
+Write-Host ("  Suite router: {0}" -f $entrypoint.suite_router_command)
+Write-Host ("  Flow helper:  {0}" -f $entrypoint.bundle_flow_command)
+Write-Host ("  Runner:       {0}" -f $entrypoint.bundle_runner_command)
+Write-Host ''
+Write-Host 'Return after bundle replay:'
+Write-Host ("  Safe route:   {0}" -f $entrypoint.return_to_safe_route_command)
+Write-Host ''
+Write-Host ("Quickstart note:       {0}" -f $entrypoint.quickstart_note_path)
+Write-Host ("Validation chain note: {0}" -f $entrypoint.validation_chain_note_path)
+Write-Host ''
+Write-Host 'Notes:'
+foreach ($note in $entrypoint.notes) {
+    Write-Host ("- {0}" -f $note)
+}
