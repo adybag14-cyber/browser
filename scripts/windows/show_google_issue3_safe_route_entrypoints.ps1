@@ -89,7 +89,8 @@ $resolvedRepoRoot = if ($RepoRoot) {
 } else {
     Resolve-RepoRoot $PSScriptRoot
 }
-$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+$shouldPreserveRepoRoot = $PSBoundParameters.ContainsKey('RepoRoot') -or -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)
+$recommendedRepoRoot = if ($shouldPreserveRepoRoot) {
     $resolvedRepoRoot
 } else {
     $null
@@ -102,7 +103,7 @@ $recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 safe-route entrypoints'
-    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root and summary-path context for non-default checkouts.'
+    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root and summary-path context for non-default checkouts and env-anchored replays.'
     repo_root = $resolvedRepoRoot
     summary_path = $recommendedSummaryPath
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
@@ -130,6 +131,7 @@ $entrypoints = [ordered]@{
         'Use reuse_current_outputs_command only when the current issue #3 artifacts are already present and trusted.'
         'Open validation_chain_note_path for wrapper precedence and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
         'Use refresh_status_route_command before reopening narrower refresh or handoff helpers from a non-default summary.'
+        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted commands now preserve that same repo-root context instead of falling back to the default checkout.'
     )
 }
 
