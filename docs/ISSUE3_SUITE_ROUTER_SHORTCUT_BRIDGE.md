@@ -11,6 +11,12 @@ Keep the first issue `#3` commands stable when you start from:
 
 Then hand off immediately into the narrower shortcut helper that keeps the current replay context attached.
 
+If you want that bridge printed in one command before choosing between the bundle-first and safe-route branches, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1
+```
+
 ## Default read-first sequence
 
 Use these commands in order:
@@ -25,26 +31,33 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 Why this bridge matters:
 
 - the suite router is still the quickest way to surface the broader issue `#3` lane from the top-level catalog
-- the replay-shortcuts helper is the compact place that keeps the attached three-page bundle route, safe-route entrypoints, and runner next-step helper together
+- the suite-router handoff helper is now the shortest way to reprint those read-first commands beside the current replay-shortcuts, bundle-first, and safe-route map helpers
+- the replay-shortcuts helper is still the compact place that keeps the attached three-page bundle route, safe-route entrypoints, and runner next-step helper together
 - reopening the shortcut helper immediately avoids drifting back through the longer validation-chain note when the next replay already knows it is on issue `#3`
 
 ## Preserve non-default replay context
 
-If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit attached bundle path, preserve that context directly in the shortcut helper:
+If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit attached bundle path, preserve that context directly in the suite-router handoff helper first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+If you already know you want the narrower shortcut helper right away, preserve that same context directly in:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-Use that command immediately after the top-level suite-router commands when:
+Use those commands immediately after the top-level suite-router commands when:
 
 - `LIGHTPANDA_REPO_ROOT` should stay attached to later helpers
 - the current replay is already carrying a saved summary artifact
 - the current saved or attached pages are the known three-page compatibility bundle
 
-## Decide between the two main follow-ups
+## Decide between the three main follow-ups
 
-After `show_google_issue3_replay_shortcuts.ps1` prints the current routes, choose one of these first:
+After `show_google_issue3_suite_router_handoff.ps1` or `show_google_issue3_replay_shortcuts.ps1` prints the current routes, choose one of these first:
 
 1. Attached bundle first
 
@@ -62,6 +75,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 
 Use this when the current issue `#3` outputs may be stale or missing and you want the current safe-route replay plus the final runner-patch handoff artifact in one command.
 
+3. Safe-route entrypoints map
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+```
+
+Use this when the higher-level suite router is already out of the way and you want the current wrapper-heavy issue `#3` commands, notes, and next-state helper surfaced in one place before the next replay step.
+
 ## When a runner-patch state is already known
 
 If the safe-route wrapper or reuse-current-outputs helper already named one of the direct runner-patch states, go straight to the next-step helper instead of reopening the longer chain note first:
@@ -70,7 +91,7 @@ If the safe-route wrapper or reuse-current-outputs helper already named one of t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>
 ```
 
-Use that state helper after the replay-shortcuts helper when the current run already has:
+Use that state helper after the suite-router handoff helper or replay-shortcuts helper when the current run already has:
 
 - a saved summary path
 - a wrapper-emitted runner state
