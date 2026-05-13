@@ -274,9 +274,18 @@ $guide = [ordered]@{
         'runner-already-wired-regenerate-outputs'
     )
     example_commands = @(
-        'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_patch_next_step.ps1 -State ready-for-runner-patch',
-        'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_patch_next_step.ps1 -State already-direct',
-        'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_patch_next_step.ps1 -State runner-already-wired-regenerate-outputs'
+        (Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
+            SummaryPath = $SummaryPath
+            State = 'ready-for-runner-patch'
+        }) -RepoRootOverride $RepoRoot),
+        (Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
+            SummaryPath = $SummaryPath
+            State = 'already-direct'
+        }) -RepoRootOverride $RepoRoot),
+        (Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
+            SummaryPath = $SummaryPath
+            State = 'runner-already-wired-regenerate-outputs'
+        }) -RepoRootOverride $RepoRoot)
     )
     notes = @(
         'Use this helper after the safe-route runner-patch handoff wrapper or the reuse-current-outputs wrapper tells you which state you landed on.',
