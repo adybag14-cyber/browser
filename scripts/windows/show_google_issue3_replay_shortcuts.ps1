@@ -158,13 +158,14 @@ if ($InputPath -and @($InputPath).Count -gt 0) {
 
 $shortcuts = [ordered]@{
     issue = 'Google issue #3 replay shortcuts'
-    purpose = 'Keep the top-level issue #3 read-first commands, the suite-router handoff bridge, the compact next-step matrix, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
+    purpose = 'Keep the top-level issue #3 read-first commands, the suite-catalog bridge, the compact next-step matrix, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
+    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
     decision_table_note_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
     patch_rules_note_path = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
     read_first_commands = [ordered]@{
@@ -174,6 +175,7 @@ $shortcuts = [ordered]@{
         change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'google-input'
         }) -RepoRootOverride $RepoRoot
+        suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleFirstArguments
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleFirstArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleFirstArguments
@@ -183,6 +185,7 @@ $shortcuts = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleFirstArguments
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleFirstArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleFirstArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleFirstArguments
@@ -200,8 +203,9 @@ $shortcuts = [ordered]@{
     notes = @(
         'Start with suite_router when you want the higher-level catalog to surface the broader issue #3 runner first, while preserving LIGHTPANDA_REPO_ROOT for a non-default checkout when it is already set.',
         'Use change_area when you may need a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace branch instead of the broader recommended replay, without dropping the current repo-root context.',
+        'Use suite_catalog_entrypoints when you want the shortest current bridge from the top-level suite catalog into the issue #3 next-step matrix, replay-route helper, replay-shortcuts helper, or pinned bundle-first path while keeping RepoRoot, SummaryPath, and InputPath context attached.',
         'Use google_flow when you want the current localhost-first issue #3 ladder printed before you choose between the narrower safe-route replay, the attached bundle route, or a later-stage Google slice, while keeping the same repo-root context.',
-        'Use suite_router_handoff when you want the higher-level suite-router entrypoints and the current replay-shortcuts helper reprinted together in one compact surface before you drop into the next-step matrix, replay-route, safe-route, or bundle-first helpers.',
+        'Use suite_router_handoff when you want the higher-level suite-router entrypoints, the suite-catalog bridge, and the current replay-shortcuts helper reprinted together in one compact surface before you drop into the next-step matrix, replay-route, safe-route, or bundle-first helpers.',
         'Use suite_router_next_steps when you want the compact next-step matrix that keeps the current start points, replay-route branch, attached-bundle branch, and runner-state helper choices together before you pick one narrower replay path.',
         'Use replay_route when you want the attached-bundle branch, the safe-route bridge, and the repo-root-aware runner next-step helper printed in one slightly broader surface before you return to the narrower replay-shortcuts helper.',
         'Use safe_route_entrypoints when outputs may already exist and you want the newest issue #3 wrapper commands, notes, and next-state helpers printed in one place.',
@@ -209,7 +213,7 @@ $shortcuts = [ordered]@{
         'Use attached_bundle_first when the current saved or attached pages are the known three-page compatibility bundle and you want that route exercised before reopening the broader Google-only wrapper chain.',
         'Use attached_bundle_suite when you want the higher-level suite router itself to reopen on the pinned bundle branch before widening back into the broader Google-only helpers.',
         'Use fresh_safe_route_replay when current issue #3 outputs may be stale or missing and no explicit bundle inputs are already pinned. Use reuse_current_outputs only when the current saved outputs are already trusted.',
-        'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, suite_router_bridge_note_path when you want the shortest read-first bridge from the suite router into these replay shortcuts, decision_table_note_path when the runner patch handoff lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and patch_rules_note_path when the replay is already narrowed to a direct runner-source edit.'
+        'Keep quickstart_note_path open for the shortest current replay note, validation_chain_note_path for wrapper precedence, suite_router_bridge_note_path for the narrow prose bridge into replay shortcuts, suite_catalog_entrypoint_note_path for the shortest bridge from the top-level suite router into the current helper chain, decision_table_note_path when the runner patch handoff lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and patch_rules_note_path when the replay is already narrowed to a direct runner-source edit.'
     )
 }
 
@@ -240,6 +244,7 @@ Write-Host ''
 Write-Host 'Read-first discovery:'
 Write-Host (("  Suite router:         {0}") -f $shortcuts.read_first_commands.suite_router)
 Write-Host (("  Change-area view:     {0}") -f $shortcuts.read_first_commands.change_area)
+Write-Host (("  Suite-catalog helper: {0}") -f $shortcuts.read_first_commands.suite_catalog_entrypoints)
 Write-Host (("  Google flow helper:   {0}") -f $shortcuts.read_first_commands.google_flow)
 Write-Host (("  Suite-router handoff: {0}") -f $shortcuts.read_first_commands.suite_router_handoff)
 Write-Host (("  Next-step matrix:     {0}") -f $shortcuts.read_first_commands.suite_router_next_steps)
@@ -247,6 +252,7 @@ Write-Host (("  Replay route:         {0}") -f $shortcuts.read_first_commands.re
 Write-Host (("  Bundle suite route:   {0}") -f $shortcuts.read_first_commands.attached_bundle_suite)
 Write-Host ''
 Write-Host 'Shortcut helpers:'
+Write-Host (("  Suite-catalog helper:  {0}") -f $shortcuts.helper_commands.suite_catalog_entrypoints)
 Write-Host (("  Suite-router handoff:   {0}") -f $shortcuts.helper_commands.suite_router_handoff)
 Write-Host (("  Next-step matrix:       {0}") -f $shortcuts.helper_commands.suite_router_next_steps)
 Write-Host (("  Replay route:           {0}") -f $shortcuts.helper_commands.replay_route)
@@ -258,11 +264,12 @@ Write-Host (("  Bundle runner:          {0}") -f $shortcuts.helper_commands.atta
 Write-Host (("  Fresh safe replay:      {0}") -f $shortcuts.helper_commands.fresh_safe_route_replay)
 Write-Host (("  Reuse current outputs:  {0}") -f $shortcuts.helper_commands.reuse_current_outputs)
 Write-Host ''
-Write-Host (("Quickstart note:         {0}") -f $shortcuts.quickstart_note_path)
-Write-Host (("Validation chain note:   {0}") -f $shortcuts.validation_chain_note_path)
-Write-Host (("Suite-router bridge note:{0}") -f (' ' + $shortcuts.suite_router_bridge_note_path))
-Write-Host (("Decision table:          {0}") -f $shortcuts.decision_table_note_path)
-Write-Host (("Patch rules note:        {0}") -f $shortcuts.patch_rules_note_path)
+Write-Host (("Quickstart note:          {0}") -f $shortcuts.quickstart_note_path)
+Write-Host (("Validation chain note:    {0}") -f $shortcuts.validation_chain_note_path)
+Write-Host (("Suite-router bridge note: {0}") -f $shortcuts.suite_router_bridge_note_path)
+Write-Host (("Suite-catalog guide note: {0}") -f $shortcuts.suite_catalog_entrypoint_note_path)
+Write-Host (("Decision table:           {0}") -f $shortcuts.decision_table_note_path)
+Write-Host (("Patch rules note:         {0}") -f $shortcuts.patch_rules_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $shortcuts.notes) {
