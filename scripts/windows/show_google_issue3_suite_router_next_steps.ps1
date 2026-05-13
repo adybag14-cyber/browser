@@ -151,8 +151,8 @@ if ($InputPath -and @($InputPath).Count -gt 0) {
     $recommendedHelperKey = 'attached_bundle_first'
     $recommendedHelperReason = 'Explicit input paths are already pinned, so the fastest correct next step is the attached bundle-first helper before reopening the broader Google-only wrappers.'
 } elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
-    $recommendedHelperKey = 'replay_shortcuts'
-    $recommendedHelperReason = 'A saved SummaryPath is already available, so jump straight to the replay-shortcuts helper and preserve the existing replay context before widening into the broader replay-route surface.'
+    $recommendedHelperKey = 'contextual_flow'
+    $recommendedHelperReason = 'A saved SummaryPath is already available, so open the context-preserving helper next and keep the current replay state aligned while you choose between replay shortcuts, replay route, safe-route wrappers, or the later trace and attached-page branches.'
 }
 
 $matrix = @(
@@ -166,7 +166,7 @@ $matrix = @(
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea google-input'
         default_next_helper = 'show_google_issue3_replay_shortcuts.ps1'
         command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
-        use_when = 'You already know the work stays inside issue #3 and want the narrower replay-shortcuts surface right away before choosing between the bundle-first, safe-route replay, or reuse-current-outputs branches.'
+        use_when = 'You already know the work stays inside issue #3 and want the narrower replay-shortcuts surface right away before choosing between the bundle-first, contextual-flow, fresh safe-route replay, or reuse-current-outputs branches.'
     }
     [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
@@ -184,7 +184,13 @@ $matrix = @(
         start_point = 'show_google_issue3_replay_route.ps1'
         default_next_helper = 'show_google_issue3_replay_shortcuts.ps1'
         command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
-        use_when = 'You want the narrower shortcut map before deciding between the attached-bundle-first route, the fresh safe-route replay, or the safe-route entrypoints helper.'
+        use_when = 'You want the narrower shortcut map before deciding between the context-preserving helper, attached-bundle-first route, the fresh safe-route replay, or the safe-route entrypoints helper.'
+    }
+    [ordered]@{
+        start_point = 'saved summary or current pinned context already in play'
+        default_next_helper = 'show_google_issue3_contextual_flow.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
+        use_when = 'RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that context aligned before choosing between the recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.'
     }
     [ordered]@{
         start_point = 'wrapper-emitted runner state'
@@ -207,6 +213,7 @@ $helper = [ordered]@{
     recommended_helper_reason = $recommendedHelperReason
     recommended_helper_command = switch ($recommendedHelperKey) {
         'attached_bundle_first' { Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments }
+        'contextual_flow' { Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments }
         'replay_shortcuts' { Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments }
         'replay_route' { Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments }
         default { Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments }
@@ -227,6 +234,7 @@ $helper = [ordered]@{
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
+        contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleFlowArguments
         attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleFlowArguments -Switches @('Wait')
@@ -248,9 +256,10 @@ $helper = [ordered]@{
     notes = @(
         'Use this helper when issue #3 work starts from the higher-level Windows validation router and you want the next helper chosen quickly without reopening the longer chain notes first.',
         'When RepoRoot is supplied, the top-level suite-router and Google-flow commands preserve that same LIGHTPANDA_REPO_ROOT context instead of falling back to the default checkout path.',
-        'When SummaryPath is supplied, the replay-route, replay-shortcuts, safe-route entrypoints, fresh safe-route replay, reuse-current-outputs, and runner next-step helpers keep that same saved summary context attached.',
-        'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, and attached-bundle-first helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
+        'When SummaryPath is supplied, the replay-route, replay-shortcuts, contextual-flow, safe-route entrypoints, fresh safe-route replay, reuse-current-outputs, and runner next-step helpers keep that same saved summary context attached.',
+        'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, contextual-flow, and attached-bundle-first helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
         'Use replay_shortcuts as the default next helper when the route is already known to be issue #3 and you want the narrowest shortcut map first.',
+        'Use contextual_flow when saved summary state, repo-root overrides, or pinned attached pages should stay visible while you choose between the broader recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.',
         'Use replay_route when you want the slightly broader attached-bundle branch, safe-route bridge, and runner-state helper printed together before dropping back to the narrower replay-shortcuts map.',
         'Use attached_bundle_first when the saved or attached pages are still the known three-page compatibility set and you want that route exercised before reopening the broader Google-only safe-route ladder.',
         'Use suite_router_handoff only when you explicitly want the wider compact bridge that keeps the top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
@@ -297,6 +306,7 @@ Write-Host 'Key helper commands:'
 Write-Host (("  Suite-router handoff:   {0}") -f $helper.helper_commands.suite_router_handoff)
 Write-Host (("  Replay route:           {0}") -f $helper.helper_commands.replay_route)
 Write-Host (("  Replay shortcuts:       {0}") -f $helper.helper_commands.replay_shortcuts)
+Write-Host (("  Contextual flow:        {0}") -f $helper.helper_commands.contextual_flow)
 Write-Host (("  Bundle-first helper:    {0}") -f $helper.helper_commands.attached_bundle_first)
 Write-Host (("  Bundle flow helper:     {0}") -f $helper.helper_commands.attached_bundle_flow)
 Write-Host (("  Bundle runner:          {0}") -f $helper.helper_commands.attached_bundle_runner)
