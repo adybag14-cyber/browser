@@ -196,7 +196,7 @@ $refreshSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\window
 $refreshStatusCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status.ps1'
 $handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
 $handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1'
+$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
 
 foreach ($helperPath in @($repairChainScript, $handoffSafeRefreshRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -254,6 +254,7 @@ $recommendedCommand = Get-FirstNonEmptyValue -Values @(
     $repairChainCommand
 )
 $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
+    if ($status -eq 'ready-for-handoff') { $handoffGuideCommand },
     if ($handoffSafeRefreshRouteStep) { $handoffSafeRefreshRouteStep.recommended_guide_command },
     if ($repairChainStep) { $repairChainStep.recommended_guide_command },
     $summaryGuideCommand
