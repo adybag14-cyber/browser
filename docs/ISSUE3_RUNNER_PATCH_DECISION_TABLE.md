@@ -7,6 +7,7 @@ Keep this note beside:
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` for field-level patch rules and verification order
 - `docs/WINDOWS_FULL_USE.md` for the broader attached or saved localhost follow-up once the safe wiring and refresh route are green
 - `scripts/windows/show_google_issue3_runner_patch_next_step.ps1` when the wrapper has already named the current state and you want the exact next move printed without reopening the longer table first
+- `scripts/windows/show_google_issue3_replay_shortcuts.ps1` when you want the broader Google route, the attached three-page bundle branch, and the current safe-route shortcuts printed together before deciding whether the next replay should stay narrow or widen back out
 
 ## Default entrypoint
 
@@ -112,14 +113,21 @@ Continue with the next safe route rather than widening immediately:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe_path_route.ps1
 ```
 
+If you want the broader issue `#3` discovery commands plus the attached three-page bundle branch and the current safe-route shortcuts surfaced together before choosing the next route, reopen:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+```
+
 If the goal is to continue into attached or saved localhost HTML after the runner-output contract is ready, reopen the next route from `docs/WINDOWS_FULL_USE.md` only after the safe wiring and refresh-status helpers agree that the replay chain is ready.
 
 When the current pages are the known three-page compatibility bundle, use this narrower return route first:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Use that bundle-aware route before the broader attached-page or Google-style follow-up when you want the pinned three-page compatibility set to stay locked through the checker, flow helper, and delegated localhost runner.
+Use that bundle-first helper when you want the pinned three-page compatibility set plus the return-to-safe-route command printed together before launch. Then stay on the same bundle-aware route through the suite router, flow helper, and delegated localhost runner so the locked inputs remain aligned all the way through replay.
