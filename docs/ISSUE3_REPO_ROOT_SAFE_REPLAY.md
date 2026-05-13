@@ -32,6 +32,16 @@ If the saved outputs are already current and you only want to reopen the narrowe
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1 -RepoRoot $repoRoot -SummaryPath $summaryPath
 ```
 
+## Check the runner-patch handoff surface before acting on a saved state
+
+If the next move depends on one of the saved runner-patch states, fail fast on the helper chain first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_runner_patch_next_step_validation_surface.ps1 -RepoRoot $repoRoot
+```
+
+Use this before `show_google_issue3_runner_patch_next_step.ps1` when the replay is resuming from a saved handoff artifact or a non-default checkout and you want the replay note, decision-table notes, safe wrappers, and runner-output helpers checked together first.
+
 ## Repo-root-aware safe follow-up commands
 
 Keep the same `RepoRoot` and `SummaryPath` when the replay narrows into the newer safe checkpoints:
@@ -89,6 +99,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_ru
 - Prefer the safe helper with `-RepoRoot $repoRoot -SummaryPath $summaryPath` over a raw helper that rediscovers paths.
 - Keep the same summary path all the way through the safe wiring, refresh, handoff, and attached-bundle checkpoints.
 - Reopen older raw helpers only after the corresponding safe helper says that checkpoint is ready.
+- Run `check_google_issue3_runner_patch_next_step_validation_surface.ps1` before trusting a saved runner-patch handoff state from a reused summary or non-default checkout.
 
 ## Keep These Notes Open
 
