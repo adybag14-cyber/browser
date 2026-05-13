@@ -158,7 +158,7 @@ if ($InputPath -and @($InputPath).Count -gt 0) {
 
 $shortcuts = [ordered]@{
     issue = 'Google issue #3 replay shortcuts'
-    purpose = 'Keep the top-level issue #3 read-first commands, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
+    purpose = 'Keep the top-level issue #3 read-first commands, the suite-router handoff bridge, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -175,6 +175,7 @@ $shortcuts = [ordered]@{
             ChangeArea = 'google-input'
         }) -RepoRootOverride $RepoRoot
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
+        suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleFirstArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleFirstArguments
         attached_bundle_suite = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
@@ -237,6 +238,7 @@ Write-Host 'Read-first discovery:'
 Write-Host (("  Suite router:         {0}") -f $shortcuts.read_first_commands.suite_router)
 Write-Host (("  Change-area view:     {0}") -f $shortcuts.read_first_commands.change_area)
 Write-Host (("  Google flow helper:   {0}") -f $shortcuts.read_first_commands.google_flow)
+Write-Host (("  Suite-router handoff: {0}") -f $shortcuts.read_first_commands.suite_router_handoff)
 Write-Host (("  Replay route:         {0}") -f $shortcuts.read_first_commands.replay_route)
 Write-Host (("  Bundle suite route:   {0}") -f $shortcuts.read_first_commands.attached_bundle_suite)
 Write-Host ''
