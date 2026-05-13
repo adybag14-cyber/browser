@@ -35,6 +35,7 @@ $titleCommand = "powershell -ExecutionPolicy Bypass -File $titleRunner"
 $issue3SafeRouteEntrypointsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_safe_route_entrypoints.ps1"
 $issue3SafeRoutePatchHandoffCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1"
 $issue3SafeRouteWrapperCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1"
+$issue3AttachedBundleSuiteCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle"
 $quickFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_quick_validation_flow.ps1$leaveOpenArgument"
 $quickCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1$leaveOpenArgument"
 $homeCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase home"
@@ -67,11 +68,13 @@ if ($ManualInitialPage) {
 
 $attachedGoogleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1$attachedGoogleInitialPageArgument$leaveOpenArgument"
 $attachedGoogleCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1$attachedGoogleInitialPageArgument -Wait"
+$attachedBundleInputPathArgument = ""
 
 $manualCommand = $null
 if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     $quotedPaths = $ManualInputPath | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }
     $manualPathsArgument = " -ManualInputPath " + ($quotedPaths -join ", ")
+    $attachedBundleInputPathArgument = " -InputPath " + ($quotedPaths -join ", ")
     $manualCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase manual -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$manualGoogleStyleArgument$leaveOpenArgument"
     $fullCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner -ManualPort $ManualPort$manualInitialPageArgument$manualPathsArgument$manualGoogleStyleArgument$leaveOpenArgument"
 } elseif ($ManualGoogleStyle) {
@@ -79,9 +82,13 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     $fullCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner -ManualPort $ManualPort$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
 }
 
+$issue3AttachedBundleFirstEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1$attachedBundleInputPathArgument"
+$issue3AttachedBundleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1$attachedBundleInputPathArgument"
+$issue3AttachedBundleRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1$attachedBundleInputPathArgument -Wait"
+
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the dedicated homepage-fixture surface checker and saved-homepage checkpoint, the dedicated later-stage submit-path surface checker and flow helper, the dedicated submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated form-controls Enter-order surface checker, flow helper, trace guide, and runner, the issue #3 safe-route entrypoints helper, the fresh safe-route runner-patch handoff entrypoint, the show-only safe-route wrapper for already-current outputs, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the dedicated homepage-fixture surface checker and saved-homepage checkpoint, the dedicated later-stage submit-path surface checker and flow helper, the dedicated submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated form-controls Enter-order surface checker, flow helper, trace guide, and runner, the issue #3 safe-route entrypoints helper, the fresh safe-route runner-patch handoff entrypoint, the show-only safe-route wrapper for already-current outputs, the attached-bundle suite router, one-command bundle-first helper, dedicated bundle flow, the bundle runner for the pinned three-page compatibility set, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -212,6 +219,26 @@ $flow = [ordered]@{
             command = $issue3SafeRouteWrapperCommand
         }
         [ordered]@{
+            name = "issue3-attached-bundle-suite"
+            goal = "Reopen the top-level suite router directly on the pinned attached three-page compatibility bundle when the current replay should stay on that narrower route before the broader attached-page follow-up."
+            command = $issue3AttachedBundleSuiteCommand
+        }
+        [ordered]@{
+            name = "issue3-attached-bundle-first"
+            goal = "Print the one-command issue #3 bundle-first helper when the current saved or attached pages still match the known three-page compatibility set and you want the return to the broader safe-route helper preserved beside that bundle route."
+            command = $issue3AttachedBundleFirstEntrypointCommand
+        }
+        [ordered]@{
+            name = "issue3-attached-bundle-flow"
+            goal = "Print the pinned bundle route so the bundle-aware surface check, bundle checker, bundle flow, and delegated localhost runner stay on one read-first command surface before execution."
+            command = $issue3AttachedBundleFlowCommand
+        }
+        [ordered]@{
+            name = "issue3-attached-bundle"
+            goal = "Launch the headed localhost replay through the same bundle-pinned route when the current saved or attached pages are the known three-page compatibility set."
+            command = $issue3AttachedBundleRunnerCommand
+        }
+        [ordered]@{
             name = "attached-google-flow"
             goal = "Print the attached Google-style helper flow when you want the current run's attached HTML pages auto-discovered and mapped onto the same localhost-first issue #3 sequence before the broader manual follow-up."
             command = $attachedGoogleFlowCommand
@@ -233,7 +260,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "full"
-            goal = "Run the broader localhost-first issue #3 recommended runner in one pass so the reduced title phase, reduced homepage pass, saved homepage fixture checkpoint, dedicated submit-path stage, bounded submit-timing slice, shared label baseline, shared Enter-order wrapper, dedicated form-controls Enter-order gate, attached Google helper handoff, and watch phases stay on one reusable command surface before the broader manual follow-up."
+            goal = "Run the broader localhost-first issue #3 recommended runner in one pass so the reduced title phase, reduced homepage pass, saved homepage fixture checkpoint, dedicated submit-path stage, bounded submit-timing slice, shared label baseline, shared Enter-order wrapper, dedicated form-controls Enter-order gate, attached-bundle bridge, attached Google helper handoff, and watch phases stay on one reusable command surface before the broader manual follow-up."
             command = $fullCommand
         }
     )
@@ -304,14 +331,18 @@ $flow = [ordered]@{
         "When repo-root or saved-summary context matters, use issue3-safe-route-entrypoints first so the emitted safe-route commands preserve that same context through the newer wrappers.",
         "Use issue3-safe-route-patch-handoff when current issue #3 outputs may be stale or missing and you want the default fresh replay entrypoint that regenerates the recommended summary while preserving the narrowed runner-patch next step in one artifact.",
         "Use issue3-safe-route-wrapper only when the current issue #3 outputs are already present and you want to reopen the narrower safe-route plus runner-patch guidance without another broader replay first.",
+        "Use issue3-attached-bundle-suite when the current replay should stay pinned to the known attached three-page compatibility set before you reopen the broader attached-page or safe-route ladders.",
+        "Use issue3-attached-bundle-first when you want the pinned three-page bundle route plus the return-to-safe-route command printed together in one helper before you choose whether to widen back into the wrapper-heavy chain.",
+        "Use issue3-attached-bundle-flow when you want the bundle-aware surface check, bundle checker, pinned flow, and delegated localhost runner printed together before execution.",
+        "Use issue3-attached-bundle when the current saved or attached pages are still the known three-page compatibility bundle and you want to replay that locked input set before the broader attached-Google or manual follow-up.",
         "Keep docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md open for wrapper precedence and docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md open when the safe-route handoff artifact lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.",
         "Use attached-google-flow when you want the current run's attached Google-like HTML pages auto-discovered and the matching localhost-first issue #3 sequence printed before the broader manual follow-up.",
         "Use attached-google when you want the helper to auto-discover current-run attached Google-like HTML pages instead of restating ManualInputPath by hand.",
-        "Use trace when the bounded localhost, reduced homepage, saved homepage fixture, submit-path, submit-timing, shared phases, dedicated form-controls gate, attached Google follow-up, and safe-route replay entrypoints are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
+        "Use trace when the bounded localhost, reduced homepage, saved homepage fixture, submit-path, submit-timing, shared phases, dedicated form-controls gate, attached-bundle replay, attached Google follow-up, and safe-route replay entrypoints are green but the real Google homepage still diverges and you need the headed runtime input logs from that exact path.",
         "Use manual only after the closest bounded suite is already green.",
-        "Use full when you intentionally want the broader localhost-first issue #3 flow plus the extra title, saved homepage fixture, dedicated submit-path stage, bounded submit-timing, shared label baseline, shared Enter-order wrapper, dedicated form-controls Enter-order gate, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
+        "Use full when you intentionally want the broader localhost-first issue #3 flow plus the extra title, saved homepage fixture, dedicated submit-path stage, bounded submit-timing, shared label baseline, shared Enter-order wrapper, dedicated form-controls Enter-order gate, attached-bundle bridge, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed attached-google-flow and attached-google commands keep that page preferred for the auto-discovered attached-page path, and the manual follow-up command keeps the same saved page first instead of falling back to a generated index or another arbitrary file.",
-        "When ManualInputPath is provided, the printed full command also preserves the same manual port, optional initial page, and saved-page inputs for the one-shot validation rerun.",
+        "When ManualInputPath is provided, the printed full command, issue3-attached-bundle-first helper, issue3-attached-bundle flow, and issue3-attached-bundle runner also preserve the same fixed input set for the bundle-first route instead of relying on auto-discovery.",
         "When ManualGoogleStyle is set, the printed manual and full commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when ManualInitialPage is not set.",
         "When LeaveOpen is set, the printed quick-flow, quick, homepage-fixture-flow, homepage-fixture, watch, trace, manual, full, and attached-google-flow commands keep the headed follow-up state easier to inspect after the bounded automation phases finish.",
         "Use the common overrides when you need to keep the localhost, title, home, homepage fixture, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
