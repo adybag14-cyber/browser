@@ -285,11 +285,11 @@ $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_reco
 })
 $validationStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
 if ($RepoRoot) {
-    $validationStepArguments += @('-RepoRoot', $resolvedRepoRoot)
+    $validationStepArguments += @('-RepoRoot', $repoRoot)
 }
 $runnerPatchStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
 if ($RepoRoot) {
-    $runnerPatchStepArguments += @('-RepoRoot', $resolvedRepoRoot)
+    $runnerPatchStepArguments += @('-RepoRoot', $repoRoot)
 }
 
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
@@ -551,10 +551,10 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifestPatchSnippetLines.Count -gt 0) {
+if ($report.manifest_patch_snippet_lines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
-    foreach ($line in $report.manifestPatchSnippetLines) {
+    foreach ($line in $report.manifest_patch_snippet_lines) {
         Write-Host $line
     }
 }
