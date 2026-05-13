@@ -149,6 +149,7 @@ $handoff = [ordered]@{
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
+    suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     suite_router_commands = [ordered]@{
         google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             SuiteName = 'google-recommended'
@@ -171,6 +172,7 @@ $handoff = [ordered]@{
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the full recommended runner.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
         'Use replay_shortcuts when you want the suite-router read-first commands, the attached-bundle route, and the current safe-route shortcuts printed together in one helper.',
+        'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into replay_shortcuts without reopening the longer Windows runbook or validation-chain notes first.',
         'Use attached_bundle_first when the replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 chain.',
         'Use safe_route_entrypoints only after the higher-level suite router or replay shortcuts have already narrowed the replay into the current wrapper-heavy issue #3 path.'
     )
@@ -223,6 +225,7 @@ Write-Host ''
 Write-Host ("Quickstart note:      {0}" -f $handoff.quickstart_note_path)
 Write-Host ("Windows runbook:      {0}" -f $handoff.windows_runbook_note_path)
 Write-Host ("Validation chain:     {0}" -f $handoff.validation_chain_note_path)
+Write-Host ("Suite-router bridge:  {0}" -f $handoff.suite_router_bridge_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $handoff.notes) {
