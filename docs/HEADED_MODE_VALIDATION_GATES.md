@@ -109,6 +109,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_shared_ent
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_contract_refresh_status_safe.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_repair_runner_output_patch_handoff.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_wrapper.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_manifest.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_phase_boundary.ps1
@@ -122,6 +127,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_pr
 Treat that helper chain as the bounded handoff state for the next Windows replay:
 
 - read the saved summary guide first when you need the initial phase boundary from a fresh recommended-validation replay
+- use the combined safe-summary and safe-route wrappers first when the next Windows replay needs runner-output contract repair, refresh-status safety, patch-target routing, or direct patch handoff preserved in one artifact instead of stepping through each helper manually
+- use `run_google_issue3_recommended_validation_repair_runner_output_contract_safe.ps1` when you want the broader rerun, runner-output contract normalization, and safe wiring checkpoint bundled together before the raw runner-output wiring helper
+- use `run_google_issue3_recommended_validation_repair_runner_output_contract_refresh_status_safe.ps1` when the next question is whether the repaired summary is already safe for the route-aware refresh-status checkpoint
+- use `run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1` when the remaining issue `#3` gap needs to narrow to exact runner patch targets without reopening the older standalone patch-target chain by hand
+- use `run_google_issue3_recommended_validation_repair_runner_output_patch_handoff.ps1` or `run_google_issue3_recommended_validation_safe_route_runner_patch_wrapper.ps1` when you want the preserved patch target, missing fields, snippet lines, and post-patch audit command carried forward together for the next runner-side edit
+- if those wrappers report `runner_patch_still_required = False`, `runner_already_wired_needs_regeneration = True`, or `already_direct_from_raw_patch_targets = True`, follow the safe wiring or refresh-status command they emit instead of restarting from the raw patch-target step
 - use the manifest, artifact-bundle, refresh-status, and handoff helpers to confirm the saved JSON pointers still match the current summary before rerunning a narrower stage
 - if `show_google_issue3_validation_refresh_status.ps1` reports `status = ready` and `handoff_ready = True`, open the handoff helper next and follow its `next_artifact_to_open` path instead of widening back out
 - if the refresh-status helper says it is using manifest-backed refresh or handoff pointers for the current summary, treat the missing summary-side pointer fields as follow-up cleanup instead of a reason to restart a broader replay
