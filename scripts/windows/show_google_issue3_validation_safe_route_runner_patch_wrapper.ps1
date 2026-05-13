@@ -268,7 +268,8 @@ $defaultArtifactRoot = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe'
 if (-not $artifactPathExplicit) {
     $ArtifactPath = Join-Path $defaultArtifactRoot 'google-issue3-validation-safe-route-runner-patch-wrapper.json'
 }
-$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+$shouldPreserveRepoRoot = $PSBoundParameters.ContainsKey('RepoRoot') -or -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)
+$recommendedRepoRoot = if ($shouldPreserveRepoRoot) {
     $repoRoot
 } else {
     $null
