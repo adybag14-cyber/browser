@@ -233,7 +233,9 @@ $bridge = [ordered]@{
         top_level_google_flow = Format-HelperCommand -ScriptName 'show_google_input_validation_flow.ps1' -Arguments $topLevelFlowArguments -Switches $topLevelFlowSwitches
         contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $contextualFlowArguments -Switches $contextualFlowSwitches
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $shortcutArguments
+        suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $shortcutArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $shortcutArguments
+        replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $shortcutArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $shortcutArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $shortcutArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $shortcutArguments
@@ -243,9 +245,12 @@ $bridge = [ordered]@{
     notes = @(
         'Use top_level_google_flow when you want the familiar broad localhost-first ladder and only the manual follow-up inputs need to stay attached.',
         'Use contextual_flow when RepoRoot, BrowserExe, Host, SummaryPath, or fixed InputPath values already matter and the next helper chain should keep that context aligned.',
-        'Use suite_catalog_entrypoints or suite_router_next_steps when you are re-entering issue #3 from the suite router and want the current helper recommendation printed before narrowing further.',
+        'Use suite_catalog_entrypoints when you are re-entering issue #3 from the suite router and want the shortest bridge into the newer helper chain before narrowing further.',
+        'Use suite_router_handoff when you want the higher-level suite-router entrypoints, the suite-catalog bridge, the compact next-step matrix, and the current replay helpers printed on one command surface before the replay narrows further.',
+        'Use suite_router_next_steps when you want the current helper recommendation printed right after the suite-router handoff before choosing between the narrower replay shortcuts, replay route, context-preserving flow, or bundle-first path.',
+        'Use replay_route when you want the slightly broader route that keeps the attached-bundle branch, replay shortcuts, and safe-route map together before dropping into the narrower helper chain.',
         'Use replay_shortcuts when the route is already narrowed and you want the tighter shortcut surface for the attached-bundle-first route and the safe-route entrypoints.',
-        'Use safe_route_entrypoints after contextual_flow or replay_shortcuts when the replay is ready to move into the wrapper-heavy runner-state branch.',
+        'Use safe_route_entrypoints after contextual_flow, replay_route, or replay_shortcuts when the replay is ready to move into the wrapper-heavy runner-state branch.',
         'Use suite_router_attached_bundle, attached_bundle_first, attached_bundle_flow, and attached_bundle_runner when the current saved or attached pages still match the known three-page compatibility bundle.',
         'Keep the quickstart, suite-router bridge, and validation-chain notes open beside this helper when you want the written route next to the emitted commands.',
         'The broad top-level Google flow helper does not carry SummaryPath into later issue #3 safe-route commands, so prefer contextual_flow whenever saved-summary routing matters.'
@@ -296,7 +301,9 @@ Write-Host (("  Suite router (attached bundle):    {0}") -f $bridge.commands.sui
 Write-Host (("  Top-level Google flow:             {0}") -f $bridge.commands.top_level_google_flow)
 Write-Host (("  Contextual flow:                   {0}") -f $bridge.commands.contextual_flow)
 Write-Host (("  Suite catalog entrypoints:         {0}") -f $bridge.commands.suite_catalog_entrypoints)
+Write-Host (("  Suite router handoff:             {0}") -f $bridge.commands.suite_router_handoff)
 Write-Host (("  Suite router next steps:           {0}") -f $bridge.commands.suite_router_next_steps)
+Write-Host (("  Replay route:                      {0}") -f $bridge.commands.replay_route)
 Write-Host (("  Replay shortcuts:                  {0}") -f $bridge.commands.replay_shortcuts)
 Write-Host (("  Safe-route entrypoints:            {0}") -f $bridge.commands.safe_route_entrypoints)
 Write-Host (("  Attached bundle first:             {0}") -f $bridge.commands.attached_bundle_first)
