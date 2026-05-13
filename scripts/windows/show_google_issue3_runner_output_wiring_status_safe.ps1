@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -78,6 +79,62 @@ function Get-OptionalPropertyValue {
     return $null
 }
 
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
 function Add-MissingField {
     param(
         [Parameter(Mandatory = $true)]
@@ -93,9 +150,18 @@ function Add-MissingField {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
+$artifactPathExplicit = -not [string]::IsNullOrWhiteSpace($ArtifactPath)
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
+}
+$defaultArtifactRoot = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe'
+if (-not $artifactPathExplicit) {
+    $ArtifactPath = Join-Path $defaultArtifactRoot 'google-issue3-runner-output-wiring-safe.json'
 }
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
     throw "Issue #3 recommended validation summary not found: $SummaryPath"
@@ -108,19 +174,41 @@ $artifactRoot = Get-OptionalPropertyValue -Object $summary -Name 'artifact_root'
 if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
     $artifactRoot = Split-Path -Parent $SummaryPath
 }
-if (-not $ArtifactPath) {
+if (-not $artifactPathExplicit) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-runner-output-wiring-safe.json'
 }
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $repoRoot
+} else {
+    $null
+}
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+    $SummaryPath
+} else {
+    $null
+}
+$recommendedArtifactPath = if ($artifactPathExplicit) {
+    $ArtifactPath
+} else {
+    $null
+}
 
-$broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$artifactPathRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_validation_artifact_paths.ps1'
-$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
-$runnerOutputWiringCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status.ps1'
-$runnerPatchTargetsSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe.ps1'
-$runnerPatchTargetsSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
-$runnerPatchTargetsCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets.ps1'
-$runnerContractRepairCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\repair_google_issue3_runner_output_contract.ps1'
-$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
+$broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+})
+$artifactPathRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_validation_artifact_paths.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerOutputWiringSafeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    SummaryPath = $recommendedSummaryPath
+    ArtifactPath = $recommendedArtifactPath
+})
+$runnerOutputWiringCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerPatchTargetsSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerPatchTargetsSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets_safe_route.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerPatchTargetsCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_patch_targets.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$refreshStatusSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
 
 $configuredManifestPath = Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path'
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath $configuredManifestPath -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
@@ -212,6 +300,7 @@ $report = [ordered]@{
     issue = 'Google issue #3 runner output wiring safe helper'
     purpose = 'Check whether the existing runner-output wiring helper is safe to trust under strict mode for the current issue #3 summary and manifest.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     artifact_root = $artifactRoot
@@ -258,6 +347,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 runner output wiring safe helper'
 Write-Host ''
+Write-Host ("Repo root: {0}" -f $report.repo_root)
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Manifest:  {0}" -f $report.manifest_artifact_path)
