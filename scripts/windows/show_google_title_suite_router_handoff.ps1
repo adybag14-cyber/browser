@@ -108,6 +108,8 @@ Add-SharedArgument -Arguments $directProbeArguments -Name WindowReadyAttempts -V
 Add-SharedArgument -Arguments $directProbeArguments -Name TitleWaitAttempts -Value $HomeTitleWaitAttempts
 Add-SharedArgument -Arguments $directProbeArguments -Name PollMilliseconds -Value $HomePollMilliseconds
 
+$googleHomeCommand = 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_input_validation.ps1 -Phase home'
+
 $handoff = [ordered]@{
     issue = 'Google issue #3 title suite router handoff'
     purpose = 'Keep the suite-router title entry, the narrower title surface checker, the marker guide, the wrapper-first flow, and the raw probe on one compact command surface.'
@@ -124,7 +126,7 @@ $handoff = [ordered]@{
         title_wrapper = Format-HelperCommand -ScriptName 'run_google_title_validation.ps1' -Arguments $wrapperArguments
         title_direct_probe = Format-HelperCommand -ScriptName 'run_google_home_title_probe.ps1' -Arguments $directProbeArguments
         google_quick = Format-HelperCommand -ScriptName 'run_google_quick_validation.ps1'
-        google_home = Format-HelperCommand -ScriptName 'run_google_input_validation.ps1' -Arguments ([System.Collections.Generic.List[string]]@('-Phase', 'home'))
+        google_home = $googleHomeCommand
     }
     notes = @(
         'Start with the google-title suite-router entry when you want the shared suite catalog to reintroduce the bounded title gate before a replay.',
