@@ -69,7 +69,7 @@ function Format-HelperCommand {
         [string[]]$Switches = @()
     )
 
-    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
     if ($Arguments -and $Arguments.Count -gt 0) {
         $command += " " + ($Arguments -join ' ')
     }
@@ -101,7 +101,7 @@ function Format-HelperCommandWithRepoRootEnv {
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
 
-    $command = "& '.\scripts\windows\$ScriptName'"
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
     foreach ($entry in $Arguments.GetEnumerator()) {
         $value = $entry.Value
         if ($null -eq $value) {
@@ -142,7 +142,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $handoff = [ordered]@{
     issue = 'Google issue #3 suite router handoff'
-    purpose = 'Keep the higher-level suite-router entrypoints, the compact next-step matrix, and the current issue #3 replay helpers on one command surface before the replay narrows further, without dropping pinned bundle-input context.'
+    purpose = 'Keep the higher-level suite-router entrypoints, the compact next-step matrix, the context-preserving replay flow, and the current issue #3 replay helpers on one command surface before the replay narrows further, without dropping pinned bundle-input context.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -165,6 +165,7 @@ $handoff = [ordered]@{
     helper_commands = [ordered]@{
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
+        contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
@@ -172,16 +173,17 @@ $handoff = [ordered]@{
     }
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
-        'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the full recommended runner.',
+        'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the broader recommended runner.',
         'Use replay_route when you want the current default read-first helper after the higher-level suite router and Google flow, and still want the attached-bundle branch, replay-shortcuts helper, safe-route map, and repo-root-aware runner-state choices together before narrowing further.',
-        'Use suite_router_next_steps when you want the one-command next-step matrix that keeps the current suite-router start points, replay-route branch, attached-bundle branch, and runner-state helper choices together beside the broader replay-route helper before you pick one route.',
+        'Use suite_router_next_steps when you want the one-command next-step matrix that keeps the current suite-router start points, replay-route branch, attached-bundle branch, context-preserving flow, and runner-state helper choices together beside the broader replay-route helper before you pick one route.',
+        'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and you want the broader recommended runner, replay shortcuts, attached bundle, live trace, and later follow-up commands kept on one context-preserving surface before reopening the wrapper-heavy safe route.',
         'Use the read-first bridge when you want the exact route from the higher-level suite router into the replay-route helper, the replay-shortcuts helper, and the companion next-step matrix printed in one place before reopening any longer notes.',
         'Keep replay_discovery_note_path nearby when you want the shortest written bridge from the top-level Windows validation catalog into this suite-router handoff, the next-step matrix, the replay-route helper, and the bundle-first branch without reopening the longer validation-chain notes first.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
         'Use replay_shortcuts when you want the narrower shortcut map after the replay-route helper has already confirmed the broader issue #3 context.',
-        'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into replay_route, replay_shortcuts, or suite_router_next_steps without reopening the longer Windows runbook or validation-chain notes first.',
+        'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into replay_route, replay_shortcuts, contextual_flow, or suite_router_next_steps without reopening the longer Windows runbook or validation-chain notes first.',
         'Use attached_bundle_first when the replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 chain.',
-        'Use safe_route_entrypoints only after the higher-level suite router, replay-route helper, replay-shortcuts helper, or next-step matrix has already narrowed the replay into the current wrapper-heavy issue #3 path, and keep the same InputPath values attached when the bundle is already pinned.'
+        'Use safe_route_entrypoints only after the higher-level suite router, replay-route helper, replay-shortcuts helper, contextual_flow surface, or next-step matrix has already narrowed the replay into the current wrapper-heavy issue #3 path, and keep the same InputPath values attached when the bundle is already pinned.'
     )
 }
 
@@ -200,7 +202,8 @@ if ($handoff.explicit_input_path_count -gt 0) {
     $recommendedNextHelperKey = 'attached_bundle_first'
     $recommendedNextHelperReason = 'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle first before widening back into the broader Google-only issue #3 helper chain.'
 } elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
-    $recommendedNextHelperReason = 'A saved SummaryPath is already in play, so reopen the replay-route helper with that same context before deciding whether to stay on the bundle-first path, narrow into replay-shortcuts, or reopen the wrapper-heavy safe-route helpers.'
+    $recommendedNextHelperKey = 'contextual_flow'
+    $recommendedNextHelperReason = 'A saved SummaryPath is already in play, so reopen the context-preserving flow next and keep that replay state aligned while you choose between replay-route, replay-shortcuts, the broader recommended runner, or the later attached and trace follow-up helpers.'
 }
 
 $handoff.recommended_next_helper_key = $recommendedNextHelperKey
@@ -246,6 +249,7 @@ Write-Host ''
 Write-Host 'Shortcut helpers:'
 Write-Host ("  Replay route:      {0}" -f $handoff.helper_commands.replay_route)
 Write-Host ("  Replay shortcuts:  {0}" -f $handoff.helper_commands.replay_shortcuts)
+Write-Host ("  Contextual flow:   {0}" -f $handoff.helper_commands.contextual_flow)
 Write-Host ("  Next-step matrix:  {0}" -f $handoff.helper_commands.suite_router_next_steps)
 Write-Host ("  Google flow:       {0}" -f $handoff.helper_commands.google_flow)
 Write-Host ("  Bundle first:      {0}" -f $handoff.helper_commands.attached_bundle_first)
