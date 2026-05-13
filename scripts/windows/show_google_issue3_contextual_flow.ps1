@@ -275,6 +275,9 @@ if ($flow.summary_path) {
 if ($flow.explicit_input_path_count -gt 0) {
     Write-Host ("Attached input paths: {0}" -f $flow.explicit_input_path_count)
 }
+if ($flow.preferred_initial_page) {
+    Write-Host ("Preferred initial page: {0}" -f $flow.preferred_initial_page)
+}
 Write-Host ""
 Write-Host "[suite-router] Reopen the higher-level issue #3 catalog"
 Write-Host ("  {0}" -f $flow.commands.suite_router)
