@@ -62,6 +62,7 @@ if ($InputText) {
 }
 if ($TitlePort) {
     $wrapperArguments += " -TitlePort $TitlePort"
+    $directQuickArguments += " -TitlePort $TitlePort"
 }
 if ($WatchPort) {
     $wrapperArguments += " -WatchPort $WatchPort"
@@ -132,7 +133,7 @@ $flow = [ordered]@{
         "Start with the surface check when you want the fast quick slice to fail fast on missing docs, helper scripts, or watch-probe drift before a longer manual run.",
         "Start with the title flow helper when you want the quick wrapper to inherit the same focus, typed-text, and Enter marker meanings as the bounded title checkpoint.",
         "Use the wrapper unless you already know you need the raw quick phase or watch helper by itself.",
-        "Keep the same host, input text, and watch timing overrides here when you want the quick slice aligned with the broader issue #3 runner.",
+        "Keep the same host, title port, input text, and watch timing overrides here when you want the quick slice aligned with the broader issue #3 runner.",
         "Treat this quick slice as the bridge between the bounded title checkpoint and the reduced homepage or saved-homepage follow-up, not as a replacement for those later gates."
     )
 }
