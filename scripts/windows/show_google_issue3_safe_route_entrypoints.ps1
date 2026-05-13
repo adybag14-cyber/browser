@@ -32,7 +32,8 @@ function Format-HelperCommand {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ScriptName,
-        [hashtable]$Arguments = @{}
+        [hashtable]$Arguments = @{},
+        [string[]]$Switches = @()
     )
 
     $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
@@ -50,6 +51,14 @@ function Format-HelperCommand {
         $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
     }
 
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += (" -{0}" -f $switchName)
+    }
+
     return $command
 }
 
@@ -58,11 +67,12 @@ function Format-HelperCommandWithRepoRootEnv {
         [Parameter(Mandatory = $true)]
         [string]$ScriptName,
         [hashtable]$Arguments = @{},
+        [string[]]$Switches = @(),
         [string]$RepoRootOverride
     )
 
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
-        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments -Switches $Switches
     }
 
     $command = "& '.\scripts\windows\$ScriptName'"
@@ -78,6 +88,14 @@ function Format-HelperCommandWithRepoRootEnv {
 
         $escapedValue = ("$value") -replace "'", "''"
         $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += (" -{0}" -f $switchName)
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
@@ -100,20 +118,30 @@ $recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
 } else {
     $null
 }
+$readFirstSuiteCommand = '.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended'
+$readFirstChangeAreaCommand = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input'
+$readFirstGoogleFlowCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1'
+$attachedBundleSuiteCommand = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+$attachedBundleFlowCommand = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+})
+$attachedBundleRunnerCommand = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+}) -Switches @('Wait')
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 safe-route entrypoints'
-    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root and summary-path context for non-default checkouts and env-anchored replays.'
+    purpose = 'Keep the current issue #3 Windows replay on the newest safe-route helper first, while preserving repo-root and summary-path context for non-default checkouts and keeping the attached three-page bundle route aligned with the same replay root when applicable.'
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     runner_patch_decision_table_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
     runner_patch_next_step_helper_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
-    read_first_suite_command = '.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended'
-    read_first_change_area_command = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input'
-    read_first_google_flow_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1'
-    attached_bundle_suite_command = '.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
-    attached_bundle_flow_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1'
-    attached_bundle_runner_command = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait'
+    read_first_suite_command = $readFirstSuiteCommand
+    read_first_change_area_command = $readFirstChangeAreaCommand
+    read_first_google_flow_command = $readFirstGoogleFlowCommand
+    attached_bundle_suite_command = $attachedBundleSuiteCommand
+    attached_bundle_flow_command = $attachedBundleFlowCommand
+    attached_bundle_runner_command = $attachedBundleRunnerCommand
     repo_root = $resolvedRepoRoot
     summary_path = $recommendedSummaryPath
     fresh_replay_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments ([ordered]@{
@@ -139,14 +167,14 @@ $entrypoints = [ordered]@{
         'Use read_first_change_area_command when the next replay may need one of the narrower Google title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.'
         'Use read_first_google_flow_command when you want the broader bounded Google flow printed before deciding whether to stay on the safe-route entrypoints or drop to another narrower helper.'
         'Use attached_bundle_suite_command when the next replay should stay pinned to the current attached three-page compatibility bundle instead of the broader Google-only ladder.'
-        'Use attached_bundle_flow_command before the attached-page bundle rerun when you want the pinned checker, flow helper, and delegated localhost runner printed in one place.'
-        'Use attached_bundle_runner_command after the attached bundle flow when you want the current three-page compatibility targets exercised on the same narrower route.'
+        'Use attached_bundle_flow_command before the attached-page bundle rerun when you want the pinned checker, flow helper, and delegated localhost runner printed in one place, with RepoRoot carried through for non-default checkouts.'
+        'Use attached_bundle_runner_command after the attached bundle flow when you want the current three-page compatibility targets exercised on the same narrower route, while preserving the selected RepoRoot when the helper was opened from a non-default checkout.'
         'Use fresh_replay_command when outputs may be stale or missing.'
         'Use reuse_current_outputs_command only when the current issue #3 artifacts are already present and trusted.'
         'Open quickstart_note_path for the shortest current replay note, validation_chain_note_path for wrapper precedence, and runner_patch_decision_table_path when the patch handoff reaches ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.'
         'Use runner_patch_next_step_helper_command when the wrapper has already named one of those three states and you want the exact next move printed without reopening the longer decision-table note first.'
         'Use refresh_status_route_command before reopening narrower refresh or handoff helpers from a non-default summary.'
-        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted commands now preserve that same repo-root context instead of falling back to the default checkout.'
+        'When LIGHTPANDA_REPO_ROOT is already anchoring the replay, the emitted safe-route wrappers now preserve that same repo-root context instead of falling back to the default checkout.'
     )
 }
 
