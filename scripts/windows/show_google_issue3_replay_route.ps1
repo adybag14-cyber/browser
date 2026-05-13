@@ -150,6 +150,10 @@ $route = [ordered]@{
         ChangeArea = 'google-input'
     }) -RepoRootOverride $recommendedRepoRoot
     read_first_google_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $recommendedRepoRoot
+    suite_router_handoff_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments ([ordered]@{
+        SummaryPath = $recommendedSummaryPath
+        InputPath = $recommendedInputPath
+    }) -RepoRootOverride $recommendedRepoRoot
     attached_bundle_change_area_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
         ChangeArea = 'attached-html-target-bundle'
     }) -RepoRootOverride $recommendedRepoRoot
@@ -178,13 +182,14 @@ $route = [ordered]@{
         'Start with read_first_suite_command when you want the broadest current issue #3 runner surfaced first, while preserving RepoRoot for non-default checkouts when it is already in play.',
         'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice, without dropping the current RepoRoot context.',
         'Use read_first_google_flow_command when you want the full bounded localhost-first ladder printed before you choose a narrower replay, while keeping the same RepoRoot context as the later safe-route helpers.',
+        'Use suite_router_handoff_command when you want the shortest printed bridge back into the higher-level suite-router entrypoints before reopening the narrower replay route, replay shortcuts, attached-bundle, or safe-route helpers with the same current context.',
         'If the current saved or attached pages are the known three-page compatibility bundle, use attached_bundle_change_area_command and attached_bundle_entrypoint_command before reopening the broader wrapper-heavy safe route.',
         'Use replay_shortcuts_command when you want the same route narrowed around the bundle-aware shortcut map, the replay helpers, and the current safe-route bridge without reopening the longer suite-router handoff first.',
         'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.',
         'Use fresh_replay_command when issue #3 outputs may be stale or missing.',
         'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.',
         'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.',
-        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted read-first, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay route stays aligned with the newer entrypoint helpers.'
+        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted read-first, suite-router-handoff, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay route stays aligned with the newer entrypoint helpers.'
     )
 }
 
@@ -219,6 +224,7 @@ Write-Host 'Read-first:'
 Write-Host ("  Suite router:        {0}" -f $route.read_first_suite_command)
 Write-Host ("  Change-area view:    {0}" -f $route.read_first_change_area_command)
 Write-Host ("  Google flow helper:  {0}" -f $route.read_first_google_flow_command)
+Write-Host ("  Suite handoff:       {0}" -f $route.suite_router_handoff_command)
 Write-Host ''
 Write-Host 'Attached-bundle branch:'
 Write-Host ("  Bundle route:        {0}" -f $route.attached_bundle_change_area_command)
