@@ -5,6 +5,7 @@ Use this note when the current issue `#3` replay has already narrowed to the dir
 Keep this note beside:
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for wrapper precedence and replay routing
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` for field-level patch rules and verification order
+- `scripts/windows/show_google_issue3_runner_patch_next_step.ps1` when the wrapper has already named the current state and you want the exact next move printed without reopening the longer table first
 
 ## Default entrypoint
 
@@ -15,6 +16,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_rec
 ```
 
 That wrapper preserves the newest patch-handoff artifact and narrows the next move to one of the states below.
+
+## Fast state helper
+
+When the wrapper has already reported one of the current runner-patch states and you want the shortest exact next-step command map, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State ready-for-runner-patch
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State already-direct
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State runner-already-wired-regenerate-outputs
+```
+
+Use the helper for the immediate command list, then come back to this table when you need the longer artifact order, field rules, or replay guardrails.
 
 ## State-to-next-step table
 
@@ -84,6 +97,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_ru
 ## Practical guardrails
 
 - Prefer the newest wrapper artifact over older raw helper output.
+- Prefer `show_google_issue3_runner_patch_next_step.ps1` when the wrapper already named the state and you only need the exact next commands before reopening the longer decision table.
 - Treat blank path values as unresolved state, not as a finished direct contract.
 - Keep the summary and manifest contracts aligned; patching only one object is not enough.
 - Use the safe helper before the raw helper when both exist for the same checkpoint.
