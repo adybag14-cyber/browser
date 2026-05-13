@@ -29,14 +29,21 @@ function Resolve-RepoRoot([string]$StartPath) {
     }
 }
 
-function Format-HelperCommand {
+function ConvertTo-PowerShellSingleQuotedLiteral {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ScriptName,
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Format-ArgumentList {
+    param(
         [hashtable]$Arguments = @{}
     )
 
-    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
+    $parts = [System.Collections.Generic.List[string]]::new()
     foreach ($entry in $Arguments.GetEnumerator()) {
         $value = $entry.Value
         if ($null -eq $value) {
@@ -44,15 +51,14 @@ function Format-HelperCommand {
         }
 
         if ($value -is [System.Array]) {
-            $items = @($value | Where-Object { -not [string]::IsNullOrWhiteSpace("$($_)") })
+            $items = @($value | Where-Object { -not [string]::IsNullOrWhiteSpace("$_") })
             if ($items.Count -eq 0) {
                 continue
             }
 
-            $command += (" -{0}" -f $entry.Key)
+            $parts.Add("-$($entry.Key)")
             foreach ($item in $items) {
-                $escapedItem = ("$item") -replace "'", "''"
-                $command += (" '{0}'" -f $escapedItem)
+                $parts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value "$item"))
             }
             continue
         }
@@ -61,8 +67,24 @@ function Format-HelperCommand {
             continue
         }
 
-        $escapedValue = ("$value") -replace "'", "''"
-        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+        $parts.Add("-$($entry.Key)")
+        $parts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value "$value"))
+    }
+
+    return $parts
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
+    $parts = Format-ArgumentList -Arguments $Arguments
+    if ($parts.Count -gt 0) {
+        $command += " " + ($parts -join ' ')
     }
 
     return $command
@@ -81,32 +103,9 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $command = "& '.\scripts\windows\$ScriptName'"
-    foreach ($entry in $Arguments.GetEnumerator()) {
-        $value = $entry.Value
-        if ($null -eq $value) {
-            continue
-        }
-
-        if ($value -is [System.Array]) {
-            $items = @($value | Where-Object { -not [string]::IsNullOrWhiteSpace("$($_)") })
-            if ($items.Count -eq 0) {
-                continue
-            }
-
-            $command += (" -{0}" -f $entry.Key)
-            foreach ($item in $items) {
-                $escapedItem = ("$item") -replace "'", "''"
-                $command += (" '{0}'" -f $escapedItem)
-            }
-            continue
-        }
-
-        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
-            continue
-        }
-
-        $escapedValue = ("$value") -replace "'", "''"
-        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    $parts = Format-ArgumentList -Arguments $Arguments
+    if ($parts.Count -gt 0) {
+        $command += " " + ($parts -join ' ')
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
@@ -119,26 +118,14 @@ $resolvedRepoRoot = if ($RepoRoot) {
     Resolve-RepoRoot $PSScriptRoot
 }
 $shouldPreserveRepoRoot = $PSBoundParameters.ContainsKey('RepoRoot') -or -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)
-$recommendedRepoRoot = if ($shouldPreserveRepoRoot) {
-    $resolvedRepoRoot
-} else {
-    $null
-}
-$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
-    $SummaryPath
-} else {
-    $null
-}
-$recommendedInputPath = if ($PSBoundParameters.ContainsKey('InputPath')) {
-    $InputPath
-} else {
-    @()
-}
+$recommendedRepoRoot = if ($shouldPreserveRepoRoot) { $resolvedRepoRoot } else { $null }
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) { $SummaryPath } else { $null }
+$recommendedInputPath = if ($PSBoundParameters.ContainsKey('InputPath')) { $InputPath } else { @() }
 $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
 
 $route = [ordered]@{
     issue = 'Google issue #3 replay route'
-    purpose = 'Bridge the high-level headed validation catalog, the bounded Google flow helper, the attached three-page compatibility bundle branch, and the current safe-route replay wrappers in one place while preserving repo-root, summary-path, and pinned bundle-input context across the printed handoff commands.'
+    purpose = 'Bridge the higher-level headed validation catalog, the bounded Google flow helper, the attached three-page compatibility bundle branch, and the current safe-route replay helpers while preserving repo-root, summary-path, and pinned bundle-input context across the printed commands.'
     repo_root = $resolvedRepoRoot
     summary_path = $recommendedSummaryPath
     input_paths = $recommendedInputPath
@@ -175,6 +162,7 @@ $route = [ordered]@{
     }) -RepoRootOverride $recommendedRepoRoot
     safe_route_entrypoints_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments ([ordered]@{
         SummaryPath = $recommendedSummaryPath
+        InputPath = $recommendedInputPath
     }) -RepoRootOverride $recommendedRepoRoot
     fresh_replay_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments ([ordered]@{
         SummaryPath = $recommendedSummaryPath
@@ -187,17 +175,17 @@ $route = [ordered]@{
         State = $runnerPatchStatePlaceholder
     }) -RepoRootOverride $recommendedRepoRoot
     notes = @(
-        'Start with read_first_suite_command when you want the broadest current issue #3 runner surfaced first, while preserving RepoRoot for non-default checkouts when it is already in play.',
-        'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice, without dropping the current RepoRoot context.',
-        'Use read_first_google_flow_command when you want the full bounded localhost-first ladder printed before you choose a narrower replay, while keeping the same RepoRoot context as the later safe-route helpers.',
-        'Use suite_router_handoff_command when you want the shortest printed bridge back into the higher-level suite-router entrypoints before reopening the narrower replay route, replay shortcuts, attached-bundle, or safe-route helpers with the same current context.',
-        'Use suite_router_next_steps_command when you want the compact next-step matrix from the higher-level suite router reprinted beside the current replay-route surface without reopening the longer Windows runbook or bridge note first.',
-        'If the current saved or attached pages are the known three-page compatibility bundle, use attached_bundle_change_area_command and attached_bundle_entrypoint_command before reopening the broader wrapper-heavy safe route.',
-        'Use replay_shortcuts_command when you want the same route narrowed around the bundle-aware shortcut map, the replay helpers, and the current safe-route bridge without reopening the longer suite-router handoff first.',
-        'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.',
-        'Use fresh_replay_command when issue #3 outputs may be stale or missing.',
-        'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.',
-        'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.',
+        'Start with read_first_suite_command when you want the broadest current issue #3 runner surfaced first, while preserving RepoRoot for non-default checkouts when it is already in play.'
+        'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice, without dropping the current RepoRoot context.'
+        'Use read_first_google_flow_command when you want the full bounded localhost-first ladder printed before you choose a narrower replay, while keeping the same RepoRoot context as the later safe-route helpers.'
+        'Use suite_router_handoff_command when you want the shortest printed bridge back into the higher-level suite-router entrypoints before reopening the narrower replay route, replay shortcuts, attached-bundle, or safe-route helpers with the same current context.'
+        'Use suite_router_next_steps_command when you want the compact next-step matrix from the higher-level suite router reprinted beside the current replay-route surface without reopening the longer Windows runbook or bridge note first.'
+        'If the current saved or attached pages are the known three-page compatibility bundle, use attached_bundle_change_area_command and attached_bundle_entrypoint_command before reopening the broader wrapper-heavy safe route.'
+        'Use replay_shortcuts_command when you want the same route narrowed around the bundle-aware shortcut map, the replay helpers, and the current safe-route bridge without reopening the longer suite-router handoff first.'
+        'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.'
+        'Use fresh_replay_command when issue #3 outputs may be stale or missing.'
+        'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.'
+        'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.'
         'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted read-first, suite-router-handoff, suite-router-next-steps, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay route stays aligned with the newer entrypoint helpers.'
     )
 }
