@@ -268,6 +268,10 @@ $recommendedRepairCommand = Get-FirstNonEmptyValue -Values @(
     if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_repair_command' },
     if ($safeRouteRunnerPatchWrapperStep.record) { Get-OptionalPropertyValue -Object $safeRouteRunnerPatchWrapperStep.record -Name 'recommended_repair_command' }
 )
+$recommendedReferenceNotePath = Get-FirstNonEmptyValue -Values @(
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_reference_note_path' },
+    if ($safeRouteRunnerPatchWrapperStep.record) { Get-OptionalPropertyValue -Object $safeRouteRunnerPatchWrapperStep.record -Name 'recommended_reference_note_path' }
+)
 $runnerPatchStillRequired = if ($patchHandoffStep.record) {
     [bool](Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'runner_patch_still_required')
 } else {
@@ -362,6 +366,7 @@ $report = [ordered]@{
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     recommended_patch_target = $recommendedPatchTarget
+    recommended_reference_note_path = $recommendedReferenceNotePath
     recommended_post_patch_command = $recommendedPostPatchCommand
     recommended_verification_command = $recommendedVerificationCommand
     recommended_regeneration_command = $recommendedRegenerationCommand
@@ -387,6 +392,7 @@ $report = [ordered]@{
             artifact_path = $_.artifact_path
             recommended_command = $_.recommended_command
             recommended_guide_command = $_.recommended_guide_command
+            recommended_reference_note_path = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_reference_note_path' } else { $null }
             next_focus = $_.next_focus
             next_artifact_to_open = $_.next_artifact_to_open
             reason = $_.reason
@@ -429,6 +435,9 @@ Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_alr
 Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
+}
+if ($report.recommended_reference_note_path) {
+    Write-Host ("Rules note: {0}" -f $report.recommended_reference_note_path)
 }
 if ($report.recommended_post_patch_command) {
     Write-Host ("Post-patch:   {0}" -f $report.recommended_post_patch_command)
