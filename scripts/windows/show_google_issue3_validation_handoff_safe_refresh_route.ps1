@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -71,6 +72,62 @@ function Get-FirstNonEmptyValue {
     }
 
     return $null
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
 function Invoke-JsonHelper {
@@ -181,7 +238,11 @@ function New-SkippedHelperStep {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$repoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
 if (-not $SummaryPath) {
     $SummaryPath = Join-Path $repoRoot "tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json"
 }
@@ -197,15 +258,45 @@ if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
 if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-handoff-safe-refresh-route.json'
 }
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $repoRoot
+} else {
+    $null
+}
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+    $SummaryPath
+} else {
+    $null
+}
 
 $handoffSafeScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_handoff_safe.ps1'
 $refreshStatusSafePathRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_refresh_status_safe_path_route.ps1'
-$handoffSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe.ps1'
-$handoffSafeRefreshRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff_safe_refresh_route.ps1'
-$handoffGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_handoff.ps1'
-$refreshStatusSafePathRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe_path_route.ps1'
-$refreshStatusSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_refresh_status_safe.ps1'
-$summaryGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
+$handoffSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$handoffSafeRefreshRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe_refresh_route.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$handoffGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$refreshStatusSafePathRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status_safe_path_route.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$refreshStatusSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$summaryGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$handoffSafeStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $handoffSafeStepArguments += @('-RepoRoot', $repoRoot)
+}
+$refreshStatusSafeStepArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $refreshStatusSafeStepArguments += @('-RepoRoot', $repoRoot)
+}
 
 foreach ($helperPath in @($handoffSafeScript, $refreshStatusSafePathRouteScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -214,7 +305,7 @@ foreach ($helperPath in @($handoffSafeScript, $refreshStatusSafePathRouteScript)
 }
 
 $steps = [System.Collections.Generic.List[object]]::new()
-$handoffSafeStep = Invoke-JsonHelper -Name 'handoff-safe' -ScriptPath $handoffSafeScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+$handoffSafeStep = Invoke-JsonHelper -Name 'handoff-safe' -ScriptPath $handoffSafeScript -Arguments $handoffSafeStepArguments
 $steps.Add($handoffSafeStep) | Out-Null
 
 $handoffSafeRoutesThroughRefreshSafe = [bool](
@@ -230,9 +321,9 @@ $shouldRunRefreshStatusSafe = $handoffSafeRoutesThroughRefreshSafe
 $readyForHandoff = [bool]($handoffSafeStep.success -and $handoffSafeStep.recommended_command -eq $handoffGuideCommand)
 $refreshStatusSafeStep = $null
 if ($shouldRunRefreshStatusSafe) {
-    $refreshStatusSafeStep = Invoke-JsonHelper -Name 'refresh-status-safe-path-route' -ScriptPath $refreshStatusSafePathRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+    $refreshStatusSafeStep = Invoke-JsonHelper -Name 'refresh-status-safe-path-route' -ScriptPath $refreshStatusSafePathRouteScript -Arguments $refreshStatusSafeStepArguments
 } else {
-    $refreshStatusSafeStep = New-SkippedHelperStep -Name 'refresh-status-safe-path-route' -ScriptPath $refreshStatusSafePathRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_command, $handoffSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_guide_command, $summaryGuideCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_focus, 'Use the current handoff-safe guidance; the refresh-status safe path-route follow-up is only needed when the upstream helper routes the next replay through the safe refresh-status checkpoint.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The handoff-safe checkpoint did not route the next replay through the refresh-status safe path-route helper, so the extra refresh follow-up step was not needed.'
+    $refreshStatusSafeStep = New-SkippedHelperStep -Name 'refresh-status-safe-path-route' -ScriptPath $refreshStatusSafePathRouteScript -Arguments $refreshStatusSafeStepArguments -RecommendedCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_command, $handoffSafeCommand)) -RecommendedGuideCommand $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.recommended_guide_command, $summaryGuideCommand)) -NextFocus $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_focus, 'Use the current handoff-safe guidance; the refresh-status safe path-route follow-up is only needed when the upstream helper routes the next replay through the safe refresh-status checkpoint.')) -NextArtifactToOpen $(Get-FirstNonEmptyValue -Values @($handoffSafeStep.next_artifact_to_open, $SummaryPath)) -Reason 'The handoff-safe checkpoint did not route the next replay through the refresh-status safe path-route helper, so the extra refresh follow-up step was not needed.'
 }
 $steps.Add($refreshStatusSafeStep) | Out-Null
 
@@ -293,6 +384,7 @@ $report = [ordered]@{
     issue = 'Google issue #3 handoff safe refresh route'
     purpose = 'Run the issue #3 handoff-safe checkpoint first and, when it detects stale refresh state, immediately reopen the refresh-status safe path-route helper so the next Windows replay can continue through the bounded raw refresh checkpoint without a manual branch.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $repoRoot
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     handoff_safe_command = $handoffSafeCommand
@@ -339,6 +431,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 handoff safe refresh route'
 Write-Host ''
+Write-Host ("Repo root: {0}" -f $report.repo_root)
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
