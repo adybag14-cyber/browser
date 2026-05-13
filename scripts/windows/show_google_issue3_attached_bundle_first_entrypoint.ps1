@@ -96,22 +96,29 @@ $safeRouteArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $safeRouteArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $safeRouteArguments -Name SummaryPath -Value $SummaryPath
 
+$replayShortcutsArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $replayShortcutsArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $replayShortcutsArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $replayShortcutsArguments -Name InputPath -Values $InputPath
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached bundle first entrypoint'
-    purpose = 'Print the pinned three-page compatibility bundle route first, then keep the return to the broader issue #3 safe-route helper on one command surface.'
+    purpose = 'Print the pinned three-page compatibility bundle route first, then keep both the broader replay-shortcuts helper and the narrower safe-route helper on one command surface for the next step.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     suite_router_command = '.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
     bundle_flow_command = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
     bundle_runner_command = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
+    replay_shortcuts_command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $replayShortcutsArguments
     return_to_safe_route_command = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $safeRouteArguments
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
         'Use this helper when the current saved or attached pages are the known three-page compatibility bundle and you want that locked input set exercised before the broader Google-only wrapper chain.',
         'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the flow and runner commands instead of relying on auto-discovery.',
-        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the return-to-safe-route command to preserve that same context.',
+        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-shortcuts and safe-route return commands to preserve that same context.',
+        'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
         'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.'
     )
 }
@@ -139,7 +146,8 @@ Write-Host ("  Flow helper:  {0}" -f $entrypoint.bundle_flow_command)
 Write-Host ("  Runner:       {0}" -f $entrypoint.bundle_runner_command)
 Write-Host ''
 Write-Host 'Return after bundle replay:'
-Write-Host ("  Safe route:   {0}" -f $entrypoint.return_to_safe_route_command)
+Write-Host ("  Replay shortcuts: {0}" -f $entrypoint.replay_shortcuts_command)
+Write-Host ("  Safe route:       {0}" -f $entrypoint.return_to_safe_route_command)
 Write-Host ''
 Write-Host ("Quickstart note:       {0}" -f $entrypoint.quickstart_note_path)
 Write-Host ("Validation chain note: {0}" -f $entrypoint.validation_chain_note_path)
