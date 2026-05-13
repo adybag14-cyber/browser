@@ -23,7 +23,7 @@ These match the `read_first_*` commands printed by `show_google_issue3_safe_rout
 Use them in this order when helpful:
 - `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first
 - `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay
-- `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes
+- `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes; if the current saved or attached pages are the known three-page bundle, jump next to the bundle-first helper before the broader wrapper chain
 - `-ChangeArea attached-html-target-bundle` when the next replay should stay pinned to the known three-page compatibility bundle before you reopen the broader attached-page or wrapper-heavy issue `#3` helpers
 
 ## One-command entrypoints map
@@ -52,6 +52,18 @@ Use this when you want the helper to print the current:
 ## Attached Three-Page Bundle Route
 
 When the next replay should stay pinned to the current attached HTML compatibility bundle before widening back into the wrapper-heavy issue `#3` safe route, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+```
+
+If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit saved-page set, preserve that context directly in the helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+That helper prints the same bundle-first commands plus the return-to-safe-route command in one place. The underlying route is still:
 
 ```powershell
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
