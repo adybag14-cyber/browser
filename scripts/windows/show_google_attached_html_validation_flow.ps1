@@ -53,6 +53,65 @@ function Get-AssetClosureCommand {
     }
 }
 
+function Get-GoogleAttachedHtmlHandoffCommands {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterSetName,
+        [string]$ResolvedPageRoot,
+        [string[]]$ResolvedInputPath,
+        [string]$ResolvedPreferredInitialPage,
+        [Parameter(Mandatory = $true)]
+        [int]$Port,
+        [Parameter(Mandatory = $true)]
+        [bool]$LeaveOpen,
+        [Parameter(Mandatory = $true)]
+        [bool]$AllowMissingLocalAssets
+    )
+
+    $helperCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle -Port $Port"
+    $runnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Port $Port -Wait"
+
+    if ($ResolvedPreferredInitialPage) {
+        $quotedPreferredInitialPage = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPreferredInitialPage
+        $helperCommand += " -PreferredInitialPage $quotedPreferredInitialPage"
+        $runnerCommand += " -PreferredInitialPage $quotedPreferredInitialPage"
+    }
+    if ($LeaveOpen) {
+        $helperCommand += " -LeaveOpen"
+        $runnerCommand += " -LeaveServerRunning"
+    }
+    if ($AllowMissingLocalAssets) {
+        $runnerCommand += " -AllowMissingLocalAssets"
+    }
+
+    switch ($ParameterSetName) {
+        "PageRoot" {
+            if ($ResolvedPageRoot) {
+                $quotedPageRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot
+                $helperCommand += " -PageRoot $quotedPageRoot"
+                $runnerCommand += " -PageRoot $quotedPageRoot"
+            }
+        }
+        default {
+            if ($ResolvedInputPath -and $ResolvedInputPath.Count -gt 0) {
+                $quotedPathArgs = @(
+                    $ResolvedInputPath | ForEach-Object {
+                        ConvertTo-PowerShellSingleQuotedLiteral -Value $_
+                    }
+                )
+                $joinedPathArgs = $quotedPathArgs -join ", "
+                $helperCommand += " -InputPath $joinedPathArgs"
+                $runnerCommand += " -InputPath $joinedPathArgs"
+            }
+        }
+    }
+
+    return [ordered]@{
+        helper_command = $helperCommand
+        runner_command = $runnerCommand
+    }
+}
+
 function Get-GoogleAttachedHtmlFlowMetadata {
     param(
         [Parameter(Mandatory = $true)]
@@ -72,6 +131,10 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [Parameter(Mandatory = $true)]
         [string]$SurfaceCheckCommand,
         [string]$AssetClosureCommand,
+        [Parameter(Mandatory = $true)]
+        [string]$HelperCommand,
+        [Parameter(Mandatory = $true)]
+        [string]$RunnerCommand,
         [Parameter(Mandatory = $true)]
         [bool]$AllowMissingLocalAssets
     )
@@ -113,6 +176,8 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         port = $Port
         surface_check_command = $SurfaceCheckCommand
         asset_closure_command = $AssetClosureCommand
+        helper_command = $HelperCommand
+        runner_command = $RunnerCommand
         missing_asset_audit = $normalizedAssetAudit
         search_roots = if ($ParameterSetName -eq "Auto") { @(Get-AttachedHtmlSearchRoots -RepoRoot $RepoRoot) } else { @() }
     }
@@ -147,6 +212,14 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 }
 $assetClosureCommand = Get-AssetClosureCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedInputPath $resolvedInputPath -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
+$handoffCommands = Get-GoogleAttachedHtmlHandoffCommands `
+    -ParameterSetName $PSCmdlet.ParameterSetName `
+    -ResolvedPageRoot $resolvedPageRoot `
+    -ResolvedInputPath $resolvedInputPath `
+    -ResolvedPreferredInitialPage $resolvedPreferredInitialPage `
+    -Port $Port `
+    -LeaveOpen ([bool]$LeaveOpen) `
+    -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 
 $autoGoogleStyleFixture = if ($PSCmdlet.ParameterSetName -eq "Auto") {
     $resolvedInputPath |
@@ -191,6 +264,8 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -MissingAssetAudit $attachedAssetAudit `
     -SurfaceCheckCommand $surfaceCheckCommand `
     -AssetClosureCommand $assetClosureCommand `
+    -HelperCommand $handoffCommands.helper_command `
+    -RunnerCommand $handoffCommands.runner_command `
     -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 
 if (-not $Json) {
@@ -241,8 +316,8 @@ if (-not $Json) {
         Write-Host "Attached asset policy: degraded mode allowed"
     }
     Write-Host "Override: use -PreferredInitialPage to keep one Google-like page first, or pass -PageRoot / -InputPath to skip auto-discovery."
-    Write-Host "Helper: .\\scripts\\windows\\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle"
-    Write-Host "Runner: .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
+    Write-Host ("Helper: {0}" -f $handoffCommands.helper_command)
+    Write-Host ("Runner: {0}" -f $handoffCommands.runner_command)
     Write-Host ""
 }
 
