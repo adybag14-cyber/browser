@@ -4,6 +4,24 @@ This note captures the current bounded replay path for issue `#3` on `fork/heade
 
 Use it when the Windows headed validation lane needs to resume without rediscovering which helper should run next.
 
+## Read-first discovery
+
+When you want to re-enter issue `#3` from the top-level headed validation catalog before choosing a narrower wrapper, start with:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+```
+
+Use `-SuiteName google-recommended` when you want the one-command localhost-first runner plus its nearby helper surfaced quickly.
+
+Use `-ChangeArea google-input` when the next replay may need one of the narrower title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.
+
+Use `show_google_input_validation_flow.ps1` when you want the bounded localhost, title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, and safe-route patch-handoff order printed before deciding whether the next replay should stay broad or drop to a narrower helper.
+
+After that read-first discovery pass, prefer the safe-route wrapper entrypoints below when the work is specifically resuming the saved runner-output handoff chain.
+
 ## Goal
 
 Keep the next Windows replay on the newest strict-mode-safe wrapper first, preserve the current runner-patch guidance in the saved artifacts, and only reopen the stricter raw helper after the corresponding safe checkpoint reports that the saved state is ready.
