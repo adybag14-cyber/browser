@@ -67,6 +67,9 @@ $formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_va
 $formControlsFlow = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
 $formControlsTraceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
 
+$surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
+
 $runnerArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $runnerArgs -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $runnerArgs -Name BrowserExe -Value $BrowserExe
@@ -111,6 +114,17 @@ Add-SharedArgument -Arguments $sharedOnlyArgs -Name HomeWindowReadyAttempts -Val
 Add-SharedArgument -Arguments $sharedOnlyArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
 Add-SharedArgument -Arguments $sharedOnlyArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
 
+$formControlsGuideArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name SharedInputText -Value $SharedInputText
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name SharedEnterOrderPort -Value $SharedEnterOrderPort
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name ServerReadyTimeoutSeconds -Value $ServerReadyTimeoutSeconds
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name HomeWindowReadyAttempts -Value $HomeWindowReadyAttempts
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name HomeTitleWaitAttempts -Value $HomeTitleWaitAttempts
+Add-SharedArgument -Arguments $formControlsGuideArgs -Name HomePollMilliseconds -Value $HomePollMilliseconds
+
 $flow = [ordered]@{
     issue = "Headed Windows Google shared Enter-order validation flow"
     focus = "Run the shared form-controls baseline, the localhost Google title probe, the reduced Google homepage keypress probe, the localhost Enter-order wrapper, and the dedicated shared Enter-order gate in the same order before a live Google manual pass."
@@ -122,7 +136,7 @@ $flow = [ordered]@{
         [ordered]@{
             name = "surface-check"
             goal = "Fail fast if the shared Enter-order guide, helpers, or probes drifted before you trust this narrower issue #3 ladder."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $surfaceCheck)
+            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $surfaceCheck, $(if ($surfaceCheckArgs.Count -gt 0) { " " + ($surfaceCheckArgs -join " ") } else { "" }))
         }
         [ordered]@{
             name = "recommended"
@@ -150,6 +164,11 @@ $flow = [ordered]@{
             command = ("powershell -ExecutionPolicy Bypass -File {0} -InputText {1} -EnterMutationSuffix {2} -Port {3}{4}" -f $localhostProbe, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), (ConvertTo-PowerShellSingleQuotedLiteral -Value $EnterMutationSuffix), $SharedEnterOrderPort, $(if ($commonProbeArgs.Count -gt 0) { " " + ($commonProbeArgs -join " ") } else { "" }))
         }
         [ordered]@{
+            name = "form-controls-flow"
+            goal = "Print the narrowed dedicated form-controls Enter-order ladder with the same repo-root, browser, and host context before you jump to the last shared gate."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $formControlsFlow, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" }))
+        }
+        [ordered]@{
             name = "form-controls-enter-order"
             goal = "Verify the dedicated shared form-controls Google-style gate still records submit after Enter keypress on the headed surface."
             command = ("powershell -ExecutionPolicy Bypass -File {0} -SharedInputText {1} -SharedEnterOrderPort {2} -Host {3} -ServerReadyTimeoutSeconds {4} -HomeWindowReadyAttempts {5} -HomeTitleWaitAttempts {6} -HomePollMilliseconds {7}{8}" -f $formControlsRunner, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $SharedEnterOrderPort, (ConvertTo-PowerShellSingleQuotedLiteral -Value $Host), $ServerReadyTimeoutSeconds, $HomeWindowReadyAttempts, $HomeTitleWaitAttempts, $HomePollMilliseconds, $(if ($RepoRoot) { " -RepoRoot " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot) } else { "" }) + $(if ($BrowserExe) { " -BrowserExe " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe) } else { "" }))
@@ -157,7 +176,7 @@ $flow = [ordered]@{
         [ordered]@{
             name = "form-controls-trace-guide"
             goal = "Translate the dedicated form-controls gate markers into quick failure stages before you rerun it or widen back out to the broader shared ladder."
-            command = ("powershell -ExecutionPolicy Bypass -File {0}" -f $formControlsTraceGuide)
+            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $formControlsTraceGuide, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" }))
         }
     )
     next_steps = @(
