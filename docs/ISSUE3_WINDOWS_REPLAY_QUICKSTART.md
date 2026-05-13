@@ -24,6 +24,7 @@ Use them in this order when helpful:
 - `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first
 - `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay
 - `show_google_input_validation_flow.ps1` when you want the current localhost-first issue `#3` ladder printed before you choose between the newer safe-route wrappers and the narrower later-stage probes
+- `-ChangeArea attached-html-target-bundle` when the next replay should stay pinned to the known three-page compatibility bundle before you reopen the broader attached-page or wrapper-heavy issue `#3` helpers
 
 ## One-command entrypoints map
 
@@ -47,6 +48,23 @@ Use this when you want the helper to print the current:
 - summary-guide safe helper
 - runner-wiring safe helper
 - runner-patch next-step helper for `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`
+
+## Attached Three-Page Bundle Route
+
+When the next replay should stay pinned to the current attached HTML compatibility bundle before widening back into the wrapper-heavy issue `#3` safe route, use:
+
+```powershell
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
+These match the attached-bundle commands printed by `show_google_issue3_safe_route_entrypoints.ps1`.
+
+Use this route when:
+- the current saved or attached pages are the known three-page compatibility bundle
+- you want the pinned bundle surface check, flow helper, and delegated localhost runner to keep the same locked inputs all the way through replay
+- you want to return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay makes the next Google-style input or submit failure state clear
 
 ## Default fresh replay
 
