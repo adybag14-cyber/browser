@@ -91,6 +91,31 @@ function Get-ArrayValue {
     return @($value)
 }
 
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
 function Invoke-JsonHelper {
     param(
         [Parameter(Mandatory = $true)]
@@ -177,9 +202,31 @@ if (-not $ArtifactPath) {
 
 $safeSummaryRouteScript = Join-Path $PSScriptRoot 'run_google_issue3_recommended_validation_safe_summary_route.ps1'
 $safeRouteRunnerPatchWrapperScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1'
-$safeSummaryRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_summary_route.ps1'
-$safeRouteRunnerPatchWrapperCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1'
-$broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $resolvedRepoRoot
+} else {
+    $null
+}
+$recommendedBrowserExe = if ($PSBoundParameters.ContainsKey('BrowserExe')) {
+    $BrowserExe
+} else {
+    $null
+}
+$safeSummaryRouteCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_summary_route.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    BrowserExe = $recommendedBrowserExe
+    SummaryPath = $SummaryPath
+})
+$safeRouteRunnerPatchWrapperCommand = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    BrowserExe = $recommendedBrowserExe
+    SummaryPath = $SummaryPath
+})
+$broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+    BrowserExe = $recommendedBrowserExe
+    SummaryPath = $SummaryPath
+})
 
 foreach ($helperPath in @($safeSummaryRouteScript, $safeRouteRunnerPatchWrapperScript)) {
     if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
@@ -201,14 +248,22 @@ $steps.Add($safeSummaryRouteStep) | Out-Null
 
 $summaryExistsAfterSafeSummaryRoute = Test-Path -LiteralPath $SummaryPath -PathType Leaf
 $safeRouteRunnerPatchStep = $null
+$safeRouteRunnerPatchArguments = @('-SummaryPath', $SummaryPath, '-Json')
+if ($RepoRoot) {
+    $safeRouteRunnerPatchArguments += @('-RepoRoot', $resolvedRepoRoot)
+}
+if ($BrowserExe) {
+    $safeRouteRunnerPatchArguments += @('-BrowserExe', $BrowserExe)
+}
+
 if ($summaryExistsAfterSafeSummaryRoute) {
-    $safeRouteRunnerPatchStep = Invoke-JsonHelper -Name 'validation-safe-route-runner-patch-wrapper' -ScriptPath $safeRouteRunnerPatchWrapperScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+    $safeRouteRunnerPatchStep = Invoke-JsonHelper -Name 'validation-safe-route-runner-patch-wrapper' -ScriptPath $safeRouteRunnerPatchWrapperScript -Arguments $safeRouteRunnerPatchArguments
 } else {
     $timestamp = (Get-Date).ToUniversalTime().ToString('o')
     $safeRouteRunnerPatchStep = [pscustomobject]@{
         name = 'validation-safe-route-runner-patch-wrapper'
         script_path = $safeRouteRunnerPatchWrapperScript
-        arguments = @('-SummaryPath', $SummaryPath, '-Json')
+        arguments = @($safeRouteRunnerPatchArguments)
         started_at_utc = $timestamp
         completed_at_utc = $timestamp
         exit_code = 0
@@ -444,7 +499,7 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifest_patch_snippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
     foreach ($line in $report.manifest_patch_snippet_lines) {
