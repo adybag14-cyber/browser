@@ -147,6 +147,7 @@ $handoff = [ordered]@{
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    replay_discovery_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
@@ -174,6 +175,7 @@ $handoff = [ordered]@{
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the full recommended runner.',
         'Use suite_router_next_steps when you want the one-command next-step matrix that keeps the current suite-router start points, replay-route branch, attached-bundle branch, and runner-state helper choices together before you pick one route.',
         'Use the read-first bridge when you want the exact route from the higher-level suite router into the next-step matrix, replay-route helper, and replay-shortcuts helper printed in one place before reopening any longer notes.',
+        'Keep replay_discovery_note_path nearby when you want the shortest written bridge from the top-level Windows validation catalog into this suite-router handoff, the next-step matrix, the replay-route helper, and the bundle-first branch without reopening the longer validation-chain notes first.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
         'Use replay_route when the next route is already clear after the handoff or next-step matrix and you still want the compact helper that keeps the attached-bundle branch, the replay-shortcuts helper, the safe-route map, and the repo-root-aware runner-next-step helper together before narrowing further.',
         'Use replay_shortcuts when you want the narrower shortcut map for the attached-bundle-first route and the wrapper-heavy safe-route branches after the replay-route helper has already confirmed the broader issue #3 context.',
@@ -251,6 +253,7 @@ Write-Host ("  Bundle first:      {0}" -f $handoff.helper_commands.attached_bund
 Write-Host ("  Safe route map:    {0}" -f $handoff.helper_commands.safe_route_entrypoints)
 Write-Host ''
 Write-Host ("Quickstart note:      {0}" -f $handoff.quickstart_note_path)
+Write-Host ("Replay discovery:     {0}" -f $handoff.replay_discovery_note_path)
 Write-Host ("Windows runbook:      {0}" -f $handoff.windows_runbook_note_path)
 Write-Host ("Validation chain:     {0}" -f $handoff.validation_chain_note_path)
 Write-Host ("Suite-router bridge:  {0}" -f $handoff.suite_router_bridge_note_path)
