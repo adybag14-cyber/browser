@@ -182,6 +182,11 @@ $recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
 } else {
     $null
 }
+$recommendedArtifactPath = if ($artifactPathExplicit) {
+    $ArtifactPath
+} else {
+    $null
+}
 
 $recommendedRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
     RepoRoot = $recommendedRepoRoot
@@ -191,15 +196,34 @@ $runnerWiringStatusSafeCommand = Format-HelperCommand -ScriptName 'show_google_i
     RepoRoot = $recommendedRepoRoot
     SummaryPath = $recommendedSummaryPath
 })
-$runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$refreshStatusCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$handoffSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$handoffSafeRefreshRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe_refresh_route.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$manifestSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_manifest_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$artifactBundleCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$artifactBundleSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
-$summaryGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{}) -RepoRootOverride $recommendedRepoRoot
+$runnerContractRepairCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'repair_google_issue3_runner_output_contract.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$refreshStatusCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_refresh_status.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$refreshChainCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'refresh_google_issue3_validation_handoff_chain.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+    ArtifactPath = $recommendedArtifactPath
+}) -RepoRootOverride $recommendedRepoRoot
+$handoffSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$handoffSafeRefreshRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_handoff_safe_refresh_route.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$manifestSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_manifest_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$artifactBundleCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$artifactBundleSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_artifact_bundle_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$summaryGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 
 $manifestPath = Resolve-ArtifactCandidatePath -ConfiguredPath (Get-OptionalPropertyValue -Object $summary -Name 'manifest_artifact_path') -ArtifactRoot $artifactRoot -FallbackName 'google-issue3-recommended-validation-manifest.json'
 $manifestExists = Test-Path -LiteralPath $manifestPath -PathType Leaf
