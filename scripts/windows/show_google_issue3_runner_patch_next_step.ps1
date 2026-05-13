@@ -137,10 +137,10 @@ $safeWiringAuditCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_
 $rawWiringAuditCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_output_wiring_status.ps1' -Arguments $repoRootAwareSummaryArguments -RepoRootOverride $RepoRoot
 $runnerOutputContractSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_issue3_recommended_validation_repair_runner_output_contract_safe_route.ps1' -Arguments $repoRootAwareSummaryArguments -RepoRootOverride $RepoRoot
 $wrapperArtifactPaths = @(
-    'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json',
-    'tmp-browser-smoke\\headed-probe\\google-issue3-runner-output-patch-handoff.json',
-    'tmp-browser-smoke\\headed-probe\\google-issue3-runner-output-patch-targets-safe-route.json',
-    'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-repair-runner-output-patch-targets.json'
+    'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json',
+    'tmp-browser-smoke\headed-probe\google-issue3-runner-output-patch-handoff.json',
+    'tmp-browser-smoke\headed-probe\google-issue3-runner-output-patch-targets-safe-route.json',
+    'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-repair-runner-output-patch-targets.json'
 )
 
 $stateCatalog = [ordered]@{
@@ -165,7 +165,7 @@ $stateCatalog = [ordered]@{
         meaning = 'The runner source already carries the direct contract fields that the safe-route wrapper expected.'
         next_goal = 'Skip another direct source patch and reopen the safe wiring audit immediately.'
         artifact_paths = @(
-            'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
+            'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
         )
         commands = @(
             $safeWiringAuditCommand
@@ -181,7 +181,7 @@ $stateCatalog = [ordered]@{
         meaning = 'The source is already wired, but the saved outputs are stale or still missing the repaired contract.'
         next_goal = 'Treat this as an output-regeneration problem, not another direct source edit.'
         artifact_paths = @(
-            'tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
+            'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json'
         )
         commands = @(
             $runnerOutputContractSafeRouteCommand,
