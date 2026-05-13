@@ -198,6 +198,8 @@ $broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_reco
     SummaryPath = $summaryPath
 })
 $runnerPatchRulesNotePath = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
+$runnerPatchDecisionTablePath = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
+$repoRootSafeReplayNotePath = 'docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md'
 $postPatchCommand = $broaderRunnerCommand
 $postPatchVerificationCommand = Get-FirstNonEmptyValue -Values @(
     $recommendedVerificationCommand,
@@ -211,13 +213,21 @@ $recommendedCommand = $null
 $recommendedGuideCommand = $null
 $nextFocus = $null
 $nextArtifactToOpen = $null
+$recommendedReferenceNotePath = $null
+$recommendedDecisionTablePath = $null
+$recommendedRepoRootNotePath = $null
 if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommendedPatchTarget)) {
     $status = 'ready-for-runner-patch-handoff'
     $reason = 'The saved issue #3 patch-route artifact has already narrowed the next replay to a direct runner update, so the next step is to patch the recommended validation runner rather than rerun the raw patch-target helper.'
     $recommendedCommand = $postPatchCommand
     $recommendedGuideCommand = $postPatchVerificationCommand
-    $nextFocus = 'Open docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md beside the saved patch-handoff artifact, apply the preserved summary and manifest patch snippet lines to the recommended validation runner, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the stricter raw wiring helper again.'
+    $nextFocus = 'Open docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md and docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md beside the saved patch-handoff artifact, apply the preserved summary and manifest patch snippet lines to the recommended validation runner, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the stricter raw wiring helper again.'
     $nextArtifactToOpen = $SourceArtifactPath
+    $recommendedReferenceNotePath = $runnerPatchRulesNotePath
+    $recommendedDecisionTablePath = $runnerPatchDecisionTablePath
+    if ($recommendedRepoRoot) {
+        $recommendedRepoRootNotePath = $repoRootSafeReplayNotePath
+    }
 } elseif ($alreadyDirectFromRawPatchTargets) {
     $status = 'already-direct'
     $reason = 'The saved issue #3 patch-route artifact says the summary and manifest already carry the direct runner-output contract, so no runner-side patch handoff is needed before reopening the safe wiring audit.'
@@ -225,6 +235,10 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
     $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextFocus = 'Reopen the safe runner-output wiring audit now that the saved outputs already expose the direct contract, and only widen back out if that audit reports a new gap.'
     $nextArtifactToOpen = $SourceArtifactPath
+    $recommendedDecisionTablePath = $runnerPatchDecisionTablePath
+    if ($recommendedRepoRoot) {
+        $recommendedRepoRootNotePath = $repoRootSafeReplayNotePath
+    }
 } elseif ($runnerAlreadyWiredNeedsRegeneration) {
     $status = 'runner-already-wired-regenerate-outputs'
     $reason = 'The saved issue #3 patch-route artifact says the live runner source is already wired and the remaining work is to regenerate or repair the saved outputs instead of patching the runner again.'
@@ -237,6 +251,10 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
     $recommendedGuideCommand = $runnerOutputWiringSafeCommand
     $nextFocus = 'Regenerate or repair the saved summary and manifest, then rerun the safe wiring audit before trusting another patch-target pass.'
     $nextArtifactToOpen = $SourceArtifactPath
+    $recommendedDecisionTablePath = $runnerPatchDecisionTablePath
+    if ($recommendedRepoRoot) {
+        $recommendedRepoRootNotePath = $repoRootSafeReplayNotePath
+    }
 } else {
     $status = 'follow-source-artifact'
     $reason = Get-FirstNonEmptyValue -Values @(
@@ -262,11 +280,14 @@ if ($runnerPatchStillRequired -or -not [string]::IsNullOrWhiteSpace($recommended
         (Get-OptionalPropertyValue -Object $sourceArtifact -Name 'next_artifact_to_open'),
         $SourceArtifactPath
     )
+    if ($recommendedRepoRoot) {
+        $recommendedRepoRootNotePath = $repoRootSafeReplayNotePath
+    }
 }
 
 $report = [ordered]@{
     issue = 'Google issue #3 runner output patch handoff'
-    purpose = 'Turn the saved issue #3 patch-route artifact into an explicit runner patch handoff with the target file, preserved snippet lines, the focused patch-rules note, and the first post-patch audit command.'
+    purpose = 'Turn the saved issue #3 patch-route artifact into an explicit runner patch handoff with the target file, preserved snippet lines, the focused patch notes, and the first post-patch audit command.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
     repo_root = $resolvedRepoRoot
     summary_path = $summaryPath
@@ -279,7 +300,9 @@ $report = [ordered]@{
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     recommended_patch_target = $recommendedPatchTarget
-    recommended_reference_note_path = if ($status -eq 'ready-for-runner-patch-handoff') { $runnerPatchRulesNotePath } else { $null }
+    recommended_reference_note_path = $recommendedReferenceNotePath
+    recommended_decision_table_path = $recommendedDecisionTablePath
+    recommended_repo_root_note_path = $recommendedRepoRootNotePath
     recommended_post_patch_command = $postPatchCommand
     recommended_verification_command = $postPatchVerificationCommand
     recommended_regeneration_command = $recommendedRegenerationCommand
@@ -317,6 +340,12 @@ if ($report.recommended_patch_target) {
 }
 if ($report.recommended_reference_note_path) {
     Write-Host ("Rules note:      {0}" -f $report.recommended_reference_note_path)
+}
+if ($report.recommended_decision_table_path) {
+    Write-Host ("Decision table:  {0}" -f $report.recommended_decision_table_path)
+}
+if ($report.recommended_repo_root_note_path) {
+    Write-Host ("Repo-root note:  {0}" -f $report.recommended_repo_root_note_path)
 }
 Write-Host ("Run:             {0}" -f $report.recommended_command)
 Write-Host ("Guide:           {0}" -f $report.recommended_guide_command)
