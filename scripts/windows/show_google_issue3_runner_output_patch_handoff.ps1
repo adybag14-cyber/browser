@@ -267,10 +267,10 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patchSnippetLines.Count -gt 0) {
+if ($report.manifest_patch_snippet_lines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
-    foreach ($line in $report.manifestPatchSnippetLines) {
+    foreach ($line in $report.manifest_patch_snippet_lines) {
         Write-Host $line
     }
 }
