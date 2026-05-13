@@ -79,6 +79,31 @@ function Get-ArrayValue {
     return @($value)
 }
 
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     $RepoRoot
 } else {
@@ -128,8 +153,17 @@ $alreadyDirectFromRawPatchTargets = if ($sourceArtifact.PSObject.Properties['alr
 $missingRunnerFields = @(Get-ArrayValue -Object $sourceArtifact -Name 'missing_runner_fields')
 $summaryPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'summary_patch_snippet_lines')
 $manifestPatchSnippetLines = @(Get-ArrayValue -Object $sourceArtifact -Name 'manifest_patch_snippet_lines')
-$runnerOutputWiringSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_wiring_status_safe.ps1'
-$broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$recommendedRepoRoot = if ($PSBoundParameters.ContainsKey('RepoRoot')) {
+    $resolvedRepoRoot
+} else {
+    $null
+}
+$runnerOutputWiringSafeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_runner_output_wiring_status_safe.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+})
+$broaderRunnerCommand = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation.ps1' -Arguments ([ordered]@{
+    RepoRoot = $recommendedRepoRoot
+})
 $runnerPatchRulesNotePath = 'docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md'
 $postPatchCommand = Get-FirstNonEmptyValue -Values @(
     $recommendedVerificationCommand,
