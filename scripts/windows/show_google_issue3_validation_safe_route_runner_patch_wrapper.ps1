@@ -217,12 +217,13 @@ $validationSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validat
 $runnerPatchSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_runner_output_patch_targets_safe_route.ps1'
 $validationSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route.ps1'
 $runnerPatchSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_output_patch_targets_safe_route.ps1'
+$freshPatchHandoffCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1'
 $broaderRunnerCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1'
 
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
     $status = 'summary-missing-broader-replay-first'
     $reason = 'The top-level issue #3 wrapper did not find a saved recommended-validation summary yet, so it cannot safely reopen the narrower safe-route helpers.'
-    $nextFocus = 'Run the broader issue #3 recommended validation runner first so it regenerates the summary and manifest, then reopen this wrapper to preserve the narrower runner patch guidance in one artifact.'
+    $nextFocus = 'Run the fresh issue #3 safe-route patch-handoff entrypoint first so it regenerates the summary, preserves the current runner-patch guidance, and only then reopens this show-only wrapper when reusing already-current saved outputs is intentional.'
     $report = [ordered]@{
         issue = 'Google issue #3 validation safe route runner patch wrapper'
         purpose = 'Run the top-level issue #3 validation safe route first and preserve the exact runner patch-target details from the narrower safe patch route in one combined artifact.'
@@ -237,10 +238,10 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
         runner_patch_route_ran = $false
         runner_already_wired_needs_regeneration = $false
         already_direct_from_raw_patch_targets = $false
-        recommended_command = $broaderRunnerCommand
-        recommended_guide_command = $validationSafeRouteCommand
+        recommended_command = $freshPatchHandoffCommand
+        recommended_guide_command = $freshPatchHandoffCommand
         recommended_patch_target = $null
-        recommended_regeneration_command = $broaderRunnerCommand
+        recommended_regeneration_command = $freshPatchHandoffCommand
         recommended_verification_command = $null
         recommended_repair_command = $null
         runner_patch_still_required = $false
@@ -478,7 +479,7 @@ if ($report.summary_patch_snippet_lines.Count -gt 0) {
         Write-Host $line
     }
 }
-if ($report.manifest_patch_snippet_lines.Count -gt 0) {
+if ($report.manifestPatchSnippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Manifest patch snippet:'
     foreach ($line in $report.manifest_patch_snippet_lines) {
