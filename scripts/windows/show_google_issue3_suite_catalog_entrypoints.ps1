@@ -140,7 +140,7 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
-$googleFlowCommand = Format-HelperCommand -ScriptName 'show_google_input_validation_flow.ps1'
+$googleFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 suite catalog entrypoints'
@@ -186,7 +186,7 @@ $entrypoints = [ordered]@{
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, saved-page, or attached-page slices instead of the full recommended runner.',
-        'Use google_flow when you want the localhost-first issue #3 ladder printed before you decide whether to narrow into the next-step matrix, replay-route, replay-shortcuts, or the wrapper-heavy safe-route branches.',
+        'Use google_flow when you want the localhost-first issue #3 ladder printed before you decide whether to narrow into the next-step matrix, replay-route, replay-shortcuts, or the wrapper-heavy safe-route branches, while keeping LIGHTPANDA_REPO_ROOT aligned to the current non-default checkout when RepoRoot is already in play.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite catalog itself to reopen on that pinned branch first.',
         'Use suite_router_next_steps as the default next helper after the top-level suite catalog and Google flow when the current route is already known to be issue #3 and you want the fastest current helper recommendation without reopening the broader handoff surface first.',
         'Use suite_router_handoff when you want the wider compact bridge that keeps the exact top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
