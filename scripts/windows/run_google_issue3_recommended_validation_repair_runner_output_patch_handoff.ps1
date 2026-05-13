@@ -238,15 +238,51 @@ if ($patchTargetsArtifactExists) {
 }
 $steps.Add($patchHandoffStep) | Out-Null
 
+$sourceStatus = if ($patchHandoffStep.record) {
+    Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'source_status'
+} else {
+    Get-OptionalPropertyValue -Object $patchTargetsWrapperStep.record -Name 'status'
+}
 $recommendedPatchTarget = if ($patchHandoffStep.record) {
     Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_patch_target'
 } else {
     $null
 }
+$recommendedPostPatchCommand = Get-FirstNonEmptyValue -Values @(
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_post_patch_command' },
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_verification_command' },
+    $patchHandoffStep.recommended_guide_command
+)
+$recommendedVerificationCommand = Get-FirstNonEmptyValue -Values @(
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_verification_command' },
+    if ($patchTargetsWrapperStep.record) { Get-OptionalPropertyValue -Object $patchTargetsWrapperStep.record -Name 'recommended_verification_command' }
+)
+$recommendedRegenerationCommand = Get-FirstNonEmptyValue -Values @(
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_regeneration_command' },
+    if ($patchTargetsWrapperStep.record) { Get-OptionalPropertyValue -Object $patchTargetsWrapperStep.record -Name 'recommended_regeneration_command' }
+)
+$recommendedRepairCommand = Get-FirstNonEmptyValue -Values @(
+    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_repair_command' },
+    if ($patchTargetsWrapperStep.record) { Get-OptionalPropertyValue -Object $patchTargetsWrapperStep.record -Name 'recommended_repair_command' }
+)
 $runnerPatchStillRequired = if ($patchHandoffStep.record -and $patchHandoffStep.record.PSObject.Properties['runner_patch_still_required']) {
     [bool]$patchHandoffStep.record.runner_patch_still_required
 } elseif ($patchTargetsWrapperStep.record -and $patchTargetsWrapperStep.record.PSObject.Properties['runner_patch_still_required']) {
     [bool]$patchTargetsWrapperStep.record.runner_patch_still_required
+} else {
+    $false
+}
+$runnerAlreadyWiredNeedsRegeneration = if ($patchHandoffStep.record -and $patchHandoffStep.record.PSObject.Properties['runner_already_wired_needs_regeneration']) {
+    [bool]$patchHandoffStep.record.runner_already_wired_needs_regeneration
+} elseif ($patchTargetsWrapperStep.record -and $patchTargetsWrapperStep.record.PSObject.Properties['runner_already_wired_needs_regeneration']) {
+    [bool]$patchTargetsWrapperStep.record.runner_already_wired_needs_regeneration
+} else {
+    $false
+}
+$alreadyDirectFromRawPatchTargets = if ($patchHandoffStep.record -and $patchHandoffStep.record.PSObject.Properties['already_direct_from_raw_patch_targets']) {
+    [bool]$patchHandoffStep.record.already_direct_from_raw_patch_targets
+} elseif ($patchTargetsWrapperStep.record -and $patchTargetsWrapperStep.record.PSObject.Properties['already_direct_from_raw_patch_targets']) {
+    [bool]$patchTargetsWrapperStep.record.already_direct_from_raw_patch_targets
 } else {
     $false
 }
@@ -257,11 +293,6 @@ $readyForRunnerPatchHandoff = [bool](
         $runnerPatchStillRequired -or
         $patchHandoffStep.status -eq 'ready-for-runner-patch-handoff'
     )
-)
-$recommendedPostPatchCommand = Get-FirstNonEmptyValue -Values @(
-    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_post_patch_command' },
-    if ($patchHandoffStep.record) { Get-OptionalPropertyValue -Object $patchHandoffStep.record -Name 'recommended_verification_command' },
-    $patchHandoffStep.recommended_guide_command
 )
 $missingRunnerFields = if ($patchHandoffStep.record) {
     @(Get-ArrayValue -Object $patchHandoffStep.record -Name 'missing_runner_fields')
@@ -296,6 +327,12 @@ if (-not $patchTargetsArtifactExists) {
 } elseif ($readyForRunnerPatchHandoff) {
     $status = 'ready-for-runner-patch-handoff'
     $reason = 'The issue #3 patch-target chain now narrows cleanly to a direct runner patch handoff with the target file, missing fields, snippet lines, and post-patch audit command preserved together.'
+} elseif ($alreadyDirectFromRawPatchTargets) {
+    $status = 'already-direct'
+    $reason = 'The broader issue #3 patch-target chain already exposes the direct runner-output contract, so the next replay can reopen the safe wiring audit instead of patching the runner again.'
+} elseif ($runnerAlreadyWiredNeedsRegeneration) {
+    $status = 'runner-already-wired-regenerate-outputs'
+    $reason = 'The broader issue #3 patch-target chain says the live runner source already carries the direct contract fields and the saved outputs now need regeneration or repair instead of another runner patch.'
 } elseif (-not $patchTargetsWrapperStep.success) {
     $status = 'patch-target-wrapper-failed'
     $reason = 'The patch-target wrapper did not finish cleanly, and the direct patch handoff still needs the wrapper follow-up state before it can promote a runner patch target.'
@@ -308,31 +345,31 @@ if (-not $patchTargetsArtifactExists) {
     )
 }
 
-$recommendedCommand = Get-FirstNonEmptyValue -Values @(
-    if ($readyForRunnerPatchHandoff) { $recommendedPatchTarget },
-    $patchHandoffStep.recommended_command,
-    $patchTargetsWrapperStep.recommended_command,
-    $patchTargetsWrapperCommand
-)
-$recommendedGuideCommand = Get-FirstNonEmptyValue -Values @(
-    if ($readyForRunnerPatchHandoff) { $recommendedPostPatchCommand },
-    $patchHandoffStep.recommended_guide_command,
-    $patchTargetsWrapperStep.recommended_guide_command,
-    $runnerOutputWiringSafeCommand,
-    $summaryGuideCommand
-)
-$nextFocus = Get-FirstNonEmptyValue -Values @(
-    if ($readyForRunnerPatchHandoff) { 'Patch the recommended validation runner with the preserved summary and manifest snippet lines, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the raw wiring helper again.' },
-    $patchHandoffStep.next_focus,
-    $patchTargetsWrapperStep.next_focus,
-    if (-not $patchTargetsArtifactExists) { 'Regenerate the issue #3 patch-target artifact before asking for a direct runner patch handoff.' }
-)
-$nextArtifactToOpen = Get-FirstNonEmptyValue -Values @(
-    $patchHandoffStep.next_artifact_to_open,
-    $patchTargetsWrapperStep.next_artifact_to_open,
-    if ($patchTargetsArtifactExists) { $patchTargetsArtifactPath },
-    $ArtifactPath
-)
+$recommendedCommand = $null
+$recommendedGuideCommand = $null
+$nextFocus = $null
+$nextArtifactToOpen = $null
+if ($readyForRunnerPatchHandoff) {
+    $recommendedCommand = Get-FirstNonEmptyValue -Values @($recommendedPatchTarget, $patchHandoffStep.recommended_command, $patchTargetsWrapperStep.recommended_command, $patchTargetsWrapperCommand)
+    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @($recommendedPostPatchCommand, $patchHandoffStep.recommended_guide_command, $patchTargetsWrapperStep.recommended_guide_command, $runnerOutputWiringSafeCommand, $summaryGuideCommand)
+    $nextFocus = 'Patch the recommended validation runner with the preserved summary and manifest snippet lines, rerun the broader issue #3 validation flow, then reopen the safe runner-output wiring audit before trusting the raw wiring helper again.'
+    $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @($patchHandoffStep.next_artifact_to_open, $patchTargetsWrapperStep.next_artifact_to_open, if ($patchTargetsArtifactExists) { $patchTargetsArtifactPath }, $ArtifactPath)
+} elseif ($alreadyDirectFromRawPatchTargets) {
+    $recommendedCommand = $runnerOutputWiringSafeCommand
+    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @($recommendedVerificationCommand, $patchHandoffStep.recommended_guide_command, $patchTargetsWrapperStep.recommended_guide_command, $runnerOutputWiringSafeCommand)
+    $nextFocus = 'Reopen the safe runner-output wiring audit now that the saved summary and manifest already expose the direct contract, and only widen back out if that audit reports a fresh gap.'
+    $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @($patchHandoffStep.next_artifact_to_open, $ArtifactPath, $patchTargetsArtifactPath, $SummaryPath)
+} elseif ($runnerAlreadyWiredNeedsRegeneration) {
+    $recommendedCommand = Get-FirstNonEmptyValue -Values @($recommendedRepairCommand, $recommendedRegenerationCommand, $patchHandoffStep.recommended_command, $patchTargetsWrapperStep.recommended_command, $patchTargetsWrapperCommand)
+    $recommendedGuideCommand = $runnerOutputWiringSafeCommand
+    $nextFocus = 'Regenerate or repair the saved issue #3 outputs now that the live runner source already carries the direct contract fields, then reopen the safe wiring audit before trusting the raw verification helper again.'
+    $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @($patchHandoffStep.next_artifact_to_open, $ArtifactPath, $patchTargetsArtifactPath, $SummaryPath)
+} else {
+    $recommendedCommand = Get-FirstNonEmptyValue -Values @($patchHandoffStep.recommended_command, $patchTargetsWrapperStep.recommended_command, $patchTargetsWrapperCommand)
+    $recommendedGuideCommand = Get-FirstNonEmptyValue -Values @($patchHandoffStep.recommended_guide_command, $patchTargetsWrapperStep.recommended_guide_command, $runnerOutputWiringSafeCommand, $summaryGuideCommand)
+    $nextFocus = Get-FirstNonEmptyValue -Values @($patchHandoffStep.next_focus, $patchTargetsWrapperStep.next_focus, if (-not $patchTargetsArtifactExists) { 'Regenerate the issue #3 patch-target artifact before asking for a direct runner patch handoff.' })
+    $nextArtifactToOpen = Get-FirstNonEmptyValue -Values @($patchHandoffStep.next_artifact_to_open, $patchTargetsWrapperStep.next_artifact_to_open, if ($patchTargetsArtifactExists) { $patchTargetsArtifactPath }, $ArtifactPath)
+}
 
 $report = [ordered]@{
     issue = 'Google issue #3 runner output patch handoff wrapper'
@@ -343,10 +380,16 @@ $report = [ordered]@{
     runner_argument_passthrough = @($RunnerArgument)
     patch_targets_artifact_path = $patchTargetsArtifactPath
     patch_targets_artifact_exists = [bool]$patchTargetsArtifactExists
+    source_status = $sourceStatus
     ready_for_runner_patch_handoff = [bool]$readyForRunnerPatchHandoff
     runner_patch_still_required = [bool]$runnerPatchStillRequired
+    runner_already_wired_needs_regeneration = [bool]$runnerAlreadyWiredNeedsRegeneration
+    already_direct_from_raw_patch_targets = [bool]$alreadyDirectFromRawPatchTargets
     recommended_patch_target = $recommendedPatchTarget
     recommended_post_patch_command = $recommendedPostPatchCommand
+    recommended_verification_command = $recommendedVerificationCommand
+    recommended_regeneration_command = $recommendedRegenerationCommand
+    recommended_repair_command = $recommendedRepairCommand
     missing_runner_fields = @($missingRunnerFields)
     summary_patch_snippet_lines = @($summaryPatchSnippetLines)
     manifest_patch_snippet_lines = @($manifestPatchSnippetLines)
@@ -368,6 +411,7 @@ $report = [ordered]@{
             exit_code = $_.exit_code
             error = $_.error
             parse_error = $_.parse_error
+            source_status = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'source_status' } else { $null }
             recommended_command = $_.recommended_command
             recommended_guide_command = $_.recommended_guide_command
             next_focus = $_.next_focus
@@ -375,7 +419,12 @@ $report = [ordered]@{
             reason = $_.reason
             recommended_patch_target = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_patch_target' } else { $null }
             recommended_post_patch_command = if ($_.record) { Get-FirstNonEmptyValue -Values @((Get-OptionalPropertyValue -Object $_.record -Name 'recommended_post_patch_command'), (Get-OptionalPropertyValue -Object $_.record -Name 'recommended_verification_command'), $_.recommended_guide_command) } else { $null }
+            recommended_verification_command = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_verification_command' } else { $null }
+            recommended_regeneration_command = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_regeneration_command' } else { $null }
+            recommended_repair_command = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_repair_command' } else { $null }
             runner_patch_still_required = if ($_.record -and $_.record.PSObject.Properties['runner_patch_still_required']) { [bool]$_.record.runner_patch_still_required } else { $false }
+            runner_already_wired_needs_regeneration = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'runner_already_wired_needs_regeneration') } else { $false }
+            already_direct_from_raw_patch_targets = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'already_direct_from_raw_patch_targets') } else { $false }
             missing_runner_fields = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'missing_runner_fields') } else { @() }
             summary_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'summary_patch_snippet_lines') } else { @() }
             manifest_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'manifest_patch_snippet_lines') } else { @() }
@@ -400,14 +449,26 @@ Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Patch targets: {0}" -f $report.patch_targets_artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
+Write-Host ("Source status: {0}" -f $report.source_status)
 Write-Host ("Patch-target artifact exists: {0}" -f $report.patch_targets_artifact_exists)
 Write-Host ("Ready for runner patch handoff: {0}" -f $report.ready_for_runner_patch_handoff)
 Write-Host ("Runner patch still required: {0}" -f $report.runner_patch_still_required)
+Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_already_wired_needs_regeneration)
+Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
 }
 if ($report.recommended_post_patch_command) {
     Write-Host ("Post-patch audit: {0}" -f $report.recommended_post_patch_command)
+}
+if ($report.recommended_verification_command) {
+    Write-Host ("Verify: {0}" -f $report.recommended_verification_command)
+}
+if ($report.recommended_regeneration_command) {
+    Write-Host ("Rerun: {0}" -f $report.recommended_regeneration_command)
+}
+if ($report.recommended_repair_command) {
+    Write-Host ("Repair: {0}" -f $report.recommended_repair_command)
 }
 if ($report.missing_runner_fields.Count -gt 0) {
     Write-Host 'Missing runner fields:'
@@ -415,7 +476,7 @@ if ($report.missing_runner_fields.Count -gt 0) {
         Write-Host ("- {0}" -f $fieldName)
     }
 }
-if ($report.summary_patch_snippet_lines.Count -gt 0) {
+if ($report.summary_patch_snippetLines.Count -gt 0) {
     Write-Host ''
     Write-Host 'Summary patch snippet:'
     foreach ($line in $report.summary_patch_snippet_lines) {
@@ -439,8 +500,23 @@ foreach ($step in $report.steps) {
     if ($step.parse_error) {
         Write-Host ("  Parse error: {0}" -f $step.parse_error)
     }
+    if ($step.source_status) {
+        Write-Host ("  Source status: {0}" -f $step.source_status)
+    }
     if ($step.recommended_post_patch_command) {
         Write-Host ("  Post-patch audit: {0}" -f $step.recommended_post_patch_command)
+    }
+    if ($step.recommended_verification_command) {
+        Write-Host ("  Verify: {0}" -f $step.recommended_verification_command)
+    }
+    if ($step.recommended_regeneration_command) {
+        Write-Host ("  Rerun: {0}" -f $step.recommended_regeneration_command)
+    }
+    if ($step.recommended_repair_command) {
+        Write-Host ("  Repair: {0}" -f $step.recommended_repair_command)
+    }
+    if ($step.missing_runner_fields.Count -gt 0) {
+        Write-Host ("  Missing fields: {0}" -f ($step.missing_runner_fields -join ', '))
     }
 }
 Write-Host ''
