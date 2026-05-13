@@ -82,13 +82,15 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
     $fullCommand = "powershell -ExecutionPolicy Bypass -File $recommendedRunner -ManualPort $ManualPort$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument"
 }
 
+$issue3SuiteRouterHandoffCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_handoff.ps1$attachedBundleInputPathArgument"
+$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1$attachedBundleInputPathArgument"
 $issue3AttachedBundleFirstEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1$attachedBundleInputPathArgument"
 $issue3AttachedBundleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1$attachedBundleInputPathArgument"
 $issue3AttachedBundleRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1$attachedBundleInputPathArgument -Wait"
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the dedicated homepage-fixture surface checker and saved-homepage checkpoint, the dedicated later-stage submit-path surface checker and flow helper, the dedicated submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated form-controls Enter-order surface checker, flow helper, trace guide, and runner, the issue #3 safe-route entrypoints helper, the fresh safe-route runner-patch handoff entrypoint, the show-only safe-route wrapper for already-current outputs, the attached-bundle suite router, one-command bundle-first helper, dedicated bundle flow, the bundle runner for the pinned three-page compatibility set, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the dedicated homepage-fixture surface checker and saved-homepage checkpoint, the dedicated later-stage submit-path surface checker and flow helper, the dedicated submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated form-controls Enter-order surface checker, flow helper, trace guide, and runner, the issue #3 suite-router handoff helper, replay-shortcuts helper, safe-route entrypoints helper, the fresh safe-route runner-patch handoff entrypoint, the show-only safe-route wrapper for already-current outputs, the attached-bundle suite router, one-command bundle-first helper, dedicated bundle flow, the bundle runner for the pinned three-page compatibility set, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -202,6 +204,16 @@ $flow = [ordered]@{
             name = "form-controls-enter-order"
             goal = "Run the dedicated shared form-controls Enter-order gate when you want the smallest later-stage keypress-before-submit proof before attached HTML or live Google replay."
             command = $formControlsEnterOrderCommand
+        }
+        [ordered]@{
+            name = "issue3-suite-router-handoff"
+            goal = "Print the higher-level issue #3 suite-router handoff so the read-first router commands, replay-shortcuts helper, bundle-first helper, and safe-route map stay on one compact command surface before the replay narrows further."
+            command = $issue3SuiteRouterHandoffCommand
+        }
+        [ordered]@{
+            name = "issue3-replay-shortcuts"
+            goal = "Print the broader issue #3 replay-shortcuts helper when you want the read-first router commands, the attached three-page bundle route, and the current safe-route shortcuts preserved together before choosing the next narrower replay branch."
+            command = $issue3ReplayShortcutsCommand
         }
         [ordered]@{
             name = "issue3-safe-route-entrypoints"
@@ -327,6 +339,8 @@ $flow = [ordered]@{
         "Use the form-controls-enter-order-flow step when you want that smallest shared keypress-before-submit gate printed as its own narrower handoff before you run it.",
         "Use the form-controls-enter-order-trace-guide step when you want the dedicated form-controls probe markers translated into quick failure stages without reopening the longer read-first markdown note.",
         "Use the form-controls-enter-order step when you want the smallest later-stage shared keypress-before-submit proof before attached-page, manual, or live Google replay.",
+        "Use issue3-suite-router-handoff when you want the higher-level suite-router read-first commands plus the replay-shortcuts, bundle-first, and safe-route-map helpers printed together before deciding whether the next replay should stay broad or narrow.",
+        "Use issue3-replay-shortcuts when you want the same read-first commands, the attached three-page bundle route, and the current safe-route shortcuts printed together without reopening the broader handoff helper first.",
         "Use issue3-safe-route-entrypoints when you want the newest fresh replay, reuse-current-outputs, refresh-status, handoff-safe, summary-guide-safe, and runner-wiring-safe commands printed together before choosing the next narrower replay branch.",
         "When repo-root or saved-summary context matters, use issue3-safe-route-entrypoints first so the emitted safe-route commands preserve that same context through the newer wrappers.",
         "Use issue3-safe-route-patch-handoff when current issue #3 outputs may be stale or missing and you want the default fresh replay entrypoint that regenerates the recommended summary while preserving the narrowed runner-patch next step in one artifact.",
@@ -342,7 +356,7 @@ $flow = [ordered]@{
         "Use manual only after the closest bounded suite is already green.",
         "Use full when you intentionally want the broader localhost-first issue #3 flow plus the extra title, saved homepage fixture, dedicated submit-path stage, bounded submit-timing, shared label baseline, shared Enter-order wrapper, dedicated form-controls Enter-order gate, attached-bundle bridge, attached Google helper handoff, and watch phases in one pass, and keep the same saved-page manual follow-up attached when ManualInputPath is already supplied.",
         "When ManualInitialPage is set, the printed attached-google-flow and attached-google commands keep that page preferred for the auto-discovered attached-page path, and the manual follow-up command keeps the same saved page first instead of falling back to a generated index or another arbitrary file.",
-        "When ManualInputPath is provided, the printed full command, issue3-attached-bundle-first helper, issue3-attached-bundle flow, and issue3-attached-bundle runner also preserve the same fixed input set for the bundle-first route instead of relying on auto-discovery.",
+        "When ManualInputPath is provided, the printed full command, issue3-suite-router-handoff helper, issue3-replay-shortcuts helper, issue3-attached-bundle-first helper, issue3-attached-bundle flow, and issue3-attached-bundle runner also preserve the same fixed input set for the bundle-first route instead of relying on auto-discovery.",
         "When ManualGoogleStyle is set, the printed manual and full commands auto-discover current-run attached HTML under user_files first and then agent_files, and they prefer a Google-like attached page when ManualInitialPage is not set.",
         "When LeaveOpen is set, the printed quick-flow, quick, homepage-fixture-flow, homepage-fixture, watch, trace, manual, full, and attached-google-flow commands keep the headed follow-up state easier to inspect after the bounded automation phases finish.",
         "Use the common overrides when you need to keep the localhost, title, home, homepage fixture, submit-timing, watch, shared, shared-enter-order, trace, and manual probes aligned on the same host, ports, timing budget, or input text."
