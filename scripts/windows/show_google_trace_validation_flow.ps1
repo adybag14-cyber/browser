@@ -62,6 +62,7 @@ Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
 $reducedTraceArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $reducedTraceArgs -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $reducedTraceArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $reducedTraceArgs -Name Host -Value $Host
 Add-SharedArgument -Arguments $reducedTraceArgs -Name InputText -Value $InputText
 Add-SharedArgument -Arguments $reducedTraceArgs -Name WindowReadyAttempts -Value $WindowReadyAttempts
 Add-SharedArgument -Arguments $reducedTraceArgs -Name PollMilliseconds -Value $PollMilliseconds
@@ -72,6 +73,7 @@ if ($LeaveOpen) {
 $wrapperArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $wrapperArgs -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $wrapperArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $wrapperArgs -Name Host -Value $Host
 Add-SharedArgument -Arguments $wrapperArgs -Name Phase -Value 'trace'
 Add-SharedArgument -Arguments $wrapperArgs -Name TraceInputText -Value $InputText
 Add-SharedArgument -Arguments $wrapperArgs -Name TraceWindowReadyAttempts -Value $WindowReadyAttempts
