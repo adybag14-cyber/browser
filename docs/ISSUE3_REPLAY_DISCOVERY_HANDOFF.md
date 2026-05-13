@@ -20,27 +20,9 @@ Start with the shared catalog when you need to re-enter the Google validation la
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 ```
 
-## Discovery helpers
+## Fastest default bridge
 
-Use these helpers in this order when you want the narrowest stable bridge back into the current issue `#3` replay chain.
-
-### 1. Suite-router handoff
-
-Use this first when you want the read-first commands, replay shortcuts, bundle-first route, and safe-route entrypoints surfaced together on one command surface:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1
-```
-
-Preserve non-default replay context when needed:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-```
-
-### 2. Suite-router next-step matrix
-
-Use this next when you want the one-command matrix that keeps the higher-level suite-router start points, the handoff helper, the replay-route helper, the bundle-first route, and the runner-state follow-up choices together before narrowing further.
+After those three baseline commands, prefer the next-step matrix when you already know the work is staying inside issue `#3` and want the shortest executable helper map before choosing the next branch:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
@@ -50,6 +32,40 @@ Preserve non-default replay context when needed:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+Use that helper first when you want the quickest route from the top-level suite router into the current handoff, replay-route, bundle-first, and runner-state choices without reopening the longer bridge notes first.
+
+## Discovery helpers
+
+Use these helpers in this order when you want the narrowest stable bridge back into the current issue `#3` replay chain.
+
+### 1. Suite-router next-step matrix
+
+Use this first when you want the one-command matrix that keeps the higher-level suite-router start points, the handoff helper, the replay-route helper, the bundle-first route, and the runner-state follow-up choices together before narrowing further.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+```
+
+Preserve non-default replay context when needed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+### 2. Suite-router handoff
+
+Use this when you want the read-first commands, replay shortcuts, bundle-first route, and safe-route entrypoints surfaced together on one command surface after the matrix has already narrowed the likely route:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1
+```
+
+Preserve non-default replay context when needed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
 ### 3. Replay route bridge
@@ -94,8 +110,8 @@ After the bundle replay clarifies the next failure state, reopen `docs/ISSUE3_WI
 
 ## Practical rule
 
-- Start with the suite-router handoff when you want the widest read-first bridge.
-- Move to the suite-router next-step matrix when you want the executable helper map before choosing between the handoff, replay-route, bundle-first, or runner-state branches.
+- Start with the suite-router next-step matrix when you want the shortest executable bridge from the top-level Windows validation router into the current issue `#3` helper branches.
+- Move to the suite-router handoff when you want the wider read-first bridge reprinted after the matrix already narrowed the likely route.
 - Move to the replay-route helper when the next choice depends on bundle routing, repo-root-aware state, or the runner next-step helper.
 - Use replay shortcuts when the replay is already narrowed and you want the shortest command surface.
 - Reopen the validation-chain note once the replay is ready to move from discovery into the wrapper-heavy safe-route and runner-patch stages.
