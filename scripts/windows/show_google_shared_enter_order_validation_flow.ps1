@@ -57,19 +57,19 @@ function Add-SharedArgument {
     }
 }
 
-$surfaceCheck = '.\\scripts\\windows\\check_google_shared_enter_order_validation_surface.ps1'
-$runner = '.\\scripts\\windows\\run_google_shared_enter_order_validation.ps1'
-$sharedRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
-$googleTitleProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-title-probe.ps1'
-$reducedHomeProbe = '.\\tmp-browser-smoke\\google-home\\chrome-google-home-keypress-submit-probe.ps1'
-$localhostProbe = '.\\tmp-browser-smoke\\google-investigation-next\\google-enter-order-localhost-probe.ps1'
-$formControlsRunner = '.\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1'
-$formControlsFlow = '.\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1'
-$formControlsTraceGuide = '.\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1'
-$recommendedValidation = '.\\scripts\\windows\\run_google_issue3_recommended_validation.ps1'
-$suiteRouterNextSteps = '.\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1'
-$replayRoute = '.\\scripts\\windows\\show_google_issue3_replay_route.ps1'
-$traceFlow = '.\\scripts\\windows\\show_google_trace_validation_flow.ps1'
+$surfaceCheck = '.\scripts\windows\check_google_shared_enter_order_validation_surface.ps1'
+$runner = '.\scripts\windows\run_google_shared_enter_order_validation.ps1'
+$sharedRunner = '.\scripts\windows\run_google_input_validation.ps1'
+$googleTitleProbe = '.\tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1'
+$reducedHomeProbe = '.\tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1'
+$localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1'
+$formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
+$formControlsFlow = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
+$formControlsTraceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
+$recommendedValidation = '.\scripts\windows\run_google_issue3_recommended_validation.ps1'
+$suiteRouterNextSteps = '.\scripts\windows\show_google_issue3_suite_router_next_steps.ps1'
+$replayRoute = '.\scripts\windows\show_google_issue3_replay_route.ps1'
+$traceFlow = '.\scripts\windows\show_google_trace_validation_flow.ps1'
 
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
@@ -224,7 +224,7 @@ $flow = [ordered]@{
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the higher-level issue #3 next-step matrix reopened with the same repo-root context before choosing between replay shortcuts, the attached bundle branch, or the safe-route wrapper chain." -f $suiteRouterNextSteps, $(if ($suiteRouterArgs.Count -gt 0) { " " + ($suiteRouterArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the broader issue #3 replay bridge reopened with the same repo-root context before you widen back out from the shared Enter-order slice." -f $replayRoute, $(if ($replayRouteArgs.Count -gt 0) { " " + ($replayRouteArgs -join " ") } else { "" })),
         "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, and both Enter-order probes stay green together.",
-        "Use .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
+        "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
     )
     notes = @(
         "Run the shared Enter-order surface checker first so missing docs, wrapper scripts, or probe files fail before the narrower ladder looks trustworthy.",
