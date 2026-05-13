@@ -32,6 +32,7 @@ $surfaceCheckAttachedCommand = "powershell -ExecutionPolicy Bypass -File .\\scri
 $titleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1"
 $localhostCommand = "powershell -ExecutionPolicy Bypass -File $runner -Phase localhost"
 $titleCommand = "powershell -ExecutionPolicy Bypass -File $titleRunner"
+$issue3SafeRouteEntrypointsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_safe_route_entrypoints.ps1"
 $issue3SafeRoutePatchHandoffCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1"
 $issue3SafeRouteWrapperCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1"
 $quickFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_quick_validation_flow.ps1$leaveOpenArgument"
@@ -80,7 +81,7 @@ if ($ManualInputPath -and $ManualInputPath.Count -gt 0) {
 
 $flow = [ordered]@{
     issue = "Headed Windows Google input validation flow"
-    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the dedicated homepage-fixture surface checker and saved-homepage checkpoint, the dedicated later-stage submit-path surface checker and flow helper, the dedicated submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated form-controls Enter-order surface checker, flow helper, trace guide, and runner, the fresh safe-route runner-patch handoff entrypoint, the show-only safe-route wrapper for already-current outputs, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
+    focus = "Issue #3 first-pass validation order for the validation-surface checker, reduced localhost probes, the narrower title-surface checker, the title-flow helper, title readiness, the dedicated quick-flow helper, the fast title-plus-watch pass, reduced homepage submit, the dedicated homepage-fixture surface checker and saved-homepage checkpoint, the dedicated later-stage submit-path surface checker and flow helper, the dedicated submit-path runner, the dedicated submit-timing flow helper, the bounded Google-shaped submit-timing pass through its wrapper, the shared label-click baseline plus submit gates, the stricter shared Enter-order wrapper, the dedicated form-controls Enter-order surface checker, flow helper, trace guide, and runner, the issue #3 safe-route entrypoints helper, the fresh safe-route runner-patch handoff entrypoint, the show-only safe-route wrapper for already-current outputs, the dedicated attached-Google flow and runner for current attached HTML pages, live Google trace capture, watch mode, and saved-page localhost follow-up."
     manual_initial_page = $ManualInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -162,7 +163,7 @@ $flow = [ordered]@{
         }
         [ordered]@{
             name = "submit-timing"
-            goal = "Run the bounded Google-shaped timing probe through the dedicated submit-timing wrapper so typed text plus keydown,keypress,submit ordering stay on one reusable command surface."
+            goal = "Run the bounded Google-shaped timing probe through the dedicated submit-timing wrapper so typed text plus keydown, keypress, submit ordering stay on one reusable command surface."
             command = $submitTimingCommand
         }
         [ordered]@{
@@ -194,6 +195,11 @@ $flow = [ordered]@{
             name = "form-controls-enter-order"
             goal = "Run the dedicated shared form-controls Enter-order gate when you want the smallest later-stage keypress-before-submit proof before attached HTML or live Google replay."
             command = $formControlsEnterOrderCommand
+        }
+        [ordered]@{
+            name = "issue3-safe-route-entrypoints"
+            goal = "Print the current issue #3 safe-route entrypoints in one place so the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers stay aligned before you choose the next replay branch."
+            command = $issue3SafeRouteEntrypointsCommand
         }
         [ordered]@{
             name = "issue3-safe-route-patch-handoff"
@@ -294,6 +300,8 @@ $flow = [ordered]@{
         "Use the form-controls-enter-order-flow step when you want that smallest shared keypress-before-submit gate printed as its own narrower handoff before you run it.",
         "Use the form-controls-enter-order-trace-guide step when you want the dedicated form-controls probe markers translated into quick failure stages without reopening the longer read-first markdown note.",
         "Use the form-controls-enter-order step when you want the smallest later-stage shared keypress-before-submit proof before attached-page, manual, or live Google replay.",
+        "Use issue3-safe-route-entrypoints when you want the newest fresh replay, reuse-current-outputs, refresh-status, handoff-safe, summary-guide-safe, and runner-wiring-safe commands printed together before choosing the next narrower replay branch.",
+        "When repo-root or saved-summary context matters, use issue3-safe-route-entrypoints first so the emitted safe-route commands preserve that same context through the newer wrappers.",
         "Use issue3-safe-route-patch-handoff when current issue #3 outputs may be stale or missing and you want the default fresh replay entrypoint that regenerates the recommended summary while preserving the narrowed runner-patch next step in one artifact.",
         "Use issue3-safe-route-wrapper only when the current issue #3 outputs are already present and you want to reopen the narrower safe-route plus runner-patch guidance without another broader replay first.",
         "Keep docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md open for wrapper precedence and docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md open when the safe-route handoff artifact lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs.",
