@@ -63,11 +63,12 @@ The current default is:
 
 - `show_google_issue3_suite_catalog_entrypoints.ps1` immediately after the top-level suite router when you want the widest compact bridge back into the current issue `#3` helper chain
 - `show_google_issue3_suite_router_next_steps.ps1` once the route is already known to stay inside issue `#3` and you want the fastest executable matrix before choosing the narrower branch
+- `show_google_issue3_google_flow_context_bridge.ps1` when `RepoRoot`, `BrowserExe`, `Host`, a saved `SummaryPath`, or pinned bundle inputs already matter and you still want the broader Google flow kept aligned with the newer issue `#3` helper chain before narrowing again
 - `show_google_issue3_replay_shortcuts.ps1` once the matrix confirms that no pinned bundle inputs or saved summary are already in play
 - `show_google_issue3_replay_route.ps1` when a `SummaryPath` is already available and the replay should stay narrow on the current saved-output context
 - `show_google_issue3_attached_bundle_first_entrypoint.ps1` when explicit `InputPath` values are already pinned to the current three-page compatibility set
 - `show_google_issue3_suite_router_handoff.ps1` when you explicitly want the broader read-first bridge reprinted after the catalog helper or matrix has already narrowed the likely route
-- `show_google_issue3_safe_route_entrypoints.ps1` once replay-route, replay-shortcuts, or the broader handoff helpers have already confirmed the current branch and you want the current safe-route commands plus the runner-state helper printed before the next fresh replay or reuse-current-outputs step
+- `show_google_issue3_safe_route_entrypoints.ps1` once replay-route, replay-shortcuts, the broader handoff helpers, or the context bridge have already confirmed the current branch and you want the current safe-route commands plus the runner-state helper printed before the next fresh replay or reuse-current-outputs step
 
 Use `show_google_issue3_replay_route.ps1` whenever you want the broader
 attached-bundle branch, the current safe-route map, and the repo-root-aware
@@ -77,11 +78,17 @@ Use `show_google_issue3_replay_shortcuts.ps1` after replay-route when you want
 the narrower shortcut surface for the attached-bundle branch, bundle-first
 helper, and safe-route entrypoints before choosing a wrapper-heavy next step.
 
+Use `show_google_issue3_google_flow_context_bridge.ps1` before replay-route,
+replay-shortcuts, or the safe-route entrypoints when the replay still needs the
+broader `show_google_input_validation_flow.ps1` ladder, but the route also has
+to preserve repo root, browser path, host, saved-summary state, or pinned
+attached-bundle inputs all the way through the newer issue `#3` helpers.
+
 Use `show_google_issue3_safe_route_entrypoints.ps1` after replay-route,
-replay-shortcuts, or the broader suite-router handoff when you want the current
-safe-route commands, notes, and runner next-step helper surfaced in one place
-before choosing between the fresh replay wrapper and the reuse-current-outputs
-wrapper.
+replay-shortcuts, the broader suite-router handoff, or the context bridge when
+you want the current safe-route commands, notes, and runner next-step helper
+surfaced in one place before choosing between the fresh replay wrapper and the
+reuse-current-outputs wrapper.
 
 ## Read-first helper order
 
@@ -97,15 +104,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
 ```
 
-Use this compact sequence when a saved summary is already in play and the replay
-should stay on the current saved-output context before narrowing further:
+Use this compact sequence when saved-summary state, repo-root overrides,
+browser-path selection, host overrides, or pinned bundle inputs already matter
+and the replay should keep the broader Google flow aligned before narrowing
+further:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_flow_context_bridge.ps1 -RepoRoot '<repo-root>' -BrowserExe '<browser-exe>' -Host 127.0.0.1 -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
 Use this compact sequence when the replay should stay pinned to the current
@@ -143,10 +151,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_sa
 Start from the top-level headed validation suite router, move immediately into
 `show_google_issue3_suite_catalog_entrypoints.ps1`, then let
 `show_google_issue3_suite_router_next_steps.ps1` pick between replay shortcuts,
-replay route, the bundle-first helper, or the safe-route entrypoints.
+replay route, the bundle-first helper, the context bridge, or the safe-route
+entrypoints.
 
 - no saved summary and no explicit bundle paths: go straight from the catalog helper and next-step matrix to replay shortcuts, then open the safe-route entrypoints helper before the next wrapper-heavy replay step
-- saved summary already present: go to replay route first, then narrow into replay shortcuts and the safe-route entrypoints helper only as needed
+- saved summary, browser path, repo-root override, host override, or pinned bundle inputs already present: use the context bridge first so the broader Google flow and the newer issue `#3` helper chain keep the same replay context aligned before narrowing again
+- saved summary already present and the replay is already narrowed: go to replay route first, then narrow into replay shortcuts and the safe-route entrypoints helper only as needed
 - explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
 - broader read-first bridge still needed: reopen `show_google_issue3_suite_router_handoff.ps1` after the catalog helper or matrix has already re-established the likely route, then continue into the safe-route entrypoints helper when the replay is ready for the wrapper-heavy branch
 
