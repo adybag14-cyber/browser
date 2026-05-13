@@ -1,0 +1,89 @@
+# Issue #3 Suite Router Entrypoint Guide
+
+This note is the shortest bridge from the top-level headed validation suite map
+into the current issue `#3` replay helpers.
+
+Use it when you start from `show_headed_validation_suites.ps1` and want the
+next helper chosen quickly without reopening the longer Windows runbook or the
+full wrapper-heavy safe-route notes first.
+
+## Start points
+
+Use either of these top-level headed validation router entrypoints first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+```
+
+If the next replay should stay pinned to the known attached three-page
+compatibility bundle, keep this change-area entrypoint nearby as well:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+```
+
+## Default next helper
+
+After the top-level suite router, print the current issue `#3` next-step helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+```
+
+When the replay is running from a non-default checkout, from an already-saved
+summary, or from explicit attached-bundle paths, preserve that same context:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+## Which helper should come next
+
+The current default is:
+
+- `show_google_issue3_replay_shortcuts.ps1` when no pinned bundle inputs are in play yet
+- `show_google_issue3_replay_shortcuts.ps1` when a `SummaryPath` is already available and the replay should stay narrow
+- `show_google_issue3_attached_bundle_first_entrypoint.ps1` when explicit `InputPath` values are already pinned to the current three-page compatibility set
+
+Use `show_google_issue3_replay_route.ps1` instead when you want the broader
+attached-bundle branch, the current safe-route map, and the repo-root-aware
+runner next-step helper printed together before narrowing again.
+
+## Read-first helper order
+
+Use this compact sequence when the replay begins from the higher-level suite
+router and no pinned bundle or saved summary has forced a narrower path yet:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+```
+
+Use this compact sequence when the replay should stay pinned to the current
+attached three-page compatibility bundle first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
+```
+
+## Keep these references nearby
+
+- `docs/WINDOWS_FULL_USE.md` for the broader Windows headed runbook
+- `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` for the narrower prose bridge into replay shortcuts
+- `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` for the shortest current safe-route replay path
+- `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for wrapper precedence and fresh replay entrypoints
+- `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` for the direct runner patch loop after the safe-route handoff emits `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`
+
+## Practical rule
+
+Start from the top-level headed validation suite router, move immediately into
+`show_google_issue3_suite_router_next_steps.ps1`, then let current context pick
+between replay shortcuts, the broader replay route, or the bundle-first helper.
+Only reopen the longer validation-chain notes after the route has narrowed into
+the wrapper-heavy safe path.
