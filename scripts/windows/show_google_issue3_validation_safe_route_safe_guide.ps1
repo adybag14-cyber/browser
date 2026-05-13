@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [string]$RepoRoot,
     [string]$SummaryPath,
     [string]$ArtifactPath,
     [switch]$Json
@@ -74,6 +75,62 @@ function Get-FirstNonEmptyValue {
     return $null
 }
 
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{}
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $Arguments
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
 function Invoke-JsonHelper {
     param(
         [Parameter(Mandatory = $true)]
@@ -81,7 +138,8 @@ function Invoke-JsonHelper {
         [Parameter(Mandatory = $true)]
         [string]$ScriptPath,
         [Parameter(Mandatory = $true)]
-        [string[]]$Arguments
+        [string[]]$Arguments,
+        [string]$RepoRootOverride
     )
 
     $startedAt = (Get-Date).ToUniversalTime().ToString('o')
@@ -90,8 +148,14 @@ function Invoke-JsonHelper {
     $errorMessage = $null
     $parseError = $null
     $record = $null
+    $hadPreviousRepoRoot = Test-Path Env:LIGHTPANDA_REPO_ROOT
+    $previousRepoRoot = if ($hadPreviousRepoRoot) { $env:LIGHTPANDA_REPO_ROOT } else { $null }
 
     try {
+        if (-not [string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+            $env:LIGHTPANDA_REPO_ROOT = $RepoRootOverride
+        }
+
         $output = @(
             & powershell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments 2>&1
         )
@@ -102,6 +166,14 @@ function Invoke-JsonHelper {
     } catch {
         $exitCode = 1
         $errorMessage = $_.Exception.Message
+    } finally {
+        if (-not [string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+            if ($hadPreviousRepoRoot) {
+                $env:LIGHTPANDA_REPO_ROOT = $previousRepoRoot
+            } else {
+                Remove-Item Env:LIGHTPANDA_REPO_ROOT -ErrorAction SilentlyContinue
+            }
+        }
     }
 
     $outputLines = @($output | ForEach-Object { "${_}" })
@@ -145,9 +217,19 @@ function Invoke-JsonHelper {
     }
 }
 
-$repoRoot = Resolve-RepoRoot $PSScriptRoot
+$resolvedRepoRoot = if ($RepoRoot) {
+    $RepoRoot
+} else {
+    Resolve-RepoRoot $PSScriptRoot
+}
+$shouldPreserveRepoRoot = $PSBoundParameters.ContainsKey('RepoRoot') -or -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)
+$recommendedRepoRoot = if ($shouldPreserveRepoRoot) {
+    $resolvedRepoRoot
+} else {
+    $null
+}
 if (-not $SummaryPath) {
-    $SummaryPath = Join-Path $repoRoot 'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json'
+    $SummaryPath = Join-Path $resolvedRepoRoot 'tmp-browser-smoke\headed-probe\google-issue3-recommended-validation-summary.json'
 }
 if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
     throw "Issue #3 recommended validation summary not found: $SummaryPath"
@@ -161,17 +243,28 @@ if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
 if (-not $ArtifactPath) {
     $ArtifactPath = Join-Path $artifactRoot 'google-issue3-validation-safe-route-safe-guide.json'
 }
+$recommendedSummaryPath = if ($PSBoundParameters.ContainsKey('SummaryPath')) {
+    $SummaryPath
+} else {
+    $null
+}
 
 $validationSafeRouteScript = Join-Path $PSScriptRoot 'show_google_issue3_validation_safe_route.ps1'
-$validationSafeRouteCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route.ps1'
-$validationSafeRouteSafeGuideCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_safe_guide.ps1'
-$summaryGuideSafeCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_summary_guide_safe.ps1'
+$validationSafeRouteCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_safe_route.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$validationSafeRouteSafeGuideCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_safe_route_safe_guide.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
+$summaryGuideSafeCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_validation_summary_guide_safe.ps1' -Arguments ([ordered]@{
+    SummaryPath = $recommendedSummaryPath
+}) -RepoRootOverride $recommendedRepoRoot
 
 if (-not (Test-Path -LiteralPath $validationSafeRouteScript -PathType Leaf)) {
     throw "Issue #3 helper not found: $validationSafeRouteScript"
 }
 
-$routeStep = Invoke-JsonHelper -Name 'validation-safe-route' -ScriptPath $validationSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json')
+$routeStep = Invoke-JsonHelper -Name 'validation-safe-route' -ScriptPath $validationSafeRouteScript -Arguments @('-SummaryPath', $SummaryPath, '-Json') -RepoRootOverride $recommendedRepoRoot
 $routeRecommendedCommand = Get-FirstNonEmptyValue -Values @(
     $routeStep.recommended_command,
     $validationSafeRouteCommand
@@ -223,8 +316,9 @@ if (-not $routeStep.success) {
 
 $report = [ordered]@{
     issue = 'Google issue #3 validation safe-route safe-guide wrapper'
-    purpose = 'Preserve the top-level issue #3 validation safe route as the guide entrypoint when that route narrows the next checkpoint to a lower-level helper.'
+    purpose = 'Preserve the top-level issue #3 validation safe route as the guide entrypoint when that route narrows the next checkpoint to a lower-level helper, while keeping repo-root and summary-path context aligned for alternate-checkout replays.'
     generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    repo_root = $resolvedRepoRoot
     summary_path = $SummaryPath
     artifact_path = $ArtifactPath
     validation_safe_route_command = $validationSafeRouteCommand
@@ -268,6 +362,7 @@ if ($Json) {
 
 Write-Host 'Google issue #3 validation safe-route safe-guide wrapper'
 Write-Host ''
+Write-Host ("Repo root: {0}" -f $report.repo_root)
 Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
