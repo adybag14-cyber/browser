@@ -227,6 +227,8 @@ if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
         runner_output_patch_targets_safe_route_command = $runnerPatchSafeRouteCommand
         broader_runner_command = $broaderRunnerCommand
         runner_patch_route_ran = $false
+        runner_already_wired_needs_regeneration = $false
+        already_direct_from_raw_patch_targets = $false
         recommended_command = $broaderRunnerCommand
         recommended_guide_command = $validationSafeRouteCommand
         recommended_patch_target = $null
@@ -305,6 +307,16 @@ if ($shouldRunRunnerPatchRoute) {
 $steps.Add($runnerPatchStep) | Out-Null
 
 $runnerPatchStillRequired = [bool](Get-OptionalPropertyValue -Object $runnerPatchStep.record -Name 'runner_patch_still_required')
+$runnerAlreadyWiredNeedsRegeneration = if ($runnerPatchStep.record -and $runnerPatchStep.record.PSObject.Properties['runner_already_wired_needs_regeneration']) {
+    [bool]$runnerPatchStep.record.runner_already_wired_needs_regeneration
+} else {
+    [bool]($runnerPatchStep.status -eq 'runner-already-wired-regenerate-outputs')
+}
+$alreadyDirectFromRawPatchTargets = if ($runnerPatchStep.record -and $runnerPatchStep.record.PSObject.Properties['already_direct_from_raw_patch_targets']) {
+    [bool]$runnerPatchStep.record.already_direct_from_raw_patch_targets
+} else {
+    [bool]($runnerPatchStep.status -eq 'already-direct')
+}
 $recommendedPatchTarget = Get-OptionalPropertyValue -Object $runnerPatchStep.record -Name 'recommended_patch_target'
 $recommendedRegenerationCommand = Get-OptionalPropertyValue -Object $runnerPatchStep.record -Name 'recommended_regeneration_command'
 $recommendedVerificationCommand = Get-OptionalPropertyValue -Object $runnerPatchStep.record -Name 'recommended_verification_command'
@@ -324,10 +336,10 @@ if (-not $validationStep.success) {
 } elseif ($runnerPatchStillRequired) {
     $status = 'ready-for-runner-patch'
     $reason = 'The validation-safe route completed and the runner patch route surfaced the exact direct runner-output fields that still need to land in the recommended validation runner.'
-} elseif ($runnerPatchStep.status -eq 'runner-already-wired-regenerate-outputs') {
+} elseif ($runnerAlreadyWiredNeedsRegeneration) {
     $status = 'runner-already-wired-regenerate-outputs'
     $reason = 'The validation-safe route completed and the runner patch route confirmed the live runner source is already wired, so the next job is to regenerate or repair stale saved outputs.'
-} elseif ($runnerPatchStep.status -eq 'already-direct') {
+} elseif ($alreadyDirectFromRawPatchTargets) {
     $status = 'already-direct'
     $reason = 'The validation-safe route completed and the runner patch route confirmed the saved outputs already expose the direct runner-output contract.'
 } else {
@@ -369,6 +381,8 @@ $report = [ordered]@{
     runner_output_patch_targets_safe_route_command = $runnerPatchSafeRouteCommand
     broader_runner_command = $broaderRunnerCommand
     runner_patch_route_ran = [bool]$shouldRunRunnerPatchRoute
+    runner_already_wired_needs_regeneration = [bool]$runnerAlreadyWiredNeedsRegeneration
+    already_direct_from_raw_patch_targets = [bool]$alreadyDirectFromRawPatchTargets
     recommended_command = $recommendedCommand
     recommended_guide_command = $recommendedGuideCommand
     recommended_patch_target = $recommendedPatchTarget
@@ -401,6 +415,8 @@ $report = [ordered]@{
             recommended_verification_command = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_verification_command' } else { $null }
             recommended_repair_command = if ($_.record) { Get-OptionalPropertyValue -Object $_.record -Name 'recommended_repair_command' } else { $null }
             runner_patch_still_required = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'runner_patch_still_required') } else { $false }
+            runner_already_wired_needs_regeneration = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'runner_already_wired_needs_regeneration') } else { $false }
+            already_direct_from_raw_patch_targets = if ($_.record) { [bool](Get-OptionalPropertyValue -Object $_.record -Name 'already_direct_from_raw_patch_targets') } else { $false }
             missing_runner_fields = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'missing_runner_fields') } else { @() }
             summary_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'summary_patch_snippet_lines') } else { @() }
             manifest_patch_snippet_lines = if ($_.record) { @(Get-ArrayValue -Object $_.record -Name 'manifest_patch_snippet_lines') } else { @() }
@@ -425,6 +441,8 @@ Write-Host ("Summary:   {0}" -f $report.summary_path)
 Write-Host ("Artifact:  {0}" -f $report.artifact_path)
 Write-Host ("Status:    {0}" -f $report.status)
 Write-Host ("Runner patch route ran: {0}" -f $report.runner_patch_route_ran)
+Write-Host ("Runner already wired needs regeneration: {0}" -f $report.runner_already_wired_needs_regeneration)
+Write-Host ("Already direct from raw patch-targets: {0}" -f $report.already_direct_from_raw_patch_targets)
 if ($report.recommended_patch_target) {
     Write-Host ("Patch target: {0}" -f $report.recommended_patch_target)
 }
