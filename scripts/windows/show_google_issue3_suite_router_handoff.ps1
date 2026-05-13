@@ -171,13 +171,13 @@ $handoff = [ordered]@{
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the full recommended runner.',
-        'Use the read-first bridge when you want the exact route from the higher-level suite router into the newer replay-route helper printed in one place before reopening any longer notes.',
+        'Use the read-first bridge when you want the exact route from the higher-level suite router into the replay-shortcuts helper printed in one place before reopening any longer notes.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
-        'Use replay_route when you want the suite-router read-first commands, the attached-bundle branch, the safe-route map, and the repo-root-aware runner next-step helper printed together in one compact surface.',
-        'Use replay_shortcuts when you want the same route narrowed further around the shortcut map, bundle-first helper, and safe-route entrypoints, especially when explicit bundle paths are already pinned.',
-        'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into replay_route or replay_shortcuts without reopening the longer Windows runbook or validation-chain notes first.',
+        'Use replay_shortcuts when you want the suite-router read-first commands, the pinned bundle branch, and the safe-route entrypoints kept together on the narrowest current helper surface before choosing the next replay.',
+        'Use replay_route when you still want the broader compact route that keeps the attached-bundle branch, the safe-route map, and the repo-root-aware runner next-step helper together before narrowing further.',
+        'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into replay_shortcuts or replay_route without reopening the longer Windows runbook or validation-chain notes first.',
         'Use attached_bundle_first when the replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 chain.',
-        'Use safe_route_entrypoints only after the higher-level suite router, replay-route helper, or replay shortcuts have already narrowed the replay into the current wrapper-heavy issue #3 path.'
+        'Use safe_route_entrypoints only after the higher-level suite router, replay shortcuts, or replay-route helper has already narrowed the replay into the current wrapper-heavy issue #3 path.'
     )
 }
 
@@ -185,17 +185,17 @@ $handoff.bridge_sequence = [ordered]@{
     google_recommended = $handoff.suite_router_commands.google_recommended
     google_input_change_area = $handoff.suite_router_commands.google_input_change_area
     google_flow = $handoff.helper_commands.google_flow
-    replay_route = $handoff.helper_commands.replay_route
     replay_shortcuts = $handoff.helper_commands.replay_shortcuts
+    replay_route = $handoff.helper_commands.replay_route
 }
 
-$recommendedNextHelperKey = 'replay_route'
-$recommendedNextHelperReason = 'The higher-level suite-router commands are already visible, so reopen the replay-route helper next to keep the attached-bundle branch, safe-route map, and runner-state helper together in one compact surface.'
+$recommendedNextHelperKey = 'replay_shortcuts'
+$recommendedNextHelperReason = 'The higher-level suite-router commands are already visible, so reopen the replay-shortcuts helper next to keep the narrower shortcut map, pinned bundle branch, and safe-route entrypoints together without reopening the broader replay-route helper first.'
 if ($handoff.explicit_input_path_count -gt 0) {
     $recommendedNextHelperKey = 'attached_bundle_first'
     $recommendedNextHelperReason = 'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle first before widening back into the broader Google-only issue #3 helper chain.'
 } elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
-    $recommendedNextHelperReason = 'A saved SummaryPath is already in play, so reopen the replay-route helper with that same context before deciding between the bundle-first path, replay shortcuts, or a fresh safe-route replay.'
+    $recommendedNextHelperReason = 'A saved SummaryPath is already in play, so reopen the replay-shortcuts helper with that same context before deciding between the bundle-first path, replay-route, or a fresh safe-route replay.'
 }
 
 $handoff.recommended_next_helper_key = $recommendedNextHelperKey
@@ -226,8 +226,8 @@ Write-Host 'Read-first bridge:'
 Write-Host ("  1. Google recommended: {0}" -f $handoff.bridge_sequence.google_recommended)
 Write-Host ("  2. Google input:       {0}" -f $handoff.bridge_sequence.google_input_change_area)
 Write-Host ("  3. Google flow:        {0}" -f $handoff.bridge_sequence.google_flow)
-Write-Host ("  4. Replay route:       {0}" -f $handoff.bridge_sequence.replay_route)
-Write-Host ("  5. Replay shortcuts:   {0}" -f $handoff.bridge_sequence.replay_shortcuts)
+Write-Host ("  4. Replay shortcuts:   {0}" -f $handoff.bridge_sequence.replay_shortcuts)
+Write-Host ("  5. Replay route:       {0}" -f $handoff.bridge_sequence.replay_route)
 if ($handoff.explicit_input_path_count -gt 0) {
     Write-Host ("  Bundle-first branch:   {0}" -f $handoff.suite_router_commands.attached_bundle_change_area)
 }
@@ -239,8 +239,8 @@ Write-Host ("  Attached bundle:    {0}" -f $handoff.suite_router_commands.attach
 Write-Host ''
 Write-Host 'Shortcut helpers:'
 Write-Host ("  Google flow:        {0}" -f $handoff.helper_commands.google_flow)
-Write-Host ("  Replay route:       {0}" -f $handoff.helper_commands.replay_route)
 Write-Host ("  Replay shortcuts:   {0}" -f $handoff.helper_commands.replay_shortcuts)
+Write-Host ("  Replay route:       {0}" -f $handoff.helper_commands.replay_route)
 Write-Host ("  Bundle first:       {0}" -f $handoff.helper_commands.attached_bundle_first)
 Write-Host ("  Safe route map:     {0}" -f $handoff.helper_commands.safe_route_entrypoints)
 Write-Host ''
