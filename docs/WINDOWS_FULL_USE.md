@@ -135,6 +135,7 @@ order.
 
 Keep these notes open once the replay narrows into the wrapper-heavy safe route:
 
+- `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` for the shortest current safe-route replay path before reopening the longer chain
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for the current fresh replay entrypoints and wrapper precedence
 - `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` for the direct runner patch loop after the replay lands on `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` for the field-level runner patch rules once the safe-route handoff artifact says a direct source edit is still required
@@ -150,6 +151,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_title_vali
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation_safe_route_runner_patch_wrapper.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_validation_surface.ps1 -Profile submit-path
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_homepage_fixture_validation_flow.ps1
@@ -200,8 +202,10 @@ Routing rules:
 - Use `show_headed_validation_suites.ps1 -ChangeArea google-input` when the next replay may need the narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.
 - Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
 - Use `show_google_issue3_safe_route_entrypoints.ps1` after the shared suite router or broader Google flow has already narrowed into the current wrapper-heavy issue `#3` replay and you want the fresh replay, reuse-current-outputs, refresh-status, handoff-safe, summary-guide, and runner-wiring commands printed in one place.
+- Use `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` when you want the shortest current safe-route replay note before reopening the longer validation-chain or decision-table guidance.
 - Use `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` as the wrapper-order reference once the issue `#3` replay narrows into safe-route, handoff, or repair helpers.
 - Use `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` when the replay lands on the direct runner patch loop and you want the next move for `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs` without reopening the longer chain note.
+- Use `show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>` when the safe-route wrapper has already emitted one of those three states and you want the exact next commands without reopening the longer decision table first.
 - Use `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` beside the decision table when the replay is already on the direct runner source edit and you need the field-level rules for nullable `$null`, artifact order, blank-path handling, and post-patch verification.
 - Use `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md` when the replay is running from a non-default checkout or should preserve `LIGHTPANDA_REPO_ROOT` plus a current `SummaryPath` through the safe wiring, refresh, and handoff checkpoints.
 - Use `check_google_validation_surface.ps1 -Profile title` before `show_google_title_validation_flow.ps1` or `run_google_title_validation.ps1` so the narrower title guide, helper, direct probe, and fixture chain fails fast before you depend on that smaller issue `#3` ladder.
