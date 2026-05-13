@@ -14,11 +14,25 @@ When you want to re-enter issue `#3` from the top-level headed validation catalo
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 ```
 
+If you want the broader Google route, the attached three-page bundle branch, and the current safe-route shortcuts printed together in one helper before you decide which way to continue, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+```
+
+If the replay is running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that context directly in the helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
 Use `-SuiteName google-recommended` when you want the one-command localhost-first runner plus its nearby helper surfaced quickly.
 
 Use `-ChangeArea google-input` when the next replay may need one of the narrower title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.
 
 Use `show_google_input_validation_flow.ps1` when you want the bounded localhost, title, homepage-fixture, submit-path, submit-timing, shared Enter-order, attached-page, and safe-route patch-handoff order printed before deciding whether the next replay should stay broad or drop to a narrower helper.
+
+Use `show_google_issue3_replay_shortcuts.ps1` when you want the broader Google route, the attached three-page bundle branch, and the return-to-safe-route helpers printed on one stable command surface before you commit to the next replay path.
 
 When the current saved or attached inputs are the known three-page compatibility bundle, also open the attached bundle route directly from the higher-level router before widening into the wrapper-heavy Google-only helpers:
 
