@@ -201,9 +201,9 @@ $matrix = @(
     }
     [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html'
-        default_next_helper = 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1'
-        command = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
-        use_when = 'The next replay is already narrowed to attached-page compatibility follow-up, but you still want the shorter issue #3 bridge visible before deciding whether to stay on the pinned bundle-first path, widen back into the suite-catalog bridge, or reopen the safe-route helper chain.'
+        default_next_helper = 'show_google_issue3_top_level_attached_html_entrypoint.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
+        use_when = 'The next replay is already narrowed to attached-page compatibility follow-up, and you want the dedicated top-level attached-page bridge visible before deciding whether to stay on the pinned bundle-first path, widen back into the suite-catalog bridge, or reopen the safe-route helper chain.'
     }
     [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
@@ -324,7 +324,7 @@ $helper = [ordered]@{
         'Use suite_router_handoff only when you explicitly want the wider compact bridge that keeps the top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
         'Use safe_route_entrypoints after the suite-router work is already out of the way and you want the current wrapper-heavy issue #3 commands, notes, and next-state helper surfaced in one place.',
         'Use the later_stage_flow_commands block when the higher-level replay route is already chosen and the next Windows run should jump straight into the bounded submit-timing, shared Enter-order, or live-trace helpers without reconstructing repo-root, browser, host, or issue #3 input context by hand.',
-        'Use change_area_attached_html when the next replay is already narrowed to the attached HTML compatibility path and you want that top-level route printed beside the shortcut-first helper before you decide whether to stay pinned to the bundle-first branch or widen back into the broader Google-only guidance.',
+        'Use change_area_attached_html when the next replay is already narrowed to the attached HTML compatibility path and you want that top-level route printed beside the dedicated attached-page bridge before you decide whether to stay pinned to the bundle-first branch or widen back into the broader Google-only guidance.',
         'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence and context-preserving lane handoffs, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
     )
 }
