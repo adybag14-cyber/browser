@@ -174,6 +174,7 @@ $entrypoint = [ordered]@{
         fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
         reuse_current_outputs = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments $sharedArguments
     }
+    top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
@@ -190,7 +191,7 @@ $entrypoint = [ordered]@{
         'Use replay_route_shortcut when the attached-page route is already confirmed and you want the smaller replay-route companion surface before widening back into replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the suite-router attached-page quickstart, issue-specific attached-page bridge, replay shortcuts, the next-step matrix, or the safe-route helpers.',
         'Use fresh_safe_route_replay when current outputs may be stale or missing. Use reuse_current_outputs only when a saved SummaryPath already exists and those outputs are still trusted.',
-        'Keep the quickstart, suite-router attached-page quickstart, suite-router bridge, suite-catalog guide, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
+        'Keep the top-level attached-page quickstart note, the Windows replay quickstart, the suite-router attached-page quickstart, the suite-router bridge, the suite-catalog guide, the validation-chain note, and the Windows runbook nearby when you want the written route beside these commands.'
     )
 }
 
@@ -262,12 +263,13 @@ Write-Host (("  Safe-route map:       {0}") -f $entrypoint.helper_commands.safe_
 Write-Host (("  Fresh safe replay:    {0}") -f $entrypoint.helper_commands.fresh_safe_route_replay)
 Write-Host (("  Reuse current outputs:{0}") -f (' ' + $entrypoint.helper_commands.reuse_current_outputs))
 Write-Host ''
-Write-Host (("Quickstart note:              {0}") -f $entrypoint.quickstart_note_path)
-Write-Host (("Suite-router attached note:   {0}") -f $entrypoint.suite_router_attached_html_quickstart_note_path)
-Write-Host (("Suite-router bridge:          {0}") -f $entrypoint.suite_router_bridge_note_path)
-Write-Host (("Suite-catalog guide:          {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
-Write-Host (("Validation chain:             {0}") -f $entrypoint.validation_chain_note_path)
-Write-Host (("Windows runbook:              {0}") -f $entrypoint.windows_runbook_note_path)
+Write-Host (("Top-level quickstart:        {0}") -f (' ' + $entrypoint.top_level_attached_html_quickstart_note_path))
+Write-Host (("Quickstart note:             {0}") -f $entrypoint.quickstart_note_path)
+Write-Host (("Suite-router attached note:  {0}") -f $entrypoint.suite_router_attached_html_quickstart_note_path)
+Write-Host (("Suite-router bridge:         {0}") -f $entrypoint.suite_router_bridge_note_path)
+Write-Host (("Suite-catalog guide:         {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
+Write-Host (("Validation chain:            {0}") -f $entrypoint.validation_chain_note_path)
+Write-Host (("Windows runbook:             {0}") -f $entrypoint.windows_runbook_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $entrypoint.notes) {
