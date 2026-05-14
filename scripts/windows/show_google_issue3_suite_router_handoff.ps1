@@ -206,9 +206,9 @@ $recommendedNextHelperReason = 'No explicit input paths are pinned yet, so reope
 if ($handoff.explicit_input_path_count -gt 0) {
     $recommendedNextHelperKey = 'attached_bundle_first'
     $recommendedNextHelperReason = 'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle first before widening back into the broader Google-only issue #3 helper chain.'
-} elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
+} elseif (-not [string]::IsNullOrWhiteSpace($SummaryPath) -or -not [string]::IsNullOrWhiteSpace($RepoRoot)) {
     $recommendedNextHelperKey = 'contextual_flow'
-    $recommendedNextHelperReason = 'A saved SummaryPath is already in play, so reopen the context-preserving flow next and keep that replay state aligned while you choose between the suite-catalog bridge, next-step matrix, replay-route, replay-shortcuts, the broader recommended runner, or the later attached and trace follow-up helpers.'
+    $recommendedNextHelperReason = 'A non-default RepoRoot or saved SummaryPath is already in play, so reopen the context-preserving flow next and keep that replay state aligned while you choose between the suite-catalog bridge, next-step matrix, replay-route, replay-shortcuts, the broader recommended runner, or the later attached and trace follow-up helpers.'
 }
 
 $handoff.recommended_next_helper_key = $recommendedNextHelperKey
