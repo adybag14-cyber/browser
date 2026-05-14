@@ -173,8 +173,8 @@ $helper = [ordered]@{
     notes = @(
         'Start with attached_html_change_area when the top-level headed validation router is already narrowed to the generic attached localhost compatibility route and you want the shortest bridge back into the narrower issue #3 helper chain.',
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before narrowing again.',
-        'Use top_level_attached_html_entrypoint when you want the broader top-level attached-page bridge reprinted before the compact quickstart narrows the route again.',
-        'Use suite_router_attached_html_quickstart as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the shorter suite-router attached-page bridge visible before you choose between the catalog bridge, the Google-shaped attached-page helper, the attached-page shortcut, replay shortcuts, the next-step matrix, or the bundle-first route.',
+        'Use top_level_attached_html_entrypoint as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the broader top-level attached-page bridge visible immediately after the compact quickstart before the route narrows again.',
+        'Use suite_router_attached_html_quickstart after the top-level attached-page bridge when you want the shorter suite-router attached-page bridge visible before you choose between the catalog bridge, the Google-shaped attached-page helper, the attached-page shortcut, replay shortcuts, the next-step matrix, or the bundle-first route.',
         'Use suite_catalog_attached_html_entrypoint when the suite-catalog-side attached-page bridge should stay visible before the replay narrows again.',
         'Use google_attached_html_entrypoint when the replay still needs the broader issue-specific attached-page flow helper kept visible before you drop to the shorter attached-page shortcut.',
         'Use attached_html_shortcut when the route is already clearly inside attached-page follow-up and you want the shortest bridge before widening into replay shortcuts, the next-step matrix, or the safe-route map.',
@@ -191,7 +191,7 @@ $helper.recommended_next_key = if ($helper.explicit_input_path_count -gt 0) {
 } elseif (-not [string]::IsNullOrWhiteSpace($helper.repo_root) -or -not [string]::IsNullOrWhiteSpace($helper.summary_path)) {
     'contextual_flow'
 } else {
-    'suite_router_attached_html_quickstart'
+    'top_level_attached_html_entrypoint'
 }
 $helper.recommended_next_command = $helper.commands[$helper.recommended_next_key]
 $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_first') {
@@ -199,7 +199,7 @@ $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached
 } elseif ($helper.recommended_next_key -eq 'contextual_flow') {
     'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the compact attached-page quickstart, the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.'
 } else {
-    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the top-level attached-page route into the suite-router attached-page quickstart and keep the narrower attached-page bridge visible before widening back out.'
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the compact top-level attached-page quickstart into the broader top-level attached-page bridge before narrowing into the shorter suite-router attached-page quickstart or replay shortcuts.'
 }
 
 if ($Json) {
