@@ -158,6 +158,7 @@ $helper = [ordered]@{
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
+        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $bundleArguments
@@ -225,6 +226,7 @@ Write-Host 'Top-level attached-page entrypoints:'
 Write-Host (("  Attached HTML:        {0}") -f $helper.commands.attached_html_change_area)
 Write-Host (("  Google attached HTML: {0}") -f $helper.commands.google_attached_html_change_area)
 Write-Host (("  Attached bundle:      {0}") -f $helper.commands.attached_bundle_change_area)
+Write-Host (("  Attached quickstart:  {0}") -f $helper.commands.top_level_attached_html_quickstart)
 Write-Host (("  Attached bridge:      {0}") -f $helper.commands.top_level_attached_html_entrypoint)
 Write-Host ''
 Write-Host 'Compact follow-up helpers:'
