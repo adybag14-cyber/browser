@@ -138,7 +138,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 suite-catalog attached-html entrypoint'
-    purpose = 'Keep the attached-page follow-up route visible directly from the issue #3 suite-catalog surface before it narrows into the current shortcut-first, issue-specific attached-page, and bundle-aware helpers.'
+    purpose = 'Keep the attached-page follow-up route visible directly from the issue #3 suite-catalog surface before it narrows into the current shortcut-first, suite-router attached-page quickstart, issue-specific attached-page, and bundle-aware helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -162,6 +162,7 @@ $entrypoint = [ordered]@{
     helper_commands = [ordered]@{
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleArguments
         top_level_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
+        suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
@@ -180,7 +181,8 @@ $entrypoint = [ordered]@{
         'Use this helper when the issue #3 suite-catalog surface already has your attention and the next replay needs the attached-page route kept visible before you drop into the narrower shortcut-first helper chain.',
         'Start with attached_html_change_area when the next replay should still come from the broader attached-page compatibility route before it narrows into issue-specific attached-page follow-up.',
         'Start with google_attached_html_change_area when the next replay is already narrowed to the issue-specific attached-page route but the broader suite-catalog commands still need to stay visible on the same surface.',
-        'Use google_attached_html_entrypoint as the default next helper when explicit InputPath values are not already pinned, because it keeps the issue-specific attached-page bridge visible before you decide whether to drop into the shorter attached_html_shortcut helper or widen back into replay_shortcuts and the next-step matrix.',
+        'Use suite_router_attached_html_quickstart as the default next helper when explicit InputPath values are not already pinned, because it keeps the shorter suite-router attached-page bridge visible before you decide whether to drop into google_attached_html_entrypoint, attached_html_shortcut, replay_shortcuts, the next-step matrix, or the bundle-first branch.',
+        'Use google_attached_html_entrypoint after the suite-router attached-page quickstart when the issue-specific attached-page bridge should stay visible before the replay narrows to attached_html_shortcut or widens back into replay_shortcuts and the next-step matrix.',
         'Use attached_html_shortcut after the issue-specific attached-page entrypoint when you want the shortest bridge into replay_shortcuts, the next-step matrix, or the bundle-first branch.',
         'Use attached_bundle_change_area or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader Google-only issue #3 helpers.',
         'Use top_level_shortcut_entrypoint when the broader top-level issue #3 bridge still needs to stay visible before you narrow into the attached-page helper chain.',
@@ -193,13 +195,13 @@ $entrypoint = [ordered]@{
 $entrypoint.recommended_next_key = if ($entrypoint.explicit_input_path_count -gt 0) {
     'attached_bundle_first'
 } else {
-    'google_attached_html_entrypoint'
+    'suite_router_attached_html_quickstart'
 }
 $entrypoint.recommended_next_command = $entrypoint.helper_commands[$entrypoint.recommended_next_key]
 $entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 helper chain.'
 } else {
-    'No explicit bundle inputs are pinned yet, so jump straight from the suite-catalog attached-page surface into the issue-specific attached-page entrypoint and keep the narrower helper chain visible from there.'
+    'No explicit bundle inputs are pinned yet, so jump straight from the suite-catalog attached-page surface into the shorter suite-router attached-page quickstart before deciding whether to keep narrowing into the issue-specific attached-page bridge or widen back into replay shortcuts and the next-step matrix.'
 }
 
 if ($Json) {
@@ -230,24 +232,26 @@ Write-Host (("  4. Google attached HTML: {0}") -f $entrypoint.top_level_commands
 Write-Host (("  5. Attached bundle:      {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
 Write-Host (("  6. Suite-catalog:        {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
 Write-Host (("  7. Top-level shortcut:   {0}") -f $entrypoint.helper_commands.top_level_shortcut_entrypoint)
-Write-Host (("  8. Google attached:      {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
-Write-Host (("  9. Attached shortcut:    {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
-Write-Host ((" 10. Router shortcut:      {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host ((" 11. Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 12. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 13. Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host ((" 14. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host (("  8. Router attached quick:{0}") -f (' ' + $entrypoint.helper_commands.suite_router_attached_html_quickstart))
+Write-Host (("  9. Google attached:      {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
+Write-Host ((" 10. Attached shortcut:    {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host ((" 11. Router shortcut:      {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host ((" 12. Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 13. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 14. Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host ((" 15. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host 'Companion helpers:'
-Write-Host (("  Suite-catalog:       {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
-Write-Host (("  Top-level shortcut:  {0}") -f $entrypoint.helper_commands.top_level_shortcut_entrypoint)
-Write-Host (("  Google attached:     {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
-Write-Host (("  Attached shortcut:   {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
-Write-Host (("  Router shortcut:     {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host (("  Replay shortcuts:    {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host (("  Next-step matrix:    {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host (("  Contextual flow:     {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host (("  Bundle first:        {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host (("  Suite-catalog:        {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
+Write-Host (("  Top-level shortcut:   {0}") -f $entrypoint.helper_commands.top_level_shortcut_entrypoint)
+Write-Host (("  Router attached quick:{0}") -f (' ' + $entrypoint.helper_commands.suite_router_attached_html_quickstart))
+Write-Host (("  Google attached:      {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
+Write-Host (("  Attached shortcut:    {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host (("  Router shortcut:      {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host (("  Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host (("  Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host (("  Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host (("Quickstart note:           {0}") -f $entrypoint.quickstart_note_path)
 Write-Host (("Router attached quickstart:{0}") -f (' ' + $entrypoint.suite_router_attached_html_quickstart_note_path))
