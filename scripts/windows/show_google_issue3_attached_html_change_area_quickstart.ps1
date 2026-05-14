@@ -148,6 +148,7 @@ $helper = [ordered]@{
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
+    top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
@@ -164,6 +165,7 @@ $helper = [ordered]@{
         }) -RepoRootOverride $RepoRoot
         attached_html_flow = Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $emptyArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         top_level_shortcut_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
@@ -180,6 +182,7 @@ $helper = [ordered]@{
         'Use attached_html_flow when you want the broader attached-page helper surface visible from that same change-area entry before dropping into the issue-specific quickstarts or the shortcut companion.',
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before you narrow again.',
         'Use top_level_attached_html_quickstart as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the compact top-level attached-page route visible before you drop into the narrower bridge and shortcut helpers.',
+        'Use top_level_attached_html_catalog_quickstart when you want the compact top-level attached-page route and the suite-catalog-side bridge kept visible together before the route narrows again.',
         'Use suite_router_attached_html_quickstart when the next replay should stay closer to the suite-router-side attached-page branch before widening back into the broader helper chain.',
         'Use top_level_attached_html_entrypoint when the route is already clearly inside the issue-specific attached-page branch and you want the broader top-level attached-page bridge reprinted before the shorter quickstart or shortcut helpers.',
         'Use top_level_shortcut_first_entrypoint when the replay is already narrowed enough that the shortest top-level shortcut bridge is the most useful follow-up.',
@@ -189,7 +192,7 @@ $helper = [ordered]@{
         'Use attached_bundle_change_area and attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader helper chain.',
         'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before you choose between the quickstarts, the broader attached-page flow helper, shortcuts, next-step matrix, or safe-route wrapper.',
         'Use safe_route_entrypoints only after the replay is already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
-        'Keep the attached-html change-area quickstart note, the Windows full-use attached-html route note, the Windows replay quickstart note, the top-level attached-page quickstart note, the suite-router attached-page quickstart note, the top-level attached-page bridge note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the attached-html change-area quickstart note, the Windows full-use attached-html route note, the Windows replay quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the top-level attached-page bridge note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -237,6 +240,7 @@ Write-Host (("  Attached flow helper: {0}") -f $helper.commands.attached_html_fl
 Write-Host ''
 Write-Host 'Compact attached-page follow-up helpers:'
 Write-Host (("  Top-level quickstart:     {0}") -f $helper.commands.top_level_attached_html_quickstart)
+Write-Host (("  Catalog quickstart:       {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
 Write-Host (("  Suite-router quickstart:  {0}") -f $helper.commands.suite_router_attached_html_quickstart)
 Write-Host (("  Top-level attached route: {0}") -f $helper.commands.top_level_attached_html_entrypoint)
 Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_shortcut_first_entrypoint)
@@ -252,6 +256,7 @@ Write-Host (("Change-area quickstart:   {0}") -f (' ' + $helper.attached_html_ch
 Write-Host (("Windows full-use route:    {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
 Write-Host (("Windows replay quickstart: {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
 Write-Host (("Top-level quickstart note: {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
+Write-Host (("Catalog quickstart note:   {0}") -f (' ' + $helper.top_level_attached_html_catalog_quickstart_note_path))
 Write-Host (("Suite-router quickstart:   {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
 Write-Host (("Top-level bridge note:     {0}") -f (' ' + $helper.top_level_attached_html_bridge_note_path))
 Write-Host (("Catalog bridge note:       {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
