@@ -173,8 +173,8 @@ Add-SharedArgument -Arguments $liveTraceFlowArguments -Name Host -Value $Host
 Add-SharedArgument -Arguments $liveTraceFlowArguments -Name InputText -Value $TraceInputText
 
 $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
-$recommendedHelperKey = 'replay_shortcuts'
-$recommendedHelperReason = 'No pinned bundle inputs, saved summary, or non-default repo root are in play yet, so jump straight to the narrower replay-shortcuts helper while the broader replay-route and suite-router handoff surfaces remain available below for backtracking.'
+$recommendedHelperKey = 'suite_router_shortcut_entrypoint'
+$recommendedHelperReason = 'No pinned bundle inputs, saved summary, or non-default repo root are in play yet, so reopen the shortcut-first entrypoint first and keep the shorter issue #3 bridge visible before widening into replay shortcuts, the next-step matrix, replay route, or the safe-route helper.'
 if ($InputPath -and @($InputPath).Count -gt 0) {
     $recommendedHelperKey = 'attached_bundle_first'
     $recommendedHelperReason = 'Explicit input paths are already pinned, so the fastest correct next step is the attached bundle-first helper before reopening the broader Google-only wrappers.'
@@ -258,6 +258,7 @@ $helper = [ordered]@{
         'contextual_flow' { Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments }
         'replay_shortcuts' { Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments }
         'replay_route' { Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments }
+        'suite_router_shortcut_entrypoint' { Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments }
         default { Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments }
     }
     suite_router_commands = [ordered]@{
