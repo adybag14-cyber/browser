@@ -3,6 +3,11 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$BrowserExe,
+    [string]$Host = '127.0.0.1',
+    [string]$SubmitTimingInputText = 'QZ',
+    [string]$SharedInputText = 'Q',
+    [string]$TraceInputText = 'lightpanda',
     [switch]$Json
 )
 
@@ -149,6 +154,24 @@ $bundleFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleFlowArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleFlowArguments -Name InputPath -Values $InputPath
 
+$submitTimingFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $submitTimingFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $submitTimingFlowArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $submitTimingFlowArguments -Name Host -Value $Host
+Add-SharedArgument -Arguments $submitTimingFlowArguments -Name InputText -Value $SubmitTimingInputText
+
+$sharedEnterOrderFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $sharedEnterOrderFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $sharedEnterOrderFlowArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $sharedEnterOrderFlowArguments -Name Host -Value $Host
+Add-SharedArgument -Arguments $sharedEnterOrderFlowArguments -Name SharedInputText -Value $SharedInputText
+
+$liveTraceFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $liveTraceFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $liveTraceFlowArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $liveTraceFlowArguments -Name Host -Value $Host
+Add-SharedArgument -Arguments $liveTraceFlowArguments -Name InputText -Value $TraceInputText
+
 $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>'
 $recommendedHelperKey = 'replay_shortcuts'
 $recommendedHelperReason = 'No pinned bundle inputs, saved summary, or non-default repo root are in play yet, so jump straight to the narrower replay-shortcuts helper while the broader replay-route and suite-router handoff surfaces remain available below for backtracking.'
@@ -201,6 +224,12 @@ $matrix = @(
         use_when = 'RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that context aligned before choosing between the recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.'
     }
     [ordered]@{
+        start_point = 'context-preserving late-stage handoff'
+        default_next_helper = 'show_google_submit_timing_validation_flow.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_submit_timing_validation_flow.ps1' -Arguments $submitTimingFlowArguments
+        use_when = 'The higher-level replay route is already settled and you want to jump straight into the bounded submit-timing slice with the same repo root, browser path, host, and issue #3 input context carried through.'
+    }
+    [ordered]@{
         start_point = 'wrapper-emitted runner state'
         default_next_helper = 'show_google_issue3_runner_patch_next_step.ps1'
         command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_runner_patch_next_step.ps1' -Arguments ([ordered]@{
@@ -213,9 +242,14 @@ $matrix = @(
 
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router next steps'
-    purpose = 'Print the fastest correct issue #3 helper after the top-level headed validation router, while preserving repo-root, saved-summary, and attached-bundle context when it already exists.'
+    purpose = 'Print the fastest correct issue #3 helper after the top-level headed validation router, while preserving repo-root, saved-summary, attached-bundle, and later-stage flow context when it already exists.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
+    host = $Host
+    submit_timing_input_text = $SubmitTimingInputText
+    shared_input_text = $SharedInputText
+    trace_input_text = $TraceInputText
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     recommended_helper_key = $recommendedHelperKey
     recommended_helper_reason = $recommendedHelperReason
@@ -254,6 +288,11 @@ $helper = [ordered]@{
             State = $runnerPatchStatePlaceholder
         }) -RepoRootOverride $RepoRoot
     }
+    later_stage_flow_commands = [ordered]@{
+        submit_timing = Format-HelperCommand -ScriptName 'show_google_submit_timing_validation_flow.ps1' -Arguments $submitTimingFlowArguments
+        shared_enter_order = Format-HelperCommand -ScriptName 'show_google_shared_enter_order_validation_flow.ps1' -Arguments $sharedEnterOrderFlowArguments
+        live_trace = Format-HelperCommand -ScriptName 'show_google_trace_validation_flow.ps1' -Arguments $liveTraceFlowArguments
+    }
     suite_router_matrix = $matrix
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     discovery_handoff_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
@@ -272,7 +311,8 @@ $helper = [ordered]@{
         'Use attached_bundle_first when the saved or attached pages are still the known three-page compatibility set and you want that route exercised before reopening the broader Google-only safe-route ladder.',
         'Use suite_router_handoff only when you explicitly want the wider compact bridge that keeps the top-level suite-router entrypoints beside the current replay helpers before narrowing further.',
         'Use safe_route_entrypoints after the suite-router work is already out of the way and you want the current wrapper-heavy issue #3 commands, notes, and next-state helper surfaced in one place.',
-        'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
+        'Use the later_stage_flow_commands block when the higher-level replay route is already chosen and the next Windows run should jump straight into the bounded submit-timing, shared Enter-order, or live-trace helpers without reconstructing repo-root, browser, host, or issue #3 input context by hand.',
+        'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence and context-preserving lane handoffs, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
     )
 }
 
@@ -289,6 +329,13 @@ if ($helper.repo_root) {
 if ($helper.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($helper.summary_path)"))
 }
+if ($helper.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $helper.browser_exe)
+}
+Write-Host (("Host:        {0}") -f $helper.host)
+Write-Host (("Submit text: {0}") -f $helper.submit_timing_input_text)
+Write-Host (("Shared text: {0}") -f $helper.shared_input_text)
+Write-Host (("Trace text:  {0}") -f $helper.trace_input_text)
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
 }
@@ -322,6 +369,11 @@ Write-Host (("  Safe route entrypoints: {0}") -f $helper.helper_commands.safe_ro
 Write-Host (("  Fresh safe replay:      {0}") -f $helper.helper_commands.fresh_safe_route_replay)
 Write-Host (("  Reuse current outputs:  {0}") -f $helper.helper_commands.reuse_current_outputs)
 Write-Host (("  Runner next-step helper:{0}") -f (' ' + $helper.helper_commands.runner_patch_next_step))
+Write-Host ''
+Write-Host 'Context-preserving later-stage flows:'
+Write-Host (("  Submit timing:      {0}") -f $helper.later_stage_flow_commands.submit_timing)
+Write-Host (("  Shared enter order: {0}") -f $helper.later_stage_flow_commands.shared_enter_order)
+Write-Host (("  Live trace:         {0}") -f $helper.later_stage_flow_commands.live_trace)
 Write-Host ''
 Write-Host (("Quickstart note:         {0}") -f $helper.quickstart_note_path)
 Write-Host (("Replay-discovery note:  {0}") -f $helper.discovery_handoff_note_path)
