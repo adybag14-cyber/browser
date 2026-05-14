@@ -45,6 +45,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
+Attached HTML target intent:
+
+- `Control your online safety and privacy – Google Safety Centre (...).html`
+  should stay visibly nonblank on the headed surface and keep top-of-page
+  interactive controls usable, especially cookie-banner buttons, long-form
+  scrolling, SVG-heavy sections, and ambient media containers.
+- `Job Application for [Expression of Interest] Research Manager,
+  Interpretability at Anthropic (...).html` is the bundle's strongest typed-form
+  target: text entry, focus retention, combobox interaction, scrolling, and the
+  primary apply flow should all stay usable on the real headed path.
+- `Presidential Unsealing and Reporting System for UAP Encounters _ U.S.
+  Department of War.html` exercises dense legacy markup: expanding the search
+  affordance, focusing the search field, typing, submit-button activation, and
+  large navigation/menu hit-testing should remain stable.
+- When a bundle replay fails, route the follow-up toward the shared input,
+  layout, or rendering path that broke. Do not special-case one saved page if
+  the same headed subsystem would affect the others.
+
 Saved-page or attached-page localhost follow-up:
 
 ```powershell
