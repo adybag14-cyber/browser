@@ -6,6 +6,7 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
+- `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
@@ -76,6 +77,8 @@ If the replay is running from a non-default checkout, from an already-saved summ
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
+
+Keep `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md` nearby when the route is already clearly inside issue `#3` and you want the written shortcut-first bridge that matches the narrower helper order in this quickstart before reopening the broader router or safe-route notes.
 
 If the replay is already narrowed to the attached localhost route and you want the shorter top-level attached-page bridge before reopening the wider catalog helper chain, use:
 
