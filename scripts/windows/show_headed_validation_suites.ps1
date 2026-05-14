@@ -415,6 +415,7 @@ $googleIssue3SuiteCatalogEntrypointsCommand = "powershell -ExecutionPolicy Bypas
 $googleIssue3TopLevelShortcutFirstEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1"
 $googleIssue3TopLevelAttachedHtmlEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1"
 $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1"
+$googleIssue3AttachedHtmlShortcutEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_shortcut_entrypoint.ps1"
 $googleIssue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
 $googleIssue3AttachedBundleFirstEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1"
 
@@ -465,6 +466,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
+        Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
@@ -516,6 +518,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
+        Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
@@ -527,6 +530,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Runner: {0}" -f $attachedHtmlTargetBundleRunnerCommand)
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
+        Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
@@ -611,6 +615,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
+        Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
@@ -639,6 +644,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     if ($ChangeArea -eq "google-attached-html") {
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
+        Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
@@ -648,6 +654,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     if ($ChangeArea -eq "attached-html-target-bundle") {
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
+        Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
@@ -660,6 +667,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     if ($ChangeArea -eq "attached-html") {
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
+        Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
@@ -689,6 +697,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_shortcut_entrypoint.ps1"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1"
