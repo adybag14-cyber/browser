@@ -88,6 +88,16 @@ if ($bundleCheckerArgs.Count -gt 0) {
     $printedBundleCheckerCommand += " " + ($bundleCheckerArgs -join " ")
 }
 
+$issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
+if ($bundleCheckerArgs.Count -gt 0) {
+    $issue3SuiteRouterNextStepsCommand += " " + ($bundleCheckerArgs -join " ")
+}
+
+$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1"
+if ($bundleCheckerArgs.Count -gt 0) {
+    $issue3ReplayShortcutsCommand += " " + ($bundleCheckerArgs -join " ")
+}
+
 $invokeArgs = @{ Json = $true }
 if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
     $invokeArgs.RepoRoot = $RepoRoot
@@ -143,6 +153,8 @@ $flow = [ordered]@{
     preferred_initial_page = $overall.preferred_initial_page_display_path
     first_change_area = $overall.first_change_area
     suite_router_command = $suiteRouterCommand
+    issue3_suite_router_next_steps_command = $issue3SuiteRouterNextStepsCommand
+    issue3_replay_shortcuts_command = $issue3ReplayShortcutsCommand
     first_bounded_step = $overall.first_step
     follow_up = $overall.follow_up
     bundle_summary = $overall.bundle_summary
@@ -182,6 +194,8 @@ $flow = [ordered]@{
     notes = @(
         "Use this helper after the bundle route surface check when you want a stable read-first command surface for the current compatibility set instead of copying commands out of free-form checker output.",
         $suiteRouterNote,
+        "Use the issue #3 next-step matrix when you want the compact branch chooser reprinted with the same pinned bundle inputs before deciding whether to stay on the bundle route or reopen the narrower replay-shortcuts helper.",
+        "Use the issue #3 replay-shortcuts helper after the bundle flow or bundle runner when the attached-page replay has already narrowed the failure and you want the narrower safe-route, replay-route, and bundle-first commands preserved with the same pinned inputs.",
         "The preferred initial page stays pinned to the Google Safety Centre target when the current bundle includes the Google-style page, so the issue #3 localhost-first follow-up remains aligned with the current runbook.",
         "Pass -InputPath when you want the same printed bundle flow but against an explicit saved-page set rather than the auto-discovered workspace bundle.",
         "Pass -RepoRoot when you want the bundle route surface check and bundle checker to evaluate a non-default working tree before printing the pinned commands."
@@ -190,6 +204,8 @@ $flow = [ordered]@{
         "Use the bundle route surface-check command first when the branch has moved and you want the bundle-aware guide, helper, runner, and delegated attached-HTML surfaces to fail fast before anything else.",
         "Use the bundle-pinned flow command when you want the exact printed localhost ladder with the current paths already locked in.",
         "Use the bundle-pinned runner command when the bundle checks are green and you want to launch the headed localhost replay directly.",
+        "Use the issue #3 next-step matrix when you want the same pinned bundle inputs carried back into the compact branch chooser before reopening replay shortcuts or the broader safe-route map.",
+        "Use the issue #3 replay-shortcuts helper after the bundle route when the failure is now clearly inside issue #3 and you want the narrower safe-route, replay-route, and bundle-first commands with the same pinned inputs.",
         "Move back to the smaller Google title, submit-timing, or shared Enter-order ladders only after the attached-page replay makes the next failure state clear."
     )
 }
@@ -215,6 +231,12 @@ if ($flow.first_change_area) {
 }
 if ($flow.suite_router_command) {
     Write-Host ("Shared suite router: {0}" -f $flow.suite_router_command)
+}
+if ($flow.issue3_suite_router_next_steps_command) {
+    Write-Host ("Issue #3 next-step matrix: {0}" -f $flow.issue3_suite_router_next_steps_command)
+}
+if ($flow.issue3_replay_shortcuts_command) {
+    Write-Host ("Issue #3 replay shortcuts: {0}" -f $flow.issue3_replay_shortcuts_command)
 }
 if ($flow.first_bounded_step) {
     Write-Host ("Suggested first bounded step: {0}" -f $flow.first_bounded_step)
