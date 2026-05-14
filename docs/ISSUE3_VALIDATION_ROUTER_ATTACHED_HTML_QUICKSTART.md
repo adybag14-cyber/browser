@@ -68,6 +68,7 @@ If the replay is already narrowed to `show_headed_validation_suites.ps1 -ChangeA
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
@@ -75,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 
 Use that route when:
 - the replay is already centered on the generic attached localhost branch
-- you still want the broader attached-page flow helper visible from the change-area quickstart
+- you still want the broader attached-page flow helper visible from the change-area quickstart before the validation-router bridge narrows the route again
 - you want this validation-router note to stay aligned with the newer shorter attached-page helper chain
 
 ## Pinned bundle-first route
@@ -157,6 +158,6 @@ Use this when explicit bundle inputs are already pinned or when the next replay 
 Once the broader validation router has already made attached localhost follow-up obvious, prefer `show_google_issue3_validation_router_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_entrypoint.ps1`, and then `show_google_issue3_suite_router_attached_html_quickstart.ps1` before reopening the longer validation-chain notes.
 
 - replay reopened from `docs/WINDOWS_FULL_USE.md`: print `show_google_issue3_windows_full_use_attached_html_route.ps1` first, then this validation-router quickstart, then the smaller top-level attached-page quickstarts
-- replay already narrowed to `-ChangeArea attached-html`: keep `show_google_issue3_attached_html_change_area_quickstart.ps1` beside this note so the shorter change-area bridge stays visible before the route widens again
+- replay already narrowed to `-ChangeArea attached-html`: keep `show_google_issue3_attached_html_change_area_quickstart.ps1` and `show_attached_html_validation_flow.ps1` beside this note so the shorter change-area bridge and the broader attached-page flow helper stay visible before the route widens again
 - explicit bundle paths already pinned: keep the attached bundle-first route visible and pass the same `InputPath` values through the validation-router quickstart and the narrower helpers
 - saved summary or repo-root override already present: pass the same replay context through the validation-router quickstart first so later helpers stay aligned
