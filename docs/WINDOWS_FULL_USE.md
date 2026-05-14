@@ -112,9 +112,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 ```
 
-For the current Google search-box work behind issue `#3`, start with the newer
-suite-catalog bridge and next-step matrix before widening into the broader
-handoff or replay-route helpers:
+For the current Google search-box work behind issue `#3`, keep the shorter
+suite-router notes nearby when you want the fastest written bridge from the
+top-level validation catalog into the current helper chain:
+
+- `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
+- `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
+
+Start with the newer suite-catalog bridge and next-step matrix before widening
+into the broader handoff or replay-route helpers:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
@@ -220,6 +226,8 @@ order.
 
 Keep these notes open once the replay narrows into the wrapper-heavy safe route:
 
+- `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md` for the shortest bridge from `show_headed_validation_suites.ps1` into the current issue `#3` helper chain
+- `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` for the narrower prose bridge from the suite router into replay shortcuts, the bundle-first route, and the safe-route entrypoints
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` for the shortest current safe-route replay path before reopening the longer chain
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for the current fresh replay entrypoints and wrapper precedence
 - `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` for the direct runner patch loop after the replay lands on `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`
@@ -258,85 +266,3 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_cont
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle -LeaveOpen
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_home_validation.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle -LeaveOpen
-```
-
-For attached or saved localhost HTML follow-up after the matching bounded suite
-is green, use these entry points:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_saved_page_localhost_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_localhost_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -GoogleStyle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_sanitized_saved_page_localhost_validation.ps1 -InputPath '<saved-html-or-folder>' -Wait
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_saved_page_google_validation_flow.ps1 -InputPath '<saved-html-or-folder>'
-```
-
-Routing rules:
-
-- Start with the smallest bounded localhost suite before a saved-page or live-site pass.
-- Use `show_headed_validation_suites.ps1 -SuiteName google-recommended` when you want the higher-level suite router to surface the broader localhost-first issue `#3` runner and its companion checkpoints before choosing a narrower slice.
-- Use `show_headed_validation_suites.ps1 -ChangeArea google-input` when the next replay may need the narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slices instead of the broader recommended runner.
-- Use `show_google_issue3_suite_catalog_entrypoints.ps1` when you want the exact top-level suite-router entrypoints and the current issue `#3` replay helpers surfaced together before choosing the narrower branch back into the live helper chain.
-- Use `show_google_issue3_suite_router_next_steps.ps1` when you want the fastest command matrix from the top-level suite router before deciding between the handoff, replay-route, bundle-first, shortcut, or safe-route branches.
-- Use `show_google_issue3_replay_shortcuts.ps1` when the matrix or replay-route helper has already narrowed the replay back inside issue `#3` and you want the tightest current shortcut surface before deciding whether to widen into the handoff, replay-route, bundle-first, or safe-route helpers.
-- Use `show_google_input_validation_flow.ps1` when you want the full issue `#3` order printed as reusable commands.
-- Use `show_google_issue3_suite_router_handoff.ps1` when you want the wider compact bridge from the suite-catalog and next-step helpers into the current replay-shortcuts, bundle-first, and safe-route-map helpers before you decide whether the next replay should stay broad or narrow.
-- Use `show_google_issue3_replay_route.ps1` when you want the same read-first bridge plus the attached three-page bundle branch, the current safe-route map, and the repo-root-aware runner next-step helper preserved together before choosing whether the next replay should stay on the pinned compatibility bundle, narrow into replay shortcuts, or reopen the wrapper-heavy safe-route entrypoints.
-- Use `show_google_issue3_replay_shortcuts.ps1` when you want the same read-first commands, the attached three-page bundle route, and the current safe-route helpers printed together before deciding whether the next replay should stay on the pinned compatibility bundle or reopen the broader wrapper-heavy issue `#3` path.
-- Use `show_google_issue3_attached_bundle_first_entrypoint.ps1` when the current saved or attached inputs are the known three-page compatibility bundle and you want the pinned bundle-first route plus the replay-shortcuts helper and safe-route return command printed together before widening back into the broader Google-only wrapper chain.
-- Use `show_google_issue3_safe_route_entrypoints.ps1` after the shared suite router or broader Google flow has already narrowed into the current wrapper-heavy issue `#3` replay and you want the fresh replay, reuse-current-outputs, refresh-status, handoff-safe, summary-guide, and runner-wiring commands printed in one place.
-- Use `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` when you want the shortest current safe-route replay note before reopening the longer validation-chain or decision-table guidance.
-- Use `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` as the wrapper-order reference once the issue `#3` replay narrows into safe-route, handoff, or repair helpers.
-- Use `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` when the replay lands on the direct runner patch loop and you want the next move for `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs` without reopening the longer chain note.
-- Use `show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>` when the safe-route wrapper has already emitted one of those three states and you want the exact next commands without reopening the longer decision table first.
-- Use `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` beside the decision table when the replay is already on the direct runner source edit and you need the field-level rules for nullable `$null`, artifact order, blank-path handling, and post-patch verification.
-- Use `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md` when the replay is running from a non-default checkout or should preserve `LIGHTPANDA_REPO_ROOT` plus a current `SummaryPath` through the safe wiring, refresh, and handoff checkpoints.
-- Use `check_google_validation_surface.ps1 -Profile title` before `show_google_title_validation_flow.ps1` or `run_google_title_validation.ps1` so the narrower title guide, helper, direct probe, and fixture chain fails fast before you depend on that smaller issue `#3` ladder.
-- Use `show_google_title_validation_flow.ps1` when you want only the narrower bounded title-wrapper order printed before you run that slice.
-- Use `show_google_title_probe_trace_guide.ps1` when you want the title markers translated into focus, text-commit, and Enter-submit stages without opening the saved markdown guide by hand.
-- Use `run_google_title_validation.ps1` when you want the bounded title wrapper by itself before the faster quick pass, reduced homepage pass, or shared Enter-order follow-up.
-- Use `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the default fresh replay entrypoint when current issue `#3` outputs may be stale or missing and you want the newest safe-route plus final runner-patch handoff artifact in one command.
-- Use `run_google_issue3_recommended_validation_safe_route_runner_patch_wrapper.ps1` when you want the broader safe-summary route to refresh the current replay first and then preserve the narrower safe-route runner-patch guidance in one artifact before deciding between `ready-for-runner-patch`, `already-direct`, and `runner-already-wired-regenerate-outputs`.
-- Use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` when the current issue `#3` outputs are already present and you want to reopen the safe-route plus narrower runner-patch guidance without a broader regeneration first.
-- Use `run_google_issue3_recommended_validation.ps1` when you intentionally want the broader one-command issue `#3` flow to regenerate the reduced-home keypress-before-submit probe through the shared Enter-order wrapper before the live or attached follow-up steps.
-- Use `check_google_validation_surface.ps1 -Profile submit-path` before `show_google_submit_path_validation_flow.ps1` or `run_google_issue3_submit_path_validation.ps1` so missing guides, helpers, or bounded probes fail fast before you depend on the later issue `#3` submit-path ladder.
-- Use `show_google_submit_path_validation_flow.ps1` when you want only the later-stage saved homepage fixture, submit-timing, and shared Enter-order ladder printed after the title gates are already green.
-- Use `show_google_submit_path_trace_guide.ps1` when you want the saved homepage fixture, submit-timing, and shared Enter-order outputs translated into the next smaller checkpoint before you rerun anything or widen back out to attached HTML or the live headed homepage.
-- Use `run_google_issue3_submit_path_validation.ps1` when the title or reduced-homepage gates are already green and you want the saved homepage fixture, submit-timing, and shared Enter-order slices in one narrower command before the trace or live Google follow-up.
-- Use `check_google_form_controls_enter_order_validation_surface.ps1` before `show_google_form_controls_enter_order_validation_flow.ps1` or `run_google_form_controls_enter_order_validation.ps1` so missing docs, helper scripts, or the raw dedicated probe fail fast.
-- Use `show_google_form_controls_enter_order_validation_flow.ps1` when you want only the dedicated shared form-controls Enter-order gate printed and parameterized before you run it.
-- Use `show_google_form_controls_enter_order_trace_guide.ps1` when you want the dedicated probe markers translated into quick failure stages without reopening the longer read-first markdown note.
-- Use `run_google_form_controls_enter_order_validation.ps1` when you want the dedicated shared form-controls Enter-order gate by itself after the broader shared Enter-order ladder or when narrowing the last shared keypress-before-submit check.
-- Use `run_google_issue3_recommended_validation.ps1 -ManualGoogleStyle` when you want the one-command issue `#3` flow to finish by auto-discovering current-run attached HTML under `user_files/` and `agent_files/`, while preferring a Google-like page first.
-- Use `run_google_shared_enter_order_validation.ps1` when you want the shared issue `#3` enter-order stack by itself, including the reduced-home keypress-before-submit probe, the stricter localhost wrapper, and the shared form-controls gate.
-- Use `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` when you want the shared validation router to point directly at the dedicated attached-HTML Google follow-up helper.
-- Use `show_headed_validation_suites.ps1 -ChangeArea attached-html` when you want the shared validation router to point back at the broader attached-page localhost route before choosing between the bundle-aware and generic replay helpers.
-- Use `check_attached_html_target_bundle_validation_surface.ps1`, `check_attached_html_target_bundle.ps1`, and `show_attached_html_target_bundle_validation_flow.ps1` when the current attached or saved page set is the known three-page compatibility bundle and you want one stable read-first route before launch.
-- Use `run_attached_html_target_bundle_validation.ps1 -Wait` when the bundle checks are green and you want the same locked three-page set to launch through the bundle-aware route in one command.
-- Use `check_google_attached_html_validation_surface.ps1` before `show_google_attached_html_validation_flow.ps1` or `run_google_attached_html_validation.ps1` when the next pass should reuse attached Google-style pages, so missing guides, helpers, or localhost runners fail fast.
-- Use `check_attached_html_local_asset_closure.ps1 -GoogleStyle` before the Google attached-page flow when the saved page set might have nested CSS, image, or font dependencies that were not copied beside the HTML export.
-- Use `check_saved_page_localhost_validation_surface.ps1` before manual saved-page follow-up when the branch has moved recently and you want the general localhost helper chain to fail fast if a guide, runner, or summary helper was renamed or removed.
-- Use `check_local_html_fixture_validation_surface.ps1` before the reusable fixed-list fixture replay when you want the staged localhost probe and its shared helpers to fail fast after the branch has moved.
-- Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
-- Use `run_sanitized_saved_page_localhost_validation.ps1` when the saved inputs have Unicode-heavy filenames, were exported as standalone HTML files with sibling `*_files` assets, or need one ASCII-safe staged localhost root before headed launch.
-- Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
-- Use `show_google_attached_html_validation_flow.ps1` when you want the printed Google-style localhost-first flow for auto-discovered attached HTML without reshaping the broader issue `#3` commands by hand.
-- Use `run_google_attached_html_validation.ps1` when you want the same Google-style attached HTML follow-up to execute directly in one command; attached-file modes now rerun the deep asset-closure audit before launch.
-- Use `show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle` when you want the saved-page handoff commands to target the same auto-discovered Google-style attached pages without restating input paths.
-- Use `show_saved_page_google_validation_flow.ps1` when the saved-page pass should stay in the same localhost-first Google investigation order before the manual headed retest.
