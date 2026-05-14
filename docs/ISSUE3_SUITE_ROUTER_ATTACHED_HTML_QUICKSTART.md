@@ -18,13 +18,15 @@ Keep these companion notes nearby:
 
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
+- `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
 ## Goal
 
-Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, or `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, then move immediately into `show_google_issue3_suite_router_attached_html_quickstart.ps1` when the next replay is already known to stay on the attached-page follow-up path.
+Start from `show_headed_validation_suites.ps1 -SuiteName google-recommended`, `show_headed_validation_suites.ps1 -ChangeArea google-input`, `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, or `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, then move immediately into `show_google_issue3_suite_router_attached_html_quickstart.ps1` when the next replay is already known to stay on the attached-page follow-up path.
 
 From there, prefer one of these narrower follow-ups before reopening the broader wrapper-heavy safe route:
 
@@ -36,6 +38,25 @@ From there, prefer one of these narrower follow-ups before reopening the broader
 - `show_google_issue3_suite_router_next_steps.ps1`
 - `show_google_issue3_contextual_flow.ps1`
 - `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+
+## Top-level router surfacing
+
+Because `show_headed_validation_suites.ps1` now prints the issue `#3` top-level attached HTML route and bundle-first helper directly from the broader `google-recommended` and `google-input` entrypoints, reopen one of those top-level router surfaces first when attached localhost follow-up has become the next obvious branch but the replay has not been narrowed to `-ChangeArea attached-html` yet.
+
+Use this route when you want the attached-page bridge surfaced directly from the main validation catalog before you drop into the suite-router attached-page quickstart:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
+```
+
+Use that route when:
+
+- the broader issue `#3` router already made the attached localhost follow-up obvious
+- you still want the top-level attached-page bridge visible before the suite-router-side quickstart narrows the route again
+- the bundle-first helper should remain easy to reopen from that same top-level surface before you widen back into the wrapper-heavy path
 
 ## Default read-first sequence
 
@@ -174,6 +195,7 @@ Use this when explicit `InputPath` values are already pinned or when the replay 
 
 Once `show_headed_validation_suites.ps1` has already narrowed the route to attached localhost HTML follow-up from the suite-router side, prefer `show_google_issue3_suite_router_attached_html_quickstart.ps1` before reopening the longer validation-chain notes again.
 
+- broader issue `#3` router already surfaced the attached localhost branch: go from `-SuiteName google-recommended` or `-ChangeArea google-input` to the top-level attached-page bridge, then the suite-router attached-page quickstart, then the suite-catalog attached-page bridge or attached-page shortcut before widening again
 - no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` to the suite-router attached-page quickstart, then the suite-catalog attached-page bridge, then the attached-page shortcut, then replay shortcuts, then the safe-route map
 - Google-specific attached-page surface still matters more than the generic shortcut chain: go from `-ChangeArea google-attached-html` to the suite-router attached-page quickstart, then the Google attached-page entrypoint before narrowing further
 - explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
