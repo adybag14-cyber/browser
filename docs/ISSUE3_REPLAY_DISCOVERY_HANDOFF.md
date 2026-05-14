@@ -19,17 +19,17 @@ Keep this note beside:
 Start from the shared issue `#3` router when you need the broader Google validation lane reprinted first:
 
 ```powershell
-.\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended
-.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1
+.\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 ```
 
 If the next replay is already obviously attached-page-first, reprint the attached localhost branch directly from the top-level suite router first:
 
 ```powershell
-.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html
-.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 ```
 
 Use `attached-html` when the generic three-page compatibility route should stay visible. Use `google-attached-html` when the Google-shaped attached-page helper should stay visible. Use `attached-html-target-bundle` when the current saved or attached inputs are already the pinned three-page compatibility bundle.
@@ -41,15 +41,16 @@ If you are reopening the route from `docs/WINDOWS_FULL_USE.md`, read `docs/ISSUE
 When the top-level suite router already made attached localhost follow-up obvious, prefer this compact chain:
 
 ```powershell
-.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_shortcut_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_safe_route_entrypoints.ps1
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
 ```
 
 Use the same helper order after `-ChangeArea google-attached-html` when the replay still needs the Google-specific attached-page bridge visible first. Use the same helper order after `-ChangeArea attached-html-target-bundle` when the route should stay pinned to the known three-page bundle before widening back into the broader safe-route chain.
@@ -60,10 +61,11 @@ If the replay already carries a non-default checkout, a saved summary, or explic
 
 - `show_google_issue3_top_level_attached_html_quickstart.ps1`: use this first when the top-level suite router already narrowed replay to attached localhost follow-up and you want the shortest top-level attached-page bridge before the broader attached-page notes reopen.
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1`: use this when you want the broader top-level attached-page bridge reprinted before the route narrows into the newer suite-router or suite-catalog attached-page helpers.
-- `show_google_issue3_suite_router_attached_html_quickstart.ps1`: use this when the route is already inside attached-page follow-up and you want the suite-router-side attached-page bridge kept visible before choosing between the catalog bridge, the attached-page shortcut, replay shortcuts, or the safe-route map.
+- `show_google_issue3_suite_router_attached_html_quickstart.ps1`: use this when the route is already inside attached-page follow-up and you want the suite-router-side attached-page bridge kept visible before choosing between the catalog bridge, the attached-page shortcut, replay route, replay shortcuts, or the safe-route map.
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`: use this when the suite-catalog-side attached-page bridge should stay visible before the route narrows again.
-- `show_google_issue3_attached_html_shortcut_entrypoint.ps1`: use this when the attached-page compatibility branch itself should stay visible before widening into replay shortcuts, the next-step matrix, or the safe-route map.
-- `show_google_issue3_replay_route_shortcut_entrypoint.ps1`: use this when the replay is already clearly inside the attached-page helper chain and you want the smaller replay-route companion surface before widening into replay shortcuts, the next-step matrix, the bundle-first branch, or the safe-route map.
+- `show_google_issue3_attached_html_shortcut_entrypoint.ps1`: use this when the attached-page compatibility branch itself should stay visible before widening into replay route, replay shortcuts, the next-step matrix, or the safe-route map.
+- `show_google_issue3_replay_route.ps1`: use this when the attached-page helper chain is already established and you want the current replay-route surface printed before you drop into the narrower replay-route shortcut helper.
+- `show_google_issue3_replay_route_shortcut_entrypoint.ps1`: use this when `show_google_issue3_replay_route.ps1` is already open and you want the smaller replay-route companion surface before widening into replay shortcuts, the next-step matrix, the bundle-first branch, or the safe-route map.
 - `show_google_issue3_attached_bundle_first_entrypoint.ps1`: use this when `InputPath` is already pinned to the known three-page compatibility set.
 - `show_google_issue3_replay_shortcuts.ps1`: use this when the route is already clear and you want the narrowest stable helper surface.
 - `show_google_issue3_suite_router_next_steps.ps1` or `show_google_issue3_contextual_flow.ps1`: use these when you still need the executable branch matrix or the repo-root, summary, and bundle context preserved before narrowing further.
@@ -71,4 +73,4 @@ If the replay already carries a non-default checkout, a saved summary, or explic
 
 ## Practical Rule
 
-From the top-level suite router, prefer `show_google_issue3_top_level_attached_html_quickstart.ps1` first whenever attached localhost follow-up is already the next obvious branch. If you are arriving from `docs/WINDOWS_FULL_USE.md`, keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` open first and then follow the same attached-page helper chain. Once the route is clearly inside the narrower attached-page helpers, prefer `show_google_issue3_replay_route_shortcut_entrypoint.ps1` before widening back into the longer validation-chain notes or the wrapper-heavy safe-route work.
+From the top-level suite router, prefer `show_google_issue3_top_level_attached_html_quickstart.ps1` first whenever attached localhost follow-up is already the next obvious branch. If you are arriving from `docs/WINDOWS_FULL_USE.md`, keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` open first and then follow the same attached-page helper chain. Once the route is clearly inside the narrower attached-page helpers, prefer `show_google_issue3_replay_route.ps1`, then `show_google_issue3_replay_route_shortcut_entrypoint.ps1`, before widening back into the longer validation-chain notes or the wrapper-heavy safe-route work.
