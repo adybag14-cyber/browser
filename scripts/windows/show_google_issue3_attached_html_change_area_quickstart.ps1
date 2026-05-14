@@ -124,7 +124,7 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
-    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command ``"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command``""
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -144,6 +144,7 @@ $helper = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    attached_html_change_area_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
@@ -188,7 +189,7 @@ $helper = [ordered]@{
         'Use attached_bundle_change_area and attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader helper chain.',
         'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before you choose between the quickstarts, the broader attached-page flow helper, shortcuts, next-step matrix, or safe-route wrapper.',
         'Use safe_route_entrypoints only after the replay is already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
-        'Keep the Windows full-use attached-html route note, the Windows replay quickstart note, the top-level attached-page quickstart note, the suite-router attached-page quickstart note, the top-level attached-page bridge note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the attached-html change-area quickstart note, the Windows full-use attached-html route note, the Windows replay quickstart note, the top-level attached-page quickstart note, the suite-router attached-page quickstart note, the top-level attached-page bridge note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -247,6 +248,7 @@ Write-Host (("  Contextual flow:          {0}") -f $helper.commands.contextual_f
 Write-Host (("  Bundle-first helper:      {0}") -f $helper.commands.attached_bundle_first)
 Write-Host (("  Safe-route map:           {0}") -f $helper.commands.safe_route_entrypoints)
 Write-Host ''
+Write-Host (("Change-area quickstart:   {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
 Write-Host (("Windows full-use route:    {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
 Write-Host (("Windows replay quickstart: {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
 Write-Host (("Top-level quickstart note: {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
