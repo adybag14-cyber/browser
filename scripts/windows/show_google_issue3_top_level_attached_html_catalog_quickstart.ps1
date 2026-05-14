@@ -167,6 +167,7 @@ $entrypoint = [ordered]@{
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
     }
     top_level_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
+    top_level_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
@@ -175,7 +176,7 @@ $entrypoint = [ordered]@{
         'Use suite_catalog_attached_html_entrypoint as the default next helper when no bundle inputs, saved summary, or non-default repo root need to take precedence first, because it keeps the suite-catalog-side attached-page route visible before you decide whether to widen into the broader Google-shaped attached-page bridge, the attached-page shortcut, replay shortcuts, the next-step matrix, or the safe-route map.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that branch should stay visible before the route widens back into the broader issue #3 helper stack.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the suite-catalog attached-page bridge, the Google-shaped attached-page helper, replay shortcuts, the next-step matrix, or the safe-route map.',
-        'Keep the top-level attached-page quickstart note, the suite-catalog attached-page bridge note, the validation-chain note, and the Windows runbook nearby when you want the written route beside these commands.'
+        'Keep the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the validation-chain note, and the Windows runbook nearby when you want the written route beside these commands.'
     )
 }
 
@@ -232,6 +233,7 @@ Write-Host ((" 13. Bundle first:          {0}") -f $entrypoint.helper_commands.a
 Write-Host ((" 14. Safe-route map:        {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
 Write-Host ''
 Write-Host (("Top-level quickstart note:  {0}") -f $entrypoint.top_level_quickstart_note_path)
+Write-Host (("Catalog quickstart note:    {0}") -f $entrypoint.top_level_catalog_quickstart_note_path)
 Write-Host (("Catalog bridge note:        {0}") -f $entrypoint.suite_catalog_attached_html_bridge_note_path)
 Write-Host (("Validation chain note:      {0}") -f $entrypoint.validation_chain_note_path)
 Write-Host (("Windows runbook:            {0}") -f $entrypoint.windows_runbook_note_path)
