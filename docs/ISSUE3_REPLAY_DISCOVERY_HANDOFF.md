@@ -52,6 +52,27 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 
 Use that helper when you want the quickest route from the top-level suite router into the current handoff, replay-route, bundle-first, and runner-state choices without reopening the longer bridge notes first.
 
+## Choose the next helper quickly
+
+Use this compact matrix after the suite-catalog bridge or the three baseline commands when you want the written route to match the current helper order without reopening several scripts first.
+
+- No pinned bundle inputs and no saved replay state yet:
+  `show_google_issue3_suite_router_next_steps.ps1`
+  Use this when you want the higher-level suite-router start points and the current replay-route, shortcut, bundle-first, and safe-route branches kept together before narrowing further.
+- `RepoRoot`, `SummaryPath`, or fixed `InputPath` already matter:
+  `show_google_issue3_contextual_flow.ps1`
+  Use this when the next surface should keep a non-default checkout, a saved summary, or pinned bundle inputs attached while you choose the narrower helper.
+- The current saved or attached inputs are the known three-page compatibility bundle:
+  `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+  Stay on the pinned bundle route before widening back into the broader Google-only safe-route chain.
+- You want the broader bridge after the matrix because the replay-route, attached-bundle, or runner-state choices still need to stay visible together:
+  `show_google_issue3_replay_route.ps1`
+- The route is already clearly inside issue `#3` and you want the narrowest command surface:
+  `show_google_issue3_replay_shortcuts.ps1`
+- The safe-route wrapper already emitted `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`:
+  `show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>`
+  Use this instead of reopening the longer validation-chain or decision-table note first.
+
 ## When replay context already matters
 
 After the suite-catalog bridge or the next-step matrix, prefer the contextual flow when `RepoRoot`, `SummaryPath`, or fixed `InputPath` values should stay visible while you choose the next narrower helper:
