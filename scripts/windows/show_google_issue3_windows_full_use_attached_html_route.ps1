@@ -112,7 +112,7 @@ function Format-HelperCommandWithRepoRootEnv {
         }
 
         $escapedValue = ("$value") -replace "'", "''"
-        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+        $command += ((" -{0} '{1}'" -f $entry.Key, $escapedValue))
     }
 
     foreach ($switchName in $Switches) {
@@ -162,6 +162,7 @@ $route = [ordered]@{
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
+        contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $bundleArguments
@@ -180,6 +181,7 @@ $route = [ordered]@{
         'Use suite_router_attached_html_quickstart when you want the shorter suite-router-side attached-page bridge after the top-level quickstart and top-level attached-page bridge.',
         'Use suite_catalog_attached_html_entrypoint when you want the dedicated suite-catalog attached-page bridge preserved before narrowing into the top-level attached-page helper.',
         'Use attached_bundle_change_area plus attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that branch should stay visible first.',
+        'Use contextual_flow when repo root, summary, or explicit input-path context already matters and the next helper surface should keep that replay state aligned before narrowing again.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
         'Keep the broader Windows runbook, the Windows full-use attached-html route note, the top-level attached-html quickstart note, the suite-router attached-html quickstart note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
     )
@@ -226,8 +228,9 @@ Write-Host (("  5. Top-level bridge:   {0}") -f $route.helper_commands.top_level
 Write-Host (("  6. Router quickstart:  {0}") -f $route.helper_commands.suite_router_attached_html_quickstart)
 Write-Host (("  7. Catalog bridge:     {0}") -f $route.helper_commands.suite_catalog_attached_html_entrypoint)
 Write-Host (("  8. Replay shortcuts:   {0}") -f $route.helper_commands.replay_shortcuts)
-Write-Host (("  9. Safe-route map:     {0}") -f $route.helper_commands.safe_route_entrypoints)
-Write-Host ((" 10. Bundle-first route: {0}") -f $route.helper_commands.attached_bundle_first)
+Write-Host (("  9. Contextual flow:    {0}") -f $route.helper_commands.contextual_flow)
+Write-Host ((" 10. Safe-route map:     {0}") -f $route.helper_commands.safe_route_entrypoints)
+Write-Host ((" 11. Bundle-first route: {0}") -f $route.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host (("Windows runbook:             {0}") -f $route.windows_runbook_note_path)
 Write-Host (("Windows attached route note: {0}") -f $route.windows_full_use_attached_html_route_note_path)
