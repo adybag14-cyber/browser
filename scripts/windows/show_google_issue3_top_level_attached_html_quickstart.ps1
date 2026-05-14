@@ -158,6 +158,7 @@ $helper = [ordered]@{
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
+        windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
@@ -173,6 +174,7 @@ $helper = [ordered]@{
     notes = @(
         'Start with attached_html_change_area when the top-level headed validation router is already narrowed to the generic attached localhost compatibility route and you want the shortest bridge back into the narrower issue #3 helper chain.',
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before narrowing again.',
+        'Use windows_full_use_attached_html_route when the next replay started from docs/WINDOWS_FULL_USE.md and you want the broader Windows full-use attached-page route helper reprinted before dropping back into the compact top-level attached-page quickstart.',
         'Use top_level_attached_html_entrypoint as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the broader top-level attached-page bridge visible immediately after the compact quickstart before the route narrows again.',
         'Use suite_router_attached_html_quickstart after the top-level attached-page bridge when you want the shorter suite-router attached-page bridge visible before you choose between the catalog bridge, the Google-shaped attached-page helper, the attached-page shortcut, replay shortcuts, the next-step matrix, or the bundle-first route.',
         'Use suite_catalog_attached_html_entrypoint when the suite-catalog-side attached-page bridge should stay visible before the replay narrows again.',
@@ -221,6 +223,9 @@ if ($helper.explicit_input_path_count -gt 0) {
 Write-Host ''
 Write-Host (("Recommended next helper: {0}") -f $helper.recommended_next_command)
 Write-Host (("Why:                    {0}") -f $helper.recommended_next_reason)
+Write-Host ''
+Write-Host 'Windows runbook bridge:'
+Write-Host (("  Windows full-use route: {0}") -f $helper.commands.windows_full_use_attached_html_route)
 Write-Host ''
 Write-Host 'Top-level attached-page entrypoints:'
 Write-Host (("  Attached HTML:        {0}") -f $helper.commands.attached_html_change_area)
