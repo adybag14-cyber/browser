@@ -24,6 +24,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:LIGHTPANDA_REPO_ROO
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:LIGHTPANDA_REPO_ROOT = '<repo-root>'; & '.\scripts\windows\show_headed_validation_suites.ps1' -ChangeArea 'google-input'"
 ```
 
+If the current replay is still entering issue `#3` from the attached-page
+follow-up surface before the bundle is pinned, keep this change-area entrypoint
+nearby as well:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+```
+
 If the next replay should stay pinned to the known attached three-page
 compatibility bundle, keep this change-area entrypoint nearby as well:
 
@@ -145,6 +153,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
 ```
 
+Use this sequence when the replay is still entering issue `#3` from the
+attached-page route before any bundle inputs are pinned:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+```
+
 Use this slightly wider sequence when you still want the compact bridge and the
 start-point matrix reprinted after the top-level shortcut helper:
 
@@ -213,6 +231,7 @@ wider compact bridge or explicit start-point matrix reprinted before choosing
 the narrower branch.
 
 - no saved summary and no explicit bundle paths: go straight from the top-level suite router to the top-level shortcut helper, then replay shortcuts, then open the safe-route entrypoints helper before the next wrapper-heavy replay step
+- current replay still entering from the attached-page issue `#3` surface: reopen `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` first, then move into the top-level shortcut helper before narrowing into replay shortcuts or the safe-route map
 - top-level suite router already narrowed the route and no wider bridge is needed: jump from the top-level shortcut helper straight to replay shortcuts, then open the safe-route entrypoints helper or widen back into replay route only if the next choice still is not obvious
 - saved summary, browser path, repo-root override, host override, or pinned bundle inputs already present: use the top-level shortcut helper with that same context first, then widen into the context bridge, replay route, or the next-step matrix only as needed
 - saved summary already present and the replay is already narrowed: go to replay route first, then narrow into replay shortcuts and the safe-route entrypoints helper only as needed
