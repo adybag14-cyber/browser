@@ -512,7 +512,9 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     if ($suite.Name -eq "google-attached-html") {
         Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
+        Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
+        Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
     }
@@ -520,7 +522,9 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $attachedHtmlTargetBundleFlowCommand)
         Write-Host ("Runner: {0}" -f $attachedHtmlTargetBundleRunnerCommand)
+        Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
+        Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
     }
@@ -548,15 +552,15 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     } elseif ($ChangeArea -eq "google-saved-html") {
         "Start with the saved-page localhost surface checker so the saved-page helper chain fails fast after branch moves, then print the dedicated saved-page Google flow helper so the localhost, quick, reduced homepage, submit-timing, shared Enter-order, and manual follow-up stay in one stable issue #3 order."
     } elseif ($ChangeArea -eq "google-attached-html") {
-        "Start with the issue #3 top-level shortcut-first entrypoint when the route is already known to stay inside the attached-page Google stack, or use the suite-catalog bridge and next-step matrix when you still want the broader replay helper chain re-established first. Then run the dedicated attached-HTML Google surface checker so the guide, helper, runner, and asset-audit chain fail fast, and print the dedicated attached-HTML Google flow helper so auto-discovered current-run pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest. Use the bundle-first helper when those current pages are still the known three-page compatibility set."
+        "Start with the issue #3 top-level attached-HTML route when the next replay is already narrowed to attached localhost pages, use the issue #3 top-level shortcut-first entrypoint when the route is already known to stay inside the attached-page Google stack but still needs the narrower helper surface, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then run the dedicated attached-HTML Google surface checker so the guide, helper, runner, and asset-audit chain fail fast, and print the dedicated attached-HTML Google flow helper so auto-discovered current-run pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest. Use the bundle-first helper when those current pages are still the known three-page compatibility set."
     } elseif ($ChangeArea -eq "attached-html-target-bundle") {
-        "Start with the issue #3 top-level shortcut-first entrypoint when the route is already known to stay pinned to the three-page compatibility bundle, or use the suite-catalog bridge and next-step matrix when you still want the broader replay helper chain re-established first. Then use the bundle-first helper plus the bundle route surface checker so the bundle guide, checker, helper, and runner fail fast, and print the bundle flow helper so the current three-page compatibility set stays on one pinned attached-page route before you drop to the delegated localhost runner or the broader attached-page fallbacks."
+        "Start with the issue #3 top-level attached-HTML route when the next replay is already narrowed to the attached-page compatibility branch, then use the issue #3 top-level shortcut-first entrypoint only when you want the shorter replay-helper surface first, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then use the bundle-first helper plus the bundle route surface checker so the bundle guide, checker, helper, and runner fail fast, and print the bundle flow helper so the current three-page compatibility set stays on one pinned attached-page route before you drop to the delegated localhost runner or the broader attached-page fallbacks."
     } elseif ($ChangeArea -eq "local-html-fixtures") {
         "Start with the dedicated local fixture surface checker so the reusable saved-export replay path fails fast if a guide, helper, or shared probe dependency moved, then run the fixed-list localhost fixture probe for screenshot and page-title proof before widening back out to the broader attached-page or manual headed follow-up."
     } elseif ($ChangeArea -eq "manual-html") {
         "Start with the matching bounded suite, then use the one-command recommended localhost HTML runner to auto-route attached or saved pages into the right helper before dropping to the printed flow map."
     } elseif ($ChangeArea -eq "attached-html") {
-        "Start with the issue #3 top-level shortcut-first entrypoint when the route is already known to stay inside the attached-page bundle-first branch, or use the suite-router next-step matrix when you still want the broader replay helper chain re-established first. Then stay on the attached HTML target-bundle route when the current workspace still holds the known three-page compatibility set, because it fails fast and pins the same locked inputs through the checker, bundle-first helper, flow helper, and delegated runner. Fall back to the broader attached-page flow helper only when the current pages are not that known bundle."
+        "Start with the issue #3 top-level attached-HTML route when the next replay is already narrowed to attached localhost pages, use the issue #3 top-level shortcut-first entrypoint when you want the narrower replay helper surfaced from the same branch, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then stay on the attached HTML target-bundle route when the current workspace still holds the known three-page compatibility set, because it fails fast and pins the same locked inputs through the checker, bundle-first helper, flow helper, and delegated runner. Fall back to the broader attached-page flow helper only when the current pages are not that known bundle."
     } else {
         "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
     }
@@ -628,6 +632,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Surface checker: {0}" -f $savedPageLocalhostSurfaceCheckCommand)
     }
     if ($ChangeArea -eq "google-attached-html") {
+        Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
@@ -635,6 +640,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
     }
     if ($ChangeArea -eq "attached-html-target-bundle") {
+        Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
@@ -645,7 +651,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
     }
     if ($ChangeArea -eq "attached-html") {
+        Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
+        Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
         Write-Host ("Bundle surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
@@ -672,6 +680,8 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
+Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1"
