@@ -42,7 +42,10 @@ If you still want the exact top-level suite-router commands surfaced directly fr
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input
+.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html
 ```
+
+Use `-ChangeArea attached-html` when the current replay is already centered on the attached localhost compatibility pages and you want the main validation catalog to print that broader attached-page branch before you drop into the issue-specific attached-page bridge, the replay shortcuts, the next-step matrix, or the pinned bundle-first route.
 
 If the top-level suite router already narrowed the replay to issue `#3` and you want the shortest top-level shortcut bridge that still keeps the attached localhost branch visible beside the replay helpers, use:
 
@@ -163,6 +166,7 @@ Use them in this order when helpful:
 - `show_google_issue3_suite_router_quickstart.ps1` when the top-level suite router already made issue `#3` obvious and you want the shortest bridge from that router into the newer replay helpers without reopening the wider catalog helper first
 - `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first, then jump straight to `show_google_issue3_suite_router_quickstart.ps1` or `show_google_issue3_replay_shortcuts.ps1` when the replay already knows it should stay on the current shortcut surface, or jump straight to `-ChangeArea attached-html-target-bundle` when the current inputs are the pinned three-page compatibility bundle
 - `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay, and when the next run already knows it should stay on the current shortcut surface reopen `show_google_issue3_suite_router_quickstart.ps1`, `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, or `show_google_issue3_replay_shortcuts.ps1` immediately after the router output; when the current inputs are the pinned three-page compatibility bundle prefer `-ChangeArea attached-html-target-bundle` before the broader wrapper-heavy helpers
+- `-ChangeArea attached-html` when the current replay is already centered on the attached localhost compatibility pages and you want the main validation catalog to print the broader attached-page route before you branch into the issue-specific attached-page bridge, the top-level shortcut bridge, the replay shortcuts, the next-step matrix, or the pinned bundle-first route
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` when the top-level suite router already narrowed the replay to issue `#3` and you want the shortest top-level shortcut bridge that still keeps the attached localhost branch visible beside the replay helpers
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1` when the replay is already narrowed to the attached localhost route and you want the shortest top-level bridge into the issue-specific attached-page helper, replay-route shortcut, replay shortcuts, the next-step matrix, or the pinned bundle-first branch without reopening the wider suite-catalog surface first
 - `show_google_issue3_suite_router_next_steps.ps1` when you want the fastest command matrix from the top-level suite router before deciding between the handoff, replay-route, bundle-first, shortcut, or safe-route branches
@@ -257,81 +261,3 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 ```
 
 Use that form when the safe-route wrapper already narrowed the replay inside a non-default checkout or a reused summary, so the state helper keeps the same replay context on its recovery commands.
-
-Use it when you want the exact next commands printed without reopening the longer decision table first.
-
-## If the current saved outputs are already trustworthy
-
-Use this reopen-only wrapper instead of a fresh replay:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1
-```
-
-Use this only when you intentionally want to reuse the current saved outputs and reopen the safe-route guidance without another broader run first.
-
-## State to next move
-
-### `ready-for-runner-patch`
-
-Meaning:
-- the replay still needs a direct edit in `scripts/windows/run_google_issue3_recommended_validation.ps1`
-
-Do this next:
-1. Open `tmp-browser-smoke\\headed-probe\\google-issue3-recommended-validation-safe-route-runner-patch-handoff.json` first.
-2. Keep `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` and `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md` open beside that artifact before editing the runner.
-3. Patch both saved output writers in `scripts/windows/run_google_issue3_recommended_validation.ps1`.
-4. Keep these fields present in both objects:
-   - `refresh_chain_artifact_path`
-   - `refresh_chain_artifact_error`
-   - `handoff_artifact_path`
-   - `handoff_artifact_error`
-5. Re-run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status_safe.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status.ps1
-```
-
-### `already-direct`
-
-Meaning:
-- the runner source already carries the direct contract fields that the wrapper expected
-
-Do this next:
-- do not patch `scripts/windows/run_google_issue3_recommended_validation.ps1` again
-- reopen the safe wiring audit immediately:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status_safe.ps1
-```
-
-### `runner-already-wired-regenerate-outputs`
-
-Meaning:
-- the source is already wired, but the saved outputs still need regeneration or repair
-
-Do this next:
-1. Treat it as an output-refresh problem, not another direct source edit.
-2. Prefer the emitted repair command from the wrapper artifact.
-3. If you want the stable default repair route, run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation_repair_runner_output_contract_safe_route.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_wiring_status_safe.ps1
-```
-
-## After the runner-output contract is green
-
-Continue with the next safe route instead of widening immediately:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_refresh_status_safe_path_route.ps1
-```
-
-If the refresh and wiring helpers agree that the chain is ready, only then widen into the attached or saved localhost HTML follow-up from `docs/WINDOWS_FULL_USE.md`.
-
-## Repo-root note
-
-If the replay is running from a non-default checkout, keep `LIGHTPANDA_REPO_ROOT` and the current summary path aligned through the safe wrappers. Use `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md` before reopening the runner-output or refresh-status checkpoints when the working tree location changed.
