@@ -142,7 +142,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $route = [ordered]@{
     issue = 'Google issue #3 Windows full-use attached HTML route'
-    purpose = 'Print the shortest attached-localhost replay route that starts from the broader Windows headed runbook and narrows into the current issue #3 helper chain.'
+    purpose = 'Print the shortest attached-localhost replay route that starts from the broader Windows headed runbook and narrows through the top-level attached-page quickstart into the current issue #3 helper chain.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -158,8 +158,9 @@ $route = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
-        suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
+        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
+        suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
@@ -174,25 +175,26 @@ $route = [ordered]@{
         'Use this helper when the next replay starts from the broader Windows headed runbook and is already centered on the attached localhost compatibility pages for issue #3.',
         'Start with attached_html_change_area when the next replay should stay on the generic attached-page route before choosing the narrower issue-specific helpers.',
         'Start with google_attached_html_change_area when the next replay should still keep the Google-shaped attached-page route visible before narrowing again.',
-        'Use suite_router_attached_html_quickstart as the default next helper because it keeps the shortest suite-router-side attached-page bridge visible before the route narrows into the top-level attached-page helper, replay shortcuts, or the safe-route map.',
-        'Use top_level_attached_html_entrypoint when the route is already clearly inside the issue-specific attached-page branch and you want the shorter top-level bridge before replay shortcuts.',
+        'Use top_level_attached_html_quickstart as the default next helper because it keeps the compact top-level attached-page quickstart visible before the broader top-level attached-page bridge, the suite-router attached-page quickstart, replay shortcuts, or the safe-route map.',
+        'Use top_level_attached_html_entrypoint when the route is already clearly inside the issue-specific attached-page branch and you want the broader top-level bridge reprinted after the compact quickstart.',
+        'Use suite_router_attached_html_quickstart when you want the shorter suite-router-side attached-page bridge after the top-level quickstart and top-level attached-page bridge.',
         'Use suite_catalog_attached_html_entrypoint when you want the dedicated suite-catalog attached-page bridge preserved before narrowing into the top-level attached-page helper.',
         'Use attached_bundle_change_area plus attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that branch should stay visible first.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
-        'Keep the broader Windows runbook, the Windows full-use attached-html route note, the suite-router attached-html quickstart note, the top-level attached-html quickstart note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
+        'Keep the broader Windows runbook, the Windows full-use attached-html route note, the top-level attached-html quickstart note, the suite-router attached-html quickstart note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
     )
 }
 
 $route.recommended_next_key = if ($route.explicit_input_path_count -gt 0) {
     'attached_bundle_first'
 } else {
-    'suite_router_attached_html_quickstart'
+    'top_level_attached_html_quickstart'
 }
 $route.recommended_next_command = $route.helper_commands[$route.recommended_next_key]
 $route.recommended_next_reason = if ($route.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 helper chain.'
 } else {
-    'No pinned bundle inputs are in play yet, so jump straight from the Windows full-use route into the suite-router attached-page quickstart.'
+    'No pinned bundle inputs are in play yet, so jump straight from the Windows full-use route into the compact top-level attached-page quickstart before widening to the broader attached-page bridge.'
 }
 
 if ($Json) {
@@ -219,17 +221,18 @@ Write-Host 'Windows full-use route:'
 Write-Host (("  1. Attached HTML:      {0}") -f $route.top_level_commands.attached_html_change_area)
 Write-Host (("  2. Google attached:    {0}") -f $route.top_level_commands.google_attached_html_change_area)
 Write-Host (("  3. Attached bundle:    {0}") -f $route.top_level_commands.attached_bundle_change_area)
-Write-Host (("  4. Router quickstart:  {0}") -f $route.helper_commands.suite_router_attached_html_quickstart)
+Write-Host (("  4. Top-level quick:    {0}") -f $route.helper_commands.top_level_attached_html_quickstart)
 Write-Host (("  5. Top-level bridge:   {0}") -f $route.helper_commands.top_level_attached_html_entrypoint)
-Write-Host (("  6. Catalog bridge:     {0}") -f $route.helper_commands.suite_catalog_attached_html_entrypoint)
-Write-Host (("  7. Replay shortcuts:   {0}") -f $route.helper_commands.replay_shortcuts)
-Write-Host (("  8. Safe-route map:     {0}") -f $route.helper_commands.safe_route_entrypoints)
-Write-Host (("  9. Bundle-first route: {0}") -f $route.helper_commands.attached_bundle_first)
+Write-Host (("  6. Router quickstart:  {0}") -f $route.helper_commands.suite_router_attached_html_quickstart)
+Write-Host (("  7. Catalog bridge:     {0}") -f $route.helper_commands.suite_catalog_attached_html_entrypoint)
+Write-Host (("  8. Replay shortcuts:   {0}") -f $route.helper_commands.replay_shortcuts)
+Write-Host (("  9. Safe-route map:     {0}") -f $route.helper_commands.safe_route_entrypoints)
+Write-Host ((" 10. Bundle-first route: {0}") -f $route.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host (("Windows runbook:             {0}") -f $route.windows_runbook_note_path)
 Write-Host (("Windows attached route note: {0}") -f $route.windows_full_use_attached_html_route_note_path)
+Write-Host (("Top-level quickstart note:   {0}") -f $route.top_level_attached_html_note_path)
 Write-Host (("Suite-router note:           {0}") -f $route.suite_router_attached_html_quickstart_note_path)
-Write-Host (("Top-level note:              {0}") -f $route.top_level_attached_html_note_path)
 Write-Host (("Replay quickstart note:      {0}") -f $route.windows_replay_quickstart_note_path)
 Write-Host ''
 Write-Host 'Notes:'
