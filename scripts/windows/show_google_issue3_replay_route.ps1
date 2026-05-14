@@ -196,24 +196,24 @@ $route = [ordered]@{
         'Use suite_router_handoff_command when you want the shortest printed bridge back into the higher-level suite-router entrypoints before reopening the narrower replay route, replay shortcuts, attached-bundle, or safe-route helpers with the same current context.'
         'Use suite_router_next_steps_command when you want the compact next-step matrix from the higher-level suite router reprinted beside the current replay-route surface without reopening the longer Windows runbook or bridge note first.'
         'If the current saved or attached pages are the known three-page compatibility bundle, use attached_bundle_change_area_command and attached_bundle_entrypoint_command before reopening the broader wrapper-heavy safe route.'
-        'Use replay_shortcuts_command when you want the same route narrowed around the shortcut-first helper, the bundle-aware shortcut map, the attached-page route, and the current safe-route bridge without reopening the longer suite-router handoff first.'
+        'Use replay_shortcuts_command after the shortcut-first suite-router entrypoint or the suite-catalog bridge has already re-established the issue #3 route and you want that narrower surface kept beside the attached-page route, the bundle-aware branch, and the current safe-route bridge.'
         'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.'
         'Use fresh_replay_command when issue #3 outputs may be stale or missing.'
         'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.'
         'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.'
-        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted suite-catalog, attached-page, shortcut-entrypoint, read-first, suite-router-handoff, suite-router-next-steps, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay route stays aligned with the newer entrypoint helpers.'
+        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted suite-catalog, attached-page, shortcut-entrypoint, read-first, suite-router-handoff, suite-router-next-steps, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the shortcut-first bridge can stay the default recommendation without losing the newer helper alignment.'
     )
 }
 
 $route.recommended_next_command = if ($route.explicit_input_path_count -gt 0) {
     $route.attached_bundle_entrypoint_command
 } else {
-    $route.replay_shortcuts_command
+    $route.suite_router_shortcut_entrypoint_command
 }
 $route.recommended_next_reason = if ($route.explicit_input_path_count -gt 0) {
     'Pinned input paths are already present, so stay on the attached three-page compatibility bundle branch first before widening back into the broader safe-route wrappers.'
 } else {
-    'No bundle inputs are pinned yet, so reopen the replay shortcuts next and keep the shortcut-first helper, attached-page route, bundle-aware branch, and safe-route bridge together in one compact surface.'
+    'No bundle inputs are pinned yet, so reopen the shortcut-first suite-router entrypoint next and let that compact bridge decide whether replay shortcuts, the next-step matrix, the suite-catalog bridge, or the attached bundle branch should be reopened from the same context.'
 }
 
 if ($Json) {
