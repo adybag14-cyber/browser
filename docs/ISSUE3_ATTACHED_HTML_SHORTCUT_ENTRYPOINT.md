@@ -26,7 +26,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, `show_google_attached_html_validation_flow.ps1`, or `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, then move immediately into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` when the next replay is already known to stay on the attached-page follow-up path.
+Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, `show_google_attached_html_validation_flow.ps1`, or `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, then move immediately into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` when the next replay is already known to stay on the attached-page follow-up path.
 
 From there, prefer one of these narrower follow-ups before reopening the broader wrapper-heavy safe route:
 
@@ -38,10 +38,11 @@ From there, prefer one of these narrower follow-ups before reopening the broader
 
 ## Top-level router surfacing
 
-Use this route when you want the attached-page branch surfaced directly from the main validation catalog before you drop into the tighter issue `#3` shortcut chain:
+Use this route when you want the attached-page branch surfaced directly from the main validation catalog, including the Google-shaped attached-page branch, before you drop into the tighter issue `#3` shortcut chain:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
@@ -50,6 +51,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 Use that route when:
 
 - the broader validation router already made the attached localhost follow-up obvious
+- the Google-shaped attached-page route is already the clearest next branch from the top-level validation router
 - you want the attached-page compatibility route kept visible before you widen into replay shortcuts or the next-step matrix
 - the bundle-first helper should remain easy to reopen from that same shortcut surface before you widen back into the wrapper-heavy path
 
@@ -70,6 +72,7 @@ Use that bundle-first route when the known three-page compatibility set should s
 If you still want the broader attached-page localhost-first helper chain printed before you choose between the shortcut-first issue `#3` route and the pinned bundle-first branch, use:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
@@ -147,8 +150,8 @@ Use this when the attached-page route has already narrowed enough that the wrapp
 
 Once `show_headed_validation_suites.ps1` has already narrowed the route to attached localhost HTML follow-up, prefer `show_google_issue3_attached_html_shortcut_entrypoint.ps1` before reopening the longer validation-chain notes again.
 
-- no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` to the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint, then replay shortcuts, then the next-step matrix or safe-route map
-- broader attached-page localhost-first helper still matters: go from `show_google_attached_html_validation_flow.ps1` to the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint before narrowing further
+- no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` or `-ChangeArea google-attached-html` to the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint, then replay shortcuts, then the next-step matrix or safe-route map
+- broader attached-page localhost-first helper still matters: go from `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` or `show_google_attached_html_validation_flow.ps1` to the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint before narrowing further
 - explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
 - saved summary or repo-root override already present: reopen the attached-page shortcut entrypoint with that same context first, then choose replay shortcuts, the next-step matrix, contextual flow through the suite-router matrix, or the safe-route map only as needed
 
