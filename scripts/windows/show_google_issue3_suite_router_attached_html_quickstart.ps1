@@ -142,7 +142,8 @@ $helper = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
-    quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
+    windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
@@ -231,7 +232,8 @@ Write-Host (("  Contextual flow:         {0}") -f $helper.commands.contextual_fl
 Write-Host (("  Bundle-first helper:     {0}") -f $helper.commands.attached_bundle_first)
 Write-Host (("  Safe-route map:          {0}") -f $helper.commands.safe_route_entrypoints)
 Write-Host ''
-Write-Host (("Quickstart note:           {0}") -f $helper.quickstart_note_path)
+Write-Host (("Attached HTML note:       {0}") -f (' ' + $helper.attached_html_quickstart_note_path))
+Write-Host (("Windows replay note:      {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
 Write-Host (("Top-level attached note:  {0}") -f (' ' + $helper.top_level_attached_html_bridge_note_path))
 Write-Host (("Catalog attached note:    {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
 Write-Host (("Validation chain note:    {0}") -f (' ' + $helper.validation_chain_note_path))
