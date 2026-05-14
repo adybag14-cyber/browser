@@ -142,6 +142,7 @@ $helper = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
@@ -179,7 +180,8 @@ $helper = [ordered]@{
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned bundle inputs already matter and the next helper surface should keep that replay context aligned before narrowing again.',
         'Use attached_bundle_change_area and attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only helper chain.',
         'Use safe_route_entrypoints only after the route has already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
-        'Keep the top-level attached-page quickstart note, the top-level attached-page bridge note, the suite-router attached-page quickstart note, the Windows replay quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows full-use attached-html route note nearby when the next replay started from docs/WINDOWS_FULL_USE.md and you want the shorter top-level attached-page quickstart preserved beside the broader runbook entrypoints.',
+        'Keep the Windows full-use attached-html route note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the suite-router attached-page quickstart note, the Windows replay quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -236,6 +238,7 @@ Write-Host (("  Contextual flow:         {0}") -f $helper.commands.contextual_fl
 Write-Host (("  Bundle-first helper:     {0}") -f $helper.commands.attached_bundle_first)
 Write-Host (("  Safe-route map:          {0}") -f $helper.commands.safe_route_entrypoints)
 Write-Host ''
+Write-Host (("Windows full-use route:   {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
 Write-Host (("Top-level quickstart:     {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
 Write-Host (("Top-level bridge note:    {0}") -f (' ' + $helper.top_level_attached_html_bridge_note_path))
 Write-Host (("Suite-router quickstart:  {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
