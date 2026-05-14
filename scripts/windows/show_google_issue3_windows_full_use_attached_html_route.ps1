@@ -169,7 +169,9 @@ $route = [ordered]@{
     }
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
+    top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
+    suite_catalog_attached_html_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     top_level_attached_html_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     notes = @(
@@ -183,18 +185,22 @@ $route = [ordered]@{
         'Use attached_bundle_change_area plus attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that branch should stay visible first.',
         'Use contextual_flow when repo root, summary, or explicit input-path context already matters and the next helper surface should keep that replay state aligned before narrowing again.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
-        'Keep the broader Windows runbook, the Windows full-use attached-html route note, the top-level attached-html quickstart note, the suite-router attached-html quickstart note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
+        'Keep the broader Windows runbook, the Windows full-use attached-html route note, the top-level attached-html quickstart note, the top-level attached-html bridge note, the suite-router attached-html quickstart note, the suite-catalog attached-html bridge note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
     )
 }
 
 $route.recommended_next_key = if ($route.explicit_input_path_count -gt 0) {
     'attached_bundle_first'
+} elseif (-not [string]::IsNullOrWhiteSpace($route.repo_root) -or -not [string]::IsNullOrWhiteSpace($route.summary_path)) {
+    'contextual_flow'
 } else {
     'top_level_attached_html_quickstart'
 }
 $route.recommended_next_command = $route.helper_commands[$route.recommended_next_key]
 $route.recommended_next_reason = if ($route.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 helper chain.'
+} elseif ($route.recommended_next_key -eq 'contextual_flow') {
+    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing whether to reopen the compact top-level quickstart, the broader top-level attached-page bridge, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, replay shortcuts, or the safe-route map.'
 } else {
     'No pinned bundle inputs are in play yet, so jump straight from the Windows full-use route into the compact top-level attached-page quickstart before widening to the broader attached-page bridge.'
 }
@@ -235,7 +241,9 @@ Write-Host ''
 Write-Host (("Windows runbook:             {0}") -f $route.windows_runbook_note_path)
 Write-Host (("Windows attached route note: {0}") -f $route.windows_full_use_attached_html_route_note_path)
 Write-Host (("Top-level quickstart note:   {0}") -f $route.top_level_attached_html_note_path)
+Write-Host (("Top-level bridge note:       {0}") -f $route.top_level_attached_html_bridge_note_path)
 Write-Host (("Suite-router note:           {0}") -f $route.suite_router_attached_html_quickstart_note_path)
+Write-Host (("Suite-catalog note:          {0}") -f $route.suite_catalog_attached_html_note_path)
 Write-Host (("Replay quickstart note:      {0}") -f $route.windows_replay_quickstart_note_path)
 Write-Host ''
 Write-Host 'Notes:'
