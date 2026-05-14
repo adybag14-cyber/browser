@@ -21,6 +21,57 @@ production-ready minimalist Zig browser, see
 - Text control editing now includes caret-aware insertion paths, `Ctrl/Meta + A` select-all, word-wise keyboard edit/navigation shortcuts, textarea vertical/line navigation, `Tab`/`Shift+Tab` focus traversal with `tabindex` ordering, and native clipboard shortcuts (`Ctrl/Meta + C/X/V`, `Ctrl+Insert`, `Shift+Insert`, `Shift+Delete`) with cancelable clipboard event dispatch.
 - Windows prereq checker + runbook added (`scripts/windows`, `docs/WINDOWS_FULL_USE.md`).
 
+## Validation Quick Routes
+
+Use these Windows entrypoints when you want the narrowest headed validation path
+without reopening the full helper chain by hand.
+
+Top-level router:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+```
+
+Known attached HTML compatibility bundle:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
+Saved-page or attached-page localhost follow-up:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_saved_page_localhost_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_sanitized_saved_page_localhost_validation.ps1 -InputPath '<saved-html-or-folder>' -Wait
+```
+
+Issue `#3` attached-page follow-up:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+```
+
+When the replay is already running from a non-default checkout, saved summary,
+or pinned bundle paths, preserve that state with `-RepoRoot`, `-SummaryPath`,
+and `-InputPath` on the issue `#3` helper scripts so the attached-page route
+stays on the same context.
+
+For the broader Windows runbook and the longer validation chain, keep
+`docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
+and `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
+
 ## Milestones
 
 1. Display abstraction
