@@ -36,7 +36,12 @@ $resolvedRepoRoot = if ($RepoRoot) {
 $references = @(
     (New-ValidationReference -Path "docs/HEADED_ATTACHED_HTML_VALIDATION.md" -Kind "file" -Purpose "Attached-HTML guide that routes general saved-page follow-up."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that lists the saved-page localhost helpers."),
+    (New-ValidationReference -Path "docs/HEADED_MODE_VALIDATION_GATES.md" -Kind "file" -Purpose "Shared validation gate matrix that keeps the pinned attached-page bundle on the right first route."),
+    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router that exposes the attached-html-target-bundle entry point before broader saved-page replay."),
     (New-ValidationReference -Path "scripts/windows/check_attached_html_target_bundle.ps1" -Kind "file" -Purpose "Checker for the known three-page attached HTML compatibility target bundle."),
+    (New-ValidationReference -Path "scripts/windows/check_attached_html_target_bundle_validation_surface.ps1" -Kind "file" -Purpose "Dedicated fail-fast checker for the known three-page attached HTML compatibility route."),
+    (New-ValidationReference -Path "scripts/windows/show_attached_html_target_bundle_validation_flow.ps1" -Kind "file" -Purpose "Bundle-aware attached HTML flow helper for the pinned three-page compatibility set."),
+    (New-ValidationReference -Path "scripts/windows/run_attached_html_target_bundle_validation.ps1" -Kind "file" -Purpose "Bundle-aware attached HTML localhost runner for the pinned three-page compatibility set."),
     (New-ValidationReference -Path "scripts/windows/check_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Dedicated fail-fast checker for the general attached-page localhost replay path."),
     (New-ValidationReference -Path "scripts/windows/check_local_html_fixture_validation_surface.ps1" -Kind "file" -Purpose "Reusable local HTML fixture surface checker for saved export replays."),
     (New-ValidationReference -Path "tmp-browser-smoke/README.md" -Kind "file" -Purpose "Top-level probe-suite index for bounded headed validation."),
