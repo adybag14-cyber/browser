@@ -210,17 +210,22 @@ $entrypoints = [ordered]@{
 
 $entrypoints.recommended_next_key = if ($entrypoints.explicit_input_path_count -gt 0) {
     'attached_bundle_first'
+} elseif (-not [string]::IsNullOrWhiteSpace($entrypoints.repo_root) -or -not [string]::IsNullOrWhiteSpace($entrypoints.summary_path)) {
+    'contextual_flow'
 } else {
     'suite_router_next_steps'
 }
 $entrypoints.recommended_next_command = switch ($entrypoints.recommended_next_key) {
     'attached_bundle_first' { $entrypoints.helper_commands.attached_bundle_first }
+    'contextual_flow' { $entrypoints.helper_commands.contextual_flow }
     default { $entrypoints.helper_commands.suite_router_next_steps }
 }
 $entrypoints.recommended_next_reason = if ($entrypoints.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 helper chain.'
+} elseif ($entrypoints.recommended_next_key -eq 'contextual_flow') {
+    'A non-default repo root or saved summary is already in play, so open the context-preserving helper next and keep that replay state aligned before choosing between the next-step matrix, replay route, replay shortcuts, attached bundle, or safe-route branches.'
 } else {
-    'No pinned bundle inputs are in play yet, so jump straight from the suite catalog and Google flow into the current next-step matrix, then narrow further into replay route, replay shortcuts, contextual flow, or the safe-route helpers from there while preserving repo-root and saved-summary context when it already exists.'
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the suite catalog and Google flow into the current next-step matrix before narrowing further into replay route, replay shortcuts, contextual flow, or the safe-route helpers.'
 }
 
 if ($Json) {
