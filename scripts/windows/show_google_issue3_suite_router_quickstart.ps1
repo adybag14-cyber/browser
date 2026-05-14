@@ -138,7 +138,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router quickstart'
-    purpose = 'Print the shortest bridge from the top-level headed validation suite router into the current issue #3 top-level attached HTML bridge, suite-catalog attached HTML, attached-HTML shortcut, replay-shortcuts, attached-bundle, and safe-route helpers, while preserving repo-root, saved-summary, and pinned attached-bundle context when it already exists.'
+    purpose = 'Print the shortest bridge from the top-level headed validation suite router into the current issue #3 top-level attached HTML bridge, suite-catalog attached HTML, issue-specific attached HTML suite entrypoint, attached-HTML shortcut, replay-shortcuts, attached-bundle, and safe-route helpers, while preserving repo-root, saved-summary, and pinned attached-bundle context when it already exists.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -158,6 +158,9 @@ $helper = [ordered]@{
         attached_html_suite = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html'
         }) -RepoRootOverride $RepoRoot
+        google_attached_html_suite = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'google-attached-html'
+        }) -RepoRootOverride $RepoRoot
         attached_bundle_suite = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
@@ -173,6 +176,7 @@ $helper = [ordered]@{
     notes = @(
         'Start with google_recommended or google_input when you are re-entering issue #3 from the top-level headed validation suite catalog and want the same router commands that the higher-level catalog prints.',
         'Use attached_html_suite when the next replay is already narrowed to attached-page compatibility follow-up and you want that top-level route reprinted before dropping into the shorter issue #3 helper chain.',
+        'Use google_attached_html_suite when the next replay is already narrowed to the issue-specific attached-page follow-up route and you want that dedicated suite-router entrypoint visible before choosing between the top-level attached-page bridge, the suite-catalog attached-page bridge, the attached-page shortcut, replay shortcuts, the next-step matrix, or the bundle-first route.',
         'Use top_level_attached_html when the replay is already narrowed to attached-page follow-up and you want the top-level attached-page bridge kept visible before choosing between the suite-catalog attached-page bridge, the attached-page shortcut, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.',
         'Use suite_catalog_attached_html when the replay is already narrowed to attached-page follow-up but you want the suite-catalog-side attached-page bridge kept visible before reopening the shorter attached-page shortcut, replay shortcuts, next-step matrix, bundle-first route, or safe-route helper.',
         'Use replay_shortcuts immediately after the top-level commands or the top-level attached-page bridge when the route is already clearly inside issue #3 and no pinned bundle inputs, saved summary, or non-default repo root need to take precedence first.',
@@ -223,10 +227,11 @@ Write-Host (("Recommended next helper: {0}") -f $helper.recommended_next_command
 Write-Host (("Why:                    {0}") -f $helper.recommended_next_reason)
 Write-Host ''
 Write-Host 'Top-level entrypoints:'
-Write-Host (("  Google recommended: {0}") -f $helper.commands.google_recommended)
-Write-Host (("  Google input:       {0}") -f $helper.commands.google_input)
-Write-Host (("  Attached HTML:      {0}") -f $helper.commands.attached_html_suite)
-Write-Host (("  Attached bundle:    {0}") -f $helper.commands.attached_bundle_suite)
+Write-Host (("  Google recommended:   {0}") -f $helper.commands.google_recommended)
+Write-Host (("  Google input:         {0}") -f $helper.commands.google_input)
+Write-Host (("  Attached HTML:        {0}") -f $helper.commands.attached_html_suite)
+Write-Host (("  Google attached HTML: {0}") -f $helper.commands.google_attached_html_suite)
+Write-Host (("  Attached bundle:      {0}") -f $helper.commands.attached_bundle_suite)
 Write-Host ''
 Write-Host 'Follow-up helpers:'
 Write-Host (("  Top-level attached: {0}") -f $helper.commands.top_level_attached_html)
