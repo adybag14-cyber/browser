@@ -171,7 +171,9 @@ $entrypoint = [ordered]@{
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
     }
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
+    suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
@@ -184,7 +186,7 @@ $entrypoint = [ordered]@{
         'Use top_level_shortcut_entrypoint when the broader top-level issue #3 bridge still needs to stay visible before you narrow into the attached-page helper chain.',
         'Use suite_router_shortcut_entrypoint after the attached-page helper chain when the route is already known to stay inside issue #3 and no extra suite-catalog explanation is needed first.',
         'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between replay shortcuts, the next-step matrix, or the bundle-first branch.',
-        'Keep the quickstart, suite-router bridge, suite-catalog guide, and validation-chain notes nearby when you want the written route beside these commands.'
+        'Keep the quickstart note, the suite-router attached-page quickstart note, the suite-router bridge note, the suite-catalog attached-page bridge note, the suite-catalog guide, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -247,10 +249,12 @@ Write-Host (("  Next-step matrix:    {0}") -f $entrypoint.helper_commands.suite_
 Write-Host (("  Contextual flow:     {0}") -f $entrypoint.helper_commands.contextual_flow)
 Write-Host (("  Bundle first:        {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
-Write-Host (("Quickstart note:      {0}") -f $entrypoint.quickstart_note_path)
-Write-Host (("Suite-router bridge:  {0}") -f $entrypoint.suite_router_bridge_note_path)
-Write-Host (("Suite-catalog guide:  {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
-Write-Host (("Validation chain:     {0}") -f $entrypoint.validation_chain_note_path)
+Write-Host (("Quickstart note:           {0}") -f $entrypoint.quickstart_note_path)
+Write-Host (("Router attached quickstart:{0}") -f (' ' + $entrypoint.suite_router_attached_html_quickstart_note_path))
+Write-Host (("Suite-router bridge:       {0}") -f $entrypoint.suite_router_bridge_note_path)
+Write-Host (("Catalog attached bridge:   {0}") -f $entrypoint.suite_catalog_attached_html_bridge_note_path)
+Write-Host (("Suite-catalog guide:       {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
+Write-Host (("Validation chain:          {0}") -f $entrypoint.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $entrypoint.notes) {
