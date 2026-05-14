@@ -78,6 +78,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_sanitized_saved_p
 Issue `#3` attached-page follow-up:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
@@ -89,8 +90,23 @@ or pinned bundle paths, preserve that state with `-RepoRoot`, `-SummaryPath`,
 and `-InputPath` on the issue `#3` helper scripts so the attached-page route
 stays on the same context.
 
+Keep these companion route notes nearby when the replay is already narrowed to
+attached localhost follow-up:
+
+- `docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the
+  broader validation router already points at the attached-page lane and you
+  want the shortest bridge before reopening the larger issue `#3` helper stack.
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the broader
+  Windows runbook already made attached localhost replay the next obvious
+  branch.
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the current
+  inputs are already the pinned three-page compatibility bundle and you want
+  page-by-page manual checks plus shared-subsystem failure routing before
+  widening back into the broader helper chain.
+
 For the broader Windows runbook and the longer validation chain, keep
 `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
+`docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
 
