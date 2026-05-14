@@ -158,6 +158,29 @@ attached-page bridge visible before the route widens into the broader attached-p
 entrypoint, the suite-router attached-page quickstart, replay shortcuts, or the
 safe-route map.
 
+If that same replay should keep the newer catalog-side attached-page bridge
+visible before the helper chain narrows again, keep
+`docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md` nearby too
+and print the Windows-first catalog quickstart helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
+```
+
+If the replay is already running from a non-default checkout, an already-saved
+summary, or explicit attached bundle paths, preserve that same context directly
+in the catalog quickstart helper before widening again:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+Use that helper when the Windows runbook has already narrowed the next replay
+to attached localhost follow-up and you want the top-level attached-page
+catalog quickstart plus the suite-catalog attached-page bridge reprinted before
+the route narrows into the shorter attached-page shortcut, replay shortcuts,
+contextual flow, or the safe-route map.
+
 Start with the newer suite-catalog bridge and next-step matrix before widening
 into the broader handoff or replay-route helpers:
 
