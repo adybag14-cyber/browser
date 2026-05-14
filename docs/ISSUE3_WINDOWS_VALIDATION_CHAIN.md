@@ -44,6 +44,35 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_tar
 
 After that read-first discovery pass, prefer the safe-route wrapper entrypoints below when the work is specifically resuming the saved runner-output handoff chain.
 
+## Top-level attached-page route
+
+When the replay is already narrowed to the attached localhost HTML branch and you want the broader top-level attached-page chain kept visible before the route collapses back to the shorter shortcut helpers, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+```
+
+If the replay is already running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that same context on the top-level attached-page helpers first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+Keep these nearby when you want the written route beside the helper output:
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the replay started from `docs/WINDOWS_FULL_USE.md`
+- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the route is ready to narrow back toward the suite-router side
+
+Use the compact top-level quickstart first when no bundle inputs, saved summary, or non-default repo root need to take precedence.
+
+Use the broader top-level attached-page entrypoint next when you want the top-level bridge, suite-router attached-page quickstart, attached-page shortcut, replay shortcuts, next-step matrix, and safe-route map reopened from one place before deciding how far to narrow.
+
+Return to the broader validation chain only after the attached-page route has clarified the next replay state again.
+
 ## Context-preserving lane handoffs
 
 Once the current replay already has a chosen checkout, browser binary, host, and input text, move from the generic suite catalog to the narrower flow helpers that preserve that context in their printed follow-up commands.
