@@ -145,7 +145,7 @@ $contextualFlowCommand = Format-HelperCommand -ScriptName 'show_google_issue3_co
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 suite catalog entrypoints'
-    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the current Google flow helper, the shortcut-first issue #3 replay helper, the compact next-step matrix, the context-preserving issue #3 replay flow, and the current safe-route replay helpers on one compact command surface before the route narrows into replay-route or the wrapper-heavy safe-route helpers.'
+    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the new suite-router quickstart bridge, the current Google flow helper, the shortcut-first issue #3 replay helper, the compact next-step matrix, the context-preserving issue #3 replay flow, and the current safe-route replay helpers on one compact command surface before the route narrows into replay-route or the wrapper-heavy safe-route helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -167,6 +167,7 @@ $entrypoints = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $bundleArguments
         google_flow = $googleFlowCommand
         contextual_flow = $contextualFlowCommand
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
@@ -188,6 +189,7 @@ $entrypoints = [ordered]@{
         attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html'
         }) -RepoRootOverride $RepoRoot
+        suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $bundleArguments
         google_flow = $googleFlowCommand
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
@@ -200,6 +202,7 @@ $entrypoints = [ordered]@{
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, saved-page, or attached-page slices instead of the full recommended runner.',
         'Use attached_html_change_area when the next replay is already narrowed to attached-page follow-up but pinned bundle inputs are not yet locked, so the route can still prefer the shortcut-first issue #3 bridge before it falls back to the bundle-first branch.',
+        'Use suite_router_quickstart when the top-level suite router already made issue #3 obvious and you want the shortest bridge into replay shortcuts, the next-step matrix, the bundle-first helper, and the safe-route map without reopening the wider catalog note first.',
         'Use google_flow when you want the localhost-first issue #3 ladder printed before you decide whether to narrow into the shortcut-first replay helper, the next-step matrix, context-preserving flow, replay route, or the wrapper-heavy safe-route branches, while keeping LIGHTPANDA_REPO_ROOT aligned to the current non-default checkout when RepoRoot is already in play.',
         'Use replay_shortcuts as the default next helper after the top-level suite catalog and Google flow when the current route is already known to be issue #3 and no pinned bundle inputs, saved summary, or non-default repo root need to take precedence first.',
         'Use suite_router_next_steps when you want the compact next-step matrix reprinted after the shortcut-first bridge, or when the route still needs the explicit start-point table before you reopen replay route, contextual flow, attached bundle, or the safe-route wrappers.',
@@ -259,13 +262,14 @@ Write-Host 'Read-first bridge:'
 Write-Host (("  1. Google recommended: {0}") -f $entrypoints.bridge_sequence.google_recommended)
 Write-Host (("  2. Google input:       {0}") -f $entrypoints.bridge_sequence.google_input_change_area)
 Write-Host (("  3. Attached HTML:      {0}") -f $entrypoints.bridge_sequence.attached_html_change_area)
-Write-Host (("  4. Google flow:        {0}") -f $entrypoints.bridge_sequence.google_flow)
-Write-Host (("  5. Replay shortcuts:   {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
-Write-Host (("  6. Next-step matrix:   {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
-Write-Host (("  7. Contextual flow:    {0}") -f $entrypoints.bridge_sequence.contextual_flow)
-Write-Host (("  8. Suite handoff:      {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
-Write-Host (("  9. Replay route:       {0}") -f $entrypoints.bridge_sequence.replay_route)
-Write-Host ((" 10. Bundle-first route: {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
+Write-Host (("  4. Router quickstart:  {0}") -f $entrypoints.bridge_sequence.suite_router_quickstart)
+Write-Host (("  5. Google flow:        {0}") -f $entrypoints.bridge_sequence.google_flow)
+Write-Host (("  6. Replay shortcuts:   {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
+Write-Host (("  7. Next-step matrix:   {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
+Write-Host (("  8. Contextual flow:    {0}") -f $entrypoints.bridge_sequence.contextual_flow)
+Write-Host (("  9. Suite handoff:      {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
+Write-Host ((" 10. Replay route:       {0}") -f $entrypoints.bridge_sequence.replay_route)
+Write-Host ((" 11. Bundle-first route: {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
 Write-Host ''
 Write-Host 'Top-level suite catalog entrypoints:'
 Write-Host (("  Google recommended: {0}") -f $entrypoints.suite_catalog_commands.google_recommended)
@@ -274,6 +278,7 @@ Write-Host (("  Attached HTML:      {0}") -f $entrypoints.suite_catalog_commands
 Write-Host (("  Attached bundle:    {0}") -f $entrypoints.suite_catalog_commands.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Issue #3 replay helpers:'
+Write-Host (("  Router quickstart:   {0}") -f $entrypoints.helper_commands.suite_router_quickstart)
 Write-Host (("  Google flow:         {0}") -f $entrypoints.helper_commands.google_flow)
 Write-Host (("  Replay shortcuts:    {0}") -f $entrypoints.helper_commands.replay_shortcuts)
 Write-Host (("  Next-step matrix:    {0}") -f $entrypoints.helper_commands.suite_router_next_steps)
