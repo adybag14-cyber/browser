@@ -7,6 +7,7 @@ Keep these companion notes nearby when the replay needs more context:
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
@@ -18,6 +19,21 @@ Use the generic attached-page route from the top-level headed validation suite r
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html
+```
+
+If the top-level headed validation router already narrowed the replay through the Google-shaped attached-page branch and you want that same compact shortcut path without reopening the longer Google-only flow first, use:
+
+```powershell
+.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_shortcut_entrypoint.ps1
+```
+
+Use that Google-attached route when the current replay still cares about the Google-shaped attached-page branch, but the next practical move is already the compact attached-page shortcut surface rather than the broader helper family.
+
+If the replay still needs the broader Google-shaped attached-page helper visible before you drop to the shortcut bridge, reopen that helper first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 ```
 
 If the replay is already known to stay on the attached localhost route and you want the shortest suite-router-side attached-page bridge immediately after the top-level router output, use:
@@ -87,6 +103,8 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_
 
 Use these in order when helpful:
 - `show_headed_validation_suites.ps1 -ChangeArea attached-html` when the replay should start from the generic attached localhost compatibility route before narrowing further.
+- `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` when the broader router already surfaced the Google-shaped attached-page branch and the next useful move is the same compact attached-page shortcut path.
+- `show_google_attached_html_validation_flow.ps1` when that Google-shaped branch still needs its broader helper surface visible before you drop to the shorter shortcut bridge.
 - `show_google_issue3_suite_router_attached_html_quickstart.ps1` when you want the shortest suite-router-side attached-page bridge immediately after the top-level validation router.
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1` when you want the dedicated suite-catalog attached-page bridge kept visible before the route narrows again.
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1` when you still want the broader top-level attached-page bridge visible beside the narrower helper chain.
@@ -100,6 +118,6 @@ Use these in order when helpful:
 
 ## Practical rule
 
-Treat `show_google_issue3_attached_html_shortcut_entrypoint.ps1` as the default follow-up from `show_google_issue3_suite_router_attached_html_quickstart.ps1`, `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, or `show_headed_validation_suites.ps1 -ChangeArea attached-html` whenever the current replay is already about the attached localhost compatibility pages and no explicit bundle inputs need to stay pinned first.
+Treat `show_google_issue3_attached_html_shortcut_entrypoint.ps1` as the default follow-up from `show_google_issue3_suite_router_attached_html_quickstart.ps1`, `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, `show_headed_validation_suites.ps1 -ChangeArea attached-html`, or `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` whenever the current replay is already about the attached localhost compatibility pages and no explicit bundle inputs need to stay pinned first.
 
-Prefer `show_google_issue3_top_level_attached_html_entrypoint.ps1` when you still want the broader top-level route beside the shortcut helper, prefer `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` when the wider shortcut-first bridge should stay visible beside the attached-page route, and prefer the bundle-first route when explicit `InputPath` values are already pinned to the known three-page compatibility set.
+Prefer `show_google_attached_html_validation_flow.ps1` before the shortcut helper when the Google-shaped attached-page branch still needs its broader helper surface visible, prefer `show_google_issue3_top_level_attached_html_entrypoint.ps1` when you still want the broader top-level route beside the shortcut helper, prefer `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` when the wider shortcut-first bridge should stay visible beside the attached-page route, and prefer the bundle-first route when explicit `InputPath` values are already pinned to the known three-page compatibility set.
