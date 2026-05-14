@@ -143,11 +143,13 @@ $helper = [ordered]@{
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
+    attached_html_change_area_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
     attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
+    top_level_attached_html_companion_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     commands = [ordered]@{
@@ -181,11 +183,11 @@ $helper = [ordered]@{
         'Use top_level_attached_html_entrypoint when the route is already clearly inside the issue-specific attached-page branch and you want the broader top-level attached-page bridge before the newer top-level quickstarts, replay shortcuts, or the next-step matrix.',
         'Use google_attached_html_entrypoint when you still want the issue-specific Google-shaped attached-page bridge kept visible before the smaller attached-page shortcut helper.',
         'Use attached_html_shortcut when you want the shortest attached-page bridge before widening back into replay_shortcuts, the next-step matrix, or the safe-route helper.',
-        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before choosing between the attached-page bridges, replay shortcuts, or the bundle-first route.',
+        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before choosing between the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.',
         'Use attached_bundle_change_area and attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only helper chain.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed the replay enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
         'Keep the Windows full-use attached-html route note nearby when the replay started from docs/WINDOWS_FULL_USE.md and you want the broader runbook bridge preserved beside the suite-router attached-page quickstart.',
-        'Keep the Windows full-use attached-html route note, the attached HTML quickstart note, the Windows replay quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the top-level attached-page bridge note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows full-use attached-html route note, the attached-html change-area quickstart note, the attached HTML quickstart note, the Windows replay quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the top-level attached-page bridge note, the top-level companion note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -243,12 +245,14 @@ Write-Host (("  Contextual flow:              {0}") -f $helper.commands.contextu
 Write-Host (("  Bundle-first helper:          {0}") -f $helper.commands.attached_bundle_first)
 Write-Host (("  Safe-route map:               {0}") -f $helper.commands.safe_route_entrypoints)
 Write-Host ''
+Write-Host (("Change-area quickstart:   {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
 Write-Host (("Windows full-use route:   {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
 Write-Host (("Attached HTML note:       {0}") -f (' ' + $helper.attached_html_quickstart_note_path))
 Write-Host (("Windows replay note:      {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
 Write-Host (("Top-level quickstart:     {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
 Write-Host (("Top-level catalog note:   {0}") -f (' ' + $helper.top_level_attached_html_catalog_quickstart_note_path))
 Write-Host (("Top-level attached note:  {0}") -f (' ' + $helper.top_level_attached_html_bridge_note_path))
+Write-Host (("Top-level companion note: {0}") -f (' ' + $helper.top_level_attached_html_companion_note_path))
 Write-Host (("Catalog attached note:    {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
 Write-Host (("Validation chain note:    {0}") -f (' ' + $helper.validation_chain_note_path))
 Write-Host ''
