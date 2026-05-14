@@ -125,7 +125,7 @@ $runnerPatchStatePlaceholder = '<ready-for-runner-patch|already-direct|runner-al
 
 $route = [ordered]@{
     issue = 'Google issue #3 replay route'
-    purpose = 'Bridge the higher-level headed validation catalog, the newer attached-page route, the shortcut-first suite-router entrypoint, the bounded Google flow helper, the attached three-page compatibility bundle branch, and the current safe-route replay helpers while preserving repo-root, summary-path, and pinned bundle-input context across the printed commands.'
+    purpose = 'Bridge the higher-level headed validation catalog, the newer attached-page route, the replay-route shortcut helper, the bounded Google flow helper, the attached three-page compatibility bundle branch, and the current safe-route replay helpers while preserving repo-root, summary-path, and pinned bundle-input context across the printed commands.'
     repo_root = $resolvedRepoRoot
     summary_path = $recommendedSummaryPath
     input_paths = $recommendedInputPath
@@ -145,6 +145,10 @@ $route = [ordered]@{
         ChangeArea = 'attached-html'
     }) -RepoRootOverride $recommendedRepoRoot
     suite_router_shortcut_entrypoint_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments ([ordered]@{
+        SummaryPath = $recommendedSummaryPath
+        InputPath = $recommendedInputPath
+    }) -RepoRootOverride $recommendedRepoRoot
+    replay_route_shortcut_entrypoint_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments ([ordered]@{
         SummaryPath = $recommendedSummaryPath
         InputPath = $recommendedInputPath
     }) -RepoRootOverride $recommendedRepoRoot
@@ -189,31 +193,32 @@ $route = [ordered]@{
     notes = @(
         'Start with read_first_suite_command when you want the broadest current issue #3 runner surfaced first, while preserving RepoRoot for non-default checkouts when it is already in play.'
         'Use read_first_change_area_command when the next replay may branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice, without dropping the current RepoRoot context.'
-        'Use attached_html_change_area_command when the next replay is already narrowed to the attached-page compatibility route and you want that top-level branch visible before deciding whether to jump into the shortcut-first helper or stay pinned to the bundle-first path.'
-        'Use suite_router_shortcut_entrypoint_command when the higher-level suite router has already narrowed the route to issue #3 and you want the shortest printed bridge back into replay_shortcuts, the next-step matrix, the suite-catalog bridge, or the pinned bundle-first branch while preserving SummaryPath and InputPath context.'
+        'Use attached_html_change_area_command when the next replay is already narrowed to the attached-page compatibility route and you want that top-level branch visible before deciding whether to jump into the replay-route shortcut helper or stay pinned to the bundle-first path.'
+        'Use suite_router_shortcut_entrypoint_command when the higher-level suite router has already narrowed the route to issue #3 and you want the shortest printed bridge back into the replay-route surface before deciding whether to narrow again into replay_route_shortcut_entrypoint_command, replay_shortcuts_command, the next-step matrix, or the attached bundle branch while preserving SummaryPath and InputPath context.'
+        'Use replay_route_shortcut_entrypoint_command when you are already inside the replay-route helper and want the smaller attached-HTML, replay-shortcuts, next-step-matrix, contextual-flow, bundle-first, and safe-route companion surface without reopening the broader top-level route first.'
         'Use read_first_google_flow_command when you want the full bounded localhost-first ladder printed before you choose a narrower replay, while keeping the same RepoRoot context as the later safe-route helpers.'
         'Use suite_catalog_entrypoints_command when you want the exact top-level suite-router entrypoints, the attached-page route, the shortcut-first suite-router entrypoint, the next-step matrix, and the current replay helpers printed together before narrowing further, while preserving SummaryPath and InputPath when they are already pinned.'
         'Use suite_router_handoff_command when you want the shortest printed bridge back into the higher-level suite-router entrypoints before reopening the narrower replay route, replay shortcuts, attached-bundle, or safe-route helpers with the same current context.'
         'Use suite_router_next_steps_command when you want the compact next-step matrix from the higher-level suite router reprinted beside the current replay-route surface without reopening the longer Windows runbook or bridge note first.'
         'If the current saved or attached pages are the known three-page compatibility bundle, use attached_bundle_change_area_command and attached_bundle_entrypoint_command before reopening the broader wrapper-heavy safe route.'
-        'Use replay_shortcuts_command after the shortcut-first suite-router entrypoint or the suite-catalog bridge has already re-established the issue #3 route and you want that narrower surface kept beside the attached-page route, the bundle-aware branch, and the current safe-route bridge.'
+        'Use replay_shortcuts_command after replay_route_shortcut_entrypoint_command or the suite-catalog bridge has already re-established the issue #3 route and you want that narrower surface kept beside the attached-page route, the bundle-aware branch, and the current safe-route bridge.'
         'Open safe_route_entrypoints_command when you are ready to choose between the fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, and runner-wiring helpers.'
         'Use fresh_replay_command when issue #3 outputs may be stale or missing.'
         'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.'
         'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.'
-        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted suite-catalog, attached-page, shortcut-entrypoint, read-first, suite-router-handoff, suite-router-next-steps, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the shortcut-first bridge can stay the default recommendation without losing the newer helper alignment.'
+        'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted suite-catalog, attached-page, shortcut-entrypoint, replay-route-shortcut, read-first, suite-router-handoff, suite-router-next-steps, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay-route shortcut can stay the default recommendation without losing the newer helper alignment.'
     )
 }
 
 $route.recommended_next_command = if ($route.explicit_input_path_count -gt 0) {
     $route.attached_bundle_entrypoint_command
 } else {
-    $route.suite_router_shortcut_entrypoint_command
+    $route.replay_route_shortcut_entrypoint_command
 }
 $route.recommended_next_reason = if ($route.explicit_input_path_count -gt 0) {
     'Pinned input paths are already present, so stay on the attached three-page compatibility bundle branch first before widening back into the broader safe-route wrappers.'
 } else {
-    'No bundle inputs are pinned yet, so reopen the shortcut-first suite-router entrypoint next and let that compact bridge decide whether replay shortcuts, the next-step matrix, the suite-catalog bridge, or the attached bundle branch should be reopened from the same context.'
+    'No bundle inputs are pinned yet, so jump from the replay-route helper into the smaller replay-route shortcut surface and let that companion bridge decide whether replay shortcuts, the next-step matrix, the attached-page route, or the attached bundle branch should be reopened from the same context.'
 }
 
 if ($Json) {
@@ -237,6 +242,7 @@ Write-Host (("  Suite router:          {0}") -f $route.read_first_suite_command)
 Write-Host (("  Change-area view:      {0}") -f $route.read_first_change_area_command)
 Write-Host (("  Attached HTML route:   {0}") -f $route.attached_html_change_area_command)
 Write-Host (("  Shortcut entrypoint:   {0}") -f $route.suite_router_shortcut_entrypoint_command)
+Write-Host (("  Replay shortcut:       {0}") -f $route.replay_route_shortcut_entrypoint_command)
 Write-Host (("  Google flow helper:    {0}") -f $route.read_first_google_flow_command)
 Write-Host (("  Suite-catalog bridge:  {0}") -f $route.suite_catalog_entrypoints_command)
 Write-Host (("  Suite handoff:         {0}") -f $route.suite_router_handoff_command)
