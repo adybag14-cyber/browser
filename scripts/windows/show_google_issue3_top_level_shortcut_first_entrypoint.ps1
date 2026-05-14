@@ -138,7 +138,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 top-level shortcut-first entrypoint'
-    purpose = 'Print the shortest top-level route from the headed validation suite catalog into the newer issue #3 suite-router shortcut entrypoint, while preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Print the shortest top-level route from the headed validation suite catalog into the newer issue #3 suite-router shortcut entrypoint, while also surfacing the attached-page compatibility branch and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -148,6 +148,9 @@ $entrypoint = [ordered]@{
         }) -RepoRootOverride $RepoRoot
         google_input_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'google-input'
+        }) -RepoRootOverride $RepoRoot
+        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'attached-html'
         }) -RepoRootOverride $RepoRoot
         google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'google-attached-html'
@@ -159,6 +162,7 @@ $entrypoint = [ordered]@{
     }
     helper_commands = [ordered]@{
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
+        attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
@@ -177,9 +181,11 @@ $entrypoint = [ordered]@{
         'Use this helper when the top-level headed validation suite catalog has already narrowed the route to issue #3 and you want the shortcut-first path printed without reopening the broader suite-catalog or replay-route surfaces first.',
         'Start with google_recommended when you want the broader localhost-first issue #3 runner named before the route narrows into the shortcut-first entrypoint.',
         'Start with google_input_change_area when the next replay is already known to stay inside issue #3 and you want the same top-level helper family reprinted before dropping into the suite-router shortcut entrypoint.',
-        'Start with google_attached_html_change_area when the next replay should still come from the attached-page issue #3 surface before you jump into the shortcut-first entrypoint.',
+        'Start with attached_html_change_area when the next replay should still come from the generic attached-page compatibility route before you jump into the shortcut-first issue #3 bridge.',
+        'Start with google_attached_html_change_area when the next replay should still come from the Google-shaped attached-page route before you jump into the shorter issue #3 helper chain.',
         'Start with attached_bundle_change_area when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned branch reprinted from the top-level suite router first.',
-        'Use suite_router_shortcut_entrypoint as the default next helper whenever no pinned bundle inputs need to take precedence, because it keeps the shortest bridge from the top-level suite catalog into replay_shortcuts, contextual_flow, the next-step matrix, and the broader compact helpers.',
+        'Use suite_router_shortcut_entrypoint as the default next helper whenever no pinned bundle inputs need to take precedence, because it keeps the shortest bridge from the top-level suite catalog into replay_shortcuts, attached_html_shortcut, contextual_flow, the next-step matrix, and the broader compact helpers.',
+        'Use attached_html_shortcut when the replay is already narrowed to attached-page follow-up and you want the broader attached-page compatibility branch kept visible before you widen back into replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use attached_bundle_first instead when explicit InputPath values are already pinned and the replay should stay on the known three-page compatibility set before widening back into the broader Google-only helpers.',
         'Use replay_shortcuts after the suite-router shortcut entrypoint when the route is already known to stay inside issue #3 and no saved summary, repo-root override, or pinned bundle inputs need to stay visible first.',
         'Keep the quickstart, replay-discovery, suite-router bridge, suite-catalog guide, and validation-chain notes nearby when you want the written route beside these commands.'
@@ -219,18 +225,21 @@ Write-Host (("Recommended next helper: {0}") -f $entrypoint.recommended_next_com
 Write-Host (("Why:                    {0}") -f $entrypoint.recommended_next_reason)
 Write-Host ''
 Write-Host 'Top-level suite-router bridge:'
-Write-Host (("  1. Google recommended: {0}") -f $entrypoint.top_level_commands.google_recommended)
-Write-Host (("  2. Google input:       {0}") -f $entrypoint.top_level_commands.google_input_change_area)
-Write-Host (("  3. Attached HTML:      {0}") -f $entrypoint.top_level_commands.google_attached_html_change_area)
-Write-Host (("  4. Attached bundle:    {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
-Write-Host (("  5. Google flow:        {0}") -f $entrypoint.top_level_commands.google_flow)
-Write-Host (("  6. Shortcut entry:     {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host (("  7. Replay shortcuts:   {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host (("  8. Next-step matrix:   {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host (("  9. Suite-catalog:      {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
+Write-Host (("  1. Google recommended:    {0}") -f $entrypoint.top_level_commands.google_recommended)
+Write-Host (("  2. Google input:          {0}") -f $entrypoint.top_level_commands.google_input_change_area)
+Write-Host (("  3. Attached HTML:         {0}") -f $entrypoint.top_level_commands.attached_html_change_area)
+Write-Host (("  4. Google attached HTML:  {0}") -f $entrypoint.top_level_commands.google_attached_html_change_area)
+Write-Host (("  5. Attached bundle:       {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
+Write-Host (("  6. Google flow:           {0}") -f $entrypoint.top_level_commands.google_flow)
+Write-Host (("  7. Shortcut entry:        {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  8. Attached shortcut:     {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host (("  9. Replay shortcuts:      {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 10. Next-step matrix:      {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 11. Suite-catalog:         {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
 Write-Host ''
 Write-Host 'Companion helpers:'
 Write-Host (("  Shortcut entrypoint: {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  Attached shortcut:   {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
 Write-Host (("  Replay shortcuts:    {0}") -f $entrypoint.helper_commands.replay_shortcuts)
 Write-Host (("  Contextual flow:     {0}") -f $entrypoint.helper_commands.contextual_flow)
 Write-Host (("  Next-step matrix:    {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
