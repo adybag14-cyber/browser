@@ -413,6 +413,7 @@ $localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File
 $localHtmlFixtureProbeCommand = "powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\local-html-fixtures\\chrome-local-html-fixture-probe.ps1 -FixturePaths '<saved-html-or-folder>'"
 $googleIssue3SuiteCatalogEntrypointsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1"
 $googleIssue3TopLevelShortcutFirstEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1"
+$googleIssue3TopLevelAttachedHtmlEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1"
 $googleIssue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
 $googleIssue3AttachedBundleFirstEntrypointCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1"
 
@@ -461,8 +462,10 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     if ($suite.Name -eq "google-recommended") {
         Write-Host ("Flow helper: {0}" -f $googleFlowCommand)
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
+        Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
+        Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
     }
     if ($suite.Name -eq "google-title") {
         Write-Host ("Surface checker: {0}" -f $googleTitleSurfaceCheckCommand)
@@ -535,7 +538,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     }
 
     $nextStep = if ($ChangeArea -eq "google-input") {
-        "Start with the dedicated Google-input flow helper, then print the issue #3 top-level shortcut-first entrypoint when the route is already known to stay inside the Google validation stack, or fall back to the suite-catalog bridge plus the next-step matrix when you still need the broader replay surfaces re-established first. From there widen into google-investigation-next, google-title, google-quick, google-home, the homepage-fixture surface checker plus flow helper, the reduced-home keypress-submit surface checker plus flow helper, google-submit-path, google-submit-timing, the dedicated form-controls Enter-order gate, the broader shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_home_keypress_submit_validation.ps1 when the saved homepage fixture is already green and you want the smaller real-surface keypress-before-submit bridge before the broader later submit-path wrappers."
+        "Start with the dedicated Google-input flow helper, then print the issue #3 top-level shortcut-first entrypoint when the route is already known to stay inside the Google validation stack, jump to the top-level attached-HTML route when the next replay is already narrowed to attached localhost pages, or fall back to the suite-catalog bridge plus the next-step matrix when you still need the broader replay surfaces re-established first. From there widen into google-investigation-next, google-title, google-quick, google-home, the homepage-fixture surface checker plus flow helper, the reduced-home keypress-submit surface checker plus flow helper, google-submit-path, google-submit-timing, the dedicated form-controls Enter-order gate, the broader shared Enter-order stack, and the dedicated live trace helper. Use .\\scripts\\windows\\run_google_home_keypress_submit_validation.ps1 when the saved homepage fixture is already green and you want the smaller real-surface keypress-before-submit bridge before the broader later submit-path wrappers."
     } elseif ($ChangeArea -eq "google-submit-path") {
         "Start with the reduced-home keypress-submit surface checker and flow helper when the saved homepage fixture is already green but you still want one smaller real-surface keypress-before-submit proof before the broader later submit-path wrappers. Then move into the dedicated submit-path surface checker so the later note, helper, and bounded probes fail fast if one was renamed or removed, and print the flow helper so the saved homepage fixture, submit-timing slice, the dedicated form-controls Enter-order gate, and the shared Enter-order ladder stay in order before you decide whether to run the one-command submit-path runner or isolate one later-stage slice by itself."
     } elseif ($ChangeArea -eq "google-form-controls-enter-order") {
@@ -598,8 +601,10 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     Write-Host ("Next step: {0}" -f $nextStep)
     if ($ChangeArea -eq "google-input") {
         Write-Host ("Issue #3 top-level shortcut-first entrypoint: {0}" -f $googleIssue3TopLevelShortcutFirstEntrypointCommand)
+        Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 suite-catalog bridge: {0}" -f $googleIssue3SuiteCatalogEntrypointsCommand)
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
+        Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
         Write-Host ("Investigation surface checker: {0}" -f $googleInvestigationNextSurfaceCheckCommand)
         Write-Host ("Investigation flow helper: {0}" -f $googleInvestigationNextFlowCommand)
         Write-Host ("Title surface checker: {0}" -f $googleTitleSurfaceCheckCommand)
@@ -666,6 +671,7 @@ Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName 
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-investigation-next"
 Write-Host "  .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1"
+Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1"
