@@ -44,6 +44,9 @@ $profiles = @{
         (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared suite router for subsystem-to-probe mapping."),
         (New-ValidationReference -Path "scripts/windows/check_headed_validation_surface.ps1" -Kind "file" -Purpose "General headed validation surface checker."),
         (New-ValidationReference -Path "scripts/windows/run_localhost_html_validation_recommended.ps1" -Kind "file" -Purpose "One-command localhost follow-up router for saved or attached HTML."),
+        (New-ValidationReference -Path "scripts/windows/check_attached_html_target_bundle_validation_surface.ps1" -Kind "file" -Purpose "Bundle-aware fail-fast checker for the known three-page attached HTML compatibility set."),
+        (New-ValidationReference -Path "scripts/windows/show_attached_html_target_bundle_validation_flow.ps1" -Kind "file" -Purpose "Printed bundle-aware attached HTML flow."),
+        (New-ValidationReference -Path "scripts/windows/run_attached_html_target_bundle_validation.ps1" -Kind "file" -Purpose "One-command bundle-aware attached HTML localhost runner."),
         (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Printed attached-HTML follow-up flow."),
         (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Printed Google-style attached-HTML follow-up flow.")
     )
