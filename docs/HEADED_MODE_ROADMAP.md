@@ -82,8 +82,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
+
+Use the top-level attached-page entrypoint when the broader validation router
+has already made attached localhost replay the next obvious branch and you want
+that broader live bridge reprinted before the route narrows again. Use the
+shortcut-first entrypoint when replay is already clearly inside attached-page
+follow-up and you want the smaller helper surface before widening back into
+replay shortcuts or the safe-route map. Keep the compact top-level quickstart
+and the suite-router attached-page quickstart nearby when the next replay
+should stay on the shorter attached-page path after the top-level bridge is
+printed.
 
 When the replay is already running from a non-default checkout, saved summary,
 or pinned bundle paths, preserve that state with `-RepoRoot`, `-SummaryPath`,
@@ -99,6 +112,22 @@ attached localhost follow-up:
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the broader
   Windows runbook already made attached localhost replay the next obvious
   branch.
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md` when you want the
+  shortest top-level companion before dropping deeper into the issue `#3`
+  helper chain.
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` when the broader top-level
+  attached-page bridge should stay visible beside the compact quickstart before
+  the route narrows again.
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` when you want the
+  compact top-level quickstart and the suite-catalog attached-page bridge kept
+  visible together before the helper chain narrows again.
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` when the live
+  top-level attached-page entrypoint is already open and you just need the
+  shortest written map of which nearby notes to keep beside it.
+- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the replay has
+  already narrowed back to the suite-router side and should keep that shorter
+  attached-page bridge visible before reopening replay shortcuts or the
+  safe-route map.
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the current
   inputs are already the pinned three-page compatibility bundle and you want
   page-by-page manual checks plus shared-subsystem failure routing before
@@ -107,6 +136,11 @@ attached localhost follow-up:
 For the broader Windows runbook and the longer validation chain, keep
 `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
 `docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
+`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`,
+`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`,
+`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
+`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
+`docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
 
