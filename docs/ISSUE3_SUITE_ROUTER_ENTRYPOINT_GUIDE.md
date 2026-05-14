@@ -32,6 +32,14 @@ nearby as well:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 ```
 
+If the current replay is already narrowed to the attached localhost HTML route
+itself and you want the shortest top-level bridge into the attached-page helper
+chain, keep this change-area entrypoint nearby as well:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+```
+
 If the next replay should stay pinned to the known attached three-page
 compatibility bundle, keep this change-area entrypoint nearby as well:
 
@@ -55,6 +63,23 @@ same context on the top-level shortcut helper too:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
+When the top-level suite router has already narrowed the work to the attached
+localhost HTML route and you want the attached-page-specific bridge instead of
+the wider shortcut surface, reopen the dedicated top-level attached HTML
+entrypoint right after that start point:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+```
+
+If the replay is already running from a non-default checkout, from an
+already-saved summary, or from explicit attached-bundle paths, preserve that
+same context on the top-level attached HTML helper too:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
 ## Default next helper
 
 After the top-level suite router, print the top-level shortcut-first entrypoint
@@ -71,6 +96,22 @@ the helper:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+If the top-level suite router already made it clear that the replay should stay
+on the attached localhost HTML route, print the top-level attached HTML
+entrypoint first so the narrower attached-page helper chain stays visible:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+```
+
+When the replay is running from a non-default checkout, from an already-saved
+summary, or from explicit attached-bundle paths, preserve that same context on
+the attached HTML helper too:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
 If you still want the wider compact bridge after the top-level shortcut helper,
@@ -110,6 +151,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 The current default is:
 
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` immediately after the top-level suite router when you want the shortest current bridge back into the issue `#3` helper chain
+- `show_google_issue3_top_level_attached_html_entrypoint.ps1` immediately after `show_headed_validation_suites.ps1 -ChangeArea attached-html` when the route is already narrowed to the attached localhost HTML branch and you want the shortest attached-page-specific bridge before the attached-page shortcut, replay-route shortcut, replay shortcuts, bundle-first helper, or safe-route entrypoints
 - `show_google_issue3_suite_catalog_entrypoints.ps1` after the top-level shortcut helper when you still want the widest compact bridge back into the current issue `#3` helper chain
 - `show_google_issue3_suite_router_next_steps.ps1` once the route is already known to stay inside issue `#3` and you want the fastest executable matrix before choosing the narrower branch
 - `show_google_issue3_replay_shortcuts.ps1` as the direct next helper after the top-level shortcut helper when the route is already narrow enough and you want the tightest shortcut surface before deciding whether to widen back into replay route, the bundle-first helper, or the safe-route entrypoints
@@ -117,16 +159,16 @@ The current default is:
 - `show_google_issue3_replay_route.ps1` when a `SummaryPath` is already available and the replay should stay narrow on the current saved-output context
 - `show_google_issue3_attached_bundle_first_entrypoint.ps1` when explicit `InputPath` values are already pinned to the current three-page compatibility set
 - `show_google_issue3_suite_router_handoff.ps1` when you explicitly want the broader read-first bridge reprinted after the top-level shortcut helper, catalog helper, or matrix has already narrowed the likely route
-- `show_google_issue3_safe_route_entrypoints.ps1` once the top-level shortcut helper, replay-route, replay-shortcuts, the broader handoff helpers, or the context bridge have already confirmed the current branch and you want the current safe-route commands plus the runner-state helper printed before the next fresh replay or reuse-current-outputs step
+- `show_google_issue3_safe_route_entrypoints.ps1` once the top-level shortcut helper, the top-level attached HTML helper, replay-route, replay-shortcuts, the broader handoff helpers, or the context bridge have already confirmed the current branch and you want the current safe-route commands plus the runner-state helper printed before the next fresh replay or reuse-current-outputs step
 
 Use `show_google_issue3_replay_route.ps1` whenever you want the broader
 attached-bundle branch, the current safe-route map, and the repo-root-aware
 runner next-step helper printed together before narrowing again.
 
 Use `show_google_issue3_replay_shortcuts.ps1` after the top-level shortcut
-helper or replay-route when you want the narrower shortcut surface for the
-attached-bundle branch, bundle-first helper, and safe-route entrypoints before
-choosing a wrapper-heavy next step.
+helper, the top-level attached HTML helper, or replay-route when you want the
+narrower shortcut surface for the attached-bundle branch, bundle-first helper,
+and safe-route entrypoints before choosing a wrapper-heavy next step.
 
 Use `show_google_issue3_google_flow_context_bridge.ps1` before replay-route,
 replay-shortcuts, or the safe-route entrypoints when the replay still needs the
@@ -135,10 +177,11 @@ to preserve repo root, browser path, host, saved-summary state, or pinned
 attached-bundle inputs all the way through the newer issue `#3` helpers.
 
 Use `show_google_issue3_safe_route_entrypoints.ps1` after the top-level
-shortcut helper, replay-route, replay-shortcuts, the broader suite-router
-handoff, or the context bridge when you want the current safe-route commands,
-notes, and runner next-step helper surfaced in one place before choosing
-between the fresh replay wrapper and the reuse-current-outputs wrapper.
+shortcut helper, the top-level attached HTML helper, replay-route,
+replay-shortcuts, the broader suite-router handoff, or the context bridge when
+you want the current safe-route commands, notes, and runner next-step helper
+surfaced in one place before choosing between the fresh replay wrapper and the
+reuse-current-outputs wrapper.
 
 ## Read-first helper order
 
@@ -159,6 +202,18 @@ attached-page route before any bundle inputs are pinned:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+```
+
+Use this compact sequence when the replay is already narrowed to the attached
+localhost HTML route and should stay on the attached-page-specific bridge
+before widening again:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
 ```
@@ -194,7 +249,7 @@ attached three-page compatibility bundle first:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 ```
 
@@ -215,6 +270,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_sa
 - `docs/WINDOWS_FULL_USE.md` for the broader Windows headed runbook
 - `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md` for the wider prose bridge from the top-level validation catalog into the current helper chain
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` for the narrower prose bridge from the top-level shortcut helper into replay shortcuts
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` for the attached-page-specific bridge from the top-level suite router into the narrower attached localhost helper chain
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` for the shortest current safe-route replay path
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` for wrapper precedence and fresh replay entrypoints
 - `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md` for the direct runner patch loop after the safe-route handoff emits `ready-for-runner-patch`, `already-direct`, or `runner-already-wired-regenerate-outputs`
@@ -232,6 +288,7 @@ the narrower branch.
 
 - no saved summary and no explicit bundle paths: go straight from the top-level suite router to the top-level shortcut helper, then replay shortcuts, then open the safe-route entrypoints helper before the next wrapper-heavy replay step
 - current replay still entering from the attached-page issue `#3` surface: reopen `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` first, then move into the top-level shortcut helper before narrowing into replay shortcuts or the safe-route map
+- current replay already narrowed to the attached localhost HTML route: reopen `show_headed_validation_suites.ps1 -ChangeArea attached-html` first, then move into `show_google_issue3_top_level_attached_html_entrypoint.ps1` before narrowing into the attached HTML shortcut, replay shortcuts, or the safe-route map
 - top-level suite router already narrowed the route and no wider bridge is needed: jump from the top-level shortcut helper straight to replay shortcuts, then open the safe-route entrypoints helper or widen back into replay route only if the next choice still is not obvious
 - saved summary, browser path, repo-root override, host override, or pinned bundle inputs already present: use the top-level shortcut helper with that same context first, then widen into the context bridge, replay route, or the next-step matrix only as needed
 - saved summary already present and the replay is already narrowed: go to replay route first, then narrow into replay shortcuts and the safe-route entrypoints helper only as needed
