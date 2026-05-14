@@ -11,6 +11,7 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 - `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`
@@ -57,6 +58,8 @@ Use `-ChangeArea attached-html` when the current replay is already centered on t
 
 Because `show_headed_validation_suites.ps1` now prints the issue `#3` top-level attached HTML route, the compact top-level attached-page quickstart, and the bundle-first helper directly from the broader `google-recommended` and `google-input` entrypoints, reopen one of those top-level router surfaces first when attached localhost follow-up has become the next obvious branch but the replay has not been narrowed to `-ChangeArea attached-html` yet.
 
+Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` nearby when the replay is being reopened from `docs/WINDOWS_FULL_USE.md` first and you want that broader Windows runbook entrypoint to stay aligned with the narrower attached-page helper order described in this quickstart.
+
 Use this route when you want the attached-page re-entry surfaced directly from the main validation catalog before you drop into the narrower issue-specific attached-page helpers:
 
 ```powershell
@@ -66,6 +69,8 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1
 ```
+
+If you are arriving from `docs/WINDOWS_FULL_USE.md` rather than the replay quickstart itself, reopen `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` first and then follow the same top-level router sequence so the broader Windows runbook and this narrower replay note stay in sync.
 
 Use that route when:
 - the broader issue `#3` router already made attached localhost follow-up obvious
@@ -247,6 +252,7 @@ These match the `read_first_*` commands printed by `show_google_issue3_safe_rout
 Use them in this order when helpful:
 - `show_google_issue3_suite_catalog_entrypoints.ps1` when you want the exact top-level suite-router entrypoints and the current issue `#3` replay helpers surfaced together before choosing the narrower branch
 - `show_google_issue3_suite_router_quickstart.ps1` when the top-level suite router already made issue `#3` obvious and you want the shortest bridge from that router into the newer replay helpers without reopening the wider catalog helper first
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the broader Windows runbook has already narrowed the replay to attached localhost follow-up and you want the shortest written bridge from `docs/WINDOWS_FULL_USE.md` into the suite-router attached-page quickstart, the top-level attached-page bridge, replay shortcuts, and the safe-route entrypoints without reopening the broader suite-catalog helper first
 - `-SuiteName google-recommended` when you want the top-level suite router to surface the broader issue `#3` runner and its companion checkpoints first, then jump straight to `show_google_issue3_suite_router_quickstart.ps1`, `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, or `show_google_issue3_top_level_attached_html_quickstart.ps1` when the attached localhost route is already the next obvious branch, or jump straight to `-ChangeArea attached-html-target-bundle` when the current inputs are the pinned three-page compatibility bundle
 - `-ChangeArea google-input` when you may need to branch into a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace slice instead of the broader recommended replay, and when the attached localhost route is already the next obvious branch reopen `show_google_issue3_top_level_attached_html_quickstart.ps1`, `show_google_issue3_top_level_attached_html_entrypoint.ps1`, or `show_google_issue3_suite_router_attached_html_quickstart.ps1` immediately after the router output; when the next run already knows it should stay on the current shortcut surface reopen `show_google_issue3_suite_router_quickstart.ps1`, `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, or `show_google_issue3_replay_shortcuts.ps1` instead; when the current inputs are the pinned three-page compatibility bundle prefer `-ChangeArea attached-html-target-bundle` before the broader wrapper-heavy helpers
 - `-ChangeArea attached-html` when the current replay is already centered on the attached localhost compatibility pages and you want the main validation catalog to print the broader attached-page route before you branch into the suite-router attached-page quickstart, the issue-specific attached-page bridge, the top-level shortcut bridge, the top-level attached-page quickstart, the replay shortcuts, the next-step matrix, or the pinned bundle-first route
