@@ -63,6 +63,9 @@ Attached HTML target intent:
   layout, or rendering path that broke. Do not special-case one saved page if
   the same headed subsystem would affect the others.
 
+For page-by-page manual checks on that same pinned three-page route, keep
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby.
+
 Saved-page or attached-page localhost follow-up:
 
 ```powershell
@@ -88,7 +91,8 @@ stays on the same context.
 
 For the broader Windows runbook and the longer validation chain, keep
 `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
-and `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
+`docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
 
 ## Milestones
 
