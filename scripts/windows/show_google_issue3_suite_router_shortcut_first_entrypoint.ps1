@@ -149,6 +149,9 @@ $entrypoint = [ordered]@{
         google_input_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'google-input'
         }) -RepoRootOverride $RepoRoot
+        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'google-attached-html'
+        }) -RepoRootOverride $RepoRoot
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
@@ -173,6 +176,7 @@ $entrypoint = [ordered]@{
         'Use this helper when issue #3 work is clearly inside the top-level Windows validation router and you want the shortcut-first bridge printed without reopening the broader suite-catalog or replay-route surfaces first.',
         'Start with google_recommended when you want the top-level suite catalog to name the broader localhost-first issue #3 runner before the route narrows.',
         'Start with google_input_change_area when the route is already known to stay inside issue #3 and you want the same top-level helper family reprinted before dropping into replay_shortcuts, contextual_flow, attached_bundle_first, or the wrapper-heavy safe-route helpers.',
+        'Start with google_attached_html_change_area when the replay is already entering issue #3 from the attached-page follow-up surface before the bundle is pinned, so that narrower top-level route stays visible before you choose replay_shortcuts, contextual_flow, attached_bundle_first, or the wrapper-heavy safe-route helpers.',
         'Start with attached_bundle_change_area when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned branch shown from the top-level suite router first.',
         'Use replay_shortcuts as the default next helper when no pinned bundle inputs, saved summary, or non-default repo root need to stay visible first.',
         'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and you want the next surface to keep that replay context aligned before choosing between replay_shortcuts, replay_route, attached_bundle_first, or the later wrapper-heavy helpers.',
@@ -221,12 +225,13 @@ Write-Host ''
 Write-Host 'Top-level suite-router bridge:'
 Write-Host (("  1. Google recommended: {0}") -f $entrypoint.top_level_commands.google_recommended)
 Write-Host (("  2. Google input:       {0}") -f $entrypoint.top_level_commands.google_input_change_area)
-Write-Host (("  3. Attached bundle:    {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
-Write-Host (("  4. Google flow:        {0}") -f $entrypoint.top_level_commands.google_flow)
-Write-Host (("  5. Replay shortcuts:   {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host (("  6. Contextual flow:    {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host (("  7. Next-step matrix:   {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host (("  8. Bundle first:       {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host (("  3. Attached HTML:      {0}") -f $entrypoint.top_level_commands.google_attached_html_change_area)
+Write-Host (("  4. Attached bundle:    {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
+Write-Host (("  5. Google flow:        {0}") -f $entrypoint.top_level_commands.google_flow)
+Write-Host (("  6. Replay shortcuts:   {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host (("  7. Contextual flow:    {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host (("  8. Next-step matrix:   {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host (("  9. Bundle first:       {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host 'Companion helpers:'
 Write-Host (("  Replay shortcuts:    {0}") -f $entrypoint.helper_commands.replay_shortcuts)
