@@ -22,6 +22,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 - `docs/WINDOWS_FULL_USE.md`
 
@@ -96,6 +97,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_tar
 ```
 
 Use that bundle-first route when the known three-page compatibility set should stay pinned all the way through the top-level attached-page quickstart, the suite-router attached-page quickstart, the suite-catalog helper, the bundle-first branch, flow helper, and delegated localhost runner before widening back into the broader issue `#3` helper stack.
+
+## Keep the pinned bundle visible
+
+When the replay is staying on the known three-page compatibility set, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` open beside the bundle-first route above. Use it to confirm that the current input set still matches the Google Safety Centre page, the Anthropic job application page, and the UAP encounters page before the route narrows into `show_google_issue3_attached_bundle_first_entrypoint.ps1`, `show_attached_html_target_bundle_validation_flow.ps1`, or the delegated localhost runner.
+
+Use that reference-first check when the route has already narrowed from the top-level attached-page quickstart into the suite-catalog bridge and you want the exact three-page compatibility surface to stay explicit while bundle-first validation is being replayed.
 
 ## Preserve replay context
 
@@ -198,7 +205,7 @@ Once `show_headed_validation_suites.ps1` has already narrowed the route to attac
 - replay reopened from `docs/WINDOWS_FULL_USE.md`: go from `show_google_issue3_windows_full_use_attached_html_route.ps1` to `show_headed_validation_suites.ps1 -ChangeArea attached-html`, then the top-level attached-page quickstart, then the suite-router attached-page quickstart, then the suite-catalog attached-page helper before narrowing into the issue-specific attached-page bridge or replay shortcuts
 - no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` to the suite-router attached-page quickstart, then the top-level attached-page quickstart, then the suite-catalog attached-page helper, then the Google attached-page entrypoint, then the attached-page shortcut, then replay shortcuts, then the safe-route map
 - Google-specific attached-page surface still matters more than the generic shortcut chain: go from `-ChangeArea google-attached-html` to the suite-router attached-page quickstart, then the top-level attached-page quickstart, then the suite-catalog attached-page helper, then the Google attached-page entrypoint before narrowing further
-- explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
+- explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` before the bundle-first helper so the exact three-page compatibility set stays visible while the suite-catalog bridge narrows into the bundle flow
 - saved summary or repo-root override already present: reopen the top-level attached-page quickstart and the suite-router attached-page quickstart with that same context first, then the suite-catalog attached-page helper, then choose replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
 
 Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
