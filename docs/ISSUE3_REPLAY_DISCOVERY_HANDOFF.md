@@ -5,9 +5,13 @@ Use this note when issue `#3` needs the fastest read-first bridge from the top-l
 Keep this note beside:
 - `docs/WINDOWS_FULL_USE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
@@ -36,7 +40,21 @@ Use `attached-html` when the generic three-page compatibility route should stay 
 
 ## Attached localhost re-entry
 
-If you are reopening the route from `docs/WINDOWS_FULL_USE.md`, read `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` first so the broader Windows runbook stays aligned with the narrower attached-page helper order below.
+If you are reopening the route from `docs/WINDOWS_FULL_USE.md`, keep the broader Windows-first branch visible long enough to rerun its fail-fast route checker and reopen the newer validation-router and catalog-side bridge before the narrower top-level attached-page helpers take over:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
+.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
+```
+
+Use that route when the broader Windows runbook already made attached localhost follow-up obvious and you want the route-level surface checker, the validation-router attached-html bridge, the Windows-first catalog quickstart, and the narrower top-level note family all describing the same re-entry order.
 
 When the top-level suite router already made attached localhost follow-up obvious, prefer this compact chain:
 
@@ -44,6 +62,7 @@ When the top-level suite router already made attached localhost follow-up obviou
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
@@ -59,8 +78,13 @@ If the replay already carries a non-default checkout, a saved summary, or explic
 
 ## Choose The Next Helper Quickly
 
+- `show_google_issue3_windows_full_use_attached_html_route.ps1`: use this when the replay is reopening directly from `docs/WINDOWS_FULL_USE.md` and the broader Windows-side attached-page route should stay visible first.
+- `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`: use this before narrowing back into the attached-page helper chain when the Windows-first route was the last broader branch and you want missing helpers or renamed notes to fail fast.
+- `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`: use this when the Windows-first route should keep the validation-router handoff visible before the narrower top-level attached-page helpers take over.
+- `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`: use this when the Windows full-use branch should keep the catalog-side attached-page quickstart visible beside the narrower top-level helper chain.
 - `show_google_issue3_top_level_attached_html_quickstart.ps1`: use this first when the top-level suite router already narrowed replay to attached localhost follow-up and you want the shortest top-level attached-page bridge before the broader attached-page notes reopen.
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1`: use this when you want the broader top-level attached-page bridge reprinted before the route narrows into the newer suite-router or suite-catalog attached-page helpers.
+- `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`: use this when the compact top-level attached-page route and the suite-catalog-side bridge should stay visible together before the replay narrows again.
 - `show_google_issue3_suite_router_attached_html_quickstart.ps1`: use this when the route is already inside attached-page follow-up and you want the suite-router-side attached-page bridge kept visible before choosing between the catalog bridge, the attached-page shortcut, replay route, replay shortcuts, or the safe-route map.
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`: use this when the suite-catalog-side attached-page bridge should stay visible before the route narrows again.
 - `show_google_issue3_attached_html_shortcut_entrypoint.ps1`: use this when the attached-page compatibility branch itself should stay visible before widening into replay route, replay shortcuts, the next-step matrix, or the safe-route map.
@@ -73,4 +97,4 @@ If the replay already carries a non-default checkout, a saved summary, or explic
 
 ## Practical Rule
 
-From the top-level suite router, prefer `show_google_issue3_top_level_attached_html_quickstart.ps1` first whenever attached localhost follow-up is already the next obvious branch. If you are arriving from `docs/WINDOWS_FULL_USE.md`, keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` open first and then follow the same attached-page helper chain. Once the route is clearly inside the narrower attached-page helpers, prefer `show_google_issue3_replay_route.ps1`, then `show_google_issue3_replay_route_shortcut_entrypoint.ps1`, before widening back into the longer validation-chain notes or the wrapper-heavy safe-route work.
+From the top-level suite router, prefer `show_google_issue3_top_level_attached_html_quickstart.ps1` first whenever attached localhost follow-up is already the next obvious branch. If you are arriving from `docs/WINDOWS_FULL_USE.md`, rerun `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, reopen `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`, keep `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1` nearby, and then follow the same narrower attached-page helper chain. Once the route is clearly inside the narrower attached-page helpers, prefer `show_google_issue3_replay_route.ps1`, then `show_google_issue3_replay_route_shortcut_entrypoint.ps1`, before widening back into the longer validation-chain notes or the wrapper-heavy safe-route work.
