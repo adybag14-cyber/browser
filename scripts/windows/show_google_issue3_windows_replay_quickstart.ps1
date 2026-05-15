@@ -159,7 +159,7 @@ $helper = [ordered]@{
     suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
-    suite_router_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
+    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     safe_route_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     commands = [ordered]@{
         google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
@@ -205,7 +205,7 @@ $helper = [ordered]@{
         'Use replay_route and replay_route_shortcut_entrypoint when you want the broader issue #3 route or the narrower replay-route follow-up printed beside the shortcut helpers.',
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper surface should preserve that replay context.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle.',
-        'Keep the Windows replay quickstart note, the replay-side attached-html note, the Windows full-use attached-html route note, the validation-router attached-html note, the top-level attached-html notes, the top-level and suite-router shortcut-bridge notes, the suite-catalog attached-html bridge, the suite-router attached-html quickstart, the replay shortcut bridges, and the safe-route note nearby when you want the written route beside these commands.'
+        'Keep the Windows replay quickstart note, the replay-side attached-html note, the Windows full-use attached-html route note, the validation-router attached-html note, the top-level attached-html notes, the top-level and suite-router shortcut-bridge notes, the suite-catalog entrypoint guide, the suite-catalog attached-html bridge, the suite-router attached-html quickstart, the replay shortcut bridges, and the safe-route note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -293,7 +293,7 @@ Write-Host (("Top-level catalog note:      {0}") -f $helper.top_level_attached_h
 Write-Host (("Catalog bridge note:         {0}") -f $helper.suite_catalog_top_level_attached_html_catalog_quickstart_note_path)
 Write-Host (("Suite-catalog note:          {0}") -f $helper.suite_catalog_attached_html_bridge_note_path)
 Write-Host (("Suite-router note:           {0}") -f $helper.suite_router_attached_html_quickstart_note_path)
-Write-Host (("Suite-router guide:          {0}") -f $helper.suite_router_entrypoint_note_path)
+Write-Host (("Suite-catalog guide:        {0}") -f $helper.suite_catalog_entrypoint_note_path)
 Write-Host (("Safe-route note:             {0}") -f $helper.safe_route_note_path)
 Write-Host ''
 Write-Host 'Notes:'
