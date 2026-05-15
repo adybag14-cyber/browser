@@ -127,7 +127,9 @@ chosen helper.
 - `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`:
   use this when the Windows-first route should keep the validation-router
   handoff visible before the narrower top-level attached-page helpers take over.
-- `show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1`: use this when the Windows full-use branch should keep the catalog-side attached-page quickstart visible beside the narrower top-level helper chain.
+- `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`:
+  use this when the Windows full-use branch should keep the catalog-side
+  attached-page quickstart visible beside the narrower top-level helper chain.
 - `show_google_issue3_windows_replay_attached_html_quickstart.ps1`: use this
   when the replay-side attached-page ladder should stay visible before the
   top-level notes and replay-route helper take over.
@@ -143,7 +145,7 @@ chosen helper.
   you want the broader top-level attached-page bridge reprinted before the
   route narrows into the newer suite-router or suite-catalog attached-page
   helpers.
-- `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`: use this
+- `show_google_issue3_top_LEVEL_attached_html_catalog_quickstart.ps1`: use this
   when the compact top-level attached-page route and the suite-catalog-side
   bridge should stay visible together before the replay narrows again.
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`: use this when
@@ -210,7 +212,7 @@ into the longer validation-chain notes or the wrapper-heavy safe-route work.
   falling back to the suite-catalog attached-page bridge, replay-route helper,
   replay shortcuts, or the safe-route map.
 - wrapper-heavy safe-route work is the next real step again: use
-  `run_google_issue3_recommended_validation_safe_route_runner_PATCH_handoff.ps1`
+  `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1`
   when outputs may be stale or missing, and use
   `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` only when
   a saved `SummaryPath` is already trusted.
