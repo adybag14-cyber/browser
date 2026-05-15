@@ -40,6 +40,8 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md`
+- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
@@ -49,6 +51,12 @@ Keep these companion notes nearby:
 If the broader Windows-first route is already in view, also keep
 `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`
 nearby before the suite-catalog route narrows again.
+
+If the route is about to narrow through the shorter top-level shortcut branch,
+also keep `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md` and
+`docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md` nearby so that shortcut-first ladder
+stays aligned with the broader attached-page route instead of drifting into the
+replay-side notes too early.
 
 ## Goal
 
@@ -143,11 +151,11 @@ the attached-html change-area quickstart, the validation-router quickstart, the
 suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog
 attached-page bridge, the suite-router quickstart, the suite-router attached-page
 quickstart, the top-level attached-page quickstarts, the top-level
-shortcut-first bridge, the broader top-level attached-page bridge, the Google
-flow helper, the issue-specific attached-page bridge, the attached-page
-shortcut, replay shortcuts, the next-step matrix, contextual flow, the
-suite-router handoff, the replay route, the bundle-first branch, and the
-safe-route map all visible before the replay narrows further.
+shortcut-first bridge, its shortcut companion notes, the broader top-level
+attached-page bridge, the Google flow helper, the issue-specific attached-page
+bridge, the attached-page shortcut, replay shortcuts, the next-step matrix,
+contextual flow, the suite-router handoff, the replay route, the bundle-first
+branch, and the safe-route map all visible before the replay narrows further.
 
 ## Windows-first re-entry
 
@@ -277,7 +285,8 @@ bridge visible before you decide whether to widen again.
 
 Use this when the route is already known to stay inside issue `#3` and you want
 the shorter top-level bridge before the replay narrows into the tighter helper
-chain.
+chain, while keeping the top-level shortcut companion notes aligned with the
+broader attached-page route.
 
 11. `show_google_issue3_top_level_attached_html_entrypoint.ps1`
 
@@ -329,7 +338,7 @@ issue `#3` helper chain is already in view.
 
 Use this when explicit `InputPath` values are already pinned or when the replay
 should stay on the known three-page compatibility bundle before widening back
-into the broader Google-only helper chain.
+into the broader Google-only issue `#3` path.
 
 21. `show_google_issue3_safe_route_entrypoints.ps1`
 
@@ -345,12 +354,12 @@ surface check, the replay-side attached-html quickstart, the attached-html
 change-area quickstart, the validation-router attached-page quickstart, the
 suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog
 attached-page bridge, the suite-router attached-page quickstart, the top-level
-attached-page quickstarts, the top-level shortcut-first bridge, the broader
-top-level attached-page bridge, the Google flow helper, the issue-specific
-attached-page bridge, the attached-page shortcut, replay shortcuts, the
-next-step matrix, contextual flow, the suite-router handoff, the replay route,
-the bundle-first branch, and the safe-route map visible before reopening the
-longer validation-chain notes.
+attached-page quickstarts, the top-level shortcut-first bridge, the top-level
+shortcut companion notes, the broader top-level attached-page bridge, the
+Google flow helper, the issue-specific attached-page bridge, the attached-page
+shortcut, replay shortcuts, the next-step matrix, contextual flow, the
+suite-router handoff, the replay route, the bundle-first branch, and the
+safe-route map visible before reopening the longer validation-chain notes.
 
 - branch just moved or helper names may have drifted: rerun the suite-catalog surface checker before the broader replay-side checker so the compact route fails fast on missing notes or delegated helpers
 - no pinned bundle inputs and no saved replay state yet: go from the suite-catalog helper to replay shortcuts when you only need the tightest current helper surface, or reopen the broader attached-html ladder first when attached localhost follow-up is already obvious
