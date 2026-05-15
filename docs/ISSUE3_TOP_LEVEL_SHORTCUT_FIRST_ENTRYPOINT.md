@@ -55,7 +55,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
-```
 
 Use that route when the replay is still re-entering from the shared validation catalog and you want the broader Google lane reprinted before the top-level shortcut-first bridge hands off to the narrower issue `#3` helpers.
 
