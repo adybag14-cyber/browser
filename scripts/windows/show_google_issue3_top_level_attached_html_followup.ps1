@@ -144,6 +144,7 @@ $helper = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    top_level_attached_html_followup_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_FOLLOWUP.md'
     attached_html_change_area_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
@@ -173,7 +174,7 @@ $helper = [ordered]@{
         'Use suite_router_attached_html_quickstart or suite_catalog_attached_html_entrypoint when the suite-router-side attached-page helpers should stay visible before you narrow again.',
         'Use attached_html_shortcut when the route is already clearly inside attached-page follow-up and you want the shortest attached-page bridge before widening back into the next-step matrix or the safe-route map.',
         'Use attached_bundle_first when explicit input paths are already pinned to the known three-page compatibility bundle.',
-        'Keep the quickstart and bridge notes nearby when you want the written route beside these commands.'
+        'Keep the dedicated follow-up note nearby when you want this same change-area route, broader attached-page flow helper, compact top-level quickstart, broader top-level bridge, direct attached-page shortcut, next-step matrix, bundle-first branch, and safe-route map captured in prose beside the live helper output.'
     )
 }
 
@@ -228,6 +229,7 @@ Write-Host (("  Next-step matrix:         {0}") -f $helper.commands.suite_router
 Write-Host (("  Bundle-first helper:      {0}") -f $helper.commands.attached_bundle_first)
 Write-Host (("  Safe-route map:           {0}") -f $helper.commands.safe_route_entrypoints)
 Write-Host ''
+Write-Host (("Follow-up note:            {0}") -f (' ' + $helper.top_level_attached_html_followup_note_path))
 Write-Host (("Change-area quickstart:   {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
 Write-Host (("Top-level quickstart note: {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
 Write-Host (("Top-level bridge note:     {0}") -f (' ' + $helper.top_level_attached_html_bridge_note_path))
