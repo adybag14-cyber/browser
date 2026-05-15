@@ -272,6 +272,7 @@ Stay on the wrapper and safe-route chain instead of starting from the raw patch-
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_issue3_recommended_validation_repair_runner_output_patch_targets.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_runner_output_patch_targets_safe_route.ps1
 ```
 
