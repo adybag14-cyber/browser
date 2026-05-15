@@ -2,6 +2,8 @@
 
 Use this note when the current headed localhost replay should stay pinned to the known three-page attached HTML compatibility bundle before widening back into the broader issue `#3` helper stack.
 
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby once the bundle route is green so the page-by-page manual checks stay attached to the same pinned inputs, and use the reusable fixed-list local fixture probe when you want screenshot-and-title proof for that same saved-page set without reopening the broader attached-page wrapper flow.
+
 ## Known bundle
 
 The bundle checker and bundle-aware runner currently expect these three pages:
@@ -18,16 +20,18 @@ Treat them as three different compatibility surfaces:
 
 ## Read-first commands
 
-Start with the fail-fast bundle surfaces, then print the pinned route before launch:
+Start with the fail-fast bundle surfaces, keep the pinned manual checklist nearby, then print and run the locked route before widening into the reusable fixed-list proof path:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
 
-Use this route when the current saved or attached pages are still the known three-page compatibility set and you want the exact same locked inputs carried from the checker into the flow helper and delegated localhost runner.
+Use this route when the current saved or attached pages are still the known three-page compatibility set and you want the exact same locked inputs carried from the checker into the flow helper, the delegated localhost runner, the page-by-page manual checklist, and the reusable screenshot-and-title probe.
 
 ## Keep the issue #3 route nearby
 
@@ -44,6 +48,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 
 Use the bundle-first helper when explicit bundle paths are already pinned and the replay should stay on that known three-page set before widening back into the broader Google-only helper chain.
 
+## Reusable fixed-list proof
+
+Once the bundle-pinned localhost route is green, reuse the same saved-page set through the fixed-list local fixture probe when you want a tighter screenshot-and-title proof pass outside the broader attached-page wrapper flow:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
+```
+
+Use that narrower proof path when:
+
+- the bundle checker already confirmed the current saved pages still match the known three-page compatibility set
+- you want screenshot-and-title evidence for the same pinned inputs after the broader bundle route
+- the next run needs a smaller replay surface before widening back into the attached-page helper chain or manual follow-up
+
 ## Preserve replay context
 
 If the replay already carries a non-default checkout, a saved summary, or explicit bundle paths, keep that same context attached to the helper chain:
@@ -52,6 +71,8 @@ If the replay already carries a non-default checkout, a saved summary, or explic
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
@@ -63,4 +84,4 @@ Use that context-preserving form when:
 
 ## Practical rule
 
-Prefer the bundle-aware route first when the attached HTML inputs still match the known three-page compatibility set. Only widen back into the longer issue `#3` helper chain after the bundle checker, bundle flow helper, or delegated localhost runner makes the next failure state clear.
+Prefer the bundle-aware route first when the attached HTML inputs still match the known three-page compatibility set. Keep the pinned manual checklist nearby once that route is green, use the reusable fixed-list screenshot-and-title probe when you want tighter evidence for the same saved pages, and only widen back into the longer issue `#3` helper chain after the bundle checker, bundle flow helper, delegated localhost runner, manual checklist, or fixed-list probe makes the next failure state clear.
