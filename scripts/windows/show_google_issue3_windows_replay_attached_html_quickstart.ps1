@@ -118,6 +118,7 @@ $helper = [ordered]@{
     top_level_shortcut_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md'
     suite_catalog_entrypoints_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
+    google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     suite_router_shortcut_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
@@ -144,6 +145,7 @@ $helper = [ordered]@{
         suite_catalog_top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $sharedArguments
+        google_attached_html_validation_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $sharedArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
         replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments
@@ -167,6 +169,7 @@ $helper = [ordered]@{
         'Use suite_catalog_top_level_attached_html_catalog_quickstart when you want the replay-side attached-html ladder, the top-level attached-html catalog quickstart, and the suite-catalog-side bridge kept on the same surface before the route narrows again.',
         'Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.',
         'Use suite_catalog_attached_html_entrypoint when you want the suite-catalog-side attached-page bridge without reopening broader router helpers first.',
+        'Use google_attached_html_validation_flow when the current attached inputs are already Google-shaped and you want the dedicated attached-page asset-closure and preferred-initial-page helper visible before the route narrows back into the suite-router sidecar or the shorter attached-page shortcut.',
         'Keep suite_router_attached_html_quickstart nearby as the sidecar helper when the route needs to widen back toward the suite-router surface instead of narrowing directly into the shorter attached-page bridge or the attached-page shortcut.',
         'Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.',
         'Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surface reprinted before the route widens into the next-step matrix, bundle-first helper, or safe-route map.',
@@ -175,7 +178,7 @@ $helper = [ordered]@{
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper should preserve that replay context before it narrows again.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and keep docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md nearby so the locked inputs stay visible before the route widens again.',
         'Use windows_full_use_attached_html_route when the replay came from docs/WINDOWS_FULL_USE.md first and you want the broader Windows runbook attached-page route visible beside this shorter replay ladder.',
-        'Keep the Windows replay quickstart note, the replay-side attached-html quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router attached-html bridge note, the Windows full-use attached-html catalog quickstart note, the validation-router attached-page note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the top-level attached-page companion-notes map, the suite-catalog-to-top-level attached-html catalog quickstart note, the top-level shortcut bridge note, the suite-catalog entrypoints guide, the suite-catalog attached-page bridge note, the suite-router attached-page quickstart note, the suite-router shortcut bridge note, the replay-route shortcut bridge note, the attached-html target bundle reference note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows replay quickstart note, the replay-side attached-html quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router attached-html bridge note, the Windows full-use attached-html catalog quickstart note, the validation-router attached-page note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the top-level attached-page companion-notes map, the suite-catalog-to-top-level attached-html catalog quickstart note, the top-level shortcut bridge note, the suite-catalog entrypoints guide, the suite-catalog attached-page bridge note, the Google attached-page validation-flow note, the suite-router attached-page quickstart note, the suite-router shortcut bridge note, the replay-route shortcut bridge note, the attached-html target bundle reference note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -238,6 +241,7 @@ Write-Host (("  Catalog quickstart:       {0}") -f $helper.commands.top_level_at
 Write-Host (("  Catalog bridge quick:     {0}") -f $helper.commands.suite_catalog_top_level_attached_html_catalog_quickstart)
 Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Suite-catalog bridge:     {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
+Write-Host (("  Google attached flow:     {0}") -f $helper.commands.google_attached_html_validation_flow)
 Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)
 Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_shortcut_first)
 Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)
@@ -262,6 +266,7 @@ Write-Host (("Catalog bridge note:         {0}") -f (' ' + $helper.suite_catalog
 Write-Host (("Top-level shortcut note:     {0}") -f (' ' + $helper.top_level_shortcut_bridge_note_path))
 Write-Host (("Suite-catalog guide:         {0}") -f (' ' + $helper.suite_catalog_entrypoints_note_path))
 Write-Host (("Suite-catalog note:          {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
+Write-Host (("Google attached flow note:  {0}") -f (' ' + $helper.google_attached_html_validation_flow_note_path))
 Write-Host (("Suite-router note:           {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
 Write-Host (("Suite-router shortcut note:  {0}") -f (' ' + $helper.suite_router_shortcut_bridge_note_path))
 Write-Host (("Replay-route shortcut note:  {0}") -f (' ' + $helper.replay_route_shortcut_bridge_note_path))
