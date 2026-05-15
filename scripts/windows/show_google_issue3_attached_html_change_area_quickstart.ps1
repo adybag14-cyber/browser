@@ -162,7 +162,7 @@ if ($InputPath) {
 
 $helper = [ordered]@{
     issue = 'Google issue #3 attached-html change-area quickstart'
-    purpose = 'Print the shortest follow-up from show_headed_validation_suites.ps1 -ChangeArea attached-html into the compact issue #3 attached-page helper chain while also surfacing the broader attached-page flow helper, the dedicated change-area surface checker, and preserving repo-root, saved-summary, and pinned bundle-input context.'
+    purpose = 'Print the shortest follow-up from show_headed_validation_suites.ps1 -ChangeArea attached-html into the compact issue #3 attached-page helper chain while also surfacing the broader attached-page flow helper, the dedicated change-area surface checker, the suite-catalog-to-top-level attached-page catalog quickstart, the dedicated suite-catalog guide, and preserving repo-root, saved-summary, and pinned bundle-input context.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -173,6 +173,8 @@ $helper = [ordered]@{
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
+    suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
+    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     commands = [ordered]@{
@@ -189,9 +191,11 @@ $helper = [ordered]@{
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $sharedArguments
         top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
+        suite_catalog_top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         top_level_shortcut_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
+        suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $sharedArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $sharedArguments
@@ -203,20 +207,22 @@ $helper = [ordered]@{
     notes = @(
         'Start with attached_html_change_area when the top-level headed validation router already narrowed the replay to the generic attached localhost compatibility route and you want that route reprinted before you choose a smaller issue #3 helper.',
         'Run validation_surface_check before the attached-html change-area quickstart when you want the note, helper, and follow-up attached-page chain to fail fast after branch moves.',
-        'Use attached_html_flow when you want the broader attached-page helper surface visible from that same change-area entry before dropping into the issue-specific quickstarts or the shortcut companion.',
+        'Use attached_html_flow when you want the broader attached-page localhost flow helper visible from that same change-area entry before dropping into the issue-specific quickstarts or the shortcut companion.',
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before you narrow again.',
         'Use top_level_attached_html_quickstart as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the compact top-level attached-page route visible before you drop into the narrower bridge and shortcut helpers.',
         'Use top_level_attached_html_catalog_quickstart when you want the compact top-level attached-page route and the suite-catalog-side bridge kept visible together before the route narrows again.',
+        'Use suite_catalog_top_level_attached_html_catalog_quickstart when you want the narrower suite-catalog-to-top-level catalog handoff printed before the dedicated suite-catalog guide or the suite-catalog attached-page bridge takes over.',
         'Use suite_router_attached_html_quickstart when the next replay should stay closer to the suite-router-side attached-page branch before widening back into the broader helper chain.',
         'Use top_level_attached_html_entrypoint when the route is already clearly inside the issue-specific attached-page branch and you want the broader top-level attached-page bridge reprinted before the shorter quickstart or shortcut helpers.',
         'Use top_level_shortcut_first_entrypoint when the replay is already narrowed enough that the shortest top-level shortcut bridge is the most useful follow-up.',
+        'Use suite_catalog_entrypoints when you want the dedicated suite-catalog guide reprinted before the narrower suite-catalog attached-page bridge so the broader catalog-side route map stays visible beside the compact top-level attached-page helpers.',
         'Use suite_catalog_attached_html_entrypoint when the suite-catalog-side attached-page bridge should stay visible before you narrow again.',
         'Use attached_html_shortcut when the route is already clearly inside attached-page follow-up and you want the shortest bridge before widening back into replay_shortcuts, the next-step matrix, contextual_flow, or the safe-route map.',
         'Use replay_shortcuts when the route is already narrow enough that the compact issue #3 replay surface is the next best layer.',
         'Use attached_bundle_change_area and attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader helper chain.',
-        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before you choose between the quickstarts, the broader attached-page flow helper, shortcuts, next-step matrix, or safe-route wrapper.',
+        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before you choose between the quickstarts, the broader attached-page flow helper, the suite-catalog-to-top-level catalog handoff, the dedicated suite-catalog guide, shortcuts, next-step matrix, or safe-route wrapper.',
         'Use safe_route_entrypoints only after the replay is already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
-        'Keep the attached-html change-area quickstart note, the Windows full-use attached-html route note, the Windows replay quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the top-level attached-page bridge note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the attached-html change-area quickstart note, the Windows full-use attached-html route note, the Windows replay quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the top-level attached-page bridge note, the suite-catalog-to-top-level attached-page catalog quickstart note, the dedicated suite-catalog guide, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -231,9 +237,9 @@ $helper.recommended_next_command = $helper.commands[$helper.recommended_next_key
 $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 attached-page helper chain.'
 } elseif ($helper.recommended_next_key -eq 'contextual_flow') {
-    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the broader attached-page flow helper, the attached-page quickstarts, shortcuts, next-step matrix, or the safe-route helper.'
+    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the broader attached-page flow helper, the attached-page quickstarts, the newer suite-catalog surfaces, shortcuts, next-step matrix, or the safe-route helper.'
 } else {
-    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the top-level attached-html change-area route into the compact top-level attached-page quickstart while keeping the broader attached-page flow helper, the fail-fast checker, and the shortcut companion nearby.'
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the top-level attached-html change-area route into the compact top-level attached-page quickstart while keeping the broader attached-page flow helper, the fail-fast checker, the newer catalog-side helper surfaces, and the shortcut companion nearby.'
 }
 
 if ($Json) {
@@ -264,28 +270,32 @@ Write-Host (("  Change-area surface check:  {0}") -f $helper.commands.validation
 Write-Host (("  Attached flow helper:       {0}") -f $helper.commands.attached_html_flow)
 Write-Host ''
 Write-Host 'Compact attached-page follow-up helpers:'
-Write-Host (("  Top-level quickstart:     {0}") -f $helper.commands.top_level_attached_html_quickstart)
-Write-Host (("  Catalog quickstart:       {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
-Write-Host (("  Suite-router quickstart:  {0}") -f $helper.commands.suite_router_attached_html_quickstart)
-Write-Host (("  Top-level attached route: {0}") -f $helper.commands.top_level_attached_html_entrypoint)
-Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_shortcut_first_entrypoint)
-Write-Host (("  Catalog attached bridge:  {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
-Write-Host (("  Attached shortcut:        {0}") -f $helper.commands.attached_html_shortcut)
-Write-Host (("  Replay shortcuts:         {0}") -f $helper.commands.replay_shortcuts)
-Write-Host (("  Next-step matrix:         {0}") -f $helper.commands.suite_router_next_steps)
-Write-Host (("  Contextual flow:          {0}") -f $helper.commands.contextual_flow)
-Write-Host (("  Bundle-first helper:      {0}") -f $helper.commands.attached_bundle_first)
-Write-Host (("  Safe-route map:           {0}") -f $helper.commands.safe_route_entrypoints)
+Write-Host (("  Top-level quickstart:       {0}") -f $helper.commands.top_level_attached_html_quickstart)
+Write-Host (("  Catalog quickstart:         {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
+Write-Host (("  Catalog top-level quick:    {0}") -f $helper.commands.suite_catalog_top_level_attached_html_catalog_quickstart)
+Write-Host (("  Suite-router quickstart:    {0}") -f $helper.commands.suite_router_attached_html_quickstart)
+Write-Host (("  Top-level attached route:   {0}") -f $helper.commands.top_level_attached_html_entrypoint)
+Write-Host (("  Top-level shortcut:         {0}") -f $helper.commands.top_level_shortcut_first_entrypoint)
+Write-Host (("  Catalog guide:              {0}") -f $helper.commands.suite_catalog_entrypoints)
+Write-Host (("  Catalog attached bridge:    {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
+Write-Host (("  Attached shortcut:          {0}") -f $helper.commands.attached_html_shortcut)
+Write-Host (("  Replay shortcuts:           {0}") -f $helper.commands.replay_shortcuts)
+Write-Host (("  Next-step matrix:           {0}") -f $helper.commands.suite_router_next_steps)
+Write-Host (("  Contextual flow:            {0}") -f $helper.commands.contextual_flow)
+Write-Host (("  Bundle-first helper:        {0}") -f $helper.commands.attached_bundle_first)
+Write-Host (("  Safe-route map:             {0}") -f $helper.commands.safe_route_entrypoints)
 Write-Host ''
-Write-Host (("Change-area quickstart:   {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
-Write-Host (("Windows full-use route:    {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
-Write-Host (("Windows replay quickstart: {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
-Write-Host (("Top-level quickstart note: {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
-Write-Host (("Catalog quickstart note:   {0}") -f (' ' + $helper.top_level_attached_html_catalog_quickstart_note_path))
-Write-Host (("Suite-router quickstart:   {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
-Write-Host (("Top-level bridge note:     {0}") -f (' ' + $helper.top_level_attached_html_bridge_note_path))
-Write-Host (("Catalog bridge note:       {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
-Write-Host (("Validation chain note:     {0}") -f (' ' + $helper.validation_chain_note_path))
+Write-Host (("Change-area quickstart:       {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
+Write-Host (("Windows full-use route:       {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
+Write-Host (("Windows replay quickstart:    {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
+Write-Host (("Top-level quickstart note:    {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
+Write-Host (("Catalog quickstart note:      {0}") -f (' ' + $helper.top_level_attached_html_catalog_quickstart_note_path))
+Write-Host (("Suite-router quickstart:      {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
+Write-Host (("Top-level bridge note:        {0}") -f (' ' + $helper.top_level_attached_html_bridge_note_path))
+Write-Host (("Catalog top-level quick note: {0}") -f (' ' + $helper.suite_catalog_top_level_attached_html_catalog_quickstart_note_path))
+Write-Host (("Catalog guide note:           {0}") -f (' ' + $helper.suite_catalog_entrypoint_note_path))
+Write-Host (("Catalog bridge note:          {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
+Write-Host (("Validation chain note:        {0}") -f (' ' + $helper.validation_chain_note_path))
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
