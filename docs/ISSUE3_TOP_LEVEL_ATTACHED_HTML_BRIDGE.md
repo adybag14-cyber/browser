@@ -35,6 +35,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
@@ -57,7 +58,7 @@ Keep these companion notes nearby:
 Start from the top-level attached-page router, keep the route guard, attached
 shortcut guard, compact change-area quickstart, broader attached-page flow
 helper, top-level shortcut surface, compact top-level quickstart, the newer
- top-level attached-page catalog quickstart, the suite-catalog-to-top-level
+top-level attached-page catalog quickstart, the suite-catalog-to-top-level
 attached-page catalog quickstart, and the broader top-level bridge visible long
 enough to choose the next attached-page helper deliberately, then default to
 `show_google_issue3_suite_router_attached_html_quickstart.ps1` before widening
@@ -188,7 +189,9 @@ pointing at the same narrower helper order.
 
 ## Router Variants
 
-If you want the broader Google-shaped attached-page surface first:
+If you want the broader Google-shaped attached-page surface first, keep
+`docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` nearby so the Google-like
+fixture route stays visible before the top-level helper chain narrows again:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
@@ -281,7 +284,7 @@ reopen the wider suite-catalog or replay-route families.
 - replay reopened from `docs/WINDOWS_FULL_USE.md`: rerun the Windows route check, reopen the Windows full-use validation-router bridge, then the Windows full-use attached-html catalog quickstart, then the replay-side surface check, then the replay-side attached-html quickstart, then the change-area quickstart, broader attached-page flow helper, top-level shortcut surface, top-level quickstart, top-level attached-page catalog quickstart, suite-catalog-to-top-level attached-page catalog quickstart, broader top-level bridge, and suite-router attached-page quickstart before the route widens again
 - replay reopened from `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`: rerun the replay-side surface check first, then reopen the replay-side attached-html quickstart, then the change-area quickstart, broader attached-page flow helper, top-level shortcut surface, top-level quickstart, top-level attached-page catalog quickstart, suite-catalog-to-top-level attached-page catalog quickstart, broader top-level bridge, and suite-router attached-page quickstart before the suite-catalog or replay-route helpers return
 - no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` to the route guard, attached-shortcut guard, change-area quickstart, broader attached-page flow helper, top-level shortcut surface, top-level quickstart, top-level attached-page catalog quickstart, suite-catalog-to-top-level attached-page catalog quickstart, broader top-level bridge, suite-router attached-page quickstart, issue-specific attached-page bridge, suite-catalog guide, suite-catalog attached-page bridge, attached-page shortcut, replay-route helper, replay shortcuts, next-step matrix, then the safe-route map
-- Google-specific attached-page surface still matters more than the generic shortcut chain: go from `-ChangeArea google-attached-html` to the top-level quickstart, top-level attached-page catalog quickstart, suite-catalog-to-top-level attached-page catalog quickstart, broader top-level bridge, suite-router attached-page quickstart, then the issue-specific attached-page bridge before narrowing further
+- Google-specific attached-page surface still matters more than the generic shortcut chain: reopen `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`, then go from `-ChangeArea google-attached-html` to the top-level quickstart, top-level attached-page catalog quickstart, suite-catalog-to-top-level attached-page catalog quickstart, broader top-level bridge, suite-router attached-page quickstart, and then the issue-specific attached-page bridge before narrowing further
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, then stay on the bundle-first helper after the change-area quickstart, top-level quickstart, top-level attached-page catalog quickstart, suite-catalog-to-top-level attached-page catalog quickstart, broader top-level bridge, and suite-router attached-page quickstart before widening back into the broader Google-only path
 - saved summary or repo-root override already present: reopen the change-area quickstart, top-level quickstart, top-level attached-page catalog quickstart, suite-catalog-to-top-level attached-page catalog quickstart, broader top-level bridge, and suite-router attached-page quickstart with that same context first, then choose the top-level shortcut surface, issue-specific attached-page bridge, suite-catalog guide, suite-catalog attached-page bridge, replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
 
