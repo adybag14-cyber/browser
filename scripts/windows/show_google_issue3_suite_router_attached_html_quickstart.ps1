@@ -96,7 +96,12 @@ function Format-HelperCommandWithRepoRootEnv {
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
         $fallbackArguments = [System.Collections.Generic.List[string]]::new()
         foreach ($entry in $Arguments.GetEnumerator()) {
-            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            $value = $entry.Value
+            if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values @($value)
+            } else {
+                Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $value
+            }
         }
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
@@ -108,6 +113,25 @@ function Format-HelperCommandWithRepoRootEnv {
             continue
         }
         if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+            $valueList = @($value | Where-Object {
+                if ($_ -is [string]) {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                } else {
+                    $null -ne $_
+                }
+            })
+            if ($valueList.Count -eq 0) {
+                continue
+            }
+
+            $command += " -$($entry.Key)"
+            foreach ($item in $valueList) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
             continue
         }
 
@@ -136,7 +160,10 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
-$emptyArguments = [System.Collections.Generic.List[string]]::new()
+$attachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
 
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router attached HTML quickstart'
@@ -168,7 +195,7 @@ $helper = [ordered]@{
         }) -RepoRootOverride $RepoRoot
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
-        attached_html_flow = Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $emptyArguments
+        attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
@@ -187,7 +214,7 @@ $helper = [ordered]@{
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before narrowing again.',
         'Use validation_router_attached_html_quickstart when the replay is still one step higher in the broader validation router and you want that written bridge visible before this suite-router attached-page helper narrows the route again.',
         'Use attached_html_change_area_quickstart when the replay is already centered on show_headed_validation_suites.ps1 -ChangeArea attached-html and you want the generic attached-page flow helper plus the narrower issue #3 route visible together before falling back to the shorter helper chain.',
-        'Use attached_html_flow when you want the broader attached-page localhost helper reprinted directly from this suite-router quickstart before the route narrows into the compact top-level quickstarts, the issue-specific attached-page bridge, or the attached-page shortcut companion.',
+        'Use attached_html_flow when you want the broader attached-page localhost helper reprinted directly from this suite-router quickstart while keeping the current repo root and any fixed input paths pinned before the route narrows into the compact top-level quickstarts, the issue-specific attached-page bridge, or the attached-page shortcut companion.',
         'Use suite_catalog_entrypoints when you want the wider suite-catalog command map reprinted before the attached-page route narrows into the suite-catalog-side bridge, the top-level attached-page helpers, the attached-page shortcut, replay shortcuts, the next-step matrix, contextual flow, the bundle-first branch, or the safe-route helper.',
         'Use top_level_attached_html_quickstart as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the shorter top-level attached-page bridge visible before reopening the catalog bridge, the catalog quickstart, the attached-page shortcut, replay shortcuts, or the next-step matrix.',
         'Use top_level_attached_html_catalog_quickstart when you want the shorter top-level attached-page quickstart plus the suite-catalog attached-page bridge kept visible together before the replay narrows into the attached-page shortcut, replay shortcuts, next-step matrix, bundle-first route, or safe-route helper.',
