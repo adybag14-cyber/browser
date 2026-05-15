@@ -81,6 +81,32 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_sanitized_saved_page_localhost_validation.ps1 -InputPath '<saved-html-or-folder>' -Wait
 ```
 
+Google-shaped attached-page localhost follow-up:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
+```
+
+Use this route when the current attached inputs already include a Google-like
+page and you want the stricter issue `#3` attached-page surface check, the
+local-asset audit, and the Google-first helper output visible before the route
+narrows back into the shorter top-level, suite-router, replay-shortcut, or
+bundle-first helpers.
+
+If the replay is already running from a non-default checkout, from a preferred
+starting page, from an explicit browser binary, or from pinned attached bundle
+paths, preserve that context directly in the Google-style helper chain:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>' -Wait
+```
+
 Issue `#3` attached-page follow-up:
 
 ```powershell
@@ -109,7 +135,7 @@ already made attached localhost replay the next obvious branch and you still
 want that router context reprinted before the route narrows again. Use the
 Windows replay attached-html quickstart when
 `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already narrowed the replay to the
-attached localhost lane and you want the replay-side helper ladder kept
+attached localhost lane and you want that replay-side helper ladder kept
 visible. Use the suite-catalog entrypoints guide, suite-catalog top-level
 attached-html catalog quickstart, and suite-catalog attached-html bridge when
 you want the replay-side ladder, the dedicated suite-catalog command map, the
@@ -150,9 +176,11 @@ attached localhost follow-up:
   again.
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`,
   `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
-  and `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md` when you want the
-  suite-catalog command map and attached-page bridge kept visible beside the
-  replay-side and top-level attached-page catalog notes.
+  `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, and
+  `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` when you want the
+  suite-catalog command map, the broader Google-style attached-page guide, and
+  the attached-page bridge kept visible beside the replay-side and top-level
+  attached-page catalog notes.
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
   `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, and
@@ -174,6 +202,7 @@ For the broader Windows runbook and the longer validation chain, keep
 `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
 `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
+`docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
