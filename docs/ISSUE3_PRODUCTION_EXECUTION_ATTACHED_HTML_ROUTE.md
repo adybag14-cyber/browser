@@ -11,6 +11,11 @@ validation-router attached-page quickstart, the smaller top-level bridges, the
 suite-router and suite-catalog bridges, and the pinned three-page
 compatibility bundle route.
 
+If the replay has not actually narrowed to attached or saved localhost HTML
+follow-up yet, reopen `docs/HEADED_MODE_VALIDATION_GATES.md` and the shared
+suite router first so the broader issue `#3` ladder stays visible before this
+narrower attached-page bridge takes over.
+
 ## Goal
 
 Keep the current attached-page route visible without reopening the full issue
@@ -19,6 +24,31 @@ Keep the current attached-page route visible without reopening the full issue
 Prefer this sequence when the production guide already pointed you at attached
 localhost follow-up after the bounded Google-style and shared Enter-order gates
 are green.
+
+## Validation-gates re-entry
+
+If the replay is still being chosen from the shared validation catalog rather
+than from the narrower attached-page lane already, reopen the validation gates
+first and only drop into this note once the attached-html branch is actually the
+next obvious move:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+```
+
+Use that route when the production guide or a broader issue `#3` replay still
+needs the shared validation catalog visible long enough to confirm that the
+attached-html lane, the Windows-first bridge, and the narrower replay-side
+attached-page helpers are all pointing at the same next step.
 
 ## Default read-first route
 
@@ -182,6 +212,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_h
 Keep these nearby when you want the written route beside the commands:
 
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
+- `docs/HEADED_MODE_VALIDATION_GATES.md`
 - `docs/WINDOWS_FULL_USE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`
@@ -204,5 +235,8 @@ localhost follow-up, keep the route on the Windows-first surface check, then
 its validation-router bridge, then the Windows-side catalog quickstart, then
 the replay-side attached-html quickstart, then the validation-router
 attached-page quickstart before reopening the smaller attached-page helper
-surface. Only reopen the longer validation-chain notes after the replay has
-narrowed back into the wrapper-heavy safe-route path.
+surface. If the replay still has not clearly narrowed to attached localhost
+follow-up, reopen `docs/HEADED_MODE_VALIDATION_GATES.md` and the shared suite
+router first instead of forcing this narrower route too early. Only reopen the
+longer validation-chain notes after the replay has narrowed back into the
+wrapper-heavy safe-route path.
