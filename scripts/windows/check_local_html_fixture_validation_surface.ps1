@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$RepoRoot,
+    [string[]]$InputPath,
     [switch]$Json
 )
 
@@ -32,6 +33,13 @@ $resolvedRepoRoot = if ($RepoRoot) {
 } else {
     Resolve-LightpandaRepoRoot $PSScriptRoot
 }
+
+$inputMode = if ($InputPath -and $InputPath.Count -gt 0) {
+    "explicit"
+} else {
+    "auto-discovered"
+}
+$explicitInputPathCount = if ($InputPath) { @($InputPath).Count } else { 0 }
 
 $references = @(
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that documents the reusable local HTML fixture probe."),
@@ -68,6 +76,8 @@ if ($Json) {
     [ordered]@{
         profile = "local-html-fixture"
         repo_root = $resolvedRepoRoot
+        input_mode = $inputMode
+        explicit_input_path_count = $explicitInputPathCount
         checked_count = @($results).Count
         missing_count = @($missing).Count
         references = @($results)
@@ -83,6 +93,10 @@ if ($Json) {
 Write-Host "Local HTML fixture validation surface check"
 Write-Host ""
 Write-Host ("Repo root: {0}" -f $resolvedRepoRoot)
+Write-Host ("Input mode: {0}" -f $inputMode)
+if ($explicitInputPathCount -gt 0) {
+    Write-Host ("Explicit input paths: {0}" -f $explicitInputPathCount)
+}
 Write-Host ""
 
 foreach ($result in $results) {
