@@ -141,7 +141,7 @@ Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $Repo
 
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay quickstart'
-    purpose = 'Print the main read-first replay entrypoint for issue #3, keeping the suite-catalog bridge, the suite-router quickstart, the replay-attached-html fail-fast checker, the replay-side attached-html helper, the top-level attached-html ladder, the shortcut bridges, and the safe-route helpers visible from one compact surface.'
+    purpose = 'Print the main read-first replay entrypoint for issue #3, keeping the suite-catalog bridge, the suite-router quickstart, the replay-attached-html fail-fast checker, the replay-side attached-html helper, its written companion note, the top-level attached-html ladder, the shortcut bridges, and the safe-route helpers visible from one compact surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -202,6 +202,7 @@ $helper = [ordered]@{
         'Use windows_replay_attached_html_surface_check before trusting the narrower replay-side attached-html ladder from another checkout, because it fails fast on missing replay-note, helper-script, or downstream attached-page surfaces before the route narrows again.',
         'Use windows_full_use_attached_html_route_surface_check before trusting the attached-page ladder from another checkout, because it fails fast on missing route notes, helper scripts, or downstream attached-page surfaces.',
         'Use windows_replay_attached_html_quickstart when the main replay note already narrowed the next step to the attached localhost branch and you want the shorter replay-side attached-page ladder printed directly.',
+        'Treat replay_attached_html_note_path as the read-first written companion to windows_replay_attached_html_quickstart once the main replay quickstart narrows into the attached localhost branch, so the helper command and note stay paired on the same surface.',
         'Use top_level_shortcut_first when the replay is already clearly inside issue #3 and you want the shorter top-level shortcut bridge kept visible before reopening the wider attached-page helpers.',
         'Use suite_router_shortcut_first after attached_html_shortcut when you want the narrower suite-router shortcut bridge reprinted before the route collapses into replay_shortcuts.',
         'Use replay_route and replay_route_shortcut_entrypoint when you want the broader issue #3 route or the narrower replay-route follow-up printed beside the shortcut helpers.',
@@ -224,7 +225,7 @@ $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached
 } elseif ($helper.recommended_next_key -eq 'contextual_flow') {
     'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the narrower attached-page helpers, replay shortcuts, or the safe-route map.'
 } else {
-    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so start from the suite-catalog bridge and keep the broader replay ladder visible before the route narrows again.'
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so start from the suite-catalog bridge and keep the broader replay ladder visible before the route narrows again. When the route reaches the replay-side attached HTML quickstart, keep the written replay attached note open beside it.'
 }
 
 if ($Json) {
@@ -264,6 +265,7 @@ Write-Host (("  Windows full-use route:    {0}") -f $helper.commands.windows_ful
 Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)
 Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)
 Write-Host (("  Replay attached quick:     {0}") -f $helper.commands.windows_replay_attached_html_quickstart)
+Write-Host (("  Replay attached note:      {0}") -f $helper.replay_attached_html_note_path)
 Write-Host (("  Top-level shortcut:        {0}") -f $helper.commands.top_level_shortcut_first)
 Write-Host (("  Top-level quickstart:      {0}") -f $helper.commands.top_level_attached_html_quickstart)
 Write-Host (("  Top-level bridge:          {0}") -f $helper.commands.top_level_attached_html_entrypoint)
