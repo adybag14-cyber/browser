@@ -14,6 +14,7 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
@@ -70,7 +71,7 @@ If the replay is running from a non-default checkout, from an already-saved summ
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-If `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already made attached localhost follow-up the next obvious branch and you want the replay-side attached-page ladder surfaced before reopening the broader top-level helpers, use:
+If this replay quickstart already made attached localhost follow-up the next obvious branch and you want the replay-side attached-page ladder surfaced before reopening the broader top-level helpers, use:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
@@ -88,7 +89,7 @@ Keep `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` nearby when you wa
 
 Because `show_headed_validation_suites.ps1` now prints the issue `#3` top-level attached HTML route, the compact top-level attached-page quickstart, the top-level attached-page catalog quickstart, and the bundle-first helper directly from the broader `google-recommended` and `google-input` entrypoints, reopen one of those top-level router surfaces first when attached localhost follow-up has become the next obvious branch but the replay has not been narrowed to `-ChangeArea attached-html` yet.
 
-Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, and `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` nearby when the replay is being reopened from `docs/WINDOWS_FULL_USE.md` first and you want that broader Windows runbook entrypoint, its newer Windows-first catalog quickstart, the replay-side attached-page ladder, and the narrower top-level attached-page note map to stay aligned with the shorter replay order described in this quickstart.
+Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, and `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` nearby when the replay is being reopened from `docs/WINDOWS_FULL_USE.md` first and you want that broader Windows runbook entrypoint, its route-level surface check, the Windows-to-validation-router bridge, the newer Windows-first catalog quickstart, the replay-side attached-page ladder, and the narrower top-level attached-page note map to stay aligned with the shorter replay order described in this quickstart.
 
 If the broader validation router already narrowed the replay to `-ChangeArea attached-html` and you want the shortest handoff into the compact top-level attached-page quickstarts before reopening the wider issue-specific helper chain, use:
 
@@ -119,17 +120,19 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 ```
 
-If you are arriving from `docs/WINDOWS_FULL_USE.md` rather than the replay quickstart itself, reopen `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, or print their companion helpers first and then follow the same top-level router sequence so the broader Windows runbook, its Windows-first catalog quickstart, this replay-side attached-page guide, and this narrower replay note stay in sync:
+If you are arriving from `docs/WINDOWS_FULL_USE.md` rather than the replay quickstart itself, reopen `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, and `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, or print their companion helpers first and rerun the Windows-side surface check, then follow the same top-level router sequence so the broader Windows runbook, its route-level surface check, its Windows-to-validation-router bridge, its Windows-first catalog quickstart, this replay-side attached-page guide, and this narrower replay note stay in sync:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 ```
 
 Use that route when:
 - the broader issue `#3` router already made attached localhost follow-up obvious
-- you still want the validation-router attached-page quickstart, the replay-side attached-page quickstart, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, the suite-router attached-page quickstart, and the catalog quickstart visible before the route narrows again
+- you still want the route-level surface check, the Windows-to-validation-router bridge, the validation-router attached-page quickstart, the replay-side attached-page quickstart, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, the suite-router attached-page quickstart, and the catalog quickstart visible before the route narrows again
 - the suite-catalog-side attached-page bridge and the bundle-first helper should remain easy to reopen from that same top-level surface before you widen back into the wrapper-heavy path
 
 If the replay is already narrowed to the attached localhost route from the main suite router and you want the shortest suite-router-side attached-page bridge before reopening the wider issue-specific helper chain, use:
