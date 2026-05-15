@@ -172,13 +172,14 @@ $entrypoint = [ordered]@{
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
+    suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     notes = @(
         'Use this helper when the suite-catalog surface is already open and you want the replay-side attached-html ladder plus the top-level attached-html catalog quickstart visible together before the route narrows again.',
         'Use suite_catalog_attached_html_entrypoint as the default next helper when no pinned bundle inputs, saved summary, or non-default repo root need to take precedence first.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that bundle should stay visible before the route widens back into the broader issue #3 helper chain.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the suite-catalog bridge, replay shortcuts, the next-step matrix, or the safe-route map.',
-        'Keep the suite-catalog entrypoint guide, the Windows replay attached-html quickstart note, the top-level attached-html quickstart note, the top-level attached-html catalog quickstart note, and the suite-catalog attached-html bridge note nearby when you want the written route beside these commands.'
+        'Keep the suite-catalog entrypoint guide, the Windows replay attached-html quickstart note, the top-level attached-html quickstart note, the top-level attached-html catalog quickstart note, this suite-catalog-to-top-level attached-html catalog quickstart note, and the suite-catalog attached-html bridge note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -240,6 +241,7 @@ Write-Host (("Suite-catalog guide:            {0}") -f $entrypoint.suite_catalog
 Write-Host (("Replay attached note:           {0}") -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Top-level quickstart note:      {0}") -f $entrypoint.top_level_attached_html_quickstart_note_path)
 Write-Host (("Top-level catalog note:         {0}") -f $entrypoint.top_level_attached_html_catalog_quickstart_note_path)
+Write-Host (("Catalog-side quick note:        {0}") -f $entrypoint.suite_catalog_top_level_attached_html_catalog_quickstart_note_path)
 Write-Host (("Catalog bridge note:            {0}") -f $entrypoint.suite_catalog_attached_html_bridge_note_path)
 Write-Host ''
 Write-Host 'Notes:'
