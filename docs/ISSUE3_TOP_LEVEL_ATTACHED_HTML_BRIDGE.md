@@ -39,6 +39,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 
@@ -47,6 +48,8 @@ Keep these companion notes nearby:
 Start from the top-level `attached-html`, `google-attached-html`, or `attached-html-target-bundle` router surfaces, keep the route guard and attached-shortcut guard visible when they matter, and move through the compact change-area and top-level attached-page helpers in the same order surfaced by the live PowerShell entrypoint.
 
 If the replay is reopening from the broader Windows-first route or from the replay-side attached-html quickstart, keep `show_google_issue3_windows_replay_attached_html_quickstart.ps1` visible before the top-level ladder narrows further so the Windows-side and replay-side note families still describe the same attached-page handoff.
+
+If the broader suite-catalog surface still matters before this top-level bridge narrows again, keep `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md` nearby and reopen `show_google_issue3_suite_catalog_entrypoints.ps1` before `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1` so the wider suite-catalog route stays aligned with the shorter top-level helper ladder.
 
 Prefer one of these narrower follow-ups before reopening the broader safe-route stack:
 - `show_google_issue3_google_attached_html_entrypoint.ps1`
