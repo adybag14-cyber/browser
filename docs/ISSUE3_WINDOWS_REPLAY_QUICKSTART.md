@@ -13,11 +13,10 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
-- `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
-- `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
@@ -39,6 +38,8 @@ If the replay is running from a non-default checkout, from an already-saved summ
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
+
+Keep `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md` nearby when you want the written version of that broader suite-catalog re-entry surface beside this quickstart.
 
 If the top-level suite router already made issue `#3` obvious and you want the shortest bridge from that router into the newer replay helpers without reopening the wider catalog helper first, use:
 
@@ -94,13 +95,13 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, and `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` nearby when you want the written route guard, the Windows-side bridge, the Windows-side catalog quickstart, and the replay-side attached-page ladder beside the helper chain before the route continues into the top-level attached-page notes.
+Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, and `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md` nearby when you want the written route guard, the Windows-side bridge, the Windows-side catalog quickstart, the replay-side attached-page ladder, and the broader suite-catalog re-entry surface beside the helper chain before the route continues into the top-level attached-page notes.
 
 ## Top-level router surfacing for attached localhost replay
 
 Because `show_headed_validation_suites.ps1` now prints the issue `#3` top-level attached HTML route, the compact top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-html catalog quickstart, and the bundle-first helper directly from the broader `google-recommended` and `google-input` entrypoints, reopen the route guard, the Windows-full-use attached-html route, the Windows-to-validation-router bridge, the Windows-side catalog quickstart, and the replay-side attached-page quickstart first when attached localhost follow-up has become the next obvious branch but the replay has not been narrowed to `-ChangeArea attached-html` yet.
 
-Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`, and `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` nearby when the replay is being reopened from `docs/WINDOWS_FULL_USE.md` first and you want that broader Windows runbook entrypoint, its route-level surface check, the Windows-to-validation-router bridge, the Windows-first catalog quickstart, the replay-side attached-page guide, the suite-catalog-to-top-level catalog bridge, and the narrower top-level attached-page note family to stay aligned with the shorter replay order described in this quickstart.
+Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`, and `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` nearby when the replay is being reopened from `docs/WINDOWS_FULL_USE.md` first and you want that broader Windows runbook entrypoint, its route-level surface check, the Windows-to-validation-router bridge, the Windows-first catalog quickstart, the replay-side attached-page guide, the suite-catalog re-entry guide, the suite-catalog-to-top-level catalog bridge, and the narrower top-level attached-page note family to stay aligned with the shorter replay order described in this quickstart.
 
 If the broader validation router already narrowed the replay to `-ChangeArea attached-html` and you want the shortest handoff into the replay-side attached-page quickstart before reopening the wider top-level helper family, use:
 
