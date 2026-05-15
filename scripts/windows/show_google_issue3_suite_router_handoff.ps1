@@ -225,8 +225,8 @@ $handoff.bridge_sequence = [ordered]@{
     attached_bundle_change_area = $handoff.suite_router_commands.attached_bundle_change_area
 }
 
-$recommendedNextHelperKey = 'suite_router_attached_html_quickstart'
-$recommendedNextHelperReason = 'No explicit input paths, saved summary, or repo-root override are in play yet, so reopen the suite-router attached-page quickstart next and keep the narrower issue #3 attached localhost route visible before widening back out into replay shortcuts, the next-step matrix, the suite-catalog bridge, the top-level attached-page bridges, replay route, or the safe-route map.'
+$recommendedNextHelperKey = 'suite_router_shortcut_entrypoint'
+$recommendedNextHelperReason = 'No explicit input paths, saved summary, or repo-root override are in play yet, so reopen the shortcut-first entrypoint next and keep the shorter issue #3 bridge visible before widening into replay shortcuts, the attached-page quickstarts, the next-step matrix, the suite-catalog bridge, replay route, or the safe-route map.'
 if ($handoff.explicit_input_path_count -gt 0) {
     $recommendedNextHelperKey = 'attached_bundle_first'
     $recommendedNextHelperReason = 'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle first before widening back into the broader Google-only issue #3 helper chain.'
