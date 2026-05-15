@@ -132,6 +132,7 @@ $route = [ordered]@{
     explicit_input_path_count = if ($recommendedInputPath) { @($recommendedInputPath).Count } else { 0 }
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     replay_discovery_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
+    replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
@@ -206,6 +207,7 @@ $route = [ordered]@{
         'Use fresh_replay_command when issue #3 outputs may be stale or missing.'
         'Use reuse_current_outputs_command only when the current issue #3 outputs are already present and trusted.'
         'If the wrapper reports ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, rerun runner_patch_next_step_command with that exact state while keeping the current repo-root and summary-path context attached.'
+        'Keep replay_route_shortcut_bridge_note_path open when show_google_issue3_replay_route.ps1 is already active and you want the shortest documented handoff into the replay-route shortcut helper before choosing between the attached-page, replay-shortcuts, next-step, bundle-first, or safe-route follow-up surfaces.'
         'When LIGHTPANDA_REPO_ROOT, a saved SummaryPath, or pinned InputPath values are already guiding the replay, the emitted suite-catalog, attached-page, shortcut-entrypoint, replay-route-shortcut, read-first, suite-router-handoff, suite-router-next-steps, replay-shortcuts, attached-bundle, safe-route, and runner-next-step commands preserve that same context so the replay-route shortcut can stay the default recommendation without losing the newer helper alignment.'
     )
 }
@@ -260,11 +262,12 @@ Write-Host (("  Reuse outputs:       {0}") -f $route.reuse_current_outputs_comma
 Write-Host (("  Runner next step:    {0}") -f $route.runner_patch_next_step_command)
 Write-Host ''
 Write-Host 'Notes:'
-Write-Host (("  Quickstart note:     {0}") -f $route.quickstart_note_path)
-Write-Host (("  Replay discovery:    {0}") -f $route.replay_discovery_note_path)
-Write-Host (("  Windows runbook:     {0}") -f $route.windows_runbook_note_path)
-Write-Host (("  Suite-router bridge: {0}") -f $route.suite_router_bridge_note_path)
-Write-Host (("  Validation chain:    {0}") -f $route.validation_chain_note_path)
+Write-Host (("  Quickstart note:      {0}") -f $route.quickstart_note_path)
+Write-Host (("  Replay discovery:     {0}") -f $route.replay_discovery_note_path)
+Write-Host (("  Replay shortcut note: {0}") -f $route.replay_route_shortcut_bridge_note_path)
+Write-Host (("  Windows runbook:      {0}") -f $route.windows_runbook_note_path)
+Write-Host (("  Suite-router bridge:  {0}") -f $route.suite_router_bridge_note_path)
+Write-Host (("  Validation chain:     {0}") -f $route.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Guidance:'
 foreach ($note in $route.notes) {
