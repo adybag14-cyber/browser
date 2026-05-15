@@ -19,7 +19,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
-- `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
+- `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
@@ -29,7 +29,7 @@ Keep these companion notes nearby:
 
 Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, or `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, then move into `show_google_issue3_top_level_attached_html_quickstart.ps1` when the next replay is already known to stay on the attached-page follow-up path.
 
-If the route is reopening specifically from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, keep both `show_google_issue3_attached_html_change_area_quickstart.ps1` and `show_attached_html_validation_flow.ps1` nearby so the broader attached-page flow helper stays visible before this top-level quickstart narrows the replay again. If the replay is re-entering from the broader validation router, keep `show_google_issue3_validation_router_attached_html_quickstart.ps1` visible as the shorter bridge into this note. If the route is already about to collapse into the tighter shortcut-first helper family, keep `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md`, `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`, `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`, and `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` visible before the replay widens again. When the newer catalog-side handoff still needs to stay visible, keep `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1` and `show_google_issue3_suite_catalog_entrypoints.ps1` beside the top-level catalog quickstart before the route drops to the suite-router or shortcut-side helpers. When the current pages are already the pinned three-page compatibility bundle, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` visible before the route narrows into the bundle-first branch.
+If the route is reopening specifically from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, keep both `show_google_issue3_attached_html_change_area_quickstart.ps1` and `show_attached_html_validation_flow.ps1` nearby so the broader attached-page flow helper stays visible before this top-level quickstart narrows the replay again. If the replay is re-entering from the broader validation router, keep `show_google_issue3_validation_router_attached_html_quickstart.ps1` visible as the shorter bridge into this note. If the route is already about to collapse into the tighter shortcut-first helper family, keep `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md`, `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`, `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`, `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`, and `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md` visible before the replay widens again. When the newer catalog-side handoff still needs to stay visible, keep `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1` and `show_google_issue3_suite_catalog_entrypoints.ps1` beside the top-level catalog quickstart before the route drops to the suite-router or shortcut-side helpers. When the current pages are already the pinned three-page compatibility bundle, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` visible before the route narrows into the bundle-first branch.
 
 From there, prefer one of these narrower follow-ups before reopening the broader wrapper-heavy safe route:
 - `show_google_issue3_attached_html_change_area_quickstart.ps1`
@@ -135,7 +135,7 @@ Use that route when:
 - the replay still benefits from seeing the broader top-level attached-page bridge and the shorter shortcut-first bridge before dropping into the shorter attached-page shortcut or replay shortcuts
 - you want the written quickstart to stay aligned with the newer catalog-side helper chain already reflected by the helper script and companion-note map
 
-If the broader top-level helper is already open, keep `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` beside it so the nearby-note map stays visible with the same re-entry order. If the route is already collapsing into the tighter shortcut-first family, keep `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md`, `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`, `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`, and `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` nearby too.
+If the broader top-level helper is already open, keep `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` beside it so the nearby-note map stays visible with the same re-entry order. If the route is already collapsing into the tighter shortcut-first family, keep `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md`, `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`, `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`, and `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` nearby too. If the replay is about to widen back into replay shortcuts or the wrapper-heavy safe-route map from this compact top-level branch, keep `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md` nearby as well.
 
 ## Top-level router variants
 
@@ -312,7 +312,7 @@ Use this when you want the attached-page compatibility route kept visible before
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-Use this when the route is already clearly inside issue `#3` and you want the tightest compact helper surface before deciding whether to widen into the next-step matrix, contextual flow, bundle-first helper, or the safe-route map.
+Use this when the route is already clearly inside issue `#3` and you want the tightest compact helper surface before deciding whether to widen into the next-step matrix, contextual flow, bundle-first helper, or the safe-route map. Keep `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md` nearby when this compact top-level branch is about to widen back into that broader replay stack.
 
 13. Suite-router next-step matrix
 
