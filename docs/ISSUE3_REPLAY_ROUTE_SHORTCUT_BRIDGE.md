@@ -73,6 +73,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
@@ -84,7 +85,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 Use that broader router-first route when:
 
 - the broader issue `#3` validation catalog already made attached localhost follow-up obvious, but the replay still needs the attached-html change-area quickstart and the validation-router attached-page bridge reopened before the replay-route helper narrows again
-- you still want the compact top-level attached-page quickstart, the broader top-level attached-page bridge, and the top-level attached-page catalog quickstart visible before the replay-route helper narrows again
+- you still want the replay-side Windows attached-page quickstart, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, and the top-level attached-page catalog quickstart visible before the replay-route helper narrows again
 - the suite-catalog attached-page bridge, the bundle-first helper, and the broader Windows-first catalog route should remain easy to reopen from that same broader router surface before you widen into the wrapper-heavy safe route
 
 If you are reopening the attached localhost route from `docs/WINDOWS_FULL_USE.md` first, keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, and `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` nearby or print the Windows-side route helper, route-level surface checker, validation-router bridge helper, Windows-first catalog quickstart, and replay-side attached-html quickstart first so the broader Windows runbook route, its fail-fast checker, its Windows-to-validation-router bridge, its narrower replay-side attached-page ladder, and the top-level attached-page note map stay aligned before following the same attached-html change-area quickstart, validation-router attached-page quickstart, top-level attached-page quickstart, top-level attached-page bridge, top-level attached-page catalog quickstart, and replay-route sequence:
