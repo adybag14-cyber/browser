@@ -18,6 +18,7 @@ Keep these companion notes nearby:
 
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
@@ -31,7 +32,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the suite-catalog entry surface, keep the broader `show_headed_validation_suites.ps1` routes visible, then reopen the Windows replay attached-html surface check, the replay-side attached-html quickstart, the validation-router attached-page quickstart, the Windows full-use attached-html catalog quickstart, the attached-html change-area quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the top-level attached-page quickstarts, and the shortcut-first helpers before the replay widens back into the wrapper-heavy safe route.
+Start from the suite-catalog entry surface, keep the broader `show_headed_validation_suites.ps1` routes visible, then reopen the Windows full-use attached-page route, the Windows-to-validation-router bridge, the Windows replay attached-html surface check, the replay-side attached-html quickstart, the validation-router attached-page quickstart, the Windows full-use attached-html catalog quickstart, the attached-html change-area quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the top-level attached-page quickstarts, and the shortcut-first helpers before the replay widens back into the wrapper-heavy safe route.
 
 ## Top-level suite-catalog entrypoints
 
