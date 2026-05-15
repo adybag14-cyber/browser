@@ -115,6 +115,25 @@ function Format-HelperCommandWithRepoRootEnv {
         if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
             continue
         }
+        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+            $valueList = @($value | Where-Object {
+                if ($_ -is [string]) {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                } else {
+                    $null -ne $_
+                }
+            })
+            if ($valueList.Count -eq 0) {
+                continue
+            }
+
+            $command += " -$($entry.Key)"
+            foreach ($item in $valueList) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
+            continue
+        }
 
         $escapedValue = ("$value") -replace "'", "''"
         $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
@@ -129,7 +148,7 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
-    return "powershell -NoProfile -ExecutionPolicy Bypass -Command ``"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command``""
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
