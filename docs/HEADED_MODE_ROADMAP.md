@@ -43,6 +43,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
 
 Attached HTML target intent:
@@ -63,8 +65,12 @@ Attached HTML target intent:
   layout, or rendering path that broke. Do not special-case one saved page if
   the same headed subsystem would affect the others.
 
-For page-by-page manual checks on that same pinned three-page route, keep
-`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby.
+For the pinned three-page route, keep
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby. The reference
+note keeps the fail-fast bundle surfaces, the delegated bundle runner, and the
+reusable fixed-list screenshot-and-title probe on the same locked inputs before
+the replay widens back into the broader issue `#3` helper chain.
 
 Saved-page or attached-page localhost follow-up:
 
@@ -115,7 +121,9 @@ shortcut-first helpers nearby when the route is already clearly inside issue
 matrix, contextual flow, or the bundle-first branch. Use the bundle-first
 helper whenever the current inputs are already the known three-page
 compatibility bundle and you want that exact set pinned before widening back
-into the broader helper chain.
+into the broader helper chain. Keep the target-bundle reference note nearby
+when you want the pinned manual checklist plus the reusable fixed-list
+screenshot-and-title proof path surfaced with that same three-page set.
 
 When the replay is already running from a non-default checkout, saved summary,
 or pinned bundle paths, preserve that state with `-RepoRoot`, `-SummaryPath`,
@@ -146,10 +154,12 @@ attached localhost follow-up:
   suite-catalog command map and attached-page bridge kept visible beside the
   replay-side and top-level attached-page catalog notes.
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
-  `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`, and
+  `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
+  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, and
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the route has
   already narrowed to the suite-router side, the compact companion notes, or
-  the pinned three-page compatibility bundle.
+  the pinned three-page compatibility bundle and you want the reusable
+  fixed-list screenshot-and-title proof path kept nearby.
 
 For the broader Windows runbook and the longer validation chain, keep
 `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
@@ -164,6 +174,7 @@ For the broader Windows runbook and the longer validation chain, keep
 `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
 `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
 
