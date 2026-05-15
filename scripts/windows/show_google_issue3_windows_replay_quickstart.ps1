@@ -141,7 +141,7 @@ Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $Repo
 
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay quickstart'
-    purpose = 'Print the main read-first replay entrypoint for issue #3, keeping the suite-catalog bridge, the suite-router quickstart, the replay-side attached-html helper, the top-level attached-html ladder, the shortcut bridges, and the safe-route helpers visible from one compact surface.'
+    purpose = 'Print the main read-first replay entrypoint for issue #3, keeping the suite-catalog bridge, the suite-router quickstart, the replay-attached-html fail-fast checker, the replay-side attached-html helper, the top-level attached-html ladder, the shortcut bridges, and the safe-route helpers visible from one compact surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -174,6 +174,7 @@ $helper = [ordered]@{
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments
         suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $sharedArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
         windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
@@ -198,6 +199,7 @@ $helper = [ordered]@{
     notes = @(
         'Start with suite_catalog_entrypoints when you want the broadest read-first bridge that still stays inside the issue #3 replay family.',
         'Use suite_router_quickstart when the top-level validation catalog already made issue #3 obvious and you want the shortest router-side bridge before the route narrows again.',
+        'Use windows_replay_attached_html_surface_check before trusting the narrower replay-side attached-html ladder from another checkout, because it fails fast on missing replay-note, helper-script, or downstream attached-page surfaces before the route narrows again.',
         'Use windows_full_use_attached_html_route_surface_check before trusting the attached-page ladder from another checkout, because it fails fast on missing route notes, helper scripts, or downstream attached-page surfaces.',
         'Use windows_replay_attached_html_quickstart when the main replay note already narrowed the next step to the attached localhost branch and you want the shorter replay-side attached-page ladder printed directly.',
         'Use top_level_shortcut_first when the replay is already clearly inside issue #3 and you want the shorter top-level shortcut bridge kept visible before reopening the wider attached-page helpers.',
@@ -256,6 +258,7 @@ Write-Host (("  Suite router quickstart:   {0}") -f $helper.commands.suite_route
 Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)
 Write-Host ''
 Write-Host 'Attached-page ladder:'
+Write-Host (("  Replay attached check:     {0}") -f $helper.commands.windows_replay_attached_html_surface_check)
 Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)
 Write-Host (("  Windows full-use route:    {0}") -f $helper.commands.windows_full_use_attached_html_route)
 Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)
