@@ -62,7 +62,7 @@ function Add-SharedPathArrayArgument {
 }
 
 $bundleSurfaceCheckPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle_validation_surface.ps1"
-$bundleSurfaceCheckCommand = '.\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1'
+$bundleSurfaceCheckCommand = '.\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1'
 if (-not (Test-Path -LiteralPath $bundleSurfaceCheckPath -PathType Leaf)) {
     throw "Attached HTML target-bundle validation surface checker not found: $bundleSurfaceCheckPath"
 }
@@ -75,7 +75,7 @@ if ($bundleSurfaceCheckArgs.Count -gt 0) {
 }
 
 $bundleCheckerPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle.ps1"
-$bundleCheckerCommand = '.\\scripts\\windows\\check_attached_html_target_bundle.ps1'
+$bundleCheckerCommand = '.\scripts\windows\check_attached_html_target_bundle.ps1'
 if (-not (Test-Path -LiteralPath $bundleCheckerPath -PathType Leaf)) {
     throw "Attached HTML target bundle checker not found: $bundleCheckerPath"
 }
@@ -88,14 +88,19 @@ if ($bundleCheckerArgs.Count -gt 0) {
     $printedBundleCheckerCommand += " " + ($bundleCheckerArgs -join " ")
 }
 
-$issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
+$issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1"
 if ($bundleCheckerArgs.Count -gt 0) {
     $issue3SuiteRouterNextStepsCommand += " " + ($bundleCheckerArgs -join " ")
 }
 
-$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1"
+$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1"
 if ($bundleCheckerArgs.Count -gt 0) {
     $issue3ReplayShortcutsCommand += " " + ($bundleCheckerArgs -join " ")
+}
+
+$localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1"
+if ($bundleCheckerArgs.Count -gt 0) {
+    $localHtmlFixtureSurfaceCheckCommand += " " + ($bundleCheckerArgs -join " ")
 }
 
 $invokeArgs = @{ Json = $true }
@@ -118,7 +123,7 @@ if (-not $overall.bundle_validation_profile) {
 }
 
 $suiteRouterCommand = if ($overall.first_change_area) {
-    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea $($overall.first_change_area)"
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea $($overall.first_change_area)"
 } else {
     $null
 }
@@ -142,9 +147,21 @@ $targetSummary = @(
     }
 )
 
+$resolvedFixturePaths = @($resolvedTargets | ForEach-Object { $_.path } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+$localHtmlFixtureProbeCommand = $null
+if ($resolvedFixturePaths.Count -gt 0) {
+    $fixtureProbeArgs = [System.Collections.Generic.List[string]]::new()
+    Add-SharedArgument -Arguments $fixtureProbeArgs -Name RepoRoot -Value $RepoRoot
+    Add-SharedPathArrayArgument -Arguments $fixtureProbeArgs -Name FixturePaths -Values $resolvedFixturePaths
+    $localHtmlFixtureProbeCommand = "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1"
+    if ($fixtureProbeArgs.Count -gt 0) {
+        $localHtmlFixtureProbeCommand += " " + ($fixtureProbeArgs -join " ")
+    }
+}
+
 $flow = [ordered]@{
     issue = "Attached HTML compatibility bundle validation flow"
-    focus = "Print the current bundle-pinned headed localhost route for the known three-page compatibility set so future runs can start with a fail-fast surface check, then stay on one stable command surface instead of hand-copying commands from the bundle checker output."
+    focus = "Print the current bundle-pinned headed localhost route for the known three-page compatibility set so future runs can start with a fail-fast surface check, keep the pinned manual checklist nearby, and replay the same inputs through both the bundle runner and the reusable fixed-list probe."
     input_mode = $bundle.input_mode
     discovered_candidate_count = $bundle.discovered_candidate_count
     matched_target_count = $bundle.matched_target_count
@@ -155,13 +172,16 @@ $flow = [ordered]@{
     suite_router_command = $suiteRouterCommand
     issue3_suite_router_next_steps_command = $issue3SuiteRouterNextStepsCommand
     issue3_replay_shortcuts_command = $issue3ReplayShortcutsCommand
+    local_html_fixture_surface_check_command = $localHtmlFixtureSurfaceCheckCommand
+    local_html_fixture_probe_command = $localHtmlFixtureProbeCommand
     first_bounded_step = $overall.first_step
     follow_up = $overall.follow_up
     bundle_summary = $overall.bundle_summary
+    checklist_note = "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md"
     steps = @(
         [ordered]@{
             name = "bundle-route-surface-check"
-            goal = "Fail fast if the bundle guide, checker, helper, runner, or delegated attached-HTML validation surfaces drifted before you trust the pinned bundle route."
+            goal = "Fail fast if the bundle guide, checklist, checker, helper, runner, reusable fixture probe, or delegated attached-HTML validation surfaces drifted before you trust the pinned bundle route."
             command = $printedBundleSurfaceCheckCommand
         }
         [ordered]@{
@@ -189,11 +209,23 @@ $flow = [ordered]@{
             goal = "Launch the headed localhost replay through the same bundle-pinned route after the earlier checks stay green."
             command = $overall.bundle_runner
         }
+        [ordered]@{
+            name = "local-fixture-surface-check"
+            goal = "Fail fast on the reusable fixed-list fixture probe surface before rerunning the same saved pages through the screenshot-and-title harness."
+            command = $localHtmlFixtureSurfaceCheckCommand
+        }
+        [ordered]@{
+            name = "local-fixture-probe"
+            goal = "Replay the same locked compatibility bundle through the reusable fixed-list localhost fixture probe for screenshot-and-title proof outside the broader attached-page wrapper."
+            command = $localHtmlFixtureProbeCommand
+        }
     )
     targets = $targetSummary
     notes = @(
         "Use this helper after the bundle route surface check when you want a stable read-first command surface for the current compatibility set instead of copying commands out of free-form checker output.",
         $suiteRouterNote,
+        "Keep docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md nearby for the page-by-page manual checks once the bundle-pinned localhost route is green.",
+        "Use the reusable fixed-list fixture surface check and probe when you want screenshot-and-title proof for the same locked inputs without reopening the broader attached-page wrapper flow.",
         "Use the issue #3 next-step matrix when you want the compact branch chooser reprinted with the same pinned bundle inputs before deciding whether to stay on the bundle route or reopen the narrower replay-shortcuts helper.",
         "Use the issue #3 replay-shortcuts helper after the bundle flow or bundle runner when the attached-page replay has already narrowed the failure and you want the narrower safe-route, replay-route, and bundle-first commands preserved with the same pinned inputs.",
         "The preferred initial page stays pinned to the Google Safety Centre target when the current bundle includes the Google-style page, so the issue #3 localhost-first follow-up remains aligned with the current runbook.",
@@ -201,9 +233,10 @@ $flow = [ordered]@{
         "Pass -RepoRoot when you want the bundle route surface check and bundle checker to evaluate a non-default working tree before printing the pinned commands."
     )
     next_steps = @(
-        "Use the bundle route surface-check command first when the branch has moved and you want the bundle-aware guide, helper, runner, and delegated attached-HTML surfaces to fail fast before anything else.",
+        "Use the bundle route surface-check command first when the branch has moved and you want the bundle-aware guide, checklist, helper, runner, reusable fixture probe, and delegated attached-HTML surfaces to fail fast before anything else.",
         "Use the bundle-pinned flow command when you want the exact printed localhost ladder with the current paths already locked in.",
         "Use the bundle-pinned runner command when the bundle checks are green and you want to launch the headed localhost replay directly.",
+        "Use the reusable local fixture surface check and probe when you want screenshot-and-title proof for the same three saved pages after the broader bundle route is confirmed.",
         "Use the issue #3 next-step matrix when you want the same pinned bundle inputs carried back into the compact branch chooser before reopening replay shortcuts or the broader safe-route map.",
         "Use the issue #3 replay-shortcuts helper after the bundle route when the failure is now clearly inside issue #3 and you want the narrower safe-route, replay-route, and bundle-first commands with the same pinned inputs.",
         "Move back to the smaller Google title, submit-timing, or shared Enter-order ladders only after the attached-page replay makes the next failure state clear."
@@ -238,6 +271,15 @@ if ($flow.issue3_suite_router_next_steps_command) {
 if ($flow.issue3_replay_shortcuts_command) {
     Write-Host ("Issue #3 replay shortcuts: {0}" -f $flow.issue3_replay_shortcuts_command)
 }
+if ($flow.local_html_fixture_surface_check_command) {
+    Write-Host ("Local fixture surface check: {0}" -f $flow.local_html_fixture_surface_check_command)
+}
+if ($flow.local_html_fixture_probe_command) {
+    Write-Host ("Local fixture probe: {0}" -f $flow.local_html_fixture_probe_command)
+}
+if ($flow.checklist_note) {
+    Write-Host ("Manual checklist: {0}" -f $flow.checklist_note)
+}
 if ($flow.first_bounded_step) {
     Write-Host ("Suggested first bounded step: {0}" -f $flow.first_bounded_step)
 }
@@ -248,7 +290,11 @@ Write-Host ("Bundle summary: {0}" -f $flow.bundle_summary)
 Write-Host ""
 foreach ($step in $flow.steps) {
     Write-Host ("[{0}] {1}" -f $step.name, $step.goal)
-    Write-Host ("  {0}" -f $step.command)
+    if ($step.command) {
+        Write-Host ("  {0}" -f $step.command)
+    } else {
+        Write-Host "  <resolve bundle inputs first>"
+    }
     Write-Host ""
 }
 if ($flow.targets.Count -gt 0) {
