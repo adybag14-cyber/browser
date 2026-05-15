@@ -136,9 +136,14 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$attachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $attachedHtmlFlowArguments["InputPath"] = @($InputPath)
+}
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 top-level shortcut-first entrypoint'
-    purpose = 'Print the shortest top-level route from the headed validation suite catalog into the newer issue #3 suite-router shortcut entrypoint, the replay-side attached-page quickstart, the newer top-level attached-page quickstart, the newer top-level attached-page catalog quickstart, the newer suite-catalog-to-top-level attached-page catalog quickstart, and the newer suite-router attached-page quickstart, while also surfacing the attached-page compatibility branch, the suite-catalog attached-page bridge, and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Print the shortest top-level route from the headed validation suite catalog into the newer issue #3 suite-router shortcut entrypoint, the broader attached-page flow helper, the replay-side attached-page quickstart, the newer top-level attached-page quickstart, the newer top-level attached-page catalog quickstart, the newer suite-catalog-to-top-level attached-page catalog quickstart, and the newer suite-router attached-page quickstart, while also surfacing the attached-page compatibility branch, the suite-catalog attached-page bridge, and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -158,6 +163,7 @@ $entrypoint = [ordered]@{
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
+        attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
@@ -193,16 +199,17 @@ $entrypoint = [ordered]@{
         'Use this helper when the top-level headed validation suite catalog has already narrowed the route to issue #3 and you want the shortcut-first path printed without reopening the broader suite-catalog or replay-route surfaces first.',
         'Start with google_recommended when you want the broader localhost-first issue #3 runner named before the route narrows into the shortcut-first entrypoint.',
         'Start with google_input_change_area when the next replay is already known to stay inside issue #3 and you want the same top-level helper family reprinted before dropping into the suite-router shortcut entrypoint.',
-        'Start with attached_html_change_area when the next replay should still come from the generic attached-page compatibility route before you jump into the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, or the shortcut-first issue #3 bridge.',
+        'Start with attached_html_change_area when the next replay should still come from the generic attached-page compatibility route before you jump into the broader attached-page flow helper, the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, or the shortcut-first issue #3 bridge.',
+        'Use attached_html_flow when you want the broader attached-page helper surface printed directly from this top-level shortcut-first bridge before narrowing into the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, or the shortcut-first issue #3 bridge.',
         'Start with google_attached_html_change_area when the next replay should still come from the Google-shaped attached-page route before you jump into the shorter issue #3 helper chain.',
         'Use suite_catalog_attached_html_entrypoint when the replay is already entering issue #3 from the attached-page route and you want the dedicated suite-catalog attached-page bridge printed after the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, or the suite-router attached-page quickstart before you narrow into the issue-specific attached-page or shortcut-first helpers.',
         'Start with attached_bundle_change_area when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned branch reprinted from the top-level suite router first.',
-        'Use suite_router_shortcut_entrypoint as the default next helper whenever no pinned bundle inputs need to take precedence, because it keeps the shortest bridge from the top-level suite catalog into the replay-side attached-page quickstart, the newer top-level attached-page quickstart, the newer catalog quickstarts, replay_shortcuts, attached_html_shortcut, contextual_flow, the next-step matrix, and the broader compact helpers.',
-        'Use windows_replay_attached_html_quickstart when the route is already narrowing into attached localhost follow-up and you want the replay-side attached-page quickstart visible before the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, or the suite-router attached-page quickstart.',
-        'Use top_level_attached_html_quickstart when the route is already narrowing from the top-level suite router into attached localhost follow-up and you want that shorter attached-page bridge visible before the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, or the broader shortcut-first helper.',
+        'Use suite_router_shortcut_entrypoint as the default next helper whenever no pinned bundle inputs need to take precedence, because it keeps the shortest bridge from the top-level suite catalog into the broader attached-page flow helper, the replay-side attached-page quickstart, the newer top-level attached-page quickstart, the newer catalog quickstarts, replay_shortcuts, attached_html_shortcut, contextual_flow, the next-step matrix, and the broader compact helpers.',
+        'Use windows_replay_attached_html_quickstart when the route is already narrowing into attached localhost follow-up and you want the replay-side attached-page quickstart visible before the broader attached-page flow helper, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, or the suite-router attached-page quickstart.',
+        'Use top_level_attached_html_quickstart when the route is already narrowing from the top-level suite router into attached localhost follow-up and you want that shorter attached-page bridge visible before the broader attached-page flow helper, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, or the broader shortcut-first helper.',
         'Use top_level_attached_html_catalog_quickstart when you want the compact top-level attached-page bridge and the suite-catalog attached-page bridge kept visible together before the route narrows into the suite-catalog-to-top-level attached-page catalog quickstart, the issue-specific attached-page bridge, attached_html_shortcut, replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use suite_catalog_top_level_attached_html_catalog_quickstart when the suite-catalog surface should stay visible beside the replay-side attached-html ladder and the top-level catalog quickstart before the route drops into the suite-catalog attached-page bridge or the narrower attached-page helpers.',
-        'Use suite_router_attached_html_quickstart when the route is already inside attached localhost follow-up and you want the suite-router-side attached-page bridge reprinted before dropping into the suite-catalog attached-page bridge, attached_html_shortcut, replay_shortcuts, or the next-step matrix.',
+        'Use suite_router_attached_html_quickstart when the route is already inside attached localhost follow-up and you want the suite-router-side attached-page bridge reprinted before dropping into the broader attached-page flow helper, the suite-catalog attached-page bridge, attached_html_shortcut, replay_shortcuts, or the next-step matrix.',
         'Use attached_html_shortcut when the replay is already narrowed to attached-page follow-up and you want the broader attached-page compatibility branch kept visible before you widen back into replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use attached_bundle_first instead when explicit InputPath values are already pinned and the replay should stay on the known three-page compatibility set before widening back into the broader Google-only helpers.',
         'Use replay_shortcuts after the suite-router shortcut entrypoint, the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, or the suite-router attached-page quickstart when the route is already known to stay inside issue #3 and no saved summary, repo-root override, or pinned bundle inputs need to stay visible first.',
@@ -219,7 +226,7 @@ $entrypoint.recommended_next_command = $entrypoint.helper_commands[$entrypoint.r
 $entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq 'attached_bundle_first') {
     'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 path.'
 } else {
-    'No pinned bundle inputs are in play yet, so jump straight from the top-level suite router into the newer suite-router shortcut entrypoint while keeping the replay-side attached-page quickstart, the newer top-level attached-page quickstart, the newer catalog quickstarts, and the attached-page quickstarts nearby when the replay narrows into attached localhost follow-up.'
+    'No pinned bundle inputs are in play yet, so jump straight from the top-level suite router into the newer suite-router shortcut entrypoint while keeping the broader attached-page flow helper, the replay-side attached-page quickstart, the newer top-level attached-page quickstart, the newer catalog quickstarts, and the attached-page quickstarts nearby when the replay narrows into attached localhost follow-up.'
 }
 
 if ($Json) {
@@ -248,21 +255,23 @@ Write-Host (("  2. Google input:              {0}") -f $entrypoint.top_level_com
 Write-Host (("  3. Attached HTML:             {0}") -f $entrypoint.top_level_commands.attached_html_change_area)
 Write-Host (("  4. Google attached HTML:      {0}") -f $entrypoint.top_level_commands.google_attached_html_change_area)
 Write-Host (("  5. Attached bundle:           {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
-Write-Host (("  6. Google flow:               {0}") -f $entrypoint.top_level_commands.google_flow)
-Write-Host (("  7. Shortcut entry:            {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host (("  8. Windows replay quick:      {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
-Write-Host (("  9. Top-level attached quick:  {0}") -f $entrypoint.helper_commands.top_level_attached_html_quickstart)
-Write-Host ((" 10. Top-level catalog quick:   {0}") -f $entrypoint.helper_commands.top_level_attached_html_catalog_quickstart)
-Write-Host ((" 11. Catalog-to-top-level qk:   {0}") -f $entrypoint.helper_commands.suite_catalog_top_level_attached_html_catalog_quickstart)
-Write-Host ((" 12. Router attached quick:     {0}") -f $entrypoint.helper_commands.suite_router_attached_html_quickstart)
-Write-Host ((" 13. Attached shortcut:         {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
-Write-Host ((" 14. Replay shortcuts:          {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 15. Next-step matrix:          {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 16. Suite-catalog:             {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
-Write-Host ((" 17. Catalog attached:          {0}") -f $entrypoint.helper_commands.suite_catalog_attached_html_entrypoint)
+Write-Host (("  6. Attached flow:             {0}") -f $entrypoint.top_level_commands.attached_html_flow)
+Write-Host (("  7. Google flow:               {0}") -f $entrypoint.top_level_commands.google_flow)
+Write-Host (("  8. Shortcut entry:            {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  9. Windows replay quick:      {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
+Write-Host ((" 10. Top-level attached quick:  {0}") -f $entrypoint.helper_commands.top_level_attached_html_quickstart)
+Write-Host ((" 11. Top-level catalog quick:   {0}") -f $entrypoint.helper_commands.top_level_attached_html_catalog_quickstart)
+Write-Host ((" 12. Catalog-to-top-level qk:   {0}") -f $entrypoint.helper_commands.suite_catalog_top_level_attached_html_catalog_quickstart)
+Write-Host ((" 13. Router attached quick:     {0}") -f $entrypoint.helper_commands.suite_router_attached_html_quickstart)
+Write-Host ((" 14. Attached shortcut:         {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host ((" 15. Replay shortcuts:          {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 16. Next-step matrix:          {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 17. Suite-catalog:             {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
+Write-Host ((" 18. Catalog attached:          {0}") -f $entrypoint.helper_commands.suite_catalog_attached_html_entrypoint)
 Write-Host ''
 Write-Host 'Companion helpers:'
 Write-Host (("  Shortcut entrypoint:    {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  Attached flow helper:   {0}") -f $entrypoint.top_level_commands.attached_html_flow)
 Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
 Write-Host (("  Top-level attached:     {0}") -f $entrypoint.helper_commands.top_level_attached_html_quickstart)
 Write-Host (("  Top-level catalog qk:   {0}") -f $entrypoint.helper_commands.top_level_attached_html_catalog_quickstart)
