@@ -66,6 +66,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_wi
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
@@ -79,8 +80,8 @@ Use that route when the broader Windows runbook already made attached localhost
 follow-up obvious and you want the route-level surface checker, the
 validation-router attached-html bridge, the Windows-first catalog quickstart,
 the replay-side attached-html quickstart, the narrower validation-router and
-top-level attached-page helpers, and the suite-catalog-side bridge all
-describing the same re-entry order.
+top-level attached-page helpers, the broader attached-page flow helper, and the
+suite-catalog-side bridge all describing the same re-entry order.
 
 When the top-level suite router already made attached localhost follow-up
 obvious, prefer this compact chain:
@@ -89,6 +90,7 @@ obvious, prefer this compact chain:
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
@@ -129,7 +131,7 @@ chosen helper.
   handoff visible before the narrower top-level attached-page helpers take over.
 - `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`:
   use this when the Windows full-use branch should keep the catalog-side
-  attached-page quickstart visible beside the narrower top-level helper chain.
+  attached-page quickstart visible beside the narrower top-level chain.
 - `show_google_issue3_windows_replay_attached_html_quickstart.ps1`: use this
   when the replay-side attached-page ladder should stay visible before the
   top-level notes and replay-route helper take over.
@@ -201,7 +203,9 @@ reopen
 `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`,
 keep `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`
 and `show_google_issue3_windows_replay_attached_html_quickstart.ps1` nearby,
-and then follow the same narrower attached-page helper chain. Once the route is
+reopen `show_attached_html_validation_flow.ps1` once the attached-page branch
+is back in view, and then follow the same narrower attached-page helper chain.
+Once the route is
 clearly inside the narrower attached-page helpers, prefer
 `show_google_issue3_replay_route.ps1`, then
 `show_google_issue3_replay_route_shortcut_entrypoint.ps1`, before widening back
