@@ -79,24 +79,41 @@ Issue `#3` attached-page follow-up:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 ```
 
-Use the top-level attached-page entrypoint when the broader validation router
-has already made attached localhost replay the next obvious branch and you want
-that broader live bridge reprinted before the route narrows again. Use the
-shortcut-first entrypoint when replay is already clearly inside attached-page
-follow-up and you want the smaller helper surface before widening back into
-replay shortcuts or the safe-route map. Keep the compact top-level quickstart
-and the suite-router attached-page quickstart nearby when the next replay
-should stay on the shorter attached-page path after the top-level bridge is
-printed.
+Use the validation-router quickstart when the broader headed validation router
+already made attached localhost replay the next obvious branch and you still
+want that router context reprinted before the route narrows again. Use the
+Windows replay attached-html quickstart when
+`docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already narrowed the replay to the
+attached localhost lane and you want the replay-side helper ladder kept
+visible. Use the suite-catalog top-level attached-html catalog quickstart and
+suite-catalog attached-html bridge when you want the replay-side ladder, the
+newer top-level attached-page catalog note family, and the suite-catalog
+attached-page bridge visible together before the route collapses into the
+shortcut-first helpers. Keep the Google-shaped attached-page entrypoint and the
+shortcut-first helpers nearby when the route is already clearly inside issue
+`#3` and the next step is choosing between replay shortcuts, the next-step
+matrix, contextual flow, or the bundle-first branch. Use the bundle-first
+helper whenever the current inputs are already the known three-page
+compatibility bundle and you want that exact set pinned before widening back
+into the broader helper chain.
 
 When the replay is already running from a non-default checkout, saved summary,
 or pinned bundle paths, preserve that state with `-RepoRoot`, `-SummaryPath`,
@@ -106,39 +123,41 @@ stays on the same context.
 Keep these companion route notes nearby when the replay is already narrowed to
 attached localhost follow-up:
 
-- `docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the
-  broader validation router already points at the attached-page lane and you
-  want the shortest bridge before reopening the larger issue `#3` helper stack.
-- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the broader
-  Windows runbook already made attached localhost replay the next obvious
-  branch.
-- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md` when you want the
-  shortest top-level companion before dropping deeper into the issue `#3`
-  helper chain.
-- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` when the broader top-level
-  attached-page bridge should stay visible beside the compact quickstart before
-  the route narrows again.
-- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` when you want the
-  compact top-level quickstart and the suite-catalog attached-page bridge kept
-  visible together before the helper chain narrows again.
-- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` when the live
-  top-level attached-page entrypoint is already open and you just need the
-  shortest written map of which nearby notes to keep beside it.
-- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the replay has
-  already narrowed back to the suite-router side and should keep that shorter
-  attached-page bridge visible before reopening replay shortcuts or the
-  safe-route map.
-- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the current
-  inputs are already the pinned three-page compatibility bundle and you want
-  page-by-page manual checks plus shared-subsystem failure routing before
-  widening back into the broader helper chain.
+- `docs/WINDOWS_FULL_USE.md` when the broader Windows runbook already made the
+  attached localhost lane obvious and you want the widest route context before
+  the helper chain narrows again.
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` and
+  `docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the
+  replay is re-entering from the Windows-facing route notes first.
+- `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` and
+  `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md` when you want the
+  replay-side and validation-router attached-page ladders surfaced before
+  dropping into the smaller top-level helpers.
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`,
+  `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`, and
+  `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` when the replay
+  should stay on the compact top-level attached-page route before it narrows
+  again.
+- `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+  and `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md` when you want the
+  suite-catalog attached-page bridge kept visible beside the replay-side and
+  top-level attached-page catalog notes.
+- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
+  `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`, and
+  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the route has
+  already narrowed to the suite-router side, the compact companion notes, or
+  the pinned three-page compatibility bundle.
 
 For the broader Windows runbook and the longer validation chain, keep
 `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
 `docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
+`docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`,
+`docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
+`docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
+`docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
 `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
