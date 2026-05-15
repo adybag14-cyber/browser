@@ -371,7 +371,7 @@ Write-Host (("  Safe-route map:            {0}") -f $entrypoints.helper_commands
 Write-Host (("  Fresh safe replay:         {0}") -f $entrypoints.helper_commands.fresh_safe_route_replay)
 Write-Host (("  Reuse current output:      {0}") -f $entrypoints.helper_commands.reuse_current_outputs)
 Write-Host ''
-Write-Host (("Windows replay attached note:        {0}") -f $entrypoints.windows_replay_attached_html_quickstart_note_path))
+Write-Host (("Windows replay attached note:        {0}") -f $entrypoints.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Windows full-use route:             {0}") -f $entrypoints.windows_full_use_attached_html_route_note_path)
 Write-Host (("Top-level attached quick note:      {0}") -f $entrypoints.top_level_attached_html_quickstart_note_path)
 Write-Host (("Top-level attached catalog note:    {0}") -f $entrypoints.top_level_attached_html_catalog_quickstart_note_path)
