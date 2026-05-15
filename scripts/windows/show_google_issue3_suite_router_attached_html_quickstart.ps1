@@ -142,8 +142,9 @@ $helper = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
-    windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
+    validation_router_attached_html_quickstart_note_path = 'docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     attached_html_change_area_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
+    windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
@@ -162,6 +163,8 @@ $helper = [ordered]@{
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
+        validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
+        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
@@ -177,6 +180,8 @@ $helper = [ordered]@{
     notes = @(
         'Start with attached_html_change_area when the top-level headed validation router is already narrowed to the attached localhost compatibility path and you want that route reprinted before dropping into the issue-specific helper chain.',
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before narrowing again.',
+        'Use validation_router_attached_html_quickstart when the replay is still one step higher in the broader validation router and you want that written bridge visible before this suite-router attached-page helper narrows the route again.',
+        'Use attached_html_change_area_quickstart when the replay is already centered on show_headed_validation_suites.ps1 -ChangeArea attached-html and you want the generic attached-page flow helper plus the narrower issue #3 route visible together before falling back to the shorter helper chain.',
         'Use top_level_attached_html_quickstart as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the shorter top-level attached-page bridge visible before reopening the catalog bridge, the catalog quickstart, the attached-page shortcut, replay shortcuts, or the next-step matrix.',
         'Use top_level_attached_html_catalog_quickstart when you want the shorter top-level attached-page quickstart plus the suite-catalog attached-page bridge kept visible together before the replay narrows into the attached-page shortcut, replay shortcuts, next-step matrix, bundle-first route, or safe-route helper.',
         'Use suite_catalog_attached_html_entrypoint when the replay is already narrowed to attached-page follow-up but you want the suite-catalog-side attached-page bridge kept visible before reopening the shorter attached-page shortcut, replay shortcuts, next-step matrix, bundle-first route, or safe-route helper.',
@@ -186,8 +191,10 @@ $helper = [ordered]@{
         'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before choosing between the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.',
         'Use attached_bundle_change_area and attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only helper chain.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed the replay enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
+        'Keep the validation-router attached-html quickstart note nearby when the replay is still one step higher in the broader validation router and you want that written bridge visible before the suite-router-side attached-page helper chain narrows the route again.',
+        'Keep the attached-html change-area quickstart note nearby when the replay is already centered on show_headed_validation_suites.ps1 -ChangeArea attached-html and you still want the generic attached-page flow helper plus the narrower issue #3 route visible together.',
         'Keep the Windows full-use attached-html route note nearby when the replay started from docs/WINDOWS_FULL_USE.md and you want the broader runbook bridge preserved beside the suite-router attached-page quickstart.',
-        'Keep the Windows full-use attached-html route note, the attached-html change-area quickstart note, the attached HTML quickstart note, the Windows replay quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the top-level attached-page bridge note, the top-level companion note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows full-use attached-html route note, the attached HTML quickstart note, the Windows replay quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the top-level attached-page bridge note, the top-level companion note, the suite-catalog attached-page bridge note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -232,6 +239,10 @@ Write-Host (("  Attached HTML:        {0}") -f $helper.commands.attached_html_ch
 Write-Host (("  Google attached HTML: {0}") -f $helper.commands.google_attached_html_change_area)
 Write-Host (("  Attached bundle:      {0}") -f $helper.commands.attached_bundle_change_area)
 Write-Host ''
+Write-Host 'Broader attached-page handoffs:'
+Write-Host (("  Validation-router note:      {0}") -f $helper.commands.validation_router_attached_html_quickstart)
+Write-Host (("  Change-area quickstart:      {0}") -f $helper.commands.attached_html_change_area_quickstart)
+Write-Host ''
 Write-Host 'Attached-page follow-up helpers:'
 Write-Host (("  Top-level quickstart:         {0}") -f $helper.commands.top_level_attached_html_quickstart)
 Write-Host (("  Top-level catalog quickstart: {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
@@ -245,6 +256,7 @@ Write-Host (("  Contextual flow:              {0}") -f $helper.commands.contextu
 Write-Host (("  Bundle-first helper:          {0}") -f $helper.commands.attached_bundle_first)
 Write-Host (("  Safe-route map:               {0}") -f $helper.commands.safe_route_entrypoints)
 Write-Host ''
+Write-Host (("Validation-router note:   {0}") -f (' ' + $helper.validation_router_attached_html_quickstart_note_path))
 Write-Host (("Change-area quickstart:   {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
 Write-Host (("Windows full-use route:   {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
 Write-Host (("Attached HTML note:       {0}") -f (' ' + $helper.attached_html_quickstart_note_path))
