@@ -13,8 +13,8 @@ If a replay already carries `RepoRoot`, `SummaryPath`, or pinned attached bundle
 ## Keep These Notes Nearby
 
 - `docs/ISSUE3_PRODUCTION_EXECUTION_ATTACHED_HTML_ROUTE.md` when the route started from `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md` and attached localhost follow-up is already obvious
-- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the route started from `docs/WINDOWS_FULL_USE.md`
-- `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md` when the Windows-first route should keep the route-level surface check and the validation-router attached-html handoff visible before the smaller top-level notes take over
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the route started from `docs/WINDOWS_FULL_USE.md` and you want the broader Windows-first route plus its route-level surface checker reopened before the narrower top-level notes take over
+- `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md` when the Windows-first route should keep the route-level surface check, the validation-router attached-html handoff, and the newer Windows-first catalog step visible before the smaller top-level notes take over
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md` when the Windows full-use branch should keep the compact catalog-side attached-page route visible beside the narrower top-level chain
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the broader validation router already narrowed the replay toward the attached localhost branch
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md` when the replay is already reopening from `show_headed_validation_suites.ps1 -ChangeArea attached-html` and you still want the broader attached-page flow helper kept visible
@@ -32,7 +32,7 @@ If a replay already carries `RepoRoot`, `SummaryPath`, or pinned attached bundle
 
 1. Start from the top-level attached-page helper.
 2. Reopen `docs/ISSUE3_PRODUCTION_EXECUTION_ATTACHED_HTML_ROUTE.md` when the main production guide already made attached localhost follow-up the next obvious branch.
-3. Reopen the Windows full-use route note, the Windows full-use validation-router bridge, or the Windows full-use attached-html catalog quickstart when `docs/WINDOWS_FULL_USE.md` was the last broader route and you want that Windows-first branch written back down before the narrower top-level chain takes over.
+3. Reopen the Windows full-use route note, rerun `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, and keep the Windows full-use validation-router bridge or attached-html catalog quickstart nearby when `docs/WINDOWS_FULL_USE.md` was the last broader route and you want that Windows-first branch written back down before the narrower top-level chain takes over.
 4. Reopen the validation-router attached HTML quickstart or the attached-html change-area quickstart when the broader attached-page router still needs to be visible before the top-level chain narrows.
 5. Keep the top-level attached HTML catalog quickstart and the suite-catalog attached HTML bridge nearby when the route should stay visible on the catalog side before the replay narrows again.
 6. Reopen `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md` when the top-level router already made issue `#3` obvious and the shortcut-first branch should stay visible beside the attached-page chain.
