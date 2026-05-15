@@ -85,6 +85,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
@@ -103,8 +104,9 @@ want that router context reprinted before the route narrows again. Use the
 Windows replay attached-html quickstart when
 `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already narrowed the replay to the
 attached localhost lane and you want the replay-side helper ladder kept
-visible. Use the suite-catalog top-level attached-html catalog quickstart and
-suite-catalog attached-html bridge when you want the replay-side ladder, the
+visible. Use the suite-catalog entrypoints guide, suite-catalog top-level
+attached-html catalog quickstart, and suite-catalog attached-html bridge when
+you want the replay-side ladder, the dedicated suite-catalog command map, the
 newer top-level attached-page catalog note family, and the suite-catalog
 attached-page bridge visible together before the route collapses into the
 shortcut-first helpers. Keep the Google-shaped attached-page entrypoint and the
@@ -138,10 +140,11 @@ attached localhost follow-up:
   `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` when the replay
   should stay on the compact top-level attached-page route before it narrows
   again.
-- `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`,
+  `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
   and `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md` when you want the
-  suite-catalog attached-page bridge kept visible beside the replay-side and
-  top-level attached-page catalog notes.
+  suite-catalog command map and attached-page bridge kept visible beside the
+  replay-side and top-level attached-page catalog notes.
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
   `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`, and
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the route has
@@ -156,6 +159,7 @@ For the broader Windows runbook and the longer validation chain, keep
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
+`docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`,
 `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
 `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`,
 `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
