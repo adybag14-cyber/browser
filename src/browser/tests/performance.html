@@ -287,7 +287,9 @@
     // navigationStart must be a number (sites access performance.timing.navigationStart)
     const timing = performance.timing;
     testing.expectEqual('number', typeof timing.navigationStart);
-    testing.expectEqual(0, timing.navigationStart);
+    testing.expectEqual(true, timing.navigationStart > 0);
+    testing.expectEqual(true, timing.fetchStart >= timing.navigationStart);
+    testing.expectEqual(true, timing.domComplete >= timing.navigationStart);
   }
 </script>
 
@@ -359,7 +361,7 @@
   {
     // The most commonly used property — must be a number (not undefined)
     testing.expectEqual('number', typeof performance.timing.navigationStart);
-    testing.expectEqual(0, performance.timing.navigationStart);
+    testing.expectEqual(true, performance.timing.navigationStart > 0);
   }
 </script>
 
