@@ -149,6 +149,8 @@ $helper = [ordered]@{
     replay_attached_html_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     replay_quickstart_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md'
     replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
+    top_level_shortcut_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md'
+    suite_router_shortcut_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     validation_router_attached_html_quickstart_note_path = 'docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
@@ -185,6 +187,7 @@ $helper = [ordered]@{
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $sharedArguments
+        suite_router_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $sharedArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $sharedArguments
         replay_route_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments
@@ -198,10 +201,11 @@ $helper = [ordered]@{
         'Use windows_full_use_attached_html_route_surface_check before trusting the attached-page ladder from another checkout, because it fails fast on missing route notes, helper scripts, or downstream attached-page surfaces.',
         'Use windows_replay_attached_html_quickstart when the main replay note already narrowed the next step to the attached localhost branch and you want the shorter replay-side attached-page ladder printed directly.',
         'Use top_level_shortcut_first when the replay is already clearly inside issue #3 and you want the shorter top-level shortcut bridge kept visible before reopening the wider attached-page helpers.',
+        'Use suite_router_shortcut_first after attached_html_shortcut when you want the narrower suite-router shortcut bridge reprinted before the route collapses into replay_shortcuts.',
         'Use replay_route and replay_route_shortcut_entrypoint when you want the broader issue #3 route or the narrower replay-route follow-up printed beside the shortcut helpers.',
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper surface should preserve that replay context.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle.',
-        'Keep the Windows replay quickstart note, the replay-side attached-html note, the Windows full-use attached-html route note, the validation-router attached-html note, the top-level attached-html notes, the suite-catalog attached-html bridge, the suite-router attached-html quickstart, the replay shortcut bridges, and the safe-route note nearby when you want the written route beside these commands.'
+        'Keep the Windows replay quickstart note, the replay-side attached-html note, the Windows full-use attached-html route note, the validation-router attached-html note, the top-level attached-html notes, the top-level and suite-router shortcut-bridge notes, the suite-catalog attached-html bridge, the suite-router attached-html quickstart, the replay shortcut bridges, and the safe-route note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -265,6 +269,7 @@ Write-Host (("  Catalog bridge quick:      {0}") -f $helper.commands.suite_catal
 Write-Host (("  Suite-catalog bridge:      {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
 Write-Host (("  Router attached quick:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)
 Write-Host (("  Attached shortcut:         {0}") -f $helper.commands.attached_html_shortcut)
+Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)
 Write-Host (("  Replay shortcuts:          {0}") -f $helper.commands.replay_shortcuts)
 Write-Host ''
 Write-Host 'Replay follow-ups:'
@@ -278,6 +283,8 @@ Write-Host (("Quickstart note:             {0}") -f $helper.quickstart_note_path
 Write-Host (("Replay attached note:        {0}") -f $helper.replay_attached_html_note_path)
 Write-Host (("Replay shortcut note:        {0}") -f $helper.replay_quickstart_shortcut_bridge_note_path)
 Write-Host (("Replay-route shortcut note:  {0}") -f $helper.replay_route_shortcut_bridge_note_path)
+Write-Host (("Top-level shortcut note:     {0}") -f $helper.top_level_shortcut_bridge_note_path)
+Write-Host (("Suite-router shortcut note:  {0}") -f $helper.suite_router_shortcut_bridge_note_path)
 Write-Host (("Windows route note:          {0}") -f $helper.windows_full_use_attached_html_route_note_path)
 Write-Host (("Validation-router note:      {0}") -f $helper.validation_router_attached_html_quickstart_note_path)
 Write-Host (("Top-level quickstart note:   {0}") -f $helper.top_level_attached_html_quickstart_note_path)
