@@ -98,7 +98,7 @@ Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $Repo
 
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay attached HTML quickstart'
-    purpose = 'Print the narrow attached-localhost ladder that matches the current Windows replay route for issue #3, while keeping the Windows full-use route-level surface check and the Windows-to-validation-router bridge visible before the route narrows back into the compact attached-page helpers.'
+    purpose = 'Print the narrow attached-localhost ladder that matches the current Windows replay route for issue #3, while keeping the Windows full-use route-level surface check, the Windows-to-validation-router bridge, and the Windows-first attached-html catalog step visible before the route narrows back into the compact attached-page helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -112,10 +112,12 @@ $helper = [ordered]@{
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     windows_full_use_validation_router_attached_html_bridge_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md'
+    windows_full_use_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     commands = [ordered]@{
         windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
+        windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $sharedArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $sharedArguments
@@ -134,7 +136,8 @@ $helper = [ordered]@{
         'Start here when docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md already narrowed the next replay to the attached localhost branch and you want the shortest helper ladder printed in one place.',
         'Use windows_full_use_attached_html_route_surface_check after branch moves or before trusting this route from another checkout, because it fails fast on missing route notes, helper scripts, or downstream attached-page surfaces before the replay narrows again.',
         'Use windows_full_use_validation_router_attached_html_bridge first when the replay is re-entering from docs/WINDOWS_FULL_USE.md or the broader Windows full-use attached-page note and you want the route-level surface check plus the Windows-to-validation-router handoff kept visible before the route drops back into the compact attached-page helpers.',
-        'Use validation_router_attached_html_quickstart first when the replay already passed the broader Windows full-use guard rails and you still want the wider validation-router attached-page bridge visible before the top-level attached-page quickstarts.',
+        'Use windows_full_use_attached_html_catalog_quickstart right after the broader Windows bridge when you want the Windows-first catalog step kept visible before the validation-router quickstart and the smaller attached-page helpers take over.',
+        'Use validation_router_attached_html_quickstart first when the replay already passed the broader Windows full-use guard rails and catalog step but you still want the wider validation-router attached-page bridge visible before the top-level attached-page quickstarts.',
         'Then prefer attached_html_change_area_quickstart, top_level_attached_html_quickstart, and top_level_attached_html_entrypoint as the default middle of the ladder so the broader attached-page flow helper and the compact top-level route stay visible before you drop into the suite-catalog bridge or the shorter attached-page shortcut.',
         'Use top_level_attached_html_catalog_quickstart when you want the compact top-level quickstart and the suite-catalog attached-page bridge reprinted together before the route narrows again.',
         'Use suite_catalog_attached_html_entrypoint when you want the suite-catalog-side attached-page bridge without reopening broader router helpers first.',
@@ -144,7 +147,7 @@ $helper = [ordered]@{
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper should preserve that replay context before it narrows again.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and the replay should stay on that locked route before widening back into the broader issue #3 helper stack.',
         'Use windows_full_use_attached_html_route when the replay came from docs/WINDOWS_FULL_USE.md first and you want the broader Windows runbook attached-page route visible beside this shorter replay ladder.',
-        'Keep the Windows replay quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router attached-html bridge note, the validation-router attached-page note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the suite-router attached-page quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows replay quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router attached-html bridge note, the Windows full-use attached-html catalog quickstart note, the validation-router attached-page note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the suite-router attached-page quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -161,7 +164,7 @@ $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached
 } elseif ($helper.recommended_next_key -eq 'contextual_flow') {
     'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the narrower attached-page helpers.'
 } else {
-    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so reopen the Windows full-use validation-router attached-html bridge first and keep the route-level surface checker nearby before dropping into the smaller attached-page quickstarts.'
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so reopen the Windows full-use validation-router attached-html bridge first and keep the route-level surface checker plus the Windows-first attached-html catalog quickstart nearby before dropping into the smaller attached-page quickstarts.'
 }
 
 if ($Json) {
@@ -190,6 +193,7 @@ Write-Host ''
 Write-Host 'Broader Windows bridge:'
 Write-Host (("  Windows full-use route:   {0}") -f $helper.commands.windows_full_use_attached_html_route)
 Write-Host (("  Validation bridge:        {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)
+Write-Host (("  Catalog quickstart:       {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)
 Write-Host ''
 Write-Host 'Attached-page ladder:'
 Write-Host (("  Validation-router quick:  {0}") -f $helper.commands.validation_router_attached_html_quickstart)
@@ -208,6 +212,7 @@ Write-Host ''
 Write-Host (("Windows replay note:         {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
 Write-Host (("Windows route note:          {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
 Write-Host (("Windows bridge note:         {0}") -f (' ' + $helper.windows_full_use_validation_router_attached_html_bridge_note_path))
+Write-Host (("Windows catalog note:        {0}") -f (' ' + $helper.windows_full_use_attached_html_catalog_quickstart_note_path))
 Write-Host (("Validation-router note:      {0}") -f (' ' + $helper.validation_router_attached_html_note_path))
 Write-Host (("Change-area quickstart note: {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
 Write-Host (("Top-level quickstart note:   {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
