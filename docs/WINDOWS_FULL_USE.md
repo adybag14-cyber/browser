@@ -151,6 +151,37 @@ quickstart visible before the route narrows into the smaller top-level
 attached-page helpers, the shorter attached-page shortcut, replay shortcuts, or
 the safe-route map.
 
+If that same attached localhost replay should stay on the newer Google-shaped
+attached-page lane before it narrows back into the top-level or suite-router
+helpers, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` nearby and
+reopen the Google-style surface check, local-asset audit, helper, and runner
+first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
+```
+
+If the replay already carries a non-default checkout, a preferred starting
+page, an explicit browser binary, or pinned attached bundle paths, preserve
+that same context directly in the Google-style helper chain before widening
+again:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>' -Wait
+```
+
+Use that Google-style branch when the current attached inputs already include a
+Google-like page and you want the stricter issue `#3` attached-page surface
+check, the local-asset audit, and the Google-first helper output visible before
+the route narrows back into the shorter top-level attached-page quickstarts,
+suite-router notes, replay shortcuts, or the safe-route map.
+
 If that same replay is already clearly on the attached localhost follow-up
 branch, keep `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md` nearby too and
 print the compact top-level attached-page quickstart before reopening the
@@ -418,16 +449,3 @@ Routing rules:
 - Use `run_google_shared_enter_order_validation.ps1` when you want the shared issue `#3` enter-order stack by itself, including the reduced-home keypress-before-submit probe, the stricter localhost wrapper, and the shared form-controls gate.
 - Use `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` when you want the shared validation router to point directly at the dedicated attached-HTML Google follow-up helper.
 - Use `show_headed_validation_suites.ps1 -ChangeArea attached-html` when you want the shared validation router to point back at the broader attached-page localhost route before choosing between the bundle-aware and generic replay helpers.
-- Use `check_attached_html_target_bundle_validation_surface.ps1`, `check_attached_html_target_bundle.ps1`, and `show_attached_html_target_bundle_validation_flow.ps1` when the current attached or saved page set is the known three-page compatibility bundle and you want one stable read-first route before launch.
-- Use `run_attached_html_target_bundle_validation.ps1 -Wait` when the bundle checks are green and you want the same locked three-page set to launch through the bundle-aware route in one command.
-- Use `check_google_attached_html_validation_surface.ps1` before `show_google_attached_html_validation_flow.ps1` or `run_google_attached_html_validation.ps1` when the next pass should reuse attached Google-style pages, so missing guides, helpers, or localhost runners fail fast.
-- Use `check_attached_html_local_asset_closure.ps1 -GoogleStyle` before the Google attached-page flow when the saved page set might have nested CSS, image, or font dependencies that were not copied beside the HTML export.
-- Use `check_saved_page_localhost_validation_surface.ps1` before manual saved-page follow-up when the branch has moved recently and you want the general localhost helper chain to fail fast if a guide, runner, or summary helper was renamed or removed.
-- Use `check_local_html_fixture_validation_surface.ps1` before the reusable fixed-list fixture replay when you want the staged localhost probe and its shared helpers to fail fast after the branch has moved.
-- Use `run_localhost_html_validation_recommended.ps1` when you want one command that auto-routes attached HTML under `agent_files/` or explicit saved-page inputs into the right localhost helper.
-- Use `run_sanitized_saved_page_localhost_validation.ps1` when the saved inputs have Unicode-heavy filenames, were exported as standalone HTML files with sibling `*_files` assets, or need one ASCII-safe staged localhost root before headed launch.
-- Use `show_attached_html_validation_flow.ps1 -GoogleStyle` when the attached HTML set includes a Google-like page and you want that page chosen first for the manual headed follow-up.
-- Use `show_google_attached_html_validation_flow.ps1` when you want the printed Google-style localhost-first flow for auto-discovered attached HTML without reshaping the broader issue `#3` commands by hand.
-- Use `run_google_attached_html_validation.ps1` when you want the same Google-style attached HTML follow-up to execute directly in one command; attached-file modes now rerun the deep asset-closure audit before launch.
-- Use `show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle` when you want the saved-page handoff commands to target the same auto-discovered Google-style attached pages without restating input paths.
-- Use `show_saved_page_google_validation_flow.ps1` when the saved-page pass should stay in the same localhost-first Google investigation order before the manual headed retest.
