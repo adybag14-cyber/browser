@@ -65,29 +65,6 @@ function Format-HelperCommand {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ScriptName,
-        [System.Collections.Generic.List[string]]$Arguments,
-        [string[]]$Switches = @()
-    )
-
-    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
-    if ($Arguments -and $Arguments.Count -gt 0) {
-        $command += " " + ($Arguments -join ' ')
-    }
-    foreach ($switchName in $Switches) {
-        if ([string]::IsNullOrWhiteSpace($switchName)) {
-            continue
-        }
-
-        $command += " -$switchName"
-    }
-
-    return $command
-}
-
-function Format-HelperCommandWithRepoRootEnv {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ScriptName,
         [hashtable]$Arguments = @{},
         [string[]]$Switches = @(),
         [string]$RepoRootOverride
@@ -140,6 +117,11 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$googleFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
+$contextualFlowCommand = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
+$windowsReplayAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
+$windowsReplayAttachedHtmlQuickstartCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 replay-route shortcut entrypoint'
     purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the attached-page shortcut, replay shortcuts, pinned bundle route, and current safe-route helpers while preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
@@ -169,7 +151,7 @@ $entrypoint = [ordered]@{
     }
     replay_discovery_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
-    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
+    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
     notes = @(
