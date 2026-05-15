@@ -25,7 +25,10 @@ If a replay already carries `RepoRoot`, `SummaryPath`, or pinned attached bundle
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` when the broader top-level attached-page helper chain still matters
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` when the compact top-level attached-page route and the suite-catalog-side bridge should stay visible together
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md` when the top-level suite router already made issue `#3` obvious and the shortcut-first bridge should stay visible beside the attached-page chain
+- `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md` when the route is already close to the shortest issue-specific attached-page bridge and you want that narrower helper family kept visible before the replay widens again
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the route has already narrowed back to the suite-router side
+- `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` when the route is about to narrow from the attached-page chain into the shorter suite-router shortcut-first helper surface
+- `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md` when the broader suite-catalog or suite-router entrypoints still need to stay visible beside the top-level attached-page chain before the replay narrows again
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md` when the suite-catalog-side attached-page bridge should stay visible before the replay narrows into shortcuts or safe-route helpers
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md` when the attached-page route is already clear and you want the narrower replay-route companion visible before widening into replay shortcuts or the safe-route map
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` when explicit bundle paths are already pinned and the next replay should stay on the known three-page compatibility set
@@ -38,10 +41,10 @@ If a replay already carries `RepoRoot`, `SummaryPath`, or pinned attached bundle
 2. Reopen `docs/ISSUE3_PRODUCTION_EXECUTION_ATTACHED_HTML_ROUTE.md` when the main production guide already made attached localhost follow-up the next obvious branch.
 3. Reopen `docs/WINDOWS_FULL_USE.md`, rerun `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, and keep the Windows full-use validation-router bridge, the Windows full-use attached-html catalog quickstart, and the replay-side attached-html quickstart nearby when the broader Windows-first branch should be written back down before the narrower top-level chain takes over.
 4. Reopen the validation-router attached HTML quickstart or the attached-html change-area quickstart when the broader attached-page router still needs to be visible before the top-level chain narrows.
-5. Keep the top-level attached HTML catalog quickstart and the suite-catalog attached HTML bridge nearby when the route should stay visible on the catalog side before the replay narrows again.
+5. Keep the top-level attached HTML catalog quickstart, the suite-catalog attached HTML bridge, and the suite-router entrypoint guide nearby when the route should stay visible on the catalog side before the replay narrows again.
 6. Reopen `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md` when the top-level router already made issue `#3` obvious and the shortcut-first branch should stay visible beside the attached-page chain.
-7. Drop to the suite-router attached-page quickstart when the replay is already narrowed.
-8. Reopen `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` when the replay-side attached-page quickstart already made the narrower lane obvious and you want that shorter replay ladder visible before the top-level notes take over.
-9. Reopen `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md` when the attached-page route is already clear and the next move should stay on the narrower replay-route companion before widening into replay shortcuts or the safe-route stack.
-10. Reopen the replay discovery handoff, the attached-html target bundle reference, or the broader Windows replay quickstart only after the replay-side attached-page quickstart, the top-level catalog route, the suite-catalog bridge, or the replay-route shortcut bridge is out of the way.
+7. Reopen `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md` or `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` when the route is already close to the narrowest attached-page or suite-router shortcut surface and you want that shorter helper family visible before the replay widens again.
+8. Drop to the suite-router attached-page quickstart when the replay is already narrowed.
+9. Reopen `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` when the replay-side attached-page quickstart already made the narrower lane obvious and you want that shorter replay ladder visible before the top-level notes take over.
+10. Reopen the replay-route shortcut bridge, the replay discovery handoff, the attached-html target bundle reference, or the broader Windows replay quickstart only after the attached-page shortcut, the suite-router shortcut bridge, the top-level catalog route, or the replay-route shortcut bridge is out of the way.
 11. Return to the full validation chain only when the next step needs the wrapper-heavy safe route again.
