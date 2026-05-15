@@ -131,7 +131,7 @@ Use that context-preserving form when:
 
 Use this as the default follow-up when no pinned bundle inputs, non-default repo root, or saved summary need to steer the route first.
 
-2. `show_google_issue3_top_level_attached_html_catalog_quICKSTART.ps1`
+2. `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
 
 Use this when you want the compact top-level quickstart and the suite-catalog attached-page bridge kept visible together before the route narrows again.
 
