@@ -152,7 +152,7 @@ Use this when you want the shortest top-level attached-page bridge kept visible 
 
 Use this when you want the broader top-level attached-page bridge reprinted beside the compact quickstart before the route narrows again.
 
-9. `show_google_issue3_top_level_attached_html_catalog_quICKSTART.ps1`
+9. `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
 
 Use this when you want the compact top-level quickstart and the suite-catalog-to-top-level catalog quickstart reprinted together before the route narrows again.
 
