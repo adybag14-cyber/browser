@@ -2,7 +2,7 @@
 
 Use this note when `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already narrowed the next replay to the attached localhost HTML lane and you want the shortest written ladder that matches `show_google_issue3_windows_replay_attached_html_quickstart.ps1`.
 
-This keeps the replay-quickstart fail-fast check, the route-level fail-fast check, the Windows-full-use bridge, the validation-router attached-page quickstart, the attached-html change-area quickstart, the smaller top-level attached-page helpers, and the suite-catalog-to-top-level attached-html catalog bridge aligned in one read-first guide before the route narrows into shortcuts or widens back into the safe-route stack.
+This keeps the replay-quickstart fail-fast check, the route-level fail-fast check, the Windows-full-use bridge, the validation-router attached-page quickstart, the attached-html change-area quickstart, the smaller top-level attached-page helpers, the wider suite-catalog entrypoints guide, and the suite-catalog-to-top-level attached-html catalog bridge aligned in one read-first guide before the route narrows into shortcuts or widens back into the safe-route stack.
 
 Keep these companion notes nearby:
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
@@ -14,6 +14,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
@@ -44,6 +45,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
@@ -53,7 +55,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 Use that route when:
 - the replay is already centered on the attached localhost compatibility pages
 - you want the replay-quickstart and route-level fail-fast checks plus the broader Windows-full-use and validation-router bridges visible before the route narrows into the smaller attached-page quickstarts
-- you still want the attached-html change-area quickstart, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-html catalog quickstart, the suite-catalog attached-page bridge, and the suite-router sidecar helper visible before the route collapses into the narrower shortcut surface
+- you still want the attached-html change-area quickstart, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-html catalog quickstart, the wider suite-catalog entrypoints guide, the suite-catalog attached-page bridge, and the suite-router sidecar helper visible before the route collapses into the narrower shortcut surface
 
 ## Preserve replay context
 
@@ -70,6 +72,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -137,29 +140,33 @@ Use this when you want the compact top-level attached-page route plus the suite-
 
 Use this when you want the replay-side attached-page ladder, the top-level attached-page catalog quickstart, and the suite-catalog-side bridge kept visible on the same surface before the route narrows again.
 
-10. `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
+10. `show_google_issue3_suite_catalog_entrypoints.ps1`
+
+Use this when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.
+
+11. `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
 
 Use this when you want the suite-catalog-side attached-page bridge without reopening broader router helpers first.
 
-11. `show_google_issue3_suite_router_attached_html_quickstart.ps1`
+12. `show_google_issue3_suite_router_attached_html_quickstart.ps1`
 
 Use this when the route should keep the suite-router-side helper visible before collapsing to the shorter shortcut surface.
 
-12. `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
+13. `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
 
 Use this when the attached-page route is already clear and you want the shortest bridge before widening into replay shortcuts, contextual flow, bundle-first helper reuse, or the safe-route map.
 
-13. `show_google_issue3_replay_shortcuts.ps1`
+14. `show_google_issue3_replay_shortcuts.ps1`
 
 Use this when the route is already clearly inside issue `#3` and you want the tightest helper surface before deciding whether to widen again.
 
 ## Practical rule
 
-When `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already made attached localhost follow-up the next obvious branch, rerun the replay quickstart surface check first, then rerun the route-level surface check, then keep the Windows-full-use bridge, the validation-router attached-page quickstart, the attached-html change-area quickstart, the top-level attached-page quickstarts, and the suite-catalog-to-top-level attached-html catalog bridge in view before dropping to the shorter shortcut surface.
+When `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already made attached localhost follow-up the next obvious branch, rerun the replay quickstart surface check first, then rerun the route-level surface check, then keep the Windows-full-use bridge, the validation-router attached-page quickstart, the attached-html change-area quickstart, the top-level attached-page quickstarts, the suite-catalog-to-top-level attached-html catalog bridge, the wider suite-catalog entrypoints guide, and the suite-catalog attached-page bridge in view before dropping to the shorter shortcut surface.
 
 - replay reopened from `docs/WINDOWS_FULL_USE.md`: keep the broader Windows-full-use route and its validation-router bridge in front of the narrower attached-page quickstarts
 - replay already narrowed to `-ChangeArea attached-html`: keep `show_google_issue3_attached_html_change_area_quickstart.ps1` and the broader attached-page flow helper beside this note so the shorter change-area bridge stays visible before the route widens again
 - explicit bundle paths already pinned: switch to the bundle-first helper after the change-area quickstart so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
-- saved summary or repo-root override already present: pass the same replay context through the broader route guard, the narrower helper chain, and the suite-catalog-to-top-level attached-html catalog quickstart so later follow-ups stay aligned
+- saved summary or repo-root override already present: pass the same replay context through the broader route guard, the narrower helper chain, the suite-catalog-to-top-level attached-html catalog quickstart, the wider suite-catalog entrypoints guide, and the suite-catalog attached-page bridge so later follow-ups stay aligned
 
 Only widen back into the longer validation-chain notes after the route has narrowed as far as it can go with the compact attached-page ladder.
