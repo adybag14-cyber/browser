@@ -23,6 +23,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
@@ -33,13 +34,14 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
+Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, the broader Google-shaped attached-page flow, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
 
 From there, prefer one of these narrower follow-ups before reopening the wrapper-heavy safe-route stack:
 
 - `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
 - `show_google_issue3_validation_router_attached_html_quickstart.ps1`
 - `show_google_issue3_attached_html_change_area_quickstart.ps1`
+- `show_google_attached_html_validation_flow.ps1`
 - `show_google_issue3_top_level_attached_html_quickstart.ps1`
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1`
 - `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
@@ -124,7 +126,7 @@ Only use this bridge after `show_google_issue3_replay_shortcuts.ps1` is already 
 
 - broader Windows-first attached-page route still matters: keep the route-level fail-fast check, the Windows full-use route, the Windows-to-validation-router bridge, and the Windows-side catalog step in front of the replay-side quickstart
 - replay-side attached-page ladder is already the best mental model: jump straight from this bridge to `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
-- replay still needs one broader attached-page checkpoint after the replay-side quickstart: widen to `show_google_issue3_validation_router_attached_html_quickstart.ps1`, `show_google_issue3_attached_html_change_area_quickstart.ps1`, `show_google_issue3_top_level_attached_html_entrypoint.ps1`, or `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
+- replay still needs one broader attached-page checkpoint after the replay-side quickstart: widen to `show_google_issue3_validation_router_attached_html_quickstart.ps1`, `show_google_issue3_attached_html_change_area_quickstart.ps1`, or `show_google_attached_html_validation_flow.ps1` before the top-level attached-page quickstarts take over
 - saved summary or repo-root override already present: reopen the bridge with that same context first, then choose the next narrower helper
 - explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
 
