@@ -1,0 +1,295 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$SummaryPath,
+    [string[]]$InputPath,
+    [switch]$Json
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Add-SharedArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return
+    }
+    if ($Value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    if ($Value -is [string]) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $Value))
+    } else {
+        $Arguments.Add([string]$Value)
+    }
+}
+
+function Add-SharedPathArrayArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string[]]$Values
+    )
+
+    if (-not $Values -or $Values.Count -eq 0) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    foreach ($value in $Values) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $value))
+    }
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [System.Collections.Generic.List[string]]$Arguments,
+        [string[]]$Switches = @()
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    if ($Arguments -and $Arguments.Count -gt 0) {
+        $command += " " + ($Arguments -join ' ')
+    }
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string[]]$Switches = @(),
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        $fallbackArguments = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in $Arguments.GetEnumerator()) {
+            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+        }
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
+if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
+}
+
+$sharedArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $sharedArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values $InputPath
+
+$routeSurfaceArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $RepoRoot
+
+$helper = [ordered]@{
+    issue = 'Google issue #3 Windows replay quickstart'
+    purpose = 'Print the main read-first replay entrypoint for issue #3, keeping the suite-catalog bridge, the suite-router quickstart, the replay-side attached-html helper, the top-level attached-html ladder, the shortcut bridges, and the safe-route helpers visible from one compact surface.'
+    repo_root = $RepoRoot
+    summary_path = $SummaryPath
+    explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    replay_attached_html_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
+    replay_quickstart_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md'
+    replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
+    windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
+    validation_router_attached_html_quickstart_note_path = 'docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md'
+    top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
+    top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
+    top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
+    suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
+    suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
+    suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
+    suite_router_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
+    safe_route_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
+    commands = [ordered]@{
+        google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            SuiteName = 'google-recommended'
+        }) -RepoRootOverride $RepoRoot
+        google_input = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'google-input'
+        }) -RepoRootOverride $RepoRoot
+        attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'attached-html'
+        }) -RepoRootOverride $RepoRoot
+        suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments
+        suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $sharedArguments
+        validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
+        windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
+        windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
+        windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
+        windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
+        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $sharedArguments
+        top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
+        suite_catalog_top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
+        suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $sharedArguments
+        suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $sharedArguments
+        replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $sharedArguments
+        replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $sharedArguments
+        replay_route_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments
+        contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $sharedArguments
+        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $sharedArguments
+        safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $sharedArguments
+    }
+    notes = @(
+        'Start with suite_catalog_entrypoints when you want the broadest read-first bridge that still stays inside the issue #3 replay family.',
+        'Use suite_router_quickstart when the top-level validation catalog already made issue #3 obvious and you want the shortest router-side bridge before the route narrows again.',
+        'Use windows_full_use_attached_html_route_surface_check before trusting the attached-page ladder from another checkout, because it fails fast on missing route notes, helper scripts, or downstream attached-page surfaces.',
+        'Use windows_replay_attached_html_quickstart when the main replay note already narrowed the next step to the attached localhost branch and you want the shorter replay-side attached-page ladder printed directly.',
+        'Use top_level_shortcut_first when the replay is already clearly inside issue #3 and you want the shorter top-level shortcut bridge kept visible before reopening the wider attached-page helpers.',
+        'Use replay_route and replay_route_shortcut_entrypoint when you want the broader issue #3 route or the narrower replay-route follow-up printed beside the shortcut helpers.',
+        'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper surface should preserve that replay context.',
+        'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle.',
+        'Keep the Windows replay quickstart note, the replay-side attached-html note, the Windows full-use attached-html route note, the validation-router attached-html note, the top-level attached-html notes, the suite-catalog attached-html bridge, the suite-router attached-html quickstart, the replay shortcut bridges, and the safe-route note nearby when you want the written route beside these commands.'
+    )
+}
+
+$helper.recommended_next_key = if ($helper.explicit_input_path_count -gt 0) {
+    'attached_bundle_first'
+} elseif (-not [string]::IsNullOrWhiteSpace($helper.repo_root) -or -not [string]::IsNullOrWhiteSpace($helper.summary_path)) {
+    'contextual_flow'
+} else {
+    'suite_catalog_entrypoints'
+}
+$helper.recommended_next_command = $helper.commands[$helper.recommended_next_key]
+$helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_first') {
+    'Explicit input paths are already pinned, so stay on the known three-page compatibility bundle before widening back into the broader issue #3 helper chain.'
+} elseif ($helper.recommended_next_key -eq 'contextual_flow') {
+    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the narrower attached-page helpers, replay shortcuts, or the safe-route map.'
+} else {
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so start from the suite-catalog bridge and keep the broader replay ladder visible before the route narrows again.'
+}
+
+if ($Json) {
+    $helper | ConvertTo-Json -Depth 5
+    exit 0
+}
+
+Write-Host 'Google issue #3 Windows replay quickstart'
+Write-Host ''
+if ($helper.repo_root) {
+    Write-Host (("Repo root:   {0}") -f $helper.repo_root)
+}
+if ($helper.summary_path) {
+    Write-Host (("Summary path:{0}") -f (" $($helper.summary_path)"))
+}
+if ($helper.explicit_input_path_count -gt 0) {
+    Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
+}
+Write-Host ''
+Write-Host (("Recommended next helper: {0}") -f $helper.recommended_next_command)
+Write-Host (("Why:                    {0}") -f $helper.recommended_next_reason)
+Write-Host ''
+Write-Host 'Top-level replay entrypoints:'
+Write-Host (("  Google recommended:        {0}") -f $helper.commands.google_recommended)
+Write-Host (("  Google input:              {0}") -f $helper.commands.google_input)
+Write-Host (("  Attached HTML:             {0}") -f $helper.commands.attached_html)
+Write-Host ''
+Write-Host 'Read-first issue #3 bridge:'
+Write-Host (("  Suite catalog:             {0}") -f $helper.commands.suite_catalog_entrypoints)
+Write-Host (("  Suite router quickstart:   {0}") -f $helper.commands.suite_router_quickstart)
+Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)
+Write-Host ''
+Write-Host 'Attached-page ladder:'
+Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)
+Write-Host (("  Windows full-use route:    {0}") -f $helper.commands.windows_full_use_attached_html_route)
+Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)
+Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)
+Write-Host (("  Replay attached quick:     {0}") -f $helper.commands.windows_replay_attached_html_quickstart)
+Write-Host (("  Top-level shortcut:        {0}") -f $helper.commands.top_level_shortcut_first)
+Write-Host (("  Top-level quickstart:      {0}") -f $helper.commands.top_level_attached_html_quickstart)
+Write-Host (("  Top-level bridge:          {0}") -f $helper.commands.top_level_attached_html_entrypoint)
+Write-Host (("  Top-level catalog quick:   {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
+Write-Host (("  Catalog bridge quick:      {0}") -f $helper.commands.suite_catalog_top_level_attached_html_catalog_quickstart)
+Write-Host (("  Suite-catalog bridge:      {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
+Write-Host (("  Router attached quick:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)
+Write-Host (("  Attached shortcut:         {0}") -f $helper.commands.attached_html_shortcut)
+Write-Host (("  Replay shortcuts:          {0}") -f $helper.commands.replay_shortcuts)
+Write-Host ''
+Write-Host 'Replay follow-ups:'
+Write-Host (("  Replay route:              {0}") -f $helper.commands.replay_route)
+Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)
+Write-Host (("  Contextual flow:           {0}") -f $helper.commands.contextual_flow)
+Write-Host (("  Bundle-first helper:       {0}") -f $helper.commands.attached_bundle_first)
+Write-Host (("  Safe-route map:            {0}") -f $helper.commands.safe_route_entrypoints)
+Write-Host ''
+Write-Host (("Quickstart note:             {0}") -f $helper.quickstart_note_path)
+Write-Host (("Replay attached note:        {0}") -f $helper.replay_attached_html_note_path)
+Write-Host (("Replay shortcut note:        {0}") -f $helper.replay_quickstart_shortcut_bridge_note_path)
+Write-Host (("Replay-route shortcut note:  {0}") -f $helper.replay_route_shortcut_bridge_note_path)
+Write-Host (("Windows route note:          {0}") -f $helper.windows_full_use_attached_html_route_note_path)
+Write-Host (("Validation-router note:      {0}") -f $helper.validation_router_attached_html_quickstart_note_path)
+Write-Host (("Top-level quickstart note:   {0}") -f $helper.top_level_attached_html_quickstart_note_path)
+Write-Host (("Top-level bridge note:       {0}") -f $helper.top_level_attached_html_bridge_note_path)
+Write-Host (("Top-level catalog note:      {0}") -f $helper.top_level_attached_html_catalog_quickstart_note_path)
+Write-Host (("Catalog bridge note:         {0}") -f $helper.suite_catalog_top_level_attached_html_catalog_quickstart_note_path)
+Write-Host (("Suite-catalog note:          {0}") -f $helper.suite_catalog_attached_html_bridge_note_path)
+Write-Host (("Suite-router note:           {0}") -f $helper.suite_router_attached_html_quickstart_note_path)
+Write-Host (("Suite-router guide:          {0}") -f $helper.suite_router_entrypoint_note_path)
+Write-Host (("Safe-route note:             {0}") -f $helper.safe_route_note_path)
+Write-Host ''
+Write-Host 'Notes:'
+foreach ($note in $helper.notes) {
+    Write-Host (("- {0}") -f $note)
+}
