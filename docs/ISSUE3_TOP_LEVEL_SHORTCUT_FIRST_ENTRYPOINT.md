@@ -6,13 +6,16 @@ This note matches `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`.
 
 Keep these companion notes nearby:
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
+- `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
@@ -64,7 +67,10 @@ If attached localhost follow-up is already the next obvious branch, keep the sho
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
@@ -73,7 +79,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-Use that route when the replay is already centered on the attached-page compatibility branch and you want the top-level attached-page quickstart, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, the broader top-level shortcut-first bridge, the attached-page shortcut, and the narrower suite-router shortcut-first helper all kept on the same written ladder.
+Use that route when the replay is already centered on the attached-page compatibility branch and you want the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, the broader top-level shortcut-first bridge, the attached-page shortcut, and the narrower suite-router shortcut-first helper all kept on the same written ladder.
 
 ## Google-shaped attached HTML handoff
 
@@ -111,7 +117,10 @@ If the replay already carries a non-default repo root, a saved summary, or pinne
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -176,4 +185,4 @@ Use this when explicit `InputPath` values are already pinned or when the replay 
 
 ## Practical rule
 
-Start from the top-level headed validation catalog, then use `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` when the route is already clearly inside issue `#3`. If attached localhost follow-up becomes the next obvious branch, reopen `show_google_issue3_top_level_attached_html_quickstart.ps1`, then `show_google_issue3_suite_router_attached_html_quickstart.ps1`, then `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, and only then narrow into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` or `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`. Stay on the bundle-first route whenever explicit bundle inputs are already pinned, and only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
+Start from the top-level headed validation catalog, then use `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` when the route is already clearly inside issue `#3`. If attached localhost follow-up becomes the next obvious branch, reopen `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`, then `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`, then `show_google_issue3_suite_router_attached_html_quickstart.ps1`, then `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, and only then narrow into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` or `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`. Stay on the bundle-first route whenever explicit bundle inputs are already pinned, and only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
