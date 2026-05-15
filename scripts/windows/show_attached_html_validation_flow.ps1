@@ -139,13 +139,61 @@ function Get-AttachedHtmlValidationHints {
     )
 }
 
+function Get-AttachedHtmlTargetBundleRecommendation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string[]]$ResolvedInputPath
+    )
+
+    if (-not $ResolvedInputPath -or $ResolvedInputPath.Count -eq 0) {
+        return $null
+    }
+
+    $bundleChecker = Join-Path $RepoRoot "scripts/windows/check_attached_html_target_bundle.ps1"
+    if (-not (Test-Path -LiteralPath $bundleChecker -PathType Leaf)) {
+        return $null
+    }
+
+    $bundleJson = (& $bundleChecker -RepoRoot $RepoRoot -InputPath $ResolvedInputPath -Json 2>$null) -join [Environment]::NewLine
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($bundleJson)) {
+        return $null
+    }
+
+    $bundle = $bundleJson | ConvertFrom-Json -Depth 12
+    if (-not $bundle -or -not $bundle.overall_recommendation -or -not $bundle.overall_recommendation.bundle_validation_profile) {
+        return $null
+    }
+
+    return $bundle
+}
+
 function Get-AttachedHtmlOverallRecommendation {
     param(
         [Parameter(Mandatory = $true)]
         [object[]]$Hints,
         [Parameter(Mandatory = $true)]
-        [bool]$GoogleStyle
+        [bool]$GoogleStyle,
+        $BundleRecommendation
     )
+
+    if ($BundleRecommendation -and $BundleRecommendation.overall_recommendation -and $BundleRecommendation.overall_recommendation.bundle_validation_profile) {
+        $bundleOverall = $BundleRecommendation.overall_recommendation
+        return [ordered]@{
+            change_area = "attached-html-target-bundle"
+            first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle"
+            follow_up = $bundleOverall.bundle_surface_check
+            summary = "Known three-page attached HTML compatibility bundle detected. Keep the bundle-aware route pinned before the broader generic attached-page flow."
+            bundle_validation_profile = $bundleOverall.bundle_validation_profile
+            bundle_locked_input_count = $bundleOverall.bundle_locked_input_count
+            bundle_surface_check = $bundleOverall.bundle_surface_check
+            bundle_asset_closure = $bundleOverall.bundle_asset_closure
+            bundle_flow = $bundleOverall.bundle_flow
+            bundle_runner = $bundleOverall.bundle_runner
+            bundle_summary = $bundleOverall.bundle_summary
+        }
+    }
 
     if ($GoogleStyle -or ($Hints | Where-Object { $_.change_area -eq "google-attached-html" })) {
         return [ordered]@{
@@ -195,7 +243,8 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
 }
 
 $attachedHtmlHints = Get-AttachedHtmlValidationHints -ResolvedInputPath $resolvedInputPath -GoogleStyle ([bool]$GoogleStyle)
-$overallRecommendation = Get-AttachedHtmlOverallRecommendation -Hints $attachedHtmlHints -GoogleStyle ([bool]$GoogleStyle)
+$attachedHtmlBundleRecommendation = Get-AttachedHtmlTargetBundleRecommendation -RepoRoot $repoRoot -ResolvedInputPath $resolvedInputPath
+$overallRecommendation = Get-AttachedHtmlOverallRecommendation -Hints $attachedHtmlHints -GoogleStyle ([bool]$GoogleStyle) -BundleRecommendation $attachedHtmlBundleRecommendation
 $attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
 $assetClosureChecker = Join-Path $repoRoot "scripts/windows/check_attached_html_local_asset_closure.ps1"
 if (-not (Test-Path -LiteralPath $assetClosureChecker -PathType Leaf)) {
@@ -320,6 +369,30 @@ foreach ($hint in $attachedHtmlHints) {
 Write-Host ""
 Write-Host ("Overall first bounded step: {0}" -f $overallRecommendation.first_step)
 Write-Host ("Overall follow-up: {0}" -f $overallRecommendation.follow_up)
+if ($overallRecommendation.summary) {
+    Write-Host ("Overall summary: {0}" -f $overallRecommendation.summary)
+}
+if ($overallRecommendation.bundle_validation_profile) {
+    Write-Host ("Bundle validation profile: {0}" -f $overallRecommendation.bundle_validation_profile)
+}
+if ($overallRecommendation.bundle_locked_input_count) {
+    Write-Host ("Bundle locked inputs: {0}" -f $overallRecommendation.bundle_locked_input_count)
+}
+if ($overallRecommendation.bundle_summary) {
+    Write-Host ("Bundle route summary: {0}" -f $overallRecommendation.bundle_summary)
+}
+if ($overallRecommendation.bundle_surface_check) {
+    Write-Host ("Bundle surface check: {0}" -f $overallRecommendation.bundle_surface_check)
+}
+if ($overallRecommendation.bundle_asset_closure) {
+    Write-Host ("Bundle asset-closure check: {0}" -f $overallRecommendation.bundle_asset_closure)
+}
+if ($overallRecommendation.bundle_flow) {
+    Write-Host ("Bundle flow helper: {0}" -f $overallRecommendation.bundle_flow)
+}
+if ($overallRecommendation.bundle_runner) {
+    Write-Host ("Bundle runner: {0}" -f $overallRecommendation.bundle_runner)
+}
 Write-Host ""
 
 & $helperPath @helperArgs
