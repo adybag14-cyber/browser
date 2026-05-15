@@ -107,7 +107,7 @@ function Format-HelperCommandWithRepoRootEnv {
         if ($null -eq $value) {
             continue
         }
-        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
             continue
         }
 
@@ -172,7 +172,7 @@ $entrypoint = [ordered]@{
     }
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
-    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
+    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
         'Use this helper when the top-level suite router has already narrowed the replay to the issue #3 attached-page route and you want the shortest current bridge back into the narrower helper chain.',
