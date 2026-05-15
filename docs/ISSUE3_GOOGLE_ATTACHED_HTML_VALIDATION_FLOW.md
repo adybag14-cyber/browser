@@ -18,10 +18,14 @@ Use that helper when you want one read-first command surface that:
 
 Keep these companion notes nearby:
 
+- `docs/WINDOWS_FULL_USE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_REPLAY_ROUTE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
@@ -46,6 +50,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 Use `google-attached-html` when the replay should stay on the Google-shaped attached-page lane.
 Use `attached-html` when the route should stay broader and not assume the Google-style follow-up yet.
 Use `attached-html-target-bundle` when the current pages are still the known three-page compatibility bundle and the replay should stay pinned there first.
+
+## Windows-full-use re-entry
+
+If the broader Windows runbook already made attached localhost follow-up the next obvious issue `#3` branch, reopen the wider Windows-first route guard and bridge before dropping into this narrower Google-style flow:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+```
+
+Use that route when `docs/WINDOWS_FULL_USE.md` already narrowed the replay to attached localhost follow-up and you want the route-level surface check, the broader Windows-to-validation-router bridge, and the replay-side attached-page quickstart visible before this note narrows the same inputs into the Google-style helper and runner.
 
 ## Default read-first route
 
@@ -151,4 +169,4 @@ Use this when the current inputs are still the known three-page compatibility bu
 
 ## Practical rule
 
-Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. Keep the broader attached-page router nearby when the route is still ambiguous, keep the bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
+Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard and bridge first so the higher-level branch stays visible before this narrower note takes over. Keep the broader attached-page router nearby when the route is still ambiguous, keep the bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
