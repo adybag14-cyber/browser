@@ -137,10 +137,12 @@ Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $Summary
 Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values $InputPath
 
 $emptyArguments = [System.Collections.Generic.List[string]]::new()
+$windowsReplayAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
+$windowsReplayAttachedHtmlQuickstartCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments
 
 $helper = [ordered]@{
     issue = 'Google issue #3 top-level attached HTML bridge'
-    purpose = 'Print the broader top-level attached-page bridge for issue #3 so the route guard, attached-shortcut guard, change-area quickstart, attached-page flow helper, top-level shortcut surface, top-level quickstart, suite-router attached-page quickstart, suite-catalog bridge, replay-route helper, and bundle-first branch stay visible on one helper surface.'
+    purpose = 'Print the broader top-level attached-page bridge for issue #3 so the route guard, attached-shortcut guard, change-area quickstart, attached-page flow helper, top-level shortcut surface, top-level quickstart, newer Windows replay attached-html surface check, newer Windows replay attached-html quickstart, suite-router attached-page quickstart, suite-catalog bridge, replay-route helper, and bundle-first branch stay visible on one helper surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -149,6 +151,8 @@ $helper = [ordered]@{
         windows_full_use_attached_html_route_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -RepoRootOverride $RepoRoot
         windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
         windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
+        windows_replay_attached_html_surface_check = $windowsReplayAttachedHtmlSurfaceCheckCommand
+        windows_replay_attached_html_quickstart = $windowsReplayAttachedHtmlQuickstartCommand
         attached_html_shortcut_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_attached_html_shortcut_validation_surface.ps1' -RepoRootOverride $RepoRoot
         attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html' }) -RepoRootOverride $RepoRoot
         google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'google-attached-html' }) -RepoRootOverride $RepoRoot
@@ -182,6 +186,7 @@ $helper = [ordered]@{
         windows_replay_quickstart = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
         windows_replay_attached_html_quickstart = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
         windows_validation_chain = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
+        google_attached_html_validation_flow = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
         attached_html_change_area_quickstart = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
         validation_router_attached_html_quickstart = 'docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md'
         top_level_attached_html_quickstart = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
@@ -194,15 +199,16 @@ $helper = [ordered]@{
         attached_html_shortcut_entrypoint = 'docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md'
         suite_router_attached_html_quickstart = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
         suite_router_shortcut_bridge = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
-        suite_router_entrypoint_guide = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
         suite_catalog_entrypoints = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
         suite_catalog_attached_html_bridge = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
         replay_route_shortcut_bridge = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
         replay_discovery_handoff = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
+        attached_html_target_bundle_reference = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     }
     notes = @(
         'Use this helper when issue #3 is already narrowed to attached localhost follow-up and you want the broader top-level bridge reprinted without reopening the longer validation-chain notes first.',
         'Use windows_full_use_attached_html_route, windows_full_use_attached_html_route_surface_check, windows_full_use_validation_router_attached_html_bridge, and windows_full_use_attached_html_catalog_quickstart when the replay is being resumed from the broader Windows-first route before it drops back into the top-level attached-page ladder.',
+        'Use windows_replay_attached_html_surface_check and windows_replay_attached_html_quickstart when the replay has already been narrowed to the replay-side attached localhost lane and you want that Windows-side ladder kept visible before the broader top-level bridge takes over.',
         'Use attached_html_change_area, attached_html_change_area_quickstart, and attached_html_flow when the replay should still keep the broader attached-page compatibility branch visible before narrowing into the shorter issue #3 helper chain.',
         'Use top_level_shortcut_entrypoint when the route is already about to narrow into the shorter attached-page shortcut, replay-route shortcut, replay shortcuts, the next-step matrix, or the safe-route map.',
         'Use top_level_attached_html_quickstart when you want the shortest top-level companion surface before the broader top-level bridge or the catalog quickstart.',
@@ -258,6 +264,8 @@ Write-Host (("  Windows route:          {0}") -f $helper.commands.windows_full_u
 Write-Host (("  Route surface check:    {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)
 Write-Host (("  Validation bridge:      {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)
 Write-Host (("  Catalog quickstart:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)
+Write-Host (("  Replay surface check:   {0}") -f $helper.commands.windows_replay_attached_html_surface_check)
+Write-Host (("  Replay attached quick:  {0}") -f $helper.commands.windows_replay_attached_html_quickstart)
 Write-Host ''
 Write-Host 'Top-level attached-page bridge:'
 Write-Host (("  Attached HTML route:    {0}") -f $helper.commands.attached_html_change_area)
