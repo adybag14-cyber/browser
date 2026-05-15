@@ -7,10 +7,11 @@ attached or saved localhost HTML follow-up.
 This is the shortest written bridge from the production execution guide into the
 newer Windows-first surface check, the Windows-to-validation-router bridge, the
 Windows-first catalog quickstart, the replay-side attached-html quickstart, the
-validation-router attached-page quickstart, the top-level attached-page catalog
-quickstart, the suite-catalog-to-top-level attached-page catalog quickstart,
-the smaller top-level bridges, the suite-router and suite-catalog bridges, and
-the pinned three-page compatibility bundle route.
+validation-router attached-page quickstart, the Google-shaped attached-page
+guide, the top-level attached-page catalog quickstart, the
+suite-catalog-to-top-level attached-page catalog quickstart, the smaller
+top-level bridges, the suite-router and suite-catalog bridges, and the pinned
+three-page compatibility bundle route.
 
 If the replay has not actually narrowed to attached or saved localhost HTML
 follow-up yet, reopen `docs/HEADED_MODE_VALIDATION_GATES.md` and the shared
@@ -143,7 +144,7 @@ before the shorter helper surfaces.
 Use this when you want the compact top-level attached-page bridge and the
 suite-catalog-side attached-page bridge surfaced together.
 
-11. `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`
+11. `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quICKSTART.ps1`
 
 Use this when you want the replay-side attached-html ladder, the top-level
 attached-page catalog quickstart, and the suite-catalog-side bridge kept on the
@@ -232,6 +233,7 @@ Keep these nearby when you want the written route beside the commands:
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
@@ -252,8 +254,12 @@ the compact top-level attached-page quickstart, then the broader top-level
 attached-page bridge, then the top-level attached-page catalog quickstart, then
 the suite-catalog-to-top-level attached-page catalog quickstart before
 reopening the shorter suite-router and suite-catalog attached-page bridges or
-dropping back into replay shortcuts. If the replay still has not clearly
-narrowed to attached localhost follow-up, reopen
+dropping back into replay shortcuts. If the replay still needs the broader
+Google-shaped attached-page route before the shorter top-level bridge, keep
+`docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` and
+`show_google_attached_html_validation_flow.ps1` visible beside the broader
+attached-page follow-up commands before narrowing again. If the replay still has
+not clearly narrowed to attached localhost follow-up, reopen
 `docs/HEADED_MODE_VALIDATION_GATES.md` and the shared suite router first
 instead of forcing this narrower route too early. Only reopen the longer
 validation-chain notes after the replay has narrowed back into the
