@@ -142,6 +142,11 @@ $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$reentryArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $reentryArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $reentryArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $reentryArguments -Name InputPath -Values $InputPath
+
 $safeRouteArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $safeRouteArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $safeRouteArguments -Name SummaryPath -Value $SummaryPath
@@ -154,10 +159,13 @@ Add-SharedPathArrayArgument -Arguments $replayShortcutsArguments -Name InputPath
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached bundle first entrypoint'
-    purpose = 'Print the pinned three-page compatibility bundle route first, including the fail-fast surface and bundle checks, then keep both the broader replay-shortcuts helper and the narrower safe-route helper on one command surface without dropping fixed bundle inputs.'
+    purpose = 'Print the pinned three-page compatibility bundle route first while keeping the replay-side attached-html quickstart, the top-level attached-page quickstart, and the issue-specific attached-page shortcut visible as the narrow re-entry ladder immediately before the bundle-only branch.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    windows_replay_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $reentryArguments
+    top_level_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $reentryArguments
+    attached_html_shortcut_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $reentryArguments
     bundle_surface_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
     bundle_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle.ps1' -Arguments $bundleCheckerArguments
     suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
@@ -167,16 +175,25 @@ $entrypoint = [ordered]@{
     bundle_runner_command = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
     replay_shortcuts_command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $replayShortcutsArguments
     return_to_safe_route_command = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $safeRouteArguments
-    quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
+    top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
+    attached_html_shortcut_note_path = 'docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md'
+    attached_html_target_bundle_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
-        'Use this helper when the current saved or attached pages are the known three-page compatibility bundle and you want that locked input set exercised before the broader Google-only wrapper chain.',
-        'Start with bundle_surface_check_command so the pinned bundle guide, checker, helper, runner, and delegated attached-HTML surfaces fail fast before localhost replay.',
+        'Use this helper when the current saved or attached pages are still the known three-page compatibility bundle and you want the narrower replay-side attached-html quickstart, the top-level attached-page quickstart, and the issue-specific attached-page shortcut kept visible just long enough to confirm the replay should stay pinned to that bundle.',
+        'Use windows_replay_attached_html_quickstart_command first when the replay reopened from the broader Windows replay route and you want the newer attached-html ladder visible before you commit to the bundle-only branch.',
+        'Use top_level_attached_html_quickstart_command next when you want the compact top-level attached-page bridge kept visible before the replay drops from the replay-side attached-html ladder into the pinned bundle route.',
+        'Use attached_html_shortcut_command next when the route is already clearly inside the shorter attached-page helper chain and you want explicit bundle inputs preserved before the replay narrows into the bundle-only branch.',
+        'Start with bundle_surface_check_command so the pinned bundle guide, checker, helper, runner, and delegated attached-html surfaces fail fast before localhost replay.',
         'Run bundle_check_command next when you want the current saved-page set revalidated as the same three-page compatibility bundle before you trust the printed flow helper or runner.',
+        'Use suite_router_command when you want the attached-html-target-bundle suite surface reprinted beside the bundle checker and flow helper before the delegated localhost runner.',
         'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the bundle check, flow, runner, replay-shortcuts helper, and safe-route return command instead of relying on auto-discovery.',
-        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the suite-router, replay-shortcuts, and safe-route return commands to preserve that same context.',
+        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
-        'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.'
+        'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.',
+        'Keep the Windows replay note, the replay-side attached-html quickstart note, the top-level attached-page quickstart note, the attached-page shortcut note, the attached-html target-bundle quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -197,6 +214,11 @@ if ($entrypoint.explicit_input_path_count -gt 0) {
     Write-Host ("Input paths: {0}" -f $entrypoint.explicit_input_path_count)
 }
 Write-Host ''
+Write-Host 'Re-enter before bundle route:'
+Write-Host ("  Windows replay quickstart: {0}" -f $entrypoint.windows_replay_attached_html_quickstart_command)
+Write-Host ("  Top-level quickstart:      {0}" -f $entrypoint.top_level_attached_html_quickstart_command)
+Write-Host ("  Attached shortcut:         {0}" -f $entrypoint.attached_html_shortcut_command)
+Write-Host ''
 Write-Host 'Bundle-first route:'
 Write-Host ("  Surface check: {0}" -f $entrypoint.bundle_surface_check_command)
 Write-Host ("  Bundle check:  {0}" -f $entrypoint.bundle_check_command)
@@ -208,8 +230,12 @@ Write-Host 'Return after bundle replay:'
 Write-Host ("  Replay shortcuts: {0}" -f $entrypoint.replay_shortcuts_command)
 Write-Host ("  Safe route:       {0}" -f $entrypoint.return_to_safe_route_command)
 Write-Host ''
-Write-Host ("Quickstart note:       {0}" -f $entrypoint.quickstart_note_path)
-Write-Host ("Validation chain note: {0}" -f $entrypoint.validation_chain_note_path)
+Write-Host ("Windows replay note:          {0}" -f $entrypoint.windows_replay_quickstart_note_path)
+Write-Host ("Replay attached-html note:    {0}" -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
+Write-Host ("Top-level quickstart note:    {0}" -f $entrypoint.top_level_attached_html_quickstart_note_path)
+Write-Host ("Attached shortcut note:       {0}" -f $entrypoint.attached_html_shortcut_note_path)
+Write-Host ("Bundle quickstart note:       {0}" -f $entrypoint.attached_html_target_bundle_quickstart_note_path)
+Write-Host ("Validation chain note:        {0}" -f $entrypoint.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $entrypoint.notes) {
