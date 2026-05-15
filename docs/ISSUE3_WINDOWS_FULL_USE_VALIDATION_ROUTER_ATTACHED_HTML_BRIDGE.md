@@ -83,7 +83,7 @@ Use this next when the replay has already reopened `show_headed_validation_suite
 
 Use this when you want the shortest top-level attached-page bridge kept visible before the route narrows again.
 
-5. `show_google_issue3_top_level_attached_html_catalog_quICKSTART.ps1`
+5. `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
 
 Use this when you want the compact top-level attached-page route plus the suite-catalog-side attached-page bridge preserved before the route narrows again.
 
