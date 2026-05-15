@@ -107,7 +107,7 @@ function Format-HelperCommandWithRepoRootEnv {
         if ($null -eq $value) {
             continue
         }
-        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
             continue
         }
 
