@@ -110,6 +110,25 @@ function Format-HelperCommandWithRepoRootEnv {
         if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
             continue
         }
+        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+            $valueList = @($value | Where-Object {
+                if ($_ -is [string]) {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                } else {
+                    $null -ne $_
+                }
+            })
+            if ($valueList.Count -eq 0) {
+                continue
+            }
+
+            $command += " -$($entry.Key)"
+            foreach ($item in $valueList) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
+            continue
+        }
 
         $escapedValue = ("$value") -replace "'", "''"
         $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
@@ -140,7 +159,10 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
-$emptyArguments = [System.Collections.Generic.List[string]]::new()
+$attachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $attachedHtmlFlowArguments["InputPath"] = @($InputPath)
+}
 
 $windowsFullUseAttachedHtmlRouteCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
 $windowsFullUseValidationRouterAttachedHtmlBridgeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $bundleArguments
@@ -169,7 +191,7 @@ $entrypoint = [ordered]@{
         windows_replay_attached_html_surface_check = $windowsReplayAttachedHtmlSurfaceCheckCommand
         attached_html_shortcut_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_attached_html_shortcut_validation_surface.ps1' -RepoRootOverride $RepoRoot
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
-        attached_html_flow = Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $emptyArguments
+        attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         top_level_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
     }
     helper_commands = [ordered]@{
@@ -224,14 +246,14 @@ $entrypoint = [ordered]@{
         'Run attached_html_shortcut_surface_check before attached_html_shortcut when the replay is already narrowed to the shortest issue-specific attached-page route and you want that shortcut note plus its linked helper chain to fail fast before choosing the next branch.',
         'Use attached_html_change_area_quickstart when you want the top-level attached-page route to reopen through the newer compact change-area helper that already prints the broader attached-page flow helper alongside the shorter issue #3 quickstarts and shortcut companion.',
         'Use attached_html_flow when you want the broader attached-page localhost helper printed directly from this top-level attached-page bridge before choosing between the shorter quickstarts, the issue-specific attached-page bridge, the shortcut companion, the replay-route helper, or the bundle-first branch.',
-        'Use top_level_attached_html_quickstart when you want the shorter top-level companion surface kept visible before the replay widens back into the broader entrypoint or narrows further into the validation-router quickstart, the replay-side attached-html quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level catalog quickstart, or the suite-router attached-page quickstart.',
+        'Use top_level_attached_html_quickstart when you want the shorter top-level companion surface kept visible before the replay widens back into the broader entrypoint or narrows further into the validation-router quickstart, the replay-side attached-html quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, or the suite-router attached-page quickstart.',
         'Use validation_router_attached_html_quickstart when the replay is re-entering from the broader validation router and you want the shorter attached-page bridge printed before the replay-side attached-html quickstart, the top-level catalog quickstart, or the suite-catalog attached-page helpers.',
         'Use windows_replay_attached_html_quickstart when the replay already came through the Windows replay attached localhost lane and you want that replay-side ladder kept visible before the route narrows into the smaller top-level attached-page helpers.',
         'Use top_level_attached_html_catalog_quickstart when you want the compact top-level attached-page bridge and the suite-catalog attached-page bridge kept visible together before the route narrows into the issue-specific attached-page bridge, attached_html_shortcut, replay_route_shortcut, replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use suite_catalog_top_level_attached_html_catalog_quickstart when the suite-catalog surface should stay visible beside the replay-side attached-html ladder and the top-level catalog quickstart before the route drops into the suite-catalog attached-page bridge or the narrower attached-page helpers.',
         'Use suite_router_attached_html_quickstart as the default next helper when no bundle inputs are pinned, because it keeps the shortest suite-router-side attached-page bridge visible after the broader Windows route, validation bridge, replay-side quickstart, change-area quickstart, validation-router quickstart, and newer catalog quickstarts before you decide whether to drop to the issue-specific attached-page bridge, attached_html_shortcut, replay_route_shortcut, replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use google_attached_html_entrypoint when you want the issue-specific attached-page bridge surfaced directly after the suite-router attached-page quickstart without reopening the broader suite-catalog helpers first.',
-        'Use attached_html_shortcut when the replay is already narrowed to attached-page follow-up and you want the shortest issue-specific bridge before widening into replay_route_shortcut, replay_shortcuts, the next-step matrix, or the pinned bundle-first branch.',
+        'Use attached_html_shortcut when the replay is already narrowed to attached-page follow-up and you want the shortest issue-specific bridge before widening into replay_route_shortcut, replay_shortcuts, the next-step matrix, or the bundle-first branch.',
         'Use replay_route_shortcut when the attached-page route is already confirmed and you want the smaller replay-route companion surface before widening back into replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the broader Windows route, the validation bridge, the replay-side checks, the compact change-area quickstart, the broader attached-page flow helper, the compact top-level quickstart, the validation-router quickstart, the replay-side attached-html quickstart, the top-level catalog quickstart, the suite-catalog-to-top-level catalog quickstart, the suite-router attached-page quickstart, the issue-specific attached-page bridge, replay shortcuts, the next-step matrix, the bundle-first branch, or the safe-route helpers.',
         'Use fresh_safe_route_replay when current outputs may be stale or missing. Use reuse_current_outputs only when a saved SummaryPath already exists and those outputs are still trusted.',
