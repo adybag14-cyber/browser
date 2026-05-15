@@ -163,7 +163,7 @@ if ($InputPath -and @($InputPath).Count -gt 0) {
 
 $shortcuts = [ordered]@{
     issue = 'Google issue #3 replay shortcuts'
-    purpose = 'Keep the top-level issue #3 read-first commands, the broader attached-page route, the newer top-level attached-page quickstart and attached-page bridge, the dedicated attached-page shortcut helper, the newer suite-router shortcut-first entrypoint, the suite-catalog bridge, the compact next-step matrix, the context-preserving helper, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
+    purpose = 'Keep the top-level issue #3 read-first commands, the broader attached-page route, the attached-html change-area quickstart, the newer top-level attached-page quickstart and top-level attached-page catalog quickstart, the broader top-level attached-page bridge, the dedicated attached-page shortcut helper, the newer suite-router shortcut-first entrypoint, the suite-catalog bridge, the compact next-step matrix, the context-preserving helper, the narrower safe-route helper, the attached three-page bundle route, and the runner-state next-step helper on one compact command surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -185,8 +185,10 @@ $shortcuts = [ordered]@{
         attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html'
         }) -RepoRootOverride $RepoRoot
+        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleFirstArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleFirstArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleFirstArguments
+        top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $bundleFirstArguments
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleFirstArguments
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleFirstArguments
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
@@ -199,8 +201,10 @@ $shortcuts = [ordered]@{
     }
     helper_commands = [ordered]@{
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleFirstArguments
+        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleFirstArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleFirstArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleFirstArguments
+        top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $bundleFirstArguments
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleFirstArguments
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleFirstArguments
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleFirstArguments
@@ -221,17 +225,19 @@ $shortcuts = [ordered]@{
     notes = @(
         'Start with suite_router when you want the higher-level catalog to surface the broader issue #3 runner first, while preserving LIGHTPANDA_REPO_ROOT for a non-default checkout when it is already set.',
         'Use change_area when you may need a narrower title, homepage-fixture, submit-path, shared Enter-order, attached-page, or live-trace branch instead of the broader recommended replay, without dropping the current repo-root context.',
-        'Use attached_html_change_area when the replay is already narrowed to the broader attached-page compatibility route and you want that top-level branch reprinted before deciding whether to stay pinned to the bundle-first path or narrow again into the newer top-level attached-page quickstart, the broader top-level attached-page bridge, or the dedicated attached-page shortcut helper.',
-        'Use top_level_attached_html_quickstart when the replay has already re-entered from the top-level validation router and you want the compact top-level attached-page helper kept visible before deciding between the broader top-level attached-page bridge, the attached-page shortcut helper, replay shortcuts, the next-step matrix, suite-router handoff, or the pinned bundle-first path.',
+        'Use attached_html_change_area when the replay is already narrowed to the broader attached-page compatibility route and you want that top-level branch reprinted before deciding whether to stay pinned to the bundle-first path or narrow again into the newer attached-html change-area quickstart, the newer top-level attached-page quickstart, the broader top-level attached-page bridge, or the dedicated attached-page shortcut helper.',
+        'Use attached_html_change_area_quickstart when the replay is already narrowed to show_headed_validation_suites.ps1 -ChangeArea attached-html and you want the shorter issue-specific bridge that keeps the broader attached-page flow helper, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, the top-level attached-page catalog quickstart, the suite-router attached-page quickstart, and the attached-page shortcut visible before the route narrows again.',
+        'Use top_level_attached_html_quickstart when the replay has already re-entered from the top-level validation router and you want the compact top-level attached-page helper kept visible before deciding between the broader top-level attached-page bridge, the top-level attached-page catalog quickstart, the attached-page shortcut helper, replay shortcuts, the next-step matrix, suite-router handoff, or the pinned bundle-first path.',
         'Use top_level_attached_html_entrypoint when the replay is already narrowed to attached-page follow-up and you want the broader top-level attached-page bridge reprinted before widening back into replay shortcuts, the next-step matrix, suite-router handoff, replay route, or the pinned bundle-first path.',
+        'Use top_level_attached_html_catalog_quickstart when the replay should keep the compact top-level attached-page quickstart plus the suite-catalog-side attached-page bridge visible together before narrowing into the shorter attached-page shortcut, replay shortcuts, contextual flow, or the safe-route map.',
         'Use suite_router_shortcut_entrypoint when the higher-level suite router has already made issue #3 obvious and you want the shorter bridge back into replay shortcuts, the attached-page shortcut helper, contextual flow, the next-step matrix, or the pinned bundle-first branch before reopening the wider compact helpers.',
         'Use attached_html_shortcut when the replay is already inside the attached-page follow-up route and you want that dedicated shortcut kept visible before widening back into replay shortcuts, the next-step matrix, suite-router handoff, replay route, or the pinned bundle-first path.',
         'Use suite_catalog_entrypoints when you want the shortest current bridge from the top-level suite catalog into the issue #3 next-step matrix, replay-route helper, replay-shortcuts helper, attached-page shortcut helper, or pinned bundle-first path while keeping RepoRoot, SummaryPath, and InputPath context attached.',
         'Use google_flow when you want the current localhost-first issue #3 ladder printed before you choose between the narrower safe-route replay, the attached bundle route, or a later-stage Google slice, while keeping the same repo-root context.',
-        'Use suite_router_handoff when you want the higher-level suite-router entrypoints, the attached-page route, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router entrypoint, the suite-catalog bridge, and the current replay-shortcuts helper reprinted together in one compact surface before you drop into the next-step matrix, replay-route, attached-page shortcut, contextual-flow, safe-route, or bundle-first helpers.',
-        'Use suite_router_next_steps when you want the compact next-step matrix that keeps the current start points, the attached-page route, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router bridge, replay-route branch, attached-bundle branch, contextual-flow branch, and runner-state helper choices together before you pick one narrower replay path.',
+        'Use suite_router_handoff when you want the higher-level suite-router entrypoints, the attached-page route, the attached-html change-area quickstart, the top-level attached-page quickstart, the top-level attached-page bridge, the top-level attached-page catalog quickstart, the shortcut-first suite-router entrypoint, the suite-catalog bridge, and the current replay-shortcuts helper reprinted together in one compact surface before you drop into the next-step matrix, replay-route, attached-page shortcut, contextual-flow, safe-route, or bundle-first helpers.',
+        'Use suite_router_next_steps when you want the compact next-step matrix that keeps the current start points, the attached-page route, the attached-html change-area quickstart, the top-level attached-page quickstart, the top-level attached-page bridge, the top-level attached-page catalog quickstart, the shortcut-first suite-router bridge, replay-route branch, attached-bundle branch, contextual-flow branch, and runner-state helper choices together before you pick one narrower replay path.',
         'Use replay_route when you want the attached-bundle branch, the safe-route bridge, the context-preserving helper, and the repo-root-aware runner next-step helper printed in one slightly broader surface before you return to the narrower replay-shortcuts or attached-page shortcut helpers.',
-        'Use contextual_flow when you already know repo-root overrides, saved-summary state, or pinned attached pages should stay visible while you choose between the recommended runner, replay shortcuts, the top-level attached-page quickstart, the top-level attached-page bridge, attached-page shortcut, live trace, or bundle follow-up commands.',
+        'Use contextual_flow when you already know repo-root overrides, saved-summary state, or pinned attached pages should stay visible while you choose between the recommended runner, replay shortcuts, the attached-html change-area quickstart, the top-level attached-page quickstart, the top-level attached-page bridge, the top-level attached-page catalog quickstart, attached-page shortcut, live trace, or bundle follow-up commands.',
         'Use safe_route_entrypoints when outputs may already exist and you want the newest issue #3 wrapper commands, notes, and next-state helpers printed in one place. When InputPath is already pinned, this helper now preserves that same fixed bundle context instead of falling back to auto-discovery.',
         'Use runner_patch_next_step after the safe-route wrapper or reuse-current-outputs helper names one of the three current runner-patch states; when RepoRoot or SummaryPath is already in play, this command now keeps that same replay context attached to the next-step helper.',
         'Use attached_bundle_first when explicit input paths are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only safe-route ladder.',
@@ -266,36 +272,40 @@ Write-Host (("Recommended first helper: {0}") -f $shortcuts.recommended_first_he
 Write-Host (("Why:                     {0}") -f $shortcuts.recommended_first_helper_reason)
 Write-Host ''
 Write-Host 'Read-first discovery:'
-Write-Host (("  Suite router:           {0}") -f $shortcuts.read_first_commands.suite_router)
-Write-Host (("  Change-area view:       {0}") -f $shortcuts.read_first_commands.change_area)
-Write-Host (("  Attached HTML route:    {0}") -f $shortcuts.read_first_commands.attached_html_change_area)
-Write-Host (("  Top-level quickstart:   {0}") -f $shortcuts.read_first_commands.top_level_attached_html_quickstart)
-Write-Host (("  Top-level attached:     {0}") -f $shortcuts.read_first_commands.top_level_attached_html_entrypoint)
-Write-Host (("  Shortcut entrypoint:    {0}") -f $shortcuts.read_first_commands.suite_router_shortcut_entrypoint)
-Write-Host (("  Suite-catalog helper:   {0}") -f $shortcuts.read_first_commands.suite_catalog_entrypoints)
-Write-Host (("  Google flow helper:     {0}") -f $shortcuts.read_first_commands.google_flow)
-Write-Host (("  Suite-router handoff:   {0}") -f $shortcuts.read_first_commands.suite_router_handoff)
-Write-Host (("  Next-step matrix:       {0}") -f $shortcuts.read_first_commands.suite_router_next_steps)
-Write-Host (("  Replay route:           {0}") -f $shortcuts.read_first_commands.replay_route)
-Write-Host (("  Bundle suite route:     {0}") -f $shortcuts.read_first_commands.attached_bundle_suite)
+Write-Host (("  Suite router:                {0}") -f $shortcuts.read_first_commands.suite_router)
+Write-Host (("  Change-area view:            {0}") -f $shortcuts.read_first_commands.change_area)
+Write-Host (("  Attached HTML route:         {0}") -f $shortcuts.read_first_commands.attached_html_change_area)
+Write-Host (("  Attached HTML quickstart:    {0}") -f $shortcuts.read_first_commands.attached_html_change_area_quickstart)
+Write-Host (("  Top-level quickstart:        {0}") -f $shortcuts.read_first_commands.top_level_attached_html_quickstart)
+Write-Host (("  Top-level attached:          {0}") -f $shortcuts.read_first_commands.top_level_attached_html_entrypoint)
+Write-Host (("  Top-level catalog quickstart:{0}") -f (' ' + $shortcuts.read_first_commands.top_level_attached_html_catalog_quickstart))
+Write-Host (("  Shortcut entrypoint:         {0}") -f $shortcuts.read_first_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  Suite-catalog helper:        {0}") -f $shortcuts.read_first_commands.suite_catalog_entrypoints)
+Write-Host (("  Google flow helper:          {0}") -f $shortcuts.read_first_commands.google_flow)
+Write-Host (("  Suite-router handoff:        {0}") -f $shortcuts.read_first_commands.suite_router_handoff)
+Write-Host (("  Next-step matrix:            {0}") -f $shortcuts.read_first_commands.suite_router_next_steps)
+Write-Host (("  Replay route:                {0}") -f $shortcuts.read_first_commands.replay_route)
+Write-Host (("  Bundle suite route:          {0}") -f $shortcuts.read_first_commands.attached_bundle_suite)
 Write-Host ''
 Write-Host 'Shortcut helpers:'
-Write-Host (("  Suite-router shortcut:  {0}") -f $shortcuts.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host (("  Top-level quickstart:   {0}") -f $shortcuts.helper_commands.top_level_attached_html_quickstart)
-Write-Host (("  Top-level attached:     {0}") -f $shortcuts.helper_commands.top_level_attached_html_entrypoint)
-Write-Host (("  Attached HTML helper:   {0}") -f $shortcuts.helper_commands.attached_html_shortcut)
-Write-Host (("  Suite-catalog helper:   {0}") -f $shortcuts.helper_commands.suite_catalog_entrypoints)
-Write-Host (("  Suite-router handoff:   {0}") -f $shortcuts.helper_commands.suite_router_handoff)
-Write-Host (("  Next-step matrix:       {0}") -f $shortcuts.helper_commands.suite_router_next_steps)
-Write-Host (("  Replay route:           {0}") -f $shortcuts.helper_commands.replay_route)
-Write-Host (("  Contextual flow:        {0}") -f $shortcuts.helper_commands.contextual_flow)
-Write-Host (("  Safe route entrypoints: {0}") -f $shortcuts.helper_commands.safe_route_entrypoints)
-Write-Host (("  Runner next-step helper:{0}") -f (' ' + $shortcuts.helper_commands.runner_patch_next_step))
-Write-Host (("  Bundle-first helper:    {0}") -f $shortcuts.helper_commands.attached_bundle_first)
-Write-Host (("  Bundle flow helper:     {0}") -f $shortcuts.helper_commands.attached_bundle_flow)
-Write-Host (("  Bundle runner:          {0}") -f $shortcuts.helper_commands.attached_bundle_runner)
-Write-Host (("  Fresh safe replay:      {0}") -f $shortcuts.helper_commands.fresh_safe_route_replay)
-Write-Host (("  Reuse current outputs:  {0}") -f $shortcuts.helper_commands.reuse_current_outputs)
+Write-Host (("  Suite-router shortcut:       {0}") -f $shortcuts.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  Attached HTML quickstart:    {0}") -f $shortcuts.helper_commands.attached_html_change_area_quickstart)
+Write-Host (("  Top-level quickstart:        {0}") -f $shortcuts.helper_commands.top_level_attached_html_quickstart)
+Write-Host (("  Top-level attached:          {0}") -f $shortcuts.helper_commands.top_level_attached_html_entrypoint)
+Write-Host (("  Top-level catalog quickstart:{0}") -f (' ' + $shortcuts.helper_commands.top_level_attached_html_catalog_quickstart))
+Write-Host (("  Attached HTML helper:        {0}") -f $shortcuts.helper_commands.attached_html_shortcut)
+Write-Host (("  Suite-catalog helper:        {0}") -f $shortcuts.helper_commands.suite_catalog_entrypoints)
+Write-Host (("  Suite-router handoff:        {0}") -f $shortcuts.helper_commands.suite_router_handoff)
+Write-Host (("  Next-step matrix:            {0}") -f $shortcuts.helper_commands.suite_router_next_steps)
+Write-Host (("  Replay route:                {0}") -f $shortcuts.helper_commands.replay_route)
+Write-Host (("  Contextual flow:             {0}") -f $shortcuts.helper_commands.contextual_flow)
+Write-Host (("  Safe route entrypoints:      {0}") -f $shortcuts.helper_commands.safe_route_entrypoints)
+Write-Host (("  Runner next-step helper:     {0}") -f $shortcuts.helper_commands.runner_patch_next_step)
+Write-Host (("  Bundle-first helper:         {0}") -f $shortcuts.helper_commands.attached_bundle_first)
+Write-Host (("  Bundle flow helper:          {0}") -f $shortcuts.helper_commands.attached_bundle_flow)
+Write-Host (("  Bundle runner:               {0}") -f $shortcuts.helper_commands.attached_bundle_runner)
+Write-Host (("  Fresh safe replay:           {0}") -f $shortcuts.helper_commands.fresh_safe_route_replay)
+Write-Host (("  Reuse current outputs:       {0}") -f $shortcuts.helper_commands.reuse_current_outputs)
 Write-Host ''
 Write-Host (("Quickstart note:          {0}") -f $shortcuts.quickstart_note_path)
 Write-Host (("Validation chain note:    {0}") -f $shortcuts.validation_chain_note_path)
