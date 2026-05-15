@@ -145,7 +145,7 @@ chosen helper.
   you want the broader top-level attached-page bridge reprinted before the
   route narrows into the newer suite-router or suite-catalog attached-page
   helpers.
-- `show_google_issue3_top_LEVEL_attached_html_catalog_quickstart.ps1`: use this
+- `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`: use this
   when the compact top-level attached-page route and the suite-catalog-side
   bridge should stay visible together before the replay narrows again.
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`: use this when
