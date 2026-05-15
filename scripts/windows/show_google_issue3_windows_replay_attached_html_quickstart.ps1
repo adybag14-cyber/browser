@@ -96,9 +96,13 @@ Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values 
 $routeSurfaceArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $RepoRoot
 
+$attachedHtmlChangeAreaCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html'
+$googleAttachedHtmlChangeAreaCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html'
+$attachedBundleChangeAreaCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay attached HTML quickstart'
-    purpose = 'Print the narrow attached-localhost ladder that matches the current Windows replay route for issue #3, while keeping the replay-side fail-fast checker, the Windows full-use route-level surface check, the Windows-to-validation-router bridge, the Windows-first attached-html catalog step, the broader top-level companion-note map, the wider suite-catalog guide, the suite-catalog-to-top-level attached-html catalog quickstart, the newer top-level shortcut bridge, and the replay-route shortcut bridge visible before the route narrows back into the compact attached-page helpers.'
+    purpose = 'Print the narrow attached-localhost ladder that matches the current Windows replay route for issue #3, while keeping the replay-side fail-fast checker, the top-level attached-html, Google-attached-html, and bundle-aware re-entry points, the Windows full-use route-level surface check, the Windows-to-validation-router bridge, the Windows-first attached-html catalog step, the broader top-level companion-note map, the wider suite-catalog guide, the suite-catalog-to-top-level attached-html catalog quickstart, the newer top-level shortcut bridge, and the replay-route shortcut bridge visible before the route narrows back into the compact attached-page helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -122,6 +126,11 @@ $helper = [ordered]@{
     windows_full_use_validation_router_attached_html_bridge_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md'
     windows_full_use_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
+    top_level_commands = [ordered]@{
+        attached_html_change_area = $attachedHtmlChangeAreaCommand
+        google_attached_html_change_area = $googleAttachedHtmlChangeAreaCommand
+        attached_bundle_change_area = $attachedBundleChangeAreaCommand
+    }
     commands = [ordered]@{
         windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
@@ -146,7 +155,8 @@ $helper = [ordered]@{
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
     }
     notes = @(
-        'Start here when docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md already narrowed the next replay to the attached localhost branch and you want the shortest helper ladder printed in one place with the replay-side surface check, the top-level shortcut bridge, and the replay-route shortcut bridge kept visible.',
+        'Start here when docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md already narrowed the next replay to the attached localhost branch and you want the shortest helper ladder printed in one place with the replay-side surface check, the top-level attached-html re-entry points, the top-level shortcut bridge, and the replay-route shortcut bridge kept visible.',
+        'Use the top-level attached-html, Google-attached-html, and attached-html-target-bundle re-entry points when you need to reopen the headed validation router on the generic attached route, the Google-shaped attached route, or the pinned three-page bundle route before dropping back into the narrower replay ladder.',
         'Use windows_replay_attached_html_surface_check first after branch moves or before trusting this route from another checkout, because it fails fast on missing replay-side notes, helper scripts, and downstream attached-page surfaces before the route narrows again.',
         'Use windows_full_use_attached_html_route_surface_check after the replay-side checker when you also want the broader Windows full-use attached-page route validated before the replay narrows further.',
         'Use windows_full_use_validation_router_attached_html_bridge first when the replay is re-entering from docs/WINDOWS_FULL_USE.md or the broader Windows full-use attached-page note and you want the route-level surface check plus the Windows-to-validation-router handoff kept visible before the route drops back into the compact attached-page helpers.',
@@ -204,6 +214,11 @@ if ($helper.explicit_input_path_count -gt 0) {
 Write-Host ''
 Write-Host (("Recommended next helper: {0}") -f $helper.recommended_next_command)
 Write-Host (("Why:                    {0}") -f $helper.recommended_next_reason)
+Write-Host ''
+Write-Host 'Top-level re-entry points:'
+Write-Host (("  Attached HTML:          {0}") -f $helper.top_level_commands.attached_html_change_area)
+Write-Host (("  Google attached HTML:   {0}") -f $helper.top_level_commands.google_attached_html_change_area)
+Write-Host (("  Attached bundle:        {0}") -f $helper.top_level_commands.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Route guard:'
 Write-Host (("  Replay surface check:    {0}") -f $helper.commands.windows_replay_attached_html_surface_check)
