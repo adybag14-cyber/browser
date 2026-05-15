@@ -142,6 +142,7 @@ Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values 
 
 $googleFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
 $contextualFlowCommand = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
+$suiteCatalogSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $windowsReplayAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $windowsFullUseAttachedHtmlRouteSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $windowsReplayAttachedHtmlQuickstartCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
@@ -150,7 +151,7 @@ $windowsFullUseValidationRouterAttachedHtmlBridgeCommand = Format-HelperCommand 
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 suite catalog entrypoints'
-    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the broader Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-page catalog quickstart, the Windows replay attached-html surface check, the Windows replay attached-html quickstart, the validation-router attached-page quickstart, the attached-page change-area quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router quickstarts, the top-level shortcut and top-level attached-page bridges, the current Google flow helper, the issue-specific attached-page helpers, the compact next-step matrix, the context-preserving issue #3 replay flow, and the current safe-route replay helpers on one compact command surface before the route narrows into replay-route or the wrapper-heavy safe-route helpers.'
+    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the suite-catalog surface check, the broader Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-page catalog quickstart, the Windows replay attached-html surface check, the Windows replay attached-html quickstart, the validation-router attached-page quickstart, the attached-page change-area quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router quickstarts, the top-level shortcut and top-level attached-page bridges, the current Google flow helper, the issue-specific attached-page helpers, the compact next-step matrix, the context-preserving issue #3 replay flow, and the current safe-route replay helpers on one compact command surface before the route narrows into replay-route or the wrapper-heavy safe-route helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -187,6 +188,7 @@ $entrypoints = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        suite_catalog_surface_check = $suiteCatalogSurfaceCheckCommand
         windows_full_use_attached_html_route = $windowsFullUseAttachedHtmlRouteCommand
         windows_full_use_attached_html_route_surface_check = $windowsFullUseAttachedHtmlRouteSurfaceCheckCommand
         windows_full_use_validation_router_attached_html_bridge = $windowsFullUseValidationRouterAttachedHtmlBridgeCommand
@@ -217,6 +219,7 @@ $entrypoints = [ordered]@{
         reuse_current_outputs = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments $sharedArguments
     }
     bridge_sequence = [ordered]@{
+        suite_catalog_surface_check = $suiteCatalogSurfaceCheckCommand
         google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             SuiteName = 'google-recommended'
         }) -RepoRootOverride $RepoRoot
@@ -255,6 +258,7 @@ $entrypoints = [ordered]@{
     notes = @(
         'Start with google_recommended when you want the broader localhost-first issue #3 runner surfaced from the suite catalog before choosing a narrower branch.',
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, saved-page, or attached-page slices instead of the full recommended runner.',
+        'Use suite_catalog_surface_check when branch updates, helper renames, or a different checkout may have moved the compact suite-catalog route and you want missing notes or delegated helpers to fail fast before the narrower replay-side chain opens.',
         'Use windows_full_use_attached_html_route when docs/WINDOWS_FULL_USE.md or the broader Windows full-use attached-page route already made attached localhost follow-up the next obvious branch and you want that Windows-first route visible before the suite-catalog surface narrows again.',
         'Use windows_full_use_attached_html_route_surface_check when the broader Windows full-use route is already in play and you want its fail-fast checker rerun before trusting the suite-catalog re-entry.',
         'Use windows_full_use_validation_router_attached_html_bridge when the replay is re-entering from docs/WINDOWS_FULL_USE.md or the broader Windows full-use attached-page note and you want the Windows-to-validation-router handoff kept visible between the route-level surface check and the Windows-side catalog quickstart before the route narrows back into the replay-side attached-html ladder.',
@@ -332,32 +336,33 @@ Write-Host (("Recommended next helper: {0}") -f $entrypoints.recommended_next_co
 Write-Host (("Why:                    {0}") -f $entrypoints.recommended_next_reason)
 Write-Host ''
 Write-Host 'Read-first bridge:'
-Write-Host (("  1. Google recommended:               {0}") -f $entrypoints.bridge_sequence.google_recommended)
-Write-Host (("  2. Google input:                     {0}") -f $entrypoints.bridge_sequence.google_input_change_area)
-Write-Host (("  3. Attached HTML:                    {0}") -f $entrypoints.bridge_sequence.attached_html_change_area)
-Write-Host (("  4. Attached HTML quickstart:         {0}") -f $entrypoints.bridge_sequence.attached_html_change_area_quickstart)
-Write-Host (("  5. Google attached HTML:             {0}") -f $entrypoints.bridge_sequence.google_attached_html_change_area)
-Write-Host (("  6. Replay surface check:             {0}") -f $entrypoints.bridge_sequence.windows_replay_attached_html_surface_check)
-Write-Host (("  7. Windows catalog quickstart:       {0}") -f $entrypoints.bridge_sequence.windows_full_use_attached_html_catalog_quickstart)
-Write-Host (("  8. Replay attached quickstart:       {0}") -f $entrypoints.bridge_sequence.windows_replay_attached_html_quickstart)
-Write-Host (("  9. Validation-router quick:          {0}") -f $entrypoints.bridge_sequence.validation_router_attached_html_quickstart)
-Write-Host ((" 10. Catalog top-level quickstart:     {0}") -f $entrypoints.bridge_sequence.suite_catalog_top_level_attached_html_catalog_quickstart)
-Write-Host ((" 11. Catalog attached bridge:          {0}") -f $entrypoints.bridge_sequence.suite_catalog_attached_html_entrypoint)
-Write-Host ((" 12. Router quickstart:                {0}") -f $entrypoints.bridge_sequence.suite_router_quickstart)
-Write-Host ((" 13. Router attached quickstart:       {0}") -f $entrypoints.bridge_sequence.suite_router_attached_html_quickstart)
-Write-Host ((" 14. Top-level attached quickstart:    {0}") -f $entrypoints.bridge_sequence.top_level_attached_html_quickstart)
-Write-Host ((" 15. Top-level catalog quickstart:     {0}") -f $entrypoints.bridge_sequence.top_level_attached_html_catalog_quickstart)
-Write-Host ((" 16. Top-level shortcut:               {0}") -f $entrypoints.bridge_sequence.top_level_shortcut_entrypoint)
-Write-Host ((" 17. Top-level attached bridge:        {0}") -f $entrypoints.bridge_sequence.top_level_attached_html_entrypoint)
-Write-Host ((" 18. Google flow:                      {0}") -f $entrypoints.bridge_sequence.google_flow)
-Write-Host ((" 19. Google attached bridge:           {0}") -f $entrypoints.bridge_sequence.google_attached_html_entrypoint)
-Write-Host ((" 20. Attached shortcut:                {0}") -f $entrypoints.bridge_sequence.attached_html_shortcut)
-Write-Host ((" 21. Replay shortcuts:                 {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
-Write-Host ((" 22. Next-step matrix:                 {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
-Write-Host ((" 23. Contextual flow:                  {0}") -f $entrypoints.bridge_sequence.contextual_flow)
-Write-Host ((" 24. Suite handoff:                    {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
-Write-Host ((" 25. Replay route:                     {0}") -f $entrypoints.bridge_sequence.replay_route)
-Write-Host ((" 26. Bundle-first route:               {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
+Write-Host (("  1. Suite-catalog surface check:      {0}") -f $entrypoints.bridge_sequence.suite_catalog_surface_check)
+Write-Host (("  2. Google recommended:               {0}") -f $entrypoints.bridge_sequence.google_recommended)
+Write-Host (("  3. Google input:                     {0}") -f $entrypoints.bridge_sequence.google_input_change_area)
+Write-Host (("  4. Attached HTML:                    {0}") -f $entrypoints.bridge_sequence.attached_html_change_area)
+Write-Host (("  5. Attached HTML quickstart:         {0}") -f $entrypoints.bridge_sequence.attached_html_change_area_quickstart)
+Write-Host (("  6. Google attached HTML:             {0}") -f $entrypoints.bridge_sequence.google_attached_html_change_area)
+Write-Host (("  7. Replay surface check:             {0}") -f $entrypoints.bridge_sequence.windows_replay_attached_html_surface_check)
+Write-Host (("  8. Windows catalog quickstart:       {0}") -f $entrypoints.bridge_sequence.windows_full_use_attached_html_catalog_quickstart)
+Write-Host (("  9. Replay attached quickstart:       {0}") -f $entrypoints.bridge_sequence.windows_replay_attached_html_quickstart)
+Write-Host ((" 10. Validation-router quick:          {0}") -f $entrypoints.bridge_sequence.validation_router_attached_html_quickstart)
+Write-Host ((" 11. Catalog top-level quickstart:     {0}") -f $entrypoints.bridge_sequence.suite_catalog_top_level_attached_html_catalog_quickstart)
+Write-Host ((" 12. Catalog attached bridge:          {0}") -f $entrypoints.bridge_sequence.suite_catalog_attached_html_entrypoint)
+Write-Host ((" 13. Router quickstart:                {0}") -f $entrypoints.bridge_sequence.suite_router_quickstart)
+Write-Host ((" 14. Router attached quickstart:       {0}") -f $entrypoints.bridge_sequence.suite_router_attached_html_quickstart)
+Write-Host ((" 15. Top-level attached quickstart:    {0}") -f $entrypoints.bridge_sequence.top_level_attached_html_quickstart)
+Write-Host ((" 16. Top-level catalog quickstart:     {0}") -f $entrypoints.bridge_sequence.top_level_attached_html_catalog_quickstart)
+Write-Host ((" 17. Top-level shortcut:               {0}") -f $entrypoints.bridge_sequence.top_level_shortcut_entrypoint)
+Write-Host ((" 18. Top-level attached bridge:        {0}") -f $entrypoints.bridge_sequence.top_level_attached_html_entrypoint)
+Write-Host ((" 19. Google flow:                      {0}") -f $entrypoints.bridge_sequence.google_flow)
+Write-Host ((" 20. Google attached bridge:           {0}") -f $entrypoints.bridge_sequence.google_attached_html_entrypoint)
+Write-Host ((" 21. Attached shortcut:                {0}") -f $entrypoints.bridge_sequence.attached_html_shortcut)
+Write-Host ((" 22. Replay shortcuts:                 {0}") -f $entrypoints.bridge_sequence.replay_shortcuts)
+Write-Host ((" 23. Next-step matrix:                 {0}") -f $entrypoints.bridge_sequence.suite_router_next_steps)
+Write-Host ((" 24. Contextual flow:                  {0}") -f $entrypoints.bridge_sequence.contextual_flow)
+Write-Host ((" 25. Suite handoff:                    {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
+Write-Host ((" 26. Replay route:                     {0}") -f $entrypoints.bridge_sequence.replay_route)
+Write-Host ((" 27. Bundle-first route:               {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
 Write-Host ''
 Write-Host 'Windows-first re-entry:'
 Write-Host (("  Windows route:             {0}") -f $entrypoints.helper_commands.windows_full_use_attached_html_route)
@@ -373,6 +378,7 @@ Write-Host (("  Google attached HTML: {0}") -f $entrypoints.suite_catalog_comman
 Write-Host (("  Attached bundle:      {0}") -f $entrypoints.suite_catalog_commands.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Issue #3 replay helpers:'
+Write-Host (("  Suite-catalog surface:     {0}") -f $entrypoints.helper_commands.suite_catalog_surface_check)
 Write-Host (("  Replay surface check:      {0}") -f $entrypoints.helper_commands.windows_replay_attached_html_surface_check)
 Write-Host (("  Replay attached quick:     {0}") -f $entrypoints.helper_commands.windows_replay_attached_html_quickstart)
 Write-Host (("  Validation-router quick:   {0}") -f $entrypoints.helper_commands.validation_router_attached_html_quickstart)
