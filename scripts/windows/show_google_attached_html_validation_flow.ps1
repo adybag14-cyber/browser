@@ -225,6 +225,9 @@ $surfaceCheck = '.\\scripts\\windows\\check_google_attached_html_validation_surf
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $resolvedRepoRoot
 $surfaceCheckCommand = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $surfaceCheck, $(if ($surfaceCheckArgs.Count -gt 0) { " " + ($surfaceCheckArgs -join " ") } else { "" }))
+$attachedHtmlSuiteRouterCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html"
+$attachedHtmlFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
+$attachedHtmlBundleSuiteRouterCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle"
 if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
     throw "Google-style attached HTML flow helper not found: $helper"
 }
@@ -316,6 +319,11 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -HelperCommand $handoffCommands.helper_command `
     -RunnerCommand $handoffCommands.runner_command `
     -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
+$googleAttachedHtmlMetadata.broader_attached_html_route = [ordered]@{
+    suite_router_command = $attachedHtmlSuiteRouterCommand
+    flow_command = $attachedHtmlFlowCommand
+    bundle_suite_router_command = $attachedHtmlBundleSuiteRouterCommand
+}
 
 if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
@@ -349,6 +357,11 @@ if (-not $Json) {
         Write-Host ("- {0}" -f $surfaceCheckCommand)
         Write-Host "- Deep asset-closure audit is skipped in explicit page-root mode."
     }
+    Write-Host ""
+    Write-Host "Keep the broader attached-page fallback visible when the route should stay general longer or the current inputs are still the pinned bundle:"
+    Write-Host ("- {0}" -f $attachedHtmlSuiteRouterCommand)
+    Write-Host ("- {0}" -f $attachedHtmlFlowCommand)
+    Write-Host ("- {0}" -f $attachedHtmlBundleSuiteRouterCommand)
     if ($resolvedInputPath.Count -gt 0) {
         Write-Host ""
         Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $resolvedRepoRoot
