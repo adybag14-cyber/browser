@@ -65,6 +65,29 @@ function Format-HelperCommand {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ScriptName,
+        [System.Collections.Generic.List[string]]$Arguments,
+        [string[]]$Switches = @()
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    if ($Arguments -and $Arguments.Count -gt 0) {
+        $command += " " + ($Arguments -join ' ')
+    }
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
         [hashtable]$Arguments = @{},
         [string[]]$Switches = @(),
         [string]$RepoRootOverride
@@ -161,7 +184,7 @@ $entrypoint = [ordered]@{
         'Use attached_html_shortcut as the default next helper whenever no explicit bundle inputs are already pinned, because it keeps the attached-page bridge visible before reopening replay_shortcuts, the next-step matrix, contextual_flow, or the safe-route map.',
         'Use suite_router_shortcut_entrypoint when you want the broader issue #3 shortcut-first bridge reprinted again before narrowing back into replay_shortcuts or the attached-page branch.',
         'Use replay_shortcuts after the attached_html_shortcut helper when the route is already clearly inside issue #3 and you want the narrower compact helper surface kept beside the attached bundle and safe-route follow-up commands.',
-        'Use suite_router_next_steps when you want the compact start-point matrix reprinted again after the replay-route shortcut bridge so you can choose between replay_route, contextual_flow, the bundle-first branch, or the runner-state follow-up.',
+        'Use suite_router_next_steps when you want the compact start-point matrix reprinted again after the replay-route shortcut bridge so you can choose between replay_route, contextualFlow, the bundle-first branch, or the runner-state follow-up.',
         'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that context aligned before narrowing further.',
         'Use attached_bundle_first whenever explicit InputPath values are already pinned or when the replay should stay on the known three-page compatibility set before widening back into the broader Google-only issue #3 helpers.',
         'Use safe_route_entrypoints only after the attached-page and replay-shortcuts surfaces have already clarified that the route should reopen the wrapper-heavy issue #3 chain from the same SummaryPath and InputPath state.',
