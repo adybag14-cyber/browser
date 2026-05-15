@@ -34,6 +34,8 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
+- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md`
+- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`
 - `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
@@ -46,6 +48,8 @@ Keep these companion notes nearby:
 ## Goal
 
 Start from the top-level `attached-html`, `google-attached-html`, or `attached-html-target-bundle` router surfaces, keep the route guard and attached-shortcut guard visible when they matter, and move through the compact change-area and top-level attached-page helpers in the same order surfaced by the live PowerShell entrypoint.
+
+Keep the top-level shortcut-first note and shortcut bridge visible when the route is about to narrow from the broader top-level attached-page chain into the shorter attached-page or replay-route shortcut helpers.
 
 If the replay is reopening from the broader Windows-first route or from the replay-side attached-html quickstart, keep `show_google_issue3_windows_replay_attached_html_quickstart.ps1` visible before the top-level ladder narrows further so the Windows-side and replay-side note families still describe the same attached-page handoff.
 
@@ -186,8 +190,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_sa
 - `show_google_issue3_attached_html_change_area_quickstart.ps1`: use when the route is already narrowed to attached localhost HTML from the top-level suite router and you want the compact change-area helper plus the broader attached-page flow helper kept visible before the replay narrows again.
 - `show_attached_html_validation_flow.ps1`: use when you want the broader attached-page localhost helper printed directly from this top-level attached-page bridge before choosing between the shorter quickstarts, the issue-specific attached-page bridge, the shortcut companion, the replay-route helper, or the bundle-first branch.
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`: use when you want the shortest top-level shortcut surface reprinted before narrowing into the attached-page shortcut, replay-route shortcut, replay shortcuts, the next-step matrix, or the safe-route map.
-- `show_google_issue3_top_level_attached_html_quickstart.ps1`: use when you want the shortest compact helper that still keeps this broader bridge, the wider suite-catalog guide, the suite-catalog attached-page bridge, and the suite-router attached-page quickstart visible before the route narrows again.
-- `show_google_issue3_top_level_attached_html_entrypoint.ps1`: use when you want the broader top-level attached-page bridge kept visible before it drops into the wider suite-catalog guide, the suite-catalog attached-page bridge, the suite-router attached-page quickstart, the attached-page shortcut, replay-route shortcut, replay shortcuts, or safe-route map.
+- `show_google_issue3_top_level_attached_html_quickstart.ps1`: use when you want the shortest compact helper that still keeps this broader bridge, the matching shortcut notes, the wider suite-catalog guide, the suite-catalog attached-page bridge, and the suite-router attached-page quickstart visible before the route narrows again.
+- `show_google_issue3_top_level_attached_html_entrypoint.ps1`: use when you want the broader top-level attached-page bridge kept visible before it drops into the matching shortcut notes, the wider suite-catalog guide, the suite-catalog attached-page bridge, the suite-router attached-page quickstart, the attached-page shortcut, replay-route shortcut, replay shortcuts, or safe-route map.
 - `show_google_issue3_google_attached_html_entrypoint.ps1`: use when the replay still needs the broader Google-shaped attached-page surface checker and flow helper before narrowing again.
 - `show_google_issue3_suite_catalog_entrypoints.ps1`: use when you want the wider suite-catalog route reprinted from this top-level bridge before the replay narrows back into the shorter attached-page ladder.
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`: use when you want the suite-catalog-side attached-page bridge kept visible before the replay narrows into the shorter attached-page shortcut, replay-route shortcut, replay shortcuts, or safe-route map.
