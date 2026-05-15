@@ -144,7 +144,7 @@ before the shorter helper surfaces.
 Use this when you want the compact top-level attached-page bridge and the
 suite-catalog-side attached-page bridge surfaced together.
 
-11. `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quICKSTART.ps1`
+11. `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`
 
 Use this when you want the replay-side attached-html ladder, the top-level
 attached-page catalog quickstart, and the suite-catalog-side bridge kept on the
