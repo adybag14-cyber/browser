@@ -114,6 +114,7 @@ $helper = [ordered]@{
     suite_catalog_entrypoints_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
+    attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     windows_full_use_validation_router_attached_html_bridge_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md'
     windows_full_use_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md'
@@ -157,9 +158,9 @@ $helper = [ordered]@{
         'Use attached_html_shortcut only after the top-level attached-page quickstart, change-area quickstart, bridge, or top-level shortcut bridge is already in view and the replay is ready to stay inside the narrower issue #3 helper chain.',
         'Use replay_shortcuts after the attached-page shortcut or the suite-catalog bridge when you want the tightest current helper surface before widening back out.',
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper should preserve that replay context before it narrows again.',
-        'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and the replay should stay on that locked route before widening back into the broader issue #3 helper stack.',
+        'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and keep docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md nearby so the locked inputs stay visible before the route widens again.',
         'Use windows_full_use_attached_html_route when the replay came from docs/WINDOWS_FULL_USE.md first and you want the broader Windows runbook attached-page route visible beside this shorter replay ladder.',
-        'Keep the Windows replay quickstart note, the replay-side attached-html quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router attached-html bridge note, the Windows full-use attached-html catalog quickstart note, the validation-router attached-page note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-html catalog quickstart note, the top-level shortcut bridge note, the suite-catalog entrypoints guide, the suite-catalog attached-page bridge note, the suite-router attached-page quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows replay quickstart note, the replay-side attached-html quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router attached-html bridge note, the Windows full-use attached-html catalog quickstart note, the validation-router attached-page note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-html catalog quickstart note, the top-level shortcut bridge note, the suite-catalog entrypoints guide, the suite-catalog attached-page bridge note, the suite-router attached-page quickstart note, the attached-html target bundle reference note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -240,6 +241,7 @@ Write-Host (("Top-level shortcut note:     {0}") -f (' ' + $helper.top_level_sho
 Write-Host (("Suite-catalog guide:         {0}") -f (' ' + $helper.suite_catalog_entrypoints_note_path))
 Write-Host (("Suite-catalog note:          {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
 Write-Host (("Suite-router note:           {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
+Write-Host (("Bundle reference note:       {0}") -f (' ' + $helper.attached_html_target_bundle_reference_note_path))
 Write-Host (("Validation chain note:       {0}") -f (' ' + $helper.validation_chain_note_path))
 Write-Host ''
 Write-Host 'Notes:'
