@@ -187,6 +187,8 @@ $entrypoint = [ordered]@{
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     replay_discovery_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
+    top_level_shortcut_first_entrypoint_note_path = 'docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md'
+    top_level_shortcut_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
@@ -194,6 +196,7 @@ $entrypoint = [ordered]@{
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
+    attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
         'Use this helper when the top-level headed validation suite catalog has already narrowed the route to issue #3 and you want the shortcut-first path printed without reopening the broader suite-catalog or replay-route surfaces first.',
@@ -213,7 +216,7 @@ $entrypoint = [ordered]@{
         'Use attached_html_shortcut when the replay is already narrowed to attached-page follow-up and you want the broader attached-page compatibility branch kept visible before you widen back into replay_shortcuts, the next-step matrix, or the safe-route map.',
         'Use attached_bundle_first instead when explicit InputPath values are already pinned and the replay should stay on the known three-page compatibility set before widening back into the broader Google-only helpers.',
         'Use replay_shortcuts after the suite-router shortcut entrypoint, the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, or the suite-router attached-page quickstart when the route is already known to stay inside issue #3 and no saved summary, repo-root override, or pinned bundle inputs need to stay visible first.',
-        'Keep the quickstart note, the replay-side attached-page quickstart note, the replay-discovery note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the suite-router bridge, the suite-catalog guide, the suite-catalog attached-html bridge, and the validation-chain notes nearby when you want the written route beside these commands.'
+        'Keep the quickstart note, the replay-side attached-page quickstart note, the replay-discovery note, the top-level shortcut-first entrypoint note, the top-level shortcut bridge note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the suite-router bridge, the suite-catalog guide, the suite-catalog attached-html bridge, the attached-html target bundle reference note, and the validation-chain notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -291,6 +294,8 @@ Write-Host ''
 Write-Host (("Quickstart note:                {0}") -f $entrypoint.quickstart_note_path)
 Write-Host (("Windows replay attached note:   {0}") -f (' ' + $entrypoint.windows_replay_attached_html_quickstart_note_path))
 Write-Host (("Replay discovery:               {0}") -f $entrypoint.replay_discovery_note_path)
+Write-Host (("Shortcut-first entry note:      {0}") -f (' ' + $entrypoint.top_level_shortcut_first_entrypoint_note_path))
+Write-Host (("Shortcut bridge note:           {0}") -f (' ' + $entrypoint.top_level_shortcut_bridge_note_path))
 Write-Host (("Top-level attached note:        {0}") -f (' ' + $entrypoint.top_level_attached_html_quickstart_note_path))
 Write-Host (("Top-level catalog quickstart:   {0}") -f (' ' + $entrypoint.top_level_attached_html_catalog_quickstart_note_path))
 Write-Host (("Catalog-to-top-level qk note:   {0}") -f (' ' + $entrypoint.suite_catalog_top_level_attached_html_catalog_quickstart_note_path))
@@ -298,6 +303,7 @@ Write-Host (("Router attached note:           {0}") -f (' ' + $entrypoint.suite_
 Write-Host (("Suite-router bridge:            {0}") -f $entrypoint.suite_router_bridge_note_path)
 Write-Host (("Suite-catalog guide:            {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
 Write-Host (("Catalog-attached note:          {0}") -f (' ' + $entrypoint.suite_catalog_attached_html_bridge_note_path))
+Write-Host (("Bundle reference note:          {0}") -f (' ' + $entrypoint.attached_html_target_bundle_reference_note_path))
 Write-Host (("Validation chain:               {0}") -f $entrypoint.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Notes:'
