@@ -242,3 +242,48 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 ```
 
 Use this when the route is already clearly inside issue `#3` and you want the tightest compact helper surface before deciding whether to widen into the next-step matrix, contextual flow, bundle-first helper, or the safe-route map.
+
+9. Suite-router next-step matrix
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+```
+
+Use this when you want the executable branch matrix reprinted after the top-level quickstart before choosing the narrower replay surface.
+
+10. Contextual flow
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1
+```
+
+Use this when `RepoRoot`, `SummaryPath`, or pinned bundle inputs already matter and the next helper surface should keep that replay context aligned before narrowing again.
+
+11. Attached bundle first
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+```
+
+Use this when explicit `InputPath` values are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only helper chain.
+
+12. Safe-route entrypoints
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
+```
+
+Use this when the route has already narrowed enough that the wrapper-heavy issue `#3` command surface is the next useful layer.
+
+## Practical rule
+
+Once `show_headed_validation_suites.ps1` has already narrowed the route to attached localhost HTML follow-up from the top-level side, prefer `show_google_issue3_top_level_attached_html_quickstart.ps1` before reopening the longer validation-chain notes again.
+
+- replay reopened from `docs/WINDOWS_FULL_USE.md`: go from `show_google_issue3_windows_full_use_attached_html_route.ps1` to `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, then the Windows full-use validation-router bridge, then the Windows full-use attached-html catalog quickstart, then the top-level attached-page quickstart, then the top-level attached-page bridge, then the suite-router attached-page quickstart, then the catalog quickstart or suite-catalog attached-page bridge, or the attached-page shortcut before widening again
+- broader issue `#3` router already surfaced the attached localhost branch: go from `-SuiteName google-recommended` or `-ChangeArea google-input` to the top-level attached-page quickstart, then the top-level attached-page bridge or the suite-router attached-page quickstart, then the catalog quickstart or catalog bridge, or the attached-page shortcut before widening again
+- broader router already surfaced the generic attached localhost branch and you want the change-area helper kept visible too: go from `-ChangeArea attached-html` to the attached-html change-area quickstart, then the broader attached-page flow helper, then the top-level attached-page quickstart, then the top-level attached-page bridge or the attached-page shortcut before widening again
+- Google-specific attached-page surface still matters more than the generic shortcut chain: go from `-ChangeArea google-attached-html` to the top-level attached-page quickstart, then the Google attached-page entrypoint before narrowing further
+- explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
+- saved summary or repo-root override already present: reopen the attached-html change-area quickstart or the top-level attached-page quickstart with that same context first, then choose the catalog quickstart, replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
+
+Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
