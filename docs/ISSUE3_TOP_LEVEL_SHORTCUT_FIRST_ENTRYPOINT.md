@@ -1,6 +1,6 @@
 # Issue #3 Top-Level Shortcut-First Entrypoint
 
-Use this note when issue `#3` replay is re-entering from the top-level headed validation catalog and you want the shortest written bridge into the narrower issue-specific helper chain before the route widens again.
+Use this note when issue `#3` replay is re-entering from the top-level headed validation catalog and you want the shortest written bridge into the narrower issue-specific helper chain while keeping the broader attached-page flow helper visible before the route widens again.
 
 This note matches `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`.
 
@@ -23,7 +23,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the higher-level validation router, keep the top-level shortcut bridge visible, and only reopen the broader attached-page notes when the replay is clearly narrowing into attached localhost follow-up.
+Start from the higher-level validation router, keep the top-level shortcut bridge visible, and keep the broader attached-page flow helper easy to reopen before the route widens into the longer attached-page notes.
 
 Use this note when:
 - the route is already clearly inside issue `#3` and you want the shortest top-level bridge first
@@ -53,13 +53,15 @@ If you want the broader validation-router surfaces visible before the shortcut-f
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-Use that route when the replay is still re-entering from the shared validation catalog and you want the broader Google lane reprinted before the top-level shortcut-first bridge hands off to the narrower issue `#3` helpers.
+Use that route when the replay is still re-entering from the shared validation catalog and you want the broader Google lane and the broader attached-page flow helper reprinted before the top-level shortcut-first bridge hands off to the narrower issue `#3` helpers.
 
 ## Attached HTML handoff
 
@@ -67,6 +69,7 @@ If attached localhost follow-up is already the next obvious branch, keep the sho
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
@@ -79,7 +82,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-Use that route when the replay is already centered on the attached-page compatibility branch and you want the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, the broader top-level shortcut-first bridge, the attached-page shortcut, and the narrower suite-router shortcut-first helper all kept on the same written ladder.
+Use that route when the replay is already centered on the attached-page compatibility branch and you want the broader attached-page flow helper, the replay-side attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, the broader top-level shortcut-first bridge, the attached-page shortcut, and the narrower suite-router shortcut-first helper all kept on the same written ladder.
 
 ## Google-shaped attached HTML handoff
 
@@ -147,42 +150,46 @@ Use that context-preserving form when:
 
 Use this as the default follow-up when the route is already clearly inside issue `#3` and no attached-page-specific branch needs to stay visible first.
 
-2. `show_google_issue3_top_level_attached_html_quickstart.ps1`
+2. `show_attached_html_validation_flow.ps1`
+
+Use this when you want the broader attached-page compatibility route printed before the replay-side attached-page quickstart, the top-level attached-page quickstart, or the narrower issue `#3` shortcut helpers.
+
+3. `show_google_issue3_top_level_attached_html_quickstart.ps1`
 
 Use this when attached localhost follow-up is already obvious and you want the shorter top-level attached-page bridge before the suite-router attached-page quickstart or the broader attached-page notes.
 
-3. `show_google_issue3_suite_router_attached_html_quickstart.ps1`
+4. `show_google_issue3_suite_router_attached_html_quickstart.ps1`
 
 Use this when the route has already narrowed to attached-page follow-up and you want the suite-router-side attached-page bridge reprinted before the suite-catalog bridge, the attached-page shortcut, replay shortcuts, or the next-step matrix.
 
-4. `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
+5. `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
 
 Use this when the suite-catalog-side attached-page bridge should stay visible before the route narrows again.
 
-5. `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
+6. `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
 
 Use this when the attached-page compatibility branch itself should stay visible before the route widens back into replay shortcuts or the safe-route map.
 
-6. `show_google_issue3_google_attached_html_entrypoint.ps1`
+7. `show_google_issue3_google_attached_html_entrypoint.ps1`
 
 Use this when the replay still needs the broader Google-shaped attached-page helper visible before it narrows again.
 
-7. `show_google_issue3_replay_shortcuts.ps1`
+8. `show_google_issue3_replay_shortcuts.ps1`
 
 Use this when the route is already clear and you want the narrowest stable helper surface.
 
-8. `show_google_issue3_contextual_flow.ps1`
+9. `show_google_issue3_contextual_flow.ps1`
 
 Use this when repo-root, summary, or pinned bundle state already matters and the next helper should keep that replay context aligned.
 
-9. `show_google_issue3_suite_router_next_steps.ps1`
+10. `show_google_issue3_suite_router_next_steps.ps1`
 
 Use this when you still want the executable branch matrix reprinted after the top-level shortcut-first bridge before choosing the narrower replay surface.
 
-10. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+11. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
 
 Use this when explicit `InputPath` values are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only helper chain.
 
 ## Practical rule
 
-Start from the top-level headed validation catalog, then use `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` when the route is already clearly inside issue `#3`. If attached localhost follow-up becomes the next obvious branch, reopen `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`, then `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`, then `show_google_issue3_suite_router_attached_html_quickstart.ps1`, then `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, and only then narrow into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` or `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`. Stay on the bundle-first route whenever explicit bundle inputs are already pinned, and only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
+Start from the top-level headed validation catalog, then use `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` when the route is already clearly inside issue `#3`. If attached localhost follow-up becomes the next obvious branch, reopen `show_attached_html_validation_flow.ps1`, then `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_quickstart.ps1`, then `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`, then `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`, then `show_google_issue3_suite_router_attached_html_quickstart.ps1`, then `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, and only then narrow into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` or `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`. Stay on the bundle-first route whenever explicit bundle inputs are already pinned, and only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
