@@ -28,6 +28,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
 ## Goal
@@ -37,6 +38,8 @@ Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_
 If the replay is reopening specifically from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, keep `show_google_issue3_attached_html_change_area_quickstart.ps1` nearby as the read-first bridge that still surfaces the broader attached-page flow helper before this catalog quickstart narrows the route again.
 
 If the replay is reopening from the broader Windows full-use branch or from the replay-side attached-html quickstart, keep those broader helper ladders visible long enough to rerun the route-level surface check and confirm the narrower top-level catalog route is still aligned before this note takes over.
+
+If the replay is staying on `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` open beside this note so the Google Safety Centre, Anthropic job application, and UAP encounters pages stay explicit before the route widens back into the broader issue `#3` helper stack.
 
 From there, prefer one of these narrower follow-ups before reopening the broader wrapper-heavy safe route:
 
@@ -144,6 +147,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` open beside that bundle-first route when the known compatibility set still needs to stay explicit before the delegated runner widens back into the broader issue `#3` helper stack.
+
 Use that bundle-first route when the known three-page compatibility set should stay pinned before widening back into the broader issue `#3` helper stack.
 
 ## Preserve replay context
@@ -235,7 +240,7 @@ Once the top-level attached localhost HTML route is already in focus, prefer `sh
 - replay reopened from `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`: reopen `show_google_issue3_windows_replay_attached_html_quickstart.ps1` first, then the compact top-level attached-page quickstart, then this top-level catalog quickstart, then the suite-catalog bridge, then the attached-page shortcut before widening again
 - no pinned bundle inputs and no saved replay state yet: go from the top-level attached-page route to the attached-html change-area quickstart, then the broader attached-page flow helper, then the top-level attached-page quickstart, then the catalog quickstart, then the suite-catalog attached-page bridge, then the broader Google-shaped attached-page bridge, then the attached-page shortcut, then replay shortcuts, then the safe-route map
 - broader Google-shaped attached-page surface still matters more than the generic shortcut chain: go from `-ChangeArea google-attached-html` to the catalog quickstart, then the suite-catalog attached-page bridge, then the Google attached-page entrypoint before narrowing further
-- explicit bundle paths already pinned: keep the change-area quickstart and the bundle-first helper in front of the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
+- explicit bundle paths already pinned: keep the change-area quickstart, this catalog quickstart, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` in front of the bundle-first helper and the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
 - saved summary or repo-root override already present: reopen the attached-html change-area quickstart or the catalog quickstart with that same context first, then choose replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
 
 Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
