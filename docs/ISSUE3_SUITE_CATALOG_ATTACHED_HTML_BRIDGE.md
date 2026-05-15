@@ -192,7 +192,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quICKSTART.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
@@ -381,7 +381,7 @@ reopen the safe-route map.
   `show_google_issue3_windows_full_use_attached_html_route.ps1` to
   `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`,
   then `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`,
-  then `show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1`,
+  then `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`,
   then `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`,
   then `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, then
   the suite-catalog guide, then the suite-catalog surface check, then the
