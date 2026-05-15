@@ -34,7 +34,7 @@ Use `show_google_input_validation_flow.ps1` when you want the bounded localhost,
 
 Use `show_google_issue3_replay_shortcuts.ps1` when you want the broader Google route, the attached three-page bundle branch, and the return-to-safe-route helpers printed on one stable command surface before you commit to the next replay path.
 
-Use `-ChangeArea attached-html` when attached localhost compatibility follow-up is already the next obvious branch and you want the route-level surface check, the broader Windows-full-use route, the Windows full-use validation-router bridge, the replay-side attached-html quickstart, the validation-router attached-page quickstart, the compact top-level attached-page quickstart, the top-level attached-page catalog quickstart, and the suite-catalog attached-page bridge surfaced before the wrapper-heavy safe-route notes narrow the replay again.
+Use `-ChangeArea attached-html` when attached localhost compatibility follow-up is already the next obvious branch and you want the route-level surface check, the broader Windows-full-use route, the Windows full-use validation-router bridge, the Windows full-use attached-html catalog quickstart, the replay-side attached-html quickstart, the validation-router attached-page quickstart, the compact top-level attached-page quickstart, the top-level attached-page catalog quickstart, the broader suite-catalog guide, the suite-catalog attached-page bridge, the Google-shaped attached-page flow, the top-level shortcut bridge, and the replay-route shortcut surfaced before the wrapper-heavy safe-route notes narrow the replay again.
 
 When the current saved or attached inputs are the known three-page compatibility bundle, also open the attached bundle route directly from the higher-level router before widening into the wrapper-heavy Google-only helpers:
 
@@ -54,11 +54,17 @@ When the replay is already narrowed to the attached localhost HTML branch and yo
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 ```
 
 If the replay is already running from a non-default checkout, from an already-saved summary, or from an explicit bundle path, preserve that same context on the broader Windows-full-use, replay-side attached-page, validation-router, and top-level attached-page helpers first:
@@ -67,11 +73,17 @@ If the replay is already running from a non-default checkout, from an already-sa
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
 Keep these nearby when you want the written route beside the helper output:
@@ -80,12 +92,16 @@ Keep these nearby when you want the written route beside the helper output:
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md` when the shorter top-level shortcut ladder should stay visible before the replay narrows again
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` when the replay started from `docs/WINDOWS_FULL_USE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md` when the broader Windows runbook-side validation-router bridge should stay visible before the top-level chain narrows again
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md` when the broader Windows runbook-side attached-page catalog route should stay visible before the top-level chain narrows again
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` when the replay-side route needs the broader Windows replay ladder kept visible beside the narrower top-level attached-page chain
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` when the replay-side attached-page quickstart should stay visible before the route narrows into the compact top-level helpers
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md` when the broader suite-catalog guide should stay visible beside the replay-side and top-level attached-page ladders
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md` when the suite-catalog-side attached-page bridge should stay visible before replay shortcuts or safe-route helpers
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` when the current attached-page follow-up is already Google-shaped and should stay visible before the helper chain narrows again
+- `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md` when the replay-route shortcut companion surface should stay visible before the route collapses into the shorter attached-page helper chain
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the route is ready to narrow back toward the suite-router side
 
 Use the replay-side attached-html quickstart first when the broader Windows full-use route still needs to stay visible beside the narrower top-level chain.
@@ -94,15 +110,26 @@ Use the compact top-level quickstart first when no bundle inputs, saved summary,
 
 Use the broader top-level attached-page entrypoint next when you want the top-level bridge, suite-router attached-page quickstart, attached-page shortcut, replay shortcuts, next-step matrix, and safe-route map reopened from one place before deciding how far to narrow.
 
-When the replay is reopening from `docs/WINDOWS_FULL_USE.md` first, reopen the broader Windows runbook route, its validation-router bridge, and the replay-side attached-html quickstart before the validation-router attached-page quickstart and the top-level attached-page chain:
+Use the suite-catalog guide when you want the broader suite-catalog route map reprinted before the replay narrows back through the attached-page bridge.
+
+Use the suite-catalog attached-page bridge when you want the suite-catalog-side attached-page route kept visible beside the replay-side and top-level ladders without reopening the full validation catalog first.
+
+Use the Google attached-page flow when the current attached inputs are already Google-shaped and you want that narrower route kept visible before the helper chain drops back into the shorter attached-page and replay-route shortcuts.
+
+Use the top-level shortcut-first helper when the broader top-level bridge is already visible but the route should keep the shorter top-level shortcut surface open before dropping into the attached-page shortcut, replay shortcuts, or the replay-route shortcut bridge.
+
+Use the replay-route shortcut helper when the replay is already inside the narrower issue `#3` helper chain and you want the replay-route companion surface reopened before widening back into replay shortcuts, the next-step matrix, or the safe-route map.
+
+When the replay is reopening from `docs/WINDOWS_FULL_USE.md` first, reopen the broader Windows runbook route, its validation-router bridge, the Windows-side attached-html catalog quickstart, and the replay-side attached-html quickstart before the validation-router attached-page quickstart and the top-level attached-page chain:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 ```
 
-Use that broader Windows-first route when you want the Windows full-use entrypoint, its newer validation-router bridge, the replay-side attached-html quickstart, the validation-router attached-page quickstart, and the top-level attached-page helpers to describe the same attached-page re-entry order before the route narrows back toward replay shortcuts or the wrapper-heavy safe path.
+Use that broader Windows-first route when you want the Windows full-use entrypoint, its newer validation-router bridge, the Windows-side attached-html catalog step, the replay-side attached-html quickstart, the validation-router attached-page quickstart, the top-level attached-page helpers, the broader suite-catalog guide, the suite-catalog attached-page bridge, the Google-shaped attached-page flow, the top-level shortcut bridge, and the replay-route shortcut to describe the same attached-page re-entry order before the route narrows back toward replay shortcuts or the wrapper-heavy safe path.
 
 Return to the broader validation chain only after the attached-page route has clarified the next replay state again.
 
@@ -379,7 +406,7 @@ If two helpers disagree:
 - prefer the wrapper over the raw command when a wrapper already exists for that checkpoint
 - prefer `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the default fresh replay entrypoint; use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` when reusing current saved outputs is intentional
 - if a `safe_path_route` wrapper already exists for the current checkpoint, prefer it when you want the safe helper and its bounded raw follow-up reopened in one step
-- if attached localhost follow-up is already obvious from `show_headed_validation_suites.ps1 -ChangeArea attached-html` or from `docs/WINDOWS_FULL_USE.md`, reopen `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`, and `show_google_issue3_windows_replay_attached_html_quickstart.ps1` before dropping into `show_google_issue3_validation_router_attached_html_quickstart.ps1`, the compact top-level attached-page quickstart, or the broader top-level attached-page bridge
+- if attached localhost follow-up is already obvious from `show_headed_validation_suites.ps1 -ChangeArea attached-html` or from `docs/WINDOWS_FULL_USE.md`, reopen `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`, `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`, `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, `show_google_issue3_validation_router_attached_html_quickstart.ps1`, `show_google_issue3_top_level_attached_html_quickstart.ps1`, `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`, `show_google_issue3_suite_catalog_entrypoints.ps1`, `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, `show_google_attached_html_validation_flow.ps1`, `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, and `show_google_issue3_replay_route_shortcut_entrypoint.ps1` before dropping into the compact top-level attached-page bridge, the attached-page shortcut, or the broader safe-route notes
 - otherwise prefer the helper with `safe` in the name unless the safe helper explicitly says the raw helper is ready
 - if the raw wiring audit says `saved-artifacts-stale-runner-already-wired`, prefer saved-output regeneration or repair over another direct runner patch
 - if the safe-route patch-handoff wrapper says `already-direct`, go straight to the safe wiring audit
