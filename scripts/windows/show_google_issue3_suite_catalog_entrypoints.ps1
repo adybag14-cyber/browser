@@ -165,6 +165,13 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$attachedBundleSurfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $attachedBundleSurfaceCheckArguments -Name RepoRoot -Value $RepoRoot
+
+$attachedBundleFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $attachedBundleFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $attachedBundleFlowArguments -Name InputPath -Values $InputPath
+
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
@@ -182,10 +189,12 @@ $windowsFullUseAttachedHtmlRouteSurfaceCheckCommand = Format-HelperCommandWithRe
 $windowsReplayAttachedHtmlQuickstartCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
 $windowsFullUseAttachedHtmlRouteCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
 $windowsFullUseValidationRouterAttachedHtmlBridgeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $bundleArguments
+$attachedBundleSurfaceCheckCommand = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $attachedBundleSurfaceCheckArguments
+$attachedBundleFlowCommand = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $attachedBundleFlowArguments
 
 $entrypoints = [ordered]@{
     issue = 'Google issue #3 suite catalog entrypoints'
-    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the suite-catalog surface check, the broader Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-page catalog quickstart, the Windows replay attached-html surface check, the Windows replay attached-html quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the validation-router attached-page quickstart, the attached-page change-area quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router quickstarts, the top-level shortcut and top-level attached-page bridges, the current Google flow helper, the issue-specific attached-page helpers, the compact next-step matrix, the context-preserving issue #3 replay flow, the compact attached-bundle suite surface, and the current safe-route replay helpers on one compact command surface before the route narrows into replay-route, bundle-first, or the wrapper-heavy safe-route helpers.'
+    purpose = 'Keep the exact top-level show_headed_validation_suites entrypoints, the suite-catalog surface check, the broader Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-page catalog quickstart, the Windows replay attached-html surface check, the Windows replay attached-html quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the validation-router attached-page quickstart, the attached-page change-area quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router quickstarts, the top-level shortcut and top-level attached-page bridges, the current Google flow helper, the issue-specific attached-page helpers, the compact next-step matrix, the context-preserving issue #3 replay flow, the compact attached-bundle suite surface, the pinned bundle surface checker, the pinned bundle flow helper, and the current safe-route replay helpers on one compact command surface before the route narrows into replay-route, bundle-first, or the wrapper-heavy safe-route helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -252,6 +261,8 @@ $entrypoints = [ordered]@{
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
+        attached_bundle_surface_check = $attachedBundleSurfaceCheckCommand
+        attached_bundle_flow = $attachedBundleFlowCommand
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
         fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
@@ -295,6 +306,8 @@ $entrypoints = [ordered]@{
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
+        attached_bundle_surface_check = $attachedBundleSurfaceCheckCommand
+        attached_bundle_flow = $attachedBundleFlowCommand
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
     }
     notes = @(
@@ -307,9 +320,11 @@ $entrypoints = [ordered]@{
         'Use windows_replay_attached_html_quickstart as the default replay-side bridge when the next rerun already came through the Windows replay attached localhost branch and you want that narrower route reprinted before widening back into the Windows full-use attached-html catalog quickstart, the validation-router attached-page quickstart, or the suite-catalog ladders.',
         'Use suite_catalog_top_level_attached_html_catalog_quickstart when the suite-catalog surface is already open and you want the replay-side attached-html ladder plus the top-level attached-page catalog quickstart visible together before the route narrows into the suite-catalog attached-page bridge, the attached-page shortcut, or the replay-shortcut helpers.',
         'Use suite_router_attached_html_quickstart when the route is already narrowed to attached localhost follow-up from the top-level suite router and you want the shortest suite-router-side attached-page bridge before choosing between the broader top-level notes, the issue-specific attached-page bridge, replay shortcuts, or the bundle-first route.',
-        'Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle and you want the compact bundle-specific re-entry helper visible before the route narrows into the bundle-first branch or the delegated bundle runner.',
-        'Use replay_shortcuts as the default next helper after the top-level suite catalog when no pinned bundle inputs, saved summary, or non-default repo root need to take precedence, because it keeps the newer shortcut-first issue #3 bridge visible before you decide whether to reopen the attached-page ladders, the compact attached-bundle suite surface, or the bundle-first branch.',
-        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that context aligned while you choose between the attached-page ladders, replay shortcuts, replay route, the compact attached-bundle suite surface, the bundle-first branch, or the safe-route helpers.',
+        'Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle and you want the compact bundle-specific re-entry helper visible before the route narrows into the pinned bundle surface checker, the pinned bundle flow helper, the bundle-first branch, or the delegated bundle runner.',
+        'Use attached_bundle_surface_check next when you want the pinned three-page route to fail fast before the bundle flow helper or the bundle-first branch takes over from the suite-catalog surface.',
+        'Use attached_bundle_flow when you want the printed pinned-bundle helper ladder kept visible between the compact bundle suite surface and the narrower bundle-first branch.',
+        'Use replay_shortcuts as the default next helper after the top-level suite catalog when no pinned bundle inputs, saved summary, or non-default repo root need to take precedence, because it keeps the newer shortcut-first issue #3 bridge visible before you decide whether to reopen the attached-page ladders, the compact attached-bundle suite surface, the pinned bundle surface checker, the pinned bundle flow helper, or the bundle-first branch.',
+        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that context aligned while you choose between the attached-page ladders, replay shortcuts, replay route, the compact attached-bundle suite surface, the pinned bundle surface checker, the pinned bundle flow helper, the bundle-first branch, or the safe-route helpers.',
         'Keep the Windows replay attached-html quickstart note, the Windows full-use attached-html route note, the validation-router attached-page quickstart note, the attached-page change-area quickstart note, the dedicated Google attached-page validation-flow note, the suite-catalog top-level attached-page catalog quickstart note, the suite-catalog guide, the top-level attached-page bridge, the attached-bundle suite-surface note, and the validation-chain notes nearby when you want the written route beside these commands.'
     )
 }
@@ -327,11 +342,11 @@ $entrypoints.recommended_next_command = switch ($entrypoints.recommended_next_ke
     default { $entrypoints.helper_commands.replay_shortcuts }
 }
 $entrypoints.recommended_next_reason = if ($entrypoints.recommended_next_key -eq 'attached_bundle_first') {
-    'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle and keep the compact attached-bundle suite surface nearby before widening back into the broader issue #3 helper chain.'
+    'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle and keep the compact attached-bundle suite surface, the pinned bundle surface checker, and the pinned bundle flow helper nearby before widening back into the broader issue #3 helper chain.'
 } elseif ($entrypoints.recommended_next_key -eq 'contextual_flow') {
-    'A non-default repo root or saved summary is already in play, so open the context-preserving helper next and keep that replay state aligned before choosing between the Windows full-use attached-html route, the route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-html catalog quickstart, the Windows replay attached-html quickstart, the attached-page change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the validation-router attached-page quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the top-level shortcut bridge, the top-level attached-page bridge, the issue-specific attached-page entrypoint, replay shortcuts, the next-step matrix, contextual flow, replay route, the compact attached-bundle suite surface, attached bundle, or the safe-route helpers.'
+    'A non-default repo root or saved summary is already in play, so open the context-preserving helper next and keep that replay state aligned before choosing between the Windows full-use attached-html route, the route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-html catalog quickstart, the Windows replay attached-html quickstart, the attached-page change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the validation-router attached-page quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the top-level shortcut bridge, the top-level attached-page bridge, the issue-specific attached-page entrypoint, replay shortcuts, the next-step matrix, contextual flow, replay route, the compact attached-bundle suite surface, the pinned bundle surface checker, the pinned bundle flow helper, attached bundle, or the safe-route helpers.'
 } else {
-    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the suite catalog into replay shortcuts before widening back into the Windows full-use attached-html route, the route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-html catalog quickstart, the Windows replay attached-html quickstart, the attached-page change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the validation-router attached-page quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the top-level attached-page bridge, the issue-specific attached-page entrypoint, the next-step matrix, contextual flow, the compact attached-bundle suite surface, or the bundle-first branch.'
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the suite catalog into replay shortcuts before widening back into the Windows full-use attached-html route, the route-level surface check, the Windows-to-validation-router bridge, the Windows full-use attached-html catalog quickstart, the Windows replay attached-html quickstart, the attached-page change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the validation-router attached-page quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog attached-page bridge, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the top-level attached-page bridge, the issue-specific attached-page entrypoint, the next-step matrix, contextual flow, the compact attached-bundle suite surface, the pinned bundle surface checker, the pinned bundle flow helper, or the bundle-first branch.'
 }
 
 if ($Json) {
@@ -384,7 +399,9 @@ Write-Host ((" 26. Contextual flow:                  {0}") -f $entrypoints.bridg
 Write-Host ((" 27. Suite handoff:                    {0}") -f $entrypoints.bridge_sequence.suite_router_handoff)
 Write-Host ((" 28. Replay route:                     {0}") -f $entrypoints.bridge_sequence.replay_route)
 Write-Host ((" 29. Bundle suite surface:             {0}") -f $entrypoints.bridge_sequence.attached_bundle_suite_surface)
-Write-Host ((" 30. Bundle-first route:               {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
+Write-Host ((" 30. Bundle surface check:            {0}") -f $entrypoints.bridge_sequence.attached_bundle_surface_check)
+Write-Host ((" 31. Bundle flow helper:              {0}") -f $entrypoints.bridge_sequence.attached_bundle_flow)
+Write-Host ((" 32. Bundle-first route:              {0}") -f $entrypoints.bridge_sequence.attached_bundle_first)
 Write-Host ''
 Write-Host 'Windows-first re-entry:'
 Write-Host (("  Windows route:             {0}") -f $entrypoints.helper_commands.windows_full_use_attached_html_route)
@@ -423,6 +440,8 @@ Write-Host (("  Next-step matrix:          {0}") -f $entrypoints.helper_commands
 Write-Host (("  Contextual flow:           {0}") -f $entrypoints.helper_commands.contextual_flow)
 Write-Host (("  Replay route:              {0}") -f $entrypoints.helper_commands.replay_route)
 Write-Host (("  Bundle suite surface:      {0}") -f $entrypoints.helper_commands.attached_bundle_suite_surface)
+Write-Host (("  Bundle surface check:      {0}") -f $entrypoints.helper_commands.attached_bundle_surface_check)
+Write-Host (("  Bundle flow helper:        {0}") -f $entrypoints.helper_commands.attached_bundle_flow)
 Write-Host (("  Suite handoff:             {0}") -f $entrypoints.helper_commands.suite_router_handoff)
 Write-Host (("  Bundle first:              {0}") -f $entrypoints.helper_commands.attached_bundle_first)
 Write-Host (("  Safe-route map:            {0}") -f $entrypoints.helper_commands.safe_route_entrypoints)
