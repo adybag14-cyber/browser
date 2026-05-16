@@ -149,7 +149,7 @@ Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $Repo
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached HTML shortcut entrypoint'
-    purpose = 'Print the shortest attached-page compatibility route from the headed validation suite router back into the current issue #3 shortcut helpers while also surfacing the broader Windows-first route guard, the replay-side attached-html quickstart, the newer attached-html change-area quickstart, the newer top-level attached-page quickstarts, and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Print the shortest attached-page compatibility route from the headed validation suite router back into the current issue #3 shortcut helpers while also surfacing the broader Windows-first route guard, the replay-side attached-html quickstart, the matching Google attached-page guide, the newer attached-html change-area quickstart, the newer top-level attached-page quickstarts, and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -190,6 +190,7 @@ $entrypoint = [ordered]@{
     windows_full_use_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     attached_html_change_area_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
+    google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
@@ -202,7 +203,7 @@ $entrypoint = [ordered]@{
     notes = @(
         'Start with attached_html_change_area when the next replay is already narrowed to the attached-page compatibility path and you want that top-level route reprinted before you drop into the shorter issue #3 helper chain.',
         'Use attached_bundle_change_area instead when the current saved or attached pages are still the known three-page compatibility bundle and the next replay should stay pinned to that route first.',
-        'Use google_attached_html_flow when you want the broader attached-page localhost-first helper chain printed before you choose between the shortcut-first issue #3 route and the pinned bundle-first branch.',
+        'Use google_attached_html_flow when you want the broader attached-page localhost-first helper chain and its matching written guide kept visible before you choose between the shortcut-first issue #3 route and the pinned bundle-first branch.',
         'Use windows_route_surface_check after reopening the broader Windows-first route so the current route guard still fails fast before the replay drops into the narrower attached-page helpers.',
         'Use windows_full_use_attached_html_route, windows_full_use_validation_router_attached_html_bridge, and windows_full_use_attached_html_catalog_quickstart when the replay is reopening from docs/WINDOWS_FULL_USE.md first and you want the route-level surface check, Windows-to-validation-router bridge, and Windows-side catalog step kept aligned with the shorter attached-page bridge.',
         'Use windows_replay_attached_html_quickstart when docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md already narrowed the replay to the attached localhost lane and you want that replay-side ladder visible before the shorter attached-page bridge takes over.',
@@ -217,7 +218,7 @@ $entrypoint = [ordered]@{
         'Use attached_bundle_flow and attached_bundle_runner when the current route should stay pinned to the three-page compatibility set all the way through the delegated localhost validation helper.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed the current replay into the wrapper-heavy issue #3 branch, and keep the same SummaryPath and InputPath values attached when they are already pinned.',
         'Use fresh_safe_route_replay when current outputs may be stale or missing. Use reuse_current_outputs only when a saved SummaryPath already exists and those outputs are still trusted.',
-        'Keep the quickstart, Windows route, Windows bridge, Windows catalog, replay-side attached-html quickstart, attached-html change-area quickstart, top-level attached-page quickstart, top-level attached-page bridge, top-level attached-page catalog quickstart, suite-router attached-page quickstart, suite-router bridge, suite-router entrypoint guide, suite-catalog guide, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
+        'Keep the quickstart, Windows route, Windows bridge, Windows catalog, replay-side attached-html quickstart, attached-html change-area quickstart, the Google attached-page validation-flow note, top-level attached-page quickstart, top-level attached-page bridge, top-level attached-page catalog quickstart, suite-router attached-page quickstart, suite-router bridge, suite-router entrypoint guide, suite-catalog guide, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -299,6 +300,7 @@ Write-Host (("Windows bridge note:     {0}") -f $entrypoint.windows_full_use_val
 Write-Host (("Windows catalog note:    {0}") -f $entrypoint.windows_full_use_attached_html_catalog_quickstart_note_path)
 Write-Host (("Replay quickstart note:  {0}") -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Change-area note:        {0}") -f $entrypoint.attached_html_change_area_quickstart_note_path)
+Write-Host (("Google flow note:        {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
 Write-Host (("Top-level quick note:    {0}") -f $entrypoint.top_level_attached_html_quickstart_note_path)
 Write-Host (("Top-level bridge note:   {0}") -f $entrypoint.top_level_attached_html_bridge_note_path)
 Write-Host (("Top-level catalog note:  {0}") -f $entrypoint.top_level_attached_html_catalog_quickstart_note_path)
