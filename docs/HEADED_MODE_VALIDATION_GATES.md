@@ -162,6 +162,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -GoogleStyle -Wait
 ```
 
+When the next issue `#3` replay is specifically about the current attached
+localhost pages, keep these written route maps nearby before widening into the
+broader manual follow-up:
+
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
+
+Use the Google attached-html flow note when the replay should stay on the
+dedicated Google-shaped attached-page lane, the suite-catalog guide when the
+route is reopening from `show_headed_validation_suites.ps1`, and the top-level
+quickstart when the route is already narrowed to the shorter top-level
+attached-page bridge.
+
 Read this focused note when the issue `#3` ladder has already been narrowed to
 just the quick and reduced-home stage:
 
@@ -179,6 +193,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
+
+When the current attached localhost replay is still anchored to issue `#3` and
+the bundle route is only one branch inside the larger attached-page chain,
+reopen one of these notes first so the broader route stays visible beside the
+pinned three-page bundle lane:
+
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
+- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 
 If the current pages are not the known three-page bundle, fall back to the more
 open-ended attached-page flow:
