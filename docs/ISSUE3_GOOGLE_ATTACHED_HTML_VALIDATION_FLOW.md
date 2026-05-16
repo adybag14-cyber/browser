@@ -27,6 +27,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
+- `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
@@ -44,12 +45,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 ```
 
 Use `google-attached-html` when the replay should stay on the Google-shaped attached-page lane.
 Use `attached-html` when the route should stay broader and not assume the Google-style follow-up yet.
 Use `attached-html-target-bundle` when the current pages are still the known three-page compatibility bundle and the replay should stay pinned there first.
+Use `show_google_issue3_replay_route.ps1` when the replay still needs the broader attached-page route, the pinned bundle branch, and the replay-route shortcuts printed together before you commit to the narrower Google-style helper chain.
+Use `show_google_issue3_attached_bundle_first_entrypoint.ps1` when the current pages are already the known three-page compatibility bundle and the replay should stay pinned there before the narrower Google-style flow or replay shortcuts take over.
 
 ## Suite-catalog re-entry
 
@@ -79,6 +84,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_
 ```
 
 Use that route when `docs/WINDOWS_FULL_USE.md` already narrowed the replay to attached localhost follow-up and you want the route-level surface check, the broader Windows-to-validation-router bridge, and the replay-side attached-page quickstart visible before this note narrows the same inputs into the Google-style helper and runner.
+
+## Replay-route and bundle-first re-entry
+
+If the replay is already reopening from the replay-route helper family and you still want the broader attached-page route plus the pinned bundle branch visible before the Google-style helper takes over, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+```
+
+Use that route when the replay-route helper already became the main read-first surface, but you still want the broader attached-page fallback and the pinned three-page bundle branch visible before you commit to the narrower Google-style helper and runner.
+Keep `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` nearby when you want the written replay-route-to-bundle-first bridge open beside that helper chain.
 
 ## Default read-first route
 
@@ -186,10 +205,14 @@ Use this when the current inputs are still the known three-page compatibility bu
 
 Use this when the replay is already centered on the attached localhost compatibility pages and you want the shorter issue `#3` replay ladder beside this Google-style flow.
 
-9. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+9. `show_google_issue3_replay_route.ps1`
+
+Use this when you want the replay-route helper, the broader attached-page route, and the pinned bundle branch reprinted together before you commit to the narrower Google-style helper or the shorter attached-page shortcut chain.
+
+10. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
 
 Use this when the current inputs are still the known three-page compatibility bundle and the replay should stay pinned there before widening back into the broader Google-only helper chain.
 
 ## Practical rule
 
-Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard and bridge first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route and the pinned bundle route printed together before picking the next replay branch. Keep the broader attached-page router nearby when the route is still ambiguous, keep the bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
+Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard and bridge first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route and the pinned bundle route printed together before picking the next replay branch. Keep the replay-route helper family nearby when you want the broader attached-page fallback and the pinned bundle-first branch surfaced together before this guide narrows the route. Keep the broader attached-page router nearby when the route is still ambiguous, keep the bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
