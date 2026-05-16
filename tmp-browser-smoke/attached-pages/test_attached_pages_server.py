@@ -1,4 +1,6 @@
+import contextlib
 import http.client
+import io
 import json
 import threading
 import tempfile
@@ -114,6 +116,28 @@ class AttachedPagesServerTests(unittest.TestCase):
         status, _, body = self.request("GET", "/raw/nested/beta.html")
         self.assertEqual(200, status)
         self.assertIn("beta", body.decode("utf-8"))
+
+    def test_print_manifest_outputs_json(self):
+        original_argv = server_module.sys.argv if hasattr(server_module, "sys") else None
+        buffer = io.StringIO()
+        try:
+            import sys
+
+            sys.argv = [
+                str(Path(server_module.__file__)),
+                "--root",
+                str(self.root),
+                "--print-manifest",
+            ]
+            with contextlib.redirect_stdout(buffer):
+                exit_code = server_module.main()
+        finally:
+            if original_argv is not None:
+                sys.argv = original_argv
+
+        self.assertEqual(0, exit_code)
+        manifest = json.loads(buffer.getvalue())
+        self.assertEqual(self.manifest, manifest)
 
 
 if __name__ == "__main__":
