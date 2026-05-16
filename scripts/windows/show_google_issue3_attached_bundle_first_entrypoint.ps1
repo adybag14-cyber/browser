@@ -18,6 +18,42 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+function Format-ArgumentList {
+    param(
+        [hashtable]$Arguments = @{}
+    )
+
+    $parts = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [System.Array]) {
+            $items = @($value | Where-Object { -not [string]::IsNullOrWhiteSpace("$_") })
+            if ($items.Count -eq 0) {
+                continue
+            }
+
+            $parts.Add("-$($entry.Key)")
+            foreach ($item in $items) {
+                $parts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value "$item"))
+            }
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        $parts.Add("-$($entry.Key)")
+        $parts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value "$value"))
+    }
+
+    return $parts
+}
+
 function Add-SharedArgument {
     param(
         [Parameter(Mandatory = $true)]
@@ -117,25 +153,14 @@ function Format-HelperCommandWithRepoRootEnv {
     )
 
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
-        $fallbackArguments = [System.Collections.Generic.List[string]]::new()
-        foreach ($entry in $Arguments.GetEnumerator()) {
-            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
-        }
+        $fallbackArguments = Format-ArgumentList -Arguments $Arguments
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
 
     $command = "& '.\\scripts\\windows\\$ScriptName'"
-    foreach ($entry in $Arguments.GetEnumerator()) {
-        $value = $entry.Value
-        if ($null -eq $value) {
-            continue
-        }
-        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
-            continue
-        }
-
-        $escapedValue = ("$value") -replace "'", "''"
-        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    $parts = Format-ArgumentList -Arguments $Arguments
+    if ($parts.Count -gt 0) {
+        $command += " " + ($parts -join ' ')
     }
 
     foreach ($switchName in $Switches) {
