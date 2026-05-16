@@ -186,6 +186,7 @@ if ($LeaveOpen) {
 }
 
 $attachedGoogleArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $attachedGoogleArgs -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $attachedGoogleArgs -Name InputPath -Values $InputPath
 Add-SharedArgument -Arguments $attachedGoogleArgs -Name PreferredInitialPage -Value $PreferredInitialPage
 $attachedGoogleSwitches = @()
