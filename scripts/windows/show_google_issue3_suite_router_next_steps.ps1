@@ -101,7 +101,12 @@ function Format-HelperCommandWithRepoRootEnv {
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
         $fallbackArguments = [System.Collections.Generic.List[string]]::new()
         foreach ($entry in $Arguments.GetEnumerator()) {
-            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            $value = $entry.Value
+            if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values @($value)
+            } else {
+                Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $value
+            }
         }
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
@@ -113,6 +118,25 @@ function Format-HelperCommandWithRepoRootEnv {
             continue
         }
         if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+            $valueList = @($value | Where-Object {
+                if ($_ -is [string]) {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                } else {
+                    $null -ne $_
+                }
+            })
+            if ($valueList.Count -eq 0) {
+                continue
+            }
+
+            $command += " -$($entry.Key)"
+            foreach ($item in $valueList) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
             continue
         }
 
@@ -156,8 +180,10 @@ Add-SharedPathArrayArgument -Arguments $bundleFlowArguments -Name InputPath -Val
 
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath -and @($InputPath).Count -gt 0) {
-    $attachedHtmlFlowArguments["InputPath"] = @($InputPath)
+    $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
+
+$googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
 
 $submitTimingFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $submitTimingFlowArguments -Name RepoRoot -Value $RepoRoot
@@ -211,6 +237,12 @@ $matrix = @(
         use_when = 'The next replay is already narrowed to attached-page compatibility follow-up, and you want the shorter suite-router attached-page quickstart visible immediately before deciding whether to widen into the broader attached-page flow helper, the top-level attached-page bridge, replay shortcuts, the next-step matrix, the pinned bundle-first path, or the safe-route helper chain.'
     }
     [ordered]@{
+        start_point = 'show_headed_validation_suites.ps1 -ChangeArea google-attached-html'
+        default_next_helper = 'show_google_issue3_google_attached_html_entrypoint.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
+        use_when = 'The replay is already narrowed to the issue-specific Google-shaped attached-page route and you want the dedicated surface check plus Google attached-html flow helper visible before deciding whether to narrow into the shortcut-first bridge, replay shortcuts, the next-step matrix, the pinned bundle-first path, or the safe-route helper chain.'
+    }
+    [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
         default_next_helper = 'show_google_issue3_attached_bundle_first_entrypoint.ps1'
         command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
@@ -253,7 +285,7 @@ $matrix = @(
 
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router next steps'
-    purpose = 'Print the fastest correct issue #3 helper after the top-level headed validation router, while preserving repo-root, saved-summary, attached-bundle, and later-stage flow context when it already exists.'
+    purpose = 'Print the fastest correct issue #3 helper after the top-level headed validation router, while preserving repo-root, saved-summary, attached-bundle, and later-stage flow context when it already exists, and keeping the broader attached-page route plus the narrower Google-shaped attached-page route visible when the replay has already moved into attached localhost follow-up.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
@@ -282,21 +314,27 @@ $helper = [ordered]@{
         change_area_attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html'
         }) -RepoRootOverride $RepoRoot
+        change_area_google_attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'google-attached-html'
+        }) -RepoRootOverride $RepoRoot
         change_area_attached_bundle = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand
+        google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
+        google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
-        attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleFlowArguments
+        attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleFlowArguments -Switches @('Wait')
         attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleFlowArguments -Switches @('Wait')
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $safeRouteArguments
         fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
@@ -315,14 +353,16 @@ $helper = [ordered]@{
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     discovery_handoff_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
+    google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
+    google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     decision_table_note_path = 'docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md'
     windows_runbook_path = 'docs/WINDOWS_FULL_USE.md'
     notes = @(
         'Use this helper when issue #3 work starts from the higher-level Windows validation router and you want the next helper chosen quickly without reopening the longer chain notes first.',
-        'When RepoRoot is supplied, the top-level suite-router and Google-flow commands preserve that same LIGHTPANDA_REPO_ROOT context instead of falling back to the default checkout path.',
+        'When RepoRoot is supplied, the top-level suite-router, attached-html flow, and Google attached-html flow commands preserve that same LIGHTPANDA_REPO_ROOT context instead of falling back to the default checkout path.',
         'When SummaryPath is supplied, the replay-route, replay-shortcuts, contextual-flow, safe-route entrypoints, fresh safe-route replay, reuse-current-outputs, and runner next-step helpers keep that same saved summary context attached.',
-        'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, contextual-flow, attached-bundle-first, and safe-route entrypoints helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
+        'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, contextual-flow, attached-bundle-first, safe-route entrypoints, attached-html flow, and Google attached-html flow helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
         'Use suite_router_shortcut_entrypoint as the default next helper after the higher-level suite router when you want the shorter issue #3 bridge to decide between replay_shortcuts, contextual_flow, or attached_bundle_first without reopening the wider compact helpers first.',
         'Use replay_shortcuts after the shortcut-first entrypoint, suite_router_handoff, or replay_route when the route is already known to be issue #3 and no saved summary, repo-root override, or pinned bundle inputs need to stay visible first.',
         'Use contextual_flow as the default next helper whenever RepoRoot or SummaryPath is already in play and no pinned bundle inputs take precedence, so the next surface keeps that context aligned while you choose between the recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.',
@@ -332,9 +372,13 @@ $helper = [ordered]@{
         'Use safe_route_entrypoints after the suite-router work is already out of the way and you want the current wrapper-heavy issue #3 commands, notes, and next-state helper surfaced in one place.',
         'Use the later_stage_flow_commands block when the higher-level replay route is already chosen and the next Windows run should jump straight into the bounded submit-timing, shared Enter-order, or live-trace helpers without reconstructing repo-root, browser, host, or issue #3 input context by hand.',
         'Use change_area_attached_html when the next replay is already narrowed to the attached HTML compatibility path and you want that top-level route printed beside the dedicated attached-page bridge before you decide whether to stay pinned to the bundle-first branch or widen back into the broader Google-only guidance.',
+        'Use change_area_google_attached_html when the next replay is already narrowed to the issue-specific Google-shaped attached-page route and you want that top-level branch printed beside the dedicated surface check, flow helper, and Google attached-html entrypoint before deciding between the shortcut-first bridge, replay shortcuts, the next-step matrix, the pinned bundle-first branch, or the safe-route helper chain.',
         'Use attached_html_flow when the top-level attached HTML route is already visible but you want the broader attached-page helper surface printed before narrowing into the shorter attached quickstart, the top-level attached-page bridge, replay shortcuts, or the pinned bundle-first branch.',
+        'Use google_attached_html_surface_check when the replay is already inside the issue-specific Google-shaped attached-page route and you want the fail-fast surface reprinted before the dedicated flow helper or the Google attached-html entrypoint.',
+        'Use google_attached_html_flow when the current attached-page set already includes a Google-like page and you want the dedicated Google-shaped attached-page helper surface printed before narrowing into the Google attached-html entrypoint, the shortcut-first bridge, replay shortcuts, or the pinned bundle-first branch.',
         'Use suite_router_attached_html_quickstart as the default next helper after change_area_attached_html when the replay is already narrowed to attached-page compatibility follow-up and no pinned bundle inputs, saved summary, or repo-root override need to take precedence first, because it keeps the shorter attached-page bridge visible before you decide whether to widen into the top-level attached-page bridge, replay shortcuts, the next-step matrix, the pinned bundle-first branch, or the safe-route helper chain.',
-        'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, validation_chain_note_path for wrapper precedence and context-preserving lane handoffs, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
+        'Use google_attached_html_entrypoint as the default next helper after change_area_google_attached_html when the replay is already narrowed to the issue-specific Google-shaped attached-page route and no pinned bundle inputs, saved summary, or repo-root override need to take precedence first, because it keeps the issue-specific attached-page bridge visible before you decide whether to widen into the dedicated flow helper, the shortcut-first bridge, replay shortcuts, the next-step matrix, the pinned bundle-first branch, or the safe-route helper chain.',
+        'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, google_attached_html_entrypoint_note_path and google_attached_html_validation_flow_note_path for the narrower Google-shaped attached-page route, validation_chain_note_path for wrapper precedence and context-preserving lane handoffs, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
     )
 }
 
@@ -366,12 +410,15 @@ Write-Host (("Recommended helper: {0}") -f $helper.recommended_helper_command)
 Write-Host (("Why:                {0}") -f $helper.recommended_helper_reason)
 Write-Host ''
 Write-Host 'Read-first suite-router commands:'
-Write-Host (("  Suite name:           {0}") -f $helper.suite_router_commands.suite_name_google_recommended)
-Write-Host (("  Change area:          {0}") -f $helper.suite_router_commands.change_area_google_input)
-Write-Host (("  Attached HTML:        {0}") -f $helper.suite_router_commands.change_area_attached_html)
-Write-Host (("  Bundle change area:   {0}") -f $helper.suite_router_commands.change_area_attached_bundle)
-Write-Host (("  Attached flow helper: {0}") -f $helper.suite_router_commands.attached_html_flow)
-Write-Host (("  Google flow helper:   {0}") -f $helper.suite_router_commands.google_flow)
+Write-Host (("  Suite name:               {0}") -f $helper.suite_router_commands.suite_name_google_recommended)
+Write-Host (("  Change area:              {0}") -f $helper.suite_router_commands.change_area_google_input)
+Write-Host (("  Attached HTML:            {0}") -f $helper.suite_router_commands.change_area_attached_html)
+Write-Host (("  Google attached HTML:     {0}") -f $helper.suite_router_commands.change_area_google_attached_html)
+Write-Host (("  Bundle change area:       {0}") -f $helper.suite_router_commands.change_area_attached_bundle)
+Write-Host (("  Attached flow helper:     {0}") -f $helper.suite_router_commands.attached_html_flow)
+Write-Host (("  Google attached surface:  {0}") -f $helper.suite_router_commands.google_attached_html_surface_check)
+Write-Host (("  Google attached flow:     {0}") -f $helper.suite_router_commands.google_attached_html_flow)
+Write-Host (("  Google flow helper:       {0}") -f $helper.suite_router_commands.google_flow)
 Write-Host ''
 Write-Host 'Next-step matrix:'
 foreach ($entry in $helper.suite_router_matrix) {
@@ -382,8 +429,9 @@ foreach ($entry in $helper.suite_router_matrix) {
     Write-Host ''
 }
 Write-Host 'Key helper commands:'
-Write-Host (("  Shortcut entrypoint:   {0}") -f $helper.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host (("  Attached quickstart:   {0}") -f $helper.helper_commands.suite_router_attached_html_quickstart)
+Write-Host (("  Shortcut entrypoint:    {0}") -f $helper.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  Attached quickstart:    {0}") -f $helper.helper_commands.suite_router_attached_html_quickstart)
+Write-Host (("  Google attached entry:  {0}") -f $helper.helper_commands.google_attached_html_entrypoint)
 Write-Host (("  Suite-router handoff:   {0}") -f $helper.helper_commands.suite_router_handoff)
 Write-Host (("  Replay route:           {0}") -f $helper.helper_commands.replay_route)
 Write-Host (("  Replay shortcuts:       {0}") -f $helper.helper_commands.replay_shortcuts)
@@ -401,12 +449,14 @@ Write-Host (("  Submit timing:      {0}") -f $helper.later_stage_flow_commands.s
 Write-Host (("  Shared enter order: {0}") -f $helper.later_stage_flow_commands.shared_enter_order)
 Write-Host (("  Live trace:         {0}") -f $helper.later_stage_flow_commands.live_trace)
 Write-Host ''
-Write-Host (("Quickstart note:         {0}") -f $helper.quickstart_note_path)
-Write-Host (("Replay-discovery note:  {0}") -f $helper.discovery_handoff_note_path)
-Write-Host (("Suite-router bridge note:{0}") -f (' ' + $helper.suite_router_bridge_note_path))
-Write-Host (("Validation chain note:   {0}") -f $helper.validation_chain_note_path)
-Write-Host (("Decision table:          {0}") -f $helper.decision_table_note_path)
-Write-Host (("Windows runbook:         {0}") -f $helper.windows_runbook_path)
+Write-Host (("Quickstart note:              {0}") -f $helper.quickstart_note_path)
+Write-Host (("Replay-discovery note:       {0}") -f $helper.discovery_handoff_note_path)
+Write-Host (("Suite-router bridge note:    {0}") -f $helper.suite_router_bridge_note_path)
+Write-Host (("Google attached entrypoint:  {0}") -f $helper.google_attached_html_entrypoint_note_path)
+Write-Host (("Google attached flow note:   {0}") -f $helper.google_attached_html_validation_flow_note_path)
+Write-Host (("Validation chain note:       {0}") -f $helper.validation_chain_note_path)
+Write-Host (("Decision table:              {0}") -f $helper.decision_table_note_path)
+Write-Host (("Windows runbook:             {0}") -f $helper.windows_runbook_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
