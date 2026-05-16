@@ -37,7 +37,10 @@ $references = @(
     (New-ValidationReference -Path "docs/HEADED_ATTACHED_HTML_VALIDATION.md" -Kind "file" -Purpose "Primary attached-HTML validation guide."),
     (New-ValidationReference -Path "docs/HEADED_GOOGLE_VALIDATION_WINDOWS.md" -Kind "file" -Purpose "Issue #3 guide that routes into the Google-style attached-HTML follow-up."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md" -Kind "file" -Purpose "Issue #3 attached-html change-area quickstart that keeps the broader attached-page branch visible before the top-level helper narrows replay further."),
-    (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Issue #3 top-level attached-html quickstart that keeps the dedicated Google-shaped fail-fast follow-up visible beside the compact attached-page helper chain."),
+    (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Issue #3 top-level attached-html quickstart that keeps the dedicated Google-shaped fail-fast follow-up, the top-level shortcut branch, and the suite-catalog companion surfaces visible beside the compact attached-page helper chain."),
+    (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md" -Kind "file" -Purpose "Top-level shortcut-first note that keeps the shorter attached-page branch visible beside the broader top-level route before replay narrows further."),
+    (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md" -Kind "file" -Purpose "Top-level shortcut bridge note that preserves the written handoff from the broader attached-page route into the shorter shortcut helper family."),
+    (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md" -Kind "file" -Purpose "Suite-catalog guide that stays visible beside the compact top-level attached-page route before replay narrows into shortcut-side helpers."),
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that lists the attached-HTML helper chain."),
     (New-ValidationReference -Path "tmp-browser-smoke/README.md" -Kind "file" -Purpose "Top-level probe-suite index for bounded headed validation."),
     (New-ValidationReference -Path "tmp-browser-smoke/manual-user/README.md" -Kind "file" -Purpose "Manual saved-page and attached-page follow-up guide."),
@@ -47,6 +50,8 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Google-style attached-HTML flow helper."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_change_area_quickstart.ps1" -Kind "file" -Purpose "Issue #3 attached-html change-area helper that bridges the broader attached-page branch into the narrower Google-shaped follow-up."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_quickstart.ps1" -Kind "file" -Purpose "Issue #3 top-level attached-html helper that keeps the compact attached-page route aligned with the dedicated Google-style follow-up before replay narrows into catalog and shortcut helpers."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Kind "file" -Purpose "Top-level shortcut-first helper that keeps the shorter attached-page branch visible before replay drops into the suite-router shortcut helper family."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_catalog_entrypoints.ps1" -Kind "file" -Purpose "Suite-catalog helper that keeps the compact top-level attached-page route aligned with the newer catalog-side handoff before replay narrows again."),
     (New-ValidationReference -Path "scripts/windows/run_google_attached_html_validation.ps1" -Kind "file" -Purpose "Google-style attached-HTML localhost runner."),
     (New-ValidationReference -Path "scripts/windows/run_localhost_html_validation_recommended.ps1" -Kind "file" -Purpose "Shared localhost validation router used by the attached-HTML helpers."),
     (New-ValidationReference -Path "scripts/windows/show_saved_page_google_validation_flow.ps1" -Kind "file" -Purpose "Saved-page Google follow-up flow helper used by the Google-style attached-HTML chain."),
@@ -105,5 +110,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} attached-HTML validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, quickstart, helper, runner, or asset-audit script before trusting the Google-style attached-HTML follow-up."
+Write-Host "Repair the missing guide, shortcut, suite-catalog helper, runner, or asset-audit script before trusting the Google-style attached-HTML follow-up."
 exit 1
