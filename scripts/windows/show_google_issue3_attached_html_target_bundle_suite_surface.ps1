@@ -1,0 +1,261 @@
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$SummaryPath,
+    [string[]]$InputPath,
+    [switch]$Json
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Add-SharedArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return
+    }
+    if ($Value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    if ($Value -is [string]) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $Value))
+    } else {
+        $Arguments.Add([string]$Value)
+    }
+}
+
+function Add-SharedPathArrayArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string[]]$Values
+    )
+
+    if (-not $Values -or $Values.Count -eq 0) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    foreach ($value in $Values) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $value))
+    }
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [System.Collections.Generic.List[string]]$Arguments,
+        [string[]]$Switches = @()
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    if ($Arguments -and $Arguments.Count -gt 0) {
+        $command += " " + ($Arguments -join ' ')
+    }
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    return $command
+}
+
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string[]]$Switches = @(),
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        $fallbackArguments = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in $Arguments.GetEnumerator()) {
+            if ($entry.Value -is [System.Array]) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values $entry.Value
+            } else {
+                Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            }
+        }
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        if ($value -is [System.Array]) {
+            $command += " -$($entry.Key)"
+            foreach ($item in $value) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += " -$($entry.Key) '$escapedValue'"
+    }
+
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
+if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
+}
+
+$bundleArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
+
+$bundleSurfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleSurfaceCheckArguments -Name RepoRoot -Value $RepoRoot
+
+$reentryArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $reentryArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $reentryArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $reentryArguments -Name InputPath -Values $InputPath
+
+$flowArguments = [ordered]@{}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $flowArguments['InputPath'] = @($InputPath)
+}
+
+$surface = [ordered]@{
+    issue = 'Google issue #3 attached-html target-bundle suite surface'
+    purpose = 'Print the compact suite-level route for the known three-page attached HTML compatibility bundle while keeping the broader attached-page and Google-shaped attached-page helper flows visible beside the attached-html-target-bundle change-area output.'
+    repo_root = $RepoRoot
+    summary_path = $SummaryPath
+    explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    suite_commands = [ordered]@{
+        attached_html_target_bundle = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html-target-bundle' }) -RepoRootOverride $RepoRoot
+        attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html' }) -RepoRootOverride $RepoRoot
+        google_attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'google-attached-html' }) -RepoRootOverride $RepoRoot
+    }
+    helper_commands = [ordered]@{
+        broader_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $flowArguments -RepoRootOverride $RepoRoot
+        google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $flowArguments -RepoRootOverride $RepoRoot
+        bundle_surface_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
+        bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
+        bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
+        bundle_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $reentryArguments
+        replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $reentryArguments
+        replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $reentryArguments
+    }
+    note_paths = [ordered]@{
+        bundle_reference = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
+        bundle_first_bridge = 'docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md'
+        google_attached_html_flow = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
+        windows_replay_attached_html_quickstart = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
+        validation_chain = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
+    }
+    notes = @(
+        'Use this helper when you want the attached-html-target-bundle suite surface printed with the broader attached-page and Google-shaped attached-page follow-up helpers still visible beside it.',
+        'Start with the attached_html_target_bundle suite command when the current attached pages are already the likely three-page compatibility bundle and you want the compact suite surface first.',
+        'Keep the attached_html suite command nearby when the replay may still need the broader attached-page fallback before it locks onto the pinned bundle branch.',
+        'Keep the google_attached_html suite command nearby when the current inputs include a Google-like attached page and the narrower Google-shaped helper chain still matters before bundle-first replay.',
+        'Run broader_attached_html_flow and google_attached_html_flow before the bundle-only route when the next decision still depends on seeing both attached-page ladders beside the bundle lane.',
+        'Run bundle_surface_check before trusting the bundle-only replay after branch moves or helper renames.',
+        'Use bundle_first_entrypoint when explicit input paths, repo-root context, or replay-route context are already in play and you want the narrower issue #3 bridge printed before the delegated bundle flow.',
+        'Return to replay_route or replay_shortcuts only after the pinned bundle route makes the next attached-page failure state clear.'
+    )
+}
+
+$surface.recommended_next_key = if ($surface.explicit_input_path_count -gt 0) {
+    'bundle_first_entrypoint'
+} else {
+    'bundle_surface_check'
+}
+$surface.recommended_next_command = $surface.helper_commands[$surface.recommended_next_key]
+$surface.recommended_next_reason = if ($surface.recommended_next_key -eq 'bundle_first_entrypoint') {
+    'Explicit attached-page paths are already pinned, so keep that same bundle context on the narrower issue #3 bridge before you delegate into the bundle flow and runner.'
+} else {
+    'No explicit bundle paths are pinned yet, so fail fast on the bundle surface first while the broader attached-page and Google-shaped helper flows stay visible beside the suite surface.'
+}
+
+if ($Json) {
+    $surface | ConvertTo-Json -Depth 5
+    exit 0
+}
+
+Write-Host 'Google issue #3 attached-html target-bundle suite surface'
+Write-Host ''
+if ($surface.repo_root) {
+    Write-Host (("Repo root:   {0}") -f $surface.repo_root)
+}
+if ($surface.summary_path) {
+    Write-Host (("Summary path:{0}") -f (" $($surface.summary_path)"))
+}
+if ($surface.explicit_input_path_count -gt 0) {
+    Write-Host (("Input paths: {0}") -f $surface.explicit_input_path_count)
+}
+Write-Host ''
+Write-Host (("Recommended next helper: {0}") -f $surface.recommended_next_command)
+Write-Host (("Why:                    {0}") -f $surface.recommended_next_reason)
+Write-Host ''
+Write-Host 'Suite surface:'
+Write-Host (("  Bundle suite:    {0}") -f $surface.suite_commands.attached_html_target_bundle)
+Write-Host (("  Broader suite:   {0}") -f $surface.suite_commands.attached_html)
+Write-Host (("  Google suite:    {0}") -f $surface.suite_commands.google_attached_html)
+Write-Host ''
+Write-Host 'Keep visible beside bundle replay:'
+Write-Host (("  Broader flow:    {0}") -f $surface.helper_commands.broader_attached_html_flow)
+Write-Host (("  Google flow:     {0}") -f $surface.helper_commands.google_attached_html_flow)
+Write-Host (("  Surface check:   {0}") -f $surface.helper_commands.bundle_surface_check)
+Write-Host (("  Bundle flow:     {0}") -f $surface.helper_commands.bundle_flow)
+Write-Host (("  Bundle runner:   {0}") -f $surface.helper_commands.bundle_runner)
+Write-Host ''
+Write-Host 'Narrower issue #3 re-entry:'
+Write-Host (("  Bundle-first:    {0}") -f $surface.helper_commands.bundle_first_entrypoint)
+Write-Host (("  Replay route:    {0}") -f $surface.helper_commands.replay_route)
+Write-Host (("  Replay shortcuts:{0}") -f (" $($surface.helper_commands.replay_shortcuts)"))
+Write-Host ''
+Write-Host (("Bundle reference note:      {0}") -f $surface.note_paths.bundle_reference)
+Write-Host (("Bundle-first bridge note:   {0}") -f $surface.note_paths.bundle_first_bridge)
+Write-Host (("Google attached-flow note:  {0}") -f $surface.note_paths.google_attached_html_flow)
+Write-Host (("Replay quickstart note:     {0}") -f $surface.note_paths.windows_replay_attached_html_quickstart)
+Write-Host (("Validation chain note:      {0}") -f $surface.note_paths.validation_chain)
+Write-Host ''
+Write-Host 'Notes:'
+foreach ($note in $surface.notes) {
+    Write-Host (("- {0}") -f $note)
+}
