@@ -136,9 +136,15 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values $InputPath
+
+$emptyArguments = [System.Collections.Generic.List[string]]::new()
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 suite catalog top-level attached HTML catalog quickstart'
-    purpose = 'Keep the suite-catalog surface, the replay-side attached-html ladder, and the top-level attached-html catalog quickstart on one compact command surface before the route narrows into the suite-catalog attached-page bridge, the shorter attached-page shortcut, or the safe-route map.'
+    purpose = 'Keep the suite-catalog surface, the generic attached-html change-area bridge, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the replay-side attached-html ladder, and the top-level attached-html catalog quickstart on one compact command surface before the route narrows into the suite-catalog attached-page bridge, the shorter attached-page shortcut, or the safe-route map.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -155,6 +161,9 @@ $entrypoint = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
+        attached_html_flow = Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $emptyArguments
+        google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
         windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
@@ -168,6 +177,8 @@ $entrypoint = [ordered]@{
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
     }
+    attached_html_change_area_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
+    google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
@@ -175,11 +186,14 @@ $entrypoint = [ordered]@{
     suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     notes = @(
-        'Use this helper when the suite-catalog surface is already open and you want the replay-side attached-html ladder plus the top-level attached-html catalog quickstart visible together before the route narrows again.',
+        'Use this helper when the suite-catalog surface is already open and you want the generic attached-html change-area bridge, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the replay-side attached-html ladder, and the top-level attached-html catalog quickstart visible together before the route narrows again.',
+        'Use attached_html_change_area_quickstart when the replay still needs the generic attached-page bridge surfaced before the broader attached-page localhost flow helper, the dedicated Google attached-page flow helper, the replay-side attached-html ladder, or the top-level catalog handoff take over.',
+        'Use attached_html_flow when the replay still needs the broader attached-page localhost helper visible before you commit to the dedicated Google attached-page flow helper, the replay-side attached-html quickstart, the validation-router attached-page quickstart, the suite-catalog bridge, or the attached-page shortcut.',
+        'Use google_attached_html_flow when the replay still needs the dedicated Google-shaped attached-page surface checker, asset-closure route, and helper output visible before the route narrows into the replay-side attached-html ladder, the validation-router attached-page quickstart, the top-level catalog handoff, the issue-specific Google attached-page bridge, or the shorter attached-page shortcut chain.',
         'Use suite_catalog_attached_html_entrypoint as the default next helper when no pinned bundle inputs, saved summary, or non-default repo root need to take precedence first.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that bundle should stay visible before the route widens back into the broader issue #3 helper chain.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the suite-catalog bridge, replay shortcuts, the next-step matrix, or the safe-route map.',
-        'Keep the suite-catalog entrypoint guide, the Windows replay attached-html quickstart note, the top-level attached-html quickstart note, the top-level attached-html catalog quickstart note, this suite-catalog-to-top-level attached-html catalog quickstart note, and the suite-catalog attached-html bridge note nearby when you want the written route beside these commands.'
+        'Keep the attached-html change-area quickstart note, the Google attached-page validation flow note, the suite-catalog entrypoint guide, the Windows replay attached-html quickstart note, the top-level attached-html quickstart note, the top-level attached-html catalog quickstart note, this suite-catalog-to-top-level attached-html catalog quickstart note, and the suite-catalog attached-html bridge note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -196,7 +210,7 @@ $entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq '
 } elseif ($entrypoint.recommended_next_key -eq 'contextual_flow') {
     'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the suite-catalog bridge, replay shortcuts, the next-step matrix, or the safe-route map.'
 } else {
-    'No pinned bundle inputs, saved summary, or non-default repo root are in play yet, so jump straight from this quickstart to the suite-catalog attached-page bridge while keeping the replay-side and top-level attached-page routes visible on the same surface.'
+    'No pinned bundle inputs, saved summary, or non-default repo root are in play yet, so jump straight from this quickstart to the suite-catalog attached-page bridge while keeping the generic attached-html change-area bridge, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the replay-side ladder, and the top-level attached-page routes visible on the same surface.'
 }
 
 if ($Json) {
@@ -224,19 +238,24 @@ Write-Host (("  1. Suite catalog surface:      {0}") -f $entrypoint.suite_catalo
 Write-Host (("  2. Attached HTML:              {0}") -f $entrypoint.suite_catalog_commands.attached_html_change_area)
 Write-Host (("  3. Google attached HTML:       {0}") -f $entrypoint.suite_catalog_commands.google_attached_html_change_area)
 Write-Host (("  4. Attached bundle:            {0}") -f $entrypoint.suite_catalog_commands.attached_bundle_change_area)
-Write-Host (("  5. Replay attached quick:      {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
-Write-Host (("  6. Validation-router quick:    {0}") -f $entrypoint.helper_commands.validation_router_attached_html_quickstart)
-Write-Host (("  7. Top-level quickstart:       {0}") -f $entrypoint.helper_commands.top_level_attached_html_quickstart)
-Write-Host (("  8. Top-level catalog quick:    {0}") -f $entrypoint.helper_commands.top_level_attached_html_catalog_quickstart)
-Write-Host (("  9. Catalog bridge:             {0}") -f $entrypoint.helper_commands.suite_catalog_attached_html_entrypoint)
-Write-Host ((" 10. Google attached route:      {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
-Write-Host ((" 11. Attached shortcut:          {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
-Write-Host ((" 12. Replay shortcuts:           {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 13. Next-step matrix:           {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 14. Contextual flow:            {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host ((" 15. Bundle first:               {0}") -f $entrypoint.helper_commands.attached_bundle_first)
-Write-Host ((" 16. Safe-route map:             {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
+Write-Host (("  5. Change-area quickstart:     {0}") -f $entrypoint.helper_commands.attached_html_change_area_quickstart)
+Write-Host (("  6. Attached flow helper:       {0}") -f $entrypoint.helper_commands.attached_html_flow)
+Write-Host (("  7. Google attached flow:       {0}") -f $entrypoint.helper_commands.google_attached_html_flow)
+Write-Host (("  8. Replay attached quick:      {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
+Write-Host (("  9. Validation-router quick:    {0}") -f $entrypoint.helper_commands.validation_router_attached_html_quickstart)
+Write-Host ((" 10. Top-level quickstart:       {0}") -f $entrypoint.helper_commands.top_level_attached_html_quickstart)
+Write-Host ((" 11. Top-level catalog quick:    {0}") -f $entrypoint.helper_commands.top_level_attached_html_catalog_quickstart)
+Write-Host ((" 12. Catalog bridge:             {0}") -f $entrypoint.helper_commands.suite_catalog_attached_html_entrypoint)
+Write-Host ((" 13. Google attached route:      {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
+Write-Host ((" 14. Attached shortcut:          {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host ((" 15. Replay shortcuts:           {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 16. Next-step matrix:           {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 17. Contextual flow:            {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host ((" 18. Bundle first:               {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host ((" 19. Safe-route map:             {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
 Write-Host ''
+Write-Host (("Change-area quickstart note:    {0}") -f $entrypoint.attached_html_change_area_quickstart_note_path)
+Write-Host (("Google flow note:               {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
 Write-Host (("Suite-catalog guide:            {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
 Write-Host (("Replay attached note:           {0}") -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Top-level quickstart note:      {0}") -f $entrypoint.top_level_attached_html_quickstart_note_path)
