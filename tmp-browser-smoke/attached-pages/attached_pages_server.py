@@ -242,6 +242,171 @@ def ensure_within_root(root: Path, target: Path) -> Path | None:
     return resolved_target
 
 
+LOCAL_REFERENCE_PATTERNS = (
+    re.compile(r"\b(?:src|href|poster)\s*=\s*[\"']([^\"']+)[\"']", re.IGNORECASE),
+    re.compile(r"\bsrcset\s*=\s*[\"']([^\"']+)[\"']", re.IGNORECASE),
+    re.compile(r"@import\s+(?:url\()?\s*[\"']?([^\"')\s;]+)", re.IGNORECASE),
+    re.compile(r"url\(\s*[\"']?([^\"')]+)[\"']?\s*\)", re.IGNORECASE),
+)
+
+MODULE_REFERENCE_PATTERNS = (
+    re.compile(r"\bimport\s+(?:[^;'\"\\]*?\s+from\s+)?[\"']([^\"']+)[\"']", re.IGNORECASE),
+    re.compile(r"\bexport\s+[^;'\"\\]*?\s+from\s+[\"']([^\"']+)[\"']", re.IGNORECASE),
+    re.compile(r"(?<![\w$])import\s*\(\s*[\"']([^\"']+)[\"']\s*\)", re.IGNORECASE),
+)
+
+
+def normalize_reference_value(reference: str) -> str | None:
+    stripped = reference.strip()
+    if not stripped:
+        return None
+    if stripped.startswith(("data:", "javascript:", "mailto:", "tel:", "#")):
+        return None
+
+    parts = urlsplit(stripped)
+    if parts.scheme or parts.netloc:
+        return None
+
+    normalized = parts.path.strip()
+    if not normalized:
+        return None
+    if normalized.startswith("/"):
+        normalized = normalized[1:]
+    if not normalized or normalized in (".", ".."):
+        return None
+    return normalized
+
+
+def extract_local_reference_candidates(content: str) -> list[str]:
+    candidates: list[str] = []
+
+    def add_candidate(value: str) -> None:
+        normalized = normalize_reference_value(value)
+        if normalized is not None and normalized not in candidates:
+            candidates.append(normalized)
+
+    for pattern in LOCAL_REFERENCE_PATTERNS:
+        for match in pattern.finditer(content):
+            value = match.group(1)
+            if "srcset" in pattern.pattern:
+                for entry in value.split(","):
+                    srcset_candidate = entry.strip().split()[0] if entry.strip() else ""
+                    if srcset_candidate:
+                        add_candidate(srcset_candidate)
+            else:
+                add_candidate(value)
+
+    for pattern in MODULE_REFERENCE_PATTERNS:
+        for match in pattern.finditer(content):
+            value = match.group(1).strip()
+            if value.startswith(("./", "../")):
+                add_candidate(value)
+
+    return candidates
+
+
+def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | None = None) -> dict[str, object]:
+    bundle_root, manifest = resolve_bundle_inputs(root, selected_files)
+    audit_entries: list[dict[str, object]] = []
+    fixtures_with_missing_assets = 0
+
+    for html_path in manifest:
+        relative_html_path = html_path.relative_to(bundle_root).as_posix()
+        pending: list[tuple[Path, str]] = [(html_path, relative_html_path)]
+        visited: set[Path] = {html_path.resolve()}
+        inspected_files: list[str] = []
+        inspected_css_files: list[str] = []
+        inspected_module_script_files: list[str] = []
+        missing_assets: list[str] = []
+
+        while pending:
+            current_path, current_relative = pending.pop(0)
+            inspected_files.append(current_relative)
+            try:
+                content = current_path.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                missing_entry = f"unreadable:{current_relative}"
+                if missing_entry not in missing_assets:
+                    missing_assets.append(missing_entry)
+                continue
+
+            for reference in extract_local_reference_candidates(content):
+                resolved = ensure_within_root(bundle_root, current_path.parent / unquote(reference))
+                display_path = Path(current_relative).parent.joinpath(unquote(reference)).as_posix()
+                if resolved is None or not resolved.is_file():
+                    if display_path not in missing_assets:
+                        missing_assets.append(display_path)
+                    continue
+
+                extension = resolved.suffix.lower()
+                resolved_relative = resolved.relative_to(bundle_root).as_posix()
+                resolved_key = resolved.resolve()
+                if extension == ".css":
+                    if resolved_relative not in inspected_css_files:
+                        inspected_css_files.append(resolved_relative)
+                    if resolved_key not in visited:
+                        visited.add(resolved_key)
+                        pending.append((resolved, resolved_relative))
+                elif extension in (".js", ".mjs"):
+                    if resolved_relative not in inspected_module_script_files:
+                        inspected_module_script_files.append(resolved_relative)
+                    if resolved_key not in visited:
+                        visited.add(resolved_key)
+                        pending.append((resolved, resolved_relative))
+
+        if missing_assets:
+            fixtures_with_missing_assets += 1
+
+        audit_entries.append(
+            {
+                "path": str(html_path),
+                "display_path": relative_html_path,
+                "missing_assets": missing_assets,
+                "missing_asset_count": len(missing_assets),
+                "inspected_files": inspected_files,
+                "inspected_file_count": len(inspected_files),
+                "inspected_css_files": inspected_css_files,
+                "inspected_css_file_count": len(inspected_css_files),
+                "inspected_module_script_files": inspected_module_script_files,
+                "inspected_module_script_file_count": len(inspected_module_script_files),
+            }
+        )
+
+    return {
+        "bundle_root": str(bundle_root),
+        "fixture_count": len(audit_entries),
+        "fixtures_with_missing_assets": fixtures_with_missing_assets,
+        "fixtures": audit_entries,
+    }
+
+
+def render_asset_audit_text(audit: dict[str, object]) -> str:
+    lines = [
+        "Attached Pages Asset Audit",
+        "",
+        f"Bundle root: {audit['bundle_root']}",
+        f"Fixtures: {audit['fixture_count']}",
+        f"Fixtures with missing assets: {audit['fixtures_with_missing_assets']}",
+        "",
+    ]
+    for fixture in audit["fixtures"]:
+        lines.append(f"Fixture: {fixture['display_path']}")
+        lines.append(f"Inspected files: {fixture['inspected_file_count']}")
+        lines.append(f"Inspected CSS files: {fixture['inspected_css_file_count']}")
+        lines.append(f"Inspected module script files: {fixture['inspected_module_script_file_count']}")
+        if fixture["missing_asset_count"] == 0:
+            lines.append("Missing assets: none")
+        else:
+            lines.append(f"Missing assets: {fixture['missing_asset_count']}")
+            for asset in fixture["missing_assets"][:10]:
+                lines.append(f"- {asset}")
+            remaining = fixture["missing_asset_count"] - min(10, fixture["missing_asset_count"])
+            if remaining > 0:
+                lines.append(f"- ... {remaining} more")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes]:
     bundle_root, _ = resolve_bundle_inputs(root, selected_files)
     manifest = build_manifest(root, selected_files=selected_files)
@@ -343,6 +508,16 @@ def main() -> int:
         action="store_true",
         help="Print the generated manifest JSON and exit instead of starting the server.",
     )
+    parser.add_argument(
+        "--audit-assets",
+        action="store_true",
+        help="Audit local CSS, image, and script references across the selected HTML bundle before starting the server.",
+    )
+    parser.add_argument(
+        "--allow-missing-assets",
+        action="store_true",
+        help="Return success from --audit-assets even when the bundle has missing local assets.",
+    )
     args = parser.parse_args()
 
     selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
@@ -350,6 +525,13 @@ def main() -> int:
 
     if args.print_manifest:
         print(json.dumps(build_manifest(root, selected_files=selected_files), indent=2))
+        return 0
+
+    if args.audit_assets:
+        audit = build_asset_audit(root, selected_files=selected_files)
+        print(render_asset_audit_text(audit), end="")
+        if audit["fixtures_with_missing_assets"] > 0 and not args.allow_missing_assets:
+            return 1
         return 0
 
     server, manifest = create_server(root, bind=args.bind, port=args.port, selected_files=selected_files)
