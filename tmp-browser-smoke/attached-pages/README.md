@@ -5,8 +5,9 @@ HTML exports that do not already live inside the repository.
 
 ## Goal
 
-Expose a directory of saved `.html` files through short localhost routes so the
-headed browser can open them without depending on long exported filenames.
+Expose a directory of saved `.html` files, or one saved `.html` file with its
+sibling assets, through short localhost routes so the headed browser can open
+them without depending on long exported filenames.
 
 ## Usage
 
@@ -15,6 +16,12 @@ From the repo root:
 ```powershell
 python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root C:\path\to\saved-html --port 8235
 ```
+
+`--root` can point at either:
+
+- a directory that contains one or more saved `.html` files
+- a single saved `.html` file when you want to replay one export without
+  first moving it into a dedicated folder
 
 Then open one of these URLs in the headed browser:
 
@@ -38,20 +45,6 @@ print the manifest JSON and exit without binding a port:
 python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root C:\path\to\saved-html --print-manifest
 ```
 
-## Manifest fields
-
-Each manifest entry now includes:
-
-- `route`: the shortest stable route for the current bundle order
-- `alias_route`: a readable companion route that keeps the same numeric slot
-- `slug_route`: a descriptive route chosen from the page title and file path so replay notes can survive bundle reordering
-- `raw_path`: the original relative file path under the selected root
-
-Use `route` in scripts when you want the smallest possible URL, `alias_route`
-when you want a still-short path that is easy to recognize in manual notes, and
-`slug_route` when you want a descriptive path that remains useful even if the
-bundle grows and page indexes shift.
-
 ## Self-check
 
 Run the focused harness regression locally with:
@@ -62,12 +55,5 @@ python .\tmp-browser-smoke\attached-pages\test_attached_pages_server.py
 
 The test covers the generated catalog, manifest route, short-route redirect,
 named-route redirect and asset loading, `HEAD` handling, `/raw/...`
-passthrough, and the manifest-print CLI path against a temporary two-page
-bundle.
-
-## Current compatibility target
-
-For the current headed-mode validation loop, point `--root` at the directory
-that contains the three attached HTML pages provided with the task. The catalog
-page will surface compact short routes for each saved export so local Windows
-and localhost testing can reuse the same bundle repeatedly.
+passthrough, the manifest-print CLI path, and the single-file root path against
+a temporary two-page bundle.
