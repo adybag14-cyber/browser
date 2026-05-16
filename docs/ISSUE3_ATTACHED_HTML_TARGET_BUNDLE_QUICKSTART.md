@@ -14,7 +14,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` when the current pages are still the known compatibility bundle and the route is still being chosen from the top-level validation router, or start from `show_google_issue3_replay_route.ps1` when the replay is already inside the narrower replay-route helper family. In both cases, keep the bundle-first helper, the pinned manual checklist, and the reusable fixed-list proof path visible beside the delegated runner, and keep the broader attached-page fallback nearby before the route widens back into the larger issue `#3` helper stack.
+Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` when the current pages are still the known compatibility bundle and the route is still being chosen from the top-level validation router, or start from `show_google_issue3_replay_route.ps1` when the replay is already inside the narrower replay-route helper family. In both cases, keep the bundle-first helper, the pinned manual checklist, and the reusable fixed-list proof path visible beside the delegated runner, and keep both the broader attached-page fallback and the dedicated Google-shaped attached-page fallback nearby before the route widens back into the larger issue `#3` helper stack.
 
 If the broader attached localhost route still needs to stay visible beside the pinned bundle branch, reopen `show_attached_html_validation_flow.ps1` before you narrow again. If the replay still needs the Google-shaped attached-page helper surface beside the bundle route, reopen `show_google_attached_html_validation_flow.ps1` too. Treat those two helpers as the normal widen-back-out path when the current pages stop matching the pinned bundle or when the next failure needs the broader attached-page chain reprinted first.
 
@@ -46,13 +46,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_tar
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 ```
 
 Use that route when:
 
 - the current replay is already narrowed to the attached HTML target-bundle branch
 - the known three-page compatibility set should stay pinned through the checker, flow helper, delegated localhost runner, pinned manual checklist, and reusable screenshot-and-title proof path
-- you still want the broader attached-page fallback printed before widening back into the larger issue `#3` helper chain
+- you still want both the broader attached-page fallback and the dedicated Google-shaped attached-page fallback printed before widening back into the larger issue `#3` helper chain
 
 ## Replay-route re-entry
 
@@ -144,6 +145,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_tar
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 ```
 
 Use that context-preserving form when:
@@ -164,7 +166,8 @@ The existing helpers already provide these pieces:
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` remains the page-by-page manual follow-up once the bundle route is green.
 - `check_local_html_fixture_validation_surface.ps1` and `chrome-local-html-fixture-probe.ps1` provide the reusable screenshot-and-title proof path for the same pinned bundle after the broader runner succeeds.
 - `show_attached_html_validation_flow.ps1` remains the default broader attached-page widen-back-out helper when the pinned bundle route should stop being the narrowest branch.
+- `show_google_attached_html_validation_flow.ps1` remains the dedicated Google-shaped widen-back-out helper when the next failure still looks like the issue `#3` Google follow-up lane.
 
 ## Practical rule
 
-Once the route has already made the pinned compatibility bundle the next obvious branch, prefer `show_google_issue3_attached_bundle_first_entrypoint.ps1`, keep the bundle surface checks, bundle flow helper, pinned checklist, and reusable fixed-list proof together, and leave `show_attached_html_validation_flow.ps1` visible as the default widen-back-out path. Start from `show_google_issue3_replay_route.ps1` and its shortcut helper when the replay is already living inside the replay-side issue `#3` surfaces, reopen `show_google_attached_html_validation_flow.ps1` when the next failure still looks Google-shaped, and only widen back into the longer issue `#3` helper chain after the bundle checker, delegated runner, manual checklist, or reusable fixed-list proof makes the next failure state clear.
+Once the route has already made the pinned compatibility bundle the next obvious branch, prefer `show_google_issue3_attached_bundle_first_entrypoint.ps1`, keep the bundle surface checks, bundle flow helper, pinned checklist, and reusable fixed-list proof together, and leave `show_attached_html_validation_flow.ps1` plus `show_google_attached_html_validation_flow.ps1` visible as the default widen-back-out path. Start from `show_google_issue3_replay_route.ps1` and its shortcut helper when the replay is already living inside the replay-side issue `#3` surfaces, reopen `show_google_attached_html_validation_flow.ps1` when the next failure still looks Google-shaped, and only widen back into the longer issue `#3` helper chain after the bundle checker, delegated runner, manual checklist, or reusable fixed-list proof makes the next failure state clear.
