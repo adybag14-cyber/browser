@@ -163,7 +163,7 @@ If the current pages are already the pinned three-page compatibility bundle, sta
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
@@ -182,6 +182,7 @@ If the replay already carries a non-default repo root, a saved summary, or pinne
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -292,6 +293,6 @@ Once the top-level attached localhost HTML route is already in focus, prefer `sh
 - no pinned bundle inputs and no saved replay state yet: go from the top-level attached-page route to the attached-html change-area quickstart, then the broader attached-page flow helper, then the dedicated Google attached-page flow helper, then the top-level attached-page quickstart, then the catalog quickstart, then the suite-catalog-to-top-level catalog quickstart, then the dedicated suite-catalog guide, then the suite-catalog attached-page bridge, then the broader Google-shaped attached-page bridge, then the attached-page shortcut, then replay shortcuts, then the safe-route map
 - broader Google-shaped attached-page surface still matters more than the generic shortcut chain: go from `-ChangeArea google-attached-html` to `show_google_attached_html_validation_flow.ps1`, then the catalog quickstart, then the suite-catalog-to-top-level catalog quickstart, then the dedicated suite-catalog guide, then the suite-catalog attached-page bridge, then the Google attached-page entrypoint before narrowing further
 - explicit bundle paths already pinned: keep the change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, this catalog quickstart, the suite-catalog-to-top-level catalog quickstart, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` in front of the bundle-first helper and the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
-- saved summary or repo-root override already present: reopen the attached-html change-area quickstart or the catalog quickstart with that same context first, then `show_google_attached_html_validation_flow.ps1`, then the suite-catalog-to-top-level catalog quickstart, then the dedicated suite-catalog guide, then choose replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
+- saved summary or repo-root override already present: reopen the attached-html change-area quickstart or the catalog quickstart with that same context first, then `show_attached_html_validation_flow.ps1`, then `show_google_attached_html_validation_flow.ps1`, then the suite-catalog-to-top-level catalog quickstart, then the dedicated suite-catalog guide, then choose replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
 
 Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
