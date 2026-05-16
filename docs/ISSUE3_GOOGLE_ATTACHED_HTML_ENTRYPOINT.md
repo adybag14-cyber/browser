@@ -1,6 +1,6 @@
 # Issue #3 Google Attached HTML Entrypoint
 
-Use this note when the headed validation router or the broader suite-catalog surface has already narrowed the next replay to the Google-shaped attached localhost branch and you want the shortest written bridge into the issue `#3` helper chain without losing the dedicated Google attached-page validation flow.
+Use this note when the headed validation router, the broader suite-catalog surface, or the top-level headed validation suite helper has already narrowed the next replay to the Google-shaped attached localhost branch and you want the shortest written bridge into the issue `#3` helper chain without losing the dedicated Google attached-page validation flow or the broader attached-page fallback.
 
 This note matches `show_google_issue3_google_attached_html_entrypoint.ps1`.
 
@@ -22,6 +22,28 @@ Keep these companion notes nearby:
 Start from the Google-specific attached-page route, rerun the Google attached-page surface and asset checks first, print the dedicated Google attached-page flow when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` as the shortest route back into the current issue `#3` shortcut-first, context-preserving, bundle-aware, and safe-route helpers.
 
 If the route is reopening from the suite-catalog side first, keep the suite-catalog entrypoints guide, the suite-catalog attached-page bridge, and the suite-catalog-to-top-level attached-page catalog quickstart visible long enough to confirm the Google-shaped branch before this narrower issue-specific bridge takes over.
+
+If the route is reopening from the top-level suite helper first, keep both `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` and `show_headed_validation_suites.ps1 -ChangeArea attached-html` visible long enough to preserve the dedicated Google-shaped path and the broader attached-page fallback before the shorter issue-specific helper chain narrows again.
+
+## Top-level suite-router bridge
+
+Use this route when the top-level headed validation suite helper is still choosing the first branch:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
+```
+
+Use that route when:
+- the top-level suite helper already made the Google-shaped attached localhost branch obvious
+- you still want the broader attached-page fallback and the dedicated Google attached-page flow visible before the route collapses into the shorter issue `#3` helper chain
+- you want the newer shortcut-first helper reopened only after the Google-specific entrypoint is clearly in view
 
 ## Suite-catalog re-entry
 
@@ -128,9 +150,10 @@ Use this when the attached-page helper branch is out of the way and you want the
 
 ## Practical rule
 
-Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` or the suite-catalog attached-page route has already made the Google-shaped attached localhost branch obvious, rerun the dedicated Google attached-page surface and asset checks first, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
+Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, the suite-catalog attached-page route, or the broader top-level suite helper has already made the Google-shaped attached localhost branch obvious, rerun the dedicated Google attached-page surface and asset checks first, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
 
 - no pinned bundle inputs and no saved replay context yet: go from the Google attached-page flow to the issue-specific entrypoint, then the shortcut-first helper, then replay shortcuts
+- broader attached localhost compatibility context still matters: keep `show_headed_validation_suites.ps1 -ChangeArea attached-html` visible beside the dedicated Google-shaped route before the narrower entrypoint chain takes over
 - suite-catalog route still matters more than the narrower shortcuts: keep `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, and `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` open beside this note so the broader attached-page bridge stays visible while the route narrows
 - Google attached-page flow still matters more than the narrower shortcuts: keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` open beside this note so the surface checker, asset audit, helper, and runner stay visible while the route narrows
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` before the bundle-first helper so the exact three-page compatibility set stays visible while the replay stays locked to the bundle-aware route
