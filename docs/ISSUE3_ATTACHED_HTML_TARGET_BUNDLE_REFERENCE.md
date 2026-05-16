@@ -82,6 +82,18 @@ Use that context-preserving form when:
 - a saved `SummaryPath` already points at current replay outputs
 - explicit `InputPath` values are already pinned to the known compatibility bundle
 
+## Repo-root plus pinned-input shortcut
+
+When the replay already carries both a non-default repo root and multiple explicit bundle paths, prefer the replay-route helper before reopening the narrower shortcut helpers:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
+```
+
+Use that bridge when you want the suite-catalog entrypoints, the suite-router handoff, the next-step matrix, replay shortcuts, the bundle-first helper, and the safe-route entrypoints reprinted with the same repeated `-InputPath` values still intact.
+
+This is the safest compact bridge for pinned bundle replay because the replay-route helper already preserves repeated path arguments in both the plain `-File` form and the repo-root-preserving `-Command` form before it hands off to those narrower issue `#3` surfaces.
+
 ## Practical rule
 
 Prefer the bundle-aware route first when the attached HTML inputs still match the known three-page compatibility set. Keep the pinned manual checklist nearby once that route is green, use the reusable fixed-list screenshot-and-title probe when you want tighter evidence for the same saved pages, and only widen back into the longer issue `#3` helper chain after the bundle checker, bundle flow helper, delegated localhost runner, manual checklist, or fixed-list probe makes the next failure state clear.
