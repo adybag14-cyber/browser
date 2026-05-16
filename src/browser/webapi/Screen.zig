@@ -16,9 +16,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+const std = @import("std");
 const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
 const EventTarget = @import("EventTarget.zig");
+const testing = @import("../../testing.zig");
 
 pub fn registerTypes() []const type {
     return &.{
@@ -57,6 +59,18 @@ pub fn getAvailHeight(self: *const Screen) u32 {
     return self._avail_height;
 }
 
+pub fn getAvailLeft(_: *const Screen) i32 {
+    return 0;
+}
+
+pub fn getAvailTop(_: *const Screen) i32 {
+    return 0;
+}
+
+pub fn getIsExtended(_: *const Screen) bool {
+    return false;
+}
+
 pub fn asEventTarget(self: *Screen) *EventTarget {
     return self._proto;
 }
@@ -65,7 +79,7 @@ pub fn getOrientation(self: *Screen, page: *Page) !*Orientation {
     if (self._orientation) |orientation| {
         return orientation;
     }
-    const orientation = try Orientation.init(page);
+    const orientation = try Orientation.init(page, self);
     self._orientation = orientation;
     return orientation;
 }
@@ -83,22 +97,38 @@ pub const JsApi = struct {
     pub const height = bridge.accessor(Screen.getHeight, null, .{});
     pub const availWidth = bridge.accessor(Screen.getAvailWidth, null, .{});
     pub const availHeight = bridge.accessor(Screen.getAvailHeight, null, .{});
+    pub const availLeft = bridge.accessor(Screen.getAvailLeft, null, .{});
+    pub const availTop = bridge.accessor(Screen.getAvailTop, null, .{});
     pub const colorDepth = bridge.property(24, .{ .template = false });
     pub const pixelDepth = bridge.property(24, .{ .template = false });
+    pub const isExtended = bridge.accessor(Screen.getIsExtended, null, .{});
     pub const orientation = bridge.accessor(Screen.getOrientation, null, .{});
 };
 
 pub const Orientation = struct {
     _proto: *EventTarget,
+    _screen: *Screen,
 
-    pub fn init(page: *Page) !*Orientation {
+    pub fn init(page: *Page, screen: *Screen) !*Orientation {
         return page._factory.eventTarget(Orientation{
             ._proto = undefined,
+            ._screen = screen,
         });
     }
 
     pub fn asEventTarget(self: *Orientation) *EventTarget {
         return self._proto;
+    }
+
+    pub fn getAngle(_: *const Orientation) u32 {
+        return 0;
+    }
+
+    pub fn getType(self: *const Orientation) []const u8 {
+        if (self._screen.getHeight() > self._screen.getWidth()) {
+            return "portrait-primary";
+        }
+        return "landscape-primary";
     }
 
     pub const JsApi = struct {
@@ -110,7 +140,27 @@ pub const Orientation = struct {
             pub var class_id: bridge.ClassId = undefined;
         };
 
-        pub const angle = bridge.property(0, .{ .template = false });
-        pub const @"type" = bridge.property("landscape-primary", .{ .template = false });
+        pub const angle = bridge.accessor(Orientation.getAngle, null, .{});
+        pub const @"type" = bridge.accessor(Orientation.getType, null, .{});
     };
 };
+
+test "ScreenOrientation type tracks dimensions" {
+    var screen = Screen{
+        ._proto = undefined,
+    };
+    var orientation = Orientation{
+        ._proto = undefined,
+        ._screen = &screen,
+    };
+
+    try std.testing.expectEqualStrings("landscape-primary", orientation.getType());
+    screen.setDimensions(600, 900);
+    try std.testing.expectEqualStrings("portrait-primary", orientation.getType());
+    screen.setDimensions(900, 600);
+    try std.testing.expectEqualStrings("landscape-primary", orientation.getType());
+}
+
+test "WebApi: Screen" {
+    try testing.htmlRunner("screen.html", .{});
+}
