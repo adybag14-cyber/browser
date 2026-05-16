@@ -171,21 +171,24 @@ def ensure_within_root(root: Path, target: Path) -> Path | None:
     return resolved_target
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Serve an attached HTML bundle for headed-mode smoke validation.")
-    parser.add_argument("--root", required=True, help="Directory that contains the saved HTML files.")
-    parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
-    parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
-    args = parser.parse_args()
-
-    root = Path(args.root).expanduser().resolve()
-    if not root.is_dir():
-        raise SystemExit(f"bundle root does not exist: {root}")
-
+def build_bundle_state(root: Path) -> tuple[list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes]:
     manifest = build_manifest(root)
     route_lookup = build_route_lookup(manifest)
     index_bytes = render_index(manifest)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
+    return manifest, route_lookup, index_bytes, manifest_bytes
+
+
+class ReuseServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+
+
+def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> tuple[ReuseServer, list[dict[str, str]]]:
+    root = Path(root).expanduser().resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"bundle root does not exist: {root}")
+
+    manifest, route_lookup, index_bytes, manifest_bytes = build_bundle_state(root)
 
     class AttachedPagesHandler(SimpleHTTPRequestHandler):
         def __init__(self, *handler_args, **handler_kwargs):
@@ -251,11 +254,19 @@ def main() -> int:
         def do_HEAD(self):
             return self.handle_attached_request(head_only=True)
 
-    class ReuseServer(ThreadingHTTPServer):
-        allow_reuse_address = True
+    server = ReuseServer((bind, port), partial(AttachedPagesHandler))
+    return server, manifest
 
-    server = ReuseServer((args.bind, args.port), partial(AttachedPagesHandler))
-    print(f"Serving {len(manifest)} attached pages from {root} at http://{args.bind}:{args.port}/")
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Serve an attached HTML bundle for headed-mode smoke validation.")
+    parser.add_argument("--root", required=True, help="Directory that contains the saved HTML files.")
+    parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
+    parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
+    args = parser.parse_args()
+
+    server, manifest = create_server(args.root, bind=args.bind, port=args.port)
+    host, port = server.server_address
+    print(f"Serving {len(manifest)} attached pages from {Path(args.root).expanduser().resolve()} at http://{host}:{port}/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
