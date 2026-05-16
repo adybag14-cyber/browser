@@ -168,6 +168,12 @@ $entrypoint = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    broader_attached_html_suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+        ChangeArea = 'attached-html'
+    }) -RepoRootOverride $RepoRoot
+    google_attached_html_suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+        ChangeArea = 'google-attached-html'
+    }) -RepoRootOverride $RepoRoot
     windows_replay_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $reentryArguments
     top_level_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $reentryArguments
     attached_html_shortcut_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $reentryArguments
@@ -191,6 +197,8 @@ $entrypoint = [ordered]@{
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
         'Use this helper when the current saved or attached pages are still the known three-page compatibility bundle and you want the narrower replay-side attached-html quickstart, the top-level attached-page quickstart, the issue-specific attached-page shortcut, the broader attached-page flow helper, and the narrower Google-shaped attached-page flow guide kept visible just long enough to confirm the replay should stay pinned to that bundle.',
+        'Use broader_attached_html_suite_router_command first when the next replay is still being chosen from the wider attached-page router and you want the generic attached-page branch visible before the replay narrows back into the pinned bundle-only lane.',
+        'Use google_attached_html_suite_router_command next when the current replay should keep the Google-shaped attached-page route visible beside the broader attached-page branch before the bundle-only branch takes over.',
         'Use windows_replay_attached_html_quickstart_command first when the replay reopened from the broader Windows replay route and you want the newer attached-html ladder visible before you commit to the bundle-only branch.',
         'Use top_level_attached_html_quickstart_command next when you want the compact top-level attached-page bridge kept visible before the replay drops from the replay-side attached-html ladder into the pinned bundle route.',
         'Use attached_html_shortcut_command next when the route is already clearly inside the shorter attached-page helper chain and you want explicit bundle inputs preserved before the replay narrows into the bundle-only branch.',
@@ -198,9 +206,9 @@ $entrypoint = [ordered]@{
         'Use google_attached_html_flow_command when the current bundle still includes a Google-like attached page and you want the dedicated Google-shaped attached-page guide reprinted beside the broader attached-page helper before the replay commits to the bundle-only branch.',
         'Start with bundle_surface_check_command so the pinned bundle guide, checker, helper, runner, and delegated attached-html surfaces fail fast before localhost replay.',
         'Run bundle_check_command next when you want the current saved-page set revalidated as the same three-page compatibility bundle before you trust the printed flow helper or runner.',
-        'Use suite_router_command when you want the attached-html-target-bundle suite surface reprinted beside the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the bundle checker, and the bundle flow helper before the delegated localhost runner.',
+        'Use suite_router_command when you want the attached-html-target-bundle suite surface reprinted beside the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the bundle checker, and the bundle flow helper before the delegated localhost runner.',
         'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the bundle check, the broader attached-page flow helper, the Google-shaped attached-page flow guide, the flow, runner, replay-shortcuts helper, and safe-route return command instead of relying on auto-discovery.',
-        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
+        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
         'Return to the broader issue #3 safe-route helper only after the bundle replay makes the next Google-style input or submit failure state clear.',
         'Keep the Windows replay note, the replay-side attached-html quickstart note, the top-level attached-page quickstart note, the attached-page shortcut note, the Google attached-page flow note, the attached-html target-bundle quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
@@ -225,6 +233,8 @@ if ($entrypoint.explicit_input_path_count -gt 0) {
 }
 Write-Host ''
 Write-Host 'Re-enter before bundle route:'
+Write-Host ("  Broader suite router:      {0}" -f $entrypoint.broader_attached_html_suite_router_command)
+Write-Host ("  Google suite router:       {0}" -f $entrypoint.google_attached_html_suite_router_command)
 Write-Host ("  Windows replay quickstart: {0}" -f $entrypoint.windows_replay_attached_html_quickstart_command)
 Write-Host ("  Top-level quickstart:      {0}" -f $entrypoint.top_level_attached_html_quickstart_command)
 Write-Host ("  Attached shortcut:         {0}" -f $entrypoint.attached_html_shortcut_command)
