@@ -195,7 +195,7 @@ $entrypoint = [ordered]@{
     }
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
-    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md'
+    suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     google_attached_html_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
@@ -206,7 +206,7 @@ $entrypoint = [ordered]@{
         'Start with google_attached_html_change_area when the replay is already inside the issue #3-specific attached-page follow-up surface before the bundle is pinned, so that narrower Google-only route stays visible before you choose attached_html_flow, google_attached_html_flow, attached_html_shortcut, replay_shortcuts, contextual_flow, attached_bundle_first, or the wrapper-heavy safe-route helpers.',
         'Start with attached_bundle_change_area when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned branch shown from the top-level suite router first.',
         'Use attached_html_flow when you want the broader attached-page localhost helper reprinted directly from the compact suite-router surface before choosing between the narrower Google-shaped attached-page flow, the attached-page shortcut, replay shortcuts, contextual flow, attached_bundle_first, or the safe-route map.',
-        'Use google_attached_html_flow when the current attached inputs are already Google-shaped and you want that narrower helper printed directly from the compact suite-router surface before deciding whether to narrow into the attached-page shortcut, replay shortcuts, contextual flow, attached_bundle_first, or the wrapper-heavy safe-route helpers.',
+        'Use google_attached_html_flow when the current attached inputs are already Google-shaped and you want that narrower helper printed directly from the compact suite-router surface before deciding whether to narrow into the attached-page shortcut, replay shortcuts, contextual_flow, attached_bundle_first, or the wrapper-heavy safe-route helpers.',
         'Use attached_html_shortcut when the replay is already narrowed to attached-page follow-up and you want the dedicated attached-page shortcut kept visible before you widen back into replay_shortcuts, the next-step matrix, attached_bundle_first, or the safe-route map.',
         'Use replay_shortcuts as the default next helper when no pinned bundle inputs, saved summary, or non-default repo root need to stay visible first.',
         'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and you want the next surface to keep that replay context aligned before choosing between attached_html_flow, google_attached_html_flow, attached_html_shortcut, replay_shortcuts, replay_route, attached_bundle_first, or the later wrapper-heavy helpers.',
