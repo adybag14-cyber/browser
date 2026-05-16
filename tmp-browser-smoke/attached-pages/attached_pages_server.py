@@ -49,9 +49,39 @@ def extract_title(path: Path) -> str:
     return title or path.name
 
 
+def choose_slug_route(rel_path: str, title: str, *, used_slug_routes: set[str]) -> str:
+    path = Path(rel_path)
+    title_slug = shorten_slug(title if title else path.stem)
+    stem_slug = shorten_slug(path.stem)
+    parent_slug = shorten_slug(path.parent.as_posix()) if path.parent.as_posix() != "." else ""
+
+    candidates = [title_slug]
+    if stem_slug != title_slug:
+        candidates.append(f"{title_slug}-{stem_slug}")
+    if parent_slug:
+        candidates.append(f"{title_slug}-{parent_slug}")
+        if stem_slug != title_slug:
+            candidates.append(f"{title_slug}-{parent_slug}-{stem_slug}")
+
+    for candidate in candidates:
+        route = f"/named/{candidate}"
+        if route not in used_slug_routes:
+            used_slug_routes.add(route)
+            return route
+
+    suffix = 2
+    while True:
+        route = f"/named/{title_slug}-{suffix}"
+        if route not in used_slug_routes:
+            used_slug_routes.add(route)
+            return route
+        suffix += 1
+
+
 def build_manifest(root: Path) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
     used_alias_routes: set[str] = set()
+    used_slug_routes: set[str] = set()
     html_files = sorted(path for path in root.rglob("*.html") if path.is_file())
     for index, path in enumerate(html_files, start=1):
         rel_path = path.relative_to(root).as_posix()
@@ -59,6 +89,7 @@ def build_manifest(root: Path) -> list[dict[str, str]]:
         short_slug = shorten_slug(title if title else path.stem)
         route = f"/pages/{index}"
         alias_route = f"/pages/{index}-{short_slug}"
+        slug_route = choose_slug_route(rel_path, title, used_slug_routes=used_slug_routes)
         suffix = 2
         while alias_route in used_alias_routes:
             alias_route = f"/pages/{index}-{short_slug}-{suffix}"
@@ -69,6 +100,7 @@ def build_manifest(root: Path) -> list[dict[str, str]]:
                 "index": str(index),
                 "route": route,
                 "alias_route": alias_route,
+                "slug_route": slug_route,
                 "raw_path": f"/raw/{quote(rel_path)}",
                 "file": rel_path,
                 "title": title,
@@ -85,6 +117,7 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
             f"<a href=\"{html.escape(entry['route'])}/\">{html.escape(entry['title'])}</a>"
             f"<div>short route: <code>{html.escape(entry['route'])}</code></div>"
             f"<div>alias route: <code>{html.escape(entry['alias_route'])}</code></div>"
+            f"<div>named route: <code>{html.escape(entry['slug_route'])}</code></div>"
             f"<div><code>{html.escape(entry['file'])}</code></div>"
             f"<div><a href=\"{html.escape(entry['raw_path'])}\">raw file</a></div>"
             "</li>"
@@ -128,9 +161,9 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
       headed-mode validation can target them without depending on long exported filenames.
     </p>
     <p>
-      Each entry includes a short route, a readable alias route, and raw-file access.
-      The short routes redirect into an asset-safe directory form so relative CSS, images,
-      and scripts keep working for exported bundles.
+      Each entry includes a short route, a readable alias route, a named route, and raw-file
+      access. The short and named routes redirect into an asset-safe directory form so relative
+      CSS, images, and scripts keep working for exported bundles.
     </p>
     <ul>
       {body}
@@ -144,7 +177,7 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
 def build_route_lookup(manifest: list[dict[str, str]]) -> dict[str, dict[str, str]]:
     route_lookup: dict[str, dict[str, str]] = {}
     for entry in manifest:
-        for route in (entry["route"], entry["alias_route"]):
+        for route in (entry["route"], entry["alias_route"], entry["slug_route"]):
             route_lookup[route] = entry
     return route_lookup
 
@@ -236,7 +269,7 @@ def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> t
 
             entry, asset_suffix = split_page_route(request_path, route_lookup)
             if entry is not None:
-                if request_path in (entry["route"], entry["alias_route"]):
+                if request_path in (entry["route"], entry["alias_route"], entry["slug_route"]):
                     self.send_redirect(f"{request_path}/")
                     return
                 self.send_page_asset(entry, asset_suffix or "", head_only=head_only)
