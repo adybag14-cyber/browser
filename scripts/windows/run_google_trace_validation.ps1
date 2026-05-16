@@ -21,6 +21,7 @@ if (-not $BrowserExe) {
 
 $surfaceCheck = Join-Path $PSScriptRoot "check_google_trace_validation_surface.ps1"
 $flowHelper = Join-Path $PSScriptRoot "show_google_trace_validation_flow.ps1"
+$artifactGuide = Join-Path $PSScriptRoot "show_google_trace_artifact_guide.ps1"
 $runner = Join-Path $PSScriptRoot "run_google_input_validation.ps1"
 
 if (-not (Test-Path -LiteralPath $surfaceCheck -PathType Leaf)) {
@@ -28,6 +29,9 @@ if (-not (Test-Path -LiteralPath $surfaceCheck -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $flowHelper -PathType Leaf)) {
     throw "Google trace validation flow helper not found: $flowHelper"
+}
+if (-not (Test-Path -LiteralPath $artifactGuide -PathType Leaf)) {
+    throw "Google trace artifact guide not found: $artifactGuide"
 }
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Google input validation runner not found: $runner"
@@ -71,4 +75,4 @@ Write-Host ("Script: {0}" -f $runner)
 & $runner @arguments
 
 Write-Host ""
-Write-Host ("Next: compare the reduced-home and live Google trace output with the nearest bounded submit-timing and shared Enter-order checkpoints before editing the headed input path. Use {0} when you want the full read-first trace ladder printed before another rerun." -f $flowHelper)
+Write-Host ("Next: inspect the produced trace logs with {0}, then compare the reduced-home and live Google trace output with the nearest bounded submit-timing and shared Enter-order checkpoints before editing the headed input path. Use {1} when you want the full read-first trace ladder printed before another rerun." -f $artifactGuide, $flowHelper)
