@@ -377,7 +377,7 @@ before the broader top-level and shortcut helpers.
 Use this when you want the compact top-level attached-page plus suite-catalog-side
 bridge visible before you decide whether to widen again.
 
-11. `show_google_issue3_top_level_shortcut_first_ENTRYPOINT.ps1`
+11. `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`
 
 Use this when the route is already known to stay inside issue `#3` and you want
 the shorter top-level bridge before the replay narrows into the tighter helper
