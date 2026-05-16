@@ -262,7 +262,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_wi
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -294,7 +294,7 @@ Use that context-preserving form when:
 
 - `LIGHTPANDA_REPO_ROOT` must stay aligned to a non-default checkout
 - a saved `SummaryPath` already points at current replay outputs
-- explicit `InputPath` values are already pinned to the known three-page compatibility bundle
+- explicit `InputPath` values are already pinned to the known three-page compatibility bundle and the broader attached-page helper should stay on that same set before the route narrows again
 - the replay-route shortcut, the replay-route bundle-first bridge, and the tighter fixed-list screenshot-and-title proof should stay on that same pinned bundle after the bundle-first helper chain turns green
 
 ## Pick the next helper quickly
