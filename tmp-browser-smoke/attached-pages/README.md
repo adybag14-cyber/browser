@@ -29,6 +29,13 @@ loading from the exported bundle instead of resolving against the synthetic
 route root. The server still exposes each original file under `/raw/...`, which
 is useful when you want the exact original path layout during manual debugging.
 
+If you only need the generated short routes before starting a browser session,
+print the manifest JSON and exit without binding a port:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root C:\path\to\saved-html --print-manifest
+```
+
 ## Manifest fields
 
 Each manifest entry now includes:
@@ -40,7 +47,9 @@ Each manifest entry now includes:
 Use `route` in scripts when you want the smallest possible URL and
 `alias_route` when you want a still-short path that is easier to recognize in
 manual notes. Both redirect to a trailing-slash page route before the HTML is
-served so bundle-relative assets keep working.
+served so bundle-relative assets keep working. Use `--print-manifest` when you
+want those generated routes available in the terminal before you launch the
+server or hand the bundle off to another helper.
 
 ## Self-check
 
@@ -51,8 +60,8 @@ python .\tmp-browser-smoke\attached-pages\test_attached_pages_server.py
 ```
 
 The test covers the generated catalog, manifest route, short-route redirect,
-alias-route asset loading, `HEAD` handling, and `/raw/...` passthrough against
-a temporary two-page bundle.
+alias-route asset loading, `HEAD` handling, `/raw/...` passthrough, and the
+manifest-print CLI path against a temporary two-page bundle.
 
 ## Current compatibility target
 
