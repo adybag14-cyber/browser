@@ -38,7 +38,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, the broader Google-shaped attached-page flow, the newer top-level shortcut bridge, the replay-route shortcut bridge, the compact bundle-suite surface, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
+Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the broader Google-shaped attached-page flow, the newer top-level shortcut bridge, the replay-route shortcut bridge, the compact bundle-suite surface, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
 
 From there, prefer one of these narrower follow-ups before reopening the wrapper-heavy safe-route stack:
 
@@ -71,13 +71,17 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_wi
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 ```
 
 Use that route when:
 
 - the replay is already clearly inside issue `#3` and the next choice should stay on the replay-side attached-page ladder for another step
 - you want both the replay-quickstart and broader route-level fail-fast checks rerun before trusting the narrower attached-page sequence
-- you still want the broader Windows route, the Windows-to-validation-router bridge, the Windows-side catalog step, the newer top-level shortcut bridge, the replay-route shortcut bridge, and the compact bundle-suite helper easy to reopen before the helper surface narrows further
+- you still want the broader Windows route, the Windows-to-validation-router bridge, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the newer top-level shortcut bridge, the replay-route shortcut bridge, and the compact bundle-suite helper easy to reopen before the helper surface narrows further
 
 ## Preserve replay context
 
@@ -120,6 +124,7 @@ Use this alternate sequence when the current saved or attached pages are still t
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
@@ -130,7 +135,7 @@ Use that route when:
 
 - the current replay inputs are still the known three-page compatibility set
 - the next useful choice depends on whether the pinned bundle path still reproduces the current headed issue `#3` state
-- you still want the compact bundle-suite surface and the pinned bundle reference nearby before the broader Google-only safe-route stack is reopened
+- you still want the higher-level pinned attached-bundle surface, the compact bundle-suite surface, and the pinned bundle reference nearby before the broader Google-only safe-route stack is reopened
 - the broader Google-only safe-route stack should stay closed until the bundle route clarifies the next replay state
 
 ## Practical rule
@@ -138,6 +143,7 @@ Use that route when:
 Only use this bridge after `show_google_issue3_replay_shortcuts.ps1` is already the current helper surface.
 
 - broader Windows-first attached-page route still matters: keep the route-level fail-fast check, the Windows full-use route, the Windows-to-validation-router bridge, and the Windows-side catalog step in front of the replay-side quickstart
+- broader attached-page or pinned attached-bundle checkpoints still matter: reopen `show_headed_validation_suites.ps1 -ChangeArea attached-html` or `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` before the narrower issue-specific attached-page helpers take over
 - replay-side attached-page ladder is already the best mental model: jump straight from this bridge to `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
 - replay still needs one broader attached-page checkpoint after the replay-side quickstart: widen to `show_google_issue3_validation_router_attached_html_quickstart.ps1`, `show_google_issue3_attached_html_change_area_quickstart.ps1`, or `show_google_attached_html_validation_flow.ps1` before the top-level attached-page helpers take over
 - top-level or replay-route shortcut follow-up is already the next obvious move: reopen `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` or `show_google_issue3_replay_route_shortcut_entrypoint.ps1` before you widen all the way back into replay shortcuts or the safe-route map
