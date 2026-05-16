@@ -174,6 +174,54 @@ class AttachedPagesServerTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=5)
 
+    def test_explicit_file_list_pins_manifest_to_selected_inputs(self):
+        selected_files = [self.root / "nested" / "beta.html"]
+        manifest = server_module.build_manifest(selected_files=selected_files)
+        self.assertEqual(1, len(manifest))
+        self.assertEqual("beta.html", manifest[0]["file"])
+        self.assertEqual("/named/alpha-landing", manifest[0]["slug_route"])
+
+        server, manifest = server_module.create_server(selected_files=selected_files, bind="127.0.0.1", port=0)
+        self.assertEqual(1, len(manifest))
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                connection.request("GET", "/manifest.json")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(1, len(payload))
+                self.assertEqual("beta.html", payload[0]["file"])
+            finally:
+                connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+    def test_print_manifest_with_explicit_file_list_outputs_only_selected_files(self):
+        original_argv = sys.argv[:]
+        buffer = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(server_module.__file__)),
+                "--input",
+                str(self.root / "nested" / "beta.html"),
+                "--print-manifest",
+            ]
+            with contextlib.redirect_stdout(buffer):
+                exit_code = server_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(0, exit_code)
+        manifest = json.loads(buffer.getvalue())
+        self.assertEqual(1, len(manifest))
+        self.assertEqual("beta.html", manifest[0]["file"])
+
 
 if __name__ == "__main__":
     unittest.main()
