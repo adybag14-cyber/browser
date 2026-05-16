@@ -30,6 +30,8 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
+- `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
+- `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
@@ -42,7 +44,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the broader Google-shaped attached-page flow, the newer top-level shortcut bridge, the replay-route shortcut bridge, the newer replay-route bundle-first bridge, the compact bundle-suite surface, the newer suite-router shortcut-first entrypoint, the suite-catalog helper, the compact suite-router handoff and next-step matrix, the smaller replay-route companion, the runner-state next-step helper, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
+Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the broader Google-shaped attached-page flow, the newer top-level shortcut bridge, the replay-route shortcut bridge, the newer replay-route bundle-first bridge, the compact bundle-suite surface, the newer suite-router shortcut-first entrypoint, the written suite-router shortcut bridge, the broader suite-router entrypoint guide, the suite-catalog helper, the compact suite-router handoff and next-step matrix, the smaller replay-route companion, the runner-state next-step helper, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
 
 From there, prefer one of these narrower follow-ups before reopening the wrapper-heavy safe-route stack:
 
@@ -103,7 +105,7 @@ Use that route when:
 
 - the replay is already clearly inside issue `#3` and the next choice should stay on the replay-side attached-page ladder for another step
 - you want both the replay-quickstart and broader route-level fail-fast checks rerun before trusting the narrower attached-page sequence
-- you still want the broader Windows route, the Windows-to-validation-router bridge, the Windows-side catalog step, the broader attached-page route, the broader attached-page and Google-shaped flow helpers, the pinned attached-bundle suite surface, the newer top-level shortcut bridge, the replay-route shortcut bridge, the replay-route bundle-first bridge note, the compact bundle-suite helper, the newer suite-router shortcut-first entrypoint, the suite-catalog helper, the compact suite-router handoff and next-step matrix, and the smaller replay-route companion easy to reopen before the helper surface narrows further
+- you still want the broader Windows route, the Windows-to-validation-router bridge, the Windows-side catalog step, the broader attached-page route, the broader attached-page and Google-shaped flow helpers, the pinned attached-bundle suite surface, the newer top-level shortcut bridge, the replay-route shortcut bridge, the replay-route bundle-first bridge note, the compact bundle-suite helper, the newer suite-router shortcut-first entrypoint, the written suite-router shortcut bridge, the broader suite-router entrypoint guide, the suite-catalog helper, the compact suite-router handoff and next-step matrix, and the smaller replay-route companion easy to reopen before the helper surface narrows further
 
 ## Preserve replay context
 
