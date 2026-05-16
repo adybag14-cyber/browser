@@ -96,7 +96,11 @@ function Format-HelperCommandWithRepoRootEnv {
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
         $fallbackArguments = [System.Collections.Generic.List[string]]::new()
         foreach ($entry in $Arguments.GetEnumerator()) {
-            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            if ($entry.Value -is [System.Array]) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values $entry.Value
+            } else {
+                Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            }
         }
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
@@ -124,7 +128,7 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
-    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command ``"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command``""
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
