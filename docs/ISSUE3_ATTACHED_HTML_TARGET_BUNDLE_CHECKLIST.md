@@ -11,7 +11,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Keep `docs/HEADED_MODE_VALIDATION_GATES.md`, `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby when you need the broader route context around this checklist.
+Keep `docs/HEADED_MODE_VALIDATION_GATES.md`, `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby when you need the broader route context around this checklist.
 
 ## Broader helper re-entry
 
@@ -21,10 +21,22 @@ If the next replay is still being chosen from the higher-level attached-page sur
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 ```
 
-Use that shorter re-entry when the current three pages are still the likely compatibility target but you want the broader attached-page flow helper, the Google-shaped attached-page flow helper, and the bundle-first bridge visible together before you drop back into the locked runner and page-by-page manual checks.
+Use that shorter re-entry when the current three pages are still the likely compatibility target but you want the broader attached-page flow helper, the Google-shaped attached-page flow helper, the replay-route shortcut, the replay-route bundle-first bridge, and the bundle-first helper visible together before you drop back into the locked runner and page-by-page manual checks.
+
+## Fixed-list proof follow-up
+
+Once the pinned bundle runner is green and you want tighter screenshot-and-title proof for the same three-page inputs, keep this follow-up nearby:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
+```
+
+Use that proof path when the delegated bundle runner already covered the main route and the next decision depends on a smaller fixed-list confirmation instead of reopening the broader attached-page helper stack.
 
 ## Page checks
 
@@ -83,5 +95,6 @@ When a manual pass fails, preserve:
 - whether the same symptom appears on the other saved pages
 - the smallest validation helper that still reproduces the failure
 - whether the pinned bundle route or the broader helper re-entry was the last green step
+- whether the fixed-list proof follow-up stayed green for the same pinned inputs
 
-That evidence is usually enough to decide whether the next run should stay on the bundle route, reopen the broader attached-page helper chain, or jump back to the narrower shared input or rendering gates first.
+That evidence is usually enough to decide whether the next run should stay on the bundle route, reopen the broader attached-page helper chain, jump back to the replay-route bundle-first bridge, or return to the narrower shared input or rendering gates first.
