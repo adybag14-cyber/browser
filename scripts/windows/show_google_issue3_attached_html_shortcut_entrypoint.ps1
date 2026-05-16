@@ -140,6 +140,11 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$attachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+
 $bundleFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleFlowArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleFlowArguments -Name InputPath -Values $InputPath
@@ -160,7 +165,7 @@ $entrypoint = [ordered]@{
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
-        google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $bundleArguments
+        google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         windows_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
         windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $bundleArguments
