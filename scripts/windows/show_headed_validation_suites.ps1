@@ -448,7 +448,17 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     }
 
     if ($Json) {
-        $suite | ConvertTo-Json -Depth 5
+        $suiteResult = [pscustomobject]@{
+            Name = $suite.Name
+            Category = $suite.Category
+            Path = $suite.Path
+            Purpose = $suite.Purpose
+            RecommendedWith = $suite.RecommendedWith
+        }
+        if ($suite.Name -eq "google-attached-html") {
+            $suiteResult | Add-Member -NotePropertyName broader_attached_html_flow_command -NotePropertyValue $attachedHtmlFlowCommand
+        }
+        $suiteResult | ConvertTo-Json -Depth 5
         exit 0
     }
 
@@ -516,6 +526,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
     if ($suite.Name -eq "google-attached-html") {
         Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
+        Write-Host ("Broader attached-page flow helper: {0}" -f $attachedHtmlFlowCommand)
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
         Write-Host ("Issue #3 attached-page shortcut: {0}" -f $googleIssue3AttachedHtmlShortcutEntrypointCommand)
@@ -597,12 +608,21 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         $null
     }
 
+    $broaderAttachedHtmlFlowCommand = if ($ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "attached-html") {
+        $attachedHtmlFlowCommand
+    } else {
+        $null
+    }
+
     if ($Json) {
         $result = [pscustomobject]@{
             change_area = $ChangeArea
             suites = $items
             next_step = $nextStep
             flow_command = $flowCommand
+        }
+        if ($broaderAttachedHtmlFlowCommand) {
+            $result | Add-Member -NotePropertyName broader_attached_html_flow_command -NotePropertyValue $broaderAttachedHtmlFlowCommand
         }
         $result | ConvertTo-Json -Depth 6
         exit 0
@@ -650,6 +670,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
         Write-Host ("Surface checker: {0}" -f $googleAttachedHtmlSurfaceCheckCommand)
+        Write-Host ("Broader attached-page flow helper: {0}" -f $attachedHtmlFlowCommand)
     }
     if ($ChangeArea -eq "attached-html-target-bundle") {
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
@@ -673,6 +694,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Issue #3 next-step matrix: {0}" -f $googleIssue3SuiteRouterNextStepsCommand)
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
         Write-Host ("Bundle surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
+        Write-Host ("Broader attached-page flow helper: {0}" -f $attachedHtmlFlowCommand)
     }
     if ($flowCommand) {
         Write-Host ("Flow helper: {0}" -f $flowCommand)
