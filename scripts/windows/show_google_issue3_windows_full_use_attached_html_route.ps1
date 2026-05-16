@@ -96,7 +96,12 @@ function Format-HelperCommandWithRepoRootEnv {
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
         $fallbackArguments = [System.Collections.Generic.List[string]]::new()
         foreach ($entry in $Arguments.GetEnumerator()) {
-            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            $value = $entry.Value
+            if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values @($value)
+            } else {
+                Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $value
+            }
         }
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
@@ -108,6 +113,25 @@ function Format-HelperCommandWithRepoRootEnv {
             continue
         }
         if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+            $valueList = @($value | Where-Object {
+                if ($_ -is [string]) {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                } else {
+                    $null -ne $_
+                }
+            })
+            if ($valueList.Count -eq 0) {
+                continue
+            }
+
+            $command += " -$($entry.Key)"
+            foreach ($item in $valueList) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
             continue
         }
 
@@ -140,8 +164,10 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
-$attachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
-Add-SharedPathArrayArgument -Arguments $attachedHtmlFlowArguments -Name InputPath -Values $InputPath
+$attachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
 
 $googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
@@ -171,7 +197,7 @@ $route = [ordered]@{
         windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
         suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $bundleArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
-        attached_html_flow = Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments
+        attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
@@ -213,7 +239,7 @@ $route = [ordered]@{
         'Use windows_replay_attached_html_quickstart after the Windows-first catalog step when you want the replay-side attached-html ladder visible before the route narrows into the change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the validation-router quickstart, or the top-level attached-page helpers.',
         'Start with attached_html_change_area when the next replay should stay on the generic attached-page route before choosing the narrower issue-specific helpers.',
         'Follow attached_html_change_area with attached_html_change_area_quickstart when the validation-router bridge already reopened the broader attached-page route and no pinned bundle inputs, saved summary, or repo-root override need to take precedence first.',
-        'Use attached_html_flow when you want the broader attached-page localhost helper printed directly from this Windows-first route before choosing between the validation-router quickstart, the compact top-level quickstart, the broader top-level bridge, the suite-catalog-to-top-level catalog quickstart, or the attached-page shortcut chain. When explicit InputPath values are already pinned, keep that same attached-page set on the broader helper instead of reopening auto-discovery.',
+        'Use attached_html_flow when you want the broader attached-page localhost helper printed directly from this Windows-first route before choosing between the validation-router quickstart, the compact top-level quickstart, the broader top-level bridge, the suite-catalog-to-top-level catalog quickstart, or the attached-page shortcut chain. Preserve the current repo root here too so non-default checkout replay stays aligned, and keep the same attached-page set when explicit InputPath values are already pinned instead of reopening auto-discovery.',
         'Use google_attached_html_flow when the current replay should keep the narrower Google-shaped attached-page helper visible from this same Windows-first route before dropping into the validation-router quickstart, the compact top-level quickstart, the broader top-level bridge, or the shorter attached-page shortcut chain. Preserve RepoRoot and explicit InputPath context here, but do not reintroduce SummaryPath because show_google_attached_html_validation_flow.ps1 does not accept it.',
         'Start with google_attached_html_change_area when the next replay should still keep the Google-shaped attached-page route visible before narrowing again.',
         'Use suite_router_quickstart when the broader Windows runbook or the top-level validation router already narrowed the replay to issue #3, but not yet all the way to the attached-html branch, and you want the shortest bridge back into the current replay helper stack before deciding whether to widen into the attached-page chain, replay shortcuts, or the safe-route map.',
