@@ -32,6 +32,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
@@ -41,11 +42,14 @@ Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_
 
 If the replay is reopening from the broader Windows-first route or from the replay-side attached-html quickstart, keep those broader helper ladders visible long enough to rerun the route-level surface check, reopen the broader attached-page flow helper, reopen the dedicated Google-shaped attached-page flow helper, and confirm the narrower shortcut chain is still aligned before this note takes over.
 
+If the current pages are still the known three-page compatibility set, keep `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` visible beside the shortcut helper before the replay narrows into `show_google_issue3_attached_bundle_first_entrypoint.ps1` or the delegated bundle runner. The compact suite-level bundle surface is the quickest way to keep that pinned compatibility lane rediscoverable without widening back into the whole issue `#3` helper family.
+
 From there, prefer one of these narrower follow-ups before reopening the broader wrapper-heavy safe route:
 
 - `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`
 - `show_google_issue3_replay_shortcuts.ps1`
 - `show_google_issue3_suite_router_next_steps.ps1`
+- `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
 - `show_google_issue3_attached_bundle_first_entrypoint.ps1`
 - `show_google_issue3_safe_route_entrypoints.ps1`
 
@@ -120,13 +124,14 @@ If the current pages are still the pinned three-page compatibility bundle, start
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Use that bundle-first route when the known three-page compatibility set should stay pinned from the attached-page shortcut surface all the way through the delegated localhost runner before widening back into the broader issue `#3` helper stack.
+Use that bundle-first route when the known three-page compatibility set should stay pinned from the compact suite-level bundle helper through the attached-page shortcut surface and all the way into the delegated localhost runner before widening back into the broader issue `#3` helper stack.
 
 ## Broader attached-page flow bridge
 
@@ -160,6 +165,7 @@ Then choose the narrower follow-up that matches the current state:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
@@ -196,7 +202,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 
 Use this when you still want the compact start-point matrix after re-entering from the attached-page shortcut route.
 
-4. Attached bundle first
+4. Attached HTML target bundle suite surface
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+```
+
+Use this when explicit `InputPath` values are already pinned or when the replay should keep the compact three-page bundle surface visible before the bundle-first helper or delegated bundle runner takes over.
+
+5. Attached bundle first
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
@@ -204,7 +218,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 
 Use this when explicit `InputPath` values are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader Google-only helper chain.
 
-5. Safe-route entrypoints
+6. Safe-route entrypoints
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
@@ -220,7 +234,7 @@ Once `show_headed_validation_suites.ps1` has already narrowed the route to attac
 - replay reopened from `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`: reopen `show_google_issue3_windows_replay_attached_html_quickstart.ps1` first, then `show_attached_html_validation_flow.ps1`, then `show_google_attached_html_validation_flow.ps1`, then the attached-html change-area quickstart, then the top-level attached-page quickstart, then the broader top-level attached-page bridge, then the suite-router attached-page quickstart, then this attached-page shortcut bridge, then the suite-router shortcut bridge, then replay shortcuts before widening again
 - no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` or `-ChangeArea google-attached-html` to the attached-html change-area quickstart, then the top-level attached-page quickstart, then the broader top-level attached-page bridge, then the suite-router attached-page quickstart, then the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint, then replay shortcuts, then the next-step matrix or safe-route map
 - broader attached-page localhost-first helper still matters: go from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, `show_attached_html_validation_flow.ps1`, `show_google_attached_html_validation_flow.ps1`, or `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` to the attached-html change-area quickstart, then the top-level attached-page quickstart, then the broader top-level attached-page bridge, then the suite-router attached-page quickstart, then the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint before narrowing further
-- explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
-- saved summary or repo-root override already present: reopen the broader top-level attached-page bridge and the suite-router attached-page quickstart with that same context first, then the attached-page shortcut entrypoint, then choose replay shortcuts, the next-step matrix, contextual flow through the suite-router matrix, or the safe-route map only as needed
+- explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, surface `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, then stay on the bundle-first helper before widening back into the broader Google-only path
+- saved summary or repo-root override already present: reopen the broader top-level attached-page bridge and the suite-router attached-page quickstart with that same context first, then the attached-page shortcut entrypoint, then choose replay shortcuts, the next-step matrix, the compact bundle-suite helper, contextual flow through the suite-router matrix, or the safe-route map only as needed
 
 Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
