@@ -55,7 +55,7 @@ From there, prefer one of these narrower follow-ups before reopening the wrapper
 - `show_google_issue3_top_level_attached_html_quickstart.ps1`
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1`
 - `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
-- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`
+- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quICKSTART.ps1`
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`
 - `show_google_issue3_replay_route_shortcut_entrypoint.ps1`
@@ -115,6 +115,13 @@ If the replay already carries a non-default repo root, a saved summary path, or 
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
+Keep the broader attached-page helper surfaces on that same pinned context before you choose the narrower follow-up:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
+```
+
 Then choose the narrower follow-up that matches the current state:
 
 ```powershell
@@ -145,7 +152,7 @@ Use that context-preserving form when:
 - `LIGHTPANDA_REPO_ROOT` must stay attached to later helpers
 - a saved `SummaryPath` already points at current replay outputs
 - explicit `InputPath` values are already pinned to the known three-page compatibility bundle
-- you want the newer top-level shortcut, replay-route shortcut, compact bundle-suite, suite-router, suite-catalog, replay-route, or runner-state follow-ups to stay on the same pinned context instead of reopening generically
+- you want the broader attached-page helper, the dedicated Google-shaped attached-page helper, or the newer top-level shortcut, replay-route shortcut, compact bundle-suite, suite-router, suite-catalog, replay-route, or runner-state follow-ups to stay on the same pinned context instead of reopening generically
 
 ## Bundle-first alternate route
 
@@ -178,7 +185,7 @@ Only use this bridge after `show_google_issue3_replay_shortcuts.ps1` is already 
 - replay still needs one broader attached-page checkpoint after the replay-side quickstart: widen to `show_google_issue3_validation_router_attached_html_quickstart.ps1`, `show_google_issue3_attached_html_change_area_quickstart.ps1`, or `show_google_attached_html_validation_flow.ps1` before the top-level attached-page helpers take over
 - top-level, suite-router, suite-catalog, or replay-route follow-up is already the next obvious move: reopen `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`, `show_google_issue3_suite_catalog_entrypoints.ps1`, or `show_google_issue3_replay_route_shortcut_entrypoint.ps1` before you widen all the way back into replay shortcuts or the safe-route map
 - runner-state follow-up is already known from the current summary output: reopen `show_google_issue3_runner_patch_next_step.ps1` with the reported state before you widen back into the broader wrapper notes
-- saved summary or repo-root override already present: reopen the bridge with that same context first, then choose the next narrower helper
+- saved summary or repo-root override already present: reopen the bridge with that same context first, then keep `show_attached_html_validation_flow.ps1` and `show_google_attached_html_validation_flow.ps1` on the same pinned inputs before choosing the next narrower helper
 - explicit bundle paths already pinned: keep `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby before you stay on the bundle-first helper
 
 Only reopen the longer validation-chain notes after the route has narrowed as far as it can go through the attached-page ladder.
