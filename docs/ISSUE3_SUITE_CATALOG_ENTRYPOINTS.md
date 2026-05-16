@@ -76,12 +76,12 @@ surface check, the Windows-to-validation-router bridge, the Windows full-use
 attached-page catalog quickstart, the replay-side attached-html surface check,
 the replay-side attached-html quickstart, the attached-html change-area
 quickstart, the broader attached-page flow helper, the dedicated Google
-attached-page flow helper, the compact attached-html target-bundle suite
-surface, the pinned attached-html target-bundle surface checker, the bundle
-flow helper, the delegated bundle runner, the validation-router attached-page
-quickstart, the suite-catalog-to-top-level attached-page catalog quickstart,
-the suite-catalog attached-page bridge, the suite-router quickstart, the
-suite-router attached-page quickstart, the top-level attached-page quickstart,
+attached-page surface check, the dedicated Google attached-page flow helper,
+the compact attached-html target-bundle suite surface, the pinned attached-html
+target-bundle surface checker, the bundle flow helper, the delegated bundle
+runner, the validation-router attached-page quickstart, the suite-catalog-to-top-level attached-page catalog
+quickstart, the suite-catalog attached-page bridge, the suite-router quickstart,
+the suite-router attached-page quickstart, the top-level attached-page quickstart,
 the top-level attached-page catalog quickstart, the top-level shortcut-first
 bridge, the broader top-level attached-page bridge, the issue-specific
 attached-page bridge, the attached-page shortcut, replay shortcuts, the
@@ -173,6 +173,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
@@ -203,8 +204,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_sa
 Use that route when you want one written bridge that keeps the suite-catalog
 surface, the suite-catalog surface check, the replay-side attached-html ladder,
 the attached-html change-area quickstart, the broader attached-page flow
-helper, the dedicated Google attached-page flow helper, the validation-router
-quickstart, the suite-catalog-to-top-level attached-page catalog quickstart,
+helper, the dedicated Google attached-page surface check, the dedicated Google
+attached-page flow helper, the validation-router quickstart, the suite-catalog-to-top-level attached-page catalog quickstart,
 the suite-catalog attached-page bridge, the suite-router quickstart, the
 suite-router attached-page quickstart, the top-level attached-page quickstarts,
 the top-level shortcut-first bridge, the broader top-level attached-page
@@ -232,6 +233,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
@@ -251,14 +253,14 @@ Use that route when you want the broader Windows-first surface check, the
 Windows-to-validation-router bridge, the Windows-side catalog quickstart, the
 replay-side attached-html quickstart, the suite-catalog guide, the
 suite-catalog surface check, the attached-html change-area quickstart, the
-broader attached-page flow helper, the dedicated Google attached-page flow
-helper, the validation-router quickstart, the suite-catalog-to-top-level
-catalog quickstart, the suite-catalog attached-page bridge, the suite-router
-attached-page quickstart, the top-level attached-page quickstarts, the
-top-level shortcut-first bridge, the compact bundle suite-surface helper, the
-bundle surface checker, the bundle-aware flow helper, and the shorter
-bundle-first helper printed before the replay falls back into the narrower
-attached-page helper chain.
+broader attached-page flow helper, the dedicated Google attached-page surface
+check, the dedicated Google attached-page flow helper, the validation-router
+quickstart, the suite-catalog-to-top-level catalog quickstart, the
+suite-catalog attached-page bridge, the suite-router attached-page quickstart,
+the top-level attached-page quickstarts, the top-level shortcut-first bridge,
+the compact bundle suite-surface helper, the bundle surface checker, the
+bundle-aware flow helper, and the shorter bundle-first helper printed before
+the replay falls back into the narrower attached-page helper chain.
 
 ## Preserve replay context
 
@@ -276,6 +278,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_wi
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -324,7 +327,8 @@ the top-level helpers.
 Use this when the replay already narrowed through the replay-side attached-html
 quickstart and you want the shorter attached-page change-area bridge visible
 before the broader attached-page flow helper, the dedicated Google attached-page
-flow helper, the validation-router quickstart, or the top-level note family.
+surface check, the dedicated Google attached-page flow helper, the
+validation-router quickstart, or the top-level note family.
 
 3. `show_google_attached_html_validation_flow.ps1`
 
@@ -373,7 +377,7 @@ before the broader top-level and shortcut helpers.
 Use this when you want the compact top-level attached-page plus suite-catalog-side
 bridge visible before you decide whether to widen again.
 
-11. `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`
+11. `show_google_issue3_top_level_shortcut_first_ENTRYPOINT.ps1`
 
 Use this when the route is already known to stay inside issue `#3` and you want
 the shorter top-level bridge before the replay narrows into the tighter helper
@@ -466,9 +470,10 @@ attached-page route when needed, its route-level surface check, the
 Windows-to-validation-router bridge, the Windows-side catalog quickstart, the
 replay-side attached-html surface check, the replay-side attached-html
 quickstart, the attached-html change-area quickstart, the broader attached-page
-flow helper, the dedicated Google attached-page flow helper, the validation-router
-attached-page quickstart, the suite-catalog-to-top-level attached-page catalog
-quickstart, the suite-catalog attached-page bridge, the suite-router attached-page
+flow helper, the dedicated Google attached-page surface check, the dedicated
+Google attached-page flow helper, the validation-router attached-page
+quickstart, the suite-catalog-to-top-level attached-page catalog quickstart,
+the suite-catalog attached-page bridge, the suite-router attached-page
 quickstart, the top-level attached-page quickstarts, the top-level shortcut-first
 bridge, the top-level shortcut companion notes, the broader top-level attached-page
 bridge, the issue-specific attached-page bridge, the attached-page shortcut,
@@ -481,8 +486,8 @@ before reopening the longer validation-chain notes.
 
 - branch just moved or helper names may have drifted: rerun the suite-catalog surface checker before the broader replay-side checker so the compact route fails fast on missing notes or delegated helpers
 - no pinned bundle inputs and no saved replay state yet: go from the suite-catalog helper to replay shortcuts when you only need the tightest current helper surface, or reopen the broader attached-html ladder first when attached localhost follow-up is already obvious
-- broader Windows-first route already in view: rerun the Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows-side catalog quickstart, the replay-side attached-html surface check, the replay-side attached-html quickstart, the attached-html change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the compact bundle suite-surface helper, the bundle surface checker, and the bundle-aware flow helper before returning to the suite-catalog helper
-- broader Google-shaped attached-page surface still matters: reopen `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, then `show_google_attached_html_validation_flow.ps1`, and then `show_google_issue3_google_attached_html_entrypoint.ps1` before the narrower helper chain
+- broader Windows-first route already in view: rerun the Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows-side catalog quickstart, the replay-side attached-html surface check, the replay-side attached-html quickstart, the attached-html change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the compact bundle suite-surface helper, the bundle surface checker, and the bundle-aware flow helper before returning to the suite-catalog helper
+- broader Google-shaped attached-page surface still matters: reopen `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, then `check_google_attached_html_validation_surface.ps1`, then `show_google_attached_html_validation_flow.ps1`, and then `show_google_issue3_google_attached_html_entrypoint.ps1` before the narrower helper chain
 - replay-route already in view and bundle-first narrowing is likely: reopen `show_google_issue3_replay_route.ps1`, then `show_google_issue3_replay_route_shortcut_entrypoint.ps1`, then `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, then `check_attached_html_target_bundle_validation_surface.ps1`, then `show_attached_html_target_bundle_validation_flow.ps1`, and then `show_google_issue3_attached_bundle_first_entrypoint.ps1` before the delegated bundle runner so the pinned three-page compatibility route stays visible
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, then keep `show_google_issue3_replay_route_shortcut_entrypoint.ps1`, `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, `check_attached_html_target_bundle_validation_surface.ps1`, `show_attached_html_target_bundle_validation_flow.ps1`, and `show_google_issue3_attached_bundle_first_entrypoint.ps1` in front of the delegated bundle runner, the fixed-list local fixture surface checker, and the fixed-list proof probe so the known three-page compatibility set stays fixed before widening back into the broader issue `#3` path
 - saved summary or repo-root override already present: reopen this guide with the same context first, rerun the suite-catalog surface checker for that checkout, then choose contextual flow, replay shortcuts, the suite-router handoff, replay route, the replay-route shortcut, or the safe-route map only as needed
