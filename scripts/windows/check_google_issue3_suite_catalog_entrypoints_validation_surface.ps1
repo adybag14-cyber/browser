@@ -52,6 +52,9 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md" -Kind "file" -Purpose "Broader top-level attached-html bridge note reused by the suite-catalog helper chain."),
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Kind "file" -Purpose "Replay-side quickstart note that can still feed back into the suite-catalog route."),
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md" -Kind "file" -Purpose "Longer Windows validation-chain note kept aligned with the suite-catalog entry surface."),
+    (New-ValidationReference -Path "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md" -Kind "file" -Purpose "Replay-route shortcut note that the suite-catalog guide reopens before the route narrows into bundle-side follow-up."),
+    (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Kind "file" -Purpose "Compact bundle-side helper note that the suite-catalog route keeps visible before the pinned bundle branch takes over."),
+    (New-ValidationReference -Path "docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md" -Kind "file" -Purpose "Replay-route bundle-first bridge note that should stay available once the suite-catalog route narrows toward the pinned three-page compatibility bundle."),
     (New-ValidationReference -Path "scripts/windows/HeadedValidationHelpers.ps1" -Kind "file" -Purpose "Shared helper surface used to resolve repo-root-aware validation commands."),
     (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Top-level suite router whose change-area commands feed the issue #3 suite-catalog bridge."),
     (New-ValidationReference -Path "scripts/windows/check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast checker for the issue #3 suite-catalog helper surface."),
@@ -80,10 +83,15 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1" -Kind "file" -Purpose "Issue-specific Google attached-html bridge surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_shortcut_entrypoint.ps1" -Kind "file" -Purpose "Shortest attached-html shortcut helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_shortcuts.ps1" -Kind "file" -Purpose "Compact replay-shortcuts helper surfaced from the suite-catalog chain."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Kind "file" -Purpose "Replay-route shortcut helper that the suite-catalog guide uses before the route narrows into bundle-side follow-up or the tighter replay shortcut chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Kind "file" -Purpose "Executable next-step matrix helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_contextual_flow.ps1" -Kind "file" -Purpose "Context-preserving helper surfaced when the suite-catalog route already has a pinned repo root, summary, or bundle path."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_handoff.ps1" -Kind "file" -Purpose "Suite-router handoff helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_route.ps1" -Kind "file" -Purpose "Replay-route helper surfaced from the suite-catalog chain."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_target_bundle_suite_surface.ps1" -Kind "file" -Purpose "Compact attached bundle suite surface helper surfaced by the suite-catalog route before bundle-first follow-up."),
+    (New-ValidationReference -Path "scripts/windows/check_attached_html_target_bundle_validation_surface.ps1" -Kind "file" -Purpose "Bundle-side fail-fast surface checker that should stay available once the suite-catalog route narrows to the pinned three-page compatibility bundle."),
+    (New-ValidationReference -Path "scripts/windows/show_attached_html_target_bundle_validation_flow.ps1" -Kind "file" -Purpose "Pinned bundle validation-flow helper that the suite-catalog route keeps available before the bundle-first helper or delegated runner takes over."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_route_bundle_first_bridge.ps1" -Kind "file" -Purpose "Replay-route bundle-first bridge helper surfaced when the suite-catalog route narrows from replay-route into the pinned three-page compatibility bundle."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_bundle_first_entrypoint.ps1" -Kind "file" -Purpose "Bundle-first helper surfaced when the suite-catalog route should stay pinned to the known three-page compatibility set."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_safe_route_entrypoints.ps1" -Kind "file" -Purpose "Wrapper-heavy safe-route map surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1" -Kind "file" -Purpose "Fresh safe-route wrapper surfaced from the suite-catalog chain."),
@@ -142,5 +150,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} issue #3 suite-catalog path(s).") -f $missing.Count)
-Write-Host "Repair the missing note, helper, or dedicated Google attached-html follow-up chain before trusting the issue #3 suite-catalog entrypoint route."
+Write-Host "Repair the missing note, helper, replay-route shortcut, or pinned bundle follow-up surface before trusting the issue #3 suite-catalog entrypoint route."
 exit 1
