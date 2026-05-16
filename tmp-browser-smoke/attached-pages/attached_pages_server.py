@@ -257,16 +257,30 @@ def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> t
     server = ReuseServer((bind, port), partial(AttachedPagesHandler))
     return server, manifest
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Serve an attached HTML bundle for headed-mode smoke validation.")
     parser.add_argument("--root", required=True, help="Directory that contains the saved HTML files.")
     parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
     parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
+    parser.add_argument(
+        "--print-manifest",
+        action="store_true",
+        help="Print the generated manifest JSON and exit instead of starting the server.",
+    )
     args = parser.parse_args()
 
-    server, manifest = create_server(args.root, bind=args.bind, port=args.port)
+    root = Path(args.root).expanduser().resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"bundle root does not exist: {root}")
+
+    if args.print_manifest:
+        print(json.dumps(build_manifest(root), indent=2))
+        return 0
+
+    server, manifest = create_server(root, bind=args.bind, port=args.port)
     host, port = server.server_address
-    print(f"Serving {len(manifest)} attached pages from {Path(args.root).expanduser().resolve()} at http://{host}:{port}/")
+    print(f"Serving {len(manifest)} attached pages from {root} at http://{host}:{port}/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
