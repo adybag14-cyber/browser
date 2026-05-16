@@ -66,9 +66,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 ```
 
 Use this re-entry when the three-page bundle is already the likely next move,
-but you still want both the broader attached-page helper and the dedicated
-Google-shaped attached-page helper visible before the replay locks onto the
-pinned bundle branch.
+but you still want the compact bundle-focused suite helper, the broader
+attached-page helper, and the dedicated Google-shaped attached-page helper
+visible before the replay locks onto the pinned bundle branch.
 
 If the replay is already running from a non-default checkout or from pinned
 bundle inputs, preserve that same context on the broader attached-page helper
@@ -218,70 +218,3 @@ attached localhost follow-up:
   `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` when the replay
   should stay on the compact top-level attached-page route before it narrows
   again.
-- `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`,
-  `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
-  `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, and
-  `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` when you want the
-  suite-catalog command map, the broader Google-style attached-page guide, and
-  the attached-page bridge kept visible beside the replay-side and top-level
-  attached-page catalog notes.
-- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
-  `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
-  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
-  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, and
-  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the route has
-  already narrowed to the suite-router side, the compact companion notes, or
-  the pinned three-page compatibility bundle and you want the reusable
-  fixed-list screenshot-and-title proof path kept nearby.
-
-For the broader Windows runbook and the longer validation chain, keep
-`docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
-`docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
-`docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`,
-`docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
-`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`,
-`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`,
-`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
-`docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`,
-`docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`,
-`docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`,
-`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
-`docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
-`docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`,
-`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
-`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`,
-`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
-`docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
-
-## Milestones
-
-1. Display abstraction
-- Introduce a renderer backend interface with a no-op backend and a
-  real windowed backend (Win32 lifecycle backend implemented).
-- Keep DOM, JS, networking, and CDP independent from the window backend.
-
-2. Window lifecycle
-- Implement window creation, resize, close, and frame pump.
-- Wire browser/page lifecycle events to the display backend.
-
-3. Layout and paint pipeline
-- Build incremental layout + paint passes from DOM/CSS state.
-- Add dirty-region invalidation to avoid full-frame redraws.
-
-4. Input + event synthesis
-- Convert OS input events (mouse/keyboard/wheel/focus) into DOM events.
-- Keep CDP input paths consistent with native input behavior.
-
-5. Screenshots and surfaces
-- Expose pixel surfaces for screenshots/recording while in headed mode.
-- Ensure parity between headless and headed screenshot semantics.
-
-6. Stabilization
-- Add headed integration tests (window lifecycle, input, rendering, resize).
-- Validate performance, memory, and crash-handling budgets.
-
-## Design Constraints
-
-- No regressions to existing headless CLI/CDP behavior.
-- Feature flags must keep partial implementations safe.
-- Keep platform-specific code isolated behind backend boundaries.
