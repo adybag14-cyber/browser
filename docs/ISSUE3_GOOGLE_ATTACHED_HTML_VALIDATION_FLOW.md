@@ -21,6 +21,7 @@ Keep these companion notes nearby:
 - `docs/WINDOWS_FULL_USE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
@@ -35,7 +36,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the current attached-page set, run the Google-style fail-fast checks first, keep the broader attached-page entrypoints visible long enough to confirm the right route, then let `show_google_attached_html_validation_flow.ps1` print and hand off the same locked inputs into the saved-page Google validation flow before you widen back into replay shortcuts, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
+Start from the current attached-page set, run the Google-style fail-fast checks first, keep the broader attached-page entrypoints visible long enough to confirm the right route, keep the Windows-first attached-html catalog quickstart visible when the replay is reopening from the broader Windows runbook, then let `show_google_attached_html_validation_flow.ps1` print and hand off the same locked inputs into the saved-page Google validation flow before you widen back into replay shortcuts, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
 
 ## Top-level re-entry points
 
@@ -78,17 +79,18 @@ Use `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` when the 
 
 ## Windows-full-use re-entry
 
-If the broader Windows runbook already made attached localhost follow-up the next obvious issue `#3` branch, reopen the wider Windows-first route guard and bridge before dropping into this narrower Google-style flow:
+If the broader Windows runbook already made attached localhost follow-up the next obvious issue `#3` branch, reopen the wider Windows-first route guard, bridge, and catalog quickstart before dropping into this narrower Google-style flow:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 ```
 
-Use that route when `docs/WINDOWS_FULL_USE.md` already narrowed the replay to attached localhost follow-up and you want the route-level surface check, the broader Windows-to-validation-router bridge, and the replay-side attached-page quickstart visible before this note narrows the same inputs into the Google-style helper and runner.
+Use that route when `docs/WINDOWS_FULL_USE.md` already narrowed the replay to attached localhost follow-up and you want the route-level surface check, the broader Windows-to-validation-router bridge, the Windows-first attached-html catalog quickstart, and the replay-side attached-page quickstart visible before this note narrows the same inputs into the Google-style helper and runner.
 
 ## Replay-route and bundle-first re-entry
 
@@ -225,4 +227,4 @@ Use this when the current inputs are still the known three-page compatibility bu
 
 ## Practical rule
 
-Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard and bridge first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route, the compact bundle-suite re-entry, and the pinned bundle route printed together before picking the next replay branch. Keep the replay-route helper family nearby when you want the broader attached-page fallback, the compact bundle-specific re-entry, and the pinned bundle-first branch surfaced together before this guide narrows the route. Keep the broader attached-page router nearby when the route is still ambiguous, keep the compact bundle-suite helper and bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
+Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard, the Windows-to-validation-router bridge, and the Windows-first attached-html catalog quickstart first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route, the compact bundle-suite re-entry, and the pinned bundle route printed together before picking the next replay branch. Keep the replay-route helper family nearby when you want the broader attached-page fallback, the compact bundle-specific re-entry, and the pinned bundle-first branch surfaced together before this guide narrows the route. Keep the broader attached-page router nearby when the route is still ambiguous, keep the compact bundle-suite helper and bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
