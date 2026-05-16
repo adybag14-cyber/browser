@@ -31,6 +31,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
+- `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
 - `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_BRIDGE.md`
@@ -38,7 +39,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the broader Google-shaped attached-page flow, the newer top-level shortcut bridge, the replay-route shortcut bridge, the compact bundle-suite surface, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
+Start from `show_google_issue3_replay_shortcuts.ps1`, then hand off into the shorter Windows replay attached-page ladder so the replay-side fail-fast check, the broader Windows-first route, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the broader Google-shaped attached-page flow, the newer top-level shortcut bridge, the replay-route shortcut bridge, the newer replay-route bundle-first bridge, the compact bundle-suite surface, and the narrower attached-page quickstarts stay visible before the route collapses into the shortest attached-page shortcut or widens back into the safe-route map.
 
 From there, prefer one of these narrower follow-ups before reopening the wrapper-heavy safe-route stack:
 
@@ -81,7 +82,7 @@ Use that route when:
 
 - the replay is already clearly inside issue `#3` and the next choice should stay on the replay-side attached-page ladder for another step
 - you want both the replay-quickstart and broader route-level fail-fast checks rerun before trusting the narrower attached-page sequence
-- you still want the broader Windows route, the Windows-to-validation-router bridge, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the newer top-level shortcut bridge, the replay-route shortcut bridge, and the compact bundle-suite helper easy to reopen before the helper surface narrows further
+- you still want the broader Windows route, the Windows-to-validation-router bridge, the Windows-side catalog step, the broader attached-page route, the pinned attached-bundle suite surface, the newer top-level shortcut bridge, the replay-route shortcut bridge, the replay-route bundle-first bridge note, and the compact bundle-suite helper easy to reopen before the helper surface narrows further
 
 ## Preserve replay context
 
@@ -148,6 +149,6 @@ Only use this bridge after `show_google_issue3_replay_shortcuts.ps1` is already 
 - replay still needs one broader attached-page checkpoint after the replay-side quickstart: widen to `show_google_issue3_validation_router_attached_html_quickstart.ps1`, `show_google_issue3_attached_html_change_area_quickstart.ps1`, or `show_google_attached_html_validation_flow.ps1` before the top-level attached-page helpers take over
 - top-level or replay-route shortcut follow-up is already the next obvious move: reopen `show_google_issue3_top_level_shortcut_first_entrypoint.ps1` or `show_google_issue3_replay_route_shortcut_entrypoint.ps1` before you widen all the way back into replay shortcuts or the safe-route map
 - saved summary or repo-root override already present: reopen the bridge with that same context first, then choose the next narrower helper
-- explicit bundle paths already pinned: keep `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby before you stay on the bundle-first helper
+- explicit bundle paths already pinned: keep `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby before you stay on the bundle-first helper
 
 Only reopen the longer validation-chain notes after the route has narrowed as far as it can go through the attached-page ladder.
