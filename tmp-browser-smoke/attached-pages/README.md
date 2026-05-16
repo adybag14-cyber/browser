@@ -62,6 +62,45 @@ That same manifest-print path also works with repeated `--input` arguments when
 you want to prove the exact pinned file list before starting the localhost
 catalog server.
 
+## Issue #3 Pinned Bundle
+
+For the current headed Google follow-up work, you can pin the known three-page
+compatibility bundle directly from `agent_files/` so the generated short routes
+stay locked to the same saved exports even if that folder later gains more HTML
+files:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
+  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
+  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
+  --print-manifest
+```
+
+Once the manifest looks correct, start the localhost catalog on the same pinned
+file list:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
+  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
+  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
+  --port 8235
+```
+
+That gives the current issue `#3` replay work one stable localhost catalog with
+short routes such as:
+
+- `http://127.0.0.1:8235/` for the generated three-page catalog
+- `http://127.0.0.1:8235/pages/1` for the first pinned page
+- `http://127.0.0.1:8235/pages/2` for the second pinned page
+- `http://127.0.0.1:8235/pages/3` for the third pinned page
+
+Use this pinned-file form when you want the quick manual replay surface before
+running the heavier attached-page PowerShell helpers or when you want the exact
+same three pages available through short routes while you debug a headed-mode
+compatibility regression.
+
 ## Self-check
 
 Run the focused harness regression locally with:
