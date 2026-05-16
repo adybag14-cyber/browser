@@ -39,8 +39,10 @@ $references = @(
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the bundle-aware attached-page helpers."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md" -Kind "file" -Purpose "Bundle-specific reference note that keeps the pinned three-page route, reusable fixed-list proof path, and broader issue #3 re-entry surfaces visible together."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md" -Kind "file" -Purpose "Shortest quickstart bridge from the top-level validation router into the pinned attached HTML target-bundle path."),
+    (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Kind "file" -Purpose "Compact suite-level attached HTML target-bundle re-entry note that keeps the broader attached-page and Google-shaped attached-page helpers visible beside the pinned three-page route."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md" -Kind "file" -Purpose "Pinned manual checklist for the known three-page compatibility bundle once the bundled localhost route is green."),
     (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Canonical suite router that exposes the attached-html-target-bundle entry point before the narrower bundle helpers run."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_target_bundle_suite_surface.ps1" -Kind "file" -Purpose "Compact issue #3 bundle-suite helper that keeps the broader attached-page and Google-shaped attached-page surfaces visible beside the pinned bundle lane."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_bundle_first_entrypoint.ps1" -Kind "file" -Purpose "Bundle-first issue #3 entrypoint that keeps the replay-side quickstart ladder visible before the route locks onto the pinned bundle branch."),
     (New-ValidationReference -Path "scripts/windows/check_attached_html_target_bundle.ps1" -Kind "file" -Purpose "Checker for the known three-page attached HTML compatibility target bundle."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_target_bundle_validation_flow.ps1" -Kind "file" -Purpose "Bundle-aware attached HTML flow helper."),
@@ -103,10 +105,10 @@ foreach ($result in $results) {
 
 Write-Host ""
 if ($missing.Count -eq 0) {
-    Write-Host "Attached HTML target-bundle validation surface is intact, including the bundle reference note, the bundle quickstart, the bundle-first helper, the pinned manual checklist, and the reusable local fixture probe."
+    Write-Host "Attached HTML target-bundle validation surface is intact, including the bundle reference note, the bundle quickstart, the compact bundle suite-surface note and helper, the bundle-first helper, the pinned manual checklist, and the reusable local fixture probe."
     exit 0
 }
 
 Write-Host ("Missing {0} attached HTML target-bundle validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, reference note, quickstart, bundle-first helper, checklist, reusable fixture probe surface, or delegated attached-HTML validation path before trusting the bundle-pinned localhost route."
+Write-Host "Repair the missing guide, reference note, quickstart, compact suite-surface note or helper, bundle-first helper, checklist, reusable fixture probe surface, or delegated attached-HTML validation path before trusting the bundle-pinned localhost route."
 exit 1
