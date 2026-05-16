@@ -55,7 +55,7 @@ From there, prefer one of these narrower follow-ups before reopening the wrapper
 - `show_google_issue3_top_level_attached_html_quickstart.ps1`
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1`
 - `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
-- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quICKSTART.ps1`
+- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`
 - `show_google_issue3_replay_route_shortcut_entrypoint.ps1`
