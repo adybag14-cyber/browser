@@ -321,9 +321,21 @@ function Get-TargetValidationRouting {
         "google-safety-centre" {
             return [ordered]@{
                 change_area = if ($IsGoogleStyle) { "google-attached-html" } else { "attached-html" }
-                summary = "Start with the Google-style attached HTML flow so the saved page stays on the issue #3 localhost-first ladder before manual replay."
-                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
-                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
+                summary = if ($IsGoogleStyle) {
+                    "Start with the Google-style attached HTML flow so the saved page stays on the issue #3 localhost-first ladder before manual replay."
+                } else {
+                    "Start with the general attached HTML flow so the content-heavy Google-branded page stays on the broader localhost replay path before manual follow-up."
+                }
+                first_step = if ($IsGoogleStyle) {
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
+                } else {
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
+                }
+                follow_up = if ($IsGoogleStyle) {
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
+                } else {
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
+                }
             }
         }
         "anthropic-job-application" {
@@ -376,17 +388,21 @@ function Get-BundlePinnedValidationCommands {
 
     $resolvedInputPath = @($resolvedRows | ForEach-Object { $_.path })
     $inputPathArguments = Convert-ToPowerShellArgumentList -Values $resolvedInputPath
-    $googleTarget = $resolvedRows | Where-Object { $_.name -eq "google-safety-centre" } | Select-Object -First 1
-    $preferredTarget = if ($googleTarget) { $googleTarget } else { $resolvedRows | Select-Object -First 1 }
+    $googleStyleTarget = @(
+        $resolvedRows |
+            Where-Object { $_.is_google_style } |
+            Sort-Object @{ Expression = { $_.google_style_score }; Descending = $true }, @{ Expression = { $_.path } }
+    ) | Select-Object -First 1
+    $preferredTarget = if ($googleStyleTarget) { $googleStyleTarget } else { $resolvedRows | Select-Object -First 1 }
     $preferredInitialPageArgument = Convert-ToSingleQuotedPowerShellArgument -Value $preferredTarget.path
 
-    if ($googleTarget) {
+    if ($googleStyleTarget) {
         return [ordered]@{
             validation_profile = "google-attached-html"
             locked_input_count = $resolvedInputPath.Count
             preferred_initial_page = $preferredTarget.path
             preferred_initial_page_display_path = $preferredTarget.display_path
-            summary = "Keep the current compatibility bundle locked into the Google-style attached HTML route, with the Google Safety Centre page pinned first for the issue #3 localhost-first follow-up."
+            summary = "Keep the current compatibility bundle locked into the Google-style attached HTML route, with the strongest Google-style page pinned first for the issue #3 localhost-first follow-up."
             surface_check = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
             asset_closure = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle -InputPath $inputPathArguments"
             flow = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument"
@@ -414,15 +430,19 @@ function Get-OverallBundleRecommendation {
     )
 
     $bundlePinnedCommands = Get-BundlePinnedValidationCommands -ResultRows $ResultRows
-    $googleTarget = $ResultRows | Where-Object { $_.name -eq "google-safety-centre" -and $_.status -eq "found" } | Select-Object -First 1
-    if ($googleTarget) {
+    $googleStyleTarget = @(
+        $ResultRows |
+            Where-Object { $_.status -eq "found" -and $_.is_google_style } |
+            Sort-Object @{ Expression = { $_.google_style_score }; Descending = $true }, @{ Expression = { $_.path } }
+    ) | Select-Object -First 1
+    if ($googleStyleTarget) {
         return [ordered]@{
-            preferred_initial_page = $googleTarget.path
-            preferred_initial_page_display_path = $googleTarget.display_path
-            first_change_area = $googleTarget.route_change_area
-            first_step = $googleTarget.bounded_first_step
-            follow_up = $googleTarget.follow_up
-            summary = "Keep the Google-style target first so the bundle stays aligned with the issue #3 localhost-first follow-up before the broader attached-page replay."
+            preferred_initial_page = $googleStyleTarget.path
+            preferred_initial_page_display_path = $googleStyleTarget.display_path
+            first_change_area = $googleStyleTarget.route_change_area
+            first_step = $googleStyleTarget.bounded_first_step
+            follow_up = $googleStyleTarget.follow_up
+            summary = "Keep the strongest Google-style target first so the bundle stays aligned with the issue #3 localhost-first follow-up before the broader attached-page replay."
             bundle_validation_profile = $bundlePinnedCommands.validation_profile
             bundle_locked_input_count = $bundlePinnedCommands.locked_input_count
             bundle_surface_check = $bundlePinnedCommands.surface_check
