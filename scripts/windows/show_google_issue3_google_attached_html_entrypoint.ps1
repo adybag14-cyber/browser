@@ -178,6 +178,7 @@ $entrypoint = [ordered]@{
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
+    google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
@@ -190,7 +191,7 @@ $entrypoint = [ordered]@{
         'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between replay shortcuts, replay route, the next-step matrix, the attached bundle branch, or the safe-route helpers.',
         'Use replay_shortcuts after the shortcut entrypoint when the route is already known to stay inside issue #3 and no pinned bundle inputs or saved summary need to stay visible first.',
         'Use suite_router_next_steps when you still want the compact start-point matrix after re-entering from the issue-specific attached-page route.',
-        'Keep the quickstart, suite-router bridge, suite-catalog guide, Google attached-html validation-flow guide, and validation-chain notes nearby when you want the written route beside these commands.'
+        'Keep the quickstart, suite-router bridge, suite-catalog guide, issue-specific Google attached-html entrypoint guide, Google attached-html validation-flow guide, and validation-chain notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -258,6 +259,7 @@ Write-Host ''
 Write-Host (("Quickstart note:              {0}") -f $entrypoint.quickstart_note_path)
 Write-Host (("Suite-router bridge:          {0}") -f $entrypoint.suite_router_bridge_note_path)
 Write-Host (("Suite-catalog guide:          {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
+Write-Host (("Google attached-html note:    {0}") -f $entrypoint.google_attached_html_entrypoint_note_path)
 Write-Host (("Google attached-html flow:    {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
 Write-Host (("Validation chain:             {0}") -f $entrypoint.validation_chain_note_path)
 Write-Host ''
