@@ -166,7 +166,7 @@ chosen helper.
 - `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`: use this
   when the compact top-level attached-page route and the suite-catalog-side
   bridge should stay visible together before the replay narrows again.
-- `show_google_issue3_top_LEVEL_shortcut_first_entrypoint.ps1`: use this when
+- `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`: use this when
   the top-level shortcut-first bridge should stay visible before the narrower
   attached-page shortcut, replay-route, or replay-shortcuts surfaces take over.
 - `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`:
