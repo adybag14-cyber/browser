@@ -6,17 +6,19 @@ Keep these nearby when the route may still reopen from a broader validation surf
 
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 
-Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, and keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up.
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up, and keep the top-level attached-html notes close when the replay is already narrowing from the top-level route before it commits to the pinned bundle lane.
 
 ## Goal
 
 Start from the dedicated suite-surface helper when the current replay is already near `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` and you want the bundle surface, the broader attached-page suite surfaces, the broader attached-page flow helper, and the dedicated Google-shaped attached-page flow helper visible in one compact place before the replay narrows into bundle-only execution.
 
-If the route is still reopening from the suite-catalog side first, keep the suite-catalog guide and the suite-catalog attached-page bridge visible long enough to confirm that the pinned bundle lane is still the right next branch before this narrower suite-surface helper takes over.
+If the route is still reopening from the suite-catalog side first, keep the suite-catalog guide and the suite-catalog attached-page bridge visible long enough to confirm that the pinned bundle lane is still the right next branch before this narrower suite-surface helper takes over. If the route is already reopening from the top-level attached-html helpers, keep the compact top-level quickstart and the broader top-level bridge visible long enough to confirm that the replay should stay on the pinned bundle lane before this suite-surface helper takes over.
 
 ## Read-first commands
 
@@ -58,6 +60,24 @@ Use that route when:
 - you want the suite-catalog guide, the suite-catalog attached-page bridge, and the dedicated bundle suite-surface helper printed in one truthful order before bundle-only execution begins
 - the replay may still widen back into the broader attached-page or Google-shaped attached-page ladders if the pinned three-page bundle is no longer the right next branch
 
+## Top-level attached-html re-entry
+
+If the replay is already reopening from the top-level attached-html route and the known three-page compatibility bundle now looks like the most likely next branch, keep the top-level quickstart and the broader top-level bridge visible long enough to hand off into the bundle-focused suite surface before the narrower bundle-first helper takes over:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
+```
+
+Use that route when:
+
+- the replay already narrowed through the top-level attached-html quickstart or bridge
+- you want the compact top-level route and the broader top-level bridge kept visible beside the dedicated bundle suite surface before the replay collapses into the narrower bundle-first helper
+- explicit bundle paths are already pinned and should stay attached to the top-level helper chain while the replay decides whether to stay on the bundle lane or widen back into the broader attached-page flow helpers
+
 ## Use the dedicated helper first
 
 Prefer the dedicated suite-surface helper first when you want the smallest issue `#3` command surface that still keeps the bundle lane connected to the broader attached-page follow-up ladders:
@@ -91,6 +111,8 @@ If the replay already carries a non-default checkout, a saved summary, or pinned
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -100,12 +122,14 @@ Use that context-preserving form when:
 
 - `LIGHTPANDA_REPO_ROOT` already points at a non-default checkout
 - `SummaryPath` already captures the current replay outputs
-- explicit `InputPath` values should stay pinned through the suite-catalog side re-entry, the dedicated bundle suite surface, the narrower bundle-first helper, and the replay-route helpers without relying on auto-discovery
+- explicit `InputPath` values should stay pinned through the top-level re-entry, the suite-catalog side re-entry, the dedicated bundle suite surface, the narrower bundle-first helper, and the replay-route helpers without relying on auto-discovery
 
 ## Practical rule
 
 Prefer the dedicated suite-surface helper when the replay is already close to the attached bundle lane and only needs a compact re-entry surface before bundle-only validation. Reopen the broader `attached-html` or `google-attached-html` suite surfaces first only when the replay still needs the wider attached-page route visible before it commits to the pinned three-page bundle.
 
 If the replay is still arriving from the suite-catalog side, reopen `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, then `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before narrowing into the bundle-first helper.
+
+If the replay is already arriving from the top-level attached-html route, reopen `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`, then `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before narrowing into the bundle-first helper.
 
 Once the bundle runner or the reusable attached-page flow helpers make the next failure state clear, widen back into the broader issue `#3` helper chain instead of keeping the replay artificially pinned to the bundle lane.
