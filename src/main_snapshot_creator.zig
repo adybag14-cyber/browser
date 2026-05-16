@@ -18,8 +18,9 @@
 
 const std = @import("std");
 const lp = @import("lightpanda");
+const compat = lp.compat;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init.Minimal) !void {
     const allocator = std.heap.c_allocator;
 
     var platform = try lp.js.Platform.init();
@@ -29,12 +30,12 @@ pub fn main() !void {
     defer snapshot.deinit();
 
     var is_stdout = true;
-    var file = std.fs.File.stdout();
-    var args = try std.process.argsWithAllocator(allocator);
+    var file = compat.fs.File.stdout();
+    var args = try init.args.iterateAllocator(allocator);
     _ = args.next(); // executable name
     if (args.next()) |n| {
         is_stdout = false;
-        file = try std.fs.cwd().createFile(n, .{});
+        file = try compat.fs.cwd().createFile(n, .{});
     }
     defer if (!is_stdout) {
         file.close();

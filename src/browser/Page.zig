@@ -17,9 +17,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../compat.zig");
 const JS = @import("js/js.zig");
 const lp = @import("lightpanda");
 const builtin = @import("builtin");
+const chromium_compat = @import("chromium_compat.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -79,7 +81,7 @@ const GlobalEventHandlersLookup = @import("webapi/global_event_handlers.zig").Lo
 
 var default_url = WebApiURL{ ._raw = "about:blank" };
 pub var default_location: Location = Location{ ._url = &default_url };
-var browse_invalidation_trace_lock: std.Thread.Mutex = .{};
+var browse_invalidation_trace_lock: lp.compat.Mutex = .{};
 
 pub const BUF_SIZE = 1024;
 
@@ -104,8 +106,8 @@ fn appendBrowseInvalidationTrace(stage: []const u8, url: []const u8, detail: []c
     defer browse_invalidation_trace_lock.unlock();
 
     const path = "tmp-browser-smoke/google-investigation-next/browse-render.log";
-    var file = std.fs.cwd().openFile(path, .{ .mode = .write_only }) catch blk: {
-        break :blk std.fs.cwd().createFile(path, .{}) catch return;
+    var file = compat.fs.cwd().openFile(path, .{ .mode = .write_only }) catch blk: {
+        break :blk compat.fs.cwd().createFile(path, .{}) catch return;
     };
     defer file.close();
 
@@ -176,7 +178,7 @@ _blob_urls: std.StringHashMapUnmanaged(*Blob) = .{},
 
 /// `load` events that'll be fired before window's `load` event.
 /// A call to `documentIsComplete` (which calls `_documentIsComplete`) resets it.
-_to_load: std.ArrayList(*Element.Html) = .{},
+_to_load: std.ArrayList(*Element.Html) = .empty,
 
 _script_manager: ScriptManager,
 
@@ -186,12 +188,12 @@ _mutation_delivery_scheduled: bool = false,
 _mutation_delivery_depth: u32 = 0,
 
 // List of active IntersectionObservers
-_intersection_observers: std.ArrayList(*IntersectionObserver) = .{},
+_intersection_observers: std.ArrayList(*IntersectionObserver) = .empty,
 _intersection_check_scheduled: bool = false,
 _intersection_delivery_scheduled: bool = false,
 
 // List of active ResizeObservers
-_resize_observers: std.ArrayList(*ResizeObserver) = .{},
+_resize_observers: std.ArrayList(*ResizeObserver) = .empty,
 _resize_check_scheduled: bool = false,
 _resize_delivery_scheduled: bool = false,
 
@@ -201,7 +203,7 @@ _slotchange_delivery_scheduled: bool = false,
 
 /// List of active PerformanceObservers.
 /// Contrary to MutationObserver and IntersectionObserver, these are regular tasks.
-_performance_observers: std.ArrayList(*PerformanceObserver) = .{},
+_performance_observers: std.ArrayList(*PerformanceObserver) = .empty,
 _performance_delivery_scheduled: bool = false,
 
 // Lookup for customized built-in elements. Maps element pointer to definition.
@@ -214,7 +216,7 @@ _customized_builtin_disconnected_callback_invoked: std.AutoHashMapUnmanaged(*Ele
 _upgrading_element: ?*Node = null,
 
 // List of custom elements that were created before their definition was registered
-_undefined_custom_elements: std.ArrayList(*Element.Html.Custom) = .{},
+_undefined_custom_elements: std.ArrayList(*Element.Html.Custom) = .empty,
 
 // for heap allocations and managing WebAPI objects
 _factory: *Factory,
@@ -267,7 +269,7 @@ parent: ?*Page,
 window: *Window,
 document: *Document,
 iframe: ?*IFrame = null,
-frames: std.ArrayList(*Page) = .{},
+frames: std.ArrayList(*Page) = .empty,
 frames_sorted: bool = true,
 
 // DOM version used to invalidate cached state of "live" collections
@@ -366,19 +368,694 @@ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void
 
     self.js = try browser.env.createContext(self);
     errdefer self.js.deinit();
+    try self.installRuntimeShims();
 
     document._page = self;
 
     if (comptime builtin.is_test == false) {
-        // HTML test runner manually calls these as necessary
-        try self.js.scheduler.add(session.browser, struct {
-            fn runIdleTasks(ctx: *anyopaque) !?u32 {
-                const b: *@import("Browser.zig") = @ptrCast(@alignCast(ctx));
-                b.runIdleTasks();
-                return 200;
-            }
-        }.runIdleTasks, 200, .{ .name = "page.runIdleTasks", .low_priority = true });
+        // V8 idle work is useful for regular interactive browsing, but on an
+        // inspector-driven CDP session it can monopolize Session.wait() long
+        // enough to starve follow-up protocol commands after navigation.
+        if (browser.env.inspector == null) {
+            // HTML test runner manually calls these as necessary
+            try self.js.scheduler.add(session.browser, struct {
+                fn runIdleTasks(ctx: *anyopaque) !?u32 {
+                    const b: *@import("Browser.zig") = @ptrCast(@alignCast(ctx));
+                    b.runIdleTasks();
+                    return 200;
+                }
+            }.runIdleTasks, 200, .{ .name = "page.runIdleTasks", .low_priority = true });
+        }
     }
+}
+
+fn installRuntimeShims(self: *Page) !void {
+    var ls: JS.Local.Scope = undefined;
+    self.js.localScope(&ls);
+    defer ls.deinit();
+
+    _ = try ls.local.exec(
+        \\(() => {
+        \\  const enqueue = (callback) => Promise.resolve().then(callback);
+        \\  const installValue = (name, value) => {
+        \\    try {
+        \\      Object.defineProperty(globalThis, name, {
+        \\        configurable: true,
+        \\        enumerable: true,
+        \\        writable: true,
+        \\        value,
+        \\      });
+        \\    } catch (_) {
+        \\      globalThis[name] = value;
+        \\    }
+        \\  };
+        \\  const installAccessor = (target, name, getter) => {
+        \\    if (!target) return false;
+        \\    try {
+        \\      Object.defineProperty(target, name, {
+        \\        configurable: true,
+        \\        enumerable: true,
+        \\        get: getter,
+        \\      });
+        \\      return true;
+        \\    } catch (_) {
+        \\      return false;
+        \\    }
+        \\  };
+        \\  const installNavigatorValue = (name, value) => {
+        \\    const getter = () => value;
+        \\    if (installAccessor(globalThis.navigator, name, getter)) return;
+        \\    const proto = globalThis.navigator ? Object.getPrototypeOf(globalThis.navigator) : null;
+        \\    if (installAccessor(proto, name, getter)) return;
+        \\    try {
+        \\      globalThis.navigator[name] = value;
+        \\    } catch (_) {}
+        \\  };
+        \\  const toAbsoluteUrl = (value) =>
+        \\    new URL(
+        \\      String(value),
+        \\      globalThis.location && globalThis.location.href ? globalThis.location.href : "http://lightpanda.invalid/",
+        \\    ).href;
+        \\  const makeDeferred = () => {
+        \\    let resolve;
+        \\    let reject;
+        \\    const promise = new Promise((res, rej) => {
+        \\      resolve = res;
+        \\      reject = rej;
+        \\    });
+        \\    return { promise, resolve, reject };
+        \\  };
+        \\
+        \\  const stores = new Map();
+        \\  const makeCache = (name) => ({
+        \\    get name() { return name; },
+        \\    add: async () => {},
+        \\    addAll: async () => {},
+        \\    put: async () => {},
+        \\    delete: async () => false,
+        \\    match: async () => null,
+        \\    matchAll: async () => [],
+        \\    keys: async () => [],
+        \\  });
+        \\
+        \\  const cacheStorage = {
+        \\    match: async () => null,
+        \\    has: async (name) => stores.has(String(name)),
+        \\    open: async (name) => {
+        \\      const key = String(name);
+        \\      let cache = stores.get(key);
+        \\      if (!cache) {
+        \\        cache = makeCache(key);
+        \\        stores.set(key, cache);
+        \\      }
+        \\      return cache;
+        \\    },
+        \\    delete: async (name) => stores.delete(String(name)),
+        \\    keys: async () => Array.from(stores.keys()),
+        \\  };
+        \\
+        \\  const defineChromeValue = (target, name, value) => {
+        \\    if (!target) return;
+        \\    try {
+        \\      Object.defineProperty(target, name, {
+        \\        configurable: true,
+        \\        enumerable: true,
+        \\        writable: true,
+        \\        value,
+        \\      });
+        \\    } catch (_) {
+        \\      try {
+        \\        target[name] = value;
+        \\      } catch (_) {}
+        \\    }
+        \\  };
+        \\  const ensureChromeSurface = () => {
+        \\    let chromeObject = globalThis.chrome;
+        \\    if (!chromeObject || typeof chromeObject !== "object") {
+        \\      chromeObject = {};
+        \\      installValue("chrome", chromeObject);
+        \\    }
+        \\    if (!chromeObject.runtime || typeof chromeObject.runtime !== "object") {
+        \\      defineChromeValue(chromeObject, "runtime", {});
+        \\    }
+        \\    if (!chromeObject.app || typeof chromeObject.app !== "object") {
+        \\      defineChromeValue(chromeObject, "app", {
+        \\        isInstalled: false,
+        \\        InstallState: {
+        \\          DISABLED: "disabled",
+        \\          INSTALLED: "installed",
+        \\          NOT_INSTALLED: "not_installed",
+        \\        },
+        \\        RunningState: {
+        \\          CANNOT_RUN: "cannot_run",
+        \\          READY_TO_RUN: "ready_to_run",
+        \\          RUNNING: "running",
+        \\        },
+        \\      });
+        \\    }
+        \\    if (!chromeObject.webstore || typeof chromeObject.webstore !== "object") {
+        \\      defineChromeValue(chromeObject, "webstore", {});
+        \\    }
+        \\    const makeChromeTiming = () => {
+        \\      const now = Date.now();
+        \\      const requestTime =
+        \\        globalThis.performance && typeof globalThis.performance.timeOrigin === "number"
+        \\          ? globalThis.performance.timeOrigin / 1000
+        \\          : now / 1000;
+        \\      const pageT =
+        \\        globalThis.performance && typeof globalThis.performance.now === "function"
+        \\          ? Math.floor(globalThis.performance.now())
+        \\          : 0;
+        \\      const firstPaintTime = requestTime + pageT / 1000;
+        \\      return {
+        \\        requestTime,
+        \\        startLoadTime: requestTime,
+        \\        commitLoadTime: requestTime,
+        \\        finishDocumentLoadTime: requestTime,
+        \\        finishLoadTime: requestTime,
+        \\        firstPaintTime,
+        \\        firstPaintAfterLoadTime: 0,
+        \\        navigationType: "Other",
+        \\        wasFetchedViaSpdy: true,
+        \\        wasNpnNegotiated: true,
+        \\        npnNegotiatedProtocol: "h3",
+        \\        wasAlternateProtocolAvailable: false,
+        \\        connectionInfo: "h3",
+        \\      };
+        \\    };
+        \\    if (typeof chromeObject.loadTimes !== "function") {
+        \\      defineChromeValue(chromeObject, "loadTimes", () => makeChromeTiming());
+        \\    }
+        \\    if (typeof chromeObject.csi !== "function") {
+        \\      defineChromeValue(chromeObject, "csi", () => ({
+        \\        startE: Date.now(),
+        \\        onloadT: Date.now(),
+        \\        pageT:
+        \\          globalThis.performance && typeof globalThis.performance.now === "function"
+        \\            ? Math.floor(globalThis.performance.now())
+        \\            : 0,
+        \\        tran: 15,
+        \\      }));
+        \\    }
+        \\  };
+        \\  ensureChromeSurface();
+        \\
+        \\  if (typeof globalThis.originAgentCluster === "undefined") {
+        \\    installValue("originAgentCluster", true);
+        \\  }
+        \\  if (typeof globalThis.credentialless === "undefined") {
+        \\    installValue("credentialless", false);
+        \\  }
+        \\  if (!globalThis.scheduler || typeof globalThis.scheduler !== "object") {
+        \\    installValue("scheduler", {
+        \\      postTask: (callback) =>
+        \\        Promise.resolve().then(() => (typeof callback === "function" ? callback() : undefined)),
+        \\      yield: () => Promise.resolve(),
+        \\    });
+        \\  }
+        \\  if (!globalThis.cookieStore || typeof globalThis.cookieStore !== "object") {
+        \\    installValue("cookieStore", {
+        \\      onchange: null,
+        \\      get: async () => null,
+        \\      getAll: async () => [],
+        \\      set: async () => {},
+        \\      delete: async () => {},
+        \\    });
+        \\  }
+        \\  if (!globalThis.sharedStorage || typeof globalThis.sharedStorage !== "object") {
+        \\    installValue("sharedStorage", {
+        \\      worklet: {},
+        \\      append: async () => {},
+        \\      clear: async () => {},
+        \\      delete: async () => {},
+        \\      set: async () => {},
+        \\      batchUpdate: async () => {},
+        \\      createWorklet: async () => ({}),
+        \\      run: async () => {},
+        \\      selectURL: async () => null,
+        \\    });
+        \\  }
+        \\  if (!globalThis.fence || typeof globalThis.fence !== "object") {
+        \\    installValue("fence", Object.create(null));
+        \\  }
+        \\
+        \\  const addEventTargetMethods = (target, getHandler) => {
+        \\    const listeners = new Map();
+        \\    target.addEventListener = (type, callback) => {
+        \\      if (typeof callback !== "function") return;
+        \\      const key = String(type);
+        \\      const bucket = listeners.get(key);
+        \\      if (bucket) {
+        \\        bucket.push(callback);
+        \\      } else {
+        \\        listeners.set(key, [callback]);
+        \\      }
+        \\    };
+        \\    target.removeEventListener = (type, callback) => {
+        \\      const key = String(type);
+        \\      const bucket = listeners.get(key);
+        \\      if (!bucket) return;
+        \\      const next = bucket.filter((entry) => entry !== callback);
+        \\      if (next.length === 0) {
+        \\        listeners.delete(key);
+        \\      } else {
+        \\        listeners.set(key, next);
+        \\      }
+        \\    };
+        \\    target._getShimListeners = (type) => {
+        \\      const bucket = listeners.get(String(type));
+        \\      return bucket ? [...bucket] : [];
+        \\    };
+        \\    target._dispatchShimEvent = (type, event) => {
+        \\      enqueue(() => {
+        \\        const handler = getHandler(type);
+        \\        if (typeof handler === "function") {
+        \\          handler.call(target, event);
+        \\        }
+        \\        const bucket = listeners.get(String(type));
+        \\        if (!bucket) return;
+        \\        for (const callback of [...bucket]) {
+        \\          callback.call(target, event);
+        \\        }
+        \\      });
+        \\    };
+        \\  };
+        \\
+        \\  const executeWorkerSource = async (url, workerGlobal) => {
+        \\    const response = await fetch(url);
+        \\    const source = await response.text();
+        \\    const evaluator = new Function(
+        \\      "self",
+        \\      "globalThis",
+        \\      "postMessage",
+        \\      "fetch",
+        \\      "MessageChannel",
+        \\      "MessagePort",
+        \\      "setTimeout",
+        \\      "clearTimeout",
+        \\      "queueMicrotask",
+        \\      "console",
+        \\      `${source}\n//# sourceURL=${url}`,
+        \\    );
+        \\    evaluator(
+        \\      workerGlobal,
+        \\      workerGlobal,
+        \\      workerGlobal.postMessage.bind(workerGlobal),
+        \\      fetch,
+        \\      MessageChannel,
+        \\      MessagePort,
+        \\      setTimeout,
+        \\      clearTimeout,
+        \\      queueMicrotask,
+        \\      console,
+        \\    );
+        \\  };
+        \\
+        \\  const createWorkerGlobal = (host) => {
+        \\    const workerGlobal = {
+        \\      onmessage: null,
+        \\      onerror: null,
+        \\      close() {
+        \\        host.terminate();
+        \\      },
+        \\      postMessage(data) {
+        \\        if (host._terminated) return;
+        \\        host._dispatchShimEvent("message", {
+        \\          data,
+        \\          type: "message",
+        \\          target: host,
+        \\          currentTarget: host,
+        \\        });
+        \\      },
+        \\    };
+        \\    addEventTargetMethods(workerGlobal, (type) => {
+        \\      if (type === "message") return workerGlobal.onmessage;
+        \\      if (type === "error") return workerGlobal.onerror;
+        \\      if (type === "connect") return workerGlobal.onconnect;
+        \\      return null;
+        \\    });
+        \\    workerGlobal.self = workerGlobal;
+        \\    workerGlobal.globalThis = workerGlobal;
+        \\    return workerGlobal;
+        \\  };
+        \\
+        \\  class WorkerShim {
+        \\    constructor(url) {
+        \\      this.onmessage = null;
+        \\      this.onerror = null;
+        \\      this._ready = false;
+        \\      this._terminated = false;
+        \\      this._queuedMessages = [];
+        \\      this._workerGlobal = createWorkerGlobal(this);
+        \\      addEventTargetMethods(this, (type) => {
+        \\        if (type === "message") return this.onmessage;
+        \\        if (type === "error") return this.onerror;
+        \\        return null;
+        \\      });
+        \\      executeWorkerSource(String(url), this._workerGlobal).then(
+        \\        () => {
+        \\          this._ready = true;
+        \\          const queued = this._queuedMessages.splice(0);
+        \\          for (const data of queued) {
+        \\            this._dispatchToWorker(data);
+        \\          }
+        \\        },
+        \\        (error) => {
+        \\          this._dispatchShimEvent("error", {
+        \\            error,
+        \\            message: error && error.message ? error.message : String(error),
+        \\            type: "error",
+        \\            target: this,
+        \\            currentTarget: this,
+        \\          });
+        \\        },
+        \\      );
+        \\    }
+        \\
+        \\    _dispatchToWorker(data) {
+        \\      if (this._terminated) return;
+        \\      this._workerGlobal._dispatchShimEvent("message", {
+        \\        data,
+        \\        type: "message",
+        \\        target: this._workerGlobal,
+        \\        currentTarget: this._workerGlobal,
+        \\      });
+        \\    }
+        \\
+        \\    postMessage(data) {
+        \\      if (this._terminated) return;
+        \\      if (!this._ready) {
+        \\        this._queuedMessages.push(data);
+        \\        return;
+        \\      }
+        \\      this._dispatchToWorker(data);
+        \\    }
+        \\
+        \\    terminate() {
+        \\      this._terminated = true;
+        \\      this._queuedMessages.length = 0;
+        \\    }
+        \\  }
+        \\
+        \\  const sharedWorkerEngines = new Map();
+        \\  const createSharedWorkerEngine = (url, name) => {
+        \\    const workerGlobal = createWorkerGlobal({
+        \\      terminate() {},
+        \\      _terminated: false,
+        \\      _dispatchShimEvent() {},
+        \\    });
+        \\    const engine = {
+        \\      ready: false,
+        \\      pendingPorts: [],
+        \\      attach(port, onConnected) {
+        \\        if (this.ready) {
+        \\          this.dispatchConnect(port, onConnected);
+        \\        } else {
+        \\          this.pendingPorts.push({ port, onConnected });
+        \\        }
+        \\      },
+        \\      dispatchConnect(port, onConnected) {
+        \\        const event = {
+        \\          ports: [port],
+        \\          type: "connect",
+        \\          target: workerGlobal,
+        \\          currentTarget: workerGlobal,
+        \\        };
+        \\        if (typeof workerGlobal.onconnect === "function") {
+        \\          workerGlobal.onconnect.call(workerGlobal, event);
+        \\        }
+        \\        if (typeof onConnected === "function") {
+        \\          onConnected();
+        \\        }
+        \\      },
+        \\    };
+        \\    executeWorkerSource(url, workerGlobal).then(
+        \\      () => {
+        \\        engine.ready = true;
+        \\        const pending = engine.pendingPorts.splice(0);
+        \\        for (const entry of pending) {
+        \\          engine.dispatchConnect(entry.port, entry.onConnected);
+        \\        }
+        \\      },
+        \\      (error) => {
+        \\        console.error(error);
+        \\      },
+        \\    );
+        \\    sharedWorkerEngines.set(`${url}::${name}`, engine);
+        \\    return engine;
+        \\  };
+        \\
+        \\  class SharedWorkerShim {
+        \\    constructor(url, options) {
+        \\      const name =
+        \\        typeof options === "string"
+        \\          ? options
+        \\          : options && typeof options.name === "string"
+        \\            ? options.name
+        \\            : "";
+        \\      const key = `${String(url)}::${name}`;
+        \\      const channel = new MessageChannel();
+        \\      this.port = channel.port1;
+        \\      if (typeof this.port.start === "function") {
+        \\        this.port.start();
+        \\      }
+        \\      const originalPostMessage = this.port.postMessage.bind(this.port);
+        \\      const queuedMessages = [];
+        \\      let connected = false;
+        \\      this.port.postMessage = (data) => {
+        \\        if (!connected) {
+        \\          queuedMessages.push(data);
+        \\          return;
+        \\        }
+        \\        return originalPostMessage(data);
+        \\      };
+        \\      const engine = sharedWorkerEngines.get(key) || createSharedWorkerEngine(String(url), name);
+        \\      engine.attach(channel.port2, () => {
+        \\        connected = true;
+        \\        const pending = queuedMessages.splice(0);
+        \\        for (const data of pending) {
+        \\          originalPostMessage(data);
+        \\        }
+        \\      });
+        \\    }
+        \\  }
+        \\
+        \\  class ServiceWorkerShim {
+        \\    constructor(scriptURL, workerGlobal) {
+        \\      this.scriptURL = scriptURL;
+        \\      this.state = "parsed";
+        \\      this.onmessage = null;
+        \\      this.onerror = null;
+        \\      this.onstatechange = null;
+        \\      this._workerGlobal = workerGlobal;
+        \\      addEventTargetMethods(this, (type) => {
+        \\        if (type === "message") return this.onmessage;
+        \\        if (type === "error") return this.onerror;
+        \\        if (type === "statechange") return this.onstatechange;
+        \\        return null;
+        \\      });
+        \\    }
+        \\
+        \\    postMessage(data) {
+        \\      this._workerGlobal._dispatchShimEvent("message", {
+        \\        data,
+        \\        type: "message",
+        \\        target: this._workerGlobal,
+        \\        currentTarget: this._workerGlobal,
+        \\      });
+        \\    }
+        \\  }
+        \\
+        \\  class ServiceWorkerRegistrationShim {
+        \\    constructor(scope, key) {
+        \\      this.scope = scope;
+        \\      this.installing = null;
+        \\      this.waiting = null;
+        \\      this.active = null;
+        \\      this.onupdatefound = null;
+        \\      this.updateViaCache = "imports";
+        \\      this.navigationPreload = {
+        \\        enable: async () => {},
+        \\        disable: async () => {},
+        \\        setHeaderValue: async () => {},
+        \\        getState: async () => ({ enabled: false, headerValue: null }),
+        \\      };
+        \\      this._key = key;
+        \\    }
+        \\
+        \\    async unregister() {
+        \\      serviceWorkerRegistrations.delete(this._key);
+        \\      if (serviceWorkerContainer.controller === this.active) {
+        \\        serviceWorkerContainer.controller = null;
+        \\        serviceWorkerContainer._dispatchShimEvent("controllerchange", {
+        \\          type: "controllerchange",
+        \\          target: serviceWorkerContainer,
+        \\          currentTarget: serviceWorkerContainer,
+        \\        });
+        \\      }
+        \\      if (serviceWorkerRegistrations.size === 0) {
+        \\        serviceWorkerReadyDeferred = makeDeferred();
+        \\      }
+        \\      return true;
+        \\    }
+        \\
+        \\    async update() {
+        \\      return this;
+        \\    }
+        \\  }
+        \\
+        \\  const serviceWorkerRegistrations = new Map();
+        \\  let serviceWorkerReadyDeferred = makeDeferred();
+        \\  const serviceWorkerContainer = {
+        \\    controller: null,
+        \\    oncontrollerchange: null,
+        \\    onmessage: null,
+        \\    get ready() {
+        \\      return serviceWorkerReadyDeferred.promise;
+        \\    },
+        \\    async register(scriptURL, options) {
+        \\      const scriptHref = toAbsoluteUrl(scriptURL);
+        \\      const scope =
+        \\        options && options.scope
+        \\          ? toAbsoluteUrl(options.scope)
+        \\          : new URL("./", scriptHref).href;
+        \\      const key = `${scope}::${scriptHref}`;
+        \\      const existing = serviceWorkerRegistrations.get(key);
+        \\      if (existing) {
+        \\        if (existing.active) {
+        \\          serviceWorkerReadyDeferred.resolve(existing);
+        \\        }
+        \\        return existing;
+        \\      }
+        \\
+        \\      const workerHost = {
+        \\        _terminated: false,
+        \\        terminate() {},
+        \\        _dispatchShimEvent(type, event) {
+        \\          serviceWorkerContainer._dispatchShimEvent(type, {
+        \\            ...event,
+        \\            target: serviceWorkerContainer,
+        \\            currentTarget: serviceWorkerContainer,
+        \\          });
+        \\        },
+        \\      };
+        \\      const workerGlobal = createWorkerGlobal(workerHost);
+        \\      const worker = new ServiceWorkerShim(scriptHref, workerGlobal);
+        \\      const registration = new ServiceWorkerRegistrationShim(scope, key);
+        \\      const setWorkerState = (state) => {
+        \\        if (worker.state === state) return;
+        \\        worker.state = state;
+        \\        worker._dispatchShimEvent("statechange", {
+        \\          type: "statechange",
+        \\          target: worker,
+        \\          currentTarget: worker,
+        \\        });
+        \\      };
+        \\      const dispatchLifecycleEvent = async (type) => {
+        \\        const waits = [];
+        \\        const event = {
+        \\          type,
+        \\          target: workerGlobal,
+        \\          currentTarget: workerGlobal,
+        \\          waitUntil(promise) {
+        \\            waits.push(Promise.resolve(promise));
+        \\          },
+        \\        };
+        \\        const handler = workerGlobal[`on${type}`];
+        \\        if (typeof handler === "function") {
+        \\          handler.call(workerGlobal, event);
+        \\        }
+        \\        for (const callback of workerGlobal._getShimListeners(type)) {
+        \\          callback.call(workerGlobal, event);
+        \\        }
+        \\        await Promise.all(waits);
+        \\      };
+        \\
+        \\      workerGlobal.registration = registration;
+        \\      workerGlobal.location = new URL(scriptHref);
+        \\      workerGlobal.skipWaiting = async () => {
+        \\        registration.waiting = null;
+        \\        registration.active = worker;
+        \\        setWorkerState("activating");
+        \\      };
+        \\      workerGlobal.clients = {
+        \\        claim: async () => {
+        \\          if (serviceWorkerContainer.controller === worker) return;
+        \\          serviceWorkerContainer.controller = worker;
+        \\          serviceWorkerContainer._dispatchShimEvent("controllerchange", {
+        \\            type: "controllerchange",
+        \\            target: serviceWorkerContainer,
+        \\            currentTarget: serviceWorkerContainer,
+        \\          });
+        \\        },
+        \\      };
+        \\
+        \\      registration.installing = worker;
+        \\      serviceWorkerRegistrations.set(key, registration);
+        \\      try {
+        \\        setWorkerState("installing");
+        \\        if (typeof registration.onupdatefound === "function") {
+        \\          registration.onupdatefound.call(registration, {
+        \\            type: "updatefound",
+        \\            target: registration,
+        \\            currentTarget: registration,
+        \\          });
+        \\        }
+        \\        await executeWorkerSource(scriptHref, workerGlobal);
+        \\        await dispatchLifecycleEvent("install");
+        \\        registration.installing = null;
+        \\        registration.waiting = null;
+        \\        registration.active = worker;
+        \\        setWorkerState("activating");
+        \\        await dispatchLifecycleEvent("activate");
+        \\        setWorkerState("activated");
+        \\        serviceWorkerReadyDeferred.resolve(registration);
+        \\        return registration;
+        \\      } catch (error) {
+        \\        serviceWorkerRegistrations.delete(key);
+        \\        registration.installing = null;
+        \\        registration.waiting = null;
+        \\        registration.active = null;
+        \\        setWorkerState("redundant");
+        \\        throw error;
+        \\      }
+        \\    },
+        \\    async getRegistration(url) {
+        \\      const candidate =
+        \\        url != null
+        \\          ? toAbsoluteUrl(url)
+        \\          : globalThis.location && globalThis.location.href
+        \\            ? globalThis.location.href
+        \\            : "";
+        \\      for (const registration of serviceWorkerRegistrations.values()) {
+        \\        if (!candidate || candidate.startsWith(registration.scope)) {
+        \\          return registration;
+        \\        }
+        \\      }
+        \\      return null;
+        \\    },
+        \\    async getRegistrations() {
+        \\      return Array.from(serviceWorkerRegistrations.values());
+        \\    },
+        \\    startMessages() {},
+        \\  };
+        \\  addEventTargetMethods(serviceWorkerContainer, (type) => {
+        \\    if (type === "controllerchange") return serviceWorkerContainer.oncontrollerchange;
+        \\    if (type === "message") return serviceWorkerContainer.onmessage;
+        \\    return null;
+        \\  });
+        \\
+        \\  installValue("caches", cacheStorage);
+        \\  installNavigatorValue("caches", cacheStorage);
+        \\  installValue("Worker", WorkerShim);
+        \\  installValue("SharedWorker", SharedWorkerShim);
+        \\  installValue("ServiceWorker", ServiceWorkerShim);
+        \\  installValue("ServiceWorkerRegistration", ServiceWorkerRegistrationShim);
+        \\  installNavigatorValue("serviceWorker", serviceWorkerContainer);
+        \\})();
+    ,
+        "installRuntimeShims",
+    );
 }
 
 pub fn deinit(self: *Page, abort_http: bool) void {
@@ -392,7 +1069,7 @@ pub fn deinit(self: *Page, abort_http: bool) void {
         // Uncomment if you want slab statistics to print.
         // const stats = self._factory._slab.getStats(self.arena) catch unreachable;
         // var buffer: [256]u8 = undefined;
-        // var stream = std.fs.File.stderr().writer(&buffer).interface;
+        // var stream = compat.fs.File.stderr().writer(&buffer).interface;
         // stats.print(&stream) catch unreachable;
     }
 
@@ -476,17 +1153,84 @@ pub const RequestHeaderPolicy = struct {
     authorization_source_url: ?[:0]const u8 = null,
 };
 
-fn addChromeNavigationHeaders(headers: *Http.Headers) !void {
+fn chromeFetchSite(previous_url: [:0]const u8, request_url: [:0]const u8, reason: NavigateReason) []const u8 {
+    if (reason == .address_bar) {
+        return "none";
+    }
+
+    const previous_protocol = URL.getProtocol(previous_url);
+    const request_protocol = URL.getProtocol(request_url);
+    const previous_host = URL.getHost(previous_url);
+    const request_host = URL.getHost(request_url);
+
+    if (previous_protocol.len == 0 or request_protocol.len == 0 or
+        previous_host.len == 0 or request_host.len == 0)
+    {
+        return "none";
+    }
+
+    if (std.ascii.eqlIgnoreCase(previous_protocol, request_protocol) and
+        std.ascii.eqlIgnoreCase(previous_host, request_host))
+    {
+        return "same-origin";
+    }
+
+    return "cross-site";
+}
+
+fn addChromeNavigationHeaders(
+    headers: *Http.Headers,
+    previous_url: [:0]const u8,
+    request_url: [:0]const u8,
+    reason: NavigateReason,
+) !void {
+    const fetch_site = chromeFetchSite(previous_url, request_url, reason);
+    const sec_fetch_site = if (std.mem.eql(u8, fetch_site, "same-origin"))
+        "Sec-Fetch-Site: same-origin"
+    else if (std.mem.eql(u8, fetch_site, "cross-site"))
+        "Sec-Fetch-Site: cross-site"
+    else
+        "Sec-Fetch-Site: none";
+
     try headers.add("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
     try headers.add("Accept-Language: en-GB,en-US;q=0.9,en;q=0.8");
-    try headers.add("Sec-CH-UA: \"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\"");
+    try headers.add("Sec-CH-UA: " ++ chromium_compat.sec_ch_ua);
     try headers.add("Sec-CH-UA-Mobile: ?0");
     try headers.add("Sec-CH-UA-Platform: \"Windows\"");
-    try headers.add("Sec-Fetch-Site: none");
+    if (!std.mem.eql(u8, fetch_site, "none")) {
+        try headers.add("Downlink: 1.55");
+        try headers.add("RTT: 0");
+        try headers.add("Sec-CH-Prefers-Color-Scheme: light");
+        try headers.add("Sec-CH-UA-Arch: \"x86\"");
+        try headers.add("Sec-CH-UA-Bitness: \"64\"");
+        try headers.add("Sec-CH-UA-Form-Factors: \"Desktop\"");
+        try headers.add("Sec-CH-UA-Full-Version: " ++ chromium_compat.sec_ch_ua_full_version);
+        try headers.add("Sec-CH-UA-Full-Version-List: " ++ chromium_compat.sec_ch_ua_full_version_list);
+        try headers.add("Sec-CH-UA-Model: \"\"");
+        try headers.add("Sec-CH-UA-Platform-Version: " ++ chromium_compat.sec_ch_ua_platform_version);
+        try headers.add("Sec-CH-UA-WoW64: ?0");
+    }
+    try headers.add(sec_fetch_site);
     try headers.add("Sec-Fetch-Mode: navigate");
-    try headers.add("Sec-Fetch-User: ?1");
+    if (navigationHasUserActivation(reason)) {
+        try headers.add("Sec-Fetch-User: ?1");
+    }
     try headers.add("Sec-Fetch-Dest: document");
     try headers.add("Upgrade-Insecure-Requests: 1");
+}
+
+fn navigationHasUserActivation(reason: NavigateReason) bool {
+    return switch (reason) {
+        .address_bar, .anchor, .form => true,
+        .script, .history, .navigation, .initialFrameNavigation => false,
+    };
+}
+
+fn navigationSendsReferer(reason: NavigateReason) bool {
+    return switch (reason) {
+        .anchor, .form, .script, .navigation => true,
+        .address_bar, .history, .initialFrameNavigation => false,
+    };
 }
 
 pub fn headersForRequestWithPolicy(
@@ -511,7 +1255,7 @@ pub fn headersForRequestWithPolicy(
             if (!std.mem.startsWith(u8, override_url, "http")) {
                 break :blk "";
             }
-            const override_url_z = try temp.dupeZ(u8, override_url);
+            const override_url_z = try temp.dupeSentinel(u8, override_url, 0);
             const referer_value = try refererValueForUrl(temp, override_url_z);
             break :blk try std.mem.concatWithSentinel(temp, u8, &.{ "Referer: ", referer_value }, 0);
         }
@@ -592,6 +1336,14 @@ fn refererValueForUrl(allocator: Allocator, url: [:0]const u8) ![]const u8 {
     return referer;
 }
 
+fn originValueForUrl(allocator: Allocator, url: [:0]const u8) !?[]const u8 {
+    if (!std.mem.startsWith(u8, url, "http://") and !std.mem.startsWith(u8, url, "https://")) {
+        return null;
+    }
+
+    return URL.getOrigin(allocator, url);
+}
+
 const GetArenaOpts = struct {
     debug: []const u8,
 };
@@ -626,6 +1378,17 @@ pub fn isSameOrigin(self: *const Page, url: [:0]const u8) !bool {
     const current_origin = (try URL.getOrigin(self.call_arena, self.url)) orelse return false;
     const target_origin = (try URL.getOrigin(self.call_arena, url)) orelse return false;
     return std.mem.eql(u8, current_origin, target_origin);
+}
+
+pub fn resolveBlobUrl(self: *const Page, url: []const u8) ?*Blob {
+    var current: ?*const Page = self;
+    while (current) |page| {
+        if (page._blob_urls.get(url)) |blob| {
+            return blob;
+        }
+        current = page.parent;
+    }
+    return null;
 }
 
 pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !void {
@@ -692,7 +1455,8 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
 
     var http_client = session.browser.http_client;
 
-    self.url = try self.arena.dupeZ(u8, request_url);
+    const previous_url = opts.source_url orelse self.url;
+    self.url = try self.arena.dupeSentinel(u8, request_url, 0);
 
     self._req_id = req_id;
     self._navigated_options = .{
@@ -702,7 +1466,18 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
     };
 
     var headers = try http_client.newHeaders();
-    try addChromeNavigationHeaders(&headers);
+    try addChromeNavigationHeaders(&headers, previous_url, self.url, opts.reason);
+    if (navigationSendsReferer(opts.reason) and std.mem.startsWith(u8, previous_url, "http")) {
+        const referer_value = try refererValueForUrl(self.arena, previous_url);
+        const referer_header = try std.mem.concatWithSentinel(self.arena, u8, &.{ "Referer: ", referer_value }, 0);
+        try headers.add(referer_header);
+    }
+    if (opts.method != .GET and std.mem.startsWith(u8, previous_url, "http")) {
+        if (try originValueForUrl(self.arena, previous_url)) |origin_value| {
+            const origin_header = try std.mem.concatWithSentinel(self.arena, u8, &.{ "Origin: ", origin_value }, 0);
+            try headers.add(origin_header);
+        }
+    }
     if (opts.header) |hdr| {
         try headers.add(hdr);
     }
@@ -747,19 +1522,24 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
 }
 
 pub fn navigateOwned(self: *Page, request_url: []const u8, opts: NavigateOpts) !void {
-    const owned_url = try self.arena.dupeZ(u8, request_url);
+    const owned_url = try self.arena.dupeSentinel(u8, request_url, 0);
     const owned_body = if (opts.body) |body|
         try self.arena.dupe(u8, body)
     else
         null;
     const owned_header = if (opts.header) |header|
-        try self.arena.dupeZ(u8, header)
+        try self.arena.dupeSentinel(u8, header, 0)
+    else
+        null;
+    const owned_source_url = if (opts.source_url) |source_url|
+        try self.arena.dupeSentinel(u8, source_url, 0)
     else
         null;
 
     var owned_opts = opts;
     owned_opts.body = owned_body;
     owned_opts.header = owned_header;
+    owned_opts.source_url = owned_source_url;
     return self.navigate(owned_url, owned_opts);
 }
 
@@ -780,6 +1560,12 @@ pub fn scheduleNavigation(self: *Page, request_url: []const u8, opts: NavigateOp
 // might change inside the function. So the code should be explicit about the
 // page that it's acting on.
 fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url: []const u8, opts: NavigateOpts, nt: Navigation) !void {
+    var queued_opts = opts;
+    queued_opts.source_url = if (opts.source_url) |source_url|
+        try arena.dupeSentinel(u8, source_url, 0)
+    else
+        try arena.dupeSentinel(u8, originator.url, 0);
+
     const resolved_url, const is_about_blank = blk: {
         if (std.mem.eql(u8, request_url, "about:blank")) {
             // navigate will handle this special case
@@ -805,7 +1591,7 @@ fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url:
 
     const session = target._session;
     if (!opts.force and URL.eqlDocument(target.url, resolved_url)) {
-        target.url = try target.arena.dupeZ(u8, resolved_url);
+        target.url = try target.arena.dupeSentinel(u8, resolved_url, 0);
         target.window._location = try Location.init(target.url, target);
         target.document._location = target.window._location;
         try target.window.syncStorageBucket();
@@ -838,7 +1624,7 @@ fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url:
 
     const qn = try arena.create(QueuedNavigation);
     qn.* = .{
-        .opts = opts,
+        .opts = queued_opts,
         .arena = arena,
         .url = resolved_url,
         .is_about_blank = is_about_blank,
@@ -1054,7 +1840,7 @@ fn pageHeaderDoneCallback(transfer: *Http.Transfer) !bool {
 
     // would be different than self.url in the case of a redirect
     const header = &transfer.response_header.?;
-    self.url = try self.arena.dupeZ(u8, std.mem.span(header.url));
+    self.url = try self.arena.dupeSentinel(u8, std.mem.span(header.url), 0);
 
     self.window._location = try Location.init(self.url, self);
     self.document._location = self.window._location;
@@ -1198,7 +1984,7 @@ fn pageDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
         }
 
         switch (mime.content_type) {
-            .text_html => self._parse_state = .{ .html = .{} },
+            .text_html => self._parse_state = .{ .html = .empty },
             .application_json, .text_javascript, .text_css, .text_plain => {
                 var arr: std.ArrayList(u8) = .empty;
                 try arr.appendSlice(self.arena, "<html><head><meta charset=\"utf-8\"></head><body><pre>");
@@ -3781,6 +4567,7 @@ pub const NavigateOpts = struct {
     method: Http.Method = .GET,
     body: ?[]const u8 = null,
     header: ?[:0]const u8 = null,
+    source_url: ?[:0]const u8 = null,
     force: bool = false,
     kind: NavigationKind = .{ .push = null },
 };
@@ -4062,7 +4849,7 @@ pub fn ensureElementLayoutBoxes(self: *Page) void {
             if (std.mem.indexOf(u8, self.url, "consent.google.com") != null and
                 (std.mem.indexOf(u8, region.url, "/privacy") != null or std.mem.indexOf(u8, region.url, "/terms") != null))
             {
-                const file = std.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
+                const file = compat.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
                     .truncate = false,
                 }) catch null;
                 if (file) |f| {
@@ -4083,7 +4870,7 @@ pub fn ensureElementLayoutBoxes(self: *Page) void {
         if (std.mem.indexOf(u8, self.url, "consent.google.com") != null) {
             const href = element.getAttributeSafe(comptime .wrap("href")) orelse "";
             if (std.mem.indexOf(u8, href, "/privacy") != null or std.mem.indexOf(u8, href, "/terms") != null) {
-                const file = std.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
+                const file = compat.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
                     .truncate = false,
                 }) catch null;
                 if (file) |f| {
@@ -4111,7 +4898,7 @@ pub fn ensureElementLayoutBoxes(self: *Page) void {
         if (region.width <= 0 or region.height <= 0 or region.dom_path.len == 0) continue;
         const target = self.resolveNodePath(region.dom_path) orelse {
             if (std.mem.indexOf(u8, self.url, "consent.google.com") != null) {
-                const file = std.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
+                const file = compat.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
                     .truncate = false,
                 }) catch null;
                 if (file) |f| {
@@ -4132,7 +4919,7 @@ pub fn ensureElementLayoutBoxes(self: *Page) void {
         if (std.mem.indexOf(u8, self.url, "consent.google.com") != null) {
             const id = element.getAttributeSafe(comptime .wrap("id")) orelse "";
             if (std.mem.eql(u8, id, "language-select")) {
-                const file = std.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
+                const file = compat.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
                     .truncate = false,
                 }) catch null;
                 if (file) |f| {
@@ -4816,7 +5603,7 @@ pub fn focusNextByTab(self: *Page, backwards: bool) !bool {
     const arena = try self.arena_pool.acquire();
     defer self.arena_pool.release(arena);
 
-    var candidates: std.ArrayListUnmanaged(TabFocusCandidate) = .{};
+    var candidates: std.ArrayListUnmanaged(TabFocusCandidate) = .empty;
     defer candidates.deinit(arena);
 
     var order: usize = 0;
@@ -5422,6 +6209,7 @@ pub fn submitForm(self: *Page, submitter_: ?*Element, form_: ?*Element.Html.Form
 
     var opts = NavigateOpts{
         .reason = .form,
+        .source_url = try arena.dupeSentinel(u8, self.url, 0),
         .kind = .{ .push = null },
     };
     if (std.ascii.eqlIgnoreCase(method, "post")) {
@@ -5609,10 +6397,7 @@ pub fn requestCookie(self: *const Page, opts: RequestCookieOpts) Http.Client.Req
     };
 }
 
-fn asUint(comptime string: anytype) std.meta.Int(
-    .unsigned,
-    @bitSizeOf(@TypeOf(string.*)) - 8, // (- 8) to exclude sentinel 0
-) {
+fn asUint(comptime string: anytype) @Int(.unsigned, @bitSizeOf(@TypeOf(string.*)) - 8) {
     const byteLength = @sizeOf(@TypeOf(string.*)) - 1;
     const expectedType = *const [byteLength:0]u8;
     if (@TypeOf(string) != expectedType) {
@@ -5823,6 +6608,7 @@ test "Page handleClick queues named target GET form popup" {
     var page = try testing.pageTest("page/popup_target.html");
     defer page._session.removePage();
 
+    const source_url = page.url;
     const submitter = (try page.window._document.querySelector(.wrap("#named_get_submit"), page)).?;
     try page.handleClick(submitter.asNode());
 
@@ -5838,12 +6624,14 @@ test "Page handleClick queues named target GET form popup" {
     );
     try testing.expectEqual(.GET, pending.items[0].opts.method);
     try testing.expect(pending.items[0].opts.body == null);
+    try testing.expectString(source_url, pending.items[0].opts.source_url.?);
 }
 
 test "Page handleClick queues named target POST form popup" {
     var page = try testing.pageTest("page/popup_target.html");
     defer page._session.removePage();
 
+    const source_url = page.url;
     const submitter = (try page.window._document.querySelector(.wrap("#named_post_submit"), page)).?;
     try page.handleClick(submitter.asNode());
 
@@ -5860,15 +6648,16 @@ test "Page handleClick queues named target POST form popup" {
     try testing.expectEqual(.POST, pending.items[0].opts.method);
     try testing.expectString("q=two", pending.items[0].opts.body.?);
     try testing.expectString("Content-Type: application/x-www-form-urlencoded", pending.items[0].opts.header.?);
+    try testing.expectString(source_url, pending.items[0].opts.source_url.?);
 }
 
 test "Page handleClick serializes multipart file upload for named target form" {
     var page = try testing.pageTest("page/upload_form.html");
     defer page._session.removePage();
 
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload.txt", .data = "hello upload" });
-    defer std.fs.cwd().deleteFile("tmp-page-upload.txt") catch {};
-    const abs_path = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload.txt");
+    try compat.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload.txt", .data = "hello upload" });
+    defer compat.fs.cwd().deleteFile("tmp-page-upload.txt") catch {};
+    const abs_path = try compat.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload.txt");
     defer std.testing.allocator.free(abs_path);
 
     const input_element = (try page.window._document.querySelector(.wrap("#upload"), page)).?;
@@ -5897,14 +6686,14 @@ test "Page handleClick serializes multipart form with multiple selected files" {
     var page = try testing.pageTest("page/upload_form.html");
     defer page._session.removePage();
 
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload-a.txt", .data = "hello upload a" });
-    defer std.fs.cwd().deleteFile("tmp-page-upload-a.txt") catch {};
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload-b.json", .data = "{\"hello\":\"b\"}" });
-    defer std.fs.cwd().deleteFile("tmp-page-upload-b.json") catch {};
+    try compat.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload-a.txt", .data = "hello upload a" });
+    defer compat.fs.cwd().deleteFile("tmp-page-upload-a.txt") catch {};
+    try compat.fs.cwd().writeFile(.{ .sub_path = "tmp-page-upload-b.json", .data = "{\"hello\":\"b\"}" });
+    defer compat.fs.cwd().deleteFile("tmp-page-upload-b.json") catch {};
 
-    const abs_path_a = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload-a.txt");
+    const abs_path_a = try compat.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload-a.txt");
     defer std.testing.allocator.free(abs_path_a);
-    const abs_path_b = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload-b.json");
+    const abs_path_b = try compat.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-page-upload-b.json");
     defer std.testing.allocator.free(abs_path_b);
 
     const input_element = (try page.window._document.querySelector(.wrap("#upload"), page)).?;
@@ -6227,6 +7016,84 @@ test "Page reduced Google fixture accepts focused keyboard text and Enter submit
 
     const title = (try page.getTitle()) orelse return error.TestTitleMissing;
     try testing.expect(std.mem.startsWith(u8, title, "SUBMIT:n|"));
+}
+
+test "Page submitForm preserves source URL for queued navigation headers" {
+    var page = try testing.pageTest("page/google_home_title_probe.html");
+    defer page._session.removePage();
+
+    const input_element = (try page.window._document.querySelector(.wrap("input[name=q]"), page)).?;
+    const input = input_element.is(Element.Html.Input).?;
+    const source_url = page.url;
+
+    try page.submitForm(input_element, input.getForm(page), .{ .fire_event = false });
+
+    const queued = page._queued_navigation orelse return error.TestMissingQueuedNavigation;
+    try testing.expectEqual(NavigateReason.form, queued.opts.reason);
+    try testing.expectString(source_url, queued.opts.source_url.?);
+}
+
+test "Page scheduleNavigation preserves source URL for script redirects" {
+    var page = try testing.pageTest("page/popup_target.html");
+    defer page._session.removePage();
+
+    const source_url = page.url;
+    try page.scheduleNavigation(
+        "popup-target-result.html?from=script",
+        .{ .reason = .script, .kind = .{ .push = null } },
+        .{ .script = page },
+    );
+
+    const queued = page._queued_navigation orelse return error.TestMissingQueuedNavigation;
+    try testing.expectEqual(NavigateReason.script, queued.opts.reason);
+    try testing.expectString(source_url, queued.opts.source_url.?);
+}
+
+test "Page chatgpt compat probe reports runtime blockers" {
+    var page = try testing.pageTest("page/chatgpt_compat_probe.html");
+    defer page._session.removePage();
+
+    _ = page._session.wait(200);
+
+    const title = (try page.getTitle()) orelse return error.TestTitleMissing;
+    std.debug.print("chatgpt compat probe title: {s}\n", .{title});
+    try testing.expect(std.mem.startsWith(u8, title, "CHATGPT-COMPAT:"));
+
+    var ls: JS.Local.Scope = undefined;
+    page.js.localScope(&ls);
+    defer ls.deinit();
+
+    const probe_value = try ls.local.exec(
+        "JSON.stringify(window.__lpChatGptCompat)",
+        "JSON.stringify(window.__lpChatGptCompat)",
+    );
+    const probe_json = try probe_value.toStringSlice();
+    try testing.expect(std.mem.indexOf(u8, probe_json, "\"blockers\"") != null);
+    try testing.expect(std.mem.indexOf(u8, probe_json, "\"serviceWorker\"") != null);
+    try testing.expect(std.mem.indexOf(u8, probe_json, "\"worker\"") != null);
+}
+
+test "Page worker runtime probe boots worker and shared worker shims" {
+    var page = try testing.pageTest("page/worker_runtime_probe.html");
+    defer page._session.removePage();
+
+    _ = page._session.wait(1200);
+
+    const title = (try page.getTitle()) orelse return error.TestTitleMissing;
+    std.debug.print("worker runtime probe title: {s}\n", .{title});
+    try testing.expect(std.mem.eql(u8, title, "WORKER-RUNTIME:ok"));
+
+    var ls: JS.Local.Scope = undefined;
+    page.js.localScope(&ls);
+    defer ls.deinit();
+
+    const probe_value = try ls.local.exec(
+        "JSON.stringify(window.__lpWorkerRuntime)",
+        "JSON.stringify(window.__lpWorkerRuntime)",
+    );
+    const probe_json = try probe_value.toStringSlice();
+    try testing.expect(std.mem.indexOf(u8, probe_json, "\"workerReply\":\"worker:ping\"") != null);
+    try testing.expect(std.mem.indexOf(u8, probe_json, "\"sharedReply\":\"shared:pong\"") != null);
 }
 
 test "getBoundingClientRect computes layout boxes for an unpresented consent card page" {
@@ -6799,7 +7666,12 @@ test "Page navigation requests include Chrome-like client hint and fetch headers
     var headers = try Http.Headers.init(page._session.browser.app.config.http_headers.user_agent_header);
     defer headers.deinit();
 
-    try addChromeNavigationHeaders(&headers);
+    try addChromeNavigationHeaders(
+        &headers,
+        "about:blank",
+        "https://example.com/",
+        .address_bar,
+    );
 
     var found_accept = false;
     var found_accept_language = false;
@@ -6877,6 +7749,51 @@ test "Page navigation requests include Chrome-like client hint and fetch headers
     try std.testing.expect(found_sec_fetch_user);
     try std.testing.expect(found_sec_fetch_dest);
     try std.testing.expect(found_upgrade_insecure_requests);
+}
+
+test "Page chromeFetchSite follows navigation initiator" {
+    try std.testing.expectEqualStrings(
+        "none",
+        chromeFetchSite("about:blank", "https://www.google.com/", .address_bar),
+    );
+    try std.testing.expectEqualStrings(
+        "same-origin",
+        chromeFetchSite("https://www.google.com/webhp?igu=1", "https://www.google.com/search?q=lightpanda", .form),
+    );
+    try std.testing.expectEqualStrings(
+        "cross-site",
+        chromeFetchSite("https://www.google.com/", "https://example.com/", .anchor),
+    );
+}
+
+test "Page navigation headers mark only user-activated fetches" {
+    try std.testing.expect(navigationHasUserActivation(.address_bar));
+    try std.testing.expect(navigationHasUserActivation(.anchor));
+    try std.testing.expect(navigationHasUserActivation(.form));
+    try std.testing.expect(!navigationHasUserActivation(.script));
+    try std.testing.expect(!navigationHasUserActivation(.history));
+    try std.testing.expect(!navigationHasUserActivation(.navigation));
+    try std.testing.expect(!navigationHasUserActivation(.initialFrameNavigation));
+
+    var headers = try Http.Headers.init("User-Agent: test");
+    defer headers.deinit();
+
+    try addChromeNavigationHeaders(
+        &headers,
+        "https://www.google.com/search?q=lightpanda",
+        "https://www.google.com/search?sei=retry",
+        .script,
+    );
+
+    var found_sec_fetch_user = false;
+    var iterator = headers.iterator();
+    while (iterator.next()) |header| {
+        if (std.ascii.eqlIgnoreCase(header.name, "Sec-Fetch-User")) {
+            found_sec_fetch_user = true;
+        }
+    }
+
+    try std.testing.expect(!found_sec_fetch_user);
 }
 
 test "WebApi: Frames" {

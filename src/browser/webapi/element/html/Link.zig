@@ -119,8 +119,8 @@ pub fn getSheet(self: *Link, page: *Page) !?*CSSStyleSheet {
     const include_credentials = stylesheetRequestIncludesCredentials(self);
     self._sheet.?._href = try page.arena.dupe(u8, href);
     self._sheet.?._title = self.asElement().getAttributeSafe(comptime .wrap("title")) orelse "";
-    self._sheet.?._request_base_url = try page.arena.dupeZ(u8, href);
-    self._sheet.?._request_referer_url = try page.arena.dupeZ(u8, href);
+    self._sheet.?._request_base_url = try page.arena.dupeSentinel(u8, href, 0);
+    self._sheet.?._request_referer_url = try page.arena.dupeSentinel(u8, href, 0);
     self._sheet.?._request_include_credentials = include_credentials;
     return self._sheet.?;
 }
@@ -206,14 +206,14 @@ fn fetchStylesheet(self: *Link, page: *Page) !void {
     var arena = std.heap.ArenaAllocator.init(page.arena);
     defer arena.deinit();
     const temp = arena.allocator();
-    const url = try temp.dupeZ(u8, href);
+    const url = try temp.dupeSentinel(u8, href, 0);
 
     var ctx = StylesheetFetchContext{
         .html = self._proto,
         .page = page,
         .sheet = self._sheet.?,
         .allocator = page.arena,
-        .buffer = .{},
+        .buffer = .empty,
     };
     defer ctx.buffer.deinit(page.arena);
 
@@ -247,7 +247,6 @@ fn fetchStylesheet(self: *Link, page: *Page) !void {
     if (ctx.failed) |err| {
         return err;
     }
-
 }
 
 fn stylesheetRequestIncludesCredentials(self: *const Link) bool {
@@ -265,11 +264,11 @@ fn stylesheetRequestUrlForFetch(
     include_credentials: bool,
 ) ![:0]const u8 {
     if (include_credentials) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
 
     if (RawURL.getUsername(url).len == 0) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
 
     return try RawURL.buildUrl(

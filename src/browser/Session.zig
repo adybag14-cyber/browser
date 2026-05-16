@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../compat.zig");
 const lp = @import("lightpanda");
 const builtin = @import("builtin");
 
@@ -38,7 +39,7 @@ const QueuedNavigation = Page.QueuedNavigation;
 
 const Allocator = std.mem.Allocator;
 const IS_DEBUG = builtin.mode == .Debug;
-var google_wait_trace_lock: std.Thread.Mutex = .{};
+var google_wait_trace_lock: lp.compat.Mutex = .{};
 
 fn googleWaitTraceEnabled(url: []const u8) bool {
     return std.mem.indexOf(u8, url, "google-home-") != null or
@@ -53,8 +54,8 @@ fn appendGoogleWaitTrace(stage: []const u8, url: []const u8, detail: []const u8)
     defer google_wait_trace_lock.unlock();
 
     const path = "tmp-browser-smoke/google-investigation-next/session-wait.log";
-    var file = std.fs.cwd().openFile(path, .{ .mode = .write_only }) catch blk: {
-        break :blk std.fs.cwd().createFile(path, .{}) catch return;
+    var file = compat.fs.cwd().openFile(path, .{ .mode = .write_only }) catch blk: {
+        break :blk compat.fs.cwd().createFile(path, .{}) catch return;
     };
     defer file.close();
 
@@ -118,6 +119,9 @@ pub const PendingTabOpen = struct {
         if (self.opts.header) |header| {
             allocator.free(header);
         }
+        if (self.opts.source_url) |source_url| {
+            allocator.free(source_url);
+        }
         self.* = undefined;
     }
 };
@@ -172,11 +176,11 @@ pub fn init(self: *Session, browser: *Browser, notification: *Notification) !voi
         .storage_shed = undefined,
         .owned_storage_shed = null,
         .browser = browser,
-        .queued_navigation = .{},
-        .queued_queued_navigation = .{},
-        .pending_browser_navigations = .{},
-        .pending_downloads = .{},
-        .pending_tab_opens = .{},
+        .queued_navigation = .empty,
+        .queued_queued_navigation = .empty,
+        .pending_browser_navigations = .empty,
+        .pending_downloads = .empty,
+        .pending_tab_opens = .empty,
         .pending_attachment_promotions = 0,
         .root_attachment_download_handler = null,
         .notification = notification,
@@ -368,8 +372,8 @@ fn waitWithInput(self: *Session, wait_ms: u32, dispatch_native_input: bool) Wait
 }
 
 fn _wait(self: *Session, page: *Page, wait_ms: u32, dispatch_native_input: bool) !WaitResult {
-    var timer = try std.time.Timer.start();
-    var ms_remaining = wait_ms;
+    var timer = try compat.Timer.start();
+    const deadline_ns = @as(u64, wait_ms) * std.time.ns_per_ms;
 
     const browser = self.browser;
     var http_client = browser.http_client;
@@ -387,6 +391,12 @@ fn _wait(self: *Session, page: *Page, wait_ms: u32, dispatch_native_input: bool)
     const exit_when_done = http_client.cdp_client == null;
 
     while (true) {
+        const elapsed_ns = timer.read();
+        if (elapsed_ns >= deadline_ns) {
+            return .done;
+        }
+        const ms_remaining: u32 = @intCast((deadline_ns - elapsed_ns) / std.time.ns_per_ms);
+
         var handled_native_input = false;
         if (dispatch_native_input and googleWaitTraceEnabled(page.url) and self.browser.app.display.hasPendingNativeInput()) {
             log.warn(.browser, "session wait pending input", .{
@@ -424,7 +434,7 @@ fn _wait(self: *Session, page: *Page, wait_ms: u32, dispatch_native_input: bool)
                 }
                 if (http_client.active == 0 and http_client.intercepted == 0 and !exit_when_done) {
                     if (!dispatch_native_input) {
-                        std.Thread.sleep(std.time.ns_per_ms * @as(u64, @intCast(@min(ms_remaining, 10))));
+                        compat.sleepMillis(@intCast(@min(ms_remaining, 10)));
                     }
                     return .done;
                 }
@@ -548,7 +558,7 @@ fn _wait(self: *Session, page: *Page, wait_ms: u32, dispatch_native_input: bool)
                     // in the meantime, and that could unblock things. So
                     // we'll just sleep for a bit, and then restart our wait
                     // loop to see if anything new can be processed.
-                    std.Thread.sleep(std.time.ns_per_ms * @as(u64, @intCast(@min(ms, 20))));
+                    compat.sleepMillis(@intCast(@min(ms, 20)));
                 } else {
                     // We're here because we either have active HTTP
                     // connections, or exit_when_done == false (aka, there's
@@ -594,12 +604,6 @@ fn _wait(self: *Session, page: *Page, wait_ms: u32, dispatch_native_input: bool)
                 return .no_page;
             },
         }
-
-        const ms_elapsed = timer.lap() / 1_000_000;
-        if (ms_elapsed >= ms_remaining) {
-            return .done;
-        }
-        ms_remaining -= @intCast(ms_elapsed);
     }
 }
 
@@ -636,7 +640,7 @@ fn processQueuedNavigation(self: *Session) !void {
     // First pass: process async navigations (non-about:blank)
     // These cannot cause re-entrant navigation scheduling
     for (navigations.items) |page| {
-        const qn = page._queued_navigation.?;
+        const qn = page._queued_navigation orelse continue;
 
         if (qn.is_about_blank) {
             // Defer about:blank to second pass
@@ -653,7 +657,7 @@ fn processQueuedNavigation(self: *Session) !void {
     // Second pass: process synchronous navigations (about:blank)
     // These may trigger new navigations which go into queued_navigation
     for (about_blank_queue.items) |page| {
-        const qn = page._queued_navigation.?;
+        const qn = page._queued_navigation orelse continue;
         try self.processFrameNavigation(page, qn);
     }
 
@@ -745,7 +749,7 @@ fn processRootQueuedNavigation(self: *Session) !void {
 
     new_page.navigate(qn.url, qn.opts) catch |err| {
         log.err(.browser, "queued navigation error", .{ .err = err });
-        new_page.url = new_page.arena.dupeZ(u8, qn.url) catch new_page.url;
+        new_page.url = new_page.arena.dupeSentinel(u8, qn.url, 0) catch new_page.url;
         new_page.failNavigation(err);
         return;
     };
@@ -852,7 +856,7 @@ pub fn enqueueOpenInTargetTab(
     popup_source: PopupSource,
 ) !void {
     const allocator = self.browser.app.allocator;
-    const owned_url = try allocator.dupeZ(u8, url);
+    const owned_url = try allocator.dupeSentinel(u8, url, 0);
     errdefer allocator.free(owned_url);
     const owned_target_name = try allocator.dupe(u8, target_name);
     errdefer allocator.free(owned_target_name);
@@ -862,10 +866,15 @@ pub fn enqueueOpenInTargetTab(
         null;
     errdefer if (owned_body) |body| allocator.free(body);
     const owned_header = if (opts.header) |header|
-        try allocator.dupeZ(u8, header)
+        try allocator.dupeSentinel(u8, header, 0)
     else
         null;
     errdefer if (owned_header) |header| allocator.free(header);
+    const owned_source_url = if (opts.source_url) |source_url|
+        try allocator.dupeSentinel(u8, source_url, 0)
+    else
+        null;
+    errdefer if (owned_source_url) |source_url| allocator.free(source_url);
 
     try self.pending_tab_opens.append(allocator, .{
         .url = owned_url,
@@ -877,6 +886,7 @@ pub fn enqueueOpenInTargetTab(
             .method = opts.method,
             .body = owned_body,
             .header = owned_header,
+            .source_url = owned_source_url,
             .force = opts.force,
             .kind = opts.kind,
         },
@@ -886,7 +896,7 @@ pub fn enqueueOpenInTargetTab(
 }
 
 pub fn takePendingBrowserNavigations(self: *Session) std.ArrayListUnmanaged(PendingBrowserNavigate) {
-    var pending: std.ArrayListUnmanaged(PendingBrowserNavigate) = .{};
+    var pending: std.ArrayListUnmanaged(PendingBrowserNavigate) = .empty;
     std.mem.swap(std.ArrayListUnmanaged(PendingBrowserNavigate), &pending, &self.pending_browser_navigations);
     return pending;
 }
@@ -896,7 +906,7 @@ pub fn hasPendingBrowserNavigations(self: *const Session) bool {
 }
 
 pub fn takePendingDownloads(self: *Session) std.ArrayListUnmanaged(PendingDownload) {
-    var pending: std.ArrayListUnmanaged(PendingDownload) = .{};
+    var pending: std.ArrayListUnmanaged(PendingDownload) = .empty;
     std.mem.swap(std.ArrayListUnmanaged(PendingDownload), &pending, &self.pending_downloads);
     return pending;
 }
@@ -906,7 +916,7 @@ pub fn hasPendingDownloads(self: *const Session) bool {
 }
 
 pub fn takePendingTabOpens(self: *Session) std.ArrayListUnmanaged(PendingTabOpen) {
-    var pending: std.ArrayListUnmanaged(PendingTabOpen) = .{};
+    var pending: std.ArrayListUnmanaged(PendingTabOpen) = .empty;
     std.mem.swap(std.ArrayListUnmanaged(PendingTabOpen), &pending, &self.pending_tab_opens);
     return pending;
 }

@@ -18,6 +18,7 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
+const compat = @import("compat.zig");
 
 const Thread = std.Thread;
 
@@ -50,10 +51,10 @@ const Opts = struct {
 pub var opts = Opts{};
 
 // synchronizes writes to the output
-var out_lock: Thread.Mutex = .{};
+var out_lock: compat.Mutex = .{};
 
 // synchronizes access to last_log
-var last_log_lock: Thread.Mutex = .{};
+var last_log_lock: compat.Mutex = .{};
 
 pub fn enabled(comptime scope: Scope, level: Level) bool {
     if (@intFromEnum(level) < @intFromEnum(opts.level)) {
@@ -116,11 +117,11 @@ pub fn log(comptime scope: Scope, level: Level, comptime msg: []const u8, data: 
         return;
     }
 
-    std.debug.lockStdErr();
-    defer std.debug.unlockStdErr();
+    out_lock.lock();
+    defer out_lock.unlock();
 
     var buf: [4096]u8 = undefined;
-    var stderr = std.fs.File.stderr();
+    var stderr = compat.fs.File.stderr();
     var writer = stderr.writer(&buf);
 
     logTo(scope, level, msg, data, &writer.interface) catch |log_err| {

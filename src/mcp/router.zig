@@ -5,7 +5,7 @@ const resources = @import("resources.zig");
 const Server = @import("Server.zig");
 const tools = @import("tools.zig");
 
-pub fn processRequests(server: *Server, reader: *std.io.Reader) !void {
+pub fn processRequests(server: *Server, reader: *std.Io.Reader) !void {
     var arena: std.heap.ArenaAllocator = .init(server.allocator);
     defer arena.deinit();
 
@@ -99,7 +99,7 @@ test "MCP.router - handleMessage - synchronous unit tests" {
     const allocator = testing.allocator;
     const app = testing.test_app;
 
-    var out_alloc: std.io.Writer.Allocating = .init(testing.arena_allocator);
+    var out_alloc: std.Io.Writer.Allocating = .init(testing.arena_allocator);
     defer out_alloc.deinit();
 
     var server = try Server.init(allocator, app, &out_alloc.writer);

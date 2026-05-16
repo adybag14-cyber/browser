@@ -451,21 +451,44 @@ fn setAutoAttach(cmd: anytype) !void {
     // This is a hack. Puppeteer, and probably others, expect the Browser to
     // automatically started creating targets. Things like an empty tab, or
     // a blank page. And they block until this happens. So we send an event
-    // telling them that they've been attached to our Broswer. Hopefully, the
-    // first thing they'll do is create a real BrowserContext and progress from
-    // there.
-    // This hack requires the main cdp dispatch handler to special case
-    // messages from this "STARTUP" session.
+    // telling them that they've been attached to our Browser. Back this with a
+    // real about:blank page so startup Page/Runtime commands can flow through
+    // the normal CDP path instead of the older stub-only shim.
+    _ = try cmd.cdp.createBrowserContext();
+    const bc = &cmd.cdp.browser_context.?;
+    bc.id = "BID-STARTUP";
+    bc.security_origin = "://";
+    bc.secure_context_type = "InsecureScheme";
+
+    const page = try bc.session.createPage();
+    bc.target_id = id.toFrameId(page._frame_id);
+
+    {
+        var ls: js.Local.Scope = undefined;
+        page.js.localScope(&ls);
+        defer ls.deinit();
+
+        const aux_data = try std.fmt.allocPrint(cmd.arena, "{{\"isDefault\":true,\"type\":\"default\",\"frameId\":\"{s}\"}}", .{&bc.target_id.?});
+        bc.inspector_session.inspector.contextCreated(
+            &ls.local,
+            "",
+            "",
+            aux_data,
+            true,
+        );
+    }
+
     try cmd.sendEvent("Target.attachedToTarget", AttachToTarget{
         .sessionId = "STARTUP",
         .targetInfo = TargetInfo{
             .type = "page",
-            .targetId = "TID-STARTUP-P",
-            .title = "",
-            .url = "about:blank",
-            .browserContextId = "BID-STARTUP",
+            .targetId = &bc.target_id.?,
+            .title = bc.getTitle() orelse "",
+            .url = bc.getURL() orelse "about:blank",
+            .browserContextId = bc.id,
         },
     }, .{});
+    bc.session_id = "STARTUP";
 }
 
 fn doAttachtoTarget(cmd: anytype, target_id: []const u8) !void {

@@ -90,7 +90,7 @@ identity_map: std.AutoHashMapUnmanaged(IdentityKey, v8.Global) = .empty,
 // will have its finalizer stored here. This is only used when shutting down
 // if v8 hasn't called the finalizer directly itself.
 finalizer_callbacks: std.AutoHashMapUnmanaged(usize, *FinalizerCallback) = .empty,
-finalizer_callback_pool: std.heap.MemoryPool(FinalizerCallback),
+finalizer_callback_pool: lp.compat.MemoryPool(FinalizerCallback),
 
 // Some web APIs have to manage opaque values. Ideally, they use an
 // js.Object, but the js.Object has no lifetime guarantee beyond the
@@ -485,7 +485,7 @@ pub fn module(
             }
         }
 
-        const owned_url = try arena.dupeZ(u8, url);
+        const owned_url = try arena.dupeSentinel(u8, url, 0);
         const m = try compileModule(local, src, owned_url);
 
         if (cacheable) {
@@ -637,11 +637,11 @@ fn postCompileModule(self: *Context, mod: js.Module, url: [:0]const u8, local: *
             url,
             try specifier.toSliceZ(),
         );
-        const resolution_specifier = try self.arena.dupeZ(u8, normalized_specifier);
+        const resolution_specifier = try self.arena.dupeSentinel(u8, normalized_specifier, 0);
         try order_gop.value_ptr.specifiers.append(self.arena, resolution_specifier);
         const nested_gop = try self.module_cache.getOrPut(self.arena, normalized_specifier);
         if (!nested_gop.found_existing) {
-            const owned_specifier = try self.arena.dupeZ(u8, normalized_specifier);
+            const owned_specifier = try self.arena.dupeSentinel(u8, normalized_specifier, 0);
             nested_gop.key_ptr.* = owned_specifier;
             nested_gop.value_ptr.* = .{ .include_credentials = include_credentials };
             try script_manager.preloadImport(owned_specifier, url, include_credentials);

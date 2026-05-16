@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../compat.zig");
 const js = @import("../js/js.zig");
 const String = @import("../../string.zig").String;
 
@@ -208,12 +209,13 @@ pub fn getAll(self: *HTMLDocument, page: *Page) !*collections.HTMLAllCollection 
 }
 
 pub fn getCookie(_: *HTMLDocument, page: *Page) ![]const u8 {
-    var buf: std.ArrayList(u8) = .empty;
-    try page._session.cookie_jar.forRequest(page.url, buf.writer(page.call_arena), .{
+    var buf = std.Io.Writer.Allocating.init(page.call_arena);
+    errdefer buf.deinit();
+    try page._session.cookie_jar.forRequest(page.url, &buf.writer, .{
         .is_http = false,
         .is_navigation = true,
     });
-    return buf.items;
+    return try buf.toOwnedSlice();
 }
 
 pub fn setCookie(_: *HTMLDocument, cookie_str: []const u8, page: *Page) ![]const u8 {
@@ -229,7 +231,7 @@ pub fn setCookie(_: *HTMLDocument, cookie_str: []const u8, page: *Page) ![]const
         c.deinit();
         return ""; // HttpOnly cookies cannot be set from JS
     }
-    try page._session.cookie_jar.add(c, std.time.timestamp());
+    try page._session.cookie_jar.add(c, compat.unixTimestamp());
     return cookie_str;
 }
 

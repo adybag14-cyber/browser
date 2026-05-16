@@ -77,16 +77,13 @@ pub fn Incrementing(comptime T: type, comptime prefix: []const u8) type {
     };
 
     const buffer = blk: {
-        var b = [_]u8{0} ** MAX_BYTES;
+        var b: [MAX_BYTES]u8 = @splat(0);
         @memcpy(b[0..prefix.len], prefix);
         b[prefix.len] = '-';
         break :blk b;
     };
 
-    const PrefixIntType = @Type(.{ .int = .{
-        .bits = NUMERIC_START * 8,
-        .signedness = .unsigned,
-    } });
+    const PrefixIntType = @Int(.unsigned, NUMERIC_START * 8);
 
     const PREFIX_INT_CODE: PrefixIntType = @bitCast(buffer[0..NUMERIC_START].*);
 

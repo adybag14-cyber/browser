@@ -30,7 +30,7 @@ _proto: *EventTarget,
 _aborted: bool = false,
 _reason: Reason = .undefined,
 _on_abort: ?js.Function.Global = null,
-_native_listeners: std.ArrayListUnmanaged(NativeAbortListener) = .{},
+_native_listeners: std.ArrayListUnmanaged(NativeAbortListener) = .empty,
 _next_native_listener_id: u32 = 1,
 
 pub fn init(page: *Page) !*AbortSignal {

@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const builtin = @import("builtin");
 
 const Allocator = std.mem.Allocator;
@@ -11,7 +12,9 @@ const uuidv4 = @import("../id.zig").uuidv4;
 const IID_FILE = "iid";
 
 pub fn isDisabled() bool {
-    return std.process.hasEnvVarConstant("LIGHTPANDA_DISABLE_TELEMETRY");
+    const value = compat.getEnvVarOwned(std.heap.page_allocator, "LIGHTPANDA_DISABLE_TELEMETRY") catch return false;
+    defer std.heap.page_allocator.free(value);
+    return value.len > 0;
 }
 
 pub const Telemetry = TelemetryT(blk: {
@@ -74,7 +77,7 @@ fn getOrCreateId(app_dir_path_: ?[]const u8) ?[36]u8 {
     };
 
     var buf: [37]u8 = undefined;
-    var dir = std.fs.openDirAbsolute(app_dir_path, .{}) catch |err| {
+    var dir = compat.fs.openDirAbsolute(app_dir_path, .{}) catch |err| {
         log.warn(.telemetry, "data directory open error", .{ .path = app_dir_path, .err = err });
         return null;
     };
@@ -150,15 +153,15 @@ test "telemetry: disabled by environment" {
 }
 
 test "telemetry: getOrCreateId" {
-    defer std.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
+    defer compat.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
 
-    std.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
+    compat.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
 
     const id1 = getOrCreateId("/tmp/").?;
     const id2 = getOrCreateId("/tmp/").?;
     try testing.expectEqual(&id1, &id2);
 
-    std.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
+    compat.fs.cwd().deleteFile("/tmp/" ++ IID_FILE) catch {};
     const id3 = getOrCreateId("/tmp/").?;
     try testing.expectEqual(false, std.mem.eql(u8, &id1, &id3));
 
@@ -192,7 +195,7 @@ const MockProvider = struct {
         return .{
             .iid = null,
             .run_mode = null,
-            .events = .{},
+            .events = .empty,
             .allocator = app.allocator,
         };
     }

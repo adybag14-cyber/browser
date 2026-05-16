@@ -141,6 +141,10 @@ pub fn getNavigator(self: *Window) *Navigator {
     return &self._navigator;
 }
 
+pub fn getCaches(self: *Window) *Navigator.CacheStorage {
+    return self._navigator.getCaches();
+}
+
 pub fn getScreen(self: *Window) *Screen {
     return self._screen;
 }
@@ -157,8 +161,28 @@ pub fn getInnerHeight(self: *const Window) u32 {
     return self._visual_viewport.getHeight();
 }
 
+pub fn getOuterWidth(self: *const Window) u32 {
+    return self._screen.getWidth();
+}
+
+pub fn getOuterHeight(self: *const Window) u32 {
+    return self._screen.getHeight();
+}
+
+pub fn getScreenX(_: *const Window) i32 {
+    return 10;
+}
+
+pub fn getScreenY(_: *const Window) i32 {
+    return 10;
+}
+
 pub fn getDevicePixelRatio(self: *const Window) f64 {
     return self._visual_viewport.getScale();
+}
+
+pub fn getIsSecureContext(self: *const Window) bool {
+    return URL.isHTTPS(self._page.url);
 }
 
 pub fn getCrypto(self: *Window) *Crypto {
@@ -690,10 +714,58 @@ pub fn postMessage(self: *Window, message: js.Value.Temp, target_origin: ?[]cons
     });
 }
 
+fn binaryStringUtf8ToBytes(input: []const u8, allocator: Allocator) ![]u8 {
+    var out: std.ArrayListUnmanaged(u8) = .empty;
+    errdefer out.deinit(allocator);
+
+    var index: usize = 0;
+    while (index < input.len) {
+        const seq_len = std.unicode.utf8ByteSequenceLength(input[index]) catch return error.InvalidCharacterError;
+        if (index + seq_len > input.len) {
+            return error.InvalidCharacterError;
+        }
+
+        const codepoint = std.unicode.utf8Decode(input[index .. index + seq_len]) catch return error.InvalidCharacterError;
+        if (codepoint > 0xff) {
+            return error.InvalidCharacterError;
+        }
+
+        try out.append(allocator, @intCast(codepoint));
+        index += seq_len;
+    }
+
+    return out.toOwnedSlice(allocator);
+}
+
+fn bytesToBinaryStringUtf8(bytes: []const u8, allocator: Allocator) ![]u8 {
+    var high_bytes: usize = 0;
+    for (bytes) |byte| {
+        if (byte >= 0x80) {
+            high_bytes += 1;
+        }
+    }
+
+    const out = try allocator.alloc(u8, bytes.len + high_bytes);
+    var out_index: usize = 0;
+    for (bytes) |byte| {
+        if (byte < 0x80) {
+            out[out_index] = byte;
+            out_index += 1;
+            continue;
+        }
+
+        out[out_index] = 0xc0 | (byte >> 6);
+        out[out_index + 1] = 0x80 | (byte & 0x3f);
+        out_index += 2;
+    }
+    return out;
+}
+
 pub fn btoa(_: *const Window, input: []const u8, page: *Page) ![]const u8 {
-    const encoded_len = std.base64.standard.Encoder.calcSize(input.len);
+    const bytes = try binaryStringUtf8ToBytes(input, page.call_arena);
+    const encoded_len = std.base64.standard.Encoder.calcSize(bytes.len);
     const encoded = try page.call_arena.alloc(u8, encoded_len);
-    return std.base64.standard.Encoder.encode(encoded, input);
+    return std.base64.standard.Encoder.encode(encoded, bytes);
 }
 
 pub fn atob(_: *const Window, input: []const u8, page: *Page) ![]const u8 {
@@ -701,7 +773,7 @@ pub fn atob(_: *const Window, input: []const u8, page: *Page) ![]const u8 {
     // Forgiving base64 decode per WHATWG spec:
     // https://infra.spec.whatwg.org/#forgiving-base64-decode
     // Remove trailing padding to use standard_no_pad decoder
-    const unpadded = std.mem.trimRight(u8, trimmed, "=");
+    const unpadded = std.mem.trimEnd(u8, trimmed, "=");
 
     // Length % 4 == 1 is invalid (can't represent valid base64)
     if (unpadded.len % 4 == 1) {
@@ -711,7 +783,7 @@ pub fn atob(_: *const Window, input: []const u8, page: *Page) ![]const u8 {
     const decoded_len = std.base64.standard_no_pad.Decoder.calcSizeForSlice(unpadded) catch return error.InvalidCharacterError;
     const decoded = try page.call_arena.alloc(u8, decoded_len);
     std.base64.standard_no_pad.Decoder.decode(decoded, unpadded) catch return error.InvalidCharacterError;
-    return decoded;
+    return bytesToBinaryStringUtf8(decoded, page.call_arena);
 }
 
 pub fn getFrame(self: *Window, idx: usize) !?*Window {
@@ -1120,6 +1192,7 @@ pub const JsApi = struct {
     pub const window = bridge.accessor(Window.getWindow, null, .{});
     pub const parent = bridge.accessor(Window.getParent, null, .{});
     pub const navigator = bridge.accessor(Window.getNavigator, null, .{});
+    pub const caches = bridge.accessor(Window.getCaches, null, .{});
     pub const screen = bridge.accessor(Window.getScreen, null, .{});
     pub const visualViewport = bridge.accessor(Window.getVisualViewport, null, .{});
     pub const performance = bridge.accessor(Window.getPerformance, null, .{});
@@ -1176,14 +1249,16 @@ pub const JsApi = struct {
     pub const scroll = bridge.function(Window.scrollTo, .{});
     pub const scrollBy = bridge.function(Window.scrollBy, .{});
 
-    // Return false since we don't have secure-context-only APIs implemented
-    // (webcam, geolocation, clipboard, etc.)
-    // This is safer and could help avoid processing errors by hinting at
-    // sites not to try to access those features
-    pub const isSecureContext = bridge.property(false, .{ .template = false });
+    pub const isSecureContext = bridge.accessor(Window.getIsSecureContext, null, .{});
 
     pub const innerWidth = bridge.accessor(Window.getInnerWidth, null, .{});
     pub const innerHeight = bridge.accessor(Window.getInnerHeight, null, .{});
+    pub const outerWidth = bridge.accessor(Window.getOuterWidth, null, .{});
+    pub const outerHeight = bridge.accessor(Window.getOuterHeight, null, .{});
+    pub const screenX = bridge.accessor(Window.getScreenX, null, .{});
+    pub const screenY = bridge.accessor(Window.getScreenY, null, .{});
+    pub const screenLeft = bridge.accessor(Window.getScreenX, null, .{});
+    pub const screenTop = bridge.accessor(Window.getScreenY, null, .{});
     pub const devicePixelRatio = bridge.accessor(Window.getDevicePixelRatio, null, .{});
 
     // This should return a window-like object in specific conditions. Would be

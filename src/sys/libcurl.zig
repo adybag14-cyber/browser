@@ -19,9 +19,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const c = @cImport({
-    @cInclude("curl/curl.h");
-});
+const c = @import("libcurl_c");
 
 const IS_DEBUG = builtin.mode == .Debug;
 
@@ -40,6 +38,13 @@ pub const CurlDebugFunction = fn (*Curl, CurlInfoType, [*c]u8, usize, *anyopaque
 pub const CurlHeaderFunction = fn ([*]const u8, usize, usize, *anyopaque) usize;
 pub const CurlWriteFunction = fn ([*]const u8, usize, usize, *anyopaque) usize;
 pub const curl_writefunc_error: usize = c.CURL_WRITEFUNC_ERROR;
+pub const ip_resolve_whatever: c_int = c.CURL_IPRESOLVE_WHATEVER;
+pub const ip_resolve_v4: c_int = c.CURL_IPRESOLVE_V4;
+pub const ip_resolve_v6: c_int = c.CURL_IPRESOLVE_V6;
+pub const http_version_none: c_int = c.CURL_HTTP_VERSION_NONE;
+pub const http_version_1_1: c_int = c.CURL_HTTP_VERSION_1_1;
+pub const http_version_2_0: c_int = c.CURL_HTTP_VERSION_2_0;
+pub const http_version_2tls: c_int = c.CURL_HTTP_VERSION_2TLS;
 
 pub const CurlGlobalFlags = packed struct(u8) {
     ssl: bool = false,
@@ -138,6 +143,7 @@ pub const CurlOption = enum(c.CURLoption) {
     ssl_verify_peer = c.CURLOPT_SSL_VERIFYPEER,
     proxy_ssl_verify_host = c.CURLOPT_PROXY_SSL_VERIFYHOST,
     proxy_ssl_verify_peer = c.CURLOPT_PROXY_SSL_VERIFYPEER,
+    ip_resolve = c.CURLOPT_IPRESOLVE,
     accept_encoding = c.CURLOPT_ACCEPT_ENCODING,
     verbose = c.CURLOPT_VERBOSE,
     debug_function = c.CURLOPT_DEBUGFUNCTION,
@@ -147,6 +153,7 @@ pub const CurlOption = enum(c.CURLoption) {
     post_field_size = c.CURLOPT_POSTFIELDSIZE,
     copy_post_fields = c.CURLOPT_COPYPOSTFIELDS,
     http_get = c.CURLOPT_HTTPGET,
+    http_version = c.CURLOPT_HTTP_VERSION,
     http_header = c.CURLOPT_HTTPHEADER,
     cookie = c.CURLOPT_COOKIE,
     private = c.CURLOPT_PRIVATE,
@@ -500,6 +507,8 @@ pub fn curl_easy_setopt(easy: *Curl, comptime option: CurlOption, value: anytype
         .connect_timeout_ms,
         .max_redirs,
         .follow_location,
+        .ip_resolve,
+        .http_version,
         .post_field_size,
         => blk: {
             const n: c_long = switch (@typeInfo(@TypeOf(value))) {

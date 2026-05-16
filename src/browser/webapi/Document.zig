@@ -36,6 +36,7 @@ const DOMImplementation = @import("DOMImplementation.zig");
 const StyleSheetList = @import("css/StyleSheetList.zig");
 const FontFaceSet = @import("css/FontFaceSet.zig");
 const Selection = @import("Selection.zig");
+const DOMException = @import("DOMException.zig");
 
 pub const XMLDocument = @import("XMLDocument.zig");
 pub const HTMLDocument = @import("HTMLDocument.zig");
@@ -166,8 +167,20 @@ pub fn getDomain(_: *const Document, page: *const Page) []const u8 {
     return URL.getHostname(page.url);
 }
 
-const CreateElementOptions = struct {
+const CreateElementOptionsObject = struct {
     is: ?[]const u8 = null,
+};
+
+const CreateElementOptions = union(enum) {
+    object: CreateElementOptionsObject,
+    is: []const u8,
+
+    fn getIs(self: CreateElementOptions) ?[]const u8 {
+        return switch (self) {
+            .object => |options| options.is,
+            .is => |is_value| is_value,
+        };
+    }
 };
 
 pub fn createElement(self: *Document, name: []const u8, options_: ?CreateElementOptions, page: *Page) !*Element {
@@ -190,7 +203,7 @@ pub fn createElement(self: *Document, name: []const u8, options_: ?CreateElement
     }
 
     const options = options_ orelse return element;
-    if (options.is) |is_value| {
+    if (options.getIs()) |is_value| {
         try element.setAttribute(comptime .wrap("is"), .wrap(is_value), page);
         try Element.Html.Custom.checkAndAttachBuiltIn(element, page);
     }
@@ -484,7 +497,7 @@ pub fn getStyleSheets(self: *Document, page: *Page) !*StyleSheetList {
     }
 
     const sheets = self._style_sheets.?;
-    var collected: std.ArrayList(*@import("css/CSSStyleSheet.zig")) = .{};
+    var collected: std.ArrayList(*@import("css/CSSStyleSheet.zig")) = .empty;
     defer collected.deinit(page.call_arena);
     try collectStyleSheets(self.asNode(), page, &collected);
     try sheets.setSheets(page, collected.items);
@@ -759,7 +772,7 @@ pub fn getDocType(self: *Document) ?*Node {
 // reasonable for 2 frames to document.write("<html>...</html>") into their own
 // frame.
 fn looksLikeNewDocument(html: []const u8) bool {
-    const trimmed = std.mem.trimLeft(u8, html, &std.ascii.whitespace);
+    const trimmed = std.mem.trimStart(u8, html, &std.ascii.whitespace);
     return std.ascii.startsWithIgnoreCase(trimmed, "<!DOCTYPE") or
         std.ascii.startsWithIgnoreCase(trimmed, "<html");
 }
@@ -956,6 +969,31 @@ pub fn hasStorageAccess(_: *Document, page: *Page) !js.Promise {
 
 pub fn requestStorageAccess(_: *Document, page: *Page) !js.Promise {
     return page.js.local.?.resolvePromise(@as(void, {}));
+}
+
+pub fn hasUnpartitionedCookieAccess(_: *Document, page: *Page) !js.Promise {
+    return page.js.local.?.resolvePromise(true);
+}
+
+pub fn browsingTopics(_: *Document, page: *Page) !js.Promise {
+    const topics = page.js.local.?.newArray(0);
+    return page.js.local.?.resolvePromise(topics);
+}
+
+pub fn hasPrivateToken(_: *Document, issuer: []const u8, page: *Page) !js.Promise {
+    _ = issuer;
+    if (!URL.isHTTPS(page.url)) {
+        return page.js.local.?.rejectPromise(DOMException.init(null, "NotAllowedError"));
+    }
+    return page.js.local.?.resolvePromise(false);
+}
+
+pub fn hasRedemptionRecord(_: *Document, issuer: []const u8, page: *Page) !js.Promise {
+    _ = issuer;
+    if (!URL.isHTTPS(page.url)) {
+        return page.js.local.?.rejectPromise(DOMException.init(null, "NotAllowedError"));
+    }
+    return page.js.local.?.resolvePromise(false);
 }
 
 pub fn setAdoptedStyleSheets(self: *Document, sheets: js.Object) !void {
@@ -1194,6 +1232,10 @@ pub const JsApi = struct {
     pub const hasFocus = bridge.function(Document.hasFocus, .{});
     pub const hasStorageAccess = bridge.function(Document.hasStorageAccess, .{});
     pub const requestStorageAccess = bridge.function(Document.requestStorageAccess, .{});
+    pub const hasUnpartitionedCookieAccess = bridge.function(Document.hasUnpartitionedCookieAccess, .{});
+    pub const browsingTopics = bridge.function(Document.browsingTopics, .{});
+    pub const hasPrivateToken = bridge.function(Document.hasPrivateToken, .{});
+    pub const hasRedemptionRecord = bridge.function(Document.hasRedemptionRecord, .{});
     pub const featurePolicy = bridge.accessor(Document.getFeaturePolicy, null, .{});
 
     pub const prerendering = bridge.property(false, .{ .template = false });

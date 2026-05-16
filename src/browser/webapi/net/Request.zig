@@ -73,7 +73,7 @@ pub fn init(input: Input, opts_: ?InitOpts, page: *Page) !*Request {
     const arena = page.arena;
     const url = switch (input) {
         .url => |u| try URL.resolve(arena, page.base(), u, .{ .always_dupe = true }),
-        .request => |r| try arena.dupeZ(u8, r._url),
+        .request => |r| try arena.dupeSentinel(u8, r._url, 0),
     };
 
     const opts = opts_ orelse InitOpts{};

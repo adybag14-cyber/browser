@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../compat.zig");
 const lp = @import("lightpanda");
 
 const log = @import("../../log.zig");
@@ -1364,7 +1365,7 @@ fn populateDerivedLayoutBox(self: *Element, page: *Page) void {
             std.mem.indexOf(u8, href, "/privacy") != null or
             std.mem.indexOf(u8, href, "/terms") != null;
         if (should_log) {
-            const file = std.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
+            const file = compat.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
                 .truncate = false,
             }) catch null;
             if (file) |f| {

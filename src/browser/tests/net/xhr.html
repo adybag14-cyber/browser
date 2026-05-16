@@ -195,6 +195,31 @@
   });
 </script>
 
+<script id=xhr_blob_object_url>
+  testing.async(async (restore) => {
+    const req = new XMLHttpRequest();
+    const blob = new Blob(['blob-xhr-body'], { type: 'text/plain' });
+    const objectUrl = URL.createObjectURL(blob);
+
+    await new Promise((resolve) => {
+      req.onload = resolve;
+      req.open('GET', objectUrl);
+      req.send();
+    });
+
+    URL.revokeObjectURL(objectUrl);
+    restore();
+
+    testing.expectEqual(200, req.status);
+    testing.expectEqual('OK', req.statusText);
+    testing.expectEqual(objectUrl, req.responseURL);
+    testing.expectEqual('text/plain', req.getResponseHeader('Content-Type'));
+    testing.expectEqual('13', req.getResponseHeader('Content-Length'));
+    testing.expectEqual('blob-xhr-body', req.responseText);
+    testing.expectEqual('blob-xhr-body', req.response);
+  });
+</script>
+
 <script id=xhr_abort>
   testing.async(async (restore) => {
     const req = new XMLHttpRequest();

@@ -219,7 +219,7 @@ pub fn pushEntry(
     should_dispatch: bool,
 ) !*NavigationHistoryEntry {
     const arena = page._session.arena;
-    const url = try arena.dupeZ(u8, _url);
+    const url = try arena.dupeSentinel(u8, _url, 0);
 
     // truncates our history here.
     if (self._entries.items.len > self._index + 1) {
@@ -270,7 +270,7 @@ pub fn replaceEntry(
     should_dispatch: bool,
 ) !*NavigationHistoryEntry {
     const arena = page._session.arena;
-    const url = try arena.dupeZ(u8, _url);
+    const url = try arena.dupeSentinel(u8, _url, 0);
 
     const previous = self.getCurrentEntry();
 
@@ -339,7 +339,7 @@ pub fn navigateInner(
     // Keeping the same url generates a crash during WPT test navigate-history-push-same-url.html.
     // When building a script's src, script's base and page url overlap.
     if (is_same_document) {
-        new_url = try arena.dupeZ(u8, new_url);
+        new_url = try arena.dupeSentinel(u8, new_url, 0);
     }
 
     const previous = self.getCurrentEntry();

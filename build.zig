@@ -27,6 +27,7 @@ const TargetClass = enum {
 pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const strip = b.option(bool, "strip", "Strip debug information from Zig artifacts") orelse false;
     const is_msvc = target.result.abi == .msvc;
     const target_class: TargetClass = b.option(TargetClass, "target_class", "Build class: hosted or bare_metal") orelse switch (target.result.os.tag) {
         .freestanding, .uefi => .bare_metal,
@@ -54,6 +55,7 @@ pub fn build(b: *Build) !void {
             .root_source_file = b.path("src/lightpanda.zig"),
             .target = target,
             .optimize = optimize,
+            .strip = strip,
             .link_libc = true,
             .link_libcpp = target.result.abi != .msvc,
             .sanitize_c = enable_csan,
@@ -66,6 +68,7 @@ pub fn build(b: *Build) !void {
         try linkCurl(b, mod);
         try linkHtml5Ever(b, mod);
         if (target.result.os.tag == .windows) {
+            addWin32AbiShim(b, mod);
             mod.linkSystemLibrary("user32", .{ .use_pkg_config = .no });
             mod.linkSystemLibrary("gdi32", .{ .use_pkg_config = .no });
             mod.linkSystemLibrary("msimg32", .{ .use_pkg_config = .no });
@@ -91,6 +94,7 @@ pub fn build(b: *Build) !void {
                 .root_source_file = b.path("src/main.zig"),
                 .target = target,
                 .optimize = optimize,
+                .strip = strip,
                 .sanitize_c = enable_csan,
                 .sanitize_thread = enable_tsan,
                 .imports = &.{
@@ -117,6 +121,7 @@ pub fn build(b: *Build) !void {
                 .root_source_file = b.path("src/main_snapshot_creator.zig"),
                 .target = target,
                 .optimize = optimize,
+                .strip = strip,
                 .imports = &.{
                     .{ .name = "lightpanda", .module = lightpanda_module },
                 },
@@ -153,6 +158,7 @@ pub fn build(b: *Build) !void {
                 .root_source_file = b.path("src/main_legacy_test.zig"),
                 .target = target,
                 .optimize = optimize,
+                .strip = strip,
                 .sanitize_c = enable_csan,
                 .sanitize_thread = enable_tsan,
                 .imports = &.{
@@ -289,6 +295,16 @@ fn installArtifactCompat(b: *Build, artifact: *Build.Step.Compile, is_msvc: bool
     b.installArtifact(artifact);
 }
 
+fn addWin32AbiShim(b: *Build, mod: *Build.Module) void {
+    const win32_c = b.createModule(.{
+        .root_source_file = b.path("src/sys/win32_c.zig"),
+        .target = mod.resolved_target.?,
+        .optimize = mod.optimize.?,
+        .strip = mod.strip,
+    });
+    mod.addImport("win32_c", win32_c);
+}
+
 fn linkV8(
     b: *Build,
     mod: *Build.Module,
@@ -336,7 +352,7 @@ fn linkHtml5Ever(b: *Build, mod: *Build.Module) !void {
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
-            "& { param([string]$src, [string]$dst) Copy-Item -Force $src $dst; $libExe='C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\lib.exe'; if(-not (Test-Path $libExe)){ throw 'lib.exe not found at expected VS path' }; $members=& $libExe /nologo /list $dst; $remove=$members | Where-Object { $_ -match 'compiler_builtins' }; if($remove.Count -eq 0){ exit 0 }; $tmpA=\"$dst.tmpA.lib\"; $tmpB=\"$dst.tmpB.lib\"; Copy-Item -Force $dst $tmpA; foreach($m in $remove){ & $libExe /nologo \"/remove:$m\" \"/out:$tmpB\" $tmpA | Out-Null; Move-Item -Force $tmpB $tmpA }; Move-Item -Force $tmpA $dst }",
+            "& { param([string]$src, [string]$dst) Copy-Item -Force $src $dst; $roots=@('C:\\Program Files\\Microsoft Visual Studio','C:\\Program Files (x86)\\Microsoft Visual Studio') | Where-Object { Test-Path $_ }; $libExe=Get-ChildItem -Path $roots -Recurse -Filter lib.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '\\\\VC\\\\Tools\\\\MSVC\\\\[^\\\\]+\\\\bin\\\\Hostx64\\\\x64\\\\lib\\.exe$' } | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName; if(-not $libExe){ $cmd=Get-Command lib.exe -ErrorAction SilentlyContinue; if($cmd){ $libExe=$cmd.Source } }; if(-not $libExe){ throw 'lib.exe not found in Visual Studio MSVC toolchains or PATH' }; $members=& $libExe /nologo /list $dst; $remove=$members | Where-Object { $_ -match 'compiler_builtins' }; if($remove.Count -eq 0){ exit 0 }; $tmpA=\"$dst.tmpA.lib\"; $tmpB=\"$dst.tmpB.lib\"; Copy-Item -Force $dst $tmpA; foreach($m in $remove){ & $libExe /nologo \"/remove:$m\" \"/out:$tmpB\" $tmpA | Out-Null; Move-Item -Force $tmpB $tmpA }; Move-Item -Force $tmpA $dst }",
         });
         strip_cmd.addFileArg(obj);
         const stripped_obj = strip_cmd.addOutputFileArg("litefetch_html5ever_stripped.lib");
@@ -350,6 +366,15 @@ fn linkHtml5Ever(b: *Build, mod: *Build.Module) !void {
 
 fn linkCurl(b: *Build, mod: *Build.Module) !void {
     const target = mod.resolved_target.?;
+
+    const curl_c = b.createModule(.{
+        .root_source_file = b.path("src/sys/libcurl_c.zig"),
+        .target = target,
+        .optimize = mod.optimize.?,
+        .strip = mod.strip,
+        .link_libc = true,
+    });
+    mod.addImport("libcurl_c", curl_c);
 
     const curl = buildCurl(b, target, mod.optimize.?);
     mod.linkLibrary(curl);
@@ -390,7 +415,7 @@ fn buildZlib(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.Opti
 
     const lib = b.addLibrary(.{ .name = "z", .root_module = mod });
     lib.installHeadersDirectory(dep.path(""), "", .{});
-    lib.addCSourceFiles(.{
+    lib.root_module.addCSourceFiles(.{
         .root = dep.path(""),
         .flags = if (is_windows and is_msvc)
             &.{
@@ -432,21 +457,21 @@ fn buildBrotli(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.Op
     const brotlienc = b.addLibrary(.{ .name = "brotlienc", .root_module = mod });
 
     brotlicmn.installHeadersDirectory(dep.path("c/include/brotli"), "brotli", .{});
-    brotlicmn.addCSourceFiles(.{
+    brotlicmn.root_module.addCSourceFiles(.{
         .root = dep.path("c/common"),
         .files = &.{
             "transform.c",  "shared_dictionary.c", "platform.c",
             "dictionary.c", "context.c",           "constants.c",
         },
     });
-    brotlidec.addCSourceFiles(.{
+    brotlidec.root_module.addCSourceFiles(.{
         .root = dep.path("c/dec"),
         .files = &.{
             "bit_reader.c", "decode.c", "huffman.c",
             "prefix.c",     "state.c",  "static_init.c",
         },
     });
-    brotlienc.addCSourceFiles(.{
+    brotlienc.root_module.addCSourceFiles(.{
         .root = dep.path("c/enc"),
         .files = &.{
             "backward_references.c",        "backward_references_hq.c", "bit_cost.c",
@@ -504,7 +529,7 @@ fn buildNghttp2(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.O
 
     lib.installConfigHeader(config);
     lib.installHeadersDirectory(dep.path("lib/includes/nghttp2"), "nghttp2", .{});
-    lib.addCSourceFiles(.{
+    lib.root_module.addCSourceFiles(.{
         .root = dep.path("lib"),
         .flags = if (is_windows and is_msvc)
             &.{
@@ -801,9 +826,9 @@ fn buildCurl(
     curl_config.addValues(config);
 
     const lib = b.addLibrary(.{ .name = "curl", .root_module = mod });
-    lib.addConfigHeader(curl_config);
+    lib.root_module.addConfigHeader(curl_config);
     lib.installHeadersDirectory(dep.path("include/curl"), "curl", .{});
-    lib.addCSourceFiles(.{
+    lib.root_module.addCSourceFiles(.{
         .root = dep.path("lib"),
         .flags = if (is_windows and is_msvc)
             &.{
@@ -899,7 +924,7 @@ const Manifest = struct {
         var diagnostics: std.zon.parse.Diagnostics = .{};
         defer diagnostics.deinit(b.allocator);
 
-        return std.zon.parse.fromSlice(Manifest, b.allocator, input, &diagnostics, .{
+        return std.zon.parse.fromSliceAlloc(Manifest, b.allocator, input, &diagnostics, .{
             .free_on_error = true,
             .ignore_unknown_fields = true,
         }) catch |err| {

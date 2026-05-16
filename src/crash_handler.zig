@@ -1,16 +1,17 @@
 const std = @import("std");
+const compat = @import("compat.zig");
 const lp = @import("lightpanda");
 const builtin = @import("builtin");
 
 const IS_DEBUG = builtin.mode == .Debug;
 
-const abort = std.posix.abort;
+const abort = std.process.abort;
 
 // tracks how deep within a panic we're panicling
 var panic_level: usize = 0;
 
 // Locked to avoid interleaving panic messages from multiple threads.
-var panic_mutex = std.Thread.Mutex{};
+var panic_mutex: lp.compat.Mutex = .{};
 
 // overwrite's Zig default panic handler
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, begin_addr: ?usize) noreturn {
@@ -33,7 +34,7 @@ pub noinline fn crash(
                 panic_mutex.lock();
                 defer panic_mutex.unlock();
 
-                var writer_w = std.fs.File.stderr().writerStreaming(&.{});
+                var writer_w = compat.fs.File.stderr().writerStreaming(&.{});
                 const writer = &writer_w.interface;
 
                 writer.writeAll(
@@ -54,14 +55,15 @@ pub noinline fn crash(
                     writer.writeByte('\n') catch abort();
                 }
 
-                std.debug.dumpCurrentStackTraceToWriter(begin_addr, writer) catch abort();
+                const terminal: std.Io.Terminal = .{ .writer = writer, .mode = .no_color };
+                std.debug.writeCurrentStackTrace(.{ .first_address = begin_addr }, terminal) catch abort();
             }
 
             report(reason, begin_addr, args) catch {};
         },
         1 => {
             panic_level = 2;
-            var stderr_w = std.fs.File.stderr().writerStreaming(&.{});
+            var stderr_w = compat.fs.File.stderr().writerStreaming(&.{});
             const stderr = &stderr_w.interface;
             stderr.writeAll("panicked during a panic. Aborting.\n") catch abort();
         },
@@ -108,7 +110,8 @@ fn report(reason: []const u8, begin_addr: usize, args: anytype) !void {
             writer.writeByte('\n') catch {};
         }
 
-        std.debug.dumpCurrentStackTraceToWriter(begin_addr, &writer) catch {};
+        const terminal: std.Io.Terminal = .{ .writer = &writer, .mode = .no_color };
+        std.debug.writeCurrentStackTrace(.{ .first_address = begin_addr }, terminal) catch {};
         const written = writer.buffered();
         if (written.len == 0) {
             break :blk "???";
@@ -148,15 +151,15 @@ fn curlPath(buf: []u8) ?usize {
     }
 
     const path = std.posix.getenv("PATH") orelse return null;
-    var it = std.mem.tokenizeScalar(u8, path, std.fs.path.delimiter);
+    var it = std.mem.tokenizeScalar(u8, path, compat.fs.path.delimiter);
 
     var fba = std.heap.FixedBufferAllocator.init(buf);
     const allocator = fba.allocator();
 
-    const cwd = std.fs.cwd();
+    const cwd = compat.fs.cwd();
     while (it.next()) |p| {
         defer fba.reset();
-        const full_path = std.fs.path.joinZ(allocator, &.{ p, "curl" }) catch continue;
+        const full_path = compat.fs.path.joinZ(allocator, &.{ p, "curl" }) catch continue;
         cwd.accessZ(full_path, .{}) catch continue;
         return full_path.len;
     }

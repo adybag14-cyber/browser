@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../../compat.zig");
 const String = @import("../../../string.zig").String;
 const Page = @import("../../Page.zig");
 const js = @import("../../js/js.zig");
@@ -69,7 +70,7 @@ pub fn init(typ: []const u8, _opts: ?Options, page: *Page) !*WheelEvent {
             ._shift_key = opts.shiftKey,
             ._alt_key = opts.altKey,
             ._meta_key = opts.metaKey,
-            ._button = std.meta.intToEnum(MouseEvent.MouseButton, opts.button) catch return error.TypeError,
+            ._button = compat.intToEnum(MouseEvent.MouseButton, opts.button) catch return error.TypeError,
             ._buttons = opts.buttons,
             ._related_target = opts.relatedTarget,
         },

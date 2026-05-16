@@ -21,7 +21,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 pub const SerialLog = struct {
-    lines: std.ArrayListUnmanaged([]u8) = .{},
+    lines: std.ArrayListUnmanaged([]u8) = .empty,
 
     pub fn init() SerialLog {
         return .{};

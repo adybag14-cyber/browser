@@ -27,7 +27,7 @@ charset: [41]u8 = default_charset,
 charset_len: usize = default_charset_len,
 
 /// String "UTF-8" continued by null characters.
-const default_charset = .{ 'U', 'T', 'F', '-', '8' } ++ .{0} ** 36;
+const default_charset = .{ 'U', 'T', 'F', '-', '8' } ++ @as([36]u8, @splat(0));
 const default_charset_len = 5;
 
 /// Mime with unknown Content-Type, empty params and empty charset.
@@ -170,7 +170,7 @@ pub fn parse(input: []u8) !Mime {
 
 pub fn sniff(body: []const u8) ?Mime {
     // 0x0C is form feed
-    const content = std.mem.trimLeft(u8, body, &.{ ' ', '\t', '\n', '\r', 0x0C });
+    const content = std.mem.trimStart(u8, body, &.{ ' ', '\t', '\n', '\r', 0x0C });
     if (content.len == 0) {
         return null;
     }
@@ -317,11 +317,11 @@ fn validType(value: []const u8) bool {
 }
 
 fn trimLeft(s: []const u8) []const u8 {
-    return std.mem.trimLeft(u8, s, &std.ascii.whitespace);
+    return std.mem.trimStart(u8, s, &std.ascii.whitespace);
 }
 
 fn trimRight(s: []const u8) []const u8 {
-    return std.mem.trimRight(u8, s, &std.ascii.whitespace);
+    return std.mem.trimEnd(u8, s, &std.ascii.whitespace);
 }
 
 const testing = @import("../testing.zig");

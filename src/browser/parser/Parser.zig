@@ -455,10 +455,7 @@ fn getNode(ref: *anyopaque) *Node {
     return pn.node;
 }
 
-fn asUint(comptime string: anytype) std.meta.Int(
-    .unsigned,
-    @bitSizeOf(@TypeOf(string.*)) - 8, // (- 8) to exclude sentinel 0
-) {
+fn asUint(comptime string: anytype) @Int(.unsigned, @bitSizeOf(@TypeOf(string.*)) - 8) {
     const byteLength = @sizeOf(@TypeOf(string.*)) - 1;
     const expectedType = *const [byteLength:0]u8;
     if (@TypeOf(string) != expectedType) {

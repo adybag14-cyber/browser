@@ -21,7 +21,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 pub const Input = struct {
-    events: std.ArrayListUnmanaged(Event) = .{},
+    events: std.ArrayListUnmanaged(Event) = .empty,
 
     pub const Button = enum {
         left,

@@ -15,12 +15,14 @@
   testing.expectEqual(true, validPlatforms.includes(navigator.platform));
   testing.expectEqual(true, navigator.language.length > 0);
   testing.expectEqual(true, Array.isArray(navigator.languages));
-  testing.expectEqual(1, navigator.languages.length);
+  testing.expectEqual(3, navigator.languages.length);
   testing.expectEqual(navigator.language, navigator.languages[0]);
+  testing.expectEqual('en-US', navigator.languages[1]);
+  testing.expectEqual('en', navigator.languages[2]);
   testing.expectEqual(true, navigator.onLine);
   testing.expectEqual(true, navigator.cookieEnabled);
   testing.expectEqual(true, navigator.hardwareConcurrency > 0);
-  testing.expectEqual(true, navigator.maxTouchPoints >= 0);
+  testing.expectEqual(0, navigator.maxTouchPoints);
   testing.expectEqual('Google Inc.', navigator.vendor);
   testing.expectEqual('', navigator.vendorSub);
   testing.expectEqual('Gecko', navigator.product);
@@ -55,9 +57,9 @@
   testing.expectEqual('function', typeof navigator.permissions.query);
   testing.expectEqual('object', typeof navigator.connection);
   testing.expectEqual('4g', navigator.connection.effectiveType);
-  testing.expectEqual(100, navigator.connection.rtt);
+  testing.expectEqual(0, navigator.connection.rtt);
   testing.expectEqual(false, navigator.connection.saveData);
-  testing.expectEqual('wifi', navigator.connection.type);
+  testing.expectEqual('undefined', typeof navigator.connection.type);
   testing.expectEqual('object', typeof navigator.credentials);
   testing.expectEqual('function', typeof navigator.credentials.get);
   testing.expectEqual('function', typeof navigator.credentials.create);
@@ -86,6 +88,9 @@
   testing.expectEqual('function', typeof navigator.serviceWorker.getRegistration);
   testing.expectEqual('function', typeof navigator.serviceWorker.getRegistrations);
   testing.expectEqual('function', typeof navigator.serviceWorker.startMessages);
+  testing.expectEqual('object', typeof window.caches);
+  testing.expectEqual('function', typeof window.caches.open);
+  testing.expectEqual('function', typeof window.caches.keys);
   testing.expectEqual('object', typeof navigator.mediaSession);
   testing.expectEqual('none', navigator.mediaSession.playbackState);
   testing.expectEqual('function', typeof navigator.mediaSession.setActionHandler);
@@ -185,15 +190,20 @@
     testing.expectEqual('function', typeof navigator.userAgentData.toJSON);
     testing.expectEqual(true, navigator.userAgentData.brands.some(v => v.brand === 'Chromium'));
     testing.expectEqual(true, navigator.userAgentData.brands.some(v => v.brand === 'Google Chrome'));
+    testing.expectEqual(true, Object.keys(navigator.userAgentData.brands[0]).includes('brand'));
+    testing.expectEqual(true, Object.keys(navigator.userAgentData.brands[0]).includes('version'));
+    testing.expectEqual(true, JSON.stringify(navigator.userAgentData.brands).includes('"brand":"Chromium"'));
 
     const json = navigator.userAgentData.toJSON();
     testing.expectEqual(true, Array.isArray(json.brands));
+    testing.expectEqual(true, JSON.stringify(json.brands).includes('"brand":"Google Chrome"'));
     testing.expectEqual(false, json.mobile);
     testing.expectEqual(navigator.userAgentData.platform, json.platform);
 
     const highEntropy = await navigator.userAgentData.getHighEntropyValues([
       'architecture',
       'bitness',
+      'fullVersionList',
       'model',
       'platform',
       'platformVersion',
@@ -206,10 +216,12 @@
     testing.expectEqual(false, highEntropy.mobile);
     testing.expectEqual(true, highEntropy.architecture.length > 0);
     testing.expectEqual(true, highEntropy.bitness === '64' || highEntropy.bitness === '32' || highEntropy.bitness === '0');
+    testing.expectEqual(true, Array.isArray(highEntropy.fullVersionList));
+    testing.expectEqual(true, highEntropy.fullVersionList.some(v => v.brand === 'Google Chrome' && v.version === '148.0.7778.168'));
     testing.expectEqual('', highEntropy.model);
     testing.expectEqual(navigator.userAgentData.platform, highEntropy.platform);
     testing.expectEqual(true, highEntropy.platformVersion.length > 0);
-    testing.expectEqual('146.0.7680.178', highEntropy.uaFullVersion);
+    testing.expectEqual('148.0.7778.168', highEntropy.uaFullVersion);
     testing.expectEqual(false, highEntropy.wow64);
 
     const permission = await navigator.permissions.query({ name: 'geolocation' });
@@ -242,9 +254,32 @@
 
     testing.expectEqual(null, await navigator.serviceWorker.getRegistration());
     testing.expectEqual(0, (await navigator.serviceWorker.getRegistrations()).length);
+    const cache = await caches.open('navigator-test-cache');
+    testing.expectEqual('object', typeof cache);
+    testing.expectEqual('function', typeof cache.match);
+    testing.expectEqual(true, await caches.has('navigator-test-cache'));
+    testing.expectEqual(true, (await caches.keys()).includes('navigator-test-cache'));
+    testing.expectEqual(null, await cache.match('/missing'));
+    testing.expectEqual(0, (await cache.keys()).length);
+    testing.expectEqual(false, await cache.delete('/missing'));
+    testing.expectEqual(true, await caches.delete('navigator-test-cache'));
+    testing.expectEqual(false, await caches.has('navigator-test-cache'));
     testing.expectEqual(null, await navigator.gpu.requestAdapter());
     testing.expectEqual('rgba8unorm', navigator.gpu.getPreferredCanvasFormat());
     testing.expectEqual(false, await navigator.xr.isSessionSupported('inline'));
+
+    const swRegistration = await navigator.serviceWorker.register('/src/browser/tests/page/support/chatgpt_probe_sw.js');
+    testing.expectEqual('object', typeof swRegistration);
+    testing.expectEqual(true, swRegistration.scope.endsWith('/src/browser/tests/page/support/'));
+    testing.expectEqual('activated', swRegistration.active.state);
+    testing.expectEqual(true, navigator.serviceWorker.controller === swRegistration.active);
+    testing.expectEqual(true, (await navigator.serviceWorker.ready) === swRegistration);
+    testing.expectEqual(true, (await navigator.serviceWorker.getRegistration()).scope === swRegistration.scope);
+    testing.expectEqual(1, (await navigator.serviceWorker.getRegistrations()).length);
+    testing.expectEqual(true, await swRegistration.unregister());
+    testing.expectEqual(null, navigator.serviceWorker.controller);
+    testing.expectEqual(null, await navigator.serviceWorker.getRegistration());
+    testing.expectEqual(0, (await navigator.serviceWorker.getRegistrations()).length);
 
     const layoutMap = await navigator.keyboard.getLayoutMap();
     testing.expectEqual('function', typeof layoutMap.get);
@@ -316,8 +351,6 @@
     testing.expectEqual(null, await navigator.protectedAudience.clearOriginJoinedAdInterestGroups());
     testing.expectEqual(null, await navigator.protectedAudience.updateAdInterestGroups());
 
-    testing.expectErrorAsync('NotSupportedError', () => navigator.serviceWorker.ready);
-    testing.expectErrorAsync('NotSupportedError', () => navigator.serviceWorker.register('/sw.js'));
     testing.expectErrorAsync('NotAllowedError', () => navigator.share({ title: 'x' }));
     testing.expectErrorAsync('NotSupportedError', () => navigator.requestMIDIAccess());
     testing.expectErrorAsync('NotSupportedError', () => navigator.requestMediaKeySystemAccess('org.w3.clearkey', [{}]));

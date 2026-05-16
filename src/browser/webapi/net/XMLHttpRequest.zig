@@ -25,6 +25,7 @@ const Http = @import("../../../http/Http.zig");
 const URL = @import("../../URL.zig");
 const Mime = @import("../../Mime.zig");
 const Page = @import("../../Page.zig");
+const Blob = @import("../Blob.zig");
 const Node = @import("../Node.zig");
 const Event = @import("../Event.zig");
 const Headers = @import("Headers.zig");
@@ -220,6 +221,11 @@ pub fn send(self: *XMLHttpRequest, body_: ?[]const u8) !void {
         try page.headersForRequest(self._arena, self._url, &headers);
     }
 
+    if (page.resolveBlobUrl(self._url)) |blob| {
+        try self.fulfillBlobRequest(blob);
+        return;
+    }
+
     try http_client.request(.{
         .ctx = self,
         .url = self._url,
@@ -240,6 +246,30 @@ pub fn send(self: *XMLHttpRequest, body_: ?[]const u8) !void {
 
     page.js.strongRef(self);
 }
+
+fn fulfillBlobRequest(self: *XMLHttpRequest, blob: *Blob) !void {
+    const page = self._page;
+    const total = blob._slice.len;
+
+    self._response_status = 200;
+    self._response_len = total;
+    self._response_url = try self._arena.dupeSentinel(u8, self._url, 0);
+    if (blob._mime.len != 0) {
+        const content_type = try std.fmt.allocPrint(self._arena, "Content-Type: {s}", .{blob._mime});
+        try self._response_headers.append(self._arena, content_type);
+    }
+    const content_length = try std.fmt.allocPrint(self._arena, "Content-Length: {d}", .{total});
+    try self._response_headers.append(self._arena, content_length);
+    try self._response_data.appendSlice(self._arena, blob._slice);
+
+    try self.stateChanged(.headers_received, page);
+    try self._proto.dispatch(.load_start, .{ .loaded = 0, .total = total }, page);
+    try self.stateChanged(.loading, page);
+    try self._proto.dispatch(.progress, .{ .loaded = total, .total = total }, page);
+    try self.stateChanged(.done, page);
+    try self._proto.dispatch(.load, .{ .loaded = total, .total = total }, page);
+    try self._proto.dispatch(.load_end, .{ .loaded = total, .total = total }, page);
+}
 pub fn getReadyState(self: *const XMLHttpRequest) u32 {
     return @intFromEnum(self._ready_state);
 }
@@ -255,7 +285,7 @@ pub fn getResponseHeader(self: *const XMLHttpRequest, name: []const u8) ?[]const
         if (entry[name.len] != ':') {
             continue;
         }
-        return std.mem.trimLeft(u8, entry[name.len + 1 ..], " ");
+        return std.mem.trimStart(u8, entry[name.len + 1 ..], " ");
     }
     return null;
 }
@@ -390,7 +420,7 @@ fn httpHeaderDoneCallback(transfer: *Http.Transfer) !bool {
         self._response_len = cl;
         try self._response_data.ensureTotalCapacity(self._arena, cl);
     }
-    self._response_url = try self._arena.dupeZ(u8, std.mem.span(header.url));
+    self._response_url = try self._arena.dupeSentinel(u8, std.mem.span(header.url), 0);
 
     const page = self._page;
 

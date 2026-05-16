@@ -18,22 +18,29 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const native_endian = @import("builtin").target.cpu.arch.endian();
 
 const M = @This();
+
+fn bytesToContent(bytes: [12]u8) u96 {
+    return std.mem.readInt(u96, &bytes, native_endian);
+}
+
+fn bytesToPrefix(bytes: [4]u8) u32 {
+    return std.mem.readInt(u32, &bytes, native_endian);
+}
 
 // German-string (small string optimization)
 pub const String = packed struct {
     len: i32,
     payload: packed union {
-        // Zig won't let you put an array in a packed struct/union. But it will
-        // let you put a vector.
-        content: @Vector(12, u8),
-        heap: packed struct { prefix: @Vector(4, u8), ptr: [*]const u8 },
+        content: u96,
+        heap: packed struct { prefix: u32, ptr: usize },
     },
 
     const tombstone = -1;
-    pub const empty = String{ .len = 0, .payload = .{ .content = @splat(0) } };
-    pub const deleted = String{ .len = tombstone, .payload = .{ .content = @splat(0) } };
+    pub const empty = String{ .len = 0, .payload = .{ .content = 0 } };
+    pub const deleted = String{ .len = tombstone, .payload = .{ .content = 0 } };
 
     // for packages that already have String imported, then can use String.Global
     pub const Global = M.Global;
@@ -52,7 +59,7 @@ pub const String = packed struct {
 
             var content: [12]u8 = @splat(0);
             @memcpy(content[0..l], input);
-            return .{ .len = @intCast(l), .payload = .{ .content = content } };
+            return .{ .len = @intCast(l), .payload = .{ .content = bytesToContent(content) } };
         }
 
         // Runtime path - handle both String and []const u8
@@ -65,14 +72,14 @@ pub const String = packed struct {
         if (l <= 12) {
             var content: [12]u8 = @splat(0);
             @memcpy(content[0..l], input);
-            return .{ .len = @intCast(l), .payload = .{ .content = content } };
+            return .{ .len = @intCast(l), .payload = .{ .content = bytesToContent(content) } };
         }
 
         return .{
             .len = @intCast(l),
             .payload = .{ .heap = .{
-                .prefix = input[0..4].*,
-                .ptr = input.ptr,
+                .prefix = bytesToPrefix(input[0..4].*),
+                .ptr = @intFromPtr(input.ptr),
             } },
         };
     }
@@ -88,14 +95,14 @@ pub const String = packed struct {
         if (l <= 12) {
             var content: [12]u8 = @splat(0);
             @memcpy(content[0..l], input);
-            return .{ .len = @intCast(l), .payload = .{ .content = content } };
+            return .{ .len = @intCast(l), .payload = .{ .content = bytesToContent(content) } };
         }
 
         return .{
             .len = @intCast(l),
             .payload = .{ .heap = .{
-                .prefix = input[0..4].*,
-                .ptr = (intern(input) orelse (if (opts.dupe) (try allocator.dupe(u8, input)) else input)).ptr,
+                .prefix = bytesToPrefix(input[0..4].*),
+                .ptr = @intFromPtr((intern(input) orelse (if (opts.dupe) (try allocator.dupe(u8, input)) else input)).ptr),
             } },
         };
     }
@@ -103,7 +110,8 @@ pub const String = packed struct {
     pub fn deinit(self: *const String, allocator: Allocator) void {
         const len = self.len;
         if (len > 12) {
-            allocator.free(self.payload.heap.ptr[0..@intCast(len)]);
+            const ptr: [*]const u8 = @ptrFromInt(self.payload.heap.ptr);
+            allocator.free(ptr[0..@intCast(len)]);
         }
     }
 
@@ -124,7 +132,7 @@ pub const String = packed struct {
                 @memcpy(content[pos..][0..part.len], part);
                 pos += part.len;
             }
-            return .{ .len = @intCast(total_len), .payload = .{ .content = content } };
+            return .{ .len = @intCast(total_len), .payload = .{ .content = bytesToContent(content) } };
         }
 
         const result = try allocator.alloc(u8, total_len);
@@ -137,8 +145,8 @@ pub const String = packed struct {
         return .{
             .len = @intCast(total_len),
             .payload = .{ .heap = .{
-                .prefix = result[0..4].*,
-                .ptr = (intern(result) orelse result).ptr,
+                .prefix = bytesToPrefix(result[0..4].*),
+                .ptr = @intFromPtr((intern(result) orelse result).ptr),
             } },
         };
     }
@@ -156,7 +164,8 @@ pub const String = packed struct {
             return slice[4 .. ul + 4];
         }
 
-        return self.payload.heap.ptr[0..ul];
+        const ptr: [*]const u8 = @ptrFromInt(self.payload.heap.ptr);
+        return ptr[0..ul];
     }
 
     pub fn isDeleted(self: *const String) bool {
@@ -178,13 +187,15 @@ pub const String = packed struct {
         }
 
         if (len <= 12) {
-            return @reduce(.And, a.payload.content == b.payload.content);
+            return a.payload.content == b.payload.content;
         }
 
         // a.len == b.len at this point
         const al: usize = @intCast(len);
         const bl: usize = @intCast(len);
-        return std.mem.eql(u8, a.payload.heap.ptr[0..al], b.payload.heap.ptr[0..bl]);
+        const a_ptr: [*]const u8 = @ptrFromInt(a.payload.heap.ptr);
+        const b_ptr: [*]const u8 = @ptrFromInt(b.payload.heap.ptr);
+        return std.mem.eql(u8, a_ptr[0..al], b_ptr[0..bl]);
     }
 
     pub fn eqlSlice(a: String, b: []const u8) bool {
@@ -312,7 +323,7 @@ pub const Global = struct {
     str: String,
 };
 
-fn asUint(comptime string: anytype) std.meta.Int(
+fn asUint(comptime string: anytype) @Int(
     .unsigned,
     @bitSizeOf(@TypeOf(string.*)) - 8, // (- 8) to exclude sentinel 0
 ) {
@@ -326,25 +337,27 @@ fn asUint(comptime string: anytype) std.meta.Int(
 }
 
 const testing = @import("testing.zig");
+const compat = @import("compat.zig");
 test "String" {
     const other_short = try String.init(undefined, "other_short", .{});
-    const other_long = try String.init(testing.allocator, "other_long" ** 100, .{});
+    const other_long_bytes = compat.repeatComptime("other_long", 100);
+    const other_long = try String.init(testing.allocator, &other_long_bytes, .{});
     defer other_long.deinit(testing.allocator);
 
     inline for (0..100) |i| {
-        const input = "a" ** i;
-        const str = try String.init(testing.allocator, input, .{});
+        const input = compat.repeatComptime("a", i);
+        const str = try String.init(testing.allocator, &input, .{});
         defer str.deinit(testing.allocator);
 
-        try testing.expectEqual(input, str.str());
+        try testing.expectEqual(input[0..], str.str());
 
         try testing.expectEqual(true, str.eql(str));
-        try testing.expectEqual(true, str.eqlSlice(input));
+        try testing.expectEqual(true, str.eqlSlice(&input));
         try testing.expectEqual(false, str.eql(other_short));
         try testing.expectEqual(false, str.eqlSlice("other_short"));
 
         try testing.expectEqual(false, str.eql(other_long));
-        try testing.expectEqual(false, str.eqlSlice("other_long" ** 100));
+        try testing.expectEqual(false, str.eqlSlice(&other_long_bytes));
     }
 }
 

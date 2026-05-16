@@ -460,7 +460,7 @@ fn getBoxModel(cmd: anytype) !void {
 
     const rect = element.getBoundingClientRect(page);
     const quad = rectToQuad(rect);
-    const zero = [_]f64{0.0} ** 8;
+    const zero: [8]f64 = @splat(0.0);
 
     return cmd.sendResult(.{ .model = BoxModel{
         .content = quad,

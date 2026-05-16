@@ -36,8 +36,8 @@ const IS_DEBUG = @import("builtin").mode == .Debug;
 
 _arena: Allocator,
 _callback: js.Function.Temp,
-_observing: std.ArrayList(Observation) = .{},
-_pending_entries: std.ArrayList(*ResizeObserverEntry) = .{},
+_observing: std.ArrayList(Observation) = .empty,
+_pending_entries: std.ArrayList(*ResizeObserverEntry) = .empty,
 _previous_sizes: std.AutoHashMapUnmanaged(*Element, ObservedSize) = .{},
 
 const Observation = struct {

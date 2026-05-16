@@ -1,18 +1,21 @@
 const std = @import("std");
 const lp = @import("lightpanda");
+const compat = lp.compat;
 
 const Allocator = std.mem.Allocator;
+const xhr_body = "12345678901234567890123456789012345678901234567890" ++
+    "12345678901234567890123456789012345678901234567890";
 
 // used in custom panic handler
 var current_test: ?[]const u8 = null;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init.Minimal) !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
 
     const allocator = gpa.allocator();
 
-    var args = try std.process.argsWithAllocator(allocator);
+    var args = try init.args.iterateAllocator(allocator);
     defer args.deinit();
     _ = args.next(); // executable name
 
@@ -25,7 +28,7 @@ pub fn main() !void {
     defer http_server.deinit();
 
     {
-        var wg: std.Thread.WaitGroup = .{};
+        var wg: compat.WaitGroup = .{};
         wg.startMany(1);
         var thrd = try std.Thread.spawn(.{}, TestHTTPServer.run, .{ &http_server, &wg });
         thrd.detach();
@@ -58,7 +61,7 @@ pub fn main() !void {
     const session = try browser.newSession(notification);
     defer session.deinit();
 
-    var dir = try std.fs.cwd().openDir("src/browser/tests/legacy/", .{ .iterate = true, .no_follow = true });
+    var dir = try compat.fs.cwd().openDir("src/browser/tests/legacy/", .{ .iterate = true, .no_follow = true });
     defer dir.close();
 
     var walker = try dir.walk(allocator);
@@ -117,12 +120,12 @@ pub fn run(allocator: Allocator, file: []const u8, session: *lp.Session) !void {
 
 const TestHTTPServer = struct {
     shutdown: bool,
-    dir: std.fs.Dir,
-    listener: ?std.net.Server,
+    dir: compat.fs.Dir,
+    listener: ?compat.net.Server,
 
     pub fn init() !TestHTTPServer {
         return .{
-            .dir = try std.fs.cwd().openDir("src/browser/tests/legacy/", .{}),
+            .dir = try compat.fs.cwd().openDir("src/browser/tests/legacy/", .{}),
             .shutdown = true,
             .listener = null,
         };
@@ -136,8 +139,8 @@ const TestHTTPServer = struct {
         self.dir.close();
     }
 
-    pub fn run(self: *TestHTTPServer, wg: *std.Thread.WaitGroup) !void {
-        const address = try std.net.Address.parseIp("127.0.0.1", 9589);
+    pub fn run(self: *TestHTTPServer, wg: *compat.WaitGroup) !void {
+        const address = try compat.net.Address.parseIp("127.0.0.1", 9589);
 
         self.listener = try address.listen(.{ .reuse_address = true });
         var listener = &self.listener.?;
@@ -156,14 +159,15 @@ const TestHTTPServer = struct {
         }
     }
 
-    fn handleConnection(self: *TestHTTPServer, conn: std.net.Server.Connection) !void {
-        defer conn.stream.close();
+    fn handleConnection(self: *TestHTTPServer, conn: compat.net.Server.Connection) !void {
+        var connection = conn;
+        defer connection.stream.close();
 
         var req_buf: [2048]u8 = undefined;
-        var conn_reader = conn.stream.reader(&req_buf);
-        var conn_writer = conn.stream.writer(&req_buf);
+        var conn_reader = connection.stream.reader(&req_buf);
+        var conn_writer = connection.stream.writer(&req_buf);
 
-        var http_server = std.http.Server.init(conn_reader.interface(), &conn_writer.interface);
+        var http_server = std.http.Server.init(&conn_reader.interface, &conn_writer.interface);
 
         while (true) {
             var req = http_server.receiveHead() catch |err| switch (err) {
@@ -187,7 +191,7 @@ const TestHTTPServer = struct {
         const path = req.head.target;
 
         if (std.mem.eql(u8, path, "/xhr")) {
-            return req.respond("1234567890" ** 10, .{
+            return req.respond(xhr_body, .{
                 .extra_headers = &.{
                     .{ .name = "Content-Type", .value = "text/html; charset=utf-8" },
                 },
@@ -226,7 +230,7 @@ const TestHTTPServer = struct {
     }
 
     pub fn sendFile(req: *std.http.Server.Request, file_path: []const u8) !void {
-        var file = std.fs.cwd().openFile(file_path, .{}) catch |err| switch (err) {
+        var file = compat.fs.cwd().openFile(file_path, .{}) catch |err| switch (err) {
             error.FileNotFound => return req.respond("server error", .{ .status = .not_found }),
             else => return err,
         };

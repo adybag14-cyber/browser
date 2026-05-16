@@ -29,7 +29,7 @@ pub fn resolve(allocator: Allocator, base: [:0]const u8, path: anytype, comptime
     const PT = @TypeOf(path);
     if (base.len == 0 or hasAbsoluteScheme(path)) {
         if (comptime opts.always_dupe or !isNullTerminated(PT)) {
-            const duped = try allocator.dupeZ(u8, path);
+            const duped = try allocator.dupeSentinel(u8, path, 0);
             return processResolved(allocator, duped, opts);
         }
         if (comptime opts.encode) {
@@ -40,7 +40,7 @@ pub fn resolve(allocator: Allocator, base: [:0]const u8, path: anytype, comptime
 
     if (path.len == 0) {
         if (comptime opts.always_dupe) {
-            const duped = try allocator.dupeZ(u8, base);
+            const duped = try allocator.dupeSentinel(u8, base, 0);
             return processResolved(allocator, duped, opts);
         }
         if (comptime opts.encode) {
@@ -69,7 +69,7 @@ pub fn resolve(allocator: Allocator, base: [:0]const u8, path: anytype, comptime
                 }
                 return path;
             }
-            const duped = try allocator.dupeZ(u8, path);
+            const duped = try allocator.dupeSentinel(u8, path, 0);
             return processResolved(allocator, duped, opts);
         };
         const protocol = base[0 .. index + 1];
@@ -236,7 +236,9 @@ fn percentEncodeSegment(allocator: Allocator, segment: []const u8, comptime is_p
         }
 
         if (shouldPercentEncode(c, is_path)) {
-            try buf.writer(allocator).print("%{X:0>2}", .{c});
+            var encoded: [3]u8 = undefined;
+            const encoded_slice = std.fmt.bufPrint(&encoded, "%{X:0>2}", .{c}) catch unreachable;
+            try buf.appendSlice(allocator, encoded_slice);
         } else {
             try buf.append(allocator, c);
         }
@@ -615,7 +617,7 @@ pub fn setHash(current: [:0]const u8, value: []const u8, allocator: Allocator) !
 
 pub fn concatQueryString(arena: Allocator, url: []const u8, query_string: []const u8) ![:0]const u8 {
     if (query_string.len == 0) {
-        return arena.dupeZ(u8, url);
+        return arena.dupeSentinel(u8, url, 0);
     }
 
     var buf: std.ArrayList(u8) = .empty;

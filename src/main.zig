@@ -19,6 +19,7 @@
 const std = @import("std");
 const lp = @import("lightpanda");
 const builtin = @import("builtin");
+const compat = lp.compat;
 const Allocator = std.mem.Allocator;
 
 const log = lp.log;
@@ -28,7 +29,7 @@ const Host = lp.sys.Host;
 const SigHandler = @import("Sighandler.zig");
 pub const panic = lp.crash_handler.panic;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     // allocator
     // - in Debug mode we use the General Purpose Allocator to detect memory leaks
     // - in Release mode we use the c allocator
@@ -36,7 +37,7 @@ pub fn main() !void {
     const gpa = if (builtin.mode == .Debug) gpa_instance.allocator() else std.heap.c_allocator;
 
     defer if (builtin.mode == .Debug) {
-        if (gpa_instance.detectLeaks()) std.posix.exit(1);
+        if (gpa_instance.detectLeaks() != 0) std.process.exit(1);
     };
 
     // arena for main-specific allocations
@@ -44,24 +45,24 @@ pub fn main() !void {
     const main_arena = main_arena_instance.allocator();
     defer main_arena_instance.deinit();
 
-    run(gpa, main_arena) catch |err| {
+    run(init.minimal.args, gpa, main_arena) catch |err| {
         log.fatal(.app, "exit", .{ .err = err });
-        std.posix.exit(1);
+        std.process.exit(1);
     };
 }
 
-fn run(allocator: Allocator, main_arena: Allocator) !void {
-    const args = try Config.parseArgs(main_arena);
+fn run(process_args: std.process.Args, allocator: Allocator, main_arena: Allocator) !void {
+    const args = try Config.parseArgs(process_args, main_arena);
     defer args.deinit(main_arena);
 
     switch (args.mode) {
         .help => {
             args.printUsageAndExit(args.mode.help);
-            return std.process.cleanExit();
+            return std.process.cleanExit(compat.io());
         },
         .version => {
             std.debug.print("{s}\n", .{lp.build_config.git_commit});
-            return std.process.cleanExit();
+            return std.process.cleanExit(compat.io());
         },
         else => {},
     }
@@ -102,7 +103,7 @@ fn run(allocator: Allocator, main_arena: Allocator) !void {
             try sighandler.install();
 
             log.debug(.app, "startup", .{ .mode = "serve", .browser_mode = @tagName(browser_mode), .snapshot = app.snapshot.fromEmbedded() });
-            const address = std.net.Address.parseIp(opts.host, opts.port) catch |err| {
+            const address = compat.net.Address.parseIp(opts.host, opts.port) catch |err| {
                 log.fatal(.app, "invalid server address", .{ .err = err, .host = opts.host, .port = opts.port });
                 return args.printUsageAndExit(false);
             };
@@ -148,7 +149,7 @@ fn run(allocator: Allocator, main_arena: Allocator) !void {
                 },
             };
 
-            var stdout = std.fs.File.stdout();
+            var stdout = compat.fs.File.stdout();
             var writer = stdout.writer(&.{});
             if (opts.dump_mode != null) {
                 fetch_opts.writer = &writer.interface;
@@ -164,13 +165,13 @@ fn run(allocator: Allocator, main_arena: Allocator) !void {
 
             log.opts.format = .logfmt;
 
-            var stdout = std.fs.File.stdout().writer(&.{});
+            var stdout = compat.fs.File.stdout().writer(&.{});
 
             var mcp_server: *lp.mcp.Server = try .init(allocator, app, &stdout.interface);
             defer mcp_server.deinit();
 
             var stdin_buf: [64 * 1024]u8 = undefined;
-            var stdin = std.fs.File.stdin().reader(&stdin_buf);
+            var stdin = compat.fs.File.stdin().reader(&stdin_buf);
 
             try lp.mcp.router.processRequests(mcp_server, &stdin.interface);
         },

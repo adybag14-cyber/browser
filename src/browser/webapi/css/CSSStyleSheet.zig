@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../../../compat.zig");
 const js = @import("../../js/js.zig");
 const Page = @import("../../Page.zig");
 const Element = @import("../Element.zig");
@@ -128,9 +129,9 @@ pub fn replace(self: *CSSStyleSheet, text: []const u8, page: *Page) !js.Promise 
 }
 
 pub fn replaceSync(self: *CSSStyleSheet, text: []const u8, page: *Page) !void {
-    var parsed: std.ArrayList(ParsedRule) = .{};
+    var parsed: std.ArrayList(ParsedRule) = .empty;
     defer parsed.deinit(page.arena);
-    var font_faces: std.ArrayList(ParsedFontFace) = .{};
+    var font_faces: std.ArrayList(ParsedFontFace) = .empty;
     defer font_faces.deinit(page.arena);
     var scratch = std.heap.ArenaAllocator.init(page.arena);
     defer scratch.deinit();
@@ -199,7 +200,7 @@ fn selectorTextMatchesCompat(element: *Element, selector_text: []const u8, page:
 fn forgivingSelectorListMatches(element: *Element, selector_text: []const u8, page: *Page) !bool {
     var remaining = selector_text;
     while (true) {
-        const trimmed = std.mem.trimLeft(u8, remaining, &std.ascii.whitespace);
+        const trimmed = std.mem.trimStart(u8, remaining, &std.ascii.whitespace);
         if (trimmed.len == 0) return false;
 
         const comma_pos = topLevelCommaIndex(trimmed);
@@ -274,7 +275,7 @@ fn parseRuleSelectors(selector_text: []const u8, page: *Page) ![]const ParsedSel
     var parsed_selectors: std.ArrayList(ParsedSelector) = .empty;
     var remaining = selector_text;
     while (true) {
-        const trimmed = std.mem.trimLeft(u8, remaining, &std.ascii.whitespace);
+        const trimmed = std.mem.trimStart(u8, remaining, &std.ascii.whitespace);
         if (trimmed.len == 0) break;
 
         const comma_pos = topLevelCommaIndex(trimmed);
@@ -355,7 +356,7 @@ fn addSpecificity(
 
 fn refreshRuleList(self: *CSSStyleSheet, page: *Page) !void {
     const rules = if (self._css_rules) |rules| rules else return;
-    var out: std.ArrayList(*CSSRule) = .{};
+    var out: std.ArrayList(*CSSRule) = .empty;
     defer out.deinit(page.arena);
     for (self._rules) |entry| {
         try out.append(page.arena, entry.rule);
@@ -572,10 +573,10 @@ fn mediaQueryClauseMatches(query: []const u8, viewport_width: u32, viewport_heig
 
     var negate = false;
     if (startsWithWordIgnoreCase(clause, "only")) {
-        clause = std.mem.trimLeft(u8, clause["only".len..], &std.ascii.whitespace);
+        clause = std.mem.trimStart(u8, clause["only".len..], &std.ascii.whitespace);
     } else if (startsWithWordIgnoreCase(clause, "not")) {
         negate = true;
-        clause = std.mem.trimLeft(u8, clause["not".len..], &std.ascii.whitespace);
+        clause = std.mem.trimStart(u8, clause["not".len..], &std.ascii.whitespace);
     }
 
     var remaining = clause;
@@ -652,7 +653,7 @@ fn parseMediaQueryPx(value: []const u8) ?u32 {
     const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
     if (trimmed.len == 0) return null;
     if (std.mem.endsWith(u8, trimmed, "px")) {
-        const numeric = std.mem.trimRight(u8, trimmed[0 .. trimmed.len - 2], &std.ascii.whitespace);
+        const numeric = std.mem.trimEnd(u8, trimmed[0 .. trimmed.len - 2], &std.ascii.whitespace);
         return std.fmt.parseInt(u32, numeric, 10) catch null;
     }
     return std.fmt.parseInt(u32, trimmed, 10) catch null;
@@ -734,7 +735,7 @@ fn fetchStylesheetText(
 
     var ctx = StylesheetFetchContext{
         .allocator = temp,
-        .buffer = .{},
+        .buffer = .empty,
     };
     defer ctx.buffer.deinit(temp);
 
@@ -850,7 +851,7 @@ fn fetchFontFaceSource(
 
     var ctx = FontFetchContext{
         .allocator = temp,
-        .buffer = .{},
+        .buffer = .empty,
     };
     defer ctx.buffer.deinit(temp);
     try font_client.request(.{
@@ -946,7 +947,7 @@ fn parseImportSpecifier(import_text: []const u8) ?[]const u8 {
     var tail = std.mem.trim(u8, import_text["@import".len..], &std.ascii.whitespace);
     if (tail.len == 0) return null;
     if (tail[tail.len - 1] == ';') {
-        tail = std.mem.trimRight(u8, tail[0 .. tail.len - 1], &std.ascii.whitespace);
+        tail = std.mem.trimEnd(u8, tail[0 .. tail.len - 1], &std.ascii.whitespace);
     }
     if (tail.len == 0) return null;
 
@@ -994,7 +995,7 @@ fn parseCssStringLikeValue(value: []const u8) ?[]const u8 {
 }
 
 fn parseFontFaceSources(allocator: std.mem.Allocator, src: []const u8) ![]ParsedFontSource {
-    var out: std.ArrayList(ParsedFontSource) = .{};
+    var out: std.ArrayList(ParsedFontSource) = .empty;
     defer out.deinit(allocator);
 
     var cursor: usize = 0;
@@ -1062,7 +1063,7 @@ fn parseFirstFontFaceFormatHint(fragment: []const u8) FontFaceEntry.Format {
 
 fn detectFontFaceFormat(url: [:0]const u8) FontFaceEntry.Format {
     const pathname = RawURL.getPathname(url);
-    const ext = std.fs.path.extension(pathname);
+    const ext = compat.fs.path.extension(pathname);
     if (ext.len == 0) {
         return .unknown;
     }
@@ -1094,11 +1095,11 @@ fn stylesheetRequestUrlForFetch(
     include_credentials: bool,
 ) ![:0]const u8 {
     if (include_credentials) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
 
     if (RawURL.getUsername(url).len == 0) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
 
     return try RawURL.buildUrl(

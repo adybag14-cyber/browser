@@ -86,6 +86,41 @@ pub fn setHash(_: *const Location, hash: []const u8, page: *Page) !void {
     }, .{ .script = page });
 }
 
+fn navigateToCurrent(self: *const Location, page: *Page) !void {
+    const target = try self.toString(page);
+    return page.scheduleNavigation(target, .{ .reason = .script, .kind = .{ .push = null } }, .{ .script = page });
+}
+
+pub fn setSearch(self: *const Location, search: []const u8, page: *Page) !void {
+    try self._url.setSearch(search, page);
+    return self.navigateToCurrent(page);
+}
+
+pub fn setPathname(self: *const Location, pathname: []const u8, page: *Page) !void {
+    try self._url.setPathname(pathname);
+    return self.navigateToCurrent(page);
+}
+
+pub fn setProtocol(self: *const Location, protocol: []const u8, page: *Page) !void {
+    try self._url.setProtocol(protocol);
+    return self.navigateToCurrent(page);
+}
+
+pub fn setHostname(self: *const Location, hostname: []const u8, page: *Page) !void {
+    try self._url.setHostname(hostname);
+    return self.navigateToCurrent(page);
+}
+
+pub fn setHost(self: *const Location, host: []const u8, page: *Page) !void {
+    try self._url.setHost(host);
+    return self.navigateToCurrent(page);
+}
+
+pub fn setPort(self: *const Location, port: []const u8, page: *Page) !void {
+    try self._url.setPort(if (port.len == 0) null else port);
+    return self.navigateToCurrent(page);
+}
+
 pub fn assign(_: *const Location, url: [:0]const u8, page: *Page) !void {
     return page.scheduleNavigation(url, .{ .reason = .script, .kind = .{ .push = null } }, .{ .script = page });
 }
@@ -117,15 +152,35 @@ pub const JsApi = struct {
         return self.assign(url, page);
     }
 
-    pub const search = bridge.accessor(Location.getSearch, null, .{});
+    pub const search = bridge.accessor(Location.getSearch, Location.setSearch, .{});
     pub const hash = bridge.accessor(Location.getHash, Location.setHash, .{});
-    pub const pathname = bridge.accessor(Location.getPathname, null, .{});
-    pub const hostname = bridge.accessor(Location.getHostname, null, .{});
-    pub const host = bridge.accessor(Location.getHost, null, .{});
-    pub const port = bridge.accessor(Location.getPort, null, .{});
+    pub const pathname = bridge.accessor(Location.getPathname, Location.setPathname, .{});
+    pub const hostname = bridge.accessor(Location.getHostname, Location.setHostname, .{});
+    pub const host = bridge.accessor(Location.getHost, Location.setHost, .{});
+    pub const port = bridge.accessor(Location.getPort, Location.setPort, .{});
     pub const origin = bridge.accessor(Location.getOrigin, null, .{});
-    pub const protocol = bridge.accessor(Location.getProtocol, null, .{});
+    pub const protocol = bridge.accessor(Location.getProtocol, Location.setProtocol, .{});
     pub const assign = bridge.function(Location.assign, .{});
     pub const replace = bridge.function(Location.replace, .{});
     pub const reload = bridge.function(Location.reload, .{});
 };
+
+const testing = @import("../../testing.zig");
+
+test "Location search setter queues script navigation with updated query" {
+    var page = try testing.pageTest("page/rendered_link_activation.html");
+    defer page._session.removePage();
+
+    page.url = "https://www.google.com/search?q=openai&gbv=1";
+    page.window._location = try Location.init(page.url, &page);
+    page.document._location = page.window._location;
+
+    try page.window._location.setSearch("?q=openai&gbv=2&sg_ss=abc", &page);
+
+    const queued = page._queued_navigation orelse return error.ExpectedQueuedNavigation;
+    try std.testing.expectEqualStrings(
+        "https://www.google.com/search?q=openai&gbv=2&sg_ss=abc",
+        queued.url,
+    );
+    try std.testing.expectEqual(.script, queued.navigation_type);
+}

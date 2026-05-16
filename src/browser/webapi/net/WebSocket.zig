@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
-const builtin = @import("builtin");
+const compat = @import("../../../compat.zig");
 const js = @import("../../js/js.zig");
 const Net = @import("../../../Net.zig");
 const log = @import("../../../log.zig");
@@ -42,9 +42,9 @@ _proto: *EventTarget,
 _arena: Allocator,
 _url: [:0]const u8,
 _state: ReadyState = .connecting,
-_socket: ?std.net.Stream = null,
+_socket: ?compat.net.Stream = null,
 _thread: ?std.Thread = null,
-_lock: std.Thread.Mutex = .{},
+_lock: compat.Mutex = .{},
 _events: std.ArrayListUnmanaged(QueuedEvent) = .empty,
 _poll_scheduled: bool = false,
 _close_queued: bool = false,
@@ -382,7 +382,7 @@ fn connect(self: *WebSocket) !void {
         log.warn(.http, "websocket.resolve", .{ .url = self._url, .err = err });
         return err;
     };
-    var stream = std.net.tcpConnectToAddress(address) catch |err| {
+    var stream = compat.net.tcpConnectToAddress(address) catch |err| {
         log.warn(.http, "websocket.tcp_connect", .{ .url = self._url, .err = err });
         return err;
     };
@@ -408,9 +408,9 @@ fn connect(self: *WebSocket) !void {
     self._thread = try std.Thread.spawn(.{}, readerMain, .{self});
 }
 
-fn resolveWebSocketAddress(allocator: Allocator, host: []const u8, port: u16) !std.net.Address {
-    return std.net.Address.parseIp(host, port) catch {
-        const address_list = try std.net.getAddressList(allocator, host, port);
+fn resolveWebSocketAddress(allocator: Allocator, host: []const u8, port: u16) !compat.net.Address {
+    return compat.net.Address.parseIp(host, port) catch {
+        const address_list = try compat.net.getAddressList(allocator, host, port);
         defer address_list.deinit();
         if (address_list.addrs.len == 0) {
             return error.UnknownHostName;
@@ -429,14 +429,14 @@ fn buildHandshakeRequest(self: *WebSocket, target: []const u8, request_url: [:0]
     });
 
     var random_bytes: [16]u8 = undefined;
-    std.crypto.random.bytes(&random_bytes);
+    compat.randomBytes(&random_bytes);
     var sec_key_buf: [24]u8 = undefined;
     _ = std.base64.standard.Encoder.encode(&sec_key_buf, &random_bytes);
 
-    var buf = std.ArrayList(u8).empty;
-    errdefer buf.deinit(self._arena);
+    var buf = std.Io.Writer.Allocating.init(self._arena);
+    errdefer buf.deinit();
 
-    var writer = buf.writer(self._arena);
+    const writer = &buf.writer;
     try writer.print("GET {s} HTTP/1.1\r\n", .{target});
     try writer.print("Host: {s}\r\n", .{URL.getHost(self._url)});
     try writer.writeAll("Upgrade: websocket\r\n");
@@ -467,10 +467,10 @@ fn buildHandshakeRequest(self: *WebSocket, target: []const u8, request_url: [:0]
     }
 
     try writer.writeAll("\r\n");
-    return buf.toOwnedSlice(self._arena);
+    return try buf.toOwnedSlice();
 }
 
-fn validateHandshakeResponse(self: *WebSocket, stream: *std.net.Stream) !void {
+fn validateHandshakeResponse(self: *WebSocket, stream: *compat.net.Stream) !void {
     var response = std.ArrayList(u8).empty;
     defer response.deinit(self._arena);
 
@@ -751,49 +751,19 @@ fn compactReader(comptime expect_mask: bool, reader: *Net.Reader(expect_mask)) v
     reader.len = partial_bytes;
 }
 
-fn socketRead(stream: *const std.net.Stream, buf: []u8) !usize {
-    if (builtin.os.tag == .windows) {
-        const ws2_32 = std.os.windows.ws2_32;
-        const rc = ws2_32.recv(stream.handle, buf.ptr, @intCast(@min(buf.len, @as(usize, std.math.maxInt(i32)))), 0);
-        if (rc == ws2_32.SOCKET_ERROR) {
-            return switch (ws2_32.WSAGetLastError()) {
-                .WSAEINTR,
-                .WSAECONNABORTED,
-                .WSAECONNRESET,
-                .WSAESHUTDOWN,
-                => 0,
-                else => |err| std.os.windows.unexpectedWSAError(err),
-            };
-        }
-        return @intCast(rc);
-    }
-    return std.posix.read(stream.handle, buf);
+fn socketRead(stream: *const compat.net.Stream, buf: []u8) !usize {
+    return stream.read(buf);
 }
 
-fn socketWriteAll(stream: *const std.net.Stream, data: []const u8) !void {
-    var pos: usize = 0;
-    while (pos < data.len) {
-        const written = if (builtin.os.tag == .windows) blk: {
-            const ws2_32 = std.os.windows.ws2_32;
-            const remaining = data[pos..];
-            const rc = ws2_32.send(stream.handle, remaining.ptr, @intCast(@min(remaining.len, @as(usize, std.math.maxInt(i32)))), 0);
-            if (rc == ws2_32.SOCKET_ERROR) {
-                return std.os.windows.unexpectedWSAError(ws2_32.WSAGetLastError());
-            }
-            break :blk @as(usize, @intCast(rc));
-        } else try std.posix.write(stream.handle, data[pos..]);
-        if (written == 0) {
-            return error.Closed;
-        }
-        pos += written;
-    }
+fn socketWriteAll(stream: *const compat.net.Stream, data: []const u8) !void {
+    try stream.writeAll(data);
 }
 
 fn stopAndCloseStream(self: *WebSocket) void {
     self._lock.lock();
     defer self._lock.unlock();
     self._stop_requested = true;
-    if (self._socket) |stream| {
+    if (self._socket) |*stream| {
         stream.close();
         self._socket = null;
     }
@@ -931,7 +901,7 @@ fn isStopRequested(self: *WebSocket) bool {
 
 fn sendFrame(self: *WebSocket, opcode: u8, payload: []const u8) !void {
     var mask_key: [4]u8 = undefined;
-    std.crypto.random.bytes(&mask_key);
+    compat.randomBytes(&mask_key);
 
     const masked = try page_allocator.dupe(u8, payload);
     defer page_allocator.free(masked);
@@ -1054,13 +1024,14 @@ pub const JsApi = struct {
 const testing = @import("../../../testing.zig");
 
 const TestWsServer = struct {
-    listener: ?std.net.Server = null,
-    ready: std.Thread.WaitGroup = .{},
+    listener: ?compat.net.Server = null,
+    ready: compat.WaitGroup = .{},
     last_error: ?anyerror = null,
 
     fn stop(self: *TestWsServer) void {
         if (self.listener) |*listener| {
-            listener.stream.close();
+            listener.deinit();
+            self.listener = null;
         }
     }
 };
@@ -1072,7 +1043,7 @@ fn testWebSocketServerThread(server: *TestWsServer) void {
 }
 
 fn testWebSocketServerMain(server: *TestWsServer) !void {
-    const address = try std.net.Address.parseIp("127.0.0.1", 9593);
+    const address = try compat.net.Address.parseIp("127.0.0.1", 9593);
     server.listener = try address.listen(.{ .reuse_address = true });
     server.ready.finish();
 

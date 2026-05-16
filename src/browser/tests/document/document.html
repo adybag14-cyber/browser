@@ -48,6 +48,14 @@
   testing.expectEqual('', emptyText.nodeValue);
 </script>
 
+<script id=createElementOptions>
+  const customizedFromObject = document.createElement('button', { is: 'x-object-button' });
+  testing.expectEqual('x-object-button', customizedFromObject.getAttribute('is'));
+
+  const customizedFromString = document.createElement('button', 'x-string-button');
+  testing.expectEqual('x-string-button', customizedFromString.getAttribute('is'));
+</script>
+
 <script id=document_metadata>
   // Test document metadata properties on HTML document
   testing.expectEqual('text/html', document.contentType);
@@ -64,6 +72,10 @@
   testing.async(async () => {
     testing.expectEqual('function', typeof document.hasStorageAccess);
     testing.expectEqual('function', typeof document.requestStorageAccess);
+  testing.expectEqual('function', typeof document.hasPrivateToken);
+  testing.expectEqual('function', typeof document.hasRedemptionRecord);
+  testing.expectEqual('function', typeof document.hasUnpartitionedCookieAccess);
+  testing.expectEqual('function', typeof document.browsingTopics);
     testing.expectEqual(true, await document.hasStorageAccess());
     testing.expectEqual(undefined, await document.requestStorageAccess());
   });

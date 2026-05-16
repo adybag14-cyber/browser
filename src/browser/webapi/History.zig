@@ -51,7 +51,7 @@ pub fn setScrollRestoration(self: *History, str: []const u8) void {
 
 pub fn pushState(_: *History, state: js.Value, _: ?[]const u8, _url: ?[]const u8, page: *Page) !void {
     const arena = page._session.arena;
-    const url = if (_url) |u| try arena.dupeZ(u8, u) else try arena.dupeZ(u8, page.url);
+    const url = if (_url) |u| try arena.dupeSentinel(u8, u, 0) else try arena.dupeSentinel(u8, page.url, 0);
 
     const json = state.toJson(arena) catch return error.DataClone;
     _ = try page._session.navigation.pushEntry(url, .{ .source = .history, .value = json }, page, true);
@@ -59,7 +59,7 @@ pub fn pushState(_: *History, state: js.Value, _: ?[]const u8, _url: ?[]const u8
 
 pub fn replaceState(_: *History, state: js.Value, _: ?[]const u8, _url: ?[]const u8, page: *Page) !void {
     const arena = page._session.arena;
-    const url = if (_url) |u| try arena.dupeZ(u8, u) else try arena.dupeZ(u8, page.url);
+    const url = if (_url) |u| try arena.dupeSentinel(u8, u, 0) else try arena.dupeSentinel(u8, page.url, 0);
 
     const json = state.toJson(arena) catch return error.DataClone;
     _ = try page._session.navigation.replaceEntry(url, .{ .source = .history, .value = json }, page, true);

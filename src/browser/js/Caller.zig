@@ -394,40 +394,17 @@ fn serializeFunctionArgs(local: *const Local, info: FunctionCallbackInfo) ![]con
 // @call a function
 fn ParameterTypes(comptime F: type) type {
     const params = @typeInfo(F).@"fn".params;
-    var fields: [params.len]std.builtin.Type.StructField = undefined;
+    var types: [params.len]type = undefined;
 
     inline for (params, 0..) |param, i| {
-        fields[i] = .{
-            .name = tupleFieldName(i),
-            .type = param.type.?,
-            .default_value_ptr = null,
-            .is_comptime = false,
-            .alignment = @alignOf(param.type.?),
-        };
+        types[i] = param.type.?;
     }
 
-    return @Type(.{ .@"struct" = .{
-        .layout = .auto,
-        .decls = &.{},
-        .fields = &fields,
-        .is_tuple = true,
-    } });
+    return @Tuple(&types);
 }
 
-fn tupleFieldName(comptime i: usize) [:0]const u8 {
-    return switch (i) {
-        0 => "0",
-        1 => "1",
-        2 => "2",
-        3 => "3",
-        4 => "4",
-        5 => "5",
-        6 => "6",
-        7 => "7",
-        8 => "8",
-        9 => "9",
-        else => std.fmt.comptimePrint("{d}", .{i}),
-    };
+fn tupleFieldName(comptime index: usize) []const u8 {
+    return std.fmt.comptimePrint("{d}", .{index});
 }
 
 fn isPage(comptime T: type) bool {

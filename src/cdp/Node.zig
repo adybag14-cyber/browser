@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../compat.zig");
 const Allocator = std.mem.Allocator;
 
 const log = @import("../log.zig");
@@ -37,7 +38,7 @@ pub const Registry = struct {
     node_id: u32,
     allocator: Allocator,
     arena: std.heap.ArenaAllocator,
-    node_pool: std.heap.MemoryPool(Node),
+    node_pool: compat.MemoryPool(Node),
     lookup_by_id: std.AutoHashMapUnmanaged(Id, *Node),
     lookup_by_node: std.HashMapUnmanaged(*DOMNode, *Node, NodeContext, std.hash_map.default_max_load_percentage),
 
@@ -48,7 +49,7 @@ pub const Registry = struct {
             .lookup_by_node = .{},
             .allocator = allocator,
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .node_pool = std.heap.MemoryPool(Node).init(allocator),
+            .node_pool = compat.MemoryPool(Node).init(allocator),
         };
     }
 
@@ -123,7 +124,7 @@ pub const Search = struct {
         search_id: u16 = 0,
         registry: *Registry,
         arena: std.heap.ArenaAllocator,
-        searches: std.ArrayList(Search) = .{},
+        searches: std.ArrayList(Search) = .empty,
 
         pub fn init(allocator: Allocator, registry: *Registry) List {
             return .{
@@ -138,7 +139,7 @@ pub const Search = struct {
 
         pub fn reset(self: *List) void {
             self.search_id = 0;
-            self.searches = .{};
+            self.searches = .empty;
             _ = self.arena.reset(.{ .retain_with_limit = 4096 });
         }
 

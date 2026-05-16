@@ -292,7 +292,7 @@ pub const DateTime = struct {
 
     pub fn now() DateTime {
         return .{
-            .micros = std.time.microTimestamp(),
+            .micros = lp.compat.microTimestamp(),
         };
     }
 
@@ -535,7 +535,9 @@ pub const TimestampMode = enum {
 };
 pub fn timestamp(comptime mode: TimestampMode) u64 {
     if (comptime is_posix == false or mode == .clock) {
-        return @intCast(std.time.timestamp());
+        const active_io = std.Io.Threaded.global_single_threaded.io();
+        const clock: std.Io.Clock = if (mode == .clock) .real else .boot;
+        return @intCast(clock.now(active_io).toSeconds());
     }
     const ts = timespec();
     return @intCast(ts.sec);
@@ -543,7 +545,9 @@ pub fn timestamp(comptime mode: TimestampMode) u64 {
 
 pub fn milliTimestamp(comptime mode: TimestampMode) u64 {
     if (comptime is_posix == false or mode == .clock) {
-        return @intCast(std.time.milliTimestamp());
+        const active_io = std.Io.Threaded.global_single_threaded.io();
+        const clock: std.Io.Clock = if (mode == .clock) .real else .boot;
+        return @intCast(clock.now(active_io).toMilliseconds());
     }
     const ts = timespec();
     return @as(u64, @intCast(ts.sec)) * 1000 + @as(u64, @intCast(@divTrunc(ts.nsec, 1_000_000)));
@@ -1232,7 +1236,7 @@ test "DateTime: initUTC" {
 
 test "DateTime: now" {
     const dt = DateTime.now();
-    try testing.expectDelta(std.time.microTimestamp(), dt.micros, 1000);
+    try testing.expectDelta(lp.compat.microTimestamp(), dt.micros, 1000);
 }
 
 test "DateTime: date" {

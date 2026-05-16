@@ -202,8 +202,8 @@ fn createIsolatedWorld(cmd: anytype) !void {
 fn navigate(cmd: anytype) !void {
     const params = (try cmd.params(struct {
         url: [:0]const u8,
-        // referrer: ?[]const u8 = null,
-        // transitionType: ?[]const u8 = null, // TODO: enum
+        referrer: ?[:0]const u8 = null,
+        transitionType: ?[]const u8 = null,
         // frameId: ?[]const u8 = null,
         // referrerPolicy: ?[]const u8 = null, // TODO: enum
     })) orelse return error.InvalidParams;
@@ -227,10 +227,28 @@ fn navigate(cmd: anytype) !void {
 
     const encoded_url = try URL.ensureEncoded(page.call_arena, params.url);
     try page.navigate(encoded_url, .{
-        .reason = .address_bar,
+        .reason = navigateReasonForTransitionType(params.transitionType, params.referrer != null),
         .cdp_id = cmd.input.id,
+        .source_url = params.referrer,
         .kind = .{ .push = null },
     });
+}
+
+fn navigateReasonForTransitionType(transition_type: ?[]const u8, has_referrer: bool) Page.NavigateReason {
+    const value = transition_type orelse return if (has_referrer) .navigation else .address_bar;
+    if (std.ascii.eqlIgnoreCase(value, "form_submit")) {
+        return .form;
+    }
+    if (std.ascii.eqlIgnoreCase(value, "link")) {
+        return .anchor;
+    }
+    if (std.ascii.eqlIgnoreCase(value, "reload")) {
+        return .history;
+    }
+    if (std.ascii.eqlIgnoreCase(value, "typed") or std.ascii.eqlIgnoreCase(value, "address_bar")) {
+        return .address_bar;
+    }
+    return if (has_referrer) .navigation else .address_bar;
 }
 
 pub fn pageNavigate(bc: anytype, event: *const Notification.PageNavigate) !void {
@@ -312,10 +330,10 @@ pub fn pageFrameCreated(bc: anytype, event: *const Notification.PageFrameCreated
     const cdp = bc.cdp;
     const frame_id = &id.toFrameId(event.frame_id);
 
-    try cdp.sendEvent("Page.frameAttached", .{ .params = .{
+    try cdp.sendEvent("Page.frameAttached", .{
         .frameId = frame_id,
         .parentFrameId = &id.toFrameId(event.parent_id),
-    } }, .{ .session_id = session_id });
+    }, .{ .session_id = session_id });
 
     if (bc.page_life_cycle_events) {
         try cdp.sendEvent("Page.lifecycleEvent", LifecycleEvent{
@@ -382,14 +400,6 @@ pub fn pageNavigated(arena: Allocator, bc: anytype, event: *const Notification.P
     }
 
     const page = bc.session.currentPage() orelse return error.PageNotLoaded;
-
-    // Main-frame navigation must reset the inspector's internal context-group
-    // state, not just emit the public event. By-value Runtime serialization
-    // depends on that inspector bookkeeping staying aligned with the recreated
-    // JS contexts after navigation.
-    if (event.frame_id == page._frame_id) {
-        bc.inspector_session.inspector.resetContextGroup();
-    }
 
     {
         const aux_data = try std.fmt.allocPrint(arena, "{{\"isDefault\":true,\"type\":\"default\",\"frameId\":\"{s}\",\"loaderId\":\"{s}\"}}", .{ frame_id, loader_id });
@@ -543,4 +553,22 @@ test "cdp.page: getFrameTree" {
             },
         }, .{ .id = 11 });
     }
+}
+
+test "cdp.page: frameAttached event uses direct params" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    const bc = try ctx.loadBrowserContext(.{ .session_id = "SESS-1" });
+
+    try pageFrameCreated(bc, &.{
+        .frame_id = 2,
+        .parent_id = 1,
+        .timestamp = 123,
+    });
+
+    try ctx.expectSentEvent("Page.frameAttached", .{
+        .frameId = "FID-0000000002",
+        .parentFrameId = "FID-0000000001",
+    }, .{ .session_id = "SESS-1" });
 }

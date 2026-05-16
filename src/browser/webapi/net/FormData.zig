@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../../compat.zig");
 
 const log = @import("../../../log.zig");
 
@@ -44,7 +45,7 @@ const FileEntry = struct {
 };
 
 pub fn init(form: ?*Form, submitter: ?*Element, page: *Page) !*FormData {
-    var file_entries: std.ArrayListUnmanaged(FileEntry) = .{};
+    var file_entries: std.ArrayListUnmanaged(FileEntry) = .empty;
     return page._factory.create(FormData{
         ._arena = page.arena,
         ._list = try collectForm(page.arena, form, submitter, page, &file_entries),
@@ -125,7 +126,7 @@ pub fn contentTypeHeader(self: *const FormData, encoding_: ?[]const u8) ![:0]con
     }
     if (isMultipartFormEncoding(encoding)) {
         const header = try std.fmt.allocPrint(self._arena, "Content-Type: multipart/form-data; boundary={s}", .{self._multipart_boundary});
-        return try self._arena.dupeZ(u8, header);
+        return try self._arena.dupeSentinel(u8, header, 0);
     }
     log.warn(.not_implemented, "FormData.encoding", .{
         .encoding = encoding,
@@ -276,7 +277,7 @@ fn writeMultipart(self: *const FormData, writer: *std.Io.Writer) !void {
         try writer.print("Content-Disposition: form-data; name=\"{s}\"; filename=\"{s}\"\r\n", .{ name, filename });
         try writer.print("Content-Type: {s}\r\n\r\n", .{entry.content_type});
 
-        const file = try std.fs.openFileAbsolute(entry.path, .{});
+        const file = try compat.fs.openFileAbsolute(entry.path, .{});
         defer file.close();
         const stat = try file.stat();
         const file_size = std.math.cast(usize, stat.size) orelse return error.FileTooLarge;
@@ -372,11 +373,11 @@ test "FormData write multipart/form-data includes file parts" {
     var list = KeyValueList.init();
     try list.append(arena, "title", "hello");
 
-    var file_entries: std.ArrayListUnmanaged(FileEntry) = .{};
+    var file_entries: std.ArrayListUnmanaged(FileEntry) = .empty;
     const temp_path = "tmp-formdata-upload.txt";
-    try std.fs.cwd().writeFile(.{ .sub_path = temp_path, .data = "hello upload" });
-    defer std.fs.cwd().deleteFile(temp_path) catch {};
-    const abs_path = try std.fs.cwd().realpathAlloc(std.testing.allocator, temp_path);
+    try compat.fs.cwd().writeFile(.{ .sub_path = temp_path, .data = "hello upload" });
+    defer compat.fs.cwd().deleteFile(temp_path) catch {};
+    const abs_path = try compat.fs.cwd().realpathAlloc(std.testing.allocator, temp_path);
     defer std.testing.allocator.free(abs_path);
 
     try file_entries.append(arena, .{
@@ -411,18 +412,18 @@ test "FormData write multipart/form-data includes multiple files for one field" 
     var list = KeyValueList.init();
     try list.append(arena, "title", "hello");
 
-    var file_entries: std.ArrayListUnmanaged(FileEntry) = .{};
+    var file_entries: std.ArrayListUnmanaged(FileEntry) = .empty;
 
     const temp_path_a = "tmp-formdata-upload-a.txt";
     const temp_path_b = "tmp-formdata-upload-b.json";
-    try std.fs.cwd().writeFile(.{ .sub_path = temp_path_a, .data = "file-a" });
-    defer std.fs.cwd().deleteFile(temp_path_a) catch {};
-    try std.fs.cwd().writeFile(.{ .sub_path = temp_path_b, .data = "{\"file\":2}" });
-    defer std.fs.cwd().deleteFile(temp_path_b) catch {};
+    try compat.fs.cwd().writeFile(.{ .sub_path = temp_path_a, .data = "file-a" });
+    defer compat.fs.cwd().deleteFile(temp_path_a) catch {};
+    try compat.fs.cwd().writeFile(.{ .sub_path = temp_path_b, .data = "{\"file\":2}" });
+    defer compat.fs.cwd().deleteFile(temp_path_b) catch {};
 
-    const abs_path_a = try std.fs.cwd().realpathAlloc(std.testing.allocator, temp_path_a);
+    const abs_path_a = try compat.fs.cwd().realpathAlloc(std.testing.allocator, temp_path_a);
     defer std.testing.allocator.free(abs_path_a);
-    const abs_path_b = try std.fs.cwd().realpathAlloc(std.testing.allocator, temp_path_b);
+    const abs_path_b = try compat.fs.cwd().realpathAlloc(std.testing.allocator, temp_path_b);
     defer std.testing.allocator.free(abs_path_b);
 
     try file_entries.append(arena, .{
@@ -460,7 +461,7 @@ test "FormData contentTypeHeader includes multipart boundary" {
     const form_data = FormData{
         ._arena = std.testing.allocator,
         ._list = .empty,
-        ._file_entries = .{},
+        ._file_entries = .empty,
         ._multipart_boundary = "BOUNDARY",
     };
     const header = try form_data.contentTypeHeader("multipart/form-data");

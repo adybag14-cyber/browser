@@ -2,7 +2,7 @@
     .name = .browser,
     .version = "0.0.0",
     .fingerprint = 0xda130f3af836cea0, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.15.2",
+    .minimum_zig_version = "0.17.0-dev.305+bdfbf432d",
     .dependencies = .{
         .v8 = .{
             .path = "../zig-v8-fork",

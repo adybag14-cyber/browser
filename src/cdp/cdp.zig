@@ -136,7 +136,10 @@ pub fn CDPT(comptime TypeProvider: type) type {
         // timeouts (or http events) which are ready to be processed.
         pub fn pageWait(self: *Self, ms: u32) Session.WaitResult {
             const session = &(self.browser.session orelse return .no_page);
-            const result = session.wait(ms);
+            // Keep the CDP loop responsive even when a fresh navigation leaves
+            // V8/browser tasks ready. Long wait slices can otherwise starve the
+            // websocket reader until the slice completes.
+            const result = session.wait(@min(ms, 16));
             self.presentHeadedPage() catch |err| {
                 log.warn(.cdp, "present headed page", .{ .err = err });
             };
@@ -169,7 +172,9 @@ pub fn CDPT(comptime TypeProvider: type) type {
             var is_startup = false;
             if (input.sessionId) |input_session_id| {
                 if (std.mem.eql(u8, input_session_id, "STARTUP")) {
-                    is_startup = true;
+                    is_startup = self.browser_context == null or
+                        self.browser_context.?.session_id == null or
+                        std.mem.eql(u8, self.browser_context.?.session_id.?, "STARTUP") == false;
                 } else if (self.isValidSessionId(input_session_id) == false) {
                     return command.sendError(-32001, "Unknown sessionId", .{});
                 }
@@ -205,11 +210,11 @@ pub fn CDPT(comptime TypeProvider: type) type {
                 return command.sendResult(.{
                     .frameTree = .{
                         .frame = .{
-                            .id = "TID-STARTUP-B",
+                            .id = "TID-STARTUP-P",
                             .loaderId = "LOADERID24DD2FD56CF1EF33C965C79C",
-                            .securityOrigin = URL_BASE,
+                            .securityOrigin = "://",
                             .url = "about:blank",
-                            .secureContextType = "Secure",
+                            .secureContextType = "InsecureScheme",
                         },
                     },
                 }, .{});
@@ -701,7 +706,7 @@ pub fn BrowserContext(comptime CDP_T: type) type {
             const id = msg.transfer.id;
             const gop = try self.captured_responses.getOrPut(arena, id);
             if (!gop.found_existing) {
-                gop.value_ptr.* = .{};
+                gop.value_ptr.* = .empty;
             }
             try gop.value_ptr.appendSlice(arena, try arena.dupe(u8, msg.data));
         }
@@ -717,6 +722,10 @@ pub fn BrowserContext(comptime CDP_T: type) type {
         }
 
         pub fn callInspector(self: *const Self, msg: []const u8) void {
+            if (log.enabled(.cdp, .debug)) {
+                const preview = msg[0..@min(msg.len, 120)];
+                log.debug(.cdp, "call inspector send", .{ .preview = preview });
+            }
             if (self.session.currentPage()) |page| {
                 var ls: js.Local.Scope = undefined;
                 page.js.localScope(&ls);
@@ -727,10 +736,18 @@ pub fn BrowserContext(comptime CDP_T: type) type {
                 self.inspector_session.send(msg);
             }
             self.session.browser.env.runMicrotasks();
+            if (log.enabled(.cdp, .debug)) {
+                const preview = msg[0..@min(msg.len, 120)];
+                log.debug(.cdp, "call inspector done", .{ .preview = preview });
+            }
         }
 
-        pub fn onInspectorResponse(ctx: *anyopaque, _: u32, msg: []const u8) void {
-            sendInspectorMessage(@ptrCast(@alignCast(ctx)), msg) catch |err| {
+        pub fn onInspectorResponse(ctx: *anyopaque, call_id: u32, msg: []const u8) void {
+            if (log.enabled(.cdp, .debug)) {
+                const preview = msg[0..@min(msg.len, 120)];
+                log.debug(.cdp, "inspector response", .{ .preview = preview });
+            }
+            sendInspectorResponse(@ptrCast(@alignCast(ctx)), call_id, msg) catch |err| {
                 log.err(.cdp, "send inspector response", .{ .err = err });
             };
         }
@@ -747,7 +764,7 @@ pub fn BrowserContext(comptime CDP_T: type) type {
                 log.debug(.cdp, "inspector event", .{ .method = method });
             }
 
-            sendInspectorMessage(@ptrCast(@alignCast(ctx)), msg) catch |err| {
+            sendInspectorEvent(@ptrCast(@alignCast(ctx)), msg) catch |err| {
                 log.err(.cdp, "send inspector event", .{ .err = err });
             };
         }
@@ -755,23 +772,47 @@ pub fn BrowserContext(comptime CDP_T: type) type {
         // This is hacky x 2. First, we create the JSON payload by gluing our
         // session_id onto it. Second, we're much more client/websocket aware than
         // we should be.
-        fn sendInspectorMessage(self: *Self, msg: []const u8) !void {
+        fn sendInspectorResponse(self: *Self, call_id: u32, msg: []const u8) !void {
+            return self.sendInspectorPayload(msg, .{ .call_id = call_id });
+        }
+
+        fn sendInspectorEvent(self: *Self, msg: []const u8) !void {
+            return self.sendInspectorPayload(msg, .{});
+        }
+
+        const InspectorPayloadOpts = struct {
+            call_id: ?u32 = null,
+        };
+
+        fn sendInspectorPayload(self: *Self, msg: []const u8, opts: InspectorPayloadOpts) !void {
             const session_id = self.session_id orelse {
                 // We no longer have an active session. What should we do
                 // in this case?
                 return;
             };
 
+            const trimmed = std.mem.trim(u8, msg, &std.ascii.whitespace);
+            if (trimmed.len < 2 or trimmed[0] != '{' or trimmed[trimmed.len - 1] != '}') {
+                return error.InvalidInspectorMessage;
+            }
+
+            const object_body = trimmed[1 .. trimmed.len - 1];
+            const response_has_id = opts.call_id != null and std.mem.startsWith(u8, object_body, "\"id\":");
+
             const cdp = self.cdp;
             const allocator = cdp.client.sendAllocator();
 
-            const field = ",\"sessionId\":\"";
+            const field = "\"sessionId\":\"";
+            const id_prefix_len = if (opts.call_id != null and !response_has_id)
+                std.fmt.count("\"id\":{d}", .{opts.call_id.?})
+            else
+                0;
+            const comma_count: usize =
+                @as(usize, if (object_body.len == 0) 0 else 1) +
+                @as(usize, if (opts.call_id != null and !response_has_id and object_body.len != 0) 1 else 0);
+            const message_len = 10 + 1 + object_body.len + id_prefix_len + field.len + session_id.len + comma_count + 2;
 
-            // + 1 for the closing quote after the session id
-            // + 10 for the max websocket header
-            const message_len = msg.len + session_id.len + 1 + field.len + 10;
-
-            var buf: std.ArrayList(u8) = .{};
+            var buf: std.ArrayList(u8) = .empty;
             buf.ensureTotalCapacity(allocator, message_len) catch |err| {
                 log.err(.cdp, "inspector buffer", .{ .err = err });
                 return;
@@ -779,9 +820,21 @@ pub fn BrowserContext(comptime CDP_T: type) type {
 
             // reserve 10 bytes for websocket header
             buf.appendSliceAssumeCapacity(&.{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
-
-            // -1  because we dont' want the closing brace '}'
-            buf.appendSliceAssumeCapacity(msg[0 .. msg.len - 1]);
+            buf.appendAssumeCapacity('{');
+            if (opts.call_id) |call_id| {
+                if (!response_has_id) {
+                    const id_field = try std.fmt.allocPrint(allocator, "\"id\":{d}", .{call_id});
+                    defer allocator.free(id_field);
+                    buf.appendSliceAssumeCapacity(id_field);
+                    if (object_body.len != 0) {
+                        buf.appendAssumeCapacity(',');
+                    }
+                }
+            }
+            if (object_body.len != 0) {
+                buf.appendSliceAssumeCapacity(object_body);
+                buf.appendAssumeCapacity(',');
+            }
             buf.appendSliceAssumeCapacity(field);
             buf.appendSliceAssumeCapacity(session_id);
             buf.appendSliceAssumeCapacity("\"}");
@@ -1063,6 +1116,120 @@ test "cdp: STARTUP sessionId" {
         try ctx.processMessage(.{ .id = 4, .method = "Hi", .sessionId = "STARTUP" });
         try ctx.expectSentResult(null, .{ .id = 4, .index = 0, .session_id = "STARTUP" });
     }
+}
+
+test "cdp: STARTUP Page.getFrameTree matches startup page target" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    try ctx.processMessage(.{
+        .id = 21,
+        .method = "Page.getFrameTree",
+        .sessionId = "STARTUP",
+    });
+
+    try ctx.expectSentResult(.{
+        .frameTree = .{
+            .frame = .{
+                .id = "TID-STARTUP-P",
+                .loaderId = "LOADERID24DD2FD56CF1EF33C965C79C",
+                .securityOrigin = "://",
+                .url = "about:blank",
+                .secureContextType = "InsecureScheme",
+            },
+        },
+    }, .{ .id = 21, .session_id = "STARTUP" });
+}
+
+test "cdp: STARTUP session uses real browser context when bound" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    const bc = try ctx.loadBrowserContext(.{
+        .session_id = "STARTUP",
+        .target_id = "FID-000000000Q".*,
+    });
+    bc.security_origin = "://";
+    bc.secure_context_type = "InsecureScheme";
+
+    try ctx.processMessage(.{
+        .id = 22,
+        .method = "Page.getFrameTree",
+        .sessionId = "STARTUP",
+    });
+
+    try ctx.expectSentResult(.{
+        .frameTree = .{
+            .frame = .{
+                .id = "FID-000000000Q",
+                .loaderId = "LID-0000000001",
+                .url = "about:blank",
+                .domainAndRegistry = "",
+                .securityOrigin = "://",
+                .mimeType = "text/html",
+                .adFrameStatus = .{
+                    .adFrameType = "none",
+                },
+                .secureContextType = "InsecureScheme",
+                .crossOriginIsolatedContextType = "NotIsolated",
+                .gatedAPIFeatures = [_][]const u8{},
+            },
+        },
+    }, .{ .id = 22, .session_id = "STARTUP" });
+}
+
+test "cdp: inspector response injects call id and sessionId" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    const bc = try ctx.loadBrowserContext(.{ .session_id = "SESS-1" });
+
+    @TypeOf(bc.*).onInspectorResponse(bc, 41, "{\"result\":{\"type\":\"number\",\"value\":2}}");
+
+    try ctx.expectSent(.{
+        .id = 41,
+        .result = .{
+            .type = "number",
+            .value = 2,
+        },
+        .sessionId = "SESS-1",
+    }, .{});
+}
+
+test "cdp: inspector response preserves existing id" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    const bc = try ctx.loadBrowserContext(.{ .session_id = "SESS-1" });
+
+    @TypeOf(bc.*).onInspectorResponse(bc, 41, "{\"id\":7,\"result\":{\"type\":\"number\",\"value\":2}}");
+
+    try ctx.expectSent(.{
+        .id = 7,
+        .result = .{
+            .type = "number",
+            .value = 2,
+        },
+        .sessionId = "SESS-1",
+    }, .{});
+}
+
+test "cdp: inspector event appends sessionId" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    const bc = try ctx.loadBrowserContext(.{ .session_id = "SESS-1" });
+
+    @TypeOf(bc.*).onInspectorEvent(
+        bc,
+        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":1}}}",
+    );
+
+    try ctx.expectSentEvent("Runtime.executionContextCreated", .{
+        .context = .{
+            .id = 1,
+        },
+    }, .{ .session_id = "SESS-1" });
 }
 
 test "cdp: headed presenter populates presentation state for the current page" {

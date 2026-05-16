@@ -22,7 +22,6 @@ const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 
 const js = @import("js/js.zig");
-const log = @import("../log.zig");
 const App = @import("../App.zig");
 const HttpClient = @import("../http/Client.zig");
 const storage = @import("webapi/storage/storage.zig");
@@ -30,8 +29,6 @@ const indexed_db = @import("webapi/storage/indexed_db.zig");
 
 const ArenaPool = App.ArenaPool;
 const CookieJar = @import("webapi/storage/Cookie.zig").Jar;
-
-const IS_DEBUG = @import("builtin").mode == .Debug;
 
 const Session = @import("Session.zig");
 const Notification = @import("../Notification.zig");

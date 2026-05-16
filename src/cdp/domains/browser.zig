@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const chromium_compat = @import("../../browser/chromium_compat.zig");
 
 // TODO: hard coded data
 const PROTOCOL_VERSION = "1.3";
@@ -29,8 +30,8 @@ const REVISION = "@9e6ded5ac1ff5e38d930ae52bd9aec09bd1a68e4";
 // CDP_USER_AGENT const is not used by the browser for the HTTP client (see
 // src/http/client.zig) nor exposed to the JS (see
 // src/browser/html/navigator.zig).
-const CDP_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-const PRODUCT = "Chrome/124.0.6367.29";
+const CDP_USER_AGENT = chromium_compat.user_agent_headed_windows;
+const PRODUCT = chromium_compat.cdp_product;
 
 const JS_VERSION = "12.4.254.8";
 const DEV_TOOLS_WINDOW_ID = 1923710101;

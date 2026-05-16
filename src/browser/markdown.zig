@@ -167,7 +167,7 @@ fn render(node: *Node, state: *State, writer: *std.Io.Writer, page: *Page) error
                 var text = cd.getData().str();
                 if (state.pre_node) |pre| {
                     if (node.parentNode() == pre and node.nextSibling() == null) {
-                        text = std.mem.trimRight(u8, text, " \t\r\n");
+                        text = std.mem.trimEnd(u8, text, " \t\r\n");
                     }
                 }
                 try renderText(text, state, writer);
@@ -639,7 +639,7 @@ test "browser.markdown: mixed anchors in main" {
         \\  Welcome <a href="1">Link 1</a>.
         \\</main>
     ,
-        \\Welcome [Link 1](http://localhost/1). 
+        \\Welcome [Link 1](http://localhost/1).
         \\
     );
 }
@@ -675,7 +675,7 @@ test "browser.markdown: resolve links" {
 
     try testing.expectString(
         \\[Link](https://example.com/a/b)
-        \\![Img](https://example.com/c.png) 
+        \\![Img](https://example.com/c.png)
         \\[Space](https://example.com/my%20page)
         \\
     , aw.written());

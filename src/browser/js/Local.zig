@@ -1166,27 +1166,26 @@ pub fn stackTrace(self: *const Local) !?[]const u8 {
     const isolate = self.isolate;
     const separator = log.separator();
 
-    var buf: std.ArrayList(u8) = .empty;
-    var writer = buf.writer(self.call_arena);
+    var buf: std.Io.Writer.Allocating = .init(self.call_arena);
 
     const stack_trace_handle = v8.v8__StackTrace__CurrentStackTrace__STATIC(isolate.handle, 30).?;
     const frame_count = v8.v8__StackTrace__GetFrameCount(stack_trace_handle);
 
     if (v8.v8__StackTrace__CurrentScriptNameOrSourceURL__STATIC(isolate.handle)) |script| {
         const stack = js.String{ .local = self, .handle = script };
-        try writer.print("{s}<{f}>", .{ separator, stack });
+        try buf.writer.print("{s}<{f}>", .{ separator, stack });
     }
 
     for (0..@intCast(frame_count)) |i| {
         const frame_handle = v8.v8__StackTrace__GetFrame(stack_trace_handle, isolate.handle, @intCast(i)).?;
         if (v8.v8__StackFrame__GetFunctionName(frame_handle)) |name| {
             const script = js.String{ .local = self, .handle = name };
-            try writer.print("{s}{f}:{d}", .{ separator, script, v8.v8__StackFrame__GetLineNumber(frame_handle) });
+            try buf.writer.print("{s}{f}:{d}", .{ separator, script, v8.v8__StackFrame__GetLineNumber(frame_handle) });
         } else {
-            try writer.print("{s}<anonymous>:{d}", .{ separator, v8.v8__StackFrame__GetLineNumber(frame_handle) });
+            try buf.writer.print("{s}<anonymous>:{d}", .{ separator, v8.v8__StackFrame__GetLineNumber(frame_handle) });
         }
     }
-    return buf.items;
+    return buf.written();
 }
 
 // == Promise Helpers ==

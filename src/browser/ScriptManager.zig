@@ -19,6 +19,7 @@
 const std = @import("std");
 const lp = @import("lightpanda");
 const builtin = @import("builtin");
+const compat = lp.compat;
 
 const log = @import("../log.zig");
 const Http = @import("../http/Http.zig");
@@ -36,6 +37,7 @@ const ArrayList = std.ArrayList;
 
 const IS_DEBUG = builtin.mode == .Debug;
 const SCRIPT_ACCEPT_HEADER: [:0]const u8 = "Accept: */*";
+const DISABLE_PAGE_JS_ENV = "LIGHTPANDA_DISABLE_PAGE_JS";
 
 const ScriptManager = @This();
 
@@ -65,7 +67,7 @@ client: *Http.Client,
 allocator: Allocator,
 buffer_pool: BufferPool,
 
-script_pool: std.heap.MemoryPool(Script),
+script_pool: lp.compat.MemoryPool(Script),
 
 // We can download multiple sync modules in parallel, but we want to process
 // them in order. We can't use an std.DoublyLinkedList, like the other script types,
@@ -89,6 +91,14 @@ importmap: std.StringHashMapUnmanaged([:0]const u8),
 // event).
 page_notified_of_completion: bool,
 
+fn pageScriptsDisabled() bool {
+    const value = compat.getEnvVarOwned(std.heap.page_allocator, DISABLE_PAGE_JS_ENV) catch return false;
+    defer std.heap.page_allocator.free(value);
+    return std.ascii.eqlIgnoreCase(value, "true") or
+        std.mem.eql(u8, value, "1") or
+        std.ascii.eqlIgnoreCase(value, "yes");
+}
+
 pub fn init(allocator: Allocator, http_client: *Http.Client, page: *Page) ScriptManager {
     return .{
         .page = page,
@@ -103,7 +113,7 @@ pub fn init(allocator: Allocator, http_client: *Http.Client, page: *Page) Script
         .static_scripts_done = false,
         .buffer_pool = BufferPool.init(allocator, 5),
         .page_notified_of_completion = false,
-        .script_pool = std.heap.MemoryPool(Script).init(allocator),
+        .script_pool = lp.compat.MemoryPool(Script).init(allocator),
     };
 }
 
@@ -169,6 +179,9 @@ pub fn addFromElement(self: *ScriptManager, comptime from_parser: bool, script_e
         return;
     }
     script_element._executed = true;
+    if (pageScriptsDisabled()) {
+        return;
+    }
 
     const element = script_element.asElement();
     if (element.getAttributeSafe(comptime .wrap("nomodule")) != null) {
@@ -210,7 +223,7 @@ pub fn addFromElement(self: *ScriptManager, comptime from_parser: bool, script_e
             source = .{ .@"inline" = data_uri };
         } else {
             remote_url = try URL.resolve(page.arena, base_url, src, .{});
-            source = .{ .remote = .{} };
+            source = .{ .remote = .empty };
         }
     } else {
         const inline_source = try element.asNode().getTextContentAlloc(page.arena);
@@ -351,11 +364,11 @@ fn scriptRequestUrlForFetch(
     include_credentials: bool,
 ) ![:0]const u8 {
     if (include_credentials) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
 
     if (URL.getUsername(url).len == 0) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
 
     return try URL.buildUrl(
@@ -406,7 +419,7 @@ pub fn preloadImport(self: *ScriptManager, url: [:0]const u8, referrer: []const 
         .manager = self,
         .complete = false,
         .script_element = null,
-        .source = .{ .remote = .{} },
+        .source = .{ .remote = .empty },
         .mode = .import,
         .include_credentials = include_credentials,
     };
@@ -510,7 +523,7 @@ pub fn getAsyncImport(self: *ScriptManager, url: [:0]const u8, cb: ImportAsync.C
         .manager = self,
         .complete = false,
         .script_element = null,
-        .source = .{ .remote = .{} },
+        .source = .{ .remote = .empty },
         .mode = .{ .import_async = .{
             .callback = cb,
             .data = cb_data,
@@ -972,6 +985,12 @@ pub const Script = struct {
         }
 
         const caught = try_catch.caughtOrError(page.call_arena, error.Unknown);
+        log.warn(.js, "eval script exception", .{
+            .url = url,
+            .exception = caught.exception orelse "null",
+            .line = caught.line,
+            .cacheable = cacheable,
+        });
         log.warn(.js, "eval script", .{
             .url = url,
             .caught = caught,
@@ -1006,7 +1025,7 @@ const BufferPool = struct {
     available: List = .{},
     allocator: Allocator,
     max_concurrent_transfers: u8,
-    mem_pool: std.heap.MemoryPool(Container),
+    mem_pool: lp.compat.MemoryPool(Container),
 
     const List = std.SinglyLinkedList;
 
@@ -1021,7 +1040,7 @@ const BufferPool = struct {
             .count = 0,
             .allocator = allocator,
             .max_concurrent_transfers = max_concurrent_transfers,
-            .mem_pool = std.heap.MemoryPool(Container).init(allocator),
+            .mem_pool = lp.compat.MemoryPool(Container).init(allocator),
         };
     }
 
@@ -1040,7 +1059,7 @@ const BufferPool = struct {
     fn get(self: *BufferPool) std.ArrayList(u8) {
         const node = self.available.popFirst() orelse {
             // return a new buffer
-            return .{};
+            return .empty;
         };
 
         self.count -= 1;
@@ -1097,7 +1116,7 @@ pub const ModuleSource = struct {
 const ImportedModule = struct {
     manager: *ScriptManager,
     state: State = .loading,
-    buffer: std.ArrayList(u8) = .{},
+    buffer: std.ArrayList(u8) = .empty,
     waiters: u16 = 1,
     include_credentials: bool = true,
 
@@ -1134,7 +1153,7 @@ fn parseDataURI(allocator: Allocator, src: []const u8) !?[]const u8 {
             stripped.appendAssumeCapacity(c);
         }
     }
-    const trimmed = std.mem.trimRight(u8, stripped.items, "=");
+    const trimmed = std.mem.trimEnd(u8, stripped.items, "=");
 
     // Length % 4 == 1 is invalid
     if (trimmed.len % 4 == 1) {

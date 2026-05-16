@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<title>WORKER-RUNTIME:pending</title>
+<pre id="status">pending</pre>
+<script>
+  (async () => {
+    const result = {
+      worker: typeof Worker,
+      sharedWorker: typeof SharedWorker,
+      workerReply: null,
+      sharedReply: null,
+      errors: [],
+    };
+
+    const recordError = (label, error) => {
+      const detail =
+        error && typeof error === "object" && "message" in error && error.message
+          ? error.message
+          : String(error);
+      result.errors.push(`${label}:${detail}`);
+    };
+
+    try {
+      const worker = new Worker("/src/browser/tests/page/support/chatgpt_probe_worker.js");
+      result.workerReply = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          worker.terminate();
+          reject(new Error("timeout"));
+        }, 1000);
+        worker.onmessage = (event) => {
+          clearTimeout(timer);
+          worker.terminate();
+          resolve(event.data);
+        };
+        worker.onerror = (event) => {
+          clearTimeout(timer);
+          worker.terminate();
+          reject(event.error || new Error(event.message || "worker error"));
+        };
+        worker.postMessage("ping");
+      });
+    } catch (error) {
+      recordError("worker", error);
+    }
+
+    try {
+      const sharedWorker = new SharedWorker("/src/browser/tests/page/support/chatgpt_probe_shared_worker.js");
+      if (typeof sharedWorker.port.start === "function") {
+        sharedWorker.port.start();
+      }
+      result.sharedReply = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          sharedWorker.port.close();
+          reject(new Error("timeout"));
+        }, 1000);
+        sharedWorker.port.onmessage = (event) => {
+          clearTimeout(timer);
+          sharedWorker.port.close();
+          resolve(event.data);
+        };
+        sharedWorker.port.onmessageerror = (event) => {
+          clearTimeout(timer);
+          sharedWorker.port.close();
+          reject(event.error || new Error(event.message || "shared worker error"));
+        };
+        sharedWorker.port.postMessage("pong");
+      });
+    } catch (error) {
+      recordError("shared", error);
+    }
+
+    const blockers = [];
+    if (result.worker !== "function") blockers.push("worker-missing");
+    if (result.sharedWorker !== "function") blockers.push("shared-worker-missing");
+    if (result.workerReply !== "worker:ping") blockers.push("worker-reply");
+    if (result.sharedReply !== "shared:pong") blockers.push("shared-reply");
+    blockers.push(...result.errors);
+
+    const summary = blockers.length === 0 ? "ok" : blockers.join(",");
+    document.title = `WORKER-RUNTIME:${summary}`;
+    window.__lpWorkerRuntime = result;
+    document.getElementById("status").textContent = JSON.stringify(result, null, 2);
+  })();
+</script>

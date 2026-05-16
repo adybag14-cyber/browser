@@ -59,20 +59,34 @@ pub fn caught(self: TryCatch, allocator: Allocator) ?Caught {
 
     const exception: ?[]const u8 = blk: {
         const handle = v8.v8__TryCatch__Exception(&self.handle) orelse break :blk null;
-        var js_val = js.Value{ .local = l, .handle = handle };
+        const js_val = js.Value{ .local = l, .handle = handle };
 
-        // If it's an Error object, try to get the message property
         if (js_val.isObject()) {
             const js_obj = js_val.toObject();
-            if (js_obj.has("message")) {
-                js_val = js_obj.get("message") catch break :blk null;
+            const message = blk_msg: {
+                if (!js_obj.has("message")) break :blk_msg null;
+                const msg_val = js_obj.get("message") catch break :blk_msg null;
+                if (msg_val.isString()) |msg_str| {
+                    break :blk_msg msg_str.toSliceWithAlloc(allocator) catch null;
+                }
+                break :blk_msg null;
+            };
+
+            if (message) |msg| {
+                if (js_obj.has("name")) {
+                    const name_val = js_obj.get("name") catch break :blk msg;
+                    if (name_val.isString()) |name_str| {
+                        const name = name_str.toSliceWithAlloc(allocator) catch break :blk msg;
+                        if (name.len != 0 and !std.mem.eql(u8, name, "Error")) {
+                            break :blk std.fmt.allocPrint(allocator, "{s}: {s}", .{ name, msg }) catch msg;
+                        }
+                    }
+                }
+                break :blk msg;
             }
         }
 
-        if (js_val.isString()) |js_str| {
-            break :blk js_str.toSliceWithAlloc(allocator) catch |err| @errorName(err);
-        }
-        break :blk null;
+        break :blk js_val.toStringSliceWithAlloc(allocator) catch null;
     };
 
     const stack: ?[]const u8 = blk: {
@@ -148,3 +162,36 @@ pub const Caught = struct {
         try jw.endObject();
     }
 };
+
+const testing = @import("../../testing.zig");
+
+test "js.TryCatch stringifies thrown object values without message fields" {
+    defer testing.reset();
+
+    const page = try testing.test_session.createPage();
+    defer testing.test_session.removePage();
+
+    var ls: js.Local.Scope = undefined;
+    page.js.localScope(&ls);
+    defer ls.deinit();
+
+    var try_catch: TryCatch = undefined;
+    try_catch.init(&ls.local);
+    defer try_catch.deinit();
+
+    ls.local.eval(
+        \\throw {
+        \\  code: 7,
+        \\  toString() {
+        \\    return "ChallengeProbeObject";
+        \\  },
+        \\};
+    , "trycatch_object_throw") catch |err| {
+        const caught_value = try_catch.caughtOrError(testing.arena_allocator, err);
+        try testing.expect(caught_value.caught);
+        try testing.expectEqual("ChallengeProbeObject", caught_value.exception.?);
+        return;
+    };
+
+    return error.TestExpectedException;
+}

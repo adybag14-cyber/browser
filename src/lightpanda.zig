@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+pub const compat = @import("compat.zig");
 pub const App = @import("App.zig");
 pub const Server = @import("Server.zig");
 pub const Config = @import("Config.zig");
@@ -52,7 +53,7 @@ const testing = @import("testing.zig");
 
 const builtin = @import("builtin");
 const IS_DEBUG = builtin.mode == .Debug;
-var browse_render_trace_lock: std.Thread.Mutex = .{};
+var browse_render_trace_lock: compat.Mutex = .{};
 
 fn googleRenderTraceEnabled(url: []const u8) bool {
     return std.mem.indexOf(u8, url, "google-home-") != null or
@@ -67,8 +68,8 @@ fn appendBrowseRenderTrace(stage: []const u8, url: []const u8, detail: []const u
     defer browse_render_trace_lock.unlock();
 
     const path = "tmp-browser-smoke/google-investigation-next/browse-render.log";
-    var file = std.fs.cwd().openFile(path, .{ .mode = .write_only }) catch blk: {
-        break :blk std.fs.cwd().createFile(path, .{}) catch return;
+    var file = compat.fs.cwd().openFile(path, .{ .mode = .write_only }) catch blk: {
+        break :blk compat.fs.cwd().createFile(path, .{}) catch return;
     };
     defer file.close();
 
@@ -400,7 +401,7 @@ const SavedBrowseTab = struct {
 };
 
 const SavedBrowseSession = struct {
-    tabs: std.ArrayListUnmanaged(SavedBrowseTab) = .{},
+    tabs: std.ArrayListUnmanaged(SavedBrowseTab) = .empty,
     active_index: usize = 0,
 
     fn deinit(self: *SavedBrowseSession, allocator: std.mem.Allocator) void {
@@ -490,8 +491,8 @@ const BrowseDownloadEntry = struct {
 
 const BrowseDownloads = struct {
     allocator: std.mem.Allocator,
-    entries: std.ArrayListUnmanaged(BrowseDownloadEntry) = .{},
-    active: std.ArrayListUnmanaged(*ActiveBrowseDownload) = .{},
+    entries: std.ArrayListUnmanaged(BrowseDownloadEntry) = .empty,
+    active: std.ArrayListUnmanaged(*ActiveBrowseDownload) = .empty,
     last_saved_hash: u64 = 0,
 
     fn init(allocator: std.mem.Allocator, app_dir_path: ?[]const u8) BrowseDownloads {
@@ -536,7 +537,7 @@ const BrowseDownloads = struct {
         }
         var removed = self.entries.orderedRemove(index);
         if (removed.path.len > 0) {
-            std.fs.deleteFileAbsolute(removed.path) catch {};
+            compat.fs.deleteFileAbsolute(removed.path) catch {};
         }
         removed.deinit(self.allocator);
         for (self.active.items) |download| {
@@ -562,9 +563,9 @@ const BrowseDownloads = struct {
             return false;
         }
 
-        std.fs.deleteFileAbsolute(entry.path) catch {};
+        compat.fs.deleteFileAbsolute(entry.path) catch {};
         const retry_failed = "Retry failed";
-        const file = std.fs.createFileAbsolute(entry.path, .{ .truncate = true }) catch |err| {
+        const file = compat.fs.createFileAbsolute(entry.path, .{ .truncate = true }) catch |err| {
             const message = std.fmt.allocPrint(self.allocator, "Retry failed: {s}", .{@errorName(err)}) catch "Retry failed";
             defer if (message.ptr != retry_failed.ptr) self.allocator.free(message);
             entry.status = .failed;
@@ -583,7 +584,7 @@ const BrowseDownloads = struct {
             const message = std.fmt.allocPrint(self.allocator, "Retry failed: {s}", .{@errorName(err)}) catch "Retry failed";
             defer if (message.ptr != retry_failed.ptr) self.allocator.free(message);
             file.close();
-            std.fs.deleteFileAbsolute(entry.path) catch {};
+            compat.fs.deleteFileAbsolute(entry.path) catch {};
             entry.status = .failed;
             BrowseDownloads.setDetail(entry, self.allocator, message);
             self.persistIfChanged(app.app_dir_path);
@@ -594,7 +595,7 @@ const BrowseDownloads = struct {
             const message = std.fmt.allocPrint(self.allocator, "Retry failed: {s}", .{@errorName(err)}) catch "Retry failed";
             defer if (message.ptr != retry_failed.ptr) self.allocator.free(message);
             file.close();
-            std.fs.deleteFileAbsolute(entry.path) catch {};
+            compat.fs.deleteFileAbsolute(entry.path) catch {};
             app.allocator.destroy(download);
             entry.status = .failed;
             BrowseDownloads.setDetail(entry, self.allocator, message);
@@ -635,7 +636,7 @@ const BrowseDownloads = struct {
             }
             var removed = self.entries.orderedRemove(index);
             if (removed.path.len > 0) {
-                std.fs.deleteFileAbsolute(removed.path) catch {};
+                compat.fs.deleteFileAbsolute(removed.path) catch {};
             }
             removed.deinit(self.allocator);
             for (self.active.items) |download| {
@@ -743,13 +744,13 @@ const BrowseDownloads = struct {
         const final_name = try makeUniqueDownloadFileName(app.allocator, downloads_dir, derived_name);
         errdefer app.allocator.free(final_name);
 
-        const file_path = try std.fs.path.join(app.allocator, &.{ downloads_dir, final_name });
+        const file_path = try compat.fs.path.join(app.allocator, &.{ downloads_dir, final_name });
         errdefer app.allocator.free(file_path);
 
-        const file = try std.fs.createFileAbsolute(file_path, .{ .truncate = true });
+        const file = try compat.fs.createFileAbsolute(file_path, .{ .truncate = true });
         errdefer {
             file.close();
-            std.fs.deleteFileAbsolute(file_path) catch {};
+            compat.fs.deleteFileAbsolute(file_path) catch {};
         }
 
         const entry_index = self.entries.items.len;
@@ -798,13 +799,13 @@ const BrowseDownloads = struct {
         const final_name = try makeUniqueDownloadFileName(app.allocator, downloads_dir, derived_name);
         errdefer app.allocator.free(final_name);
 
-        const file_path = try std.fs.path.join(app.allocator, &.{ downloads_dir, final_name });
+        const file_path = try compat.fs.path.join(app.allocator, &.{ downloads_dir, final_name });
         errdefer app.allocator.free(file_path);
 
-        const file = try std.fs.createFileAbsolute(file_path, .{ .truncate = true });
+        const file = try compat.fs.createFileAbsolute(file_path, .{ .truncate = true });
         errdefer {
             file.close();
-            std.fs.deleteFileAbsolute(file_path) catch {};
+            compat.fs.deleteFileAbsolute(file_path) catch {};
         }
 
         const entry_index = self.entries.items.len;
@@ -903,7 +904,7 @@ const ActiveBrowseDownload = struct {
     source_tab: *BrowseTab,
     http_client: ?*HttpClient.Client,
     transfer: ?*HttpClient.Transfer = null,
-    file: ?std.fs.File,
+    file: ?compat.fs.File,
     arena: std.heap.ArenaAllocator,
     entry_index: usize,
     finished: bool = false,
@@ -913,7 +914,7 @@ const ActiveBrowseDownload = struct {
         manager: *BrowseDownloads,
         source_tab: *BrowseTab,
         entry_index: usize,
-        file: std.fs.File,
+        file: compat.fs.File,
     ) !ActiveBrowseDownload {
         return .{
             .allocator = app.allocator,
@@ -931,7 +932,7 @@ const ActiveBrowseDownload = struct {
         manager: *BrowseDownloads,
         source_tab: *BrowseTab,
         entry_index: usize,
-        file: std.fs.File,
+        file: compat.fs.File,
         transfer: *HttpClient.Transfer,
     ) ActiveBrowseDownload {
         return .{
@@ -963,7 +964,7 @@ const ActiveBrowseDownload = struct {
     fn start(self: *ActiveBrowseDownload, page: *Page, request_url: []const u8) !void {
         const http_client = self.http_client orelse return error.NoHttpClient;
         const arena = self.arena.allocator();
-        const url_z = try arena.dupeZ(u8, request_url);
+        const url_z = try arena.dupeSentinel(u8, request_url, 0);
         var headers = try http_client.newHeaders();
         try page.headersForRequest(arena, url_z, &headers);
 
@@ -1030,7 +1031,7 @@ const ActiveBrowseDownload = struct {
         }
         const path = self.manager.entries.items[self.entry_index].path;
         if (path.len > 0) {
-            std.fs.deleteFileAbsolute(path) catch {};
+            compat.fs.deleteFileAbsolute(path) catch {};
         }
     }
 };
@@ -1055,7 +1056,7 @@ pub fn fetch(app: *App, url: [:0]const u8, opts: FetchOpts) !void {
     // page.js.startCpuProfiler();
     // defer {
     //     if (page.js.stopCpuProfiler()) |profile| {
-    //         std.fs.cwd().writeFile(.{
+    //         compat.fs.cwd().writeFile(.{
     //             .sub_path = ".lp-cache/cpu_profile.json",
     //             .data = profile,
     //         }) catch |err| {
@@ -1070,13 +1071,13 @@ pub fn fetch(app: *App, url: [:0]const u8, opts: FetchOpts) !void {
     // page.js.startHeapProfiler();
     // defer {
     //     if (page.js.stopHeapProfiler()) |profile| {
-    //         std.fs.cwd().writeFile(.{
+    //         compat.fs.cwd().writeFile(.{
     //             .sub_path = ".lp-cache/allocating.heapprofile",
     //             .data = profile.@"0",
     //         }) catch |err| {
     //             log.err(.app, "allocating write error", .{ .err = err });
     //         };
-    //         std.fs.cwd().writeFile(.{
+    //         compat.fs.cwd().writeFile(.{
     //             .sub_path = ".lp-cache/snapshot.heapsnapshot",
     //             .data = profile.@"1",
     //         }) catch |err| {
@@ -1106,9 +1107,9 @@ pub fn fetch(app: *App, url: [:0]const u8, opts: FetchOpts) !void {
 }
 
 pub fn browse(app: *App, url: [:0]const u8, opts: BrowseOpts) !void {
-    var tabs: std.ArrayListUnmanaged(*BrowseTab) = .{};
+    var tabs: std.ArrayListUnmanaged(*BrowseTab) = .empty;
     defer deinitBrowseTabs(app.allocator, &tabs);
-    var closed_tabs: std.ArrayListUnmanaged(ClosedBrowseTab) = .{};
+    var closed_tabs: std.ArrayListUnmanaged(ClosedBrowseTab) = .empty;
     defer deinitClosedBrowseTabs(app.allocator, &closed_tabs);
     var settings = loadBrowseSettings(app.allocator, app.app_dir_path);
     defer settings.deinit(app.allocator);
@@ -2137,7 +2138,7 @@ fn navigateBrowseTabToOwnedUrl(tab: *BrowseTab, raw_url: []const u8, opts: Page.
     }
     const page = tab.session.currentPage() orelse return;
     if (parseInternalBrowsePage(raw_url) != null) {
-        page.url = try page.arena.dupeZ(u8, raw_url);
+        page.url = try page.arena.dupeSentinel(u8, raw_url, 0);
         tab.last_internal_page_state_hash = 0;
         tab.last_presented_hash = 0;
         return;
@@ -2433,7 +2434,7 @@ fn makeClosedBrowseTabDisplayEntries(
     closed_tabs: []const ClosedBrowseTab,
     limit: usize,
 ) !std.ArrayListUnmanaged(ClosedBrowseTabDisplayEntry) {
-    var entries: std.ArrayListUnmanaged(ClosedBrowseTabDisplayEntry) = .{};
+    var entries: std.ArrayListUnmanaged(ClosedBrowseTabDisplayEntry) = .empty;
     errdefer entries.deinit(allocator);
 
     const max_count = @min(limit, closed_tabs.len);
@@ -2502,7 +2503,7 @@ fn initializeBrowseTabs(
         const initial_url = if (!should_restore_immediately or std.mem.eql(u8, saved_tab.url, "about:blank"))
             null
         else blk: {
-            restored_url_z = try app.allocator.dupeZ(u8, saved_tab.url);
+            restored_url_z = try app.allocator.dupeSentinel(u8, saved_tab.url, 0);
             break :blk restored_url_z.?;
         };
         const tab = try createBrowseTabWithCookieJar(app, initial_url, settings.default_zoom_percent, settings.allow_script_popups, downloads, shared_cookie_jar, shared_storage_shed, shared_indexed_db_shed);
@@ -2631,16 +2632,16 @@ fn parsePersistedBool(raw: []const u8) bool {
     return std.mem.eql(u8, raw, "1") or std.ascii.eqlIgnoreCase(raw, "true");
 }
 
-fn openBrowseProfileDir(app_dir_path: ?[]const u8) ?std.fs.Dir {
+fn openBrowseProfileDir(app_dir_path: ?[]const u8) ?compat.fs.Dir {
     const dir_path = app_dir_path orelse return null;
     return openDirForPath(dir_path);
 }
 
-fn openDirForPath(path: []const u8) ?std.fs.Dir {
-    if (std.fs.path.isAbsolute(path)) {
-        return std.fs.openDirAbsolute(path, .{}) catch return null;
+fn openDirForPath(path: []const u8) ?compat.fs.Dir {
+    if (compat.fs.path.isAbsolute(path)) {
+        return compat.fs.openDirAbsolute(path, .{}) catch return null;
     }
-    return std.fs.cwd().openDir(path, .{}) catch return null;
+    return compat.fs.cwd().openDir(path, .{}) catch return null;
 }
 
 fn cookieSameSiteLabel(same_site: CookieStore.SameSite) []const u8 {
@@ -2752,7 +2753,7 @@ fn loadBrowseCookies(allocator: std.mem.Allocator, app_dir_path: ?[]const u8) Co
             same_site,
         ) catch continue;
 
-        cookie_jar.add(cookie, std.time.timestamp()) catch |err| {
+        cookie_jar.add(cookie, compat.unixTimestamp()) catch |err| {
             log.warn(.app, "browse cookie load failed", .{ .err = err });
         };
     }
@@ -2883,7 +2884,7 @@ fn insertionSortBrowseLocalStorageEntries(entries: []BrowseLocalStorageEntryRef)
 }
 
 fn collectBrowseLocalStorageEntries(allocator: std.mem.Allocator, storage_shed: *storage.Shed) !std.ArrayListUnmanaged(BrowseLocalStorageEntryRef) {
-    var entries: std.ArrayListUnmanaged(BrowseLocalStorageEntryRef) = .{};
+    var entries: std.ArrayListUnmanaged(BrowseLocalStorageEntryRef) = .empty;
     var origin_it = storage_shed._origins.iterator();
     while (origin_it.next()) |origin_kv| {
         const origin = origin_kv.key_ptr.*;
@@ -3149,7 +3150,7 @@ fn insertionSortBrowseIndexedDbItems(entries: []BrowseIndexedDbItemRef) void {
 }
 
 fn collectBrowseIndexedDbDatabases(allocator: std.mem.Allocator, indexed_db_shed: *indexed_db.Shed) !std.ArrayListUnmanaged(BrowseIndexedDbDatabaseRef) {
-    var entries: std.ArrayListUnmanaged(BrowseIndexedDbDatabaseRef) = .{};
+    var entries: std.ArrayListUnmanaged(BrowseIndexedDbDatabaseRef) = .empty;
     var origin_it = indexed_db_shed._origins.iterator();
     while (origin_it.next()) |origin_kv| {
         const origin = origin_kv.key_ptr.*;
@@ -3168,7 +3169,7 @@ fn collectBrowseIndexedDbDatabases(allocator: std.mem.Allocator, indexed_db_shed
 }
 
 fn collectBrowseIndexedDbStores(allocator: std.mem.Allocator, indexed_db_shed: *indexed_db.Shed) !std.ArrayListUnmanaged(BrowseIndexedDbStoreRef) {
-    var entries: std.ArrayListUnmanaged(BrowseIndexedDbStoreRef) = .{};
+    var entries: std.ArrayListUnmanaged(BrowseIndexedDbStoreRef) = .empty;
     var origin_it = indexed_db_shed._origins.iterator();
     while (origin_it.next()) |origin_kv| {
         const origin = origin_kv.key_ptr.*;
@@ -3192,7 +3193,7 @@ fn collectBrowseIndexedDbStores(allocator: std.mem.Allocator, indexed_db_shed: *
 }
 
 fn collectBrowseIndexedDbIndexes(allocator: std.mem.Allocator, indexed_db_shed: *indexed_db.Shed) !std.ArrayListUnmanaged(BrowseIndexedDbIndexRef) {
-    var entries: std.ArrayListUnmanaged(BrowseIndexedDbIndexRef) = .{};
+    var entries: std.ArrayListUnmanaged(BrowseIndexedDbIndexRef) = .empty;
     var origin_it = indexed_db_shed._origins.iterator();
     while (origin_it.next()) |origin_kv| {
         const origin = origin_kv.key_ptr.*;
@@ -3223,7 +3224,7 @@ fn collectBrowseIndexedDbIndexes(allocator: std.mem.Allocator, indexed_db_shed: 
 }
 
 fn collectBrowseIndexedDbItems(allocator: std.mem.Allocator, indexed_db_shed: *indexed_db.Shed) !std.ArrayListUnmanaged(BrowseIndexedDbItemRef) {
-    var entries: std.ArrayListUnmanaged(BrowseIndexedDbItemRef) = .{};
+    var entries: std.ArrayListUnmanaged(BrowseIndexedDbItemRef) = .empty;
     var origin_it = indexed_db_shed._origins.iterator();
     while (origin_it.next()) |origin_kv| {
         const origin = origin_kv.key_ptr.*;
@@ -3811,10 +3812,10 @@ fn absolutePathIsWithinRoot(root_path: []const u8, candidate_path: []const u8) b
     if (candidate_path.len == root_path.len) {
         return true;
     }
-    if (root_path.len > 0 and std.fs.path.isSep(root_path[root_path.len - 1])) {
+    if (root_path.len > 0 and compat.fs.path.isSep(root_path[root_path.len - 1])) {
         return true;
     }
-    return std.fs.path.isSep(candidate_path[root_path.len]);
+    return compat.fs.path.isSep(candidate_path[root_path.len]);
 }
 
 fn downloadEntryCanUseShellFileActions(downloads: *BrowseDownloads, index: usize) bool {
@@ -3822,10 +3823,10 @@ fn downloadEntryCanUseShellFileActions(downloads: *BrowseDownloads, index: usize
         return false;
     }
     const entry = downloads.entries.items[index];
-    if (entry.status != .completed or entry.path.len == 0 or !std.fs.path.isAbsolute(entry.path)) {
+    if (entry.status != .completed or entry.path.len == 0 or !compat.fs.path.isAbsolute(entry.path)) {
         return false;
     }
-    std.fs.accessAbsolute(entry.path, .{}) catch return false;
+    compat.fs.accessAbsolute(entry.path, .{}) catch return false;
     return true;
 }
 
@@ -3846,7 +3847,7 @@ fn resolveDownloadEntryShellPath(
     const downloads_root = resolveBrowseDownloadsDirShellPath(allocator, app_dir_path) orelse return null;
     defer allocator.free(downloads_root);
 
-    const resolved_path = std.fs.realpathAlloc(allocator, downloads.entries.items[index].path) catch return null;
+    const resolved_path = compat.fs.realpathAlloc(allocator, downloads.entries.items[index].path) catch return null;
     if (!absolutePathIsWithinRoot(downloads_root, resolved_path)) {
         allocator.free(resolved_path);
         return null;
@@ -3855,8 +3856,8 @@ fn resolveDownloadEntryShellPath(
 }
 
 fn appendDownloadShellLog(log_path: []const u8, action: DownloadShellAction, target_path: []const u8) !void {
-    var log_file = std.fs.openFileAbsolute(log_path, .{ .mode = .write_only }) catch |err| switch (err) {
-        error.FileNotFound => try std.fs.createFileAbsolute(log_path, .{ .read = true, .truncate = false }),
+    var log_file = compat.fs.openFileAbsolute(log_path, .{ .mode = .write_only }) catch |err| switch (err) {
+        error.FileNotFound => try compat.fs.createFileAbsolute(log_path, .{ .read = true, .truncate = false }),
         else => return err,
     };
     defer log_file.close();
@@ -3884,16 +3885,16 @@ fn runWindowsDownloadShellAction(
         .open_folder => &[_][]const u8{ "cmd.exe", "/c", "start", "", "explorer.exe", target_path },
     };
 
-    const result = try std.process.Child.run(.{
-        .allocator = allocator,
+    const result = try std.process.run(allocator, compat.io(), .{
         .argv = argv,
-        .max_output_bytes = 16 * 1024,
+        .stdout_limit = .limited(16 * 1024),
+        .stderr_limit = .limited(16 * 1024),
     });
     defer allocator.free(result.stdout);
     defer allocator.free(result.stderr);
 
     switch (result.term) {
-        .Exited => |code| if (code != 0) return error.UnexpectedExitCode,
+        .exited => |code| if (code != 0) return error.UnexpectedExitCode,
         else => return error.ShellLaunchFailed,
     }
 }
@@ -3903,7 +3904,7 @@ fn performDownloadShellAction(
     action: DownloadShellAction,
     target_path: []const u8,
 ) bool {
-    const log_path = std.process.getEnvVarOwned(allocator, DOWNLOAD_SHELL_LOG_ENV) catch null;
+    const log_path = compat.getEnvVarOwned(allocator, DOWNLOAD_SHELL_LOG_ENV) catch null;
     defer if (log_path) |owned| allocator.free(owned);
 
     if (log_path) |owned| {
@@ -3980,7 +3981,7 @@ fn makeUniqueDownloadFileName(allocator: std.mem.Allocator, downloads_dir: []con
     }
 }
 
-fn fileExistsInDir(dir: std.fs.Dir, sub_path: []const u8) bool {
+fn fileExistsInDir(dir: compat.fs.Dir, sub_path: []const u8) bool {
     dir.access(sub_path, .{}) catch |err| switch (err) {
         error.FileNotFound => return false,
         else => return true,
@@ -4121,7 +4122,7 @@ fn createBrowseTabWithCookieJar(
 
     if (initial_url) |target_url| {
         if (parseInternalBrowsePage(target_url) != null) {
-            page.url = try page.arena.dupeZ(u8, target_url);
+            page.url = try page.arena.dupeSentinel(u8, target_url, 0);
             return tab;
         }
         const encoded_url = try URL.ensureEncoded(page.call_arena, target_url);
@@ -4157,9 +4158,9 @@ fn updateActiveBrowseDisplay(
         const trace_page = tabs[trace_index].session.currentPage() orelse break :blk "";
         break :blk trace_page.url;
     };
-    var trace_timer: std.time.Timer = undefined;
+    var trace_timer: compat.Timer = undefined;
     if (googleRenderTraceEnabled(trace_url)) {
-        trace_timer = try std.time.Timer.start();
+        trace_timer = try compat.Timer.start();
         appendBrowseRenderTrace("update_begin", trace_url, "enter");
     }
     defer if (googleRenderTraceEnabled(trace_url)) {
@@ -4486,7 +4487,7 @@ fn browseTabEntry(tab: *BrowseTab, title: []const u8) Display.TabEntry {
             "about:blank"
     else
         trimmedOrNull(tab.pending_restore_url orelse "") orelse
-        trimmedOrNull(tab.committed_surface.url) orelse
+            trimmedOrNull(tab.committed_surface.url) orelse
             "about:blank";
 
     return .{
@@ -4544,7 +4545,7 @@ fn activatePendingRestoreForTabIfNeeded(
     if (parseInternalBrowsePage(pending_restore_url)) |internal_page| {
         try openInternalBrowsePage(app, shell, tab_index, page, settings, downloads, internal_page);
     } else {
-        const pending_restore_url_z = try page.call_arena.dupeZ(u8, pending_restore_url);
+        const pending_restore_url_z = try page.call_arena.dupeSentinel(u8, pending_restore_url, 0);
         const encoded_url = try URL.ensureEncoded(page.call_arena, pending_restore_url_z);
         tab.restore_committed_surface = false;
         tab.last_presented_hash = 0;
@@ -4646,12 +4647,12 @@ fn normalizeBrowseUrl(allocator: std.mem.Allocator, raw: []const u8) !?[:0]u8 {
     }
 
     if (std.mem.indexOf(u8, trimmed, "://") != null) {
-        return try allocator.dupeZ(u8, trimmed);
+        return try allocator.dupeSentinel(u8, trimmed, 0);
     }
 
     inline for (.{ "about:", "data:", "file:", "javascript:", "mailto:" }) |scheme| {
         if (std.ascii.startsWithIgnoreCase(trimmed, scheme)) {
-            return try allocator.dupeZ(u8, trimmed);
+            return try allocator.dupeSentinel(u8, trimmed, 0);
         }
     }
 
@@ -5373,7 +5374,7 @@ fn replacePageWithInternalHtml(
     try ls.local.eval(script, "internal_browser_page");
 
     page._parse_state = .{ .complete = {} };
-    page.url = try page.arena.dupeZ(u8, alias);
+    page.url = try page.arena.dupeSentinel(u8, alias, 0);
 }
 
 fn buildJsStringLiteral(allocator: std.mem.Allocator, value: []const u8) ![]u8 {
@@ -6733,7 +6734,7 @@ fn loadPersistedBookmarks(
     allocator: std.mem.Allocator,
     app_dir_path: ?[]const u8,
 ) std.ArrayListUnmanaged([]u8) {
-    var bookmarks: std.ArrayListUnmanaged([]u8) = .{};
+    var bookmarks: std.ArrayListUnmanaged([]u8) = .empty;
     errdefer deinitOwnedStrings(allocator, &bookmarks);
 
     var dir = openBrowseProfileDir(app_dir_path) orelse return bookmarks;
@@ -6973,9 +6974,9 @@ fn presentPage(
 ) !void {
     const paint_settle_window_ms: u64 = 120;
     const trace_render = googleRenderTraceEnabled(page.url);
-    var trace_timer: std.time.Timer = undefined;
+    var trace_timer: compat.Timer = undefined;
     if (trace_render) {
-        trace_timer = try std.time.Timer.start();
+        trace_timer = try compat.Timer.start();
         appendBrowseRenderTrace("present_begin", page.url, "enter");
     }
     defer if (trace_render) {
@@ -7097,9 +7098,9 @@ fn presentPage(
     if (app.display.hasPendingNativeInput()) {
         return;
     }
-    var stage_timer: std.time.Timer = undefined;
+    var stage_timer: compat.Timer = undefined;
     if (trace_render) {
-        stage_timer = try std.time.Timer.start();
+        stage_timer = try compat.Timer.start();
     }
     var display_list = DocumentPainter.paintDocument(app.allocator, page, .{
         .viewport_width = @intCast(app.display.viewport.width),
@@ -7169,14 +7170,14 @@ fn presentPage(
 
     last_presented_hash.* = next_hash;
     if (trace_render) {
-        stage_timer = try std.time.Timer.start();
+        stage_timer = try compat.Timer.start();
     }
     try committed_surface.replace(app.allocator, title, url, text, &display_list, next_hash, visual_state_hash);
     if (trace_render) {
         var detail_buf: [128]u8 = undefined;
         const detail = std.fmt.bufPrint(&detail_buf, "elapsed_ms={d}", .{stage_timer.read() / std.time.ns_per_ms}) catch "elapsed_ms=?";
         appendBrowseRenderTrace("commit_surface", page.url, detail);
-        stage_timer = try std.time.Timer.start();
+        stage_timer = try compat.Timer.start();
     }
     page.clearPresentationHint();
     try app.display.presentPageView(title, url, text, &display_list);
@@ -7215,9 +7216,9 @@ fn tryPresentIncrementalTextControlPatch(
     var patched_display_list = try committed_display_list.cloneOwned(app.allocator);
     errdefer patched_display_list.deinit(app.allocator);
 
-    var stage_timer: std.time.Timer = undefined;
+    var stage_timer: compat.Timer = undefined;
     if (trace_render) {
-        stage_timer = try std.time.Timer.start();
+        stage_timer = try compat.Timer.start();
     }
 
     if (!(try DocumentPainter.patchTextControlDisplayList(
@@ -7261,7 +7262,7 @@ fn tryPresentIncrementalTextControlPatch(
         var detail_buf: [128]u8 = undefined;
         const detail = std.fmt.bufPrint(&detail_buf, "elapsed_ms={d}", .{stage_timer.read() / std.time.ns_per_ms}) catch "elapsed_ms=?";
         appendBrowseRenderTrace("incremental_text_control_patch", page.url, detail);
-        stage_timer = try std.time.Timer.start();
+        stage_timer = try compat.Timer.start();
     }
     try app.display.presentPageView(
         committed_surface.title,
@@ -7528,7 +7529,7 @@ test "findBrowseTabIndexByTargetName ignores blank and matches named targets" {
 }
 
 test "openOrReuseTargetedBrowseTab reuses existing named tab" {
-    var tabs: std.ArrayListUnmanaged(*BrowseTab) = .{};
+    var tabs: std.ArrayListUnmanaged(*BrowseTab) = .empty;
     defer deinitBrowseTabs(testing.test_app.allocator, &tabs);
     var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
     defer downloads.deinit(null);
@@ -7588,7 +7589,7 @@ test "openOrReuseTargetedBrowseTab reuses existing named tab" {
 }
 
 test "openOrReuseTargetedBrowseTab resets live named script popup tab before reuse" {
-    var tabs: std.ArrayListUnmanaged(*BrowseTab) = .{};
+    var tabs: std.ArrayListUnmanaged(*BrowseTab) = .empty;
     defer deinitBrowseTabs(testing.test_app.allocator, &tabs);
     var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
     defer downloads.deinit(null);
@@ -7905,21 +7906,28 @@ test "writeInternalShellNav marks current section and links other shell pages" {
     try std.testing.expect(std.mem.indexOf(u8, html, "browser://settings") != null);
 }
 
+fn testBrowseTab(session: *Session) BrowseTab {
+    return .{
+        .http_client = undefined,
+        .notification = undefined,
+        .browser = undefined,
+        .session = session,
+    };
+}
+
 test "hashInternalTabsPageState changes when active tab changes" {
     var session_one: Session = undefined;
     session_one.page = null;
     var session_two: Session = undefined;
     session_two.page = null;
-    var tab_one: BrowseTab = undefined;
-    var tab_two: BrowseTab = undefined;
-    tab_one.session = &session_one;
+    var tab_one = testBrowseTab(&session_one);
+    var tab_two = testBrowseTab(&session_two);
     tab_one.committed_surface = .{};
     tab_one.error_state = .{};
     tab_one.internal_filters = .{};
     tab_one.target_name = &.{};
     tab_one.popup_source = .none;
     tab_one.zoom_percent = 100;
-    tab_two.session = &session_two;
     tab_two.committed_surface = .{};
     tab_two.error_state = .{};
     tab_two.internal_filters = .{};
@@ -7940,7 +7948,7 @@ test "hashInternalTabsPageState changes when active tab changes" {
         .items = closed_item[0..],
         .capacity = closed_item.len,
     };
-    var active_index: usize = 1;
+    var active_index: usize = 0;
     var shell: BrowseShell = .{
         .tabs = &tabs,
         .closed_tabs = &closed_tabs,
@@ -7956,8 +7964,7 @@ test "hashInternalTabsPageState changes when active tab changes" {
 test "hashInternalTabsPageState changes when closed tab content changes" {
     var session: Session = undefined;
     session.page = null;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -7996,16 +8003,14 @@ test "writeInternalTabsPage includes indexed actions and popup metadata" {
     session_one.page = null;
     var session_two: Session = undefined;
     session_two.page = null;
-    var tab_one: BrowseTab = undefined;
-    var tab_two: BrowseTab = undefined;
-    tab_one.session = &session_one;
+    var tab_one = testBrowseTab(&session_one);
+    var tab_two = testBrowseTab(&session_two);
     tab_one.committed_surface = .{};
     tab_one.error_state = .{};
     tab_one.internal_filters = .{};
     tab_one.zoom_percent = 100;
     tab_one.target_name = @constCast("report");
     tab_one.popup_source = .script;
-    tab_two.session = &session_two;
     tab_two.committed_surface = .{};
     tab_two.error_state = .{};
     tab_two.internal_filters = .{};
@@ -8084,11 +8089,11 @@ test "makeClosedBrowseTabDisplayEntries returns newest first ui ordering" {
 test "writeInternalStartPage includes preview sections and quick actions" {
     const NavigationHistoryEntry = @import("browser/webapi/navigation/NavigationHistoryEntry.zig");
     const rel_dir = ".zig-cache/tmp/internal-start-page-preview-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
     savePersistedBookmarks(std.testing.allocator, abs_dir, &.{ "http://bookmark-one.test/", "http://bookmark-two.test/" });
 
@@ -8120,8 +8125,7 @@ test "writeInternalStartPage includes preview sections and quick actions" {
     }
     session.navigation._index = 1;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{ .url = @constCast("http://current.test/") };
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8222,8 +8226,7 @@ test "writeInternalSettingsPage renders storage and cookie controls" {
     session.indexed_db_shed = &indexed_db_shed;
     session.owned_indexed_db_shed = null;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8250,22 +8253,22 @@ test "writeInternalSettingsPage renders storage and cookie controls" {
 test "saveBrowseCookiesForPath round trips persisted cookie jar" {
     {
         const rel_dir = ".zig-cache/tmp/internal-cookie-roundtrip-test";
-        std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+        compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
             error.PathAlreadyExists => {},
             else => return err,
         };
-        const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+        const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
         defer std.testing.allocator.free(abs_dir);
 
-        var file_path_buf: [std.fs.max_path_bytes]u8 = undefined;
+        var file_path_buf: [compat.fs.max_path_bytes]u8 = undefined;
         const file_path = try std.fmt.bufPrint(&file_path_buf, "{s}\\{s}", .{ rel_dir, BROWSE_COOKIES_FILE });
-        var file = try std.fs.cwd().createFile(file_path, .{ .truncate = true });
+        var file = try compat.fs.cwd().createFile(file_path, .{ .truncate = true });
         defer file.close();
 
         const cookie_line = try std.fmt.allocPrint(
             std.testing.allocator,
             "cookie\tlppersist\tok\t127.0.0.1\t/\t{d}\t0\t0\tlax\n",
-            .{@as(i64, std.time.timestamp() + 7200)},
+            .{@as(i64, compat.unixTimestamp() + 7200)},
         );
         defer std.testing.allocator.free(cookie_line);
 
@@ -8288,14 +8291,14 @@ test "saveBrowseCookiesForPath round trips persisted cookie jar" {
 
 test "loadSavedBrowseSession round trips persisted session state" {
     const rel_dir = ".zig-cache/tmp/internal-session-roundtrip-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
-    var dir = try std.fs.cwd().openDir(abs_dir, .{});
+    var dir = try compat.fs.cwd().openDir(abs_dir, .{});
     defer dir.close();
     try dir.writeFile(.{
         .sub_path = BROWSE_SESSION_FILE,
@@ -8315,11 +8318,11 @@ test "loadSavedBrowseSession round trips persisted session state" {
 
 test "saveBrowseLocalStorageForPath round trips persisted local storage" {
     const rel_dir = ".zig-cache/tmp/internal-local-storage-roundtrip-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
     var source: storage.Shed = .{};
@@ -8347,11 +8350,11 @@ test "saveBrowseLocalStorageForPath round trips persisted local storage" {
 
 test "saveBrowseIndexedDbForPath round trips persisted indexed db" {
     const rel_dir = ".zig-cache/tmp/internal-indexed-db-roundtrip-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
     var source: indexed_db.Shed = .{};
@@ -8425,8 +8428,7 @@ test "hashInternalBrowsePageState settings changes after cookie mutation" {
     session.indexed_db_shed = &indexed_db_shed;
     session.owned_indexed_db_shed = null;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8440,7 +8442,7 @@ test "hashInternalBrowsePageState settings changes after cookie mutation" {
         .items = tab_items[0..],
         .capacity = tab_items.len,
     };
-    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    var closed_tabs: std.ArrayListUnmanaged(ClosedBrowseTab) = .empty;
     defer closed_tabs.deinit(std.testing.allocator);
     var active_index: usize = 0;
     const shell: BrowseShell = .{
@@ -8475,7 +8477,7 @@ test "hashInternalBrowsePageState settings changes after cookie mutation" {
             false,
             .lax,
         ),
-        std.time.timestamp(),
+        compat.unixTimestamp(),
     );
 
     const after_hash = hashInternalBrowsePageState(
@@ -8508,8 +8510,7 @@ test "hashInternalBrowsePageState settings changes after local storage mutation"
     session.indexed_db_shed = &indexed_db_shed;
     session.owned_indexed_db_shed = null;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8523,7 +8524,7 @@ test "hashInternalBrowsePageState settings changes after local storage mutation"
         .items = tab_items[0..],
         .capacity = tab_items.len,
     };
-    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    var closed_tabs: std.ArrayListUnmanaged(ClosedBrowseTab) = .empty;
     defer closed_tabs.deinit(std.testing.allocator);
     var active_index: usize = 0;
     const shell: BrowseShell = .{
@@ -8579,8 +8580,7 @@ test "hashInternalBrowsePageState settings changes after indexed db mutation" {
     session.indexed_db_shed = &indexed_db_shed;
     session.owned_indexed_db_shed = null;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8594,7 +8594,7 @@ test "hashInternalBrowsePageState settings changes after indexed db mutation" {
         .items = tab_items[0..],
         .capacity = tab_items.len,
     };
-    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    var closed_tabs: std.ArrayListUnmanaged(ClosedBrowseTab) = .empty;
     defer closed_tabs.deinit(std.testing.allocator);
     var active_index: usize = 0;
     const shell: BrowseShell = .{
@@ -8665,8 +8665,7 @@ test "writeInternalHistoryPage applies filter state and renders quick links" {
     }
     session.navigation._index = 0;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8729,8 +8728,7 @@ test "writeInternalHistoryPage renders safe mutation actions around the current 
     }
     session.navigation._index = 1;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8754,18 +8752,17 @@ test "writeInternalHistoryPage renders safe mutation actions around the current 
 
 test "writeInternalBookmarksPage applies filter state and renders quick links" {
     const rel_dir = ".zig-cache/tmp/internal-bookmark-filter-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
     savePersistedBookmarks(std.testing.allocator, abs_dir, &.{ "http://other.test/hidden.html", "http://127.0.0.1:8190/page-two.html" });
 
     var session: Session = undefined;
     session.page = null;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8793,8 +8790,7 @@ test "writeInternalBookmarksPage applies filter state and renders quick links" {
 test "writeInternalDownloadsPage applies filter state and renders quick links" {
     var session: Session = undefined;
     session.page = null;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8837,26 +8833,26 @@ test "writeInternalDownloadsPage applies filter state and renders quick links" {
 
 test "resolveDownloadEntryShellPath validates completed files under downloads root" {
     const rel_dir = ".zig-cache/tmp/internal-download-shell-path-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
     const downloads_dir = try ensureBrowseDownloadsDir(std.testing.allocator, abs_dir);
     defer std.testing.allocator.free(downloads_dir);
 
-    const valid_path = try std.fs.path.join(std.testing.allocator, &.{ downloads_dir, "seed.txt" });
+    const valid_path = try compat.fs.path.join(std.testing.allocator, &.{ downloads_dir, "seed.txt" });
     defer std.testing.allocator.free(valid_path);
-    const valid_file = try std.fs.createFileAbsolute(valid_path, .{ .truncate = true });
+    const valid_file = try compat.fs.createFileAbsolute(valid_path, .{ .truncate = true });
     valid_file.close();
 
-    const outside_path = try std.fs.path.join(std.testing.allocator, &.{ abs_dir, "outside.txt" });
+    const outside_path = try compat.fs.path.join(std.testing.allocator, &.{ abs_dir, "outside.txt" });
     defer std.testing.allocator.free(outside_path);
-    const outside_file = try std.fs.createFileAbsolute(outside_path, .{ .truncate = true });
+    const outside_file = try compat.fs.createFileAbsolute(outside_path, .{ .truncate = true });
     outside_file.close();
 
-    const missing_path = try std.fs.path.join(std.testing.allocator, &.{ downloads_dir, "missing.txt" });
+    const missing_path = try compat.fs.path.join(std.testing.allocator, &.{ downloads_dir, "missing.txt" });
     defer std.testing.allocator.free(missing_path);
 
     var downloads = BrowseDownloads{ .allocator = std.testing.allocator };
@@ -8885,7 +8881,7 @@ test "resolveDownloadEntryShellPath validates completed files under downloads ro
 
     const resolved = resolveDownloadEntryShellPath(std.testing.allocator, abs_dir, &downloads, 0) orelse return error.TestUnexpectedResult;
     defer std.testing.allocator.free(resolved);
-    const expected = try std.fs.realpathAlloc(std.testing.allocator, valid_path);
+    const expected = try compat.fs.realpathAlloc(std.testing.allocator, valid_path);
     defer std.testing.allocator.free(expected);
     try std.testing.expectEqualStrings(expected, resolved);
     try std.testing.expect(resolveDownloadEntryShellPath(std.testing.allocator, abs_dir, &downloads, 1) == null);
@@ -8894,23 +8890,22 @@ test "resolveDownloadEntryShellPath validates completed files under downloads ro
 
 test "writeInternalDownloadsPage renders shell actions only for completed existing files" {
     const rel_dir = ".zig-cache/tmp/internal-download-shell-html-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
-    const existing_path = try std.fs.path.join(std.testing.allocator, &.{ abs_dir, "existing.txt" });
+    const existing_path = try compat.fs.path.join(std.testing.allocator, &.{ abs_dir, "existing.txt" });
     defer std.testing.allocator.free(existing_path);
-    const existing_file = try std.fs.createFileAbsolute(existing_path, .{ .truncate = true });
+    const existing_file = try compat.fs.createFileAbsolute(existing_path, .{ .truncate = true });
     existing_file.close();
-    const missing_path = try std.fs.path.join(std.testing.allocator, &.{ abs_dir, "missing.txt" });
+    const missing_path = try compat.fs.path.join(std.testing.allocator, &.{ abs_dir, "missing.txt" });
     defer std.testing.allocator.free(missing_path);
 
     var session: Session = undefined;
     session.page = null;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -8986,8 +8981,7 @@ test "writeInternalHistoryPage applies newest-first sort ordering" {
     }
     session.navigation._index = 1;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -9010,18 +9004,17 @@ test "writeInternalHistoryPage applies newest-first sort ordering" {
 
 test "writeInternalBookmarksPage applies alphabetical sort ordering" {
     const rel_dir = ".zig-cache/tmp/internal-bookmark-sort-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
     savePersistedBookmarks(std.testing.allocator, abs_dir, &.{ "http://zeta.test/two", "http://alpha.test/one" });
 
     var session: Session = undefined;
     session.page = null;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -9047,8 +9040,7 @@ test "writeInternalBookmarksPage applies alphabetical sort ordering" {
 test "writeInternalDownloadsPage applies newest-first sort ordering" {
     var session: Session = undefined;
     session.page = null;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.committed_surface = .{};
     tab.error_state = .{};
     tab.internal_filters = .{};
@@ -9089,11 +9081,11 @@ test "writeInternalDownloadsPage applies newest-first sort ordering" {
 
 test "addPersistedBookmark appends unique bookmark once" {
     const rel_dir = ".zig-cache/tmp/internal-bookmark-add-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
     try std.testing.expect(addPersistedBookmark(std.testing.allocator, abs_dir, "http://one.test/"));
@@ -9107,15 +9099,15 @@ test "addPersistedBookmark appends unique bookmark once" {
 
 test "clearInactiveEntries removes completed download files and metadata" {
     const rel_dir = ".zig-cache/tmp/internal-download-clear-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
-    const file_path = try std.fs.path.join(std.testing.allocator, &.{ abs_dir, "gone.txt" });
+    const file_path = try compat.fs.path.join(std.testing.allocator, &.{ abs_dir, "gone.txt" });
     defer std.testing.allocator.free(file_path);
-    var dir = try std.fs.openDirAbsolute(abs_dir, .{});
+    var dir = try compat.fs.openDirAbsolute(abs_dir, .{});
     defer dir.close();
     try dir.writeFile(.{ .sub_path = "gone.txt", .data = "gone" });
 
@@ -9132,16 +9124,16 @@ test "clearInactiveEntries removes completed download files and metadata" {
 
     try std.testing.expect(downloads.clearInactiveEntries(abs_dir));
     try std.testing.expectEqual(@as(usize, 0), downloads.entries.items.len);
-    try std.testing.expectError(error.FileNotFound, std.fs.accessAbsolute(file_path, .{}));
+    try std.testing.expectError(error.FileNotFound, compat.fs.accessAbsolute(file_path, .{}));
 }
 
 test "makeInternalBrowsePageDisplayTitle reflects live counts" {
     const rel_dir = ".zig-cache/tmp/internal-title-count-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
     savePersistedBookmarks(std.testing.allocator, abs_dir, &.{ "http://one.test/", "http://two.test/" });
 
@@ -9172,8 +9164,7 @@ test "makeInternalBrowsePageDisplayTitle reflects live counts" {
         std.testing.allocator.destroy(history_two);
     }
     session.navigation._index = 1;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.error_state = .{};
     tab.internal_filters = .{};
     defer tab.internal_filters.deinit(std.testing.allocator);
@@ -9274,11 +9265,11 @@ test "CommittedBrowseSurface refreshStateHashForSameOutput advances revision for
 
 test "hashInternalBrowsePageState changes after bookmark and download mutations" {
     const rel_dir = ".zig-cache/tmp/internal-page-hash-mutation-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
     savePersistedBookmarks(std.testing.allocator, abs_dir, &.{"http://one.test/"});
@@ -9310,8 +9301,7 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
         std.testing.allocator.destroy(history_two);
     }
     session.navigation._index = 1;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.error_state = .{};
     tab.internal_filters = .{};
     defer tab.internal_filters.deinit(std.testing.allocator);
@@ -9324,7 +9314,7 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
         .items = tab_items[0..],
         .capacity = tab_items.len,
     };
-    var closed_tabs = std.ArrayListUnmanaged(ClosedBrowseTab){};
+    var closed_tabs: std.ArrayListUnmanaged(ClosedBrowseTab) = .empty;
     defer closed_tabs.deinit(std.testing.allocator);
     var active_index: usize = 0;
     const shell: BrowseShell = .{
@@ -9386,7 +9376,9 @@ test "hashInternalBrowsePageState changes after bookmark and download mutations"
 }
 
 test "writeInternalErrorPage includes retry home and start actions" {
-    var tab: BrowseTab = undefined;
+    var session: Session = undefined;
+    session.page = null;
+    var tab = testBrowseTab(&session);
     tab.error_state = .{};
     tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
@@ -9410,8 +9402,7 @@ test "browseTabPersistentUrl prefers retry target for error page" {
     var page: Page = undefined;
     page.url = @constCast("browser://error");
     session.page = &page;
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.error_state = .{};
     tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
@@ -9427,8 +9418,7 @@ test "captureBrowseTabRuntimeError preserves error state on internal pages" {
     page._parse_state = .{ .complete = {} };
     session.page = &page;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.error_state = .{};
     tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
@@ -9446,8 +9436,7 @@ test "captureBrowseTabRuntimeError clears error state on successful external pag
     page._parse_state = .{ .complete = {} };
     session.page = &page;
 
-    var tab: BrowseTab = undefined;
-    tab.session = &session;
+    var tab = testBrowseTab(&session);
     tab.error_state = .{};
     tab.internal_filters = .{};
     defer tab.error_state.deinit(std.testing.allocator);
@@ -9547,16 +9536,16 @@ test "internalBrowseCommandKeepsCurrentPage includes internal open in new tab ac
 
 test "removePersistedBookmarkAtIndex rewrites bookmark file" {
     const rel_dir = ".zig-cache/tmp/internal-bookmark-remove-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
-    var dir = try std.fs.openDirAbsolute(abs_dir, .{});
+    var dir = try compat.fs.openDirAbsolute(abs_dir, .{});
     defer dir.close();
-    dir.writeFile(.{ .sub_path = BROWSE_BOOKMARKS_FILE, .data = 
+    dir.writeFile(.{ .sub_path = BROWSE_BOOKMARKS_FILE, .data =
         \\http://one.test/
         \\http://two.test/
     }) catch |err| switch (err) {
@@ -9573,11 +9562,11 @@ test "removePersistedBookmarkAtIndex rewrites bookmark file" {
 
 test "movePersistedBookmarkUpAtIndex rewrites bookmark file" {
     const rel_dir = ".zig-cache/tmp/internal-bookmark-move-up-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
     savePersistedBookmarks(std.testing.allocator, abs_dir, &.{
@@ -9596,11 +9585,11 @@ test "movePersistedBookmarkUpAtIndex rewrites bookmark file" {
 
 test "movePersistedBookmarkDownAtIndex rewrites bookmark file" {
     const rel_dir = ".zig-cache/tmp/internal-bookmark-move-down-test";
-    std.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
+    compat.fs.cwd().makePath(rel_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    const abs_dir = try std.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
+    const abs_dir = try compat.fs.cwd().realpathAlloc(std.testing.allocator, rel_dir);
     defer std.testing.allocator.free(abs_dir);
 
     savePersistedBookmarks(std.testing.allocator, abs_dir, &.{

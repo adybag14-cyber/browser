@@ -18,6 +18,7 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
+const compat = @import("compat.zig");
 const posix = std.posix;
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
@@ -31,6 +32,7 @@ pub const ENABLE_DEBUG = false;
 const IS_DEBUG = builtin.mode == .Debug;
 pub const DISABLED_PROXY: [:0]const u8 = "";
 const LOOPBACK_NO_PROXY: [:0]const u8 = "localhost,127.0.0.1,::1,[::1]";
+const IP_RESOLVE_ENV = "LIGHTPANDA_IP_RESOLVE";
 
 pub const Blob = libcurl.CurlBlob;
 pub const WaitFd = libcurl.CurlWaitFd;
@@ -247,6 +249,24 @@ pub fn globalDeinit() void {
     libcurl.curl_global_cleanup();
 }
 
+fn configuredIpResolve() ?i32 {
+    const value = compat.getEnvVarOwned(std.heap.page_allocator, IP_RESOLVE_ENV) catch return null;
+    defer std.heap.page_allocator.free(value);
+
+    if (std.ascii.eqlIgnoreCase(value, "ipv4") or std.ascii.eqlIgnoreCase(value, "v4")) {
+        return libcurl.ip_resolve_v4;
+    }
+    if (std.ascii.eqlIgnoreCase(value, "ipv6") or std.ascii.eqlIgnoreCase(value, "v6")) {
+        return libcurl.ip_resolve_v6;
+    }
+    if (std.ascii.eqlIgnoreCase(value, "default") or std.ascii.eqlIgnoreCase(value, "whatever")) {
+        return libcurl.ip_resolve_whatever;
+    }
+
+    log.warn(.http, "invalid ip resolve env", .{ .value = value });
+    return null;
+}
+
 pub const Connection = struct {
     easy: *libcurl.Curl,
     node: Handles.HandleList.Node = .{},
@@ -266,6 +286,10 @@ pub const Connection = struct {
         try libcurl.curl_easy_setopt(easy, .max_redirs, config.httpMaxRedirects());
         try libcurl.curl_easy_setopt(easy, .follow_location, 2);
         try libcurl.curl_easy_setopt(easy, .redir_protocols_str, "HTTP,HTTPS"); // remove FTP and FTPS from the default
+        try libcurl.curl_easy_setopt(easy, .http_version, libcurl.http_version_2tls);
+        if (configuredIpResolve()) |ip_resolve| {
+            try libcurl.curl_easy_setopt(easy, .ip_resolve, ip_resolve);
+        }
 
         // proxy
         const http_proxy = config.httpProxy();
@@ -618,8 +642,9 @@ pub const Handles = struct {
 // bundle.rescan does find the .pem file(s) which could be in a few different
 // places, so it's still useful, just not efficient.
 pub fn loadCerts(allocator: Allocator) !libcurl.CurlBlob {
-    var bundle: std.crypto.Certificate.Bundle = .{};
-    try bundle.rescan(allocator);
+    var bundle: std.crypto.Certificate.Bundle = .empty;
+    const active_io = compat.io();
+    try bundle.rescan(allocator, active_io, std.Io.Clock.real.now(active_io));
     defer bundle.deinit(allocator);
 
     const bytes = bundle.bytes.items;
@@ -633,16 +658,14 @@ pub fn loadCerts(allocator: Allocator) !libcurl.CurlBlob {
     }
 
     const encoder = std.base64.standard.Encoder;
-    var arr: std.ArrayList(u8) = .empty;
-
     const encoded_size = encoder.calcSize(bytes.len);
     const buffer_size = encoded_size +
         (bundle.map.count() * 75) + // start / end per certificate + extra, just in case
         (encoded_size / 64) // newline per 64 characters
     ;
-    try arr.ensureTotalCapacity(allocator, buffer_size);
-    errdefer arr.deinit(allocator);
-    var writer = arr.writer(allocator);
+    var aw = try std.Io.Writer.Allocating.initCapacity(allocator, buffer_size);
+    errdefer aw.deinit();
+    const writer = &aw.writer;
 
     var it = bundle.map.valueIterator();
     while (it.next()) |index| {
@@ -650,17 +673,17 @@ pub fn loadCerts(allocator: Allocator) !libcurl.CurlBlob {
 
         try writer.writeAll("-----BEGIN CERTIFICATE-----\n");
         var line_writer = LineWriter{ .inner = writer };
-        try encoder.encodeWriter(&line_writer, bytes[index.*..cert.slice.end]);
+        const cert_bytes = bytes[index.*..cert.slice.end];
+        const encoded = try allocator.alloc(u8, encoder.calcSize(cert_bytes.len));
+        defer allocator.free(encoded);
+        try line_writer.writeAll(encoder.encode(encoded, cert_bytes));
         try writer.writeAll("\n-----END CERTIFICATE-----\n");
     }
 
     // Final encoding should not be larger than our initial size estimate
-    assert(buffer_size > arr.items.len, "Http loadCerts", .{ .estimate = buffer_size, .len = arr.items.len });
+    assert(buffer_size > aw.written().len, "Http loadCerts", .{ .estimate = buffer_size, .len = aw.written().len });
 
-    // Allocate exactly the size needed and copy the data
-    const result = try allocator.dupe(u8, arr.items);
-    // Free the original oversized allocation
-    arr.deinit(allocator);
+    const result = try aw.toOwnedSlice();
 
     return .{
         .len = result.len,
@@ -674,10 +697,10 @@ pub fn loadCerts(allocator: Allocator) !libcurl.CurlBlob {
 // and footer
 const LineWriter = struct {
     col: usize = 0,
-    inner: std.ArrayList(u8).Writer,
+    inner: *std.Io.Writer,
 
     pub fn writeAll(self: *LineWriter, data: []const u8) !void {
-        var writer = self.inner;
+        const writer = self.inner;
 
         var col = self.col;
         const len = 64 - col;
@@ -693,7 +716,7 @@ const LineWriter = struct {
         while (remain.len > 64) {
             try writer.writeAll(remain[0..64]);
             try writer.writeByte('\n');
-            remain = data[len..];
+            remain = remain[64..];
         }
         try writer.writeAll(remain);
         self.col = col + remain.len;
@@ -1001,7 +1024,7 @@ pub fn Reader(comptime EXPECT_MASK: bool) type {
 
                     // not continuation, and not fin. It has to be the first message
                     // in a fragmented message.
-                    var fragments = Fragments{ .message = .{}, .type = message_type };
+                    var fragments = Fragments{ .message = .empty, .type = message_type };
                     try fragments.message.appendSlice(self.allocator, payload);
                     self.fragments = fragments;
                     continue :LOOP;
@@ -1111,14 +1134,14 @@ pub const WsConnection = struct {
     // "private-use" close codes must be from 4000-49999
     const CLOSE_TIMEOUT = [_]u8{ 136, 2, 15, 160 }; // code: 4000
 
-    socket: posix.socket_t,
+    socket: compat.net.RawSocket,
     socket_flags: usize,
     reader: Reader(true),
     send_arena: ArenaAllocator,
     json_version_response: []const u8,
     timeout_ms: u32,
 
-    pub fn init(socket: posix.socket_t, allocator: Allocator, json_version_response: []const u8, timeout_ms: u32) !WsConnection {
+    pub fn init(socket: compat.net.RawSocket, allocator: Allocator, json_version_response: []const u8, timeout_ms: u32) !WsConnection {
         const socket_flags = if (comptime builtin.os.tag == .windows)
             0
         else
@@ -1160,10 +1183,10 @@ pub const WsConnection = struct {
         };
 
         LOOP: while (pos < data.len) {
-            const written = posix.send(self.socket, data[pos..], 0) catch |err| switch (err) {
+            const written = compat.net.sendRaw(self.socket, data[pos..]) catch |err| switch (err) {
                 error.WouldBlock => {
                     if (comptime builtin.os.tag == .windows) {
-                        std.Thread.sleep(100 * std.time.ns_per_us);
+                        compat.sleepNanos(100 * std.time.ns_per_us);
                         continue :LOOP;
                     }
 
@@ -1235,7 +1258,7 @@ pub const WsConnection = struct {
     }
 
     pub fn read(self: *WsConnection) !usize {
-        const n = try posix.recv(self.socket, self.reader.readBuf(), 0);
+        const n = try compat.net.recvRaw(self.socket, self.reader.readBuf());
         self.reader.len += n;
         return n;
     }
@@ -1384,15 +1407,12 @@ pub const WsConnection = struct {
         self.send(response) catch {};
     }
 
-    pub fn getAddress(self: *WsConnection) !std.net.Address {
-        var address: std.net.Address = undefined;
-        var socklen: posix.socklen_t = @sizeOf(std.net.Address);
-        try posix.getpeername(self.socket, &address.any, &socklen);
-        return address;
+    pub fn getAddress(self: *WsConnection) !compat.net.Address {
+        return compat.net.getPeerAddress(self.socket);
     }
 
     pub fn shutdown(self: *WsConnection) void {
-        posix.shutdown(self.socket, .recv) catch {};
+        compat.net.shutdownRaw(self.socket) catch {};
     }
 
     pub fn setBlocking(self: *WsConnection, blocking: bool) !void {
@@ -1412,7 +1432,9 @@ const testing = std.testing;
 
 test "mask" {
     var buf: [4000]u8 = undefined;
-    const messages = [_][]const u8{ "1234", "1234" ** 99, "1234" ** 999 };
+    const msg_99 = compat.repeatComptime("1234", 99);
+    const msg_999 = compat.repeatComptime("1234", 999);
+    const messages = [_][]const u8{ "1234", &msg_99, &msg_999 };
     for (messages) |message| {
         // we need the message to be mutable since mask operates in-place
         const payload = buf[0..message.len];

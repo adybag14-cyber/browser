@@ -22,6 +22,7 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 
 const URL = @import("../../URL.zig");
 const log = @import("../../../log.zig");
+const compat = @import("../../../compat.zig");
 const DateTime = @import("../../../datetime.zig").DateTime;
 const public_suffix_list = @import("../../../data/public_suffix_list.zig").lookup;
 
@@ -171,7 +172,7 @@ pub fn parse(allocator: Allocator, url: [:0]const u8, str: []const u8) !Cookie {
 
     var normalized_expires: ?f64 = null;
     if (max_age) |ma| {
-        normalized_expires = @floatFromInt(std.time.timestamp() + ma);
+        normalized_expires = @floatFromInt(compat.unixTimestamp() + ma);
     } else {
         // max age takes priority over expires
         if (expires) |expires_| {
@@ -235,7 +236,7 @@ fn validateCookieString(str: []const u8) ValidateCookieError!void {
             // we know that we've invalid characters in this chunk.
             // @popCount can also be used but using integers are simpler.
             const mask = (@intFromBool(chunk < space) | @intFromBool(chunk > tilde));
-            const reduced: std.meta.Int(.unsigned, size) = @bitCast(mask);
+            const reduced: @Int(.unsigned, size) = @bitCast(mask);
 
             // Got match.
             if (reduced != 0) {
@@ -428,7 +429,7 @@ pub const Jar = struct {
 
     pub fn init(allocator: Allocator) Jar {
         return .{
-            .cookies = .{},
+            .cookies = .empty,
             .allocator = allocator,
         };
     }
@@ -485,7 +486,7 @@ pub const Jar = struct {
 
     pub fn removeExpired(self: *Jar, request_time: ?i64) void {
         if (self.cookies.items.len == 0) return;
-        const time = request_time orelse std.time.timestamp();
+        const time = request_time orelse compat.unixTimestamp();
         var i: usize = self.cookies.items.len;
         while (i > 0) {
             i -= 1;
@@ -539,7 +540,7 @@ pub const Jar = struct {
             return;
         };
 
-        const now = std.time.timestamp();
+        const now = compat.unixTimestamp();
         try self.add(c, now);
     }
 
@@ -606,11 +607,11 @@ fn trim(str: []const u8) []const u8 {
 }
 
 fn trimLeft(str: []const u8) []const u8 {
-    return std.mem.trimLeft(u8, str, &std.ascii.whitespace);
+    return std.mem.trimStart(u8, str, &std.ascii.whitespace);
 }
 
 fn trimRight(str: []const u8) []const u8 {
-    return std.mem.trimRight(u8, str, &std.ascii.whitespace);
+    return std.mem.trimEnd(u8, str, &std.ascii.whitespace);
 }
 
 fn toLower(str: []u8) []u8 {
@@ -656,7 +657,7 @@ test "Jar: add" {
         }
     }.expect;
 
-    const now = std.time.timestamp();
+    const now = compat.unixTimestamp();
 
     var jar = Jar.init(testing.allocator);
     defer jar.deinit();
@@ -691,7 +692,7 @@ test "Jar: add limit" {
     var jar = Jar.init(testing.allocator);
     defer jar.deinit();
 
-    const now = std.time.timestamp();
+    const now = compat.unixTimestamp();
 
     // add a too big cookie value.
     try testing.expectError(error.CookieSizeExceeded, jar.add(.{
@@ -700,7 +701,7 @@ test "Jar: add limit" {
         .domain = "lightpanda.io",
         .path = "/",
         .expires = null,
-        .value = "v" ** 4096 ++ "v",
+        .value = compat.repeatComptime("v", 4096) ++ "v",
     }, now));
 
     // generate unique names.
@@ -708,7 +709,7 @@ test "Jar: add limit" {
         @setEvalBranchQuota(max_jar_size);
         var result: [max_jar_size][]const u8 = undefined;
         for (0..max_jar_size) |i| {
-            result[i] = "v" ** i;
+            result[i] = &compat.repeatComptime("v", i);
         }
         break :blk result;
     };
@@ -741,14 +742,14 @@ test "Jar: add limit" {
 test "Jar: forRequest" {
     const expectCookies = struct {
         fn expect(expected: []const u8, jar: *Jar, target_url: [:0]const u8, opts: Jar.LookupOpts) !void {
-            var arr: std.ArrayList(u8) = .empty;
-            defer arr.deinit(testing.allocator);
-            try jar.forRequest(target_url, arr.writer(testing.allocator), opts);
-            try testing.expectEqual(expected, arr.items);
+            var arr = std.Io.Writer.Allocating.init(testing.allocator);
+            defer arr.deinit();
+            try jar.forRequest(target_url, &arr.writer, opts);
+            try testing.expectEqual(expected, arr.written());
         }
     }.expect;
 
-    const now = std.time.timestamp();
+    const now = compat.unixTimestamp();
 
     var jar = Jar.init(testing.allocator);
     defer jar.deinit();
@@ -895,19 +896,19 @@ test "Jar: forRequest sends host-only ip cookie on same-site navigation" {
 
     try jar.add(
         try Cookie.parse(testing.allocator, seed_url, "lppersist=ok; Path=/"),
-        std.time.timestamp(),
+        compat.unixTimestamp(),
     );
 
-    var arr: std.ArrayList(u8) = .empty;
-    defer arr.deinit(testing.allocator);
+    var arr = std.Io.Writer.Allocating.init(testing.allocator);
+    defer arr.deinit();
 
-    try jar.forRequest(echo_url, arr.writer(testing.allocator), .{
+    try jar.forRequest(echo_url, &arr.writer, .{
         .origin_url = echo_url,
         .is_navigation = true,
         .is_http = true,
     });
 
-    try std.testing.expectEqualStrings("lppersist=ok", arr.items);
+    try std.testing.expectEqualStrings("lppersist=ok", arr.written());
 }
 
 test "Cookie: parse key=value" {
@@ -1017,13 +1018,13 @@ test "Cookie: parse max-age" {
     try expectAttribute(.{ .expires = null }, null, "b;max-age=13.22");
     try expectAttribute(.{ .expires = null }, null, "b;max-age=13abc");
 
-    try expectAttribute(.{ .expires = std.time.timestamp() + 13 }, null, "b;max-age=13");
-    try expectAttribute(.{ .expires = std.time.timestamp() + -22 }, null, "b;max-age=-22");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 4294967296 }, null, "b;max-age=4294967296");
-    try expectAttribute(.{ .expires = std.time.timestamp() + -4294967296 }, null, "b;Max-Age= -4294967296");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 0 }, null, "b; Max-Age=0");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 500 }, null, "b; Max-Age = 500  ; Max-Age=invalid");
-    try expectAttribute(.{ .expires = std.time.timestamp() + 1000 }, null, "b;max-age=600;max-age=0;max-age = 1000");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + 13 }, null, "b;max-age=13");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + -22 }, null, "b;max-age=-22");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + 4294967296 }, null, "b;max-age=4294967296");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + -4294967296 }, null, "b;Max-Age= -4294967296");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + 0 }, null, "b; Max-Age=0");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + 500 }, null, "b; Max-Age = 500  ; Max-Age=invalid");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + 1000 }, null, "b;max-age=600;max-age=0;max-age = 1000");
 }
 
 test "Cookie: parse expires" {
@@ -1035,7 +1036,7 @@ test "Cookie: parse expires" {
     try expectAttribute(.{ .expires = 1918798080 }, null, "b;expires=Wed, 21 Oct 2030 07:28:00 GMT");
     try expectAttribute(.{ .expires = 1784275395 }, null, "b;expires=Fri, 17-Jul-2026 08:03:15 GMT");
     // max-age has priority over expires
-    try expectAttribute(.{ .expires = std.time.timestamp() + 10 }, null, "b;Max-Age=10; expires=Wed, 21 Oct 2030 07:28:00 GMT");
+    try expectAttribute(.{ .expires = compat.unixTimestamp() + 10 }, null, "b;Max-Age=10; expires=Wed, 21 Oct 2030 07:28:00 GMT");
 }
 
 test "Cookie: parse all" {
@@ -1053,7 +1054,7 @@ test "Cookie: parse all" {
         .http_only = true,
         .secure = true,
         .domain = ".lightpanda.io",
-        .expires = @floatFromInt(std.time.timestamp() + 30),
+        .expires = @floatFromInt(compat.unixTimestamp() + 30),
     }, "https://lightpanda.io/cms/users", "user-id=9000; HttpOnly; Max-Age=30; Secure; path=/; Domain=lightpanda.io");
 
     try expectCookie(.{
@@ -1064,7 +1065,7 @@ test "Cookie: parse all" {
         .secure = false,
         .domain = ".localhost",
         .same_site = .lax,
-        .expires = @floatFromInt(std.time.timestamp() + 7200),
+        .expires = @floatFromInt(compat.unixTimestamp() + 7200),
     }, "http://localhost:8000/login", "app_session=123; Max-Age=7200; path=/; domain=localhost; httponly; samesite=lax");
 }
 
@@ -1087,8 +1088,8 @@ test "Cookie: parse domain" {
 }
 
 test "Cookie: parse limit" {
-    try expectError(error.CookieHeaderSizeExceeded, "http://lightpanda.io/", "v" ** 8192 ++ ";domain=lightpanda.io");
-    try expectError(error.CookieSizeExceeded, "http://lightpanda.io/", "v" ** 4096 ++ "v;domain=lightpanda.io");
+    try expectError(error.CookieHeaderSizeExceeded, "http://lightpanda.io/", compat.repeatComptime("v", 8192) ++ ";domain=lightpanda.io");
+    try expectError(error.CookieSizeExceeded, "http://lightpanda.io/", compat.repeatComptime("v", 4096) ++ "v;domain=lightpanda.io");
 }
 
 const ExpectedCookie = struct {

@@ -3,6 +3,13 @@
 
 <script id="script">
 {
+   testing.expectEqual('function', typeof HTMLScriptElement.supports);
+   testing.expectEqual(true, HTMLScriptElement.supports('classic'));
+   testing.expectEqual(true, HTMLScriptElement.supports('module'));
+   testing.expectEqual(true, HTMLScriptElement.supports('importmap'));
+   testing.expectEqual(true, HTMLScriptElement.supports('speculationrules'));
+   testing.expectEqual(false, HTMLScriptElement.supports('text/javascript'));
+
    let dom_load = false;
    let attribute_load = false;
 

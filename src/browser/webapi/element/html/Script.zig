@@ -129,6 +129,13 @@ pub fn setInnerText(self: *Script, text: []const u8, page: *Page) !void {
     try self.asNode().setTextContent(text, page);
 }
 
+pub fn supports(script_type: []const u8) bool {
+    return std.ascii.eqlIgnoreCase(script_type, "classic") or
+        std.ascii.eqlIgnoreCase(script_type, "module") or
+        std.ascii.eqlIgnoreCase(script_type, "importmap") or
+        std.ascii.eqlIgnoreCase(script_type, "speculationrules");
+}
+
 pub const JsApi = struct {
     pub const bridge = js.Bridge(Script);
 
@@ -153,6 +160,7 @@ pub const JsApi = struct {
         return buf.written();
     }
     pub const text = bridge.accessor(_innerText, Script.setInnerText, .{});
+    pub const supports = bridge.function(Script.supports, .{ .static = true });
 };
 
 pub const Build = struct {

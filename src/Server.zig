@@ -20,13 +20,13 @@ const std = @import("std");
 const lp = @import("lightpanda");
 const builtin = @import("builtin");
 
-const net = std.net;
-const posix = std.posix;
+const net = compat.net;
 
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 
 const log = @import("log.zig");
+const compat = @import("compat.zig");
 const App = @import("App.zig");
 const Config = @import("Config.zig");
 const CDP = @import("cdp/cdp.zig").CDP;
@@ -39,14 +39,14 @@ const Server = @This();
 app: *App,
 shutdown: std.atomic.Value(bool) = .init(false),
 allocator: Allocator,
-listener: ?posix.socket_t,
+listener: ?net.RawSocket,
 json_version_response: []const u8,
 
 // Thread management
 active_threads: std.atomic.Value(u32) = .init(0),
-clients: std.ArrayList(*Client) = .{},
-client_mutex: std.Thread.Mutex = .{},
-clients_pool: std.heap.MemoryPool(Client),
+clients: std.ArrayList(*Client) = .empty,
+client_mutex: lp.compat.Mutex = .{},
+clients_pool: compat.MemoryPool(Client),
 
 pub fn init(app: *App, address: net.Address) !Server {
     const allocator = app.allocator;
@@ -58,7 +58,7 @@ pub fn init(app: *App, address: net.Address) !Server {
         .listener = null,
         .allocator = allocator,
         .json_version_response = json_version_response,
-        .clients_pool = std.heap.MemoryPool(Client).init(app.allocator),
+        .clients_pool = compat.MemoryPool(Client).init(app.allocator),
     };
 }
 
@@ -77,19 +77,13 @@ pub fn stop(self: *Server) void {
         }
     }
 
-    // Linux and BSD/macOS handle canceling a socket blocked on accept differently.
-    // For Linux, we use std.shutdown, which will cause accept to return error.SocketNotListening (EINVAL).
-    // For BSD, shutdown will return an error. Instead we call posix.close, which will result with error.ConnectionAborted (BADF).
-    if (self.listener) |listener| switch (builtin.target.os.tag) {
-        .linux => posix.shutdown(listener, .recv) catch |err| {
+    if (self.listener) |listener| {
+        self.listener = null;
+        compat.net.shutdownRaw(listener) catch |err| {
             log.warn(.app, "listener shutdown", .{ .err = err });
-        },
-        .windows, .macos, .freebsd, .netbsd, .openbsd => {
-            self.listener = null;
-            posix.close(listener);
-        },
-        else => unreachable,
-    };
+        };
+        compat.net.closeRaw(listener);
+    }
 }
 
 pub fn deinit(self: *Server) void {
@@ -99,7 +93,7 @@ pub fn deinit(self: *Server) void {
 
     self.joinThreads();
     if (self.listener) |listener| {
-        posix.close(listener);
+        compat.net.closeRaw(listener);
         self.listener = null;
     }
     self.clients.deinit(self.allocator);
@@ -108,33 +102,24 @@ pub fn deinit(self: *Server) void {
 }
 
 pub fn run(self: *Server, address: net.Address, timeout_ms: u32) !void {
-    const flags = posix.SOCK.STREAM | posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK;
-    const listener = try posix.socket(address.any.family, flags, posix.IPPROTO.TCP);
+    const listener = try compat.net.openTcpListener(address, self.app.config.maxPendingConnections());
     self.listener = listener;
-
-    try posix.setsockopt(listener, posix.SOL.SOCKET, posix.SO.REUSEADDR, &std.mem.toBytes(@as(c_int, 1)));
-    if (@hasDecl(posix.TCP, "NODELAY")) {
-        try posix.setsockopt(listener, posix.IPPROTO.TCP, posix.TCP.NODELAY, &std.mem.toBytes(@as(c_int, 1)));
-    }
-
-    try posix.bind(listener, &address.any, address.getOsSockLen());
-    try posix.listen(listener, self.app.config.maxPendingConnections());
 
     log.info(.app, "server running", .{ .address = address });
     while (!self.shutdown.load(.acquire)) {
-        const socket = posix.accept(listener, null, null, posix.SOCK.NONBLOCK) catch |err| {
+        const socket = compat.net.acceptRaw(listener) catch |err| {
             switch (err) {
-                error.SocketNotListening, error.ConnectionAborted => {
+                error.SocketNotListening, error.ConnectionAborted, error.Interrupted => {
                     log.info(.app, "server stopped", .{});
                     break;
                 },
                 error.WouldBlock => {
-                    std.Thread.sleep(10 * std.time.ns_per_ms);
+                    compat.sleepMillis(10);
                     continue;
                 },
                 else => {
                     log.err(.app, "CDP accept", .{ .err = err });
-                    std.Thread.sleep(std.time.ns_per_s);
+                    compat.sleepNanos(std.time.ns_per_s);
                     continue;
                 },
             }
@@ -142,13 +127,13 @@ pub fn run(self: *Server, address: net.Address, timeout_ms: u32) !void {
 
         self.spawnWorker(socket, timeout_ms) catch |err| {
             log.err(.app, "CDP spawn", .{ .err = err });
-            posix.close(socket);
+            compat.net.closeRaw(socket);
         };
     }
 }
 
-fn handleConnection(self: *Server, socket: posix.socket_t, timeout_ms: u32) void {
-    defer posix.close(socket);
+fn handleConnection(self: *Server, socket: net.RawSocket, timeout_ms: u32) void {
+    defer compat.net.closeRaw(socket);
 
     // Client is HUGE (> 512KB) because it has a large read buffer.
     // V8 crashes if this is on the stack (likely related to its size).
@@ -212,7 +197,7 @@ fn unregisterClient(self: *Server, client: *Client) void {
     }
 }
 
-fn spawnWorker(self: *Server, socket: posix.socket_t, timeout_ms: u32) !void {
+fn spawnWorker(self: *Server, socket: net.RawSocket, timeout_ms: u32) !void {
     if (self.shutdown.load(.acquire)) {
         return error.ShuttingDown;
     }
@@ -243,14 +228,14 @@ fn spawnWorker(self: *Server, socket: posix.socket_t, timeout_ms: u32) !void {
     thread.detach();
 }
 
-fn runWorker(self: *Server, socket: posix.socket_t, timeout_ms: u32) void {
+fn runWorker(self: *Server, socket: net.RawSocket, timeout_ms: u32) void {
     defer _ = self.active_threads.fetchSub(1, .monotonic);
     handleConnection(self, socket, timeout_ms);
 }
 
 fn joinThreads(self: *Server) void {
     while (self.active_threads.load(.monotonic) > 0) {
-        std.Thread.sleep(10 * std.time.ns_per_ms);
+        compat.sleepMillis(10);
     }
 }
 
@@ -269,7 +254,7 @@ pub const Client = struct {
     ws: Net.WsConnection,
 
     fn init(
-        socket: posix.socket_t,
+        socket: net.RawSocket,
         allocator: Allocator,
         app: *App,
         json_version_response: []const u8,
@@ -351,14 +336,19 @@ pub const Client = struct {
         }
 
         var cdp = &self.mode.cdp;
-        var last_message = timestamp(.monotonic);
-        var ms_remaining = self.ws.timeout_ms;
+        var last_message = milliTimestamp(.monotonic);
 
         while (true) {
+            const elapsed_since_message = milliTimestamp(.monotonic) - last_message;
+            if (elapsed_since_message > self.ws.timeout_ms) {
+                log.info(.app, "CDP timeout", .{});
+                return;
+            }
+            const ms_remaining: u32 = self.ws.timeout_ms - @as(u32, @intCast(elapsed_since_message));
+
             switch (self.readSocketIfAvailable()) {
                 .handled => {
-                    last_message = timestamp(.monotonic);
-                    ms_remaining = self.ws.timeout_ms;
+                    last_message = milliTimestamp(.monotonic);
                     continue;
                 },
                 .closed => return,
@@ -370,8 +360,7 @@ pub const Client = struct {
                     if (self.readSocket() == false) {
                         return;
                     }
-                    last_message = timestamp(.monotonic);
-                    ms_remaining = self.ws.timeout_ms;
+                    last_message = milliTimestamp(.monotonic);
                 },
                 .no_page => {
                     const status = http.tick(ms_remaining) catch |err| {
@@ -385,17 +374,9 @@ pub const Client = struct {
                     if (self.readSocket() == false) {
                         return;
                     }
-                    last_message = timestamp(.monotonic);
-                    ms_remaining = self.ws.timeout_ms;
+                    last_message = milliTimestamp(.monotonic);
                 },
-                .done => {
-                    const elapsed = timestamp(.monotonic) - last_message;
-                    if (elapsed > ms_remaining) {
-                        log.info(.app, "CDP timeout", .{});
-                        return;
-                    }
-                    ms_remaining -= @intCast(elapsed);
-                },
+                .done => {},
             }
         }
     }
@@ -584,6 +565,7 @@ fn buildJSONVersionResponse(
 
 pub const timestamp = @import("datetime.zig").timestamp;
 
+const milliTimestamp = @import("datetime.zig").milliTimestamp;
 const testing = std.testing;
 test "server: buildJSONVersionResponse" {
     const address = try net.Address.parseIp4("127.0.0.1", 9001);
@@ -601,7 +583,8 @@ test "Client: http invalid request" {
     var c = try createTestClient();
     defer c.deinit();
 
-    const res = try c.httpRequest("GET /over/9000 HTTP/1.1\r\n" ++ "Header: " ++ ("a" ** 4100) ++ "\r\n\r\n");
+    const oversized_header = compat.repeatComptime("a", 4100);
+    const res = try c.httpRequest("GET /over/9000 HTTP/1.1\r\n" ++ "Header: " ++ oversized_header ++ "\r\n\r\n");
     try testing.expectEqualStrings("HTTP/1.1 413 \r\n" ++
         "Connection: Close\r\n" ++
         "Content-Length: 17\r\n\r\n" ++
@@ -883,7 +866,7 @@ fn assertWebSocketMessage(expected: []const u8, input: []const u8) !void {
 }
 
 const MockCDP = struct {
-    messages: std.ArrayList([]const u8) = .{},
+    messages: std.ArrayList([]const u8) = .empty,
 
     allocator: Allocator = testing.allocator,
 
@@ -908,15 +891,9 @@ const MockCDP = struct {
 };
 
 fn createTestClient() !TestClient {
-    const address = std.net.Address.initIp4([_]u8{ 127, 0, 0, 1 }, 9583);
-    const stream = try std.net.tcpConnectToAddress(address);
+    const address = compat.net.Address.initIp4([_]u8{ 127, 0, 0, 1 }, 9583);
+    const stream = try compat.net.tcpConnectToAddress(address);
 
-    const timeout = std.mem.toBytes(posix.timeval{
-        .sec = 2,
-        .usec = 0,
-    });
-    try posix.setsockopt(stream.handle, posix.SOL.SOCKET, posix.SO.RCVTIMEO, &timeout);
-    try posix.setsockopt(stream.handle, posix.SOL.SOCKET, posix.SO.SNDTIMEO, &timeout);
     return .{
         .stream = stream,
         .reader = .{
@@ -927,7 +904,7 @@ fn createTestClient() !TestClient {
 }
 
 const TestClient = struct {
-    stream: std.net.Stream,
+    stream: compat.net.Stream,
     buf: [1024]u8 = undefined,
     reader: Net.Reader(false),
 

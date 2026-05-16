@@ -21,6 +21,29 @@ current shell context.
 
 ## 2) Build options
 
+### Pinned Zig 0.17 dev toolchain
+
+For this branch, use the pinned Windows Zig toolchain and stable cache roots:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\invoke_zig017_build.ps1
+```
+
+The wrapper defaults to:
+
+- Zig: `C:\Users\adyba\Downloads\zig-x86_64-windows-0.17.0-dev.305+bdfbf432d\zig.exe`
+- local cache: `.zig-cache-zig017`
+- global cache: `%LOCALAPPDATA%\zig-lightpanda-017`
+- V8 import library: `.lp-cache-win\v8-14.0.365.4\out\windows\release\obj\zig\c_v8.lib`
+- build mode: `Debug` with `-Dstrip=true`, which keeps warm debug builds fast
+  without leaving hundreds of megabytes of MSVC PDBs per cache key
+
+Keep the named Zig 0.17 caches for warm builds. Use
+`scripts\windows\manage_build_artifacts.ps1` when a cold rebuild or smoke
+artifact cleanup is intentional. `-CleanDefault` prunes smoke outputs, temp
+logs, and old Zig 0.17 debug symbols while preserving the pinned dependency
+caches.
+
 1. Native Windows build:
 - Works only when symlink creation is available in the current shell.
 - Then run normal build commands (for example `zig build run -- help`).
@@ -35,6 +58,29 @@ CLI:
 
 ```powershell
 .\lightpanda.exe serve --browser_mode headed --window_width 1366 --window_height 768 --host 127.0.0.1 --port 9222
+```
+
+Bounded Google headed smoke:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_headed_smoke.ps1
+```
+
+The smoke writes only under `tmp-browser-smoke\google-zig017`, uses an explicit
+profile directory, captures one screenshot, and cleans its previous artifacts by
+default to avoid repeated multi-gigabyte churn. It uses the normal Google
+homepage/search flow by default; pass `-BasicSearchMode` only when debugging
+Google's basic `gbv=1` fallback path. The default smoke does not click the
+Google consent prompt before searching because a fresh Chrome profile can reach
+result DOM with the consent overlay present; use `-AcceptConsent` only when
+debugging the post-consent path.
+
+Artifact report and cleanup:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\manage_build_artifacts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\manage_build_artifacts.ps1 -CleanSmokeArtifacts -CleanTempLogs
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\manage_build_artifacts.ps1 -CleanZig017DebugSymbols
 ```
 
 CDP viewport override:

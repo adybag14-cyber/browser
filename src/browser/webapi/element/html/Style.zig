@@ -113,8 +113,8 @@ pub fn getSheet(self: *Style, page: *Page) !?*CSSStyleSheet {
     const source_hash = stylesheetSourceHash(text, base_url, referer_url, include_credentials);
 
     if (self._sheet) |sheet| {
-        sheet._request_base_url = try page.arena.dupeZ(u8, base_url);
-        sheet._request_referer_url = try page.arena.dupeZ(u8, referer_url);
+        sheet._request_base_url = try page.arena.dupeSentinel(u8, base_url, 0);
+        sheet._request_referer_url = try page.arena.dupeSentinel(u8, referer_url, 0);
         sheet._request_include_credentials = include_credentials;
         if (!self._sheet_source_loaded or self._sheet_source_hash != source_hash) {
             try sheet.replaceSync(text, page);
@@ -124,8 +124,8 @@ pub fn getSheet(self: *Style, page: *Page) !?*CSSStyleSheet {
         return sheet;
     }
     const sheet = try CSSStyleSheet.initWithOwner(self.asElement(), page);
-    sheet._request_base_url = try page.arena.dupeZ(u8, base_url);
-    sheet._request_referer_url = try page.arena.dupeZ(u8, referer_url);
+    sheet._request_base_url = try page.arena.dupeSentinel(u8, base_url, 0);
+    sheet._request_referer_url = try page.arena.dupeSentinel(u8, referer_url, 0);
     sheet._request_include_credentials = include_credentials;
     try sheet.replaceSync(text, page);
     self._sheet = sheet;

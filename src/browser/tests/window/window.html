@@ -103,6 +103,19 @@
   testing.expectEqual('0123456789', atob('MDEyMzQ1Njc4OQ=='));
   testing.expectEqual('The quick brown fox jumps over the lazy dog', atob('VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=='));
 
+  const challengeSeed =
+    'pNv2k3CAmkgUvoYGAD7KhkSgVujQxjr+tLbm7mDbapPkt7bvMCPaa1S4RvDAzQoF' +
+    'hM0WBZC+egb0xqb+IGWqLSQ3dm/wsxr7lE1ChYAp/mHEqBLgUMFuCTRLooPg+3Vy' +
+    'UqH+zJSPtukwCCw5SmTpdKFwrgL10NqY4gtr/HoehhUneDraWn7wJJZN/tf5wChZ' +
+    'cm/iLEaUVqCx6COcapO21CuQTgAdsLGKAvXuXMFDJgAdWPOjegeNhBg3noeAoIp' +
+    'jkpsXjCuR9oCByMS6ivlQND1m7lKRkOFdIou5vAUruSHdY5dMBw==';
+  const challengeBytes = atob(challengeSeed);
+  testing.expectEqual(229, challengeBytes.length);
+  testing.expectEqual(164, challengeBytes.charCodeAt(0));
+  testing.expectEqual(219, challengeBytes.charCodeAt(1));
+  testing.expectEqual(7, challengeBytes.charCodeAt(challengeBytes.length - 1));
+  testing.expectEqual(challengeSeed, btoa(challengeBytes));
+
   // atob must accept unpadded base64 (forgiving-base64 decode per HTML spec)
   testing.expectEqual('a', atob('YQ'));      // 2 chars, len%4==2, needs '=='
   testing.expectEqual('ab', atob('YWI'));    // 3 chars, len%4==3, needs '='
@@ -176,6 +189,11 @@
   testing.expectEqual('object', typeof chrome);
   testing.expectEqual(chrome, window.chrome);
   testing.expectEqual('object', typeof chrome.runtime);
+  testing.expectEqual('object', typeof chrome.app);
+  testing.expectEqual(false, chrome.app.isInstalled);
+  testing.expectEqual('object', typeof chrome.webstore);
+  testing.expectEqual('function', typeof chrome.loadTimes);
+  testing.expectEqual('function', typeof chrome.csi);
 </script>
 
 <script id=compression_stream>

@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../compat.zig");
 const js = @import("js.zig");
 const builtin = @import("builtin");
 
@@ -45,7 +46,7 @@ fn initClassIds() void {
     }
 }
 
-var class_id_once = std.once(initClassIds);
+var class_id_once: compat.Once(initClassIds) = .{};
 
 // The Env maps to a V8 isolate, which represents a isolated sandbox for
 // executing JavaScript. The Env is where we'll define our V8 <-> Zig bindings,
@@ -318,7 +319,7 @@ pub fn createContext(self: *Env, page: *Page) !*Context {
         .microtask_queue = microtask_queue,
         .script_manager = &page._script_manager,
         .scheduler = .init(context_arena),
-        .finalizer_callback_pool = std.heap.MemoryPool(Context.FinalizerCallback).init(self.app.allocator),
+        .finalizer_callback_pool = compat.MemoryPool(Context.FinalizerCallback).init(self.app.allocator),
     };
     try context.identity_map.putNoClobber(
         context_arena,

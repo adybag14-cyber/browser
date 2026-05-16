@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<script src="../../testing.js"></script>
+
+<script id=iframe_sandbox_domtokenlist>
+{
+  const iframe = document.createElement('iframe');
+
+  testing.expectEqual('object', typeof iframe.sandbox);
+  testing.expectEqual('', iframe.sandbox.value);
+  testing.expectEqual(null, iframe.getAttribute('sandbox'));
+
+  iframe.sandbox.add('allow-scripts');
+  testing.expectEqual('allow-scripts', iframe.sandbox.value);
+  testing.expectEqual('allow-scripts', iframe.getAttribute('sandbox'));
+
+  iframe.sandbox.value = 'allow-scripts allow-same-origin';
+  testing.expectEqual('allow-scripts allow-same-origin', iframe.getAttribute('sandbox'));
+
+  iframe.sandbox = 'allow-forms';
+  testing.expectEqual('allow-forms', iframe.sandbox.value);
+  testing.expectEqual('allow-forms', iframe.getAttribute('sandbox'));
+}
+</script>

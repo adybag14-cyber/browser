@@ -18,6 +18,7 @@
 
 const builtin = @import("builtin");
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 const BrowserCommand = @import("BrowserCommand.zig").BrowserCommand;
 const Display = @import("Display.zig");
@@ -30,13 +31,7 @@ const Input = @import("../sys/input.zig").Input;
 const log = @import("../log.zig");
 const testing = @import("../testing.zig");
 
-const c = if (builtin.os.tag == .windows) @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cDefine("NOMINMAX", "1");
-    @cDefine("UNICODE", "1");
-    @cDefine("_UNICODE", "1");
-    @cInclude("windows.h");
-}) else struct {};
+const c = if (builtin.os.tag == .windows) @import("win32_c") else struct {};
 
 const DrawRect = struct {
     x: i32,
@@ -77,7 +72,7 @@ pub const BareMetalBackend = struct {
     last_content_height: i32 = 0,
     last_title: []const u8 = &.{},
     last_url: []const u8 = &.{},
-    address_input: std.ArrayListUnmanaged(u8) = .{},
+    address_input: std.ArrayListUnmanaged(u8) = .empty,
     address_input_active: bool = false,
     address_input_select_all: bool = false,
     address_pending_high_surrogate: ?u16 = null,
@@ -88,9 +83,9 @@ pub const BareMetalBackend = struct {
     last_zoom_percent: i32 = 100,
     last_pointer_x: i32 = 0,
     last_pointer_y: i32 = 0,
-    tab_entries: std.ArrayListUnmanaged(Display.TabEntry) = .{},
-    history_entries: std.ArrayListUnmanaged([]u8) = .{},
-    download_entries: std.ArrayListUnmanaged(Display.DownloadEntry) = .{},
+    tab_entries: std.ArrayListUnmanaged(Display.TabEntry) = .empty,
+    history_entries: std.ArrayListUnmanaged([]u8) = .empty,
+    download_entries: std.ArrayListUnmanaged(Display.DownloadEntry) = .empty,
     active_tab_index: usize = 0,
     history_current_index: usize = 0,
     restore_previous_session: bool = false,
@@ -99,7 +94,7 @@ pub const BareMetalBackend = struct {
     homepage_url: ?[]u8 = null,
     app_data_path: ?[]u8 = null,
     input_mailbox_offset: u64 = 0,
-    command_queue: std.ArrayListUnmanaged(BrowserCommand) = .{},
+    command_queue: std.ArrayListUnmanaged(BrowserCommand) = .empty,
     presentation_display_list: ?DisplayList = null,
 
     pub fn init(host: *Host, _: anytype, width: u32, height: u32) @This() {
@@ -156,7 +151,7 @@ pub const BareMetalBackend = struct {
             self.host.allocator.free(entry);
         }
         self.history_entries.deinit(self.host.allocator);
-        self.history_entries = .{};
+        self.history_entries = .empty;
         self.history_current_index = current_index;
 
         self.history_entries.ensureTotalCapacity(self.host.allocator, entries.len) catch @panic("bare metal history entries allocation failed");
@@ -173,7 +168,7 @@ pub const BareMetalBackend = struct {
             self.host.allocator.free(entry.status);
         }
         self.download_entries.deinit(self.host.allocator);
-        self.download_entries = .{};
+        self.download_entries = .empty;
 
         self.download_entries.ensureTotalCapacity(self.host.allocator, entries.len) catch @panic("bare metal download entries allocation failed");
         for (entries) |entry| {
@@ -193,7 +188,7 @@ pub const BareMetalBackend = struct {
             self.host.allocator.free(entry.target_name);
         }
         self.tab_entries.deinit(self.host.allocator);
-        self.tab_entries = .{};
+        self.tab_entries = .empty;
         self.active_tab_index = active_index;
 
         self.tab_entries.ensureTotalCapacity(self.host.allocator, entries.len) catch @panic("bare metal tab entries allocation failed");
@@ -1018,11 +1013,11 @@ fn keyNameFromCode(buf: *[8]u8, code: u32) []const u8 {
     };
 }
 
-fn openProfileDir(path: []const u8) !std.fs.Dir {
-    return if (std.fs.path.isAbsolute(path))
-        std.fs.openDirAbsolute(path, .{})
+fn openProfileDir(path: []const u8) !compat.fs.Dir {
+    return if (compat.fs.path.isAbsolute(path))
+        compat.fs.openDirAbsolute(path, .{})
     else
-        std.fs.cwd().openDir(path, .{});
+        compat.fs.cwd().openDir(path, .{});
 }
 
 fn parseMailboxBool(value: []const u8) !bool {
@@ -1232,7 +1227,7 @@ fn renderDisplayList(
         return;
     }
 
-    var command_indices: std.ArrayListUnmanaged(usize) = .{};
+    var command_indices: std.ArrayListUnmanaged(usize) = .empty;
     defer command_indices.deinit(self.host.allocator);
     command_indices.ensureTotalCapacity(self.host.allocator, list.commands.items.len) catch return;
     for (list.commands.items, 0..) |_, command_index| {
@@ -1643,11 +1638,11 @@ fn presentationFontWeight(css_weight: i32) i32 {
     return @as(i32, @intCast(std.math.clamp(css_weight, 100, 900)));
 }
 
-fn openOutputFile(path: []const u8) !std.fs.File {
-    if (std.fs.path.isAbsolute(path)) {
-        return std.fs.createFileAbsolute(path, .{});
+fn openOutputFile(path: []const u8) !compat.fs.File {
+    if (compat.fs.path.isAbsolute(path)) {
+        return compat.fs.createFileAbsolute(path, .{});
     }
-    return std.fs.cwd().createFile(path, .{});
+    return compat.fs.cwd().createFile(path, .{});
 }
 
 fn saveFramebufferBitmap(backend: *BareMetalBackend, path: []const u8) bool {
@@ -1725,7 +1720,7 @@ fn saveFramebufferPng(backend: *BareMetalBackend, path: []const u8) bool {
 }
 
 fn writePngFromBgra(
-    file: *std.fs.File,
+    file: *compat.fs.File,
     width: u32,
     height: u32,
     bgra_pixels: []const u8,
@@ -1768,7 +1763,7 @@ fn writePngFromBgra(
     try writePngChunk(file, "IEND".*, &.{});
 }
 
-fn writePngChunk(file: *std.fs.File, chunk_type: [4]u8, data: []const u8) !void {
+fn writePngChunk(file: *compat.fs.File, chunk_type: [4]u8, data: []const u8) !void {
     var len_buf: [4]u8 = undefined;
     storeBigEndianU32(&len_buf, @intCast(data.len));
     try file.writeAll(&len_buf);
@@ -1783,7 +1778,7 @@ fn writePngChunk(file: *std.fs.File, chunk_type: [4]u8, data: []const u8) !void 
     try file.writeAll(&crc_buf);
 }
 
-fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
+fn writePngIdatStored(file: *compat.fs.File, data: []const u8) !void {
     const block_count = if (data.len == 0) 1 else (data.len + 65534) / 65535;
     const compressed_len = 2 + data.len + block_count * 5 + 4;
 
@@ -1926,7 +1921,7 @@ test "bare metal backend drains queued input" {
         mouse_up: usize = 0,
         clicks: usize = 0,
         wheels: usize = 0,
-        last_key_buf: [8]u8 = .{0} ** 8,
+        last_key_buf: [8]u8 = @splat(0),
         last_key_len: usize = 0,
         last_x: f64 = 0,
         last_y: f64 = 0,
@@ -1993,10 +1988,10 @@ test "bare metal backend drains queued input" {
 
 test "bare metal backend drains mailbox input" {
     const profile_dir = "tmp-bare-metal-mailbox";
-    std.fs.cwd().deleteTree(profile_dir) catch {};
-    defer std.fs.cwd().deleteTree(profile_dir) catch {};
+    compat.fs.cwd().deleteTree(profile_dir) catch {};
+    defer compat.fs.cwd().deleteTree(profile_dir) catch {};
 
-    var profile = try std.fs.cwd().makeOpenPath(profile_dir, .{});
+    var profile = try compat.fs.cwd().makeOpenPath(profile_dir, .{});
     defer profile.close();
 
     {
@@ -2028,7 +2023,7 @@ test "bare metal backend drains mailbox input" {
         mouse_up: usize = 0,
         clicks: usize = 0,
         wheels: usize = 0,
-        last_key_buf: [8]u8 = .{0} ** 8,
+        last_key_buf: [8]u8 = @splat(0),
         last_key_len: usize = 0,
         last_x: f64 = 0,
         last_y: f64 = 0,
@@ -2189,7 +2184,7 @@ test "bare metal backend prefers presentation link regions for clicks" {
         mouse_up: usize = 0,
         moves: usize = 0,
         wheels: usize = 0,
-        last_key_buf: [8]u8 = .{0} ** 8,
+        last_key_buf: [8]u8 = @splat(0),
         last_key_len: usize = 0,
         last_x: f64 = 0,
         last_y: f64 = 0,

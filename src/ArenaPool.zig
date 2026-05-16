@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("compat.zig");
 
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
@@ -28,8 +29,8 @@ retain_bytes: usize,
 free_list_len: u16 = 0,
 free_list: ?*Entry = null,
 free_list_max: u16,
-entry_pool: std.heap.MemoryPool(Entry),
-mutex: std.Thread.Mutex = .{},
+entry_pool: compat.MemoryPool(Entry),
+mutex: compat.Mutex = .{},
 
 const Entry = struct {
     next: ?*Entry,

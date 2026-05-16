@@ -17,12 +17,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("compat.zig");
 const URL = @import("browser/URL.zig");
 
 const TestHTTPServer = @This();
 
 shutdown: std.atomic.Value(bool),
-listener: ?std.net.Server,
+listener: ?compat.net.Server,
 handler: Handler,
 
 const Handler = *const fn (req: *std.http.Server.Request) anyerror!void;
@@ -35,22 +36,22 @@ pub fn init(handler: Handler) TestHTTPServer {
     };
 }
 
+pub fn stop(self: *TestHTTPServer) void {
+    self.shutdown.store(true, .release);
+    const address = compat.net.Address.parseIp("127.0.0.1", 9582) catch return;
+    var stream = compat.net.tcpConnectToAddress(address) catch return;
+    stream.close();
+}
+
 pub fn deinit(self: *TestHTTPServer) void {
+    if (self.listener) |*listener| {
+        listener.deinit();
+    }
     self.listener = null;
 }
 
-pub fn stop(self: *TestHTTPServer) void {
-    self.shutdown.store(true, .release);
-    if (self.listener) |*listener| {
-        switch (@import("builtin").target.os.tag) {
-            .linux => std.posix.shutdown(listener.stream.handle, .recv) catch {},
-            else => std.posix.close(listener.stream.handle),
-        }
-    }
-}
-
-pub fn run(self: *TestHTTPServer, wg: *std.Thread.WaitGroup) !void {
-    const address = try std.net.Address.parseIp("127.0.0.1", 9582);
+pub fn run(self: *TestHTTPServer, wg: *compat.WaitGroup) !void {
+    const address = try compat.net.Address.parseIp("127.0.0.1", 9582);
 
     self.listener = try address.listen(.{ .reuse_address = true });
     var listener = &self.listener.?;
@@ -68,19 +69,23 @@ pub fn run(self: *TestHTTPServer, wg: *std.Thread.WaitGroup) !void {
             }
             return err;
         };
+        if (self.shutdown.load(.acquire)) {
+            conn.stream.close();
+            return;
+        }
         const thrd = try std.Thread.spawn(.{}, handleConnection, .{ self, conn });
         thrd.detach();
     }
 }
 
-fn handleConnection(self: *TestHTTPServer, conn: std.net.Server.Connection) !void {
+fn handleConnection(self: *TestHTTPServer, conn: compat.net.Server.Connection) !void {
     defer conn.stream.close();
 
     var req_buf: [2048]u8 = undefined;
     var conn_reader = conn.stream.reader(&req_buf);
     var conn_writer = conn.stream.writer(&req_buf);
 
-    var http_server = std.http.Server.init(conn_reader.interface(), &conn_writer.interface);
+    var http_server = std.http.Server.init(&conn_reader.interface, &conn_writer.interface);
     var req = http_server.receiveHead() catch |err| switch (err) {
         error.ReadFailed, error.HttpConnectionClosing => return,
         else => {
@@ -99,7 +104,7 @@ pub fn sendFile(req: *std.http.Server.Request, file_path: []const u8) !void {
     var url_buf: [1024]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&url_buf);
     const unescaped_file_path = try URL.unescape(fba.allocator(), file_path);
-    var file = std.fs.cwd().openFile(unescaped_file_path, .{}) catch |err| switch (err) {
+    var file = compat.fs.cwd().openFile(unescaped_file_path, .{}) catch |err| switch (err) {
         error.FileNotFound => return req.respond("server error", .{ .status = .not_found }),
         else => return err,
     };

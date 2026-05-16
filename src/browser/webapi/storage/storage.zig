@@ -100,7 +100,7 @@ pub const Lookup = struct {
     _data: std.StringHashMapUnmanaged([]const u8) = .empty,
     _size: usize = 0,
     _persistent_allocator: ?Allocator = null,
-    _mutation_listeners: std.ArrayListUnmanaged(MutationListener) = .{},
+    _mutation_listeners: std.ArrayListUnmanaged(MutationListener) = .empty,
     _next_mutation_listener_id: u32 = 1,
 
     const max_size = 5 * 1024 * 1024;

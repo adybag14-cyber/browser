@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+const String = @import("../../../../string.zig").String;
 const log = @import("../../../../log.zig");
 const js = @import("../../../js/js.zig");
 const Page = @import("../../../Page.zig");
@@ -25,6 +26,7 @@ const Node = @import("../../Node.zig");
 const Element = @import("../../Element.zig");
 const HtmlElement = @import("../Html.zig");
 const URL = @import("../../URL.zig");
+const collections = @import("../../collections.zig");
 
 const IFrame = @This();
 _proto: *HtmlElement,
@@ -65,6 +67,18 @@ pub fn setSrc(self: *IFrame, src: []const u8, page: *Page) !void {
     }
 }
 
+pub fn getSandbox(self: *IFrame, page: *Page) !*collections.DOMTokenList {
+    return try page._factory.create(collections.DOMTokenList{
+        ._element = self.asElement(),
+        ._attribute_name = comptime .wrap("sandbox"),
+    });
+}
+
+pub fn setSandbox(self: *IFrame, value: String, page: *Page) !void {
+    const sandbox = try self.getSandbox(page);
+    try sandbox.setValue(value, page);
+}
+
 pub const JsApi = struct {
     pub const bridge = js.Bridge(IFrame);
 
@@ -75,6 +89,7 @@ pub const JsApi = struct {
     };
 
     pub const src = bridge.accessor(IFrame.getSrc, IFrame.setSrc, .{});
+    pub const sandbox = bridge.accessor(IFrame.getSandbox, IFrame.setSandbox, .{});
     pub const contentWindow = bridge.accessor(IFrame.getContentWindow, null, .{});
     pub const contentDocument = bridge.accessor(IFrame.getContentDocument, null, .{});
 };
@@ -86,3 +101,8 @@ pub const Build = struct {
         self._src = element.getAttributeSafe(comptime .wrap("src")) orelse "";
     }
 };
+
+const testing = @import("../../../../testing.zig");
+test "WebApi: HTML.IFrame" {
+    try testing.htmlRunner("element/html/iframe.html", .{});
+}

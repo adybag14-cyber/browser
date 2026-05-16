@@ -25,6 +25,7 @@ const DOMException = @import("DOMException.zig");
 const DOMRect = @import("DOMRect.zig");
 const PluginArray = @import("PluginArray.zig");
 const MimeTypeArray = @import("MimeTypeArray.zig");
+const chromium_compat = @import("../chromium_compat.zig");
 
 const Navigator = @This();
 _pad: bool = false,
@@ -41,31 +42,32 @@ _storage_manager: StorageManager = .{},
 _media_capabilities: MediaCapabilities = .{},
 _user_activation: UserActivation = .{},
 _service_worker: ServiceWorkerContainer = .{},
+_caches: CacheStorage = .{},
 _media_session: MediaSession = .{},
 _virtual_keyboard: VirtualKeyboard = .{},
 _wake_lock: WakeLock = .{},
 _gpu: GPU = .{},
 _xr: XR = .{},
 
-    _keyboard: Keyboard = .{},
-    _clipboard: Clipboard = .{},
-    _presentation: Presentation = .{},
-    _storage_buckets: StorageBucketManager = .{},
+_keyboard: Keyboard = .{},
+_clipboard: Clipboard = .{},
+_presentation: Presentation = .{},
+_storage_buckets: StorageBucketManager = .{},
 
-    _geolocation: Geolocation = .{},
-    _bluetooth: Bluetooth = .{},
-    _hid: HID = .{},
-    _usb: USB = .{},
-    _serial: Serial = .{},
-    _locks: LockManager = .{},
-    _window_controls_overlay: WindowControlsOverlay = .{},
+_geolocation: Geolocation = .{},
+_bluetooth: Bluetooth = .{},
+_hid: HID = .{},
+_usb: USB = .{},
+_serial: Serial = .{},
+_locks: LockManager = .{},
+_window_controls_overlay: WindowControlsOverlay = .{},
 
-    _scheduling: Scheduling = .{},
-    _managed: Managed = .{},
-    _login: LoginManager = .{},
-    _ink: Ink = .{},
-    _device_posture: DevicePosture = .{},
-    _protected_audience: ProtectedAudience = .{},
+_scheduling: Scheduling = .{},
+_managed: Managed = .{},
+_login: LoginManager = .{},
+_ink: Ink = .{},
+_device_posture: DevicePosture = .{},
+_protected_audience: ProtectedAudience = .{},
 
 pub const init: Navigator = .{};
 
@@ -83,6 +85,8 @@ pub fn registerTypes() []const type {
         MediaCapabilities,
         UserActivation,
         ServiceWorkerContainer,
+        CacheStorage,
+        Cache,
         MediaSession,
         VirtualKeyboard,
         WakeLock,
@@ -140,9 +144,9 @@ const Brand = struct {
 
 const UserAgentData = struct {
     _brands: [3]Brand = .{
-        .{ ._brand = "Chromium", ._version = "146" },
-        .{ ._brand = "Not-A.Brand", ._version = "24" },
-        .{ ._brand = "Google Chrome", ._version = "146" },
+        .{ ._brand = "Chromium", ._version = chromium_compat.major_version },
+        .{ ._brand = "Google Chrome", ._version = chromium_compat.major_version },
+        .{ ._brand = chromium_compat.grease_brand, ._version = chromium_compat.grease_brand_version },
     },
 
     const BrandSnapshot = struct {
@@ -155,6 +159,7 @@ const UserAgentData = struct {
         mobile: bool,
         architecture: []const u8,
         bitness: []const u8,
+        fullVersionList: [3]BrandSnapshot,
         model: []const u8,
         platform: []const u8,
         platformVersion: []const u8,
@@ -163,13 +168,17 @@ const UserAgentData = struct {
     };
 
     const Snapshot = struct {
-        brands: []const Brand,
+        brands: [3]BrandSnapshot,
         mobile: bool,
         platform: []const u8,
     };
 
-    pub fn getBrands(self: *const UserAgentData) []const Brand {
-        return self._brands[0..];
+    pub fn getBrands(self: *const UserAgentData) [3]BrandSnapshot {
+        return .{
+            .{ .brand = self._brands[0]._brand, .version = self._brands[0]._version },
+            .{ .brand = self._brands[1]._brand, .version = self._brands[1]._version },
+            .{ .brand = self._brands[2]._brand, .version = self._brands[2]._version },
+        };
     }
 
     pub fn getPlatform(_: *const UserAgentData) []const u8 {
@@ -187,10 +196,15 @@ const UserAgentData = struct {
             .mobile = false,
             .architecture = uachArchitecture(),
             .bitness = uachBitness(),
+            .fullVersionList = .{
+                .{ .brand = self._brands[0]._brand, .version = chromium_compat.full_version },
+                .{ .brand = self._brands[1]._brand, .version = chromium_compat.full_version },
+                .{ .brand = self._brands[2]._brand, .version = chromium_compat.grease_full_version },
+            },
             .model = "",
             .platform = uachPlatformName(),
             .platformVersion = "19.0.0",
-            .uaFullVersion = "146.0.7680.178",
+            .uaFullVersion = chromium_compat.full_version,
             .wow64 = false,
         });
     }
@@ -267,7 +281,7 @@ const Permissions = struct {
 
 const NetworkInformation = struct {
     pub fn getDownlink(_: *const NetworkInformation) f64 {
-        return 10;
+        return 1.55;
     }
 
     pub fn getEffectiveType(_: *const NetworkInformation) []const u8 {
@@ -275,15 +289,11 @@ const NetworkInformation = struct {
     }
 
     pub fn getRtt(_: *const NetworkInformation) u32 {
-        return 100;
+        return 0;
     }
 
     pub fn getSaveData(_: *const NetworkInformation) bool {
         return false;
-    }
-
-    pub fn getType(_: *const NetworkInformation) []const u8 {
-        return "wifi";
     }
 
     pub const JsApi = struct {
@@ -299,7 +309,6 @@ const NetworkInformation = struct {
         pub const effectiveType = bridge.accessor(NetworkInformation.getEffectiveType, null, .{});
         pub const rtt = bridge.accessor(NetworkInformation.getRtt, null, .{});
         pub const saveData = bridge.accessor(NetworkInformation.getSaveData, null, .{});
-        pub const @"type" = bridge.accessor(NetworkInformation.getType, null, .{});
         pub const onchange = bridge.property(null, .{ .template = false });
     };
 };
@@ -465,6 +474,113 @@ const ServiceWorkerContainer = struct {
         pub const getRegistration = bridge.function(ServiceWorkerContainer.getRegistration, .{});
         pub const getRegistrations = bridge.function(ServiceWorkerContainer.getRegistrations, .{});
         pub const startMessages = bridge.function(ServiceWorkerContainer.startMessages, .{});
+    };
+};
+
+pub const Cache = struct {
+    _name: []const u8 = "",
+
+    pub fn getName(self: *const Cache) []const u8 {
+        return self._name;
+    }
+
+    pub fn add(_: *const Cache, _: js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(@as(void, {}));
+    }
+
+    pub fn addAll(_: *const Cache, _: js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(@as(void, {}));
+    }
+
+    pub fn put(_: *const Cache, _: js.Value.Temp, _: js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(@as(void, {}));
+    }
+
+    pub fn delete(_: *const Cache, _: js.Value.Temp, _: ?js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(false);
+    }
+
+    pub fn match(_: *const Cache, _: js.Value.Temp, _: ?js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(@as(?u8, null));
+    }
+
+    pub fn matchAll(_: *const Cache, _: ?js.Value.Temp, _: ?js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise([0]u8{});
+    }
+
+    pub fn keys(_: *const Cache, _: ?js.Value.Temp, _: ?js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise([0]u8{});
+    }
+
+    pub const JsApi = struct {
+        pub const bridge = js.Bridge(Cache);
+
+        pub const Meta = struct {
+            pub const name = "Cache";
+            pub const prototype_chain = bridge.prototypeChain();
+            pub var class_id: bridge.ClassId = undefined;
+        };
+
+        pub const name = bridge.accessor(Cache.getName, null, .{});
+        pub const add = bridge.function(Cache.add, .{});
+        pub const addAll = bridge.function(Cache.addAll, .{});
+        pub const put = bridge.function(Cache.put, .{});
+        pub const delete = bridge.function(Cache.delete, .{});
+        pub const match = bridge.function(Cache.match, .{});
+        pub const matchAll = bridge.function(Cache.matchAll, .{});
+        pub const keys = bridge.function(Cache.keys, .{});
+    };
+};
+
+pub const CacheStorage = struct {
+    _caches: std.StringHashMapUnmanaged(*Cache) = .empty,
+
+    pub fn match(_: *const CacheStorage, _: js.Value.Temp, _: ?js.Value.Temp, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(@as(?u8, null));
+    }
+
+    pub fn has(self: *const CacheStorage, cache_name: []const u8, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(self._caches.contains(cache_name));
+    }
+
+    pub fn open(self: *CacheStorage, cache_name: []const u8, page: *Page) !js.Promise {
+        if (self._caches.get(cache_name)) |cache| {
+            return page.js.local.?.resolvePromise(cache);
+        }
+
+        const owned_name = try page.arena.dupe(u8, cache_name);
+        const cache = try page._factory.create(Cache{ ._name = owned_name });
+        try self._caches.put(page.arena, owned_name, cache);
+        return page.js.local.?.resolvePromise(cache);
+    }
+
+    pub fn delete(self: *CacheStorage, cache_name: []const u8, page: *Page) !js.Promise {
+        return page.js.local.?.resolvePromise(self._caches.remove(cache_name));
+    }
+
+    pub fn keys(self: *const CacheStorage, page: *Page) !js.Promise {
+        var cache_names: std.ArrayListUnmanaged([]const u8) = .empty;
+        var iterator = self._caches.keyIterator();
+        while (iterator.next()) |cache_name| {
+            try cache_names.append(page.call_arena, cache_name.*);
+        }
+        return page.js.local.?.resolvePromise(cache_names.items);
+    }
+
+    pub const JsApi = struct {
+        pub const bridge = js.Bridge(CacheStorage);
+
+        pub const Meta = struct {
+            pub const name = "CacheStorage";
+            pub const prototype_chain = bridge.prototypeChain();
+            pub var class_id: bridge.ClassId = undefined;
+        };
+
+        pub const match = bridge.function(CacheStorage.match, .{});
+        pub const has = bridge.function(CacheStorage.has, .{});
+        pub const open = bridge.function(CacheStorage.open, .{});
+        pub const delete = bridge.function(CacheStorage.delete, .{});
+        pub const keys = bridge.function(CacheStorage.keys, .{});
     };
 };
 
@@ -1143,8 +1259,8 @@ pub fn getAppVersion(_: *const Navigator, page: *Page) []const u8 {
     return ua;
 }
 
-pub fn getLanguages(_: *const Navigator) [1][]const u8 {
-    return .{"en-GB"};
+pub fn getLanguages(_: *const Navigator) [3][]const u8 {
+    return .{ "en-GB", "en-US", "en" };
 }
 
 pub fn getPlatform(_: *const Navigator) []const u8 {
@@ -1257,6 +1373,10 @@ pub fn getUserActivation(self: *Navigator) *UserActivation {
 
 pub fn getServiceWorker(self: *Navigator) *ServiceWorkerContainer {
     return &self._service_worker;
+}
+
+pub fn getCaches(self: *Navigator) *CacheStorage {
+    return &self._caches;
 }
 
 pub fn getMediaSession(self: *Navigator) *MediaSession {
@@ -1538,7 +1658,7 @@ pub const JsApi = struct {
     pub const onLine = bridge.property(true, .{ .template = false });
     pub const cookieEnabled = bridge.property(true, .{ .template = false });
     pub const hardwareConcurrency = bridge.accessor(Navigator.getHardwareConcurrency, null, .{});
-    pub const maxTouchPoints = bridge.property(2, .{ .template = false });
+    pub const maxTouchPoints = bridge.property(0, .{ .template = false });
     pub const deviceMemory = bridge.property(8, .{ .template = false });
     pub const mediaDevices = bridge.accessor(Navigator.getMediaDevices, null, .{});
     pub const permissions = bridge.accessor(Navigator.getPermissions, null, .{});
@@ -1548,6 +1668,7 @@ pub const JsApi = struct {
     pub const mediaCapabilities = bridge.accessor(Navigator.getMediaCapabilities, null, .{});
     pub const userActivation = bridge.accessor(Navigator.getUserActivation, null, .{});
     pub const serviceWorker = bridge.accessor(Navigator.getServiceWorker, null, .{});
+    pub const caches = bridge.accessor(Navigator.getCaches, null, .{});
     pub const mediaSession = bridge.accessor(Navigator.getMediaSession, null, .{});
     pub const virtualKeyboard = bridge.accessor(Navigator.getVirtualKeyboard, null, .{});
     pub const wakeLock = bridge.accessor(Navigator.getWakeLock, null, .{});
@@ -1613,10 +1734,3 @@ pub const JsApi = struct {
     pub const deprecatedRunAdAuctionEnforcesKAnonymity = bridge.function(Navigator.deprecatedRunAdAuctionEnforcesKAnonymity, .{});
     pub const deprecatedURNToURL = bridge.function(Navigator.deprecatedURNToURL, .{});
 };
-
-
-
-
-
-
-

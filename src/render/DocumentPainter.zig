@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const compat = @import("../compat.zig");
 const Page = @import("../browser/Page.zig");
 const URL = @import("../browser/URL.zig");
 const Node = @import("../browser/webapi/Node.zig");
@@ -20,12 +21,7 @@ const FontFaceFormat = @import("DisplayList.zig").FontFaceFormat;
 const ClipRect = @import("DisplayList.zig").ClipRect;
 const CSSStyleSheet = @import("../browser/webapi/css/CSSStyleSheet.zig");
 const CSSStyleProperties = @import("../browser/webapi/css/CSSStyleProperties.zig");
-const win = if (builtin.os.tag == .windows) @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cInclude("windows.h");
-    @cInclude("wingdi.h");
-    @cInclude("winuser.h");
-}) else struct {};
+const win = if (builtin.os.tag == .windows) @import("win32_c") else struct {};
 
 pub const PaintOpts = struct {
     viewport_width: i32,
@@ -320,7 +316,7 @@ fn rendererDiagnosticsEnabled(page: *Page) bool {
 }
 
 fn appendRendererDiagnosticsLine(comptime label: []const u8, message: []const u8) void {
-    const file = std.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
+    const file = compat.fs.cwd().createFile("tmp-browser-smoke/google-investigation-next/runtime-renderer.log", .{
         .truncate = false,
     }) catch return;
     defer file.close();
@@ -1184,7 +1180,7 @@ const Painter = struct {
         };
         defer temp_list.deinit(self.allocator);
 
-        var out_of_flow_children: std.ArrayList(*Node) = .{};
+        var out_of_flow_children: std.ArrayList(*Node) = .empty;
         defer out_of_flow_children.deinit(self.allocator);
 
         var temp_painter = Painter{
@@ -1518,7 +1514,7 @@ const Painter = struct {
             .page_margin = self.list.page_margin,
         };
         defer temp_list.deinit(self.allocator);
-        var out_of_flow_children: std.ArrayList(*Node) = .{};
+        var out_of_flow_children: std.ArrayList(*Node) = .empty;
         defer out_of_flow_children.deinit(self.allocator);
 
         var temp_painter = Painter{
@@ -1782,9 +1778,9 @@ const Painter = struct {
 
     fn paintElement(self: *Painter, element: *Element, cursor: *FlowCursor, opacity: u8) anyerror!void {
         const tag = element.getTag();
-        var paint_timer: ?std.time.Timer = null;
+        var paint_timer: ?compat.Timer = null;
         if (rendererDiagnosticsEnabled(self.page)) {
-            paint_timer = try std.time.Timer.start();
+            paint_timer = try compat.Timer.start();
         }
         defer if (paint_timer) |timer| {
             var mutable_timer = timer;
@@ -3178,7 +3174,7 @@ const Painter = struct {
         opacity: u8,
     ) !i32 {
         var child_cursor = FlowCursor.init(child_left, child_top, child_width);
-        var out_of_flow_children: std.ArrayList(*Node) = .{};
+        var out_of_flow_children: std.ArrayList(*Node) = .empty;
         defer out_of_flow_children.deinit(self.allocator);
         var float_left_x = child_left;
         var float_right_x = child_left + child_width;
@@ -4111,7 +4107,7 @@ fn collectCommandRowFragments(
     allocator: std.mem.Allocator,
     commands: []const Command,
 ) !std.ArrayListUnmanaged(CommandBounds) {
-    var fragments: std.ArrayListUnmanaged(CommandBounds) = .{};
+    var fragments: std.ArrayListUnmanaged(CommandBounds) = .empty;
     errdefer fragments.deinit(allocator);
 
     for (commands) |command| {
@@ -4249,7 +4245,7 @@ fn encodeNodePath(
     allocator: std.mem.Allocator,
     node: *Node,
 ) ![]u16 {
-    var reverse: std.ArrayListUnmanaged(u16) = .{};
+    var reverse: std.ArrayListUnmanaged(u16) = .empty;
     errdefer reverse.deinit(allocator);
 
     var current: ?*Node = node;
@@ -4398,7 +4394,7 @@ fn resolvedImageCommand(
     }
 
     const resolved = try URL.resolve(page.call_arena, page.base(), src, .{ .encode = true });
-    const resolved_z = try page.call_arena.dupeZ(u8, resolved);
+    const resolved_z = try page.call_arena.dupeSentinel(u8, resolved, 0);
     const request_context = try resolveImageRequestContext(page, resolved_z);
     const alt = element.getAttributeSafe(comptime .wrap("alt")) orelse "";
     const include_credentials = imageRequestIncludesCredentials(element);
@@ -4537,7 +4533,7 @@ fn appendResolvedBackgroundImage(
 
     const image_url = extractBackgroundImageUrl(raw_background_image) orelse return;
     const resolved = try URL.resolve(self.page.call_arena, self.page.base(), image_url, .{ .encode = true });
-    const resolved_z = try self.page.call_arena.dupeZ(u8, resolved);
+    const resolved_z = try self.page.call_arena.dupeSentinel(u8, resolved, 0);
     const request_context = try resolveImageRequestContext(self.page, resolved_z);
     const repeat = resolveBackgroundRepeat(decl, self.page);
     const position = resolveBackgroundPosition(
@@ -5447,7 +5443,7 @@ test "paintDocument shrink-wraps inline-block wrappers with nested block childre
     });
     defer display_list.deinit(std.testing.allocator);
 
-    var pill_rects = std.ArrayList(Bounds){};
+    var pill_rects = std.ArrayList(Bounds).empty;
     defer pill_rects.deinit(std.testing.allocator);
     for (display_list.commands.items) |command| {
         switch (command) {
@@ -6749,7 +6745,7 @@ const TextMeasureFontHandle = struct {
     owned_temp: bool,
 };
 
-var text_metrics_cache_mutex: std.Thread.Mutex = .{};
+var text_metrics_cache_mutex: compat.Mutex = .{};
 var text_metrics_cache: std.AutoHashMapUnmanaged(TextMetricsCacheKey, MeasuredTextMetrics) = .empty;
 const text_metrics_cache_max_entries: usize = 32768;
 var text_measure_dc: ?win.HDC = null;
@@ -7042,7 +7038,7 @@ fn normalizeInlineText(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
         return allocator.dupe(u8, " ");
     }
 
-    var out = std.ArrayList(u8){};
+    var out = std.ArrayList(u8).empty;
     errdefer out.deinit(allocator);
 
     if (std.ascii.isWhitespace(text[0])) {
@@ -7075,7 +7071,7 @@ fn collapseWhitespace(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
         return allocator.dupe(u8, "");
     }
 
-    var out = std.ArrayList(u8){};
+    var out = std.ArrayList(u8).empty;
     errdefer out.deinit(allocator);
 
     var in_space = false;
@@ -11934,9 +11930,9 @@ test "paintDocument centers each wrapped inline row when text-align is center" {
     });
     defer display_list.deinit(std.testing.allocator);
 
-    var row_y = std.ArrayList(i32){};
+    var row_y = std.ArrayList(i32).empty;
     defer row_y.deinit(std.testing.allocator);
-    var row_min_x = std.ArrayList(i32){};
+    var row_min_x = std.ArrayList(i32).empty;
     defer row_min_x.deinit(std.testing.allocator);
     var below_y: ?i32 = null;
     for (display_list.commands.items) |command| {
@@ -11982,9 +11978,9 @@ test "paintDocument centers each wrapped row for legacy center children" {
     });
     defer display_list.deinit(std.testing.allocator);
 
-    var row_y = std.ArrayList(i32){};
+    var row_y = std.ArrayList(i32).empty;
     defer row_y.deinit(std.testing.allocator);
-    var row_min_x = std.ArrayList(i32){};
+    var row_min_x = std.ArrayList(i32).empty;
     defer row_min_x.deinit(std.testing.allocator);
 
     for (display_list.commands.items) |command| {
@@ -12338,7 +12334,7 @@ test "paintDocument composites iframe child content into the iframe box without 
 
     var frame_doc_text: ?[:0]const u8 = null;
     defer if (frame_doc_text) |text| std.testing.allocator.free(text);
-    var settle_timer = try std.time.Timer.start();
+    var settle_timer = try compat.Timer.start();
     while (settle_timer.read() < (std.time.ns_per_ms * 2000)) {
         _ = page._session.wait(50);
         testing.test_browser.runMicrotasks();
@@ -12351,7 +12347,7 @@ test "paintDocument composites iframe child content into the iframe box without 
             break;
         }
         std.testing.allocator.free(text);
-        std.Thread.sleep(std.time.ns_per_ms * 10);
+        compat.sleepMillis(10);
     }
     try std.testing.expect(frame_doc_text != null);
 
@@ -12379,7 +12375,7 @@ test "paintDocument composites iframe child content into the iframe box without 
     )).?;
     defer iframe_inner_list.deinit(std.testing.allocator);
 
-    var iframe_inner_text = std.ArrayList(u8){};
+    var iframe_inner_text = std.ArrayList(u8).empty;
     defer iframe_inner_text.deinit(std.testing.allocator);
     for (iframe_inner_list.commands.items) |command| {
         const text = switch (command) {
@@ -12392,7 +12388,7 @@ test "paintDocument composites iframe child content into the iframe box without 
     try std.testing.expect(std.mem.indexOf(u8, iframe_inner_text.items, "Frame") != null);
     try std.testing.expect(std.mem.indexOf(u8, iframe_inner_text.items, "hello") != null);
 
-    var composited_text = std.ArrayList(u8){};
+    var composited_text = std.ArrayList(u8).empty;
     defer composited_text.deinit(std.testing.allocator);
     var saw_iframe_text_clip = false;
     for (display_list.commands.items) |command| {

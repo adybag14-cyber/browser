@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../compat.zig");
 const builtin = @import("builtin");
 
 pub fn processMessage(cmd: anytype) !void {
@@ -43,9 +44,37 @@ fn sendInspector(cmd: anytype, action: anytype) !void {
     }
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
+    const inspector_msg = try buildInspectorMessage(cmd);
 
-    // the result to return is handled directly by the inspector.
-    bc.callInspector(cmd.input.json);
+    // The browser-context session id belongs to the outer CDP transport layer.
+    // The nested V8 inspector payload must not include it.
+    bc.callInspector(inspector_msg);
+}
+
+fn buildInspectorMessage(cmd: anytype) ![]const u8 {
+    const header = try std.json.parseFromSliceLeaky(
+        struct {
+            id: ?i64 = null,
+            method: []const u8,
+        },
+        cmd.arena,
+        cmd.input.json,
+        .{ .ignore_unknown_fields = true },
+    );
+    const id = header.id orelse return error.RequiredId;
+    if (cmd.input.params) |params| {
+        return std.fmt.allocPrint(
+            cmd.arena,
+            "{{\"id\":{d},\"method\":\"{s}\",\"params\":{s}}}",
+            .{ id, header.method, params.raw },
+        );
+    }
+
+    return std.fmt.allocPrint(
+        cmd.arena,
+        "{{\"id\":{d},\"method\":\"{s}\"}}",
+        .{ id, header.method },
+    );
 }
 
 fn logInspector(cmd: anytype, action: anytype) !void {
@@ -82,10 +111,39 @@ fn logInspector(cmd: anytype, action: anytype) !void {
     const id = cmd.input.id orelse return error.RequiredId;
     const name = try std.fmt.allocPrint(cmd.arena, "id_{d}.js", .{id});
 
-    var dir = try std.fs.cwd().makeOpenPath(".zig-cache/tmp", .{});
+    var dir = try compat.fs.cwd().makeOpenPath(".zig-cache/tmp", .{});
     defer dir.close();
 
     const f = try dir.createFile(name, .{});
     defer f.close();
     try f.writeAll(script);
+}
+
+test "runtime inspector message strips top-level sessionId" {
+    const allocator = std.testing.allocator;
+    const raw = try std.fmt.allocPrint(
+        allocator,
+        "{{\"id\":7,\"method\":\"Runtime.evaluate\",\"params\":{{\"expression\":\"1+1\"}},\"sessionId\":\"SID-1\"}}",
+        .{},
+    );
+    defer allocator.free(raw);
+
+    const input = .{
+        .id = @as(i64, 7),
+        .method = "Runtime.evaluate",
+        .params = @as(?struct { raw: []const u8 }, .{ .raw = "{\"expression\":\"1+1\"}" }),
+        .json = raw,
+    };
+    const cmd = .{
+        .arena = allocator,
+        .input = input,
+    };
+
+    const inspector = try buildInspectorMessage(cmd);
+    defer allocator.free(inspector);
+
+    try std.testing.expectEqualStrings(
+        "{\"id\":7,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"1+1\"}}",
+        inspector,
+    );
 }

@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../../../../compat.zig");
 const builtin = @import("builtin");
 const js = @import("../../../js/js.zig");
 const Page = @import("../../../Page.zig");
@@ -10,13 +11,9 @@ const HtmlElement = @import("../Html.zig");
 const Event = @import("../../Event.zig");
 const CanvasSurface = @import("../../canvas/CanvasSurface.zig");
 const log = @import("../../../../log.zig");
+const milliTimestamp = @import("../../../../datetime.zig").milliTimestamp;
 
-const win = if (builtin.os.tag == .windows) @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cDefine("UNICODE", "1");
-    @cDefine("_UNICODE", "1");
-    @cInclude("windows.h");
-}) else struct {};
+const win = if (builtin.os.tag == .windows) @import("win32_c") else struct {};
 
 const GpStatus = if (builtin.os.tag == .windows) c_int else u8;
 const Argb = if (builtin.os.tag == .windows) c_uint else u32;
@@ -215,28 +212,24 @@ fn loadCanvasSurface(self: *Image, page: *Page) !void {
 
     var temporary_path: ?[]u8 = null;
     defer if (temporary_path) |path| {
-        if (std.fs.path.isAbsolute(path)) {
-            std.fs.deleteFileAbsolute(path) catch {};
+        if (compat.fs.path.isAbsolute(path)) {
+            compat.fs.deleteFileAbsolute(path) catch {};
         }
         temp.free(path);
     };
 
-    const path = if (std.mem.startsWith(u8, src, "http://") or std.mem.startsWith(u8, src, "https://"))
-        blk: {
-            const request_url = try imageRequestUrlForFetch(temp, src, include_credentials);
-            const bytes = try fetchImageBytes(page, temp, request_url, include_credentials);
-            const written = try writeTempImageFile(temp, imageUrlFileExtension(src), bytes);
-            temporary_path = written;
-            break :blk written;
-        }
-    else if (std.mem.startsWith(u8, src, "data:"))
-        blk: {
-            const bytes = try parseDataUriBytes(temp, src);
-            const written = try writeTempImageFile(temp, imageUrlFileExtension(src), bytes);
-            temporary_path = written;
-            break :blk written;
-        }
-    else if (std.mem.startsWith(u8, src, "file://"))
+    const path = if (std.mem.startsWith(u8, src, "http://") or std.mem.startsWith(u8, src, "https://")) blk: {
+        const request_url = try imageRequestUrlForFetch(temp, src, include_credentials);
+        const bytes = try fetchImageBytes(page, temp, request_url, include_credentials);
+        const written = try writeTempImageFile(temp, imageUrlFileExtension(src), bytes);
+        temporary_path = written;
+        break :blk written;
+    } else if (std.mem.startsWith(u8, src, "data:")) blk: {
+        const bytes = try parseDataUriBytes(temp, src);
+        const written = try writeTempImageFile(temp, imageUrlFileExtension(src), bytes);
+        temporary_path = written;
+        break :blk written;
+    } else if (std.mem.startsWith(u8, src, "file://"))
         try localFilePathFromUrl(temp, src)
     else {
         self._surface_load_failed = true;
@@ -285,7 +278,7 @@ fn fetchImageBytes(
 
     var ctx = ImageFetchContext{
         .allocator = temp,
-        .buffer = .{},
+        .buffer = .empty,
     };
     defer ctx.buffer.deinit(temp);
 
@@ -350,9 +343,9 @@ fn imageRequestUrlForFetch(
     include_credentials: bool,
 ) ![:0]const u8 {
     if (include_credentials) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
-    const url_z = try allocator.dupeZ(u8, url);
+    const url_z = try allocator.dupeSentinel(u8, url, 0);
     if (URL.getUsername(url_z).len == 0) {
         return url_z;
     }
@@ -379,7 +372,7 @@ fn imageUrlFileExtension(url: []const u8) []const u8 {
         return tail[0..end];
     }
 
-    const base = std.fs.path.basename(url);
+    const base = compat.fs.path.basename(url);
     if (std.mem.lastIndexOfScalar(u8, base, '.')) |dot_index| {
         const ext = base[dot_index + 1 ..];
         if (ext.len > 0 and ext.len <= 8) {
@@ -390,16 +383,16 @@ fn imageUrlFileExtension(url: []const u8) []const u8 {
 }
 
 fn writeTempImageFile(allocator: std.mem.Allocator, extension: []const u8, bytes: []const u8) ![]u8 {
-    const temp_dir = std.process.getEnvVarOwned(allocator, "TEMP") catch try std.process.getEnvVarOwned(allocator, "TMP");
+    const temp_dir = compat.getEnvVarOwned(allocator, "TEMP") catch try compat.getEnvVarOwned(allocator, "TMP");
     defer allocator.free(temp_dir);
 
-    const file_name = try std.fmt.allocPrint(allocator, "lightpanda-image-{d}.{s}", .{ std.time.milliTimestamp(), extension });
+    const file_name = try std.fmt.allocPrint(allocator, "lightpanda-image-{d}.{s}", .{ milliTimestamp(.clock), extension });
     defer allocator.free(file_name);
 
-    const path = try std.fs.path.join(allocator, &.{ temp_dir, file_name });
+    const path = try compat.fs.path.join(allocator, &.{ temp_dir, file_name });
     errdefer allocator.free(path);
 
-    const file = try std.fs.createFileAbsolute(path, .{ .truncate = true });
+    const file = try compat.fs.createFileAbsolute(path, .{ .truncate = true });
     defer file.close();
     try file.writeAll(bytes);
     return path;
@@ -412,7 +405,7 @@ fn localFilePathFromUrl(allocator: std.mem.Allocator, url: []const u8) ![]u8 {
     if (std.mem.startsWith(u8, raw_path, "localhost/")) {
         raw_path = raw_path["localhost".len..];
     }
-    raw_path = std.mem.trimLeft(u8, raw_path, "/");
+    raw_path = std.mem.trimStart(u8, raw_path, "/");
     const unescaped = try URL.unescape(allocator, raw_path);
     defer if (unescaped.ptr != raw_path.ptr) allocator.free(unescaped);
 
@@ -443,7 +436,7 @@ fn parseDataUriBytes(allocator: std.mem.Allocator, src: []const u8) ![]const u8 
             try stripped.append(allocator, cch);
         }
     }
-    const trimmed = std.mem.trimRight(u8, stripped.items, "=");
+    const trimmed = std.mem.trimEnd(u8, stripped.items, "=");
     const decoded_size = std.base64.standard_no_pad.Decoder.calcSizeForSlice(trimmed) catch return error.InvalidDataUrl;
     const decoded = try allocator.alloc(u8, decoded_size);
     _ = std.base64.standard_no_pad.Decoder.decode(decoded, trimmed) catch return error.InvalidDataUrl;

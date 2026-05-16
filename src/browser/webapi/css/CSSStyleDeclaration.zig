@@ -582,7 +582,7 @@ fn expandFontShorthand(self: *CSSStyleDeclaration, value: []const u8, important:
     if (trimmed.len == 0) return;
 
     var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var collected: std.ArrayList([]const u8) = .{};
+    var collected: std.ArrayList([]const u8) = .empty;
     defer collected.deinit(page.call_arena);
     while (tokens.next()) |token| {
         if (token.len == 0) continue;
@@ -649,7 +649,7 @@ fn expandFontShorthandWithCascade(
     if (trimmed.len == 0) return;
 
     var tokens = tokenizeCssValue(trimmed, page.call_arena);
-    var collected: std.ArrayList([]const u8) = .{};
+    var collected: std.ArrayList([]const u8) = .empty;
     defer collected.deinit(page.call_arena);
     while (tokens.next()) |token| {
         if (token.len == 0) continue;
@@ -775,7 +775,7 @@ fn resolveComputedPropertyValue(
         return raw_value;
     }
 
-    var out = std.ArrayList(u8){};
+    var out = std.ArrayList(u8).empty;
     errdefer out.deinit(page.arena);
 
     var cursor: usize = 0;

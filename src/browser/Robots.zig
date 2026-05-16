@@ -18,6 +18,7 @@
 
 const builtin = @import("builtin");
 const std = @import("std");
+const compat = @import("../compat.zig");
 const log = @import("../log.zig");
 
 pub const CompiledPattern = struct {
@@ -111,7 +112,7 @@ pub const RobotStore = struct {
 
     allocator: std.mem.Allocator,
     map: RobotsMap,
-    mutex: std.Thread.Mutex = .{},
+    mutex: compat.Mutex = .{},
 
     pub fn init(allocator: std.mem.Allocator) RobotStore {
         return .{ .allocator = allocator, .map = .empty };
@@ -215,7 +216,7 @@ fn parseRulesWithUserAgent(
 
         // Remove end of line comment.
         const true_line = if (std.mem.indexOfScalar(u8, trimmed, '#')) |pos|
-            std.mem.trimRight(u8, trimmed[0..pos], &std.ascii.whitespace)
+            std.mem.trimEnd(u8, trimmed[0..pos], &std.ascii.whitespace)
         else
             trimmed;
 

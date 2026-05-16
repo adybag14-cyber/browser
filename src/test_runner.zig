@@ -18,10 +18,11 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
+const compat = @import("lightpanda").compat;
 
 const Allocator = std.mem.Allocator;
 
-const BORDER = "=" ** 80;
+const BORDER = compat.repeatComptime("=", 80);
 
 // use in custom panic handler
 var current_test: ?[]const u8 = null;
@@ -130,7 +131,7 @@ const Runner = struct {
                 break :blk name;
             };
             defer {
-                self.subtests = .{};
+                self.subtests = .empty;
                 const arena: *std.heap.ArenaAllocator = @ptrCast(@alignCast(self.arena.ptr));
                 _ = arena.reset(.{ .retain_with_limit = 2048 });
             }
@@ -165,12 +166,12 @@ const Runner = struct {
                     status = .fail;
                     fail += 1;
                     Printer.status(.fail, "\n{s}\n\"{s}\" - {s}\n", .{ BORDER, friendly_name, @errorName(err) });
-                    if (self.subtests.getLastOrNull()) |st| {
+                    if (lastSubtest(self.subtests)) |st| {
                         Printer.status(.fail, " {s}\n", .{st});
                     }
                     Printer.status(.fail, BORDER ++ "\n", .{});
                     if (@errorReturnTrace()) |trace| {
-                        std.debug.dumpStackTrace(trace.*);
+                        std.debug.dumpErrorReturnTrace(trace);
                     }
                     if (self.env.fail_first) {
                         break;
@@ -215,7 +216,7 @@ const Runner = struct {
 
         // stats
         if (self.env.metrics) {
-            var stdout = std.fs.File.stdout();
+            var stdout = compat.fs.File.stdout();
             var writer = stdout.writer(&.{});
             const stats = self.ta.stats();
             try std.json.Stringify.value(&.{
@@ -234,7 +235,7 @@ const Runner = struct {
             }, .{ .whitespace = .indent_2 }, &writer.interface);
         }
 
-        std.posix.exit(if (fail == 0) 0 else 1);
+        std.process.exit(if (fail == 0) 0 else 1);
     }
 };
 
@@ -273,15 +274,17 @@ const Status = enum {
 const SlowTracker = struct {
     const SlowestQueue = std.PriorityDequeue(TestInfo, void, compareTiming);
     max: usize,
+    allocator: Allocator,
     slowest: SlowestQueue,
-    timer: std.time.Timer,
+    timer: compat.Timer,
 
     fn init(allocator: Allocator, count: u32) SlowTracker {
-        const timer = std.time.Timer.start() catch @panic("failed to start timer");
-        var slowest = SlowestQueue.init(allocator, {});
-        slowest.ensureTotalCapacity(count) catch @panic("OOM");
+        const timer = compat.Timer.start() catch @panic("failed to start timer");
+        var slowest = SlowestQueue.initContext({});
+        slowest.ensureTotalCapacity(allocator, count) catch @panic("OOM");
         return .{
             .max = count,
+            .allocator = allocator,
             .timer = timer,
             .slowest = slowest,
         };
@@ -292,8 +295,8 @@ const SlowTracker = struct {
         name: []const u8,
     };
 
-    fn deinit(self: SlowTracker) void {
-        self.slowest.deinit();
+    fn deinit(self: *SlowTracker) void {
+        self.slowest.deinit(self.allocator);
     }
 
     fn startTiming(self: *SlowTracker) void {
@@ -312,7 +315,7 @@ const SlowTracker = struct {
         if (slowest.count() < self.max) {
             // Capacity is fixed to the # of slow tests we want to track
             // If we've tracked fewer tests than this capacity, than always add
-            slowest.add(TestInfo{ .ns = ns, .name = test_name }) catch @panic("failed to track test timing");
+            slowest.push(self.allocator, TestInfo{ .ns = ns, .name = test_name }) catch @panic("failed to track test timing");
             return ns;
         }
 
@@ -327,8 +330,8 @@ const SlowTracker = struct {
         }
 
         // the previous fastest of our slow tests, has been pushed off.
-        _ = slowest.removeMin();
-        slowest.add(TestInfo{ .ns = ns, .name = test_name }) catch @panic("failed to track test timing");
+        _ = slowest.popMin();
+        slowest.push(self.allocator, TestInfo{ .ns = ns, .name = test_name }) catch @panic("failed to track test timing");
         return ns;
     }
 
@@ -336,7 +339,7 @@ const SlowTracker = struct {
         var slowest = self.slowest;
         const count = slowest.count();
         Printer.fmt("Slowest {d} test{s}: \n", .{ count, if (count != 1) "s" else "" });
-        while (slowest.removeMinOrNull()) |info| {
+        while (slowest.popMin()) |info| {
             const ms = @as(f64, @floatFromInt(info.ns)) / 1_000_000.0;
             Printer.fmt("  {d:.2}ms\t{s}\n", .{ ms, info.name });
         }
@@ -374,7 +377,7 @@ const Env = struct {
     }
 
     fn readEnv(allocator: Allocator, key: []const u8) ?[]const u8 {
-        const v = std.process.getEnvVarOwned(allocator, key) catch |err| {
+        const v = compat.getEnvVarOwned(allocator, key) catch |err| {
             if (err == error.EnvironmentVariableNotFound) {
                 return null;
             }
@@ -411,7 +414,7 @@ pub const panic = std.debug.FullPanic(struct {
     pub fn panicFn(msg: []const u8, first_trace_addr: ?usize) noreturn {
         if (current_test) |ct| {
             std.debug.print("\x1b[31m{s}\npanic running \"{s}\"\n", .{ BORDER, ct });
-            if (RUNNER.subtests.getLastOrNull()) |st| {
+            if (lastSubtest(RUNNER.subtests)) |st| {
                 std.debug.print(" {s}\n", .{st});
             }
             std.debug.print("\x1b[0m{s}\n", .{BORDER});
@@ -428,6 +431,11 @@ fn isUnnamed(t: std.builtin.TestFn) bool {
     return true;
 }
 
+fn lastSubtest(subtests: std.ArrayList([]const u8)) ?[]const u8 {
+    if (subtests.items.len == 0) return null;
+    return subtests.items[subtests.items.len - 1];
+}
+
 fn isSetup(t: std.builtin.TestFn) bool {
     return std.mem.endsWith(u8, t.name, "tests:beforeAll");
 }
@@ -442,7 +450,7 @@ pub const TrackingAllocator = struct {
     allocated_bytes: usize = 0,
     allocation_count: usize = 0,
     reallocation_count: usize = 0,
-    mutex: std.Thread.Mutex = .{},
+    mutex: compat.Mutex = .{},
 
     const Stats = struct {
         allocated_bytes: usize,

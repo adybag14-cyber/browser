@@ -19,6 +19,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+const compat = @import("../compat.zig");
 const log = @import("../log.zig");
 const String = @import("../string.zig").String;
 const testing = @import("../testing.zig");
@@ -61,9 +62,9 @@ arena: Allocator,
 // 'load' listeners in the document, we can skip dispatching the per-resource
 // 'load' event (e.g. amazon product page has no listener and ~350 resources)
 has_dom_load_listener: bool,
-listener_pool: std.heap.MemoryPool(Listener),
+listener_pool: compat.MemoryPool(Listener),
 ignore_list: std.ArrayList(*Listener),
-list_pool: std.heap.MemoryPool(std.DoublyLinkedList),
+list_pool: compat.MemoryPool(std.DoublyLinkedList),
 lookup: std.HashMapUnmanaged(
     EventKey,
     *std.DoublyLinkedList,
@@ -78,11 +79,11 @@ pub fn init(arena: Allocator, page: *Page) EventManager {
         .page = page,
         .lookup = .{},
         .arena = arena,
-        .ignore_list = .{},
+        .ignore_list = .empty,
         .list_pool = .init(arena),
         .listener_pool = .init(arena),
         .dispatch_depth = 0,
-        .deferred_removals = .{},
+        .deferred_removals = .empty,
         .has_dom_load_listener = false,
     };
 }
@@ -366,7 +367,7 @@ pub fn dispatchDirect(self: *EventManager, target: *EventTarget, event: *Event, 
                 swallowDispatchError(opts.context, err);
             },
             .string => |string| {
-                const str = try page.call_arena.dupeZ(u8, string.str());
+                const str = try page.call_arena.dupeSentinel(u8, string.str(), 0);
                 ls.local.eval(str, null) catch |err| {
                     swallowDispatchError(opts.context, err);
                 };
@@ -662,7 +663,7 @@ fn dispatchPhase(self: *EventManager, list: *std.DoublyLinkedList, current_targe
                 swallowDispatchError("dispatchPhase", err);
             },
             .string => |string| {
-                const str = try page.call_arena.dupeZ(u8, string.str());
+                const str = try page.call_arena.dupeSentinel(u8, string.str(), 0);
                 local.eval(str, null) catch |err| {
                     swallowDispatchError("dispatchPhase", err);
                 };

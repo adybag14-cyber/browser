@@ -266,7 +266,7 @@ test "MCP - evaluate error reporting" {
     const allocator = testing.allocator;
     const app = testing.test_app;
 
-    var out_alloc: std.io.Writer.Allocating = .init(testing.arena_allocator);
+    var out_alloc: std.Io.Writer.Allocating = .init(testing.arena_allocator);
     defer out_alloc.deinit();
 
     var server = try Server.init(allocator, app, &out_alloc.writer);

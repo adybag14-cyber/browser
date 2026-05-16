@@ -57,6 +57,10 @@ pub fn init(input: Input, options: ?InitOpts, page: *Page) !js.Promise {
     }
 
     const request_url = try fetchRequestUrlForFetch(page.arena, request._url);
+    if (try resolveBlobResponse(request_url, page)) |blob_response| {
+        return page.js.local.?.resolvePromise(blob_response);
+    }
+
     const response = try Response.init(null, .{ .status = 0 }, page);
     errdefer response.deinit(true, page);
 
@@ -113,6 +117,23 @@ pub fn init(input: Input, options: ?InitOpts, page: *Page) !js.Promise {
     return resolver.promise();
 }
 
+fn resolveBlobResponse(request_url: [:0]const u8, page: *Page) !?*Response {
+    const blob = page.resolveBlobUrl(request_url) orelse return null;
+
+    const response = try Response.init(blob._slice, .{ .status = 200 }, page);
+    errdefer response.deinit(true, page);
+
+    response._url = try response._arena.dupeSentinel(u8, request_url, 0);
+    if (blob._mime.len != 0) {
+        try response._headers.append("Content-Type", blob._mime, page);
+    }
+
+    const content_length = try std.fmt.allocPrint(page.call_arena, "{d}", .{blob._slice.len});
+    try response._headers.append("Content-Length", content_length, page);
+
+    return response;
+}
+
 fn fetchIncludesCredentials(request: *const Request, page: *Page) !bool {
     return switch (request._credentials) {
         .omit => false,
@@ -126,7 +147,7 @@ fn fetchRequestUrlForFetch(
     url: [:0]const u8,
 ) ![:0]const u8 {
     if (URL.getUsername(url).len == 0) {
-        return try allocator.dupeZ(u8, url);
+        return try allocator.dupeSentinel(u8, url, 0);
     }
 
     return try URL.buildUrl(
@@ -171,7 +192,7 @@ fn httpHeaderDoneCallback(transfer: *Http.Transfer) !bool {
 
     res._status = header.status;
     res._status_text = std.http.Status.phrase(@enumFromInt(header.status)) orelse "";
-    res._url = try arena.dupeZ(u8, std.mem.span(header.url));
+    res._url = try arena.dupeSentinel(u8, std.mem.span(header.url), 0);
     res._is_redirected = header.redirect_count > 0;
 
     // Determine response type based on origin comparison

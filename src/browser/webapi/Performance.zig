@@ -1,6 +1,7 @@
 const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
 const datetime = @import("../../datetime.zig");
+const compat = @import("../../compat.zig");
 const builtin = @import("builtin");
 
 pub fn registerTypes() []const type {
@@ -12,7 +13,7 @@ const std = @import("std");
 const Performance = @This();
 
 _time_origin: u64,
-_entries: std.ArrayList(*Entry) = .{},
+_entries: std.ArrayList(*Entry) = .empty,
 _timing: PerformanceTiming = .{},
 _navigation: PerformanceNavigation = .{},
 
@@ -20,7 +21,7 @@ _navigation: PerformanceNavigation = .{},
 /// to match browser behavior (prevents fingerprinting)
 fn highResTimestamp() u64 {
     const micros = if (builtin.os.tag == .windows or builtin.os.tag == .wasi or builtin.os.tag == .uefi) blk: {
-        break :blk @as(u64, @intCast(std.time.microTimestamp()));
+        break :blk @as(u64, @intCast(compat.microTimestamp()));
     } else blk: {
         const ts = datetime.timespec();
         break :blk @as(u64, @intCast(ts.sec)) * 1_000_000 + @as(u64, @intCast(@divTrunc(ts.nsec, 1_000)));
@@ -33,7 +34,7 @@ fn highResTimestamp() u64 {
 pub fn init() Performance {
     return .{
         ._time_origin = highResTimestamp(),
-        ._entries = .{},
+        ._entries = .empty,
         ._timing = .{},
         ._navigation = .{},
     };

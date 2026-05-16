@@ -17,11 +17,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("compat.zig");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
 
 const log = @import("log.zig");
 const dump = @import("browser/dump.zig");
+const chromium_compat = @import("browser/chromium_compat.zig");
 
 pub const RunMode = enum {
     help,
@@ -277,8 +279,8 @@ pub const Common = struct {
 /// Pre-formatted HTTP headers for reuse across Http and Client.
 /// Must be initialized with an allocator that outlives all HTTP connections.
 pub const HttpHeaders = struct {
-    const user_agent_headless_base: [:0]const u8 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/146.0.0.0 Safari/537.36";
-    const user_agent_headed_base: [:0]const u8 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
+    const user_agent_headless_base = chromium_compat.user_agent_headless_windows;
+    const user_agent_headed_base = chromium_compat.user_agent_headed_windows;
 
     user_agent: [:0]const u8, // User agent value (e.g. "Lightpanda/1.0")
     user_agent_header: [:0]const u8,
@@ -483,16 +485,16 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
     ;
     std.debug.print(usage, .{ self.exec_name, self.exec_name, self.exec_name, self.exec_name, self.exec_name, self.exec_name });
     if (success) {
-        return std.process.cleanExit();
+        return std.process.cleanExit(compat.io());
     }
     std.process.exit(1);
 }
 
-pub fn parseArgs(allocator: Allocator) !Config {
-    var args = try std.process.argsWithAllocator(allocator);
+pub fn parseArgs(process_args: std.process.Args, allocator: Allocator) !Config {
+    var args = try process_args.iterateAllocator(allocator);
     defer args.deinit();
 
-    const exec_name = try allocator.dupe(u8, std.fs.path.basename(args.next().?));
+    const exec_name = try allocator.dupe(u8, compat.fs.path.basename(args.next().?));
 
     const mode_string = args.next() orelse "";
     const run_mode = std.meta.stringToEnum(RunMode, mode_string) orelse blk: {
@@ -503,7 +505,7 @@ pub fn parseArgs(allocator: Allocator) !Config {
         // as we transition to this command mode approach.
         args.deinit();
 
-        args = try std.process.argsWithAllocator(allocator);
+        args = try process_args.iterateAllocator(allocator);
         // skip the exec_name
         _ = args.skip();
 
@@ -599,7 +601,7 @@ fn inferMode(opt: []const u8) ?RunMode {
 
 fn parseBrowseArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Browse {
     var url: ?[:0]const u8 = null;
     var common: Common = .{ .browser_mode = .headed };
@@ -616,7 +618,7 @@ fn parseBrowseArgs(
                 log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_bmp" });
                 return error.InvalidArgument;
             };
-            screenshot_bmp_path = try allocator.dupeZ(u8, str);
+            screenshot_bmp_path = try allocator.dupeSentinel(u8, str, 0);
             continue;
         }
 
@@ -625,7 +627,7 @@ fn parseBrowseArgs(
                 log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_png" });
                 return error.InvalidArgument;
             };
-            screenshot_png_path = try allocator.dupeZ(u8, str);
+            screenshot_png_path = try allocator.dupeSentinel(u8, str, 0);
             continue;
         }
 
@@ -638,7 +640,7 @@ fn parseBrowseArgs(
             log.fatal(.app, "duplicate browse url", .{ .help = "only 1 URL can be specified" });
             return error.TooManyURLs;
         }
-        url = try allocator.dupeZ(u8, opt);
+        url = try allocator.dupeSentinel(u8, opt, 0);
     }
 
     if (url == null) {
@@ -656,7 +658,7 @@ fn parseBrowseArgs(
 
 fn parseServeArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Serve {
     var serve: Serve = .{};
 
@@ -735,7 +737,7 @@ fn parseServeArgs(
 
 fn parseMcpArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Mcp {
     var mcp: Mcp = .{};
 
@@ -753,7 +755,7 @@ fn parseMcpArgs(
 
 fn parseFetchArgs(
     allocator: Allocator,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
 ) !Fetch {
     var dump_mode: ?DumpFormat = null;
     var with_base: bool = false;
@@ -836,7 +838,7 @@ fn parseFetchArgs(
             log.fatal(.app, "duplicate fetch url", .{ .help = "only 1 URL can be specified" });
             return error.TooManyURLs;
         }
-        url = try allocator.dupeZ(u8, opt);
+        url = try allocator.dupeSentinel(u8, opt, 0);
     }
 
     if (url == null) {
@@ -857,7 +859,7 @@ fn parseFetchArgs(
 fn parseCommonArg(
     allocator: Allocator,
     opt: []const u8,
-    args: *std.process.ArgIterator,
+    args: *std.process.Args.Iterator,
     common: *Common,
 ) !bool {
     if (std.mem.eql(u8, "--insecure_disable_tls_host_verification", opt)) {
@@ -875,7 +877,7 @@ fn parseCommonArg(
             log.fatal(.app, "missing argument value", .{ .arg = "--http_proxy" });
             return error.InvalidArgument;
         };
-        common.http_proxy = try allocator.dupeZ(u8, str);
+        common.http_proxy = try allocator.dupeSentinel(u8, str, 0);
         return true;
     }
 
@@ -884,7 +886,7 @@ fn parseCommonArg(
             log.fatal(.app, "missing argument value", .{ .arg = "--proxy_bearer_token" });
             return error.InvalidArgument;
         };
-        common.proxy_bearer_token = try allocator.dupeZ(u8, str);
+        common.proxy_bearer_token = try allocator.dupeSentinel(u8, str, 0);
         return true;
     }
 
@@ -1027,7 +1029,7 @@ fn parseCommonArg(
             log.fatal(.app, "missing argument value", .{ .arg = "--profile_dir" });
             return error.InvalidArgument;
         };
-        common.profile_dir = try allocator.dupeZ(u8, str);
+        common.profile_dir = try allocator.dupeSentinel(u8, str, 0);
         return true;
     }
 
@@ -1132,4 +1134,3 @@ test "explicit http timeout overrides interactive defaults" {
 
     try std.testing.expectEqual(@as(u31, 1234), config.httpTimeout());
 }
-

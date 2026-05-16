@@ -223,3 +223,23 @@
     testing.expectEqual('AbortError', name);
   });
 </script>
+
+<script id=fetch_blob_object_url>
+  testing.async(async (restore) => {
+    const blob = new Blob(['blob-fetch-body'], { type: 'text/plain' });
+    const objectUrl = URL.createObjectURL(blob);
+
+    const response = await fetch(objectUrl);
+    const text = await response.text();
+    URL.revokeObjectURL(objectUrl);
+    restore();
+
+    testing.expectEqual(200, response.status);
+    testing.expectEqual(true, response.ok);
+    testing.expectEqual('basic', response.type);
+    testing.expectEqual(objectUrl, response.url);
+    testing.expectEqual('text/plain', response.headers.get('Content-Type'));
+    testing.expectEqual('15', response.headers.get('Content-Length'));
+    testing.expectEqual('blob-fetch-body', text);
+  });
+</script>

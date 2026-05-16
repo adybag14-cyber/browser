@@ -8,11 +8,7 @@ const ImageData = @import("../ImageData.zig");
 
 const CanvasSurface = @This();
 
-const win = if (builtin.os.tag == .windows) @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cInclude("windows.h");
-    @cInclude("wingdi.h");
-}) else struct {};
+const win = if (builtin.os.tag == .windows) @import("win32_c") else struct {};
 
 pub const TextAlign = enum {
     left,

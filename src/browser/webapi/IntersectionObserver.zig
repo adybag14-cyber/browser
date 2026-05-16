@@ -38,11 +38,11 @@ const IntersectionObserver = @This();
 
 _arena: Allocator,
 _callback: js.Function.Temp,
-_observing: std.ArrayList(*Element) = .{},
+_observing: std.ArrayList(*Element) = .empty,
 _root: ?*Element = null,
 _root_margin: []const u8 = "0px",
 _threshold: []const f64 = &.{0.0},
-_pending_entries: std.ArrayList(*IntersectionObserverEntry) = .{},
+_pending_entries: std.ArrayList(*IntersectionObserverEntry) = .empty,
 _previous_states: std.AutoHashMapUnmanaged(*Element, bool) = .{},
 
 // Shared zero DOMRect to avoid repeated allocations for non-intersecting elements

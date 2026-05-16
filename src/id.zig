@@ -23,7 +23,7 @@ pub fn uuidv4(hex: []u8) void {
     lp.assert(hex.len == 36, "uuidv4.len", .{ .len = hex.len });
 
     var bin: [16]u8 = undefined;
-    std.crypto.random.bytes(&bin);
+    lp.compat.randomBytes(&bin);
     bin[6] = (bin[6] & 0x0f) | 0x40;
     bin[8] = (bin[8] & 0x3f) | 0x80;
 

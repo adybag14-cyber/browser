@@ -1,8 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const build_config = @import("build_config");
+const compat = @import("../compat.zig");
 
-const Thread = std.Thread;
 const Allocator = std.mem.Allocator;
 
 const log = @import("../log.zig");
@@ -18,12 +18,12 @@ pub const LightPanda = struct {
     running: bool,
     thread: ?std.Thread,
     allocator: Allocator,
-    mutex: std.Thread.Mutex,
-    cond: Thread.Condition,
+    mutex: compat.Mutex,
+    cond: compat.Condition,
     connection: Net.Connection,
     config: *const Config,
     pending: std.DoublyLinkedList,
-    mem_pool: std.heap.MemoryPool(LightPandaEvent),
+    mem_pool: compat.MemoryPool(LightPandaEvent),
 
     pub fn init(app: *App) !LightPanda {
         const connection = try app.http.newConnection();
@@ -42,7 +42,7 @@ pub const LightPanda = struct {
             .allocator = allocator,
             .connection = connection,
             .config = app.config,
-            .mem_pool = std.heap.MemoryPool(LightPandaEvent).init(allocator),
+            .mem_pool = compat.MemoryPool(LightPandaEvent).init(allocator),
         };
     }
 

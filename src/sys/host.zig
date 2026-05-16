@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -137,14 +138,14 @@ test "host bare metal build class uses filesystem-backed storage" {
     defer host.deinit();
 
     const rel_dir = "tmp-host-bare-metal-profile";
-    std.fs.cwd().deleteTree(rel_dir) catch {};
-    defer std.fs.cwd().deleteTree(rel_dir) catch {};
+    compat.fs.cwd().deleteTree(rel_dir) catch {};
+    defer compat.fs.cwd().deleteTree(rel_dir) catch {};
 
     const profile = host.resolveProfileDir(rel_dir) orelse return error.TestExpected;
     defer std.testing.allocator.free(profile);
 
     try std.testing.expectEqualStrings(rel_dir, profile);
 
-    var dir = try std.fs.cwd().openDir(rel_dir, .{});
+    var dir = try compat.fs.cwd().openDir(rel_dir, .{});
     defer dir.close();
 }

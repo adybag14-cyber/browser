@@ -16,8 +16,8 @@ const Subpath = struct {
     closed: bool = false,
 };
 
-points: std.ArrayListUnmanaged(Point) = .{},
-subpaths: std.ArrayListUnmanaged(Subpath) = .{},
+points: std.ArrayListUnmanaged(Point) = .empty,
+subpaths: std.ArrayListUnmanaged(Subpath) = .empty,
 current_subpath: ?usize = null,
 current_point: ?Point = null,
 

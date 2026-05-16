@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("compat.zig");
 const Allocator = std.mem.Allocator;
 
 pub const allocator = std.testing.allocator;
@@ -348,7 +349,7 @@ pub fn htmlRunner(comptime path: []const u8, opts: HtmlRunnerOpts) !void {
     defer reset();
 
     const root = try std.mem.concatWithSentinel(arena_allocator, u8, &.{ WEB_API_TEST_ROOT, path }, 0);
-    const stat = std.fs.cwd().statFile(root) catch |err| switch (err) {
+    const stat = compat.fs.cwd().statFile(root) catch |err| switch (err) {
         error.IsDir => {
             try runHtmlRunnerDirectory(root);
             return;
@@ -361,7 +362,7 @@ pub fn htmlRunner(comptime path: []const u8, opts: HtmlRunnerOpts) !void {
 
     switch (stat.kind) {
         .file => {
-            if (@import("root").shouldRun(std.fs.path.basename(root)) == false) {
+            if (@import("root").shouldRun(compat.fs.path.basename(root)) == false) {
                 return;
             }
             try @import("root").subtest(root);
@@ -376,7 +377,7 @@ pub fn htmlRunner(comptime path: []const u8, opts: HtmlRunnerOpts) !void {
 }
 
 fn runHtmlRunnerDirectory(root: [:0]const u8) !void {
-    var dir = try std.fs.cwd().openDir(root, .{
+    var dir = try compat.fs.cwd().openDir(root, .{
         .iterate = true,
         .no_follow = true,
         .access_sub_paths = false,
@@ -503,7 +504,7 @@ test "tests:beforeAll" {
 
     test_session = try test_browser.newSession(test_notification);
 
-    var wg: std.Thread.WaitGroup = .{};
+    var wg: compat.WaitGroup = .{};
     wg.startMany(2);
 
     test_cdp_server_thread = try std.Thread.spawn(.{}, serveCDP, .{&wg});
@@ -546,8 +547,8 @@ test "tests:afterAll" {
     test_config.deinit(@import("root").tracking_allocator);
 }
 
-fn serveCDP(wg: *std.Thread.WaitGroup) !void {
-    const address = try std.net.Address.parseIp("127.0.0.1", 9583);
+fn serveCDP(wg: *compat.WaitGroup) !void {
+    const address = try compat.net.Address.parseIp("127.0.0.1", 9583);
     test_cdp_server = try Server.init(test_app, address);
 
     wg.finish();
@@ -562,7 +563,7 @@ fn testHTTPHandler(req: *std.http.Server.Request) !void {
     const path = req.head.target;
 
     if (std.mem.eql(u8, path, "/xhr")) {
-        return req.respond("1234567890" ** 10, .{
+        return req.respond(&compat.repeatComptime("1234567890", 10), .{
             .extra_headers = &.{
                 .{ .name = "Content-Type", .value = "text/html; charset=utf-8" },
             },

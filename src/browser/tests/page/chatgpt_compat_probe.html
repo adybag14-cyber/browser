@@ -1,0 +1,175 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>CHATGPT-COMPAT:pending</title>
+<style>
+  body {
+    margin: 0;
+    padding: 20px;
+    background: #0f172a;
+    color: #dbe4ff;
+    font: 14px/1.5 Consolas, "Courier New", monospace;
+  }
+
+  h1 {
+    margin: 0 0 12px;
+    font-size: 18px;
+  }
+
+  p {
+    margin: 0 0 16px;
+    color: #93a6c6;
+  }
+
+  pre {
+    margin: 0;
+    padding: 16px;
+    border: 1px solid #24314a;
+    border-radius: 12px;
+    background: #111c30;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
+
+<h1>ChatGPT Compat Probe</h1>
+<p>Collects the browser/runtime surfaces the ChatGPT web app is most likely to need before it can mint a trusted conversation request.</p>
+<pre id="status">running...</pre>
+
+<script>
+  (async () => {
+    const probe = {
+      blockers: [],
+      features: {},
+    };
+
+    const addBlocker = (name, detail) => {
+      probe.blockers.push(detail ? `${name}:${detail}` : name);
+    };
+
+    const capture = async (name, fn) => {
+      try {
+        const value = await fn();
+        probe.features[name] = { status: "ok", value };
+        return probe.features[name];
+      } catch (err) {
+        const failure = {
+          status: "error",
+          name: err && err.name ? err.name : "Error",
+          message: err && err.message ? String(err.message) : String(err),
+        };
+        probe.features[name] = failure;
+        return failure;
+      }
+    };
+
+    probe.features.userAgent = navigator.userAgent;
+    probe.features.userAgentData = typeof navigator.userAgentData;
+    probe.features.serviceWorker = typeof navigator.serviceWorker;
+    probe.features.caches = globalThis.caches === null ? "null" : typeof globalThis.caches;
+    probe.features.navigatorCaches = navigator.caches === null ? "null" : typeof navigator.caches;
+    probe.features.worker = typeof Worker;
+    probe.features.sharedWorker = typeof SharedWorker;
+    probe.features.readableStream = typeof ReadableStream;
+    probe.features.transformStream = typeof TransformStream;
+    probe.features.textDecoderStream = typeof TextDecoderStream;
+    probe.features.messageChannel = typeof MessageChannel;
+    probe.features.webSocket = typeof WebSocket;
+    probe.features.localStorage = typeof localStorage;
+    probe.features.sessionStorage = typeof sessionStorage;
+    probe.features.indexedDB = typeof indexedDB;
+    probe.features.trustedTypes = typeof trustedTypes;
+
+    if (typeof Worker !== "function") addBlocker("worker");
+    if (typeof SharedWorker !== "function") addBlocker("shared-worker");
+    if (globalThis.caches == null) addBlocker("cache-storage");
+    if (typeof navigator.serviceWorker !== "object") addBlocker("service-worker-container");
+
+    await capture("crypto.subtle.digest", async () => {
+      const bytes = new TextEncoder().encode("chatgpt-probe");
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      return digest.byteLength;
+    });
+    if (probe.features["crypto.subtle.digest"].status !== "ok") addBlocker("crypto-subtle");
+
+    await capture("navigator.userAgentData.getHighEntropyValues", async () => {
+      if (!navigator.userAgentData || typeof navigator.userAgentData.getHighEntropyValues !== "function") {
+        throw new Error("userAgentData missing");
+      }
+      const values = await navigator.userAgentData.getHighEntropyValues([
+        "architecture",
+        "bitness",
+        "platform",
+        "platformVersion",
+        "uaFullVersion",
+      ]);
+      return `${values.platform}|${values.platformVersion}|${values.uaFullVersion}`;
+    });
+
+    await capture("navigator.serviceWorker.register", async () => {
+      if (!navigator.serviceWorker || typeof navigator.serviceWorker.register !== "function") {
+        throw new Error("serviceWorker.register missing");
+      }
+      const registration = await navigator.serviceWorker.register(
+        "/src/browser/tests/page/support/chatgpt_probe_sw.js",
+      );
+      return registration && registration.active
+        ? `${registration.scope}|${registration.active.state}`
+        : "missing-registration";
+    });
+    if (probe.features["navigator.serviceWorker.register"].status !== "ok") {
+      addBlocker("service-worker-register", probe.features["navigator.serviceWorker.register"].name);
+    }
+
+    await capture("navigator.serviceWorker.ready", async () => {
+      if (!navigator.serviceWorker) throw new Error("serviceWorker missing");
+      const registration = await navigator.serviceWorker.ready;
+      return registration && registration.active
+        ? `${registration.scope}|${registration.active.state}`
+        : "resolved-without-active-worker";
+    });
+    if (probe.features["navigator.serviceWorker.ready"].status !== "ok") {
+      addBlocker("service-worker-ready", probe.features["navigator.serviceWorker.ready"].name);
+    }
+
+    await capture("globalThis.caches.open", async () => {
+      if (!globalThis.caches || typeof globalThis.caches.open !== "function") {
+        throw new Error("caches.open missing");
+      }
+      const cache = await globalThis.caches.open("chatgpt-probe");
+      return typeof cache;
+    });
+    if (probe.features["globalThis.caches.open"].status !== "ok") {
+      addBlocker("cache-open", probe.features["globalThis.caches.open"].name);
+    }
+
+    await capture("Worker bootstrap", async () => {
+      if (typeof Worker !== "function") throw new Error("Worker missing");
+      const worker = new Worker("/src/browser/tests/page/support/chatgpt_probe_worker.js");
+      return await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          worker.terminate();
+          reject(new Error("timeout"));
+        }, 1000);
+        worker.onmessage = (event) => {
+          clearTimeout(timer);
+          worker.terminate();
+          resolve(event.data);
+        };
+        worker.onerror = (event) => {
+          clearTimeout(timer);
+          worker.terminate();
+          reject(event.error || new Error(event.message || "worker error"));
+        };
+        worker.postMessage("ping");
+      });
+    });
+    if (probe.features["Worker bootstrap"].status !== "ok") {
+      addBlocker("worker-bootstrap", probe.features["Worker bootstrap"].name);
+    }
+
+    const summary = probe.blockers.length === 0 ? "none" : probe.blockers.join(",");
+    document.title = `CHATGPT-COMPAT:${summary}`;
+    document.getElementById("status").textContent = JSON.stringify(probe, null, 2);
+    window.__lpChatGptCompat = probe;
+  })();
+</script>

@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../../compat.zig");
 const String = @import("../../../string.zig").String;
 
 const js = @import("../../js/js.zig");
@@ -206,7 +207,7 @@ fn initWithTrusted(arena: Allocator, typ: String, _opts: ?Options, trusted: bool
         KeyboardEvent{
             ._proto = undefined,
             ._key = try Key.fromString(arena, opts.key),
-            ._location = std.meta.intToEnum(Location, opts.location) catch return error.TypeError,
+            ._location = compat.intToEnum(Location, opts.location) catch return error.TypeError,
             ._code = if (opts.code) |c| try arena.dupe(u8, c) else "",
             ._repeat = opts.repeat,
             ._is_composing = opts.isComposing,

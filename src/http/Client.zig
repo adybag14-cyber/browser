@@ -18,6 +18,7 @@
 
 const std = @import("std");
 const lp = @import("lightpanda");
+const compat = lp.compat;
 
 const log = @import("../log.zig");
 const builtin = @import("builtin");
@@ -29,7 +30,6 @@ const Notification = @import("../Notification.zig");
 const CookieJar = @import("../browser/webapi/storage/Cookie.zig").Jar;
 const Robots = @import("../browser/Robots.zig");
 const RobotStore = Robots.RobotStore;
-const posix = std.posix;
 
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
@@ -86,7 +86,7 @@ pending_robots_queue: std.StringHashMapUnmanaged(std.ArrayList(Request)) = .empt
 // Once we have a handle/easy to process a request with, we create a Transfer
 // which contains the Request as well as any state we need to process the
 // request. These wil come and go with each request.
-transfer_pool: std.heap.MemoryPool(Transfer),
+transfer_pool: compat.MemoryPool(Transfer),
 
 // only needed for CDP which can change the proxy and then restore it. When
 // restoring, this originally-configured value is what it goes to.
@@ -112,7 +112,7 @@ cdp_client: ?CDPClient = null,
 // specifically when we're waiting for a request interception response to
 // a blocking script.
 pub const CDPClient = struct {
-    socket: posix.socket_t,
+    socket: compat.net.RawSocket,
     ctx: *anyopaque,
     blocking_read_start: *const fn (*anyopaque) bool,
     blocking_read: *const fn (*anyopaque) bool,
@@ -122,7 +122,7 @@ pub const CDPClient = struct {
 const TransferQueue = std.DoublyLinkedList;
 
 pub fn init(allocator: Allocator, ca_blob: ?Net.Blob, robot_store: *RobotStore, config: *const Config) !*Client {
-    var transfer_pool = std.heap.MemoryPool(Transfer).init(allocator);
+    var transfer_pool = compat.MemoryPool(Transfer).init(allocator);
     errdefer transfer_pool.deinit();
 
     const client = try allocator.create(Client);
@@ -752,9 +752,9 @@ pub const PerformStatus = enum {
 
 fn perform(self: *Client, timeout_ms: c_int) !PerformStatus {
     const interactive = timeout_ms == 0;
-    var stage_timer: std.time.Timer = undefined;
+    var stage_timer: compat.Timer = undefined;
     if (interactive) {
-        stage_timer = try std.time.Timer.start();
+        stage_timer = try compat.Timer.start();
     }
     const running = try self.handles.perform();
     if (interactive) {
@@ -947,15 +947,17 @@ pub const RequestCookie = struct {
     origin: [:0]const u8,
 
     pub fn headersForRequest(self: *const RequestCookie, temp: Allocator, url: [:0]const u8, headers: *Net.Headers) !void {
-        var arr: std.ArrayList(u8) = .empty;
-        try self.jar.forRequest(url, arr.writer(temp), .{
+        var aw = std.Io.Writer.Allocating.init(temp);
+        defer aw.deinit();
+        try self.jar.forRequest(url, &aw.writer, .{
             .is_http = self.is_http,
             .is_navigation = self.is_navigation,
             .origin_url = self.origin,
         });
 
-        if (arr.items.len > 0) {
-            const cookie_value = try temp.dupeZ(u8, arr.items);
+        const cookie_items = aw.written();
+        if (cookie_items.len > 0) {
+            const cookie_value = try temp.dupeSentinel(u8, cookie_items, 0);
             headers.cookies = cookie_value.ptr;
         }
     }
@@ -1058,7 +1060,7 @@ pub const Transfer = struct {
 
     _redirecting: bool = false,
     _redirect_location: ?[]const u8 = null,
-    _redirect_set_cookie_values: std.ArrayListUnmanaged([]const u8) = .{},
+    _redirect_set_cookie_values: std.ArrayListUnmanaged([]const u8) = .empty,
     _auth_challenge: ?AuthChallenge = null,
 
     // number of times the transfer has been tried.
@@ -1156,15 +1158,17 @@ pub const Transfer = struct {
     pub fn replaceRequestHeaders(self: *Transfer, allocator: Allocator, headers: []const Net.Header) !void {
         self.req.headers.deinit();
 
-        var buf: std.ArrayList(u8) = .empty;
+        var buf = std.Io.Writer.Allocating.init(allocator);
+        defer buf.deinit();
         var new_headers = try self.client.newHeaders();
         for (headers) |hdr| {
             // safe to re-use this buffer, because Headers.add because curl copies
             // the value we pass into curl_slist_append.
             defer buf.clearRetainingCapacity();
-            try std.fmt.format(buf.writer(allocator), "{s}: {s}", .{ hdr.name, hdr.value });
-            try buf.append(allocator, 0); // null terminated
-            try new_headers.add(buf.items[0 .. buf.items.len - 1 :0]);
+            try buf.writer.print("{s}: {s}", .{ hdr.name, hdr.value });
+            try buf.writer.writeByte(0); // null terminated
+            const items = buf.written();
+            try new_headers.add(items[0 .. items.len - 1 :0]);
         }
         self.req.headers = new_headers;
     }
@@ -1264,15 +1268,15 @@ pub const Transfer = struct {
         transfer.url = url;
 
         if (req.cookie_jar) |jar| {
-            var cookies: std.ArrayList(u8) = .{};
-            try jar.forRequest(url, cookies.writer(arena), .{
+            var cookies = std.Io.Writer.Allocating.init(arena);
+            try jar.forRequest(url, &cookies.writer, .{
                 .is_http = true,
                 .origin_url = url,
                 // used to enforce samesite cookie rules
                 .is_navigation = req.resource_type == .document,
             });
-            try cookies.append(arena, 0); //null terminate
-            try conn.setCookies(@ptrCast(cookies.items.ptr));
+            try cookies.writer.writeByte(0); //null terminate
+            try conn.setCookies(@ptrCast(cookies.written().ptr));
         }
     }
 

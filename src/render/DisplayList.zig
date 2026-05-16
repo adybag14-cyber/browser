@@ -294,10 +294,10 @@ pub const Command = union(enum) {
 
 pub const DisplayList = @This();
 
-commands: std.ArrayListUnmanaged(Command) = .{},
-link_regions: std.ArrayListUnmanaged(LinkRegion) = .{},
-control_regions: std.ArrayListUnmanaged(ControlRegion) = .{},
-font_faces: std.ArrayListUnmanaged(FontFaceResource) = .{},
+commands: std.ArrayListUnmanaged(Command) = .empty,
+link_regions: std.ArrayListUnmanaged(LinkRegion) = .empty,
+control_regions: std.ArrayListUnmanaged(ControlRegion) = .empty,
+font_faces: std.ArrayListUnmanaged(FontFaceResource) = .empty,
 content_height: i32 = 0,
 layout_scale: i32 = 100,
 page_margin: i32 = 0,

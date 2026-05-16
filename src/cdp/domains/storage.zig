@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../compat.zig");
 
 const log = @import("../../log.zig");
 const URL = @import("../../browser/URL.zig");
@@ -157,7 +158,7 @@ pub fn setCdpCookie(cookie_jar: *CookieJar, param: CdpCookie) !void {
             .None => .none,
         },
     };
-    try cookie_jar.add(cookie, std.time.timestamp());
+    try cookie_jar.add(cookie, compat.unixTimestamp());
 }
 
 pub const CookieWriter = struct {

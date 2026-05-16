@@ -246,7 +246,7 @@ fn continueRequest(cmd: anytype) !void {
     const arena = transfer.arena.allocator();
     // Update the request with the new parameters
     if (params.url) |url| {
-        try transfer.updateURL(try arena.dupeZ(u8, url));
+        try transfer.updateURL(try arena.dupeSentinel(u8, url, 0));
     }
     if (params.method) |method| {
         transfer.req.method = std.meta.stringToEnum(Http.Method, method) orelse return error.InvalidParams;

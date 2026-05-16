@@ -62,7 +62,7 @@ pub fn load(self: *FontFaceSet, font: []const u8, text: ?[]const u8, page: *Page
 fn collectFontFaces(self: *const FontFaceSet, page: *Page) ![]const CSSStyleSheet.FontFaceEntry {
     _ = self;
     const sheets = try page.window._document.getStyleSheets(page);
-    var entries: std.ArrayList(CSSStyleSheet.FontFaceEntry) = .{};
+    var entries: std.ArrayList(CSSStyleSheet.FontFaceEntry) = .empty;
     defer entries.deinit(page.call_arena);
     for (sheets.items()) |sheet| {
         try entries.appendSlice(page.call_arena, sheet.getFontFaces());

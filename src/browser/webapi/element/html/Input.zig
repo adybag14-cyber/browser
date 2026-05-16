@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const compat = @import("../../../../compat.zig");
 const String = @import("../../../../string.zig").String;
 const js = @import("../../../js/js.zig");
 const Page = @import("../../../Page.zig");
@@ -1229,9 +1230,9 @@ test "Input file selection exposes fakepath value and clears on empty assignment
     var page = try testing.pageTest("page/upload_form.html");
     defer page._session.removePage();
 
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-input-upload.txt", .data = "abc" });
-    defer std.fs.cwd().deleteFile("tmp-input-upload.txt") catch {};
-    const abs_path = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-input-upload.txt");
+    try compat.fs.cwd().writeFile(.{ .sub_path = "tmp-input-upload.txt", .data = "abc" });
+    defer compat.fs.cwd().deleteFile("tmp-input-upload.txt") catch {};
+    const abs_path = try compat.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-input-upload.txt");
     defer std.testing.allocator.free(abs_path);
 
     const element = (try page.window._document.querySelector(.wrap("#upload"), page)).?;
@@ -1252,14 +1253,14 @@ test "Input multiple file selection keeps first fakepath and all selected files"
     var page = try testing.pageTest("page/upload_form.html");
     defer page._session.removePage();
 
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-input-upload-a.txt", .data = "aaa" });
-    defer std.fs.cwd().deleteFile("tmp-input-upload-a.txt") catch {};
-    try std.fs.cwd().writeFile(.{ .sub_path = "tmp-input-upload-b.json", .data = "{\"b\":1}" });
-    defer std.fs.cwd().deleteFile("tmp-input-upload-b.json") catch {};
+    try compat.fs.cwd().writeFile(.{ .sub_path = "tmp-input-upload-a.txt", .data = "aaa" });
+    defer compat.fs.cwd().deleteFile("tmp-input-upload-a.txt") catch {};
+    try compat.fs.cwd().writeFile(.{ .sub_path = "tmp-input-upload-b.json", .data = "{\"b\":1}" });
+    defer compat.fs.cwd().deleteFile("tmp-input-upload-b.json") catch {};
 
-    const abs_path_a = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-input-upload-a.txt");
+    const abs_path_a = try compat.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-input-upload-a.txt");
     defer std.testing.allocator.free(abs_path_a);
-    const abs_path_b = try std.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-input-upload-b.json");
+    const abs_path_b = try compat.fs.cwd().realpathAlloc(std.testing.allocator, "tmp-input-upload-b.json");
     defer std.testing.allocator.free(abs_path_b);
 
     const element = (try page.window._document.querySelector(.wrap("#upload"), page)).?;
