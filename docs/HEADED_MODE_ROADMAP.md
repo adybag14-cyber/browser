@@ -47,6 +47,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixt
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
 
+When the bundle route is being chosen from the broader router instead of from
+already-pinned inputs, keep the wider attached-page helpers visible first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+```
+
+Use this re-entry when the three-page bundle is already the likely next move,
+but you still want both the broader attached-page helper and the dedicated
+Google-shaped attached-page helper visible before the replay locks onto the
+pinned bundle branch.
+
 Attached HTML target intent:
 
 - `Control your online safety and privacy – Google Safety Centre (...).html`
@@ -66,11 +82,14 @@ Attached HTML target intent:
   the same headed subsystem would affect the others.
 
 For the pinned three-page route, keep
-`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and
-`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby. The reference
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
+`docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` nearby. The reference
 note keeps the fail-fast bundle surfaces, the delegated bundle runner, and the
 reusable fixed-list screenshot-and-title probe on the same locked inputs before
-the replay widens back into the broader issue `#3` helper chain.
+the replay widens back into the broader issue `#3` helper chain, while the
+Google attached-page note keeps the narrower Google-shaped fallback visible when
+one of the pinned pages makes that route the next obvious follow-up.
 
 Saved-page or attached-page localhost follow-up:
 
