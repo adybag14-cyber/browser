@@ -52,6 +52,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
 If the route is about to narrow through the shorter top-level shortcut branch,
@@ -100,7 +101,11 @@ follow-up.
 Use `google-attached-html` when the broader Google-shaped attached-page surface
 still matters.
 Use `attached-html-target-bundle` when the current inputs are already pinned to
-the known three-page compatibility bundle.
+the known three-page compatibility bundle. Keep
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby once that
+bundle-first lane is green so the pinned helper route and page-by-page manual
+checks stay attached to the same three-page set.
 
 ## Recommended next helper
 
@@ -352,7 +357,11 @@ issue `#3` helper chain is already in view.
 
 Use this when explicit `InputPath` values are already pinned or when the replay
 should stay on the known three-page compatibility bundle before widening back
-into the broader Google-only issue `#3` path.
+into the broader Google-only issue `#3` path. Keep
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby once that route
+is green so the pinned command surface and page-by-page manual checks stay on
+the same three-page set.
 
 21. `show_google_issue3_safe_route_entrypoints.ps1`
 
@@ -382,7 +391,7 @@ safe-route map visible before reopening the longer validation-chain notes.
 - no pinned bundle inputs and no saved replay state yet: go from the suite-catalog helper to replay shortcuts when you only need the tightest current helper surface, or reopen the broader attached-html ladder first when attached localhost follow-up is already obvious
 - broader Windows-first route already in view: rerun the Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows-side catalog quickstart, the replay-side attached-html surface check, the replay-side attached-html quickstart, and the suite-catalog surface checker before returning to the suite-catalog helper
 - broader Google-shaped attached-page surface still matters: reopen `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, then `show_google_issue3_google_attached_html_entrypoint.ps1`, and then `show_google_attached_html_validation_flow.ps1` before the narrower helper chain
-- explicit bundle paths already pinned: keep `show_google_issue3_attached_bundle_first_entrypoint.ps1` in front of the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader issue `#3` path
+- explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, then keep `show_google_issue3_attached_bundle_first_entrypoint.ps1` in front of the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader issue `#3` path
 - saved summary or repo-root override already present: reopen this guide with the same context first, rerun the suite-catalog surface checker for that checkout, then choose contextual flow, replay shortcuts, the suite-router handoff, replay route, or the safe-route map only as needed
 
 Only reopen the longer validation-chain notes after the route has narrowed into
