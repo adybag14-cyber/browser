@@ -23,8 +23,11 @@ Then open one of these URLs in the headed browser:
 - `http://127.0.0.1:8235/pages/1` for the shortest stable route to the first page in the manifest
 - `http://127.0.0.1:8235/pages/1-<short-title-slug>` for the readable alias route when you want a descriptive path in logs or manual replay notes
 
-The server also exposes each original file under `/raw/...`, which is useful if
-the exported page references sibling assets with relative paths.
+The short `pages/...` routes redirect into an asset-safe directory form such as
+`/pages/1/`, so relative CSS, images, scripts, and other sibling assets keep
+loading from the exported bundle instead of resolving against the synthetic
+route root. The server still exposes each original file under `/raw/...`, which
+is useful when you want the exact original path layout during manual debugging.
 
 ## Manifest fields
 
@@ -36,7 +39,8 @@ Each manifest entry now includes:
 
 Use `route` in scripts when you want the smallest possible URL and
 `alias_route` when you want a still-short path that is easier to recognize in
-manual notes.
+manual notes. Both redirect to a trailing-slash page route before the HTML is
+served so bundle-relative assets keep working.
 
 ## Current compatibility target
 
