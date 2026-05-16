@@ -105,13 +105,16 @@ Attached HTML target intent:
 
 For the pinned three-page route, keep
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` nearby. The reference
 note keeps the fail-fast bundle surfaces, the delegated bundle runner, and the
 reusable fixed-list screenshot-and-title probe on the same locked inputs before
-the replay widens back into the broader issue `#3` helper chain, while the
-Google attached-page note keeps the narrower Google-shaped fallback visible when
-one of the pinned pages makes that route the next obvious follow-up.
+the replay widens back into the broader issue `#3` helper chain, the
+suite-surface note keeps the compact bundle-specific re-entry easy to rediscover
+beside the broader attached-page and Google-shaped attached-page helpers, while
+the Google attached-page note keeps the narrower Google-shaped fallback visible
+when one of the pinned pages makes that route the next obvious follow-up.
 
 Saved-page or attached-page localhost follow-up:
 
@@ -224,7 +227,8 @@ attached localhost follow-up:
   attached-page catalog notes.
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
   `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
-  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, and
+  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
+  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, and
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the route has
   already narrowed to the suite-router side, the compact companion notes, or
   the pinned three-page compatibility bundle and you want the reusable
@@ -245,6 +249,7 @@ For the broader Windows runbook and the longer validation chain, keep
 `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
 
