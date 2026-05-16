@@ -3,8 +3,8 @@ import http.client
 import io
 import json
 import sys
-import threading
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -221,6 +221,83 @@ class AttachedPagesServerTests(unittest.TestCase):
         manifest = json.loads(buffer.getvalue())
         self.assertEqual(1, len(manifest))
         self.assertEqual("beta.html", manifest[0]["file"])
+
+    def test_asset_audit_detects_missing_assets_and_follows_nested_references(self):
+        (self.root / "nested" / "beta.html").write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Alpha Landing</title>
+    <script type="module" src="beta.js"></script>
+    <link rel="stylesheet" href="beta.css">
+  </head>
+  <body><img src="missing.png"></body>
+</html>
+""",
+            encoding="utf-8",
+        )
+        (self.root / "nested" / "beta.js").write_text("import './module.mjs';\n", encoding="utf-8")
+        (self.root / "nested" / "module.mjs").write_text("import './missing-module.js';\n", encoding="utf-8")
+        (self.root / "nested" / "beta.css").write_text("@import './theme.css';\n", encoding="utf-8")
+        (self.root / "nested" / "theme.css").write_text("body { background: url('./missing-bg.png'); }\n", encoding="utf-8")
+
+        audit = server_module.build_asset_audit(self.root)
+        self.assertEqual(2, audit["fixture_count"])
+        self.assertEqual(1, audit["fixtures_with_missing_assets"])
+
+        beta_entry = next(entry for entry in audit["fixtures"] if entry["display_path"] == "nested/beta.html")
+        self.assertIn("nested/missing.png", beta_entry["missing_assets"])
+        self.assertIn("nested/missing-module.js", beta_entry["missing_assets"])
+        self.assertIn("nested/missing-bg.png", beta_entry["missing_assets"])
+        self.assertIn("nested/theme.css", beta_entry["inspected_css_files"])
+        self.assertIn("nested/module.mjs", beta_entry["inspected_module_script_files"])
+
+    def test_asset_audit_cli_exit_codes_and_allow_missing_flag(self):
+        (self.root / "alpha.html").write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Alpha Landing</title>
+    <link rel="stylesheet" href="missing.css">
+  </head>
+  <body>alpha</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+
+        original_argv = sys.argv[:]
+        buffer = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(server_module.__file__)),
+                "--root",
+                str(self.root),
+                "--audit-assets",
+            ]
+            with contextlib.redirect_stdout(buffer):
+                exit_code = server_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        self.assertIn("Fixtures with missing assets: 1", buffer.getvalue())
+
+        buffer = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(server_module.__file__)),
+                "--root",
+                str(self.root),
+                "--audit-assets",
+                "--allow-missing-assets",
+            ]
+            with contextlib.redirect_stdout(buffer):
+                exit_code = server_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(0, exit_code)
 
 
 if __name__ == "__main__":
