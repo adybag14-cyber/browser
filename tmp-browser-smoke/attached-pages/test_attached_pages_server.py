@@ -67,11 +67,13 @@ class AttachedPagesServerTests(unittest.TestCase):
         finally:
             connection.close()
 
-    def test_manifest_uses_short_routes_and_unique_aliases(self):
+    def test_manifest_uses_short_routes_unique_aliases_and_named_routes(self):
         self.assertEqual(2, len(self.manifest))
         self.assertEqual("/pages/1", self.manifest[0]["route"])
         self.assertTrue(self.manifest[0]["alias_route"].startswith("/pages/1-alpha-landing"))
         self.assertTrue(self.manifest[1]["alias_route"].startswith("/pages/2-alpha-landing"))
+        self.assertEqual("/named/alpha-landing", self.manifest[0]["slug_route"])
+        self.assertEqual("/named/alpha-landing-beta", self.manifest[1]["slug_route"])
         self.assertNotEqual(self.manifest[0]["alias_route"], self.manifest[1]["alias_route"])
         self.assertEqual("/raw/nested/beta.html", self.manifest[1]["raw_path"])
 
@@ -82,6 +84,7 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertIn("Attached Pages Catalog", text)
         self.assertIn("/pages/1", text)
         self.assertIn("/pages/2-alpha-landing", text)
+        self.assertIn("/named/alpha-landing-beta", text)
 
         status, headers, body = self.request("GET", "/manifest.json")
         self.assertEqual(200, status)
@@ -90,7 +93,7 @@ class AttachedPagesServerTests(unittest.TestCase):
         manifest = json.loads(body.decode("utf-8"))
         self.assertEqual(self.manifest, manifest)
 
-    def test_short_routes_redirect_and_serve_assets(self):
+    def test_short_and_named_routes_redirect_and_serve_assets(self):
         status, headers, body = self.request("GET", "/pages/1")
         self.assertEqual(302, status)
         self.assertEqual(b"", body)
@@ -104,7 +107,16 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertEqual(200, status)
         self.assertEqual("body { color: red; }\n", body.decode("utf-8"))
 
-        status, _, body = self.request("GET", "/pages/2-alpha-landing/beta.js")
+        status, headers, body = self.request("GET", "/named/alpha-landing-beta")
+        self.assertEqual(302, status)
+        self.assertEqual("/named/alpha-landing-beta/", dict(headers).get("Location"))
+        self.assertEqual(b"", body)
+
+        status, _, body = self.request("GET", "/named/alpha-landing-beta/")
+        self.assertEqual(200, status)
+        self.assertIn("beta", body.decode("utf-8"))
+
+        status, _, body = self.request("GET", "/named/alpha-landing-beta/beta.js")
         self.assertEqual(200, status)
         self.assertIn("betaLoaded", body.decode("utf-8"))
 
