@@ -14,7 +14,8 @@ param(
   [int]$WindowHeight = 900,
   [int]$ServerReadyAttempts = 40,
   [int]$WindowReadyAttempts = 80,
-  [int]$PollMilliseconds = 250
+  [int]$PollMilliseconds = 250,
+  [switch]$AllowMissingLocalAssets
 )
 
 Set-StrictMode -Version Latest
@@ -278,6 +279,31 @@ New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
 Remove-Item -LiteralPath $serverOut,$serverErr,$resultPath -Force -ErrorAction SilentlyContinue
 
 $fixtureFiles = Resolve-FixtureFiles
+$assetClosureChecker = Join-Path $repo "scripts\windows\check_local_html_fixture_asset_closure.ps1"
+if (-not (Test-Path -LiteralPath $assetClosureChecker -PathType Leaf)) {
+  throw "local HTML fixture asset-closure checker not found: $assetClosureChecker"
+}
+
+$assetClosureArgs = @{
+  RepoRoot = $repo
+  FixturePaths = @($fixtureFiles | ForEach-Object { $_.FullName })
+  Json = $true
+}
+if ($AllowMissingLocalAssets) {
+  $assetClosureArgs.AllowMissingAssets = $true
+}
+
+$assetClosureAuditJson = (& $assetClosureChecker @assetClosureArgs) -join [Environment]::NewLine
+$assetClosureAuditExitCode = $LASTEXITCODE
+$assetClosureAudit = if ([string]::IsNullOrWhiteSpace($assetClosureAuditJson)) {
+  $null
+} else {
+  $assetClosureAuditJson | ConvertFrom-Json -Depth 10
+}
+if ($assetClosureAuditExitCode -ne 0) {
+  exit $assetClosureAuditExitCode
+}
+
 $fixtureSpecs = @()
 for ($i = 0; $i -lt $fixtureFiles.Count; $i++) {
   $fixture = $fixtureFiles[$i]
@@ -386,14 +412,16 @@ $summary = [ordered]@{
   output_root = $outputRoot
   server_stdout = $serverOut
   server_stderr = $serverErr
+  allow_missing_local_assets = [bool]$AllowMissingLocalAssets
+  asset_closure_audit = $assetClosureAudit
   fixtures = $results
   fixture_count = $results.Count
   fixtures_with_missing_local_assets = @($results | Where-Object { $_.missing_local_asset_count -gt 0 }).Count
   server_meta = $serverMeta
 }
 
-$summary | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath $resultPath -NoNewline
-$summary | ConvertTo-Json -Depth 7
+$summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $resultPath -NoNewline
+$summary | ConvertTo-Json -Depth 8
 
 if ($results | Where-Object { -not $_.screenshot_ready -or -not $_.title_matched -or $_.error }) {
   exit 1
