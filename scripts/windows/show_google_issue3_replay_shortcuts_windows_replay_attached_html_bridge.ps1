@@ -98,7 +98,7 @@ Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $Repo
 
 $bridge = [ordered]@{
     issue = 'Google issue #3 replay-shortcuts Windows replay attached HTML bridge'
-    purpose = 'Print the shortest bridge from the replay-shortcuts surface into the Windows replay attached-page ladder while keeping the route-level fail-fast checks, the Windows-first route bridge, the dedicated Google-shaped attached-page guide, and the narrower attached-page follow-ups visible before the helper chain widens back into the safe-route map.'
+    purpose = 'Print the shortest bridge from the replay-shortcuts surface into the Windows replay attached-page ladder while keeping the route-level fail-fast checks, the Windows-first route bridge, the Windows-side catalog step, the dedicated Google-shaped attached-page guide, the newer top-level shortcut bridge, the replay-route shortcut bridge, the compact bundle-suite helper, and the narrower attached-page follow-ups visible before the helper chain widens back into the safe-route map.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -115,6 +115,10 @@ $bridge = [ordered]@{
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
+    top_level_shortcut_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md'
+    replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
+    attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
+    attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
     attached_html_shortcut_note_path = 'docs/ISSUE3_ATTACHED_HTML_SHORTCUT_BRIDGE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     commands = [ordered]@{
@@ -132,6 +136,9 @@ $bridge = [ordered]@{
         top_level_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         suite_catalog_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         suite_catalog_attached_html = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $sharedArguments
+        top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
+        replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments
+        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $sharedArguments
         contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $sharedArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $sharedArguments
@@ -145,10 +152,13 @@ $bridge = [ordered]@{
         'Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.',
         'Keep validation_router_quickstart, attached_html_change_area_quickstart, the dedicated Google-shaped attached-page guide, top_level_quickstart, top_level_entrypoint, top_level_catalog_quickstart, and suite_catalog_catalog_quickstart nearby when the narrower replay-side ladder still needs one broader attached-page checkpoint before it collapses into attached_html_shortcut or widens back into replay_shortcuts.',
         'Use suite_catalog_attached_html when the suite-catalog-side bridge should stay visible without reopening the broader router chain first.',
+        'Use top_level_shortcut_first when the replay-side attached-page ladder is already in place and you want the newer top-level shortcut bridge surfaced before the route collapses into the attached-page shortcut or the broader replay follow-up.',
+        'Use replay_route_shortcut right after the top-level shortcut bridge when you want the narrower replay-route companion surfaced before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.',
+        'Use attached_bundle_suite_surface when the current inputs are still the known three-page compatibility bundle but you still want the smallest suite-level surface printed before the narrower bundle-first helper takes over.',
         'Use attached_html_shortcut when the route is already narrow enough to stay inside the shorter issue #3 attached-page bridge before replay_shortcuts or safe_route_entrypoints are reopened.',
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper should keep that replay context aligned.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and the replay should stay on that locked route before widening back out.',
-        'Keep the replay-shortcuts note, the Windows replay attached-page quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router bridge note, the Windows full-use catalog quickstart note, the validation-router attached-page quickstart note, the attached-html change-area quickstart note, the Google attached-page flow note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-html catalog quickstart note, the suite-catalog attached-page bridge note, the attached-page shortcut note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the replay-shortcuts note, the Windows replay attached-page quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router bridge note, the Windows full-use catalog quickstart note, the validation-router attached-page quickstart note, the attached-html change-area quickstart note, the Google attached-page flow note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-html catalog quickstart note, the suite-catalog attached-page bridge note, the top-level shortcut bridge note, the replay-route shortcut bridge note, the attached-page shortcut note, the attached-html target-bundle reference note, the attached-html target-bundle suite-surface note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -203,6 +213,9 @@ Write-Host (("  Top-level bridge:         {0}") -f $bridge.commands.top_level_en
 Write-Host (("  Top-level catalog quick:  {0}") -f $bridge.commands.top_level_catalog_quickstart)
 Write-Host (("  Catalog bridge quick:     {0}") -f $bridge.commands.suite_catalog_catalog_quickstart)
 Write-Host (("  Suite-catalog bridge:     {0}") -f $bridge.commands.suite_catalog_attached_html)
+Write-Host (("  Top-level shortcut:       {0}") -f $bridge.commands.top_level_shortcut_first)
+Write-Host (("  Replay-route shortcut:    {0}") -f $bridge.commands.replay_route_shortcut)
+Write-Host (("  Bundle suite surface:     {0}") -f $bridge.commands.attached_bundle_suite_surface)
 Write-Host (("  Attached shortcut:        {0}") -f $bridge.commands.attached_html_shortcut)
 Write-Host (("  Contextual flow:          {0}") -f $bridge.commands.contextual_flow)
 Write-Host (("  Bundle first:             {0}") -f $bridge.commands.attached_bundle_first)
@@ -221,6 +234,10 @@ Write-Host (("Top-level bridge note:      {0}") -f (' ' + $bridge.top_level_atta
 Write-Host (("Top-level catalog note:     {0}") -f (' ' + $bridge.top_level_attached_html_catalog_quickstart_note_path))
 Write-Host (("Catalog bridge note:        {0}") -f (' ' + $bridge.suite_catalog_top_level_attached_html_catalog_quickstart_note_path))
 Write-Host (("Suite-catalog note:         {0}") -f (' ' + $bridge.suite_catalog_attached_html_bridge_note_path))
+Write-Host (("Top-level shortcut note:    {0}") -f (' ' + $bridge.top_level_shortcut_bridge_note_path))
+Write-Host (("Replay-route note:          {0}") -f (' ' + $bridge.replay_route_shortcut_bridge_note_path))
+Write-Host (("Bundle reference note:      {0}") -f (' ' + $bridge.attached_html_target_bundle_reference_note_path))
+Write-Host (("Bundle suite note:          {0}") -f (' ' + $bridge.attached_html_target_bundle_suite_surface_note_path))
 Write-Host (("Attached shortcut note:     {0}") -f (' ' + $bridge.attached_html_shortcut_note_path))
 Write-Host (("Validation chain note:      {0}") -f (' ' + $bridge.validation_chain_note_path))
 Write-Host ''
