@@ -84,6 +84,72 @@ function Format-HelperCommand {
     return $command
 }
 
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [hashtable]$Arguments = @{},
+        [string[]]$Switches = @(),
+        [string]$RepoRootOverride
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        $fallbackArguments = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in $Arguments.GetEnumerator()) {
+            if ($entry.Value -is [System.Array]) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values $entry.Value
+            } else {
+                Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            }
+        }
+        return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    foreach ($entry in $Arguments.GetEnumerator()) {
+        $value = $entry.Value
+        if ($null -eq $value) {
+            continue
+        }
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+            $valueList = @($value | Where-Object {
+                if ($_ -is [string]) {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                } else {
+                    $null -ne $_
+                }
+            })
+            if ($valueList.Count -eq 0) {
+                continue
+            }
+
+            $command += " -$($entry.Key)"
+            foreach ($item in $valueList) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
+            continue
+        }
+
+        $escapedValue = ("$value") -replace "'", "''"
+        $command += (" -{0} '{1}'" -f $entry.Key, $escapedValue)
+    }
+
+    foreach ($switchName in $Switches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+
+        $command += " -$switchName"
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
     $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
 }
@@ -96,9 +162,18 @@ Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values 
 $routeSurfaceArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $RepoRoot
 
+$attachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+
+$googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values $InputPath
+
 $bridge = [ordered]@{
     issue = 'Google issue #3 replay-shortcuts Windows replay attached HTML bridge'
-    purpose = 'Print the shortest bridge from the replay-shortcuts surface into the Windows replay attached-page ladder while keeping the route-level fail-fast checks, the Windows-first route bridge, the Windows-side catalog step, the dedicated Google-shaped attached-page guide, the newer top-level shortcut bridge, the replay-route shortcut bridge, the compact bundle-suite helper, and the narrower attached-page follow-ups visible before the helper chain widens back into the safe-route map.'
+    purpose = 'Print the shortest bridge from the replay-shortcuts surface into the Windows replay attached-page ladder while keeping the route-level fail-fast checks, the Windows-first route bridge, the Windows-side catalog step, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the newer top-level shortcut bridge, the replay-route shortcut bridge, the compact bundle-suite helper, and the narrower attached-page follow-ups visible before the helper chain widens back into the safe-route map.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -130,7 +205,15 @@ $bridge = [ordered]@{
         windows_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments
         validation_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'attached-html'
+        }) -RepoRootOverride $RepoRoot
+        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+            ChangeArea = 'attached-html-target-bundle'
+        }) -RepoRootOverride $RepoRoot
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $sharedArguments
+        attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
         top_level_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $sharedArguments
         top_level_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         top_level_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
@@ -150,7 +233,10 @@ $bridge = [ordered]@{
         'Run windows_route_surface_check and windows_route when the replay should keep the broader Windows full-use attached-page route visible beside the shorter replay-side ladder.',
         'Use windows_validation_bridge and windows_catalog_quickstart when the route still needs the Windows-first validation-router bridge and Windows-side catalog step kept visible before the narrower replay-side helper takes over.',
         'Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.',
-        'Keep validation_router_quickstart, attached_html_change_area_quickstart, the dedicated Google-shaped attached-page guide, top_level_quickstart, top_level_entrypoint, top_level_catalog_quickstart, and suite_catalog_catalog_quickstart nearby when the narrower replay-side ladder still needs one broader attached-page checkpoint before it collapses into attached_html_shortcut or widens back into replay_shortcuts.',
+        'Use attached_html_change_area and attached_bundle_change_area when the replay should reopen the broader validation-catalog surfaces for attached HTML and the pinned attached-bundle path before it narrows again.',
+        'Use attached_html_flow when the broader attached-page localhost helper should stay visible before the route narrows into the replay-side quickstart, the dedicated Google-shaped attached-page flow helper, the top-level attached-page notes, the attached-page shortcut, or the bundle-first branch. Explicit InputPath values stay pinned when they are already present.',
+        'Use google_attached_html_flow when the replay already includes a Google-like attached page and you want the dedicated Google-shaped attached-page flow guide visible before the route narrows into the top-level attached-page notes, the attached-page shortcut, the bundle-first branch, or the safe-route map.',
+        'Keep validation_router_quickstart, attached_html_change_area_quickstart, top_level_quickstart, top_level_entrypoint, top_level_catalog_quickstart, and suite_catalog_catalog_quickstart nearby when the narrower replay-side ladder still needs one broader attached-page checkpoint before it collapses into attached_html_shortcut or widens back into replay_shortcuts.',
         'Use suite_catalog_attached_html when the suite-catalog-side bridge should stay visible without reopening the broader router chain first.',
         'Use top_level_shortcut_first when the replay-side attached-page ladder is already in place and you want the newer top-level shortcut bridge surfaced before the route collapses into the attached-page shortcut or the broader replay follow-up.',
         'Use replay_route_shortcut right after the top-level shortcut bridge when you want the narrower replay-route companion surfaced before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.',
@@ -207,7 +293,11 @@ Write-Host (("  Validation bridge:        {0}") -f $bridge.commands.windows_vali
 Write-Host (("  Windows catalog quick:    {0}") -f $bridge.commands.windows_catalog_quickstart)
 Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)
 Write-Host (("  Validation-router quick:  {0}") -f $bridge.commands.validation_router_quickstart)
+Write-Host (("  Attached route:           {0}") -f $bridge.commands.attached_html_change_area)
+Write-Host (("  Bundle route:             {0}") -f $bridge.commands.attached_bundle_change_area)
 Write-Host (("  Change-area quickstart:   {0}") -f $bridge.commands.attached_html_change_area_quickstart)
+Write-Host (("  Attached flow helper:     {0}") -f $bridge.commands.attached_html_flow)
+Write-Host (("  Google attached flow:     {0}") -f $bridge.commands.google_attached_html_flow)
 Write-Host (("  Top-level quickstart:     {0}") -f $bridge.commands.top_level_quickstart)
 Write-Host (("  Top-level bridge:         {0}") -f $bridge.commands.top_level_entrypoint)
 Write-Host (("  Top-level catalog quick:  {0}") -f $bridge.commands.top_level_catalog_quickstart)
