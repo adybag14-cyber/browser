@@ -57,7 +57,7 @@ From there, prefer one of these narrower or route-preserving follow-ups before r
 - `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`
 - `show_google_issue3_attached_html_change_area_quickstart.ps1`
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1`
-- `show_google_issue3_top_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.ps1`
+- `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`
 - `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
@@ -442,7 +442,7 @@ Only jump straight to `show_google_issue3_replay_route_shortcut_entrypoint.ps1` 
 - saved summary or repo-root override already present: reopen the replay-route shortcut helper with that same context first, then choose the broader attached-page helpers, the top-level shortcut-first helper, the suite-router shortcut-first helper, replay shortcuts, the replay-shortcuts-to-Windows-replay bridge, the replay-side fail-fast check, the Windows replay attached-page quickstart, the suite-router next-step matrix, the contextual flow helper, or the safe-route map only as needed
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, then stay on the bundle-first helper before widening back into the broader Google-only path
 - current outputs may be stale or missing after the replay-route shortcut is already open: use `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` before the wrapper-heavy map so the current handoff artifact is regenerated from a clean safe-route replay first
-- a saved `SummaryPath` already exists and the outputs are still trusted: use `show_google_issue3_validation_safe_route_runner_PATCH_WRAPPER.ps1` before widening into a broader regeneration pass so the wrapper can reuse the current outputs directly
+- a saved `SummaryPath` already exists and the outputs are still trusted: use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` before widening into a broader regeneration pass so the wrapper can reuse the current outputs directly
 - attached-page follow-up still matters more than the general shortcut chain: reopen `show_attached_html_validation_flow.ps1`, `show_google_attached_html_validation_flow.ps1`, the validation-router attached HTML quickstart, the Windows replay attached-html quickstart, the top-level attached HTML catalog quickstart, the top-level shortcut-first entrypoint, the suite-catalog-to-top-level attached-html catalog quickstart, the suite-router shortcut-first entrypoint, the attached HTML shortcut, the replay-shortcuts-to-Windows-replay bridge, the replay-side fail-fast check, the Windows replay attached-page quickstart, the suite-router next-step matrix, or the contextual flow helper first, then widen into replay shortcuts or the safe-route map only after that attached-page route is clear
 
 Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
