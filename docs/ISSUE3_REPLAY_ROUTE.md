@@ -94,7 +94,11 @@ bundle-first reuse, or the safe-route stack.
 ## Bundle-first variant
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
@@ -103,7 +107,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 
 Use that route when the current saved or attached inputs are still the known
 three-page compatibility bundle and the replay should stay pinned there before
-widening again.
+widening again, but you still want the broader attached-page localhost flow,
+the dedicated Google-shaped attached-page flow, and the replay-route shortcut
+visible before the pinned bundle helper takes over.
 
 Keep `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` and
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby when you use that
@@ -128,9 +134,17 @@ the delegated bundle flow stay on the same compact written branch.
 4. Reopen the replay-route shortcut helper next when the route is already known
    and you want the smaller attached-page, replay-shortcuts, next-step-matrix,
    bundle-first, and safe-route companion surface.
-5. Stay on the replay-route bundle-first bridge and the bundle-first helper
+5. When the current saved or attached inputs are still the known three-page
+   compatibility bundle, reopen `show_headed_validation_suites.ps1 -ChangeArea attached-html`,
+   `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`,
+   `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`,
+   `show_attached_html_validation_flow.ps1`, and
+   `show_google_attached_html_validation_flow.ps1` before the replay-route
+   shortcut so the broader attached-page recovery paths stay visible beside the
+   pinned bundle branch.
+6. Stay on the replay-route bundle-first bridge and the bundle-first helper
    whenever explicit `InputPath` values are already pinned to the three-page
    compatibility set or when the replay-route helper already made that pinned
    branch the next obvious move.
-6. Reopen the longer validation-chain notes only after the replay has narrowed
+7. Reopen the longer validation-chain notes only after the replay has narrowed
    into the wrapper-heavy safe route again.
