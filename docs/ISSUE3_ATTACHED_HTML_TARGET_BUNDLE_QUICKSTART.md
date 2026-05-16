@@ -1,10 +1,11 @@
 # Issue #3 Attached HTML Target Bundle Quickstart
 
-Use this note when issue `#3` replay is already narrowed to the pinned three-page attached localhost compatibility bundle and you want the shortest read-first bridge from the top-level validation router into that locked bundle path.
+Use this note when issue `#3` replay is already narrowed to the pinned three-page attached localhost compatibility bundle and you want the shortest read-first bridge from the top-level validation router or the replay-route helper family into that locked bundle path.
 
 Keep these companion notes nearby:
 
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
+- `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
@@ -13,7 +14,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` when the current pages are still the known compatibility bundle, keep the bundle-first helper and delegated runner visible, and keep the broader attached-page fallback nearby before the route widens back into the larger issue `#3` helper stack.
+Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` when the current pages are still the known compatibility bundle and the route is still being chosen from the top-level validation router, or start from `show_google_issue3_replay_route.ps1` when the replay is already inside the narrower replay-route helper family. In both cases, keep the bundle-first helper and delegated runner visible, and keep the broader attached-page fallback nearby before the route widens back into the larger issue `#3` helper stack.
 
 If the broader attached localhost route still needs to stay visible beside the pinned bundle branch, reopen `show_attached_html_validation_flow.ps1` before you narrow again. If the replay still needs the Google-shaped attached-page helper surface beside the bundle route, reopen `show_google_attached_html_validation_flow.ps1` too. Treat those two helpers as the normal widen-back-out path when the current pages stop matching the pinned bundle or when the next failure needs the broader attached-page chain reprinted first.
 
@@ -50,6 +51,26 @@ Use that route when:
 - the current replay is already narrowed to the attached HTML target-bundle branch
 - the known three-page compatibility set should stay pinned through the checker, flow helper, and delegated localhost runner
 - you still want the broader attached-page fallback printed before widening back into the larger issue `#3` helper chain
+
+## Replay-route re-entry
+
+If the replay is already near `show_google_issue3_replay_route.ps1`, keep the replay-side helper surface visible just long enough to confirm that the next branch should still stay pinned to the same three-page bundle:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
+Use that route when:
+
+- the replay-route helper is already the current read-first surface
+- the current bundle likely still matches the known three-page compatibility set, but the replay-side shortcut and broader attached-page fallback should stay visible before the route narrows all the way down
+- you want the narrower replay-route helper family and the pinned bundle branch kept on one compact command ladder before the delegated localhost runner takes over
 
 ## Google-shaped fallback
 
@@ -88,6 +109,8 @@ Use that route when:
 If the replay is running from a non-default checkout, from explicit saved-page paths, or from a staged bundle outside the default search roots, keep that context attached from the start:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
@@ -115,4 +138,4 @@ The existing helpers already provide these pieces:
 
 ## Practical rule
 
-Once `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` has already made the pinned compatibility bundle the next obvious branch, prefer `show_google_issue3_attached_bundle_first_entrypoint.ps1`, keep the bundle surface checks and bundle flow helper together, and leave `show_attached_html_validation_flow.ps1` visible as the default widen-back-out path. Reopen `show_google_attached_html_validation_flow.ps1` when the next failure still looks Google-shaped, and only widen back into the longer issue `#3` helper chain after the bundle checker, delegated runner, or broader attached-page fallback makes the next failure state clear.
+Once the route has already made the pinned compatibility bundle the next obvious branch, prefer `show_google_issue3_attached_bundle_first_entrypoint.ps1`, keep the bundle surface checks and bundle flow helper together, and leave `show_attached_html_validation_flow.ps1` visible as the default widen-back-out path. Start from `show_google_issue3_replay_route.ps1` and its shortcut helper when the replay is already living inside the replay-side issue `#3` surfaces, reopen `show_google_attached_html_validation_flow.ps1` when the next failure still looks Google-shaped, and only widen back into the longer issue `#3` helper chain after the bundle checker, delegated runner, or broader attached-page fallback makes the next failure state clear.
