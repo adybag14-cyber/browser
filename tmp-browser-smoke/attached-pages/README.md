@@ -5,9 +5,10 @@ HTML exports that do not already live inside the repository.
 
 ## Goal
 
-Expose a directory of saved `.html` files, or one saved `.html` file with its
-sibling assets, through short localhost routes so the headed browser can open
-them without depending on long exported filenames.
+Expose a directory of saved `.html` files, one saved `.html` file with its
+sibling assets, or an explicit list of saved `.html` files through short
+localhost routes so the headed browser can open them without depending on long
+exported filenames.
 
 ## Usage
 
@@ -22,6 +23,18 @@ python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root C:\pat
 - a directory that contains one or more saved `.html` files
 - a single saved `.html` file when you want to replay one export without
   first moving it into a dedicated folder
+
+If you want the manifest to stay pinned to a specific attached-page set even
+when the surrounding directory contains extra HTML exports, pass the exact file
+list instead:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --input C:\path\to\Google Safety Centre.html `
+  --input C:\path\to\Anthropic Application.html `
+  --input C:\path\to\UAP Encounters.html `
+  --port 8235
+```
 
 Then open one of these URLs in the headed browser:
 
@@ -45,6 +58,10 @@ print the manifest JSON and exit without binding a port:
 python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root C:\path\to\saved-html --print-manifest
 ```
 
+That same manifest-print path also works with repeated `--input` arguments when
+you want to prove the exact pinned file list before starting the localhost
+catalog server.
+
 ## Self-check
 
 Run the focused harness regression locally with:
@@ -55,5 +72,5 @@ python .\tmp-browser-smoke\attached-pages\test_attached_pages_server.py
 
 The test covers the generated catalog, manifest route, short-route redirect,
 named-route redirect and asset loading, `HEAD` handling, `/raw/...`
-passthrough, the manifest-print CLI path, and the single-file root path against
-a temporary two-page bundle.
+passthrough, the manifest-print CLI path, the single-file root path, and the
+new explicit file-list path that pins the manifest to selected saved exports.
