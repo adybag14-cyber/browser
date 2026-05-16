@@ -30,6 +30,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
@@ -41,6 +43,7 @@ Use that route when:
 
 - the current attached pages are still the known three-page compatibility bundle or are very likely to narrow to it next
 - you want the `attached-html-target-bundle` change-area output reprinted with the broader attached-page suite surface and the Google-shaped attached-page suite surface still visible beside it
+- you want the fail-fast Google attached-page surface and asset-closure checks visible before the broader attached-page flow helper and the dedicated Google-shaped attached-page flow helper take over
 - you want the broader attached-page flow helper and the dedicated Google-shaped attached-page flow helper kept in view before the replay locks onto the delegated bundle validation runner
 
 ## Validation-catalog re-entry
@@ -51,6 +54,8 @@ If the replay is still being chosen from the main validation catalog and you wan
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
@@ -60,6 +65,7 @@ Use that route when:
 
 - the higher-level validation catalog or roadmap still needs to stay visible before the replay narrows into the pinned bundle lane
 - you want the broader attached-page and Google-shaped attached-page routes surfaced beside the compact bundle-focused suite helper rather than rediscovered later
+- you want the fail-fast Google attached-page surface and asset-closure checks carried forward before the narrower bundle-first helper takes over
 - you want the dedicated suite-surface helper aligned with the same broader catalog-first route that the surrounding bundle-reference and roadmap notes already describe
 
 ## Suite-catalog re-entry
