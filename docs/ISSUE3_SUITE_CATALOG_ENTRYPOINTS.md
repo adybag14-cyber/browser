@@ -106,7 +106,10 @@ the known three-page compatibility bundle. Keep
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby once that
 bundle-first lane is green so the pinned helper route and page-by-page manual
-checks stay attached to the same three-page set.
+checks stay attached to the same three-page set. Keep the fixed-list local
+fixture surface checker and probe nearby at that point too so the tighter
+screenshot-and-title proof can reuse the same pinned inputs without widening
+back into the broader attached-page wrapper flow.
 
 ## Recommended next helper
 
@@ -236,7 +239,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
@@ -245,6 +251,7 @@ Use that context-preserving form when:
 - `LIGHTPANDA_REPO_ROOT` must stay aligned to a non-default checkout
 - a saved `SummaryPath` already points at current replay outputs
 - explicit `InputPath` values are already pinned to the known three-page compatibility bundle
+- the tighter fixed-list screenshot-and-title proof should stay on that same pinned bundle after the bundle-first helper chain turns green
 
 ## Pick the next helper quickly
 
@@ -364,7 +371,10 @@ into the broader Google-only issue `#3` path. Keep
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby once that route
 is green so the pinned command surface and page-by-page manual checks stay on
-the same three-page set.
+the same three-page set. Once that bundle-first route is green, keep
+`check_local_html_fixture_validation_surface.ps1` and the fixed-list local
+fixture probe nearby too when you want tighter screenshot-and-title proof for
+the same pinned inputs.
 
 21. `show_google_issue3_safe_route_entrypoints.ps1`
 
@@ -395,7 +405,7 @@ validation-chain notes.
 - no pinned bundle inputs and no saved replay state yet: go from the suite-catalog helper to replay shortcuts when you only need the tightest current helper surface, or reopen the broader attached-html ladder first when attached localhost follow-up is already obvious
 - broader Windows-first route already in view: rerun the Windows full-use attached-page route, its route-level surface check, the Windows-to-validation-router bridge, the Windows-side catalog quickstart, the replay-side attached-html surface check, the replay-side attached-html quickstart, and the suite-catalog surface checker before returning to the suite-catalog helper
 - broader Google-shaped attached-page surface still matters: reopen `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, then `show_google_issue3_google_attached_html_entrypoint.ps1`, and then `show_google_attached_html_validation_flow.ps1` before the narrower helper chain
-- explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, then keep `show_google_issue3_attached_bundle_first_entrypoint.ps1` in front of the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader issue `#3` path
+- explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, then keep `show_google_issue3_attached_bundle_first_entrypoint.ps1` in front of the delegated bundle runner, the fixed-list local fixture surface checker, and the fixed-list proof probe so the known three-page compatibility set stays fixed before widening back into the broader issue `#3` path
 - saved summary or repo-root override already present: reopen this guide with the same context first, rerun the suite-catalog surface checker for that checkout, then choose contextual flow, replay shortcuts, the suite-router handoff, replay route, or the safe-route map only as needed
 
 Only reopen the longer validation-chain notes after the route has narrowed into
