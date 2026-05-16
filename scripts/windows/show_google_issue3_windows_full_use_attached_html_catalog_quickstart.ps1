@@ -136,13 +136,18 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$googleAttachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $googleAttachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+
 $windowsFullUseAttachedHtmlRouteSurfaceCheckCommand = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $bundleArguments
 $windowsFullUseValidationRouterAttachedHtmlBridgeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $bundleArguments
 $windowsReplayAttachedHtmlQuickstartCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 Windows full-use attached HTML catalog quickstart'
-    purpose = 'Keep the broader Windows full-use attached-page route and the newer top-level attached-page catalog quickstart visible on one compact helper before the replay narrows into the suite-catalog attached-page bridge, the shorter attached-page shortcut, the pinned bundle-first path, or the wrapper-heavy safe-route map.'
+    purpose = 'Keep the broader Windows full-use attached-page route, the dedicated Google-shaped attached-page flow helper, and the newer top-level attached-page catalog quickstart visible on one compact helper before the replay narrows into the suite-catalog attached-page bridge, the shorter attached-page shortcut, the pinned bundle-first path, or the wrapper-heavy safe-route map.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -169,6 +174,7 @@ $entrypoint = [ordered]@{
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
+        google_attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
@@ -182,6 +188,7 @@ $entrypoint = [ordered]@{
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     top_level_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
+    google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     notes = @(
         'Use this helper when docs/WINDOWS_FULL_USE.md has already narrowed the next replay to attached localhost follow-up and you want the route-level surface check, the Windows-to-validation-router bridge, and the replay-side attached-page quickstart reprinted beside the newer top-level attached-page catalog quickstart.',
@@ -189,9 +196,10 @@ $entrypoint = [ordered]@{
         'Use windows_replay_attached_html_quickstart as the default next helper when no pinned bundle inputs, saved summary, or non-default repo root need to take precedence first, because it keeps the replay-side attached-page quickstart visible before the route narrows into the top-level attached-page quickstart, the broader top-level attached-page bridge, the top-level attached-page catalog quickstart, the suite-router attached-page quickstart, the suite-catalog attached-page bridge, the shorter attached-page shortcut, replay shortcuts, or the safe-route map.',
         'Use top_level_attached_html_catalog_quickstart when you want the compact top-level attached-page quickstart and the suite-catalog-side attached-page bridge printed together before the route narrows into the shorter attached-page shortcut, replay shortcuts, contextual flow, or the safe-route map.',
         'Use suite_catalog_attached_html_entrypoint after the top-level catalog quickstart when the suite-catalog-side attached-page bridge should stay visible before the replay narrows again.',
+        'Use google_attached_html_validation_flow when the current attached inputs are already Google-shaped and you want the dedicated attached-page flow helper visible beside the broader Windows and top-level attached-page ladders before the route narrows back into the shorter issue #3 helper chain.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that bundle-first branch should stay visible before widening back into the broader issue #3 helper chain.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the suite-catalog attached-page bridge, replay shortcuts, the next-step matrix, the bundle-first branch, or the safe-route map.',
-        'Keep the Windows runbook, the Windows full-use attached-page route note, the Windows validation-router attached-page bridge note, the Windows replay attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
+        'Keep the Windows runbook, the Windows full-use attached-page route note, the Windows validation-router attached-page bridge note, the Windows replay attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the Google attached-page validation-flow note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
     )
 }
 
@@ -246,12 +254,13 @@ Write-Host ((" 11. Catalog quickstart:    {0}") -f $entrypoint.helper_commands.t
 Write-Host ((" 12. Router quickstart:     {0}") -f $entrypoint.helper_commands.suite_router_attached_html_quickstart)
 Write-Host ((" 13. Catalog bridge:        {0}") -f $entrypoint.helper_commands.suite_catalog_attached_html_entrypoint)
 Write-Host ((" 14. Google attached:       {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
-Write-Host ((" 15. Attached shortcut:     {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
-Write-Host ((" 16. Replay shortcuts:      {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 17. Next-step matrix:      {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 18. Contextual flow:       {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host ((" 19. Bundle first:          {0}") -f $entrypoint.helper_commands.attached_bundle_first)
-Write-Host ((" 20. Safe-route map:        {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
+Write-Host ((" 15. Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)
+Write-Host ((" 16. Attached shortcut:     {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host ((" 17. Replay shortcuts:      {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 18. Next-step matrix:      {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 19. Contextual flow:       {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host ((" 20. Bundle first:          {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host ((" 21. Safe-route map:        {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
 Write-Host ''
 Write-Host (("Windows runbook:            {0}") -f $entrypoint.windows_runbook_note_path)
 Write-Host (("Windows attached route:     {0}") -f $entrypoint.windows_full_use_attached_html_route_note_path)
@@ -259,6 +268,7 @@ Write-Host (("Windows validation bridge:  {0}") -f $entrypoint.windows_full_use_
 Write-Host (("Windows replay attached:    {0}") -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Catalog quickstart note:    {0}") -f $entrypoint.top_level_catalog_quickstart_note_path)
 Write-Host (("Catalog bridge note:        {0}") -f $entrypoint.suite_catalog_attached_html_bridge_note_path)
+Write-Host (("Google attached flow note:  {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
 Write-Host (("Replay quickstart note:     {0}") -f $entrypoint.windows_replay_quickstart_note_path)
 Write-Host ''
 Write-Host 'Notes:'
