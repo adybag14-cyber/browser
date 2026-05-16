@@ -458,6 +458,9 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         if ($suite.Name -eq "google-attached-html" -or $suite.Name -eq "attached-html-target-bundle") {
             $suiteResult | Add-Member -NotePropertyName broader_attached_html_flow_command -NotePropertyValue $attachedHtmlFlowCommand
         }
+        if ($suite.Name -eq "attached-html-target-bundle") {
+            $suiteResult | Add-Member -NotePropertyName google_attached_html_flow_command -NotePropertyValue $googleAttachedHtmlFlowCommand
+        }
         $suiteResult | ConvertTo-Json -Depth 5
         exit 0
     }
@@ -539,6 +542,7 @@ if ($PSCmdlet.ParameterSetName -eq "Suite") {
         Write-Host ("Surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
         Write-Host ("Flow helper: {0}" -f $attachedHtmlTargetBundleFlowCommand)
         Write-Host ("Broader attached-page flow helper: {0}" -f $attachedHtmlFlowCommand)
+        Write-Host ("Google attached-page flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
         Write-Host ("Runner: {0}" -f $attachedHtmlTargetBundleRunnerCommand)
         Write-Host ("Issue #3 top-level attached-HTML route: {0}" -f $googleIssue3TopLevelAttachedHtmlEntrypointCommand)
         Write-Host ("Issue #3 attached-page quickstart: {0}" -f $googleIssue3SuiteRouterAttachedHtmlQuickstartCommand)
@@ -574,13 +578,13 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
     } elseif ($ChangeArea -eq "google-attached-html") {
         "Start with the issue #3 attached-page quickstart when the next replay is already narrowed to attached localhost pages and you want the shorter attached-page bridge first, use the issue #3 top-level attached-HTML route when you want the broader attached-page helper surface instead, use the issue #3 top-level shortcut-first entrypoint when the route is already known to stay inside the attached-page Google stack but still needs the narrower helper surface, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then run the dedicated attached-HTML Google surface checker so the guide, helper, runner, and asset-audit chain fail fast, and print the dedicated attached-HTML Google flow helper so auto-discovered current-run pages stay on the same localhost-first issue #3 order before the manual follow-up or the smallest live Google retest. Use the bundle-first helper when those current pages are still the known three-page compatibility set."
     } elseif ($ChangeArea -eq "attached-html-target-bundle") {
-        "Start with the issue #3 attached-page quickstart when the next replay is already narrowed to the attached-page compatibility branch and you want the shorter attached-page bridge first, use the issue #3 top-level attached-HTML route when you want the broader attached-page helper surface instead, then use the issue #3 top-level shortcut-first entrypoint only when you want the shorter replay-helper surface first, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then use the bundle-first helper plus the bundle route surface checker so the bundle guide, checker, helper, and runner fail fast, and print the bundle flow helper plus the broader attached-page flow helper so the current three-page compatibility set stays on one pinned attached-page route before you drop to the delegated localhost runner or the broader attached-page fallbacks."
+        "Start with the issue #3 attached-page quickstart when the next replay is already narrowed to the attached-page compatibility branch and you want the shorter attached-page bridge first, use the issue #3 top-level attached-HTML route when you want the broader attached-page helper surface instead, then use the issue #3 top-level shortcut-first entrypoint only when you want the shorter replay-helper surface first, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then use the bundle-first helper plus the bundle route surface checker so the bundle guide, checker, helper, and runner fail fast, and print the bundle flow helper plus the broader attached-page flow helper and the dedicated Google attached-page flow helper so the current three-page compatibility set stays on one pinned attached-page route before you drop to the delegated localhost runner or the broader attached-page fallbacks."
     } elseif ($ChangeArea -eq "local-html-fixtures") {
         "Start with the dedicated local fixture surface checker so the reusable saved-export replay path fails fast if a guide, helper, or shared probe dependency moved, then run the fixed-list localhost fixture probe for screenshot and page-title proof before widening back out to the broader attached-page or manual headed follow-up."
     } elseif ($ChangeArea -eq "manual-html") {
         "Start with the matching bounded suite, then use the one-command recommended localhost HTML runner to auto-route attached or saved pages into the right helper before dropping to the printed flow map."
     } elseif ($ChangeArea -eq "attached-html") {
-        "Start with the issue #3 attached-page quickstart when the next replay is already narrowed to attached localhost pages and you want the shorter attached-page bridge first, use the issue #3 top-level attached-HTML route when you want the broader attached-page helper surface instead, use the issue #3 top-level shortcut-first entrypoint when you want the narrower replay helper surfaced from the same branch, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then stay on the attached HTML target-bundle route when the current workspace still holds the known three-page compatibility set, because it fails fast and pins the same locked inputs through the checker, bundle-first helper, flow helper, and delegated runner. Fall back to the broader attached-page flow helper only when the current pages are not that known bundle."
+        "Start with the issue #3 attached-page quickstart when the next replay is already narrowed to attached localhost pages and you want the shorter attached-page bridge first, use the issue #3 top-level attached-HTML route when you want the broader attached-page helper surface instead, use the issue #3 top-level shortcut-first entrypoint when you want the narrower replay helper surfaced from the same branch, or use the suite-catalog bridge plus the next-step matrix when you still want the broader replay helper chain re-established first. Then stay on the attached HTML target-bundle route when the current workspace still holds the known three-page compatibility set, because it fails fast and pins the same locked inputs through the checker, bundle-first helper, flow helper, and delegated runner. Fall back to the broader attached-page flow helper or the dedicated Google attached-page flow helper only when the current pages are not that known bundle."
     } else {
         "Start with the narrowest suite, then add one nearby shared-behavior suite if the change crosses subsystems."
     }
@@ -615,6 +619,12 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         $null
     }
 
+    $googleAttachedHtmlCompanionCommand = if ($ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "attached-html" -or $ChangeArea -eq "attached-html-target-bundle") {
+        $googleAttachedHtmlFlowCommand
+    } else {
+        $null
+    }
+
     if ($Json) {
         $result = [pscustomobject]@{
             change_area = $ChangeArea
@@ -624,6 +634,9 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         }
         if ($broaderAttachedHtmlFlowCommand) {
             $result | Add-Member -NotePropertyName broader_attached_html_flow_command -NotePropertyValue $broaderAttachedHtmlFlowCommand
+        }
+        if ($googleAttachedHtmlCompanionCommand) {
+            $result | Add-Member -NotePropertyName google_attached_html_flow_command -NotePropertyValue $googleAttachedHtmlCompanionCommand
         }
         $result | ConvertTo-Json -Depth 6
         exit 0
@@ -683,6 +696,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
         Write-Host ("Surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
         Write-Host ("Broader attached-page flow helper: {0}" -f $attachedHtmlFlowCommand)
+        Write-Host ("Google attached-page flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
     }
     if ($ChangeArea -eq "local-html-fixtures") {
         Write-Host ("Surface checker: {0}" -f $localHtmlFixtureSurfaceCheckCommand)
@@ -697,6 +711,7 @@ if ($PSCmdlet.ParameterSetName -eq "Change") {
         Write-Host ("Bundle-first helper: {0}" -f $googleIssue3AttachedBundleFirstEntrypointCommand)
         Write-Host ("Bundle surface checker: {0}" -f $attachedHtmlTargetBundleSurfaceCheckCommand)
         Write-Host ("Broader attached-page flow helper: {0}" -f $attachedHtmlFlowCommand)
+        Write-Host ("Google attached-page flow helper: {0}" -f $googleAttachedHtmlFlowCommand)
     }
     if ($flowCommand) {
         Write-Host ("Flow helper: {0}" -f $flowCommand)
