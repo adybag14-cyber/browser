@@ -177,12 +177,14 @@ $surface = [ordered]@{
         bundle_surface_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
         bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
         bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
+        top_level_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $reentryArguments
         bundle_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $reentryArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $reentryArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $reentryArguments
     }
     note_paths = [ordered]@{
         bundle_reference = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
+        top_level_attached_html_bridge = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
         bundle_first_bridge = 'docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md'
         google_attached_html_flow = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
         windows_replay_attached_html_quickstart = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
@@ -195,6 +197,7 @@ $surface = [ordered]@{
         'Keep the google_attached_html suite command nearby when the current inputs include a Google-like attached page and the narrower Google-shaped helper chain still matters before bundle-first replay.',
         'Run broader_attached_html_flow and google_attached_html_flow before the bundle-only route when the next decision still depends on seeing both attached-page ladders beside the bundle lane.',
         'Run bundle_surface_check before trusting the bundle-only replay after branch moves or helper renames.',
+        'Use top_level_attached_html_bridge when the bundle replay still needs the broader top-level attached-page bridge reprinted before the route drops into the bundle-first helper or the replay-route helpers.',
         'Use bundle_first_entrypoint when explicit input paths, repo-root context, or replay-route context are already in play and you want the narrower issue #3 bridge printed before the delegated bundle flow.',
         'Return to replay_route or replay_shortcuts only after the pinned bundle route makes the next attached-page failure state clear.'
     )
@@ -245,11 +248,13 @@ Write-Host (("  Bundle flow:     {0}") -f $surface.helper_commands.bundle_flow)
 Write-Host (("  Bundle runner:   {0}") -f $surface.helper_commands.bundle_runner)
 Write-Host ''
 Write-Host 'Narrower issue #3 re-entry:'
+Write-Host (("  Top-level bridge:{0}") -f (" $($surface.helper_commands.top_level_attached_html_bridge)"))
 Write-Host (("  Bundle-first:    {0}") -f $surface.helper_commands.bundle_first_entrypoint)
 Write-Host (("  Replay route:    {0}") -f $surface.helper_commands.replay_route)
 Write-Host (("  Replay shortcuts:{0}") -f (" $($surface.helper_commands.replay_shortcuts)"))
 Write-Host ''
 Write-Host (("Bundle reference note:      {0}") -f $surface.note_paths.bundle_reference)
+Write-Host (("Top-level bridge note:     {0}") -f $surface.note_paths.top_level_attached_html_bridge)
 Write-Host (("Bundle-first bridge note:   {0}") -f $surface.note_paths.bundle_first_bridge)
 Write-Host (("Google attached-flow note:  {0}") -f $surface.note_paths.google_attached_html_flow)
 Write-Host (("Replay quickstart note:     {0}") -f $surface.note_paths.windows_replay_attached_html_quickstart)
