@@ -149,6 +149,31 @@ class AttachedPagesServerTests(unittest.TestCase):
         manifest = json.loads(buffer.getvalue())
         self.assertEqual(self.manifest, manifest)
 
+    def test_single_file_root_preserves_assets_and_manifest(self):
+        single_root = self.root / "nested" / "beta.html"
+        manifest = server_module.build_manifest(single_root)
+        self.assertEqual(1, len(manifest))
+        self.assertEqual("beta.html", manifest[0]["file"])
+        self.assertEqual("/raw/beta.html", manifest[0]["raw_path"])
+
+        server, _ = server_module.create_server(single_root, bind="127.0.0.1", port=0)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                connection.request("GET", "/pages/1/beta.js")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                self.assertIn("betaLoaded", response.read().decode("utf-8"))
+            finally:
+                connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
 
 if __name__ == "__main__":
     unittest.main()
