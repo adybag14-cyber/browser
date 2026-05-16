@@ -10,6 +10,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 
 If a replay already carries `RepoRoot`, `SummaryPath`, or pinned attached bundle paths, keep that same context on the helper first and only then widen back into the written notes.
 
+When the next rerun is already pinned to the known three-page compatibility bundle, keep the replay-route bundle-first bridge, the compact bundle quickstart, and the pinned manual checklist on the same written surface before widening back into the broader attached-page note family.
+
 If the route is reopening from the broader Windows-first branch or is already close to the narrowest attached-page shortcut, rerun the linked surface checks before widening back into the written note family:
 
 ```powershell
@@ -43,6 +45,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_a
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md` when the suite-catalog-side attached-page bridge should stay visible before the replay narrows into shortcuts or safe-route helpers
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md` when the attached-page route is already clear and you want the narrower replay-route companion visible before widening into replay shortcuts or the safe-route map
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` when explicit bundle paths are already pinned and the next replay should stay on the known three-page compatibility set
+- `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` when the replay-route helper family is already open and you want the narrowest written bridge back to the pinned three-page compatibility bundle before the replay widens again
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md` when the compact bundle-first command ladder should stay visible beside the broader top-level attached-page helper family
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when explicit bundle paths are already pinned and the page-by-page manual checks plus fixed-list screenshot-and-title proof should stay attached to that same three-page set
 - `docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md` when the attached-page route is about to widen back into replay shortcuts or the wrapper-heavy issue `#3` map
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` when the attached-page route is done and the next step needs the broader wrapper-heavy checkpoints again
 
@@ -58,6 +63,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_a
 8. Rerun `check_google_issue3_attached_html_shortcut_validation_surface.ps1`, then reopen `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md` or `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md` when the route is already close to the narrowest attached-page or suite-router shortcut surface and you want that shorter helper family visible before the replay widens again.
 9. Drop to the suite-router attached-page quickstart only after the route guard, the attached-shortcut guard, and the top-level attached-page notes are out of the way.
 10. Reopen `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` when the replay-side attached-page quickstart already made the narrower lane obvious and you want that shorter replay ladder visible before the top-level notes take over.
-11. Reopen the replay-route shortcut bridge, the replay discovery handoff, or the attached-html target bundle reference only after the attached-page shortcut, the suite-router shortcut bridge, the top-level shortcut-first entrypoint, or the top-level catalog route is out of the way.
+11. Reopen `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, the replay-route shortcut bridge, the replay discovery handoff, the attached-html target bundle reference, the attached-html target bundle quickstart, or the attached-html target bundle checklist only after the attached-page shortcut, the suite-router shortcut bridge, the top-level shortcut-first entrypoint, or the top-level catalog route is out of the way.
 12. When the next step needs the wrapper-heavy safe path again, use `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` if outputs may be stale or missing, and use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` only when a saved `SummaryPath` is already trusted.
 13. Return to the full validation chain only when the next step needs the broader wrapper-heavy safe route again.
