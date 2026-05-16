@@ -22,6 +22,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
@@ -33,7 +34,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, `show_google_attached_html_validation_flow.ps1`, `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, or `docs/WINDOWS_FULL_USE.md` via `show_google_issue3_windows_full_use_attached_html_route.ps1`, then move immediately into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` when the next replay is already known to stay on the attached-page follow-up path.
+Start from `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle`, `show_google_attached_html_validation_flow.ps1`, `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`, `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, or `docs/WINDOWS_FULL_USE.md` via `show_google_issue3_windows_full_use_attached_html_route.ps1`, then move immediately into `show_google_issue3_attached_html_shortcut_entrypoint.ps1` when the next replay is already known to stay on the attached-page follow-up path and should keep the Google-shaped guide visible as a nearby written route.
 
 If the replay is reopening from the broader Windows-first route or from the replay-side attached-html quickstart, keep those broader helper ladders visible long enough to rerun the route-level surface check and confirm the narrower shortcut chain is still aligned before this note takes over.
 
@@ -197,7 +198,7 @@ Once `show_headed_validation_suites.ps1` has already narrowed the route to attac
 - replay reopened from `docs/WINDOWS_FULL_USE.md`: go from `show_google_issue3_windows_full_use_attached_html_route.ps1` to `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, then the Windows full-use validation-router bridge, then the Windows full-use attached-html catalog quickstart, then `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, then the top-level attached-page quickstart, then this attached-page shortcut bridge, then the suite-router shortcut bridge before widening again
 - replay reopened from `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`: reopen `show_google_issue3_windows_replay_attached_html_quickstart.ps1` first, then the attached-html change-area quickstart, then the top-level attached-page quickstart, then this attached-page shortcut bridge, then the suite-router shortcut bridge, then replay shortcuts before widening again
 - no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` or `-ChangeArea google-attached-html` to the attached-html change-area quickstart, then the top-level attached-page quickstart, then the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint, then replay shortcuts, then the next-step matrix or safe-route map
-- broader attached-page localhost-first helper still matters: go from `show_headed_validation_suites.ps1 -ChangeArea google-attached-html` or `show_google_attached_html_validation_flow.ps1` to the attached-html change-area quickstart, then the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint before narrowing further
+- broader attached-page localhost-first helper still matters: go from `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, `show_google_attached_html_validation_flow.ps1`, or `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` to the attached-html change-area quickstart, then the attached-page shortcut entrypoint, then the suite-router shortcut entrypoint before narrowing further
 - explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
 - saved summary or repo-root override already present: reopen the attached-page shortcut entrypoint with that same context first, then choose replay shortcuts, the next-step matrix, contextual flow through the suite-router matrix, or the safe-route map only as needed
 
