@@ -36,12 +36,17 @@ Use `show_google_issue3_replay_shortcuts.ps1` when you want the broader Google r
 
 Use `-ChangeArea attached-html` when attached localhost compatibility follow-up is already the next obvious branch and you want the route-level surface check, the broader Windows-full-use route, the Windows full-use validation-router bridge, the Windows full-use attached-html catalog quickstart, the replay-side attached-html quickstart, the validation-router attached-page quickstart, the compact top-level attached-page quickstart, the top-level attached-page catalog quickstart, the broader suite-catalog guide, the suite-catalog attached-page bridge, the Google-shaped attached-page flow, the top-level shortcut bridge, and the replay-route shortcut surfaced before the wrapper-heavy safe-route notes narrow the replay again.
 
-When the current saved or attached inputs are the known three-page compatibility bundle, also open the attached bundle route directly from the higher-level router before widening into the wrapper-heavy Google-only helpers:
+When the current saved or attached inputs are the known three-page compatibility bundle, also open the attached bundle route directly from the higher-level router before widening into the wrapper-heavy Google-only helpers, and keep the bundle-first helper, fail-fast surface checks, pinned manual checklist, and reusable fixed-list proof path visible on the same locked inputs:
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_local_html_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\local-html-fixtures\\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
 
 After that read-first discovery pass, prefer the safe-route wrapper entrypoints below when the work is specifically resuming the saved runner-output handoff chain.
@@ -101,6 +106,7 @@ Keep these nearby when you want the written route beside the helper output:
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md` when the broader suite-catalog guide should stay visible beside the replay-side and top-level attached-page ladders
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md` when the suite-catalog-side attached-page bridge should stay visible before replay shortcuts or safe-route helpers
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` when the current attached-page follow-up is already Google-shaped and should stay visible before the helper chain narrows again
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the current attached inputs are already the known three-page compatibility bundle and you want the bundle-first helper, pinned checklist, and reusable proof path kept visible before the route widens back into the issue `#3` safe helpers
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md` when the replay-route shortcut companion surface should stay visible before the route collapses into the shorter attached-page helper chain
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md` when the route is ready to narrow back toward the suite-router side
 
@@ -153,10 +159,10 @@ Use the live-trace helper last when the bounded localhost and shared gates are a
 
 ## Attached three-page bundle route
 
-Use the attached bundle route before the wrapper-heavy issue `#3` safe route when the current work item is still the pinned three-page compatibility bundle.
+Use the attached bundle route before the wrapper-heavy issue `#3` safe route when the current work item is still the pinned three-page compatibility bundle and you want the bundle-first helper, fail-fast surface checks, pinned manual checklist, and reusable fixed-list proof path kept on the same locked inputs.
 
 Why this route comes first in that case:
-- it keeps the surface check, flow helper, and delegated localhost runner pinned to the same locked input set
+- it keeps the bundle-first helper, surface check, checker, flow helper, delegated localhost runner, pinned manual checklist, and reusable fixed-list proof path pinned to the same locked input set
 - it avoids widening back into the broader Google-only wrapper chain before the current bundle replay has clarified the next failure state
 - it gives the next Windows replay one stable route for the attached compatibility targets before returning to the narrower safe-route entrypoints
 
@@ -164,11 +170,16 @@ Use these commands in order:
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_local_html_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\local-html-fixtures\\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
 
-Return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay makes the next runner-output, handoff, or Google-style input state clear again. When that return still needs the same pinned bundle path, reopen `show_google_issue3_replay_shortcuts.ps1 -InputPath '<bundle-html-or-folder>'` first or pass the same `-InputPath` into the safe-route entrypoints helper so the next wrapper stays on the locked bundle instead of falling back to auto-discovery.
+Return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay or the reusable fixed-list proof path makes the next runner-output, handoff, or Google-style input state clear again. When that return still needs the same pinned bundle path, reopen `show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'` or `show_google_issue3_replay_shortcuts.ps1 -InputPath '<bundle-html-or-folder>'` first, or pass the same `-InputPath` into the safe-route entrypoints helper so the next wrapper stays on the locked bundle instead of falling back to auto-discovery.
 
 ## One-command safe-route entrypoints map
 
@@ -406,6 +417,7 @@ If two helpers disagree:
 - prefer the wrapper over the raw command when a wrapper already exists for that checkpoint
 - prefer `run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1` as the default fresh replay entrypoint; use `show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1` when reusing current saved outputs is intentional
 - if a `safe_path_route` wrapper already exists for the current checkpoint, prefer it when you want the safe helper and its bounded raw follow-up reopened in one step
+- if the current saved or attached inputs are already the known three-page compatibility bundle, prefer `show_google_issue3_attached_bundle_first_entrypoint.ps1`, `check_attached_html_target_bundle_validation_surface.ps1`, `check_attached_html_target_bundle.ps1`, `show_attached_html_target_bundle_validation_flow.ps1`, `run_attached_html_target_bundle_validation.ps1 -Wait`, `check_local_html_fixture_validation_surface.ps1`, and `tmp-browser-smoke\\local-html-fixtures\\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'` before widening back into the wrapper-heavy safe-route helpers
 - if attached localhost follow-up is already obvious from `show_headed_validation_suites.ps1 -ChangeArea attached-html` or from `docs/WINDOWS_FULL_USE.md`, reopen `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`, `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`, `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`, `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, `show_google_issue3_validation_router_attached_html_quickstart.ps1`, `show_google_issue3_top_level_attached_html_quickstart.ps1`, `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`, `show_google_issue3_suite_catalog_entrypoints.ps1`, `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`, `show_google_attached_html_validation_flow.ps1`, `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`, and `show_google_issue3_replay_route_shortcut_entrypoint.ps1` before dropping into the compact top-level attached-page bridge, the attached-page shortcut, or the broader safe-route notes
 - otherwise prefer the helper with `safe` in the name unless the safe helper explicitly says the raw helper is ready
 - if the raw wiring audit says `saved-artifacts-stale-runner-already-wired`, prefer saved-output regeneration or repair over another direct runner patch
