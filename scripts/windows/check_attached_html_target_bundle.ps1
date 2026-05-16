@@ -114,6 +114,37 @@ function Convert-ToPowerShellArgumentList {
     return ($Values | ForEach-Object { Convert-ToSingleQuotedPowerShellArgument -Value $_ }) -join " "
 }
 
+function Get-ResolvedExplicitBundleInputPaths {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$InputPath
+    )
+
+    $resolvedPaths = [System.Collections.Generic.List[string]]::new()
+    foreach ($rawPath in $InputPath) {
+        $resolvedItems = @(Resolve-Path -LiteralPath $rawPath -ErrorAction Stop)
+        foreach ($resolvedItem in $resolvedItems) {
+            $item = Get-Item -LiteralPath $resolvedItem.Path -ErrorAction Stop
+            if ($item.PSIsContainer) {
+                $fixturePaths = @(
+                    Get-ChildItem -LiteralPath $item.FullName -Recurse -File |
+                        Where-Object { $_.Extension -in @(".html", ".htm") } |
+                        Sort-Object FullName |
+                        ForEach-Object { $_.FullName }
+                )
+                foreach ($fixturePath in $fixturePaths) {
+                    Add-UniqueString -List $resolvedPaths -Value $fixturePath
+                }
+                continue
+            }
+
+            Add-UniqueString -List $resolvedPaths -Value $item.FullName
+        }
+    }
+
+    return @($resolvedPaths)
+}
+
 function Get-ResolvedBundleCandidates {
     param(
         [Parameter(Mandatory = $true)]
@@ -122,7 +153,7 @@ function Get-ResolvedBundleCandidates {
     )
 
     $paths = if ($InputPath -and $InputPath.Count -gt 0) {
-        @($InputPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
+        @(Get-ResolvedExplicitBundleInputPaths -InputPath $InputPath)
     } else {
         @(Get-AttachedHtmlCandidates -RepoRoot $RepoRoot | ForEach-Object { $_.FullName })
     }
