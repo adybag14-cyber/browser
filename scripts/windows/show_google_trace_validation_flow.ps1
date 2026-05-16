@@ -52,6 +52,7 @@ $surfaceCheck = '.\\scripts\\windows\\check_google_trace_validation_surface.ps1'
 $reducedTraceProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-home-enter-trace-probe.ps1'
 $wrapperRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $liveTraceProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-home-input-probe.ps1'
+$artifactGuide = '.\\scripts\\windows\\show_google_trace_artifact_guide.ps1'
 $submitTimingFlow = '.\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1'
 $sharedEnterOrderFlow = '.\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1'
 $attachedHtmlFlow = '.\\scripts\\windows\\show_google_attached_html_validation_flow.ps1'
@@ -91,6 +92,9 @@ Add-SharedArgument -Arguments $liveTraceArgs -Name PollMilliseconds -Value $Poll
 if ($LeaveOpen) {
     $liveTraceArgs.Add('-LeaveOpen')
 }
+
+$artifactGuideArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $artifactGuideArgs -Name RepoRoot -Value $RepoRoot
 
 $submitTimingFlowArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $submitTimingFlowArgs -Name RepoRoot -Value $RepoRoot
@@ -146,6 +150,7 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} after any reduced-home or live Google capture when you want the current trace files, their tails, and the closest follow-up helpers printed on one surface." -f $artifactGuide, $(if ($artifactGuideArgs.Count -gt 0) { " " + ($artifactGuideArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you need to re-walk the bounded keydown, keypress, and submit ordering with the same repo-root, browser, host, and input context before another live capture." -f $submitTimingFlow, $(if ($submitTimingFlowArgs.Count -gt 0) { " " + ($submitTimingFlowArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the stricter shared Enter-order stack printed with the same repo-root, browser, host, and input context before the next live trace rerun." -f $sharedEnterOrderFlow, $(if ($sharedEnterOrderFlowArgs.Count -gt 0) { " " + ($sharedEnterOrderFlowArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when the next question is whether the current attached or saved Google-style localhost pages diverge before the live Google homepage does." -f $attachedHtmlFlow, $(if ($attachedHtmlFlowArgs.Count -gt 0) { " " + ($attachedHtmlFlowArgs -join " ") } else { "" }))
@@ -153,6 +158,7 @@ $flow = [ordered]@{
     notes = @(
         "Start with the shared suite-router entry when you need the live-trace lane, its neighboring suites, and the dedicated helper surface reintroduced before you dive into raw trace commands.",
         "Run the trace surface checker first so missing guides, runner wiring, or probe files fail before the later-stage capture looks trustworthy.",
+        "After any capture, print the trace artifact guide so the reduced-home logs, live-home logs, and Google-focused runtime traces stay on one repeatable inspection surface.",
         "Treat this helper as a later-stage investigation handoff, not the first gate. Start with the reduced localhost probes and shared input stacks first.",
         "Use the wrapper unless you already know you need the raw direct probe outputs from tmp-browser-smoke/google-investigation-next.",
         "When LeaveOpen is set, the reduced and live trace commands keep the headed window open after capture so the real surface can be inspected before teardown.",
