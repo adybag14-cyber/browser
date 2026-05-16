@@ -88,21 +88,6 @@ if ($bundleCheckerArgs.Count -gt 0) {
     $printedBundleCheckerCommand += " " + ($bundleCheckerArgs -join " ")
 }
 
-$issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1"
-if ($bundleCheckerArgs.Count -gt 0) {
-    $issue3SuiteRouterNextStepsCommand += " " + ($bundleCheckerArgs -join " ")
-}
-
-$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1"
-if ($bundleCheckerArgs.Count -gt 0) {
-    $issue3ReplayShortcutsCommand += " " + ($bundleCheckerArgs -join " ")
-}
-
-$localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1"
-if ($bundleCheckerArgs.Count -gt 0) {
-    $localHtmlFixtureSurfaceCheckCommand += " " + ($bundleCheckerArgs -join " ")
-}
-
 $invokeArgs = @{ Json = $true }
 if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
     $invokeArgs.RepoRoot = $RepoRoot
@@ -148,6 +133,29 @@ $targetSummary = @(
 )
 
 $resolvedFixturePaths = @($resolvedTargets | ForEach-Object { $_.path } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+$pinnedBundleFollowUpArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $pinnedBundleFollowUpArgs -Name RepoRoot -Value $RepoRoot
+if ($resolvedFixturePaths.Count -gt 0) {
+    Add-SharedPathArrayArgument -Arguments $pinnedBundleFollowUpArgs -Name InputPath -Values $resolvedFixturePaths
+} else {
+    Add-SharedPathArrayArgument -Arguments $pinnedBundleFollowUpArgs -Name InputPath -Values $InputPath
+}
+
+$issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1"
+if ($pinnedBundleFollowUpArgs.Count -gt 0) {
+    $issue3SuiteRouterNextStepsCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
+}
+
+$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1"
+if ($pinnedBundleFollowUpArgs.Count -gt 0) {
+    $issue3ReplayShortcutsCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
+}
+
+$localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1"
+if ($pinnedBundleFollowUpArgs.Count -gt 0) {
+    $localHtmlFixtureSurfaceCheckCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
+}
+
 $localHtmlFixtureProbeCommand = $null
 if ($resolvedFixturePaths.Count -gt 0) {
     $fixtureProbeArgs = [System.Collections.Generic.List[string]]::new()
@@ -167,6 +175,7 @@ $flow = [ordered]@{
     matched_target_count = $bundle.matched_target_count
     validation_profile = $overall.bundle_validation_profile
     locked_input_count = $overall.bundle_locked_input_count
+    locked_input_paths = $resolvedFixturePaths
     preferred_initial_page = $overall.preferred_initial_page_display_path
     first_change_area = $overall.first_change_area
     suite_router_command = $suiteRouterCommand
@@ -226,6 +235,7 @@ $flow = [ordered]@{
         $suiteRouterNote,
         "Keep docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md nearby for the page-by-page manual checks once the bundle-pinned localhost route is green.",
         "Use the reusable fixed-list fixture surface check and probe when you want screenshot-and-title proof for the same locked inputs without reopening the broader attached-page wrapper flow.",
+        "When the bundle targets resolve successfully, the printed issue #3 next-step, replay-shortcuts, and local-fixture surface-check commands already carry the same locked paths forward, even when the current bundle started from auto-discovery.",
         "Use the issue #3 next-step matrix when you want the compact branch chooser reprinted with the same pinned bundle inputs before deciding whether to stay on the bundle route or reopen the narrower replay-shortcuts helper.",
         "Use the issue #3 replay-shortcuts helper after the bundle flow or bundle runner when the attached-page replay has already narrowed the failure and you want the narrower safe-route, replay-route, and bundle-first commands preserved with the same pinned inputs.",
         "The preferred initial page stays pinned to the Google Safety Centre target when the current bundle includes the Google-style page, so the issue #3 localhost-first follow-up remains aligned with the current runbook.",
