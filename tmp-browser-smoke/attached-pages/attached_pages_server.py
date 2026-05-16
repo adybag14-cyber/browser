@@ -78,13 +78,25 @@ def choose_slug_route(rel_path: str, title: str, *, used_slug_routes: set[str]) 
         suffix += 1
 
 
+def normalize_bundle_root(root: Path) -> tuple[Path, list[Path]]:
+    resolved_root = Path(root).expanduser().resolve()
+    if resolved_root.is_dir():
+        html_files = sorted(path for path in resolved_root.rglob("*.html") if path.is_file())
+        return resolved_root, html_files
+
+    if resolved_root.is_file() and resolved_root.suffix.lower() == ".html":
+        return resolved_root.parent, [resolved_root]
+
+    raise FileNotFoundError(f"bundle root does not exist: {resolved_root}")
+
+
 def build_manifest(root: Path) -> list[dict[str, str]]:
+    bundle_root, html_files = normalize_bundle_root(root)
     entries: list[dict[str, str]] = []
     used_alias_routes: set[str] = set()
     used_slug_routes: set[str] = set()
-    html_files = sorted(path for path in root.rglob("*.html") if path.is_file())
     for index, path in enumerate(html_files, start=1):
-        rel_path = path.relative_to(root).as_posix()
+        rel_path = path.relative_to(bundle_root).as_posix()
         title = extract_title(path)
         short_slug = shorten_slug(title if title else path.stem)
         route = f"/pages/{index}"
@@ -204,12 +216,13 @@ def ensure_within_root(root: Path, target: Path) -> Path | None:
     return resolved_target
 
 
-def build_bundle_state(root: Path) -> tuple[list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes]:
+def build_bundle_state(root: Path) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes]:
+    bundle_root, _ = normalize_bundle_root(root)
     manifest = build_manifest(root)
     route_lookup = build_route_lookup(manifest)
     index_bytes = render_index(manifest)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
-    return manifest, route_lookup, index_bytes, manifest_bytes
+    return bundle_root, manifest, route_lookup, index_bytes, manifest_bytes
 
 
 class ReuseServer(ThreadingHTTPServer):
@@ -217,15 +230,11 @@ class ReuseServer(ThreadingHTTPServer):
 
 
 def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> tuple[ReuseServer, list[dict[str, str]]]:
-    root = Path(root).expanduser().resolve()
-    if not root.is_dir():
-        raise FileNotFoundError(f"bundle root does not exist: {root}")
-
-    manifest, route_lookup, index_bytes, manifest_bytes = build_bundle_state(root)
+    bundle_root, manifest, route_lookup, index_bytes, manifest_bytes = build_bundle_state(root)
 
     class AttachedPagesHandler(SimpleHTTPRequestHandler):
         def __init__(self, *handler_args, **handler_kwargs):
-            super().__init__(*handler_args, directory=str(root), **handler_kwargs)
+            super().__init__(*handler_args, directory=str(bundle_root), **handler_kwargs)
 
         def end_headers(self):
             self.send_header("Cache-Control", "no-store")
@@ -245,12 +254,12 @@ def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> t
             self.end_headers()
 
         def send_page_asset(self, entry: dict[str, str], asset_suffix: str, *, head_only: bool = False):
-            page_file = root / entry["file"]
+            page_file = bundle_root / entry["file"]
             if asset_suffix in ("", "index.html"):
                 self.send_bytes(page_file.read_bytes(), "text/html; charset=utf-8", head_only=head_only)
                 return
 
-            asset_path = ensure_within_root(root, page_file.parent / unquote(asset_suffix))
+            asset_path = ensure_within_root(bundle_root, page_file.parent / unquote(asset_suffix))
             if asset_path is None or not asset_path.is_file():
                 self.send_error(404, "File not found")
                 return
@@ -293,7 +302,7 @@ def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> t
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Serve an attached HTML bundle for headed-mode smoke validation.")
-    parser.add_argument("--root", required=True, help="Directory that contains the saved HTML files.")
+    parser.add_argument("--root", required=True, help="Directory or single HTML file to expose.")
     parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
     parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
     parser.add_argument(
@@ -303,17 +312,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    root = Path(args.root).expanduser().resolve()
-    if not root.is_dir():
-        raise FileNotFoundError(f"bundle root does not exist: {root}")
-
     if args.print_manifest:
-        print(json.dumps(build_manifest(root), indent=2))
+        print(json.dumps(build_manifest(Path(args.root)), indent=2))
         return 0
 
-    server, manifest = create_server(root, bind=args.bind, port=args.port)
+    server, manifest = create_server(Path(args.root), bind=args.bind, port=args.port)
     host, port = server.server_address
-    print(f"Serving {len(manifest)} attached pages from {root} at http://{host}:{port}/")
+    print(f"Serving {len(manifest)} attached pages from {Path(args.root).expanduser().resolve()} at http://{host}:{port}/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
