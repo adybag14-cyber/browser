@@ -42,6 +42,18 @@ Use `route` in scripts when you want the smallest possible URL and
 manual notes. Both redirect to a trailing-slash page route before the HTML is
 served so bundle-relative assets keep working.
 
+## Self-check
+
+Run the focused harness regression locally with:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\test_attached_pages_server.py
+```
+
+The test covers the generated catalog, manifest route, short-route redirect,
+alias-route asset loading, `HEAD` handling, and `/raw/...` passthrough against
+a temporary two-page bundle.
+
 ## Current compatibility target
 
 For the current headed-mode validation loop, point `--root` at the directory
