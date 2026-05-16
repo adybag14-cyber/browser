@@ -37,6 +37,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
@@ -111,10 +112,12 @@ widening again, but you still want the broader attached-page localhost flow,
 the dedicated Google-shaped attached-page flow, and the replay-route shortcut
 visible before the pinned bundle helper takes over.
 
-Keep `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` and
+Keep `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`,
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, and
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby when you use that
-bundle-first route so the replay-route shortcut, the pinned bundle helper, and
-the delegated bundle flow stay on the same compact written branch.
+bundle-first route so the replay-route shortcut, the compact bundle quickstart,
+the pinned bundle helper, and the delegated bundle flow stay on the same compact
+written branch.
 
 ## Practical rule
 
@@ -142,9 +145,9 @@ the delegated bundle flow stay on the same compact written branch.
    `show_google_attached_html_validation_flow.ps1` before the replay-route
    shortcut so the broader attached-page recovery paths stay visible beside the
    pinned bundle branch.
-6. Stay on the replay-route bundle-first bridge and the bundle-first helper
-   whenever explicit `InputPath` values are already pinned to the three-page
-   compatibility set or when the replay-route helper already made that pinned
-   branch the next obvious move.
+6. Stay on the replay-route bundle-first bridge, the compact bundle quickstart,
+   and the bundle-first helper whenever explicit `InputPath` values are already
+   pinned to the three-page compatibility set or when the replay-route helper
+   already made that pinned branch the next obvious move.
 7. Reopen the longer validation-chain notes only after the replay has narrowed
    into the wrapper-heavy safe route again.
