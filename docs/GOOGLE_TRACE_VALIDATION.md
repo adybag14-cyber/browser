@@ -53,6 +53,20 @@ That helper keeps the suite-router reminder, the dedicated surface check, the
 reduced-home trace probe, the shared wrapper trace phase, and the raw live
 probe on one small command surface before you widen again.
 
+## Read the produced trace artifacts
+
+After any reduced-home or live Google trace run, print the current artifact
+surface with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_artifact_guide.ps1
+```
+
+That helper keeps the reduced-home browser and server logs, the live-home
+browser logs, and the Google-focused runtime trace files on one repeatable
+inspection surface before you decide whether to re-run bounded localhost
+checkpoints or touch the headed input path.
+
 ## One-command trace runner
 
 When you want the dedicated trace surface check and the shared trace phase on
@@ -123,6 +137,7 @@ trace as evidence for more engine work.
 
 After this later trace slice is green:
 
+- print `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_artifact_guide.ps1` so the reduced-home, live-home, and runtime logs stay grouped before comparison
 - compare the trace artifacts with the closest bounded submit-path,
   submit-timing, and shared Enter-order phases before editing the headed input
   path
