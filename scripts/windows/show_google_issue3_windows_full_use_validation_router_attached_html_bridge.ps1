@@ -96,6 +96,11 @@ function Format-HelperCommandWithRepoRootEnv {
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
         $fallbackArguments = [System.Collections.Generic.List[string]]::new()
         foreach ($entry in $Arguments.GetEnumerator()) {
+            if ($entry.Value -is [System.Collections.IEnumerable] -and -not ($entry.Value -is [string])) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values @($entry.Value)
+                continue
+            }
+
             Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
         }
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
@@ -108,6 +113,25 @@ function Format-HelperCommandWithRepoRootEnv {
             continue
         }
         if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+            $valueList = @($value | Where-Object {
+                if ($_ -is [string]) {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                } else {
+                    $null -ne $_
+                }
+            })
+            if ($valueList.Count -eq 0) {
+                continue
+            }
+
+            $command += " -$($entry.Key)"
+            foreach ($item in $valueList) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
             continue
         }
 
@@ -258,14 +282,14 @@ Write-Host (("  Bundle change-area:        {0}") -f $helper.commands.attached_bu
 Write-Host (("  Bundle-first helper:       {0}") -f $helper.commands.attached_bundle_first)
 Write-Host ''
 Write-Host (("Bridge note:                {0}") -f (' ' + $helper.bridge_note_path))
-Write-Host (("Windows full-use note:      {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
-Write-Host (("Validation quickstart note: {0}") -f (' ' + $helper.validation_router_attached_html_quickstart_note_path))
-Write-Host (("Change-area quickstart:     {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
-Write-Host (("Google attached flow note:  {0}") -f (' ' + $helper.google_attached_html_validation_flow_note_path))
+Write-Host (("Windows runbook:            {0}") -f (' ' + $helper.windows_runbook_note_path))
+Write-Host (("Windows route note:         {0}") -f (' ' + $helper.windows_full_use_attached_html_route_note_path))
+Write-Host (("Validation-router note:     {0}") -f (' ' + $helper.validation_router_attached_html_quickstart_note_path))
+Write-Host (("Change-area note:           {0}") -f (' ' + $helper.attached_html_change_area_quickstart_note_path))
+Write-Host (("Google attached note:       {0}") -f (' ' + $helper.google_attached_html_validation_flow_note_path))
 Write-Host (("Top-level quickstart note:  {0}") -f (' ' + $helper.top_level_attached_html_quickstart_note_path))
-Write-Host (("Suite-router quickstart:    {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
-Write-Host (("Windows replay quickstart:  {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
-
+Write-Host (("Suite-router note:          {0}") -f (' ' + $helper.suite_router_attached_html_quickstart_note_path))
+Write-Host (("Replay quickstart note:     {0}") -f (' ' + $helper.windows_replay_quickstart_note_path))
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
