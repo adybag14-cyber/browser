@@ -43,6 +43,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
@@ -52,7 +53,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
 ```
 
-Use the broader suite-router surfaces first when the replay has not narrowed to the pinned bundle branch yet but the three-page compatibility set is already the likely next move. Keep the broader attached-page flow helper and the dedicated Google attached-page flow guide nearby when you still want the wider attached-page route reprinted before the replay locks onto the pinned bundle branch. Use the bundle-first helper when explicit bundle paths are already pinned and the replay should stay on that known three-page set before widening back into the broader Google-only helper chain.
+Use the broader suite-router surfaces first when the replay has not narrowed to the pinned bundle branch yet but the three-page compatibility set is already the likely next move. Use the dedicated attached-html-target-bundle suite helper when you want that suite-level branch reprinted with the broader attached-page and Google-shaped attached-page follow-up helpers already arranged beside the pinned bundle lane. Keep the broader attached-page flow helper and the dedicated Google attached-page flow guide nearby when you still want the wider attached-page route reprinted before the replay locks onto the pinned bundle branch. Use the bundle-first helper when explicit bundle paths are already pinned and the replay should stay on that known three-page set before widening back into the broader Google-only helper chain.
 
 ## Broader router-first bundle re-entry
 
@@ -64,6 +65,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
@@ -78,6 +80,7 @@ Use that route when:
 - the current replay is still starting from `show_headed_validation_suites.ps1` or `show_google_issue3_replay_route.ps1`
 - the three-page compatibility bundle is already the likely next branch, but the broader router context still matters before the replay locks onto pinned inputs
 - you want the broader attached-page flow helper and the dedicated Google attached-page flow guide surfaced directly beside the higher-level suite-router and replay-route helpers before the route narrows into the delegated bundle validation flow
+- you want the compact suite-level bundle helper surfaced directly beside the higher-level suite-router and replay-route helpers before the route narrows into the delegated bundle validation flow
 - you want the bundle-first helper surfaced directly beside the higher-level suite-router and replay-route helpers before the route narrows into the delegated bundle validation flow
 
 ## Reusable fixed-list proof
@@ -105,6 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -130,4 +134,4 @@ This is the safest compact bridge for pinned bundle replay because the replay-ro
 
 ## Practical rule
 
-Prefer the bundle-aware route first when the attached HTML inputs still match the known three-page compatibility set. If the replay is still being chosen from `show_headed_validation_suites.ps1` or the replay-route helpers, reopen the broader router surfaces first so the broader attached-page flow helper, the dedicated Google attached-page flow guide, and the bundle-first branch are all rediscoverable before you lock onto pinned inputs. Keep the pinned manual checklist nearby once that route is green, use the reusable fixed-list screenshot-and-title probe when you want tighter evidence for the same saved pages, and only widen back into the longer issue `#3` helper chain after the bundle checker, bundle flow helper, delegated localhost runner, manual checklist, or fixed-list probe makes the next failure state clear.
+Prefer the bundle-aware route first when the attached HTML inputs still match the known three-page compatibility set. If the replay is still being chosen from `show_headed_validation_suites.ps1` or the replay-route helpers, reopen the broader router surfaces first so the broader attached-page flow helper, the dedicated Google attached-page flow guide, the compact suite-level bundle helper, and the bundle-first branch are all rediscoverable before you lock onto pinned inputs. Keep the pinned manual checklist nearby once that route is green, use the reusable fixed-list screenshot-and-title probe when you want tighter evidence for the same saved pages, and only widen back into the longer issue `#3` helper chain after the bundle checker, bundle flow helper, delegated localhost runner, manual checklist, or fixed-list probe makes the next failure state clear.
