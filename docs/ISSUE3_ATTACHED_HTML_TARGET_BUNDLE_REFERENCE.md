@@ -18,6 +18,19 @@ Treat them as three different compatibility surfaces:
 - Anthropic job application: form-heavy interaction target that helps catch focus, typing, submit-order, and general control behavior.
 - UAP encounters page: dense content target that helps catch rendering, document structure, and script-heavy page behavior.
 
+## Locked filename map
+
+Keep the pinned bundle in this order whenever you pass repeated `-InputPath` values, stage a manual localhost replay, or feed the fixed-list proof helper:
+
+1. `Control your online safety and privacy – Google Safety Centre`
+   Saved filename: `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html`
+2. `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic`
+   Saved filename: `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html`
+3. `Presidential Unsealing and Reporting System for UAP Encounters`
+   Saved filename: `Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html`
+
+If you point the helpers at a folder instead of three explicit files, confirm that the resolved bundle still matches these exact filenames before you treat the run as the canonical issue `#3` attached-page set.
+
 ## Read-first commands
 
 Start with the fail-fast bundle surfaces, keep the pinned manual checklist nearby, then print and run the locked route before widening into the reusable fixed-list proof path:
@@ -28,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
 ```
 
 Use this route when the current saved or attached pages are still the known three-page compatibility set and you want the exact same locked inputs carried from the checker into the flow helper, the delegated localhost runner, the page-by-page manual checklist, and the reusable screenshot-and-title probe.
@@ -89,7 +102,7 @@ Once the bundle-pinned localhost route is green, reuse the same saved-page set t
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
 ```
 
 Use that narrower proof path when:
@@ -103,15 +116,15 @@ Use that narrower proof path when:
 If the replay already carries a non-default checkout, a saved summary, or explicit bundle paths, keep that same context attached to the helper chain:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>' -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -RepoRoot '<repo-root>'
-powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
 ```
 
 Use that context-preserving form when:
