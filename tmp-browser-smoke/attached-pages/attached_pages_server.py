@@ -2,6 +2,7 @@ import argparse
 import html
 import json
 import mimetypes
+import os
 import re
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -90,8 +91,33 @@ def normalize_bundle_root(root: Path) -> tuple[Path, list[Path]]:
     raise FileNotFoundError(f"bundle root does not exist: {resolved_root}")
 
 
-def build_manifest(root: Path) -> list[dict[str, str]]:
-    bundle_root, html_files = normalize_bundle_root(root)
+def normalize_selected_html_files(selected_files: list[Path]) -> tuple[Path, list[Path]]:
+    if not selected_files:
+        raise ValueError("selected HTML file list must not be empty")
+
+    resolved_files: list[Path] = []
+    for candidate in selected_files:
+        resolved = Path(candidate).expanduser().resolve()
+        if not resolved.is_file():
+            raise FileNotFoundError(f"selected HTML file does not exist: {resolved}")
+        if resolved.suffix.lower() != ".html":
+            raise ValueError(f"selected file is not an .html export: {resolved}")
+        resolved_files.append(resolved)
+
+    common_root = Path(os.path.commonpath([str(path.parent) for path in resolved_files]))
+    return common_root, sorted(resolved_files)
+
+
+def resolve_bundle_inputs(root: Path | None = None, selected_files: list[Path] | None = None) -> tuple[Path, list[Path]]:
+    if selected_files:
+        return normalize_selected_html_files(selected_files)
+    if root is None:
+        raise ValueError("either a bundle root or selected HTML files are required")
+    return normalize_bundle_root(root)
+
+
+def build_manifest(root: Path | None = None, *, selected_files: list[Path] | None = None) -> list[dict[str, str]]:
+    bundle_root, html_files = resolve_bundle_inputs(root, selected_files)
     entries: list[dict[str, str]] = []
     used_alias_routes: set[str] = set()
     used_slug_routes: set[str] = set()
@@ -216,9 +242,9 @@ def ensure_within_root(root: Path, target: Path) -> Path | None:
     return resolved_target
 
 
-def build_bundle_state(root: Path) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes]:
-    bundle_root, _ = normalize_bundle_root(root)
-    manifest = build_manifest(root)
+def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes]:
+    bundle_root, _ = resolve_bundle_inputs(root, selected_files)
+    manifest = build_manifest(root, selected_files=selected_files)
     route_lookup = build_route_lookup(manifest)
     index_bytes = render_index(manifest)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
@@ -229,8 +255,8 @@ class ReuseServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
 
-def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> tuple[ReuseServer, list[dict[str, str]]]:
-    bundle_root, manifest, route_lookup, index_bytes, manifest_bytes = build_bundle_state(root)
+def create_server(root: Path | None = None, *, bind: str = "127.0.0.1", port: int = 8235, selected_files: list[Path] | None = None) -> tuple[ReuseServer, list[dict[str, str]]]:
+    bundle_root, manifest, route_lookup, index_bytes, manifest_bytes = build_bundle_state(root, selected_files=selected_files)
 
     class AttachedPagesHandler(SimpleHTTPRequestHandler):
         def __init__(self, *handler_args, **handler_kwargs):
@@ -302,7 +328,14 @@ def create_server(root: Path, *, bind: str = "127.0.0.1", port: int = 8235) -> t
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Serve an attached HTML bundle for headed-mode smoke validation.")
-    parser.add_argument("--root", required=True, help="Directory or single HTML file to expose.")
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--root", help="Directory or single HTML file to expose.")
+    input_group.add_argument(
+        "--input",
+        action="append",
+        dest="selected_files",
+        help="Explicit HTML export to expose. Repeat to pin the manifest to a file list.",
+    )
     parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
     parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
     parser.add_argument(
@@ -312,13 +345,17 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
+    root = Path(args.root) if args.root else None
+
     if args.print_manifest:
-        print(json.dumps(build_manifest(Path(args.root)), indent=2))
+        print(json.dumps(build_manifest(root, selected_files=selected_files), indent=2))
         return 0
 
-    server, manifest = create_server(Path(args.root), bind=args.bind, port=args.port)
+    server, manifest = create_server(root, bind=args.bind, port=args.port, selected_files=selected_files)
+    source_description = root.expanduser().resolve() if root is not None else f"{len(selected_files or [])} selected files"
     host, port = server.server_address
-    print(f"Serving {len(manifest)} attached pages from {Path(args.root).expanduser().resolve()} at http://{host}:{port}/")
+    print(f"Serving {len(manifest)} attached pages from {source_description} at http://{host}:{port}/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
