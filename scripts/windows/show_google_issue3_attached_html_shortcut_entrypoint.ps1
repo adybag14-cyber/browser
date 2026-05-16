@@ -145,6 +145,13 @@ if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
 
+$bundleFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $bundleFlowArguments -Name InputPath -Values $InputPath
+
+$routeSurfaceArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $RepoRoot
+
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
 
 $entrypoint = [ordered]@{
