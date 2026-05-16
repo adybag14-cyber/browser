@@ -136,12 +136,14 @@ If the current pages are already the known three-page compatibility bundle, keep
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Use that route when the known three-page compatibility set should stay pinned before the route widens back into replay shortcuts, the next-step matrix, or the broader safe-route surfaces.
+Use that route when the known three-page compatibility set should stay pinned before the route widens back into replay shortcuts, the next-step matrix, or the broader safe-route surfaces. Keep the broader attached-page flow helper and the dedicated Google attached-page flow helper visible on that same pinned route first when you still want the wider attached-page ladder rediscoverable before the bundle-first helper locks onto those three pages.
 
 ## Pick the next helper quickly
 
@@ -195,7 +197,7 @@ Once the suite-catalog surface or its dedicated entrypoints guide already made a
 
 - no pinned bundle inputs and no saved replay state yet: go from the suite-catalog surface to the suite-catalog surface checker, then the attached-html change-area quickstart, then the broader attached-page flow helper, then the dedicated Google attached-page flow helper, then the replay-side attached HTML quickstart, then the validation-router bridge, then the compact top-level quickstart, then the top-level catalog quickstart, then the suite-catalog attached-page bridge, then the broader Google-shaped attached-page bridge, then the attached-page shortcut, then replay shortcuts, then the next-step matrix, then the safe-route map
 - replay reopened from `docs/WINDOWS_FULL_USE.md` or `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`: keep the broader Windows-side route, the broader suite-catalog guide, the suite-catalog surface checker, the Windows-first attached-html catalog quickstart, the generic attached-html change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the replay-side quickstart, and the validation-router quickstart visible before this suite-catalog quickstart narrows into the top-level attached-page note family and the smaller attached-page bridges
-- explicit bundle paths already pinned: keep the attached-html change-area quickstart and the bundle-first helper in front of the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
+- explicit bundle paths already pinned: keep the attached-html change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, and the bundle-first helper in front of the delegated bundle runner so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
 - saved summary or repo-root override already present: reopen the broader suite-catalog helper with that same context first, rerun the suite-catalog surface checker for that checkout, then this quickstart, then the attached-html change-area quickstart, then the broader attached-page flow helper pinned to the same attached inputs, then the dedicated Google attached-page flow helper, then choose the suite-catalog bridge, replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
 
 Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
