@@ -1,6 +1,6 @@
 # Issue #3 Attached HTML Target Bundle Checklist
 
-Use this note when issue `#3` follow-up is already narrowed to the saved attached HTML compatibility bundle and you want the smallest practical manual checklist before widening back into broader headed debugging.
+Use this note when issue `#3` follow-up is already narrowed to the saved attached HTML compatibility bundle and you want the smallest practical manual checklist before widening back into broader headed debugging or reopening the higher-level attached-page helper chain.
 
 Start with the pinned bundle route first:
 
@@ -11,7 +11,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Keep `docs/HEADED_MODE_VALIDATION_GATES.md`, `docs/WINDOWS_FULL_USE.md`, and `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md` nearby when you need the broader route context around this checklist.
+Keep `docs/HEADED_MODE_VALIDATION_GATES.md`, `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` nearby when you need the broader route context around this checklist.
+
+## Broader helper re-entry
+
+If the next replay is still being chosen from the higher-level attached-page surfaces before you lock back onto the pinned bundle, reopen these helpers first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+```
+
+Use that shorter re-entry when the current three pages are still the likely compatibility target but you want the broader attached-page flow helper, the Google-shaped attached-page flow helper, and the bundle-first bridge visible together before you drop back into the locked runner and page-by-page manual checks.
 
 ## Page checks
 
@@ -56,7 +69,7 @@ Manual checks:
 Route follow-up by the shared subsystem that broke:
 
 - blank, missing, or collapsing sections usually belong to rendering and DOM compatibility
-- lost focus, swallowed typing, or non-working submit behavior usually belongs to input, focus, and interaction delivery
+- lost focus, swallowed typing, or non-working submit behavior usually belong to input, focus, and interaction delivery
 - broken menus, incorrect hit targets, or pointer mismatch usually belong to rendering or page-lifecycle interaction boundaries
 - asset holes across more than one page usually belong to shared resource loading instead of one saved page
 
@@ -69,5 +82,6 @@ When a manual pass fails, preserve:
 - whether the failure happened on first load, after scroll, or after interaction
 - whether the same symptom appears on the other saved pages
 - the smallest validation helper that still reproduces the failure
+- whether the pinned bundle route or the broader helper re-entry was the last green step
 
-That evidence is usually enough to decide whether the next run should stay on the bundle route, widen into the attached-page helper chain, or jump back to the narrower shared input or rendering gates first.
+That evidence is usually enough to decide whether the next run should stay on the bundle route, reopen the broader attached-page helper chain, or jump back to the narrower shared input or rendering gates first.
