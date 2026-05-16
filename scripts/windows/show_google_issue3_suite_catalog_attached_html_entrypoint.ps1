@@ -69,7 +69,7 @@ function Format-HelperCommand {
         [System.Collections.Generic.List[string]]$Arguments
     )
 
-    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
     if ($Arguments -and $Arguments.Count -gt 0) {
         $command += " " + ($Arguments -join ' ')
     }
@@ -105,7 +105,7 @@ function Format-HelperCommandWithRepoRootEnv {
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
 
-    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    $command = "& '.\scripts\windows\$ScriptName'"
     foreach ($entry in $Arguments.GetEnumerator()) {
         $value = $entry.Value
         if ($null -eq $value) {
