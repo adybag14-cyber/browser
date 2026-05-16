@@ -25,7 +25,13 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
+- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
+- `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`
 - `docs/ISSUE3_REPLAY_ROUTE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
@@ -36,7 +42,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the current attached-page set, run the Google-style fail-fast checks first, keep the broader attached-page entrypoints visible long enough to confirm the right route, keep the Windows-first attached-html catalog quickstart visible when the replay is reopening from the broader Windows runbook, then let `show_google_attached_html_validation_flow.ps1` print and hand off the same locked inputs into the saved-page Google validation flow before you widen back into replay shortcuts, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
+Start from the current attached-page set, run the Google-style fail-fast checks first, keep the broader attached-page entrypoints visible long enough to confirm the right route, keep the Windows-first attached-html catalog quickstart visible when the replay is reopening from the broader Windows runbook, keep the newer suite-router and top-level attached-page ladders visible when the replay has already narrowed to attached localhost follow-up, then let `show_google_attached_html_validation_flow.ps1` print and hand off the same locked inputs into the saved-page Google validation flow before you widen back into replay shortcuts, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
 
 ## Top-level re-entry points
 
@@ -69,13 +75,36 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 ```
 
 Use `-SuiteName google-attached-html` when you want the dedicated Google-style attached-page surface checker, helper, broader attached-page helper, and nearby issue `#3` re-entry commands reprinted without widening back to the rest of the catalog first.
 Use `-SuiteName attached-html-target-bundle` when the current attached pages are still the known three-page compatibility set and you want the pinned bundle surface checker, compact bundle-suite re-entry, helper, runner, and broader attached-page helper shown together before choosing the next replay branch.
 Use the `-ChangeArea` views when you still want the same Google-shaped and bundle-aware helper surface printed with the nearby recommended suites and higher-level issue `#3` entrypoints.
+Use `show_google_issue3_suite_catalog_entrypoints.ps1` when you want the wider suite-catalog command map to keep the dedicated Google attached-page surface checker, the broader attached-page flow helper, the top-level attached-page quickstarts, the suite-router attached-page quickstart, and the shorter attached-page shortcut visible together before the route narrows again.
 Use `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` when the bundle route is already the likely next branch but you still want the compact bundle helper, the broader attached-page helper surface, and the Google-shaped attached-page fallback visible beside the suite catalog before narrowing further.
+
+## Suite-router and top-level attached-page re-entry
+
+When the replay is already narrowed to attached localhost follow-up and you want the shorter issue `#3` bridge surfaces reprinted before this Google-style flow takes over, keep these helpers nearby:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+```
+
+Use `show_google_issue3_suite_router_attached_html_quickstart.ps1` when the higher-level router already narrowed the replay to attached-page compatibility follow-up and you want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the narrower helper family printed together before the route narrows again.
+Use `show_google_issue3_top_level_attached_html_quickstart.ps1` and `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1` when you want the shorter top-level attached-page ladder kept visible beside the suite-catalog-facing route before you decide whether to stay on the broader attached-page branch or narrow into the Google-shaped helper chain.
+Use `show_google_issue3_top_level_attached_html_entrypoint.ps1` when the route is already clearly inside the issue-specific attached-page branch and you want the broader top-level attached-page bridge visible before this narrower Google-style helper takes over.
+Use `show_google_issue3_attached_html_shortcut_entrypoint.ps1` when you want the shortest attached-page bridge before widening back into replay shortcuts, the next-step matrix, or the safe-route helper chain.
+Use `show_google_issue3_google_attached_html_entrypoint.ps1` when the replay is already narrowed to the issue-specific Google-shaped attached-page route and you want the dedicated surface check, the dedicated Google attached-page flow helper, and the shorter shortcut-first bridge kept visible together.
+Use `show_google_issue3_replay_shortcuts.ps1` when the issue `#3` branch is already settled and you want the compact shortcut map reopened before you decide whether to widen back into replay route, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
 
 ## Windows-full-use re-entry
 
@@ -209,22 +238,38 @@ Use this when you want the suite catalog itself to reprint the narrower Google-s
 
 Use this when the current inputs are still the known three-page compatibility bundle and you want the suite catalog to keep the pinned bundle helper, the compact bundle-suite re-entry, the runner, and the broader attached-page fallback visible together.
 
-8. `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
+8. `show_google_issue3_suite_catalog_entrypoints.ps1`
+
+Use this when you want the suite-catalog command map itself to keep the dedicated Google attached-page surface checker, the top-level attached-page ladders, the suite-router attached-page quickstart, and the shorter attached-page shortcut visible before you pick the next narrower replay branch.
+
+9. `show_google_issue3_suite_router_attached_html_quickstart.ps1`
+
+Use this when the replay is already narrowed to attached localhost follow-up and you want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the narrower attached-page helper family surfaced together before the route narrows again.
+
+10. `show_google_issue3_google_attached_html_entrypoint.ps1`
+
+Use this when the replay is already narrowed to the issue-specific Google-shaped attached-page route and you want the dedicated surface check, the dedicated flow helper, and the shorter shortcut-first bridge reprinted together.
+
+11. `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
+
+Use this when you want the shortest attached-page bridge before widening back into replay shortcuts, the next-step matrix, or the safe-route helper chain.
+
+12. `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
 
 Use this when the current inputs are still the known three-page compatibility bundle and you want the compact bundle-specific re-entry surfaced before the route narrows into the bundle-first helper or widens back into the broader attached-page fallback.
 
-9. `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
+13. `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
 
 Use this when the replay is already centered on the attached localhost compatibility pages and you want the shorter issue `#3` replay ladder beside this Google-style flow.
 
-10. `show_google_issue3_replay_route.ps1`
+14. `show_google_issue3_replay_route.ps1`
 
 Use this when you want the replay-route helper, the broader attached-page route, the compact bundle-suite re-entry, and the pinned bundle branch reprinted together before you commit to the narrower Google-style helper or the shorter attached-page shortcut chain.
 
-11. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+15. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
 
 Use this when the current inputs are still the known three-page compatibility bundle and the replay should stay pinned there before widening back into the broader Google-only helper chain.
 
 ## Practical rule
 
-Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard, the Windows-to-validation-router bridge, and the Windows-first attached-html catalog quickstart first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route, the compact bundle-suite re-entry, and the pinned bundle route printed together before picking the next replay branch. Keep the replay-route helper family nearby when you want the broader attached-page fallback, the compact bundle-specific re-entry, and the pinned bundle-first branch surfaced together before this guide narrows the route. Keep the broader attached-page router nearby when the route is still ambiguous, keep the compact bundle-suite helper and bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
+Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard, the Windows-to-validation-router bridge, and the Windows-first attached-html catalog quickstart first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route, the compact bundle-suite re-entry, the pinned bundle route, and the neighboring top-level or suite-router attached-page ladders printed together before picking the next replay branch. Reopen the suite-router and top-level attached-page helpers first when the replay is already narrowed to attached localhost follow-up but you still want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the shorter issue `#3` bridges surfaced together before this guide takes over. Keep the replay-route helper family nearby when you want the broader attached-page fallback, the compact bundle-specific re-entry, and the pinned bundle-first branch surfaced together before this guide narrows the route. Keep the broader attached-page router nearby when the route is still ambiguous, keep the compact bundle-suite helper and bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, asset audit, helper output, or runner makes the next failure state clear.
