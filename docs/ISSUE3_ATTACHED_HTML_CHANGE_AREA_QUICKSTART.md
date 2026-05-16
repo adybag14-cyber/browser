@@ -42,7 +42,7 @@ From there, prefer one of these narrower follow-ups before reopening the broader
 - `show_attached_html_validation_flow.ps1`
 - `show_google_issue3_validation_router_attached_html_quickstart.ps1`
 - `show_google_issue3_top_level_attached_html_quickstart.ps1`
-- `show_google_issue3_top_level_attached_html_catalog_quICKSTART.ps1`
+- `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
 - `show_google_issue3_suite_router_attached_html_quickstart.ps1`
 - `show_google_issue3_top_level_attached_html_entrypoint.ps1`
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
