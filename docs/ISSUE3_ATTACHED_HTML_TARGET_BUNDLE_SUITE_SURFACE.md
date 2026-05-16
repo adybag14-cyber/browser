@@ -4,6 +4,7 @@ Use this note when issue `#3` replay is already close to the known three-page at
 
 Keep these nearby when the route may still reopen from a broader validation surface before it locks onto the pinned three-page bundle:
 
+- `docs/HEADED_MODE_ROADMAP.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
@@ -12,7 +13,7 @@ Keep these nearby when the route may still reopen from a broader validation surf
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 
-Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up, and keep the top-level attached-html notes close when the replay is already narrowing from the top-level route before it commits to the pinned bundle lane.
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up, keep `docs/HEADED_MODE_ROADMAP.md` close when the replay is being rediscovered from the higher-level validation catalog first, and keep the top-level attached-html notes close when the replay is already narrowing from the top-level route before it commits to the pinned bundle lane.
 
 ## Goal
 
@@ -41,6 +42,25 @@ Use that route when:
 - the current attached pages are still the known three-page compatibility bundle or are very likely to narrow to it next
 - you want the `attached-html-target-bundle` change-area output reprinted with the broader attached-page suite surface and the Google-shaped attached-page suite surface still visible beside it
 - you want the broader attached-page flow helper and the dedicated Google-shaped attached-page flow helper kept in view before the replay locks onto the delegated bundle validation runner
+
+## Validation-catalog re-entry
+
+If the replay is still being chosen from the main validation catalog and you want the compact bundle-focused suite surface reprinted before the narrower bundle-first helper takes over, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
+```
+
+Use that route when:
+
+- the higher-level validation catalog or roadmap still needs to stay visible before the replay narrows into the pinned bundle lane
+- you want the broader attached-page and Google-shaped attached-page routes surfaced beside the compact bundle-focused suite helper rather than rediscovered later
+- you want the dedicated suite-surface helper aligned with the same broader catalog-first route that the surrounding bundle-reference and roadmap notes already describe
 
 ## Suite-catalog re-entry
 
@@ -126,7 +146,7 @@ Use that context-preserving form when:
 
 ## Practical rule
 
-Prefer the dedicated suite-surface helper when the replay is already close to the attached bundle lane and only needs a compact re-entry surface before bundle-only validation. Reopen the broader `attached-html` or `google-attached-html` suite surfaces first only when the replay still needs the wider attached-page route visible before it commits to the pinned three-page bundle.
+Prefer the dedicated suite-surface helper when the replay is already close to the attached bundle lane and only needs a compact re-entry surface before bundle-only validation. Reopen the broader `attached-html` or `google-attached-html` suite surfaces first only when the replay still needs the wider attached-page route visible before it commits to the pinned three-page bundle. When the replay is being rediscovered from the higher-level validation catalog, reopen that catalog context first, then use this note and the dedicated suite-surface helper to keep the bundle lane aligned with the broader catalog-first guidance before narrowing into the bundle-first helper.
 
 If the replay is still arriving from the suite-catalog side, reopen `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, then `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before narrowing into the bundle-first helper.
 
