@@ -186,8 +186,8 @@ If the current pages are still the known three-page compatibility bundle, keep t
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
@@ -195,14 +195,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_ta
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Use that route when the replay should stay pinned to the saved three-page compatibility bundle, but you still want the broader attached-page helper and the dedicated Google-shaped attached-page helper visible before the route locks back onto the bundle-first branch and later widens into the broader issue `#3` helper stack.
+Use that route when the replay should stay pinned to the saved three-page compatibility bundle, but you still want the broader attached-page helper and the dedicated Google-shaped attached-page helper visible on that same pinned input set before the route locks back onto the bundle-first branch and later widens into the broader issue `#3` helper stack.
 
 ## Preserve replay context
 
 If the replay already carries a non-default repo root, a saved summary, or pinned bundle paths, keep that same context attached to the validation-router quickstart first:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
