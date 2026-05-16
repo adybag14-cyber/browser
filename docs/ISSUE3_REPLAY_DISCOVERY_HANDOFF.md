@@ -138,7 +138,7 @@ chosen helper.
 - `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`:
   use this when the Windows-first route should keep the validation-router
   handoff visible before the narrower top-level attached-page helpers take over.
-- `show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1`:
+- `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`:
   use this when the Windows full-use branch should keep the catalog-side
   attached-page quickstart visible beside the narrower top-level chain.
 - `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`:
@@ -166,7 +166,7 @@ chosen helper.
 - `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`: use this
   when the compact top-level attached-page route and the suite-catalog-side
   bridge should stay visible together before the replay narrows again.
-- `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`: use this when
+- `show_google_issue3_top_LEVEL_shortcut_first_entrypoint.ps1`: use this when
   the top-level shortcut-first bridge should stay visible before the narrower
   attached-page shortcut, replay-route, or replay-shortcuts surfaces take over.
 - `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`:
