@@ -42,6 +42,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_submit_path_validation_flow.ps1" -Kind "file" -Purpose "Printed later-stage submit-path handoff that precedes the live trace slice."),
     (New-ValidationReference -Path "scripts/windows/run_google_issue3_submit_path_validation.ps1" -Kind "file" -Purpose "One-command later-stage submit-path runner used before live trace capture."),
     (New-ValidationReference -Path "scripts/windows/show_google_trace_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the later issue #3 trace-validation slice."),
+    (New-ValidationReference -Path "scripts/windows/show_google_trace_artifact_guide.ps1" -Kind "file" -Purpose "Read-after-run helper that groups the reduced-home, live-home, and runtime trace artifacts produced by the later issue #3 trace slice."),
     (New-ValidationReference -Path "scripts/windows/run_google_trace_validation.ps1" -Kind "file" -Purpose "One-command later-stage trace runner for the dedicated live-trace handoff."),
     (New-ValidationReference -Path "scripts/windows/run_google_input_validation.ps1" -Kind "file" -Purpose "Shared issue #3 runner that exposes the trace phase."),
     (New-ValidationReference -Path "tmp-browser-smoke/google-investigation-next/chrome-google-home-enter-trace-probe.ps1" -Kind "file" -Purpose "Reduced-home trace probe used before the real Google homepage capture."),
