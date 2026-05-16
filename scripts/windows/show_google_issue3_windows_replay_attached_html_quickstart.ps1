@@ -168,9 +168,15 @@ if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
 
-$attachedHtmlChangeAreaCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html'
-$googleAttachedHtmlChangeAreaCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html'
-$attachedBundleChangeAreaCommand = 'powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle'
+$attachedHtmlChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+    ChangeArea = 'attached-html'
+}) -RepoRootOverride $RepoRoot
+$googleAttachedHtmlChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+    ChangeArea = 'google-attached-html'
+}) -RepoRootOverride $RepoRoot
+$attachedBundleChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}) -RepoRootOverride $RepoRoot
 
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay attached HTML quickstart'
