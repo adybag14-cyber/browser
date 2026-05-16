@@ -14,6 +14,28 @@ def slugify(name: str) -> str:
     return normalized or "page"
 
 
+def shorten_slug(name: str, *, max_words: int = 5, max_chars: int = 36) -> str:
+    slug = slugify(name)
+    if slug == "page":
+        return slug
+
+    parts = [part for part in slug.split("-") if part]
+    chosen: list[str] = []
+    current_len = 0
+    for part in parts:
+        if len(chosen) >= max_words:
+            break
+        projected = current_len + len(part) + (1 if chosen else 0)
+        if projected > max_chars:
+            break
+        chosen.append(part)
+        current_len = projected
+
+    if chosen:
+        return "-".join(chosen)
+    return slug[:max_chars].strip("-") or "page"
+
+
 def extract_title(path: Path) -> str:
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
@@ -28,23 +50,26 @@ def extract_title(path: Path) -> str:
 
 def build_manifest(root: Path) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
-    used_routes: set[str] = set()
+    used_alias_routes: set[str] = set()
     html_files = sorted(path for path in root.rglob("*.html") if path.is_file())
     for index, path in enumerate(html_files, start=1):
         rel_path = path.relative_to(root).as_posix()
-        route_slug = slugify(path.stem)
-        route = f"/pages/{route_slug}"
+        title = extract_title(path)
+        short_slug = shorten_slug(title if title else path.stem)
+        route = f"/pages/{index}"
+        alias_route = f"/pages/{index}-{short_slug}"
         suffix = 2
-        while route in used_routes:
-            route = f"/pages/{route_slug}-{suffix}"
+        while alias_route in used_alias_routes:
+            alias_route = f"/pages/{index}-{short_slug}-{suffix}"
             suffix += 1
-        used_routes.add(route)
+        used_alias_routes.add(alias_route)
         entries.append({
             "index": str(index),
             "route": route,
+            "alias_route": alias_route,
             "raw_path": f"/raw/{quote(rel_path)}",
             "file": rel_path,
-            "title": extract_title(path),
+            "title": title,
         })
     return entries
 
@@ -55,6 +80,8 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
         rows.append(
             "<li>"
             f"<a href=\"{html.escape(entry['route'])}\">{html.escape(entry['title'])}</a>"
+            f"<div>short route: <code>{html.escape(entry['route'])}</code></div>"
+            f"<div>alias route: <code>{html.escape(entry['alias_route'])}</code></div>"
             f"<div><code>{html.escape(entry['file'])}</code></div>"
             f"<div><a href=\"{html.escape(entry['raw_path'])}\">raw file</a></div>"
             "</li>"
@@ -97,6 +124,10 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
       This server exposes stable short routes for a directory of saved HTML pages so
       headed-mode validation can target them without depending on long exported filenames.
     </p>
+    <p>
+      Each entry includes a shortest numeric route for scripts and a readable alias route
+      for manual browsing.
+    </p>
     <ul>
       {body}
     </ul>
@@ -118,7 +149,10 @@ def main() -> int:
         raise SystemExit(f"bundle root does not exist: {root}")
 
     manifest = build_manifest(root)
-    manifest_lookup = {entry["route"]: entry for entry in manifest}
+    manifest_lookup = {}
+    for entry in manifest:
+        manifest_lookup[entry["route"]] = entry
+        manifest_lookup[entry["alias_route"]] = entry
     index_bytes = render_index(manifest)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
 
