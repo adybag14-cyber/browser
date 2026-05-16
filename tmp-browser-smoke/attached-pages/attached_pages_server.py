@@ -1,11 +1,12 @@
 import argparse
 import html
 import json
+import mimetypes
 import re
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 
 def slugify(name: str) -> str:
@@ -63,14 +64,16 @@ def build_manifest(root: Path) -> list[dict[str, str]]:
             alias_route = f"/pages/{index}-{short_slug}-{suffix}"
             suffix += 1
         used_alias_routes.add(alias_route)
-        entries.append({
-            "index": str(index),
-            "route": route,
-            "alias_route": alias_route,
-            "raw_path": f"/raw/{quote(rel_path)}",
-            "file": rel_path,
-            "title": title,
-        })
+        entries.append(
+            {
+                "index": str(index),
+                "route": route,
+                "alias_route": alias_route,
+                "raw_path": f"/raw/{quote(rel_path)}",
+                "file": rel_path,
+                "title": title,
+            }
+        )
     return entries
 
 
@@ -79,7 +82,7 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
     for entry in manifest:
         rows.append(
             "<li>"
-            f"<a href=\"{html.escape(entry['route'])}\">{html.escape(entry['title'])}</a>"
+            f"<a href=\"{html.escape(entry['route'])}/\">{html.escape(entry['title'])}</a>"
             f"<div>short route: <code>{html.escape(entry['route'])}</code></div>"
             f"<div>alias route: <code>{html.escape(entry['alias_route'])}</code></div>"
             f"<div><code>{html.escape(entry['file'])}</code></div>"
@@ -125,8 +128,9 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
       headed-mode validation can target them without depending on long exported filenames.
     </p>
     <p>
-      Each entry includes a shortest numeric route for scripts and a readable alias route
-      for manual browsing.
+      Each entry includes a short route, a readable alias route, and raw-file access.
+      The short routes redirect into an asset-safe directory form so relative CSS, images,
+      and scripts keep working for exported bundles.
     </p>
     <ul>
       {body}
@@ -135,6 +139,36 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
 </html>
 """
     return page.encode("utf-8")
+
+
+def build_route_lookup(manifest: list[dict[str, str]]) -> dict[str, dict[str, str]]:
+    route_lookup: dict[str, dict[str, str]] = {}
+    for entry in manifest:
+        for route in (entry["route"], entry["alias_route"]):
+            route_lookup[route] = entry
+    return route_lookup
+
+
+def split_page_route(request_path: str, route_lookup: dict[str, dict[str, str]]) -> tuple[dict[str, str] | None, str | None]:
+    for route, entry in route_lookup.items():
+        if request_path == route:
+            return entry, ""
+        prefix = f"{route}/"
+        if request_path == prefix:
+            return entry, ""
+        if request_path.startswith(prefix):
+            return entry, request_path[len(prefix) :]
+    return None, None
+
+
+def ensure_within_root(root: Path, target: Path) -> Path | None:
+    resolved_root = root.resolve()
+    resolved_target = target.resolve()
+    try:
+        resolved_target.relative_to(resolved_root)
+    except ValueError:
+        return None
+    return resolved_target
 
 
 def main() -> int:
@@ -149,10 +183,7 @@ def main() -> int:
         raise SystemExit(f"bundle root does not exist: {root}")
 
     manifest = build_manifest(root)
-    manifest_lookup = {}
-    for entry in manifest:
-        manifest_lookup[entry["route"]] = entry
-        manifest_lookup[entry["alias_route"]] = entry
+    route_lookup = build_route_lookup(manifest)
     index_bytes = render_index(manifest)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
 
@@ -164,33 +195,61 @@ def main() -> int:
             self.send_header("Cache-Control", "no-store")
             super().end_headers()
 
-        def do_GET(self):
-            if self.path == "/" or self.path == "/index.html":
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(index_bytes)))
-                self.end_headers()
-                self.wfile.write(index_bytes)
-                return
-            if self.path == "/manifest.json":
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header("Content-Length", str(len(manifest_bytes)))
-                self.end_headers()
-                self.wfile.write(manifest_bytes)
-                return
-            if self.path in manifest_lookup:
-                target = root / manifest_lookup[self.path]["file"]
-                content = target.read_bytes()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(content)))
-                self.end_headers()
+        def send_bytes(self, content: bytes, content_type: str, *, head_only: bool = False):
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            if not head_only:
                 self.wfile.write(content)
+
+        def send_redirect(self, location: str):
+            self.send_response(302)
+            self.send_header("Location", location)
+            self.end_headers()
+
+        def send_page_asset(self, entry: dict[str, str], asset_suffix: str, *, head_only: bool = False):
+            page_file = root / entry["file"]
+            if asset_suffix in ("", "index.html"):
+                self.send_bytes(page_file.read_bytes(), "text/html; charset=utf-8", head_only=head_only)
                 return
-            if self.path.startswith("/raw/"):
-                self.path = self.path[len("/raw") :]
+
+            asset_path = ensure_within_root(root, page_file.parent / unquote(asset_suffix))
+            if asset_path is None or not asset_path.is_file():
+                self.send_error(404, "File not found")
+                return
+
+            content_type, _ = mimetypes.guess_type(str(asset_path))
+            self.send_bytes(asset_path.read_bytes(), content_type or "application/octet-stream", head_only=head_only)
+
+        def handle_attached_request(self, *, head_only: bool = False):
+            request_path = urlsplit(self.path).path
+            if request_path == "/" or request_path == "/index.html":
+                self.send_bytes(index_bytes, "text/html; charset=utf-8", head_only=head_only)
+                return
+            if request_path == "/manifest.json":
+                self.send_bytes(manifest_bytes, "application/json; charset=utf-8", head_only=head_only)
+                return
+
+            entry, asset_suffix = split_page_route(request_path, route_lookup)
+            if entry is not None:
+                if request_path in (entry["route"], entry["alias_route"]):
+                    self.send_redirect(f"{request_path}/")
+                    return
+                self.send_page_asset(entry, asset_suffix or "", head_only=head_only)
+                return
+
+            if request_path.startswith("/raw/"):
+                self.path = request_path[len("/raw") :]
+            if head_only:
+                return super().do_HEAD()
             return super().do_GET()
+
+        def do_GET(self):
+            return self.handle_attached_request()
+
+        def do_HEAD(self):
+            return self.handle_attached_request(head_only=True)
 
     class ReuseServer(ThreadingHTTPServer):
         allow_reuse_address = True
