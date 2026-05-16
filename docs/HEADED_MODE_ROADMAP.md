@@ -63,6 +63,20 @@ but you still want both the broader attached-page helper and the dedicated
 Google-shaped attached-page helper visible before the replay locks onto the
 pinned bundle branch.
 
+If the replay is already running from a non-default checkout or from pinned
+bundle inputs, preserve that same context on the broader attached-page helper
+before bundle-first routing narrows the route again:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:LIGHTPANDA_REPO_ROOT = '<repo-root>'; & '.\scripts\windows\show_attached_html_validation_flow.ps1' -InputPath '<bundle-html-or-folder>'"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
+```
+
+Use that context-preserving form when the broader attached-page flow still needs
+to stay pinned to the same checkout and fixed bundle page set before the
+bundle-first helper locks onto the three-page compatibility route.
+
 Attached HTML target intent:
 
 - `Control your online safety and privacy – Google Safety Centre (...).html`
