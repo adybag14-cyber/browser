@@ -192,6 +192,7 @@ $bridge = [ordered]@{
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     top_level_shortcut_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md'
     replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
+    replay_route_bundle_first_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md'
     attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
     attached_html_shortcut_note_path = 'docs/ISSUE3_ATTACHED_HTML_SHORTCUT_BRIDGE.md'
@@ -244,7 +245,7 @@ $bridge = [ordered]@{
         'Use attached_html_shortcut when the route is already narrow enough to stay inside the shorter issue #3 attached-page bridge before replay_shortcuts or safe_route_entrypoints are reopened.',
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper should keep that replay context aligned.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and the replay should stay on that locked route before widening back out.',
-        'Keep the replay-shortcuts note, the Windows replay attached-page quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router bridge note, the Windows full-use catalog quickstart note, the validation-router attached-page quickstart note, the attached-html change-area quickstart note, the Google attached-page flow note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-html catalog quickstart note, the suite-catalog attached-page bridge note, the top-level shortcut bridge note, the replay-route shortcut bridge note, the attached-page shortcut note, the attached-html target-bundle reference note, the attached-html target-bundle suite-surface note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the replay-shortcuts note, the Windows replay attached-page quickstart note, the Windows full-use attached-page route note, the Windows full-use validation-router bridge note, the Windows full-use catalog quickstart note, the validation-router attached-page quickstart note, the attached-html change-area quickstart note, the Google attached-page flow note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-html catalog quickstart note, the suite-catalog attached-page bridge note, the top-level shortcut bridge note, the replay-route shortcut bridge note, the replay-route bundle-first bridge note, the attached-page shortcut note, the attached-html target-bundle reference note, the attached-html target-bundle suite-surface note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -326,6 +327,7 @@ Write-Host (("Catalog bridge note:        {0}") -f (' ' + $bridge.suite_catalog_
 Write-Host (("Suite-catalog note:         {0}") -f (' ' + $bridge.suite_catalog_attached_html_bridge_note_path))
 Write-Host (("Top-level shortcut note:    {0}") -f (' ' + $bridge.top_level_shortcut_bridge_note_path))
 Write-Host (("Replay-route note:          {0}") -f (' ' + $bridge.replay_route_shortcut_bridge_note_path))
+Write-Host (("Replay-route bundle note:   {0}") -f (' ' + $bridge.replay_route_bundle_first_bridge_note_path))
 Write-Host (("Bundle reference note:      {0}") -f (' ' + $bridge.attached_html_target_bundle_reference_note_path))
 Write-Host (("Bundle suite note:          {0}") -f (' ' + $bridge.attached_html_target_bundle_suite_surface_note_path))
 Write-Host (("Attached shortcut note:     {0}") -f (' ' + $bridge.attached_html_shortcut_note_path))
