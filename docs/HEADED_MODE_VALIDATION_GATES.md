@@ -166,15 +166,24 @@ When the next issue `#3` replay is specifically about the current attached
 localhost pages, keep these written route maps nearby before widening into the
 broader manual follow-up:
 
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 
-Use the Google attached-html flow note when the replay should stay on the
-dedicated Google-shaped attached-page lane, the suite-catalog guide when the
-route is reopening from `show_headed_validation_suites.ps1`, and the top-level
-quickstart when the route is already narrowed to the shorter top-level
-attached-page bridge.
+Use the Windows full-use attached HTML route note when the replay is reopening
+directly from `docs/WINDOWS_FULL_USE.md` and you want the route-level surface
+check, the Windows-to-validation-router bridge, and the Windows-first attached
+catalog quickstart visible before the narrower attached-page helper family.
+Use the target-bundle quickstart when the current inputs are still the pinned
+three-page compatibility bundle and you want the bundle-first entrypoint,
+bundle checker, bundle flow helper, and broader attached-page fallbacks kept on
+one compact ladder. Use the Google attached-html flow note when the replay
+should stay on the dedicated Google-shaped attached-page lane, the
+suite-catalog guide when the route is reopening from
+`show_headed_validation_suites.ps1`, and the top-level quickstart when the
+route is already narrowed to the shorter top-level attached-page bridge.
 
 Read this focused note when the issue `#3` ladder has already been narrowed to
 just the quick and reduced-home stage:
@@ -190,6 +199,7 @@ HTML helper first.
 ```powershell
 .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
@@ -199,9 +209,23 @@ the bundle route is only one branch inside the larger attached-page chain,
 reopen one of these notes first so the broader route stays visible beside the
 pinned three-page bundle lane:
 
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
+
+Use the Windows full-use route note when the replay is reopening from
+`docs/WINDOWS_FULL_USE.md` and the broader Windows-first attached-page ladder
+should stay visible before the route narrows again. Use the bundle quickstart
+when the replay is already narrowed to the pinned three-page compatibility
+bundle and you want the compact bundle-suite surface, the bundle-first helper,
+the checker, the flow helper, and the broader attached-page fallbacks reprinted
+together. Use the Google attached-html flow note when the replay should stay on
+the dedicated Google-shaped attached-page lane, the suite-catalog guide when
+the route is reopening from `show_headed_validation_suites.ps1`, and the
+top-level quickstart when the route is already narrowed to the shorter
+top-level attached-page bridge.
 
 If the current pages are not the known three-page bundle, fall back to the more
 open-ended attached-page flow:
