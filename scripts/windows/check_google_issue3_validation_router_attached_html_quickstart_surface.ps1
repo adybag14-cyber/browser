@@ -56,6 +56,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_quickstart.ps1" -Kind "file" -Purpose "Default top-level attached-page quickstart helper after the validation-router route narrows.")
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_catalog_quickstart.ps1" -Kind "file" -Purpose "Catalog-side top-level attached-page quickstart helper surfaced by the validation-router route.")
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Kind "file" -Purpose "Broader top-level attached-page bridge helper surfaced by the validation-router route.")
+    (New-ValidationReference -Path "scripts/windows/check_google_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Dedicated Google-shaped attached-page surface checker that should stay available before the narrower issue #3 helper chain reuses the Google attached-page flow.")
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Google-shaped attached-page flow helper that may be reopened from the validation-router route before the shorter issue #3 helper chain.")
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Kind "file" -Purpose "Suite-router attached-page quickstart helper surfaced by the validation-router route.")
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_shortcut_entrypoint.ps1" -Kind "file" -Purpose "Short attached-page helper surfaced after the validation-router route narrows further.")
@@ -116,5 +117,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} validation-router attached HTML quickstart path(s).") -f $missing.Count)
-Write-Host "Repair the missing quickstart note, helper, or downstream route script before trusting the issue #3 validation-router attached localhost bridge."
+Write-Host "Repair the missing quickstart note, helper, dedicated Google attached-page surface checker, or downstream route script before trusting the issue #3 validation-router attached localhost bridge."
 exit 1
