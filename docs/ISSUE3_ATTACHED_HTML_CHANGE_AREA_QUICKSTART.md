@@ -42,7 +42,7 @@ From there, prefer one of these narrower follow-ups before reopening the broader
 
 - `show_attached_html_validation_flow.ps1`
 - `show_google_attached_html_validation_flow.ps1`
-- `show_google_issue3_validation_router_attached_html_quickstart.ps1`
+- `show_google_issue3_validation_ROUTER_ATTACHED_HTML_QUICKSTART.ps1`
 - `show_google_issue3_top_level_attached_html_quickstart.ps1`
 - `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
 - `show_google_issue3_suite_router_attached_html_quickstart.ps1`
@@ -272,3 +272,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_sa
 ```
 
 Use this when the route has already narrowed enough that the wrapper-heavy issue `#3` command surface is the next useful layer.
+
+## Practical rule
+
+Once `show_headed_validation_suites.ps1 -ChangeArea attached-html` has already made attached localhost follow-up the next obvious branch, prefer `show_google_issue3_attached_html_change_area_quickstart.ps1` first, then keep both `show_attached_html_validation_flow.ps1` and `show_google_attached_html_validation_flow.ps1` visible before the validation-router attached-page quickstart, the compact top-level quickstart, the top-level attached-page catalog quickstart, the broader top-level bridge, the suite-router attached-page quickstart, and the suite-catalog bridge narrow the route back into the shorter issue `#3` replay surfaces.
+
+- replay reopened from `docs/WINDOWS_FULL_USE.md`: go from the Windows full-use attached-page route to its fail-fast surface check, then the Windows full-use validation-router bridge, then the Windows full-use catalog quickstart, then `-ChangeArea attached-html`, then the attached-html change-area quickstart, then both attached-page flow helpers, then the validation-router quickstart, then the top-level quickstarts before narrowing again
+- no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` to the attached-html change-area quickstart, then the broader attached-page flow helper, then the dedicated Google attached-page flow guide, then the validation-router quickstart, then the compact top-level quickstart, then the top-level catalog quickstart, then replay shortcuts, then the safe-route map
+- Google-specific attached-page surface still matters more than the generic shortcut chain: go from `-ChangeArea google-attached-html` to the attached-html change-area quickstart, then keep both `show_attached_html_validation_flow.ps1` and `show_google_attached_html_validation_flow.ps1` in view before the validation-router quickstart, the top-level attached-page quickstart, and the broader top-level attached-page bridge narrow further
+- explicit bundle paths already pinned: stay on the bundle-first helper after the attached-html change-area quickstart and the top-level catalog quickstart so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
+- saved summary or repo-root override already present: reopen the attached-html change-area quickstart with that same context first, then choose the broader flow helper, the Google-specific flow guide, the validation-router quickstart, the top-level quickstarts, replay shortcuts, the next-step matrix, contextual flow, or the safe-route map only as needed
+
+Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path.
