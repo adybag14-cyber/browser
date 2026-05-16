@@ -33,17 +33,27 @@ Once the pinned bundle runner is green and you want tighter screenshot-and-title
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
 ```
 
 Use that proof path when the delegated bundle runner already covered the main route and the next decision depends on a smaller fixed-list confirmation instead of reopening the broader attached-page helper stack.
+
+## Locked bundle order
+
+Keep the pinned issue `#3` bundle in this exact order for manual replay notes, repeated `-InputPath` values, and the fixed-list proof helper:
+
+1. `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html`
+2. `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html`
+3. `Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html`
+
+If a helper resolves a different filename set or a different order from a folder input, stop and treat that as a bundle-selection problem before you interpret the headed-mode results.
 
 ## Page checks
 
 ### Google Safety Centre
 
 Target file:
-- `Control your online safety and privacy – Google Safety Centre (...).html`
+- `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html`
 
 Manual checks:
 - the page stays visibly nonblank after load and after the first scroll
@@ -55,7 +65,7 @@ Manual checks:
 ### Anthropic application
 
 Target file:
-- `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (...).html`
+- `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html`
 
 Manual checks:
 - text inputs take focus and keep typed text visible after the first click
@@ -91,6 +101,7 @@ Do not special-case one page if the same headed subsystem would explain failures
 
 When a manual pass fails, preserve:
 - the exact target page name
+- the exact saved filename that was served
 - whether the failure happened on first load, after scroll, or after interaction
 - whether the same symptom appears on the other saved pages
 - the smallest validation helper that still reproduces the failure
