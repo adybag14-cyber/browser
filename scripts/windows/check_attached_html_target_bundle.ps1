@@ -66,6 +66,126 @@ function Get-FirstRegexGroupValue {
     return [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value).Trim()
 }
 
+function Get-FirstRegexCaptureValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Raw,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Patterns
+    )
+
+    foreach ($pattern in $Patterns) {
+        $match = [regex]::Match(
+            $Raw,
+            $pattern,
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::Multiline
+        )
+        if (-not $match.Success) {
+            continue
+        }
+
+        foreach ($group in ($match.Groups | Select-Object -Skip 1)) {
+            if (-not [string]::IsNullOrWhiteSpace($group.Value)) {
+                return [System.Net.WebUtility]::HtmlDecode($group.Value).Trim()
+            }
+        }
+    }
+
+    return ""
+}
+
+function Get-MetaTagContentValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Raw,
+        [Parameter(Mandatory = $true)]
+        [string]$MetaName
+    )
+
+    $metaTags = [regex]::Matches(
+        $Raw,
+        '<meta\b[^>]*>',
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::Multiline
+    )
+
+    foreach ($match in $metaTags) {
+        $tag = $match.Value
+        $propertyValue = Get-FirstRegexCaptureValue -Raw $tag -Patterns @(
+            '\bproperty\s*=\s*(?:"([^"]*)"|''([^'']*)''|([^\s>]+))'
+        )
+        $nameValue = Get-FirstRegexCaptureValue -Raw $tag -Patterns @(
+            '\bname\s*=\s*(?:"([^"]*)"|''([^'']*)''|([^\s>]+))'
+        )
+
+        if (
+            -not [string]::Equals($propertyValue, "og:$MetaName", [System.StringComparison]::OrdinalIgnoreCase) -and
+            -not [string]::Equals($nameValue, "og:$MetaName", [System.StringComparison]::OrdinalIgnoreCase)
+        ) {
+            continue
+        }
+
+        $contentValue = Get-FirstRegexCaptureValue -Raw $tag -Patterns @(
+            '\bcontent\s*=\s*(?:"([^"]*)"|''([^'']*)''|([^\s>]+))'
+        )
+        if (-not [string]::IsNullOrWhiteSpace($contentValue)) {
+            return $contentValue
+        }
+    }
+
+    return ""
+}
+
+function Get-CanonicalHref {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Raw
+    )
+
+    $linkTags = [regex]::Matches(
+        $Raw,
+        '<link\b[^>]*>',
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::Multiline
+    )
+
+    foreach ($match in $linkTags) {
+        $tag = $match.Value
+        $relValue = Get-FirstRegexCaptureValue -Raw $tag -Patterns @(
+            '\brel\s*=\s*(?:"([^"]*)"|''([^'']*)''|([^\s>]+))'
+        )
+        if (-not [string]::Equals($relValue, 'canonical', [System.StringComparison]::OrdinalIgnoreCase)) {
+            continue
+        }
+
+        $hrefValue = Get-FirstRegexCaptureValue -Raw $tag -Patterns @(
+            '\bhref\s*=\s*(?:"([^"]*)"|''([^'']*)''|([^\s>]+))'
+        )
+        if (-not [string]::IsNullOrWhiteSpace($hrefValue)) {
+            return $hrefValue
+        }
+    }
+
+    return ""
+}
+
+function Get-DocumentUrl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Raw
+    )
+
+    $frontMatterUrl = Get-FirstRegexGroupValue -Raw $Raw -Pattern '(?m)^\s*url:\s*(https?://\S+)'
+    if (-not [string]::IsNullOrWhiteSpace($frontMatterUrl)) {
+        return $frontMatterUrl
+    }
+
+    $canonicalHref = Get-CanonicalHref -Raw $Raw
+    if (-not [string]::IsNullOrWhiteSpace($canonicalHref)) {
+        return $canonicalHref
+    }
+
+    return Get-MetaTagContentValue -Raw $Raw -MetaName 'url'
+}
+
 function Get-FixtureMetadata {
     param(
         [Parameter(Mandatory = $true)]
@@ -87,9 +207,9 @@ function Get-FixtureMetadata {
     return [pscustomobject]@{
         Raw = $raw
         Title = Get-FirstRegexGroupValue -Raw $raw -Pattern "<title[^>]*>(.*?)</title>"
-        OpenGraphTitle = Get-FirstRegexGroupValue -Raw $raw -Pattern '<meta[^>]+(?:property|name)\s*=\s*["'']?og:title["'']?[^>]+content\s*=\s*["'']([^"'']+)["'']'
-        OpenGraphUrl = Get-FirstRegexGroupValue -Raw $raw -Pattern '<meta[^>]+(?:property|name)\s*=\s*["'']?og:url["'']?[^>]+content\s*=\s*["'']([^"'']+)["'']'
-        DocumentUrl = Get-FirstRegexGroupValue -Raw $raw -Pattern '(?m)^\s*url:\s*(\S+)'
+        OpenGraphTitle = Get-MetaTagContentValue -Raw $raw -MetaName 'title'
+        OpenGraphUrl = Get-MetaTagContentValue -Raw $raw -MetaName 'url'
+        DocumentUrl = Get-DocumentUrl -Raw $raw
     }
 }
 
