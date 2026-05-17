@@ -28,6 +28,66 @@ function New-ValidationReference {
     }
 }
 
+function Test-HtmlFixtureFileName([string]$Path) {
+    return [System.String]::Equals([System.IO.Path]::GetExtension($Path), ".html", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Get-ExplicitInputChecks {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Paths
+    )
+
+    $checks = foreach ($path in $Paths) {
+        $itemExists = Test-Path -LiteralPath $path
+        $resolvedPath = $null
+        $itemKind = "missing"
+        $htmlFileCount = 0
+        $status = "FAIL"
+        $detail = "Path does not exist."
+
+        if ($itemExists) {
+            $resolvedPath = (Resolve-Path -LiteralPath $path).Path
+            $item = Get-Item -LiteralPath $resolvedPath
+
+            if ($item.PSIsContainer) {
+                $itemKind = "directory"
+                $htmlFileCount = @(
+                    Get-ChildItem -LiteralPath $resolvedPath -Recurse -File -Filter *.html
+                ).Count
+
+                if ($htmlFileCount -gt 0) {
+                    $status = "PASS"
+                    $detail = ("Directory contains {0} HTML file(s)." -f $htmlFileCount)
+                } else {
+                    $detail = "Directory does not contain any HTML files."
+                }
+            } else {
+                $itemKind = "file"
+                if (Test-HtmlFixtureFileName $resolvedPath) {
+                    $htmlFileCount = 1
+                    $status = "PASS"
+                    $detail = "HTML file is ready for fixture replay."
+                } else {
+                    $detail = "File is not an HTML document."
+                }
+            }
+        }
+
+        [pscustomobject]@{
+            RequestedPath = $path
+            ResolvedPath = $resolvedPath
+            Kind = $itemKind
+            Exists = [bool]$itemExists
+            HtmlFileCount = $htmlFileCount
+            Status = $status
+            Detail = $detail
+        }
+    }
+
+    return @($checks)
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -71,6 +131,12 @@ $results = foreach ($reference in $references) {
 }
 
 $missing = @($results | Where-Object { -not $_.Exists })
+$inputChecks = if ($explicitInputPathCount -gt 0) {
+    Get-ExplicitInputChecks -Paths $InputPath
+} else {
+    @()
+}
+$inputProblems = @($inputChecks | Where-Object { $_.Status -ne "PASS" })
 
 if ($Json) {
     [ordered]@{
@@ -80,10 +146,12 @@ if ($Json) {
         explicit_input_path_count = $explicitInputPathCount
         checked_count = @($results).Count
         missing_count = @($missing).Count
+        input_problem_count = @($inputProblems).Count
         references = @($results)
+        input_checks = @($inputChecks)
     } | ConvertTo-Json -Depth 6
 
-    if ($missing.Count -gt 0) {
+    if ($missing.Count -gt 0 -or $inputProblems.Count -gt 0) {
         exit 1
     }
 
@@ -96,6 +164,16 @@ Write-Host ("Repo root: {0}" -f $resolvedRepoRoot)
 Write-Host ("Input mode: {0}" -f $inputMode)
 if ($explicitInputPathCount -gt 0) {
     Write-Host ("Explicit input paths: {0}" -f $explicitInputPathCount)
+    Write-Host ""
+    foreach ($inputCheck in $inputChecks) {
+        Write-Host ("[{0}] {1}" -f $inputCheck.Status, $inputCheck.RequestedPath)
+        if ($inputCheck.ResolvedPath) {
+            Write-Host ("  Resolved path: {0}" -f $inputCheck.ResolvedPath)
+        }
+        Write-Host ("  Kind: {0}" -f $inputCheck.Kind)
+        Write-Host ("  HTML files: {0}" -f $inputCheck.HtmlFileCount)
+        Write-Host ("  {0}" -f $inputCheck.Detail)
+    }
 }
 Write-Host ""
 
@@ -106,11 +184,16 @@ foreach ($result in $results) {
 }
 
 Write-Host ""
-if ($missing.Count -eq 0) {
+if ($missing.Count -eq 0 -and $inputProblems.Count -eq 0) {
     Write-Host "Local HTML fixture validation surface is intact."
     exit 0
 }
 
-Write-Host ("Missing {0} local HTML fixture validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, helper, deep asset audit dependency, or probe directory before trusting the reusable local fixture replay path."
+if ($missing.Count -gt 0) {
+    Write-Host ("Missing {0} local HTML fixture validation path(s)." -f $missing.Count)
+}
+if ($inputProblems.Count -gt 0) {
+    Write-Host ("Explicit fixture input validation found {0} problem path(s)." -f $inputProblems.Count)
+}
+Write-Host "Repair the missing guide, helper, deep asset audit dependency, or bad fixture input before trusting the reusable local fixture replay path."
 exit 1
