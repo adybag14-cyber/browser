@@ -53,6 +53,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/HeadedValidationHelpers.ps1" -Kind "file" -Purpose "Shared helper surface used to resolve repo-root-aware commands."),
     (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Top-level validation router whose change-area commands feed the shortcut-first route."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Broader attached-html flow helper surfaced from the shortcut-first route."),
+    (New-ValidationReference -Path "scripts/windows/check_google_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Dedicated Google attached-html surface checker surfaced directly from the shortcut-first route before the narrower helper chain takes over."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Dedicated Google attached-html flow helper surfaced from the shortcut-first route."),
     (New-ValidationReference -Path "scripts/windows/show_google_input_validation_flow.ps1" -Kind "file" -Purpose "Broader Google input flow helper that can widen back out from the shortcut-first route."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Kind "file" -Purpose "Top-level shortcut-first helper that this checker validates."),
@@ -129,5 +130,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} top-level shortcut-first path(s).") -f $missing.Count)
-Write-Host "Repair the missing shortcut note, helper, attached-page companion, or bundle fallback before trusting the issue #3 top-level shortcut-first route."
+Write-Host "Repair the missing shortcut note, attached-page companion, Google attached-page surface checker, helper, or bundle fallback before trusting the issue #3 top-level shortcut-first route."
 exit 1
