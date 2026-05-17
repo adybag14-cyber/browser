@@ -1,15 +1,59 @@
-. "$PSScriptRoot\..\common\Win32Input.ps1"
+[CmdletBinding()]
+param()
 
-function Get-TabProbeEnvironment([string]$ProfileRoot) {
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+
+function Resolve-TabProbeConfig {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$StartPath,
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$ProfileName = ""
+  )
+
+  $resolvedRepoRoot = if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+    Resolve-LightpandaRepoRoot $StartPath
+  } else {
+    $RepoRoot
+  }
+  $smokeRoot = Join-Path $resolvedRepoRoot "tmp-browser-smoke\tabs"
+
   return @{
-    APPDATA = $ProfileRoot
-    LOCALAPPDATA = $ProfileRoot
+    RepoRoot = $resolvedRepoRoot
+    SmokeRoot = $smokeRoot
+    BrowserExe = Resolve-LightpandaBrowserExe $resolvedRepoRoot $BrowserExe
+    ProfileRoot = if ([string]::IsNullOrWhiteSpace($ProfileName)) { $null } else { Join-Path $smokeRoot $ProfileName }
   }
 }
 
-function Wait-TabWindowHandle([int]$ProcessId, [int]$Attempts = 60) {
+function Reset-TabProbeProfile([string]$ProfileRoot) {
+  if ([string]::IsNullOrWhiteSpace($ProfileRoot)) {
+    return
+  }
+
+  if (Test-Path -LiteralPath $ProfileRoot) {
+    Remove-Item -LiteralPath $ProfileRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  New-Item -ItemType Directory -Force -Path $ProfileRoot | Out-Null
+}
+
+function Set-TabProbeProfileEnvironment([string]$ProfileRoot) {
+  if ([string]::IsNullOrWhiteSpace($ProfileRoot)) {
+    return
+  }
+
+  $env:APPDATA = $ProfileRoot
+  $env:LOCALAPPDATA = $ProfileRoot
+}
+
+function Wait-TabWindowHandle([int]$ProcessId, [int]$Attempts = 60, [int]$PollMilliseconds = 250) {
   for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds $PollMilliseconds
     $hwnd = Get-TabWindowHandle $ProcessId
     if ($hwnd -ne [IntPtr]::Zero) {
       return $hwnd
@@ -26,9 +70,9 @@ function Get-TabWindowHandle([int]$ProcessId) {
   return [IntPtr]::Zero
 }
 
-function Wait-TabTitle([int]$ProcessId, [string]$Needle, [int]$Attempts = 40) {
+function Wait-TabTitle([int]$ProcessId, [string]$Needle, [int]$Attempts = 40, [int]$PollMilliseconds = 250) {
   for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds $PollMilliseconds
     $proc = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
     if (-not $proc -or $proc.MainWindowHandle -eq 0) { continue }
     $title = Get-SmokeWindowTitle ([IntPtr]$proc.MainWindowHandle)
@@ -74,10 +118,5 @@ function Get-TabClientPoint([int]$TabIndex, [int]$TabCount = 2, [switch]$Close, 
 }
 
 function Stop-OwnedProbeProcess([System.Diagnostics.Process]$Process) {
-  if (-not $Process) { return $null }
-  $meta = Get-CimInstance Win32_Process -Filter "ProcessId=$($Process.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate
-  if ($meta -and $meta.CommandLine -and $meta.CommandLine -notmatch "codex\.js|@openai/codex") {
-    Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
-  }
-  return $meta
+  return Stop-LightpandaOwnedProbeProcess $Process
 }
