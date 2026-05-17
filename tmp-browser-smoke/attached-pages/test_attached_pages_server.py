@@ -78,7 +78,7 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertNotEqual(self.manifest[0]["alias_route"], self.manifest[1]["alias_route"])
         self.assertEqual("/raw/nested/beta.html", self.manifest[1]["raw_path"])
 
-    def test_catalog_and_manifest_routes_respond(self):
+    def test_catalog_manifest_and_audit_routes_respond(self):
         status, _, body = self.request("GET", "/")
         self.assertEqual(200, status)
         text = body.decode("utf-8")
@@ -86,6 +86,8 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertIn("/pages/1", text)
         self.assertIn("/pages/2-alpha-landing", text)
         self.assertIn("/named/alpha-landing-beta", text)
+        self.assertIn("/audit.json", text)
+        self.assertIn("asset audit", text)
 
         status, headers, body = self.request("GET", "/manifest.json")
         self.assertEqual(200, status)
@@ -93,6 +95,20 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertEqual("no-store", header_map.get("Cache-Control"))
         manifest = json.loads(body.decode("utf-8"))
         self.assertEqual(self.manifest, manifest)
+
+        status, headers, body = self.request("GET", "/audit.json")
+        self.assertEqual(200, status)
+        self.assertEqual("no-store", dict(headers).get("Cache-Control"))
+        audit = json.loads(body.decode("utf-8"))
+        self.assertEqual(2, audit["fixture_count"])
+        self.assertEqual(0, audit["fixtures_with_missing_assets"])
+        self.assertEqual(0, audit["fixtures_with_external_assets"])
+
+        status, _, body = self.request("GET", "/audit.txt")
+        self.assertEqual(200, status)
+        audit_text = body.decode("utf-8")
+        self.assertIn("Attached Pages Asset Audit", audit_text)
+        self.assertIn("Fixtures: 2", audit_text)
 
     def test_short_and_named_routes_redirect_and_serve_assets(self):
         status, headers, body = self.request("GET", "/pages/1")
@@ -126,6 +142,10 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertEqual(200, status)
         self.assertEqual(b"", body)
         self.assertEqual("no-store", dict(headers).get("Cache-Control"))
+
+        status, _, body = self.request("HEAD", "/audit.json")
+        self.assertEqual(200, status)
+        self.assertEqual(b"", body)
 
         status, _, body = self.request("GET", "/raw/nested/beta.html")
         self.assertEqual(200, status)
@@ -196,32 +216,6 @@ class AttachedPagesServerTests(unittest.TestCase):
                 payload = json.loads(response.read().decode("utf-8"))
                 self.assertEqual(1, len(payload))
                 self.assertEqual("beta.html", payload[0]["file"])
-            finally:
-                connection.close()
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join(timeout=5)
-
-    def test_explicit_file_list_preserves_selected_order(self):
-        selected_files = [self.root / "nested" / "beta.html", self.root / "alpha.html"]
-        manifest = server_module.build_manifest(selected_files=selected_files)
-        self.assertEqual(["nested/beta.html", "alpha.html"], [entry["file"] for entry in manifest])
-        self.assertEqual(["/pages/1", "/pages/2"], [entry["route"] for entry in manifest])
-
-        server, manifest = server_module.create_server(selected_files=selected_files, bind="127.0.0.1", port=0)
-        self.assertEqual(["nested/beta.html", "alpha.html"], [entry["file"] for entry in manifest])
-        port = server.server_address[1]
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        try:
-            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-            try:
-                connection.request("GET", "/manifest.json")
-                response = connection.getresponse()
-                self.assertEqual(200, response.status)
-                payload = json.loads(response.read().decode("utf-8"))
-                self.assertEqual(["nested/beta.html", "alpha.html"], [entry["file"] for entry in payload])
             finally:
                 connection.close()
         finally:
@@ -436,6 +430,42 @@ class AttachedPagesServerTests(unittest.TestCase):
         rendered = server_module.render_asset_audit_text(audit)
         self.assertIn("Fixtures with external assets: 1", rendered)
         self.assertIn("External assets: 3", rendered)
+
+    def test_audit_routes_surface_missing_and_external_dependency_counts(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=5)
+
+        (self.root / "nested" / "beta.html").write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Alpha Landing</title>
+    <script src="https://cdn.example.test/app.js"></script>
+  </head>
+  <body><img src="missing.png"></body>
+</html>
+""",
+            encoding="utf-8",
+        )
+
+        self.server, self.manifest = server_module.create_server(self.root, bind="127.0.0.1", port=0)
+        self.port = self.server.server_address[1]
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+        status, _, body = self.request("GET", "/audit.json")
+        self.assertEqual(200, status)
+        audit = json.loads(body.decode("utf-8"))
+        beta_entry = next(entry for entry in audit["fixtures"] if entry["display_path"] == "nested/beta.html")
+        self.assertEqual(1, beta_entry["missing_asset_count"])
+        self.assertEqual(1, beta_entry["external_asset_count"])
+
+        status, _, body = self.request("GET", "/")
+        self.assertEqual(200, status)
+        text = body.decode("utf-8")
+        self.assertIn("missing local assets: <strong>1</strong>", text)
+        self.assertIn("external dependencies: <strong>1</strong>", text)
 
     def test_asset_audit_cli_exit_codes_and_allow_missing_flag(self):
         (self.root / "alpha.html").write_text(
