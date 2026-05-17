@@ -84,6 +84,7 @@ What exists today:
 - bounded localhost stop/reload coverage under `tmp-browser-smoke\stop-loading\`
 - bounded localhost input probes under `tmp-browser-smoke\form-controls\`
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
+- the first-line navigation, stop-loading, and form-control probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
 - an attached HTML route that currently expands to manual localhost replay steps instead of a larger issue-specific helper chain
 
 Treat the validation router output as the source of truth for the currently
@@ -118,6 +119,7 @@ for each page and verify:
 - text fields keep focus and accept typing
 - Enter-driven submit or button activation still behaves as expected
 
-Some older probe scripts still assume the repo checkout lives at
-`C:\Users\adyba\src\lightpanda-browser`. If your checkout differs, prefer the
-router above or normalize those probe-local paths before depending on them.
+The router's first-line navigation, stop-loading, and form-control probes now
+resolve the repo root from the current checkout automatically. Older deeper
+probe families under `tmp-browser-smoke\` can still carry fixed local path
+assumptions, so prefer the router output before widening into older helpers.
