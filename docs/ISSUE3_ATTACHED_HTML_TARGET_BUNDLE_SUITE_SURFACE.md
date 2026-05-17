@@ -1,6 +1,6 @@
 # Issue #3 Attached HTML Target-Bundle Suite Surface
 
-Use this note when issue `#3` replay is already close to the known three-page attached HTML compatibility bundle and you want the compact suite-level route printed with both the broader attached-page helper flow and the narrower Google-shaped attached-page flow still visible beside it.
+Use this note when issue `#3` replay is already close to the known three-page attached HTML compatibility bundle and you want the compact suite-level route printed with both the broader attached-page helper flow and the full Google-shaped attached-page validation route still visible beside it.
 
 Keep these nearby when the route may still reopen from a broader validation surface before it locks onto the pinned three-page bundle:
 
@@ -21,7 +21,7 @@ Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close whe
 
 ## Goal
 
-Start from the dedicated suite-surface helper when the current replay is already near `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` and you want the bundle surface, the broader attached-page suite surfaces, the broader attached-page flow helper, and the dedicated Google-shaped attached-page flow helper visible in one compact place before the replay narrows into bundle-only execution.
+Start from the dedicated suite-surface helper when the current replay is already near `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` and you want the bundle surface, the broader attached-page suite surfaces, the broader attached-page flow helper, and the full Google-shaped attached-page validation route visible in one compact place before the replay narrows into bundle-only execution.
 
 If the route is still reopening from the suite-catalog side first, keep the suite-catalog guide and the suite-catalog attached-page bridge visible long enough to confirm that the pinned bundle lane is still the right next branch before this narrower suite-surface helper takes over. If the route is already reopening from the top-level attached-html helpers, keep the compact top-level quickstart, the bundle quickstart, and the broader top-level bridge visible long enough to confirm that the replay should stay on the pinned bundle lane before this suite-surface helper takes over.
 
@@ -47,6 +47,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
@@ -56,8 +57,8 @@ Use that route when:
 
 - the current attached pages are still the known three-page compatibility bundle or are very likely to narrow to it next
 - you want the `attached-html-target-bundle` change-area output reprinted with the broader attached-page suite surface and the Google-shaped attached-page suite surface still visible beside it
-- you want the fail-fast Google attached-page surface and asset-closure checks visible before the broader attached-page flow helper and the dedicated Google-shaped attached-page flow helper take over
-- you want the broader attached-page flow helper and the dedicated Google-shaped attached-page flow helper kept in view before the replay locks onto the delegated bundle validation runner
+- you want the fail-fast Google attached-page surface and asset-closure checks visible before the broader attached-page flow helper, the dedicated Google-shaped attached-page flow helper, and the delegated Google-shaped attached-page runner take over
+- you want the broader attached-page flow helper plus the full Google-shaped attached-page validation route kept in view before the replay locks onto the delegated bundle validation runner
 
 ## Validation-catalog re-entry
 
@@ -74,6 +75,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
 ```
 
 Use that route when:
@@ -81,7 +84,7 @@ Use that route when:
 - the higher-level validation catalog or roadmap still needs to stay visible before the replay narrows into the pinned bundle lane
 - you want the broader attached-page and Google-shaped attached-page routes surfaced beside the compact bundle-focused suite helper rather than rediscovered later
 - you want the fail-fast Google attached-page surface and asset-closure checks carried forward before the narrower bundle-first helper takes over
-- you want the top-level attached-page bridge, the dedicated suite-surface helper, the bundle-first helper, and the replay-route helpers aligned with the same broader catalog-first route that the surrounding bundle-reference and roadmap notes already describe
+- you want the top-level attached-page bridge, the dedicated suite-surface helper, the bundle-first helper, the replay-route helpers, and the delegated Google-shaped runner aligned with the same broader catalog-first route that the surrounding bundle-reference and roadmap notes already describe
 
 ## Suite-catalog re-entry
 
@@ -130,7 +133,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 That helper is the best starting point when:
 
 - the replay is already close to bundle-only validation and the broader route context only needs a compact reminder
-- you want the `attached-html-target-bundle`, `attached-html`, and `google-attached-html` suite commands kept together beside the broader and Google-shaped attached-page flow helpers
+- you want the `attached-html-target-bundle`, `attached-html`, and `google-attached-html` suite commands kept together beside the broader attached-page flow helper and the full Google-shaped attached-page validation route
 - you want the top-level attached-html bridge, bundle surface checker, bundle flow helper, bundle runner, bundle-first entrypoint, replay route, and replay shortcuts printed on one smaller issue `#3` surface before you choose the next replay branch
 
 ## Narrower issue #3 re-entry
@@ -178,4 +181,4 @@ If the replay is still arriving from the suite-catalog side, reopen `docs/ISSUE3
 
 If the replay is already arriving from the top-level attached-html route, reopen `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`, then `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before narrowing into the bundle-first helper.
 
-Once the bundle runner or the reusable attached-page flow helpers make the next failure state clear, widen back into the broader issue `#3` helper chain instead of keeping the replay artificially pinned to the bundle lane.
+Once the bundle runner or the broader attached-page helpers make the next failure state clear, widen back into the broader issue `#3` helper chain instead of keeping the replay artificially pinned to the bundle lane.
