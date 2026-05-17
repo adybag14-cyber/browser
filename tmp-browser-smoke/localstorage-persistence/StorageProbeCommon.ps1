@@ -1,23 +1,70 @@
-$script:Repo = "C:\Users\adyba\src\lightpanda-browser"
-$script:Root = Join-Path $script:Repo "tmp-browser-smoke\localstorage-persistence"
-$script:BrowserExe = Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
+[CmdletBinding()]
+param()
 
-. "$script:Repo\tmp-browser-smoke\common\Win32Input.ps1"
-. "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
+
+function Resolve-StorageProbeConfig {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$StartPath,
+    [string]$RepoRoot,
+    [string]$BrowserExe,
+    [string]$ProfileName = ""
+  )
+
+  $resolvedRepoRoot = if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+    Resolve-LightpandaRepoRoot $StartPath
+  } else {
+    $RepoRoot
+  }
+  $smokeRoot = Join-Path $resolvedRepoRoot "tmp-browser-smoke\localstorage-persistence"
+  $resolvedBrowserExe = Resolve-LightpandaBrowserExe $resolvedRepoRoot $BrowserExe
+  $resolvedProfileRoot = if ([string]::IsNullOrWhiteSpace($ProfileName)) { $null } else { Join-Path $smokeRoot $ProfileName }
+  $appDataRoot = if ($resolvedProfileRoot) { Join-Path $resolvedProfileRoot "lightpanda" } else { $null }
+
+  return @{
+    RepoRoot = $resolvedRepoRoot
+    SmokeRoot = $smokeRoot
+    BrowserExe = $resolvedBrowserExe
+    ProfileRoot = $resolvedProfileRoot
+    AppDataRoot = $appDataRoot
+    DownloadsDir = if ($appDataRoot) { Join-Path $appDataRoot "downloads" } else { $null }
+    LocalStorageFile = if ($appDataRoot) { Join-Path $appDataRoot "local-storage-v1.txt" } else { $null }
+    SettingsFile = if ($appDataRoot) { Join-Path $appDataRoot "browse-settings-v1.txt" } else { $null }
+  }
+}
 
 function Reset-StorageProfile([string]$ProfileRoot) {
+  if ([string]::IsNullOrWhiteSpace($ProfileRoot)) {
+    return $null
+  }
+
   $appDataRoot = Join-Path $ProfileRoot "lightpanda"
   $downloadsDir = Join-Path $appDataRoot "downloads"
-  cmd /c "rmdir /s /q `"$ProfileRoot`"" | Out-Null
+  if (Test-Path -LiteralPath $ProfileRoot) {
+    Remove-Item -LiteralPath $ProfileRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
   New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
-  $env:APPDATA = $ProfileRoot
-  $env:LOCALAPPDATA = $ProfileRoot
   return @{
     AppDataRoot = $appDataRoot
     DownloadsDir = $downloadsDir
     LocalStorageFile = Join-Path $appDataRoot "local-storage-v1.txt"
     SettingsFile = Join-Path $appDataRoot "browse-settings-v1.txt"
   }
+}
+
+function Set-StorageProfileEnvironment([string]$ProfileRoot) {
+  if ([string]::IsNullOrWhiteSpace($ProfileRoot)) {
+    return
+  }
+
+  $env:APPDATA = $ProfileRoot
+  $env:LOCALAPPDATA = $ProfileRoot
 }
 
 function Seed-StorageProfile([string]$AppDataRoot) {
@@ -30,23 +77,17 @@ homepage_url
 "@ | Set-Content -Path (Join-Path $AppDataRoot "browse-settings-v1.txt") -NoNewline
 }
 
-function Wait-StorageServer([int]$Port, [int]$Attempts = 30) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port/seed.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { return $true }
-    } catch {}
-  }
-  return $false
+function Wait-StorageServer([string]$Host, [int]$Port, [int]$TimeoutSeconds = 15, [int]$PollMilliseconds = 250) {
+  return Wait-LightpandaHttpReady -Url "http://$Host`:$Port/seed.html" -TimeoutSeconds $TimeoutSeconds -PollMilliseconds $PollMilliseconds
 }
 
-function Start-StorageServer([int]$Port, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath "python" -ArgumentList (Join-Path $script:Root "storage_server.py"),"$Port" -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+function Start-StorageServer([string]$WorkingDirectory, [int]$Port, [string]$Stdout, [string]$Stderr) {
+  $python = Resolve-LightpandaPythonCommand
+  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $WorkingDirectory "storage_server.py"),"$Port")) -WorkingDirectory $WorkingDirectory -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
-function Start-StorageBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath $script:BrowserExe -ArgumentList "browse",$StartupUrl,"--window_width","960","--window_height","640" -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+function Start-StorageBrowser([string]$RepoRoot, [string]$BrowserExe, [string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
+  return Start-Process -FilePath $BrowserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640",$StartupUrl) -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Invoke-StorageAddressCommit([IntPtr]$Hwnd, [string]$Url) {
@@ -108,6 +149,10 @@ function Wait-OwnedProbeProcessGone([int]$ProcessId, [int]$Attempts = 40) {
     Start-Sleep -Milliseconds 150
   }
   return $false
+}
+
+function Stop-OwnedProbeProcess([System.Diagnostics.Process]$Process) {
+  return Stop-LightpandaOwnedProbeProcess $Process
 }
 
 function Format-StorageProbeProcessMeta($Meta) {
