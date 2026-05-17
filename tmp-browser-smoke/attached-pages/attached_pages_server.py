@@ -256,7 +256,7 @@ MODULE_REFERENCE_PATTERNS = (
 )
 
 
-def normalize_reference_value(reference: str) -> str | None:
+def classify_reference_value(reference: str) -> tuple[str, str] | None:
     stripped = reference.strip()
     if not stripped:
         return None
@@ -265,7 +265,7 @@ def normalize_reference_value(reference: str) -> str | None:
 
     parts = urlsplit(stripped)
     if parts.scheme or parts.netloc:
-        return None
+        return ("external", stripped)
 
     normalized = parts.path.strip()
     if not normalized:
@@ -274,16 +274,21 @@ def normalize_reference_value(reference: str) -> str | None:
         normalized = normalized[1:]
     if not normalized or normalized in (".", ".."):
         return None
-    return normalized
+    return ("local", normalized)
 
 
-def extract_local_reference_candidates(content: str) -> list[str]:
-    candidates: list[str] = []
+def extract_reference_candidates(content: str) -> tuple[list[str], list[str]]:
+    local_candidates: list[str] = []
+    external_candidates: list[str] = []
 
     def add_candidate(value: str) -> None:
-        normalized = normalize_reference_value(value)
-        if normalized is not None and normalized not in candidates:
-            candidates.append(normalized)
+        classified = classify_reference_value(value)
+        if classified is None:
+            return
+        kind, normalized = classified
+        target_list = local_candidates if kind == "local" else external_candidates
+        if normalized not in target_list:
+            target_list.append(normalized)
 
     for pattern in LOCAL_REFERENCE_PATTERNS:
         for match in pattern.finditer(content):
@@ -299,16 +304,16 @@ def extract_local_reference_candidates(content: str) -> list[str]:
     for pattern in MODULE_REFERENCE_PATTERNS:
         for match in pattern.finditer(content):
             value = match.group(1).strip()
-            if value.startswith(("./", "../")):
-                add_candidate(value)
+            add_candidate(value)
 
-    return candidates
+    return local_candidates, external_candidates
 
 
 def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | None = None) -> dict[str, object]:
     bundle_root, manifest = resolve_bundle_inputs(root, selected_files)
     audit_entries: list[dict[str, object]] = []
     fixtures_with_missing_assets = 0
+    fixtures_with_external_assets = 0
 
     for html_path in manifest:
         relative_html_path = html_path.relative_to(bundle_root).as_posix()
@@ -318,6 +323,7 @@ def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | 
         inspected_css_files: list[str] = []
         inspected_module_script_files: list[str] = []
         missing_assets: list[str] = []
+        external_assets: list[str] = []
 
         while pending:
             current_path, current_relative = pending.pop(0)
@@ -330,7 +336,12 @@ def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | 
                     missing_assets.append(missing_entry)
                 continue
 
-            for reference in extract_local_reference_candidates(content):
+            local_references, external_references = extract_reference_candidates(content)
+            for external_reference in external_references:
+                if external_reference not in external_assets:
+                    external_assets.append(external_reference)
+
+            for reference in local_references:
                 resolved = ensure_within_root(bundle_root, current_path.parent / unquote(reference))
                 display_path = Path(current_relative).parent.joinpath(unquote(reference)).as_posix()
                 if resolved is None or not resolved.is_file():
@@ -356,6 +367,8 @@ def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | 
 
         if missing_assets:
             fixtures_with_missing_assets += 1
+        if external_assets:
+            fixtures_with_external_assets += 1
 
         audit_entries.append(
             {
@@ -363,6 +376,8 @@ def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | 
                 "display_path": relative_html_path,
                 "missing_assets": missing_assets,
                 "missing_asset_count": len(missing_assets),
+                "external_assets": external_assets,
+                "external_asset_count": len(external_assets),
                 "inspected_files": inspected_files,
                 "inspected_file_count": len(inspected_files),
                 "inspected_css_files": inspected_css_files,
@@ -376,6 +391,7 @@ def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | 
         "bundle_root": str(bundle_root),
         "fixture_count": len(audit_entries),
         "fixtures_with_missing_assets": fixtures_with_missing_assets,
+        "fixtures_with_external_assets": fixtures_with_external_assets,
         "fixtures": audit_entries,
     }
 
@@ -387,6 +403,7 @@ def render_asset_audit_text(audit: dict[str, object]) -> str:
         f"Bundle root: {audit['bundle_root']}",
         f"Fixtures: {audit['fixture_count']}",
         f"Fixtures with missing assets: {audit['fixtures_with_missing_assets']}",
+        f"Fixtures with external assets: {audit['fixtures_with_external_assets']}",
         "",
     ]
     for fixture in audit["fixtures"]:
@@ -401,6 +418,15 @@ def render_asset_audit_text(audit: dict[str, object]) -> str:
             for asset in fixture["missing_assets"][:10]:
                 lines.append(f"- {asset}")
             remaining = fixture["missing_asset_count"] - min(10, fixture["missing_asset_count"])
+            if remaining > 0:
+                lines.append(f"- ... {remaining} more")
+        if fixture["external_asset_count"] == 0:
+            lines.append("External assets: none")
+        else:
+            lines.append(f"External assets: {fixture['external_asset_count']}")
+            for asset in fixture["external_assets"][:10]:
+                lines.append(f"- {asset}")
+            remaining = fixture["external_asset_count"] - min(10, fixture["external_asset_count"])
             if remaining > 0:
                 lines.append(f"- ... {remaining} more")
         lines.append("")
