@@ -34,11 +34,12 @@ Use that shorter re-entry when the current three pages are still the likely comp
 Once the pinned bundle runner is green and you want tighter screenshot-and-title proof for the same three-page inputs, keep this follow-up nearby:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
 ```
 
-Use that proof path when the delegated bundle runner already covered the main route and the next decision depends on a smaller fixed-list confirmation instead of reopening the broader attached-page helper stack.
+Use that proof path when the delegated bundle runner already covered the main route and the next decision depends on a smaller fixed-list confirmation instead of reopening the broader attached-page helper stack. Keep the proof entrypoint first when you want the same pinned input set reprinted on the proof commands before you run them.
 
 ## Locked bundle order
 
