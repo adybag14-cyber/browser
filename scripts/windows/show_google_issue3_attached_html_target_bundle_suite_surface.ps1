@@ -162,7 +162,7 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 
 $surface = [ordered]@{
     issue = 'Google issue #3 attached-html target-bundle suite surface'
-    purpose = 'Print the compact suite-level route for the known three-page attached HTML compatibility bundle while keeping the broader attached-page lane, the full Google-shaped attached-page validation route, and the proof-entry follow-up visible beside the attached-html-target-bundle change-area output.'
+    purpose = 'Print the compact suite-level route for the known three-page attached HTML compatibility bundle while keeping the broader attached-page lane, the full Google-shaped attached-page validation route, the pinned bundle checker, and the proof-entry follow-up visible beside the attached-html-target-bundle change-area output.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -178,6 +178,7 @@ $surface = [ordered]@{
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $flowArguments -RepoRootOverride $RepoRoot
         google_attached_html_runner = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_attached_html_validation.ps1' -Arguments $flowArguments -Switches @('Wait') -RepoRootOverride $RepoRoot
         bundle_surface_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
+        bundle_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle.ps1' -Arguments $bundleArguments
         bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
         bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
         bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $reentryArguments
@@ -197,12 +198,13 @@ $surface = [ordered]@{
         validation_chain = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     }
     notes = @(
-        'Use this helper when you want the attached-html-target-bundle suite surface printed with the broader attached-page lane, the full Google-shaped attached-page follow-up route, and the proof-entry follow-up still visible beside it.',
+        'Use this helper when you want the attached-html-target-bundle suite surface printed with the broader attached-page lane, the full Google-shaped attached-page follow-up route, the bundle checker, and the proof-entry follow-up still visible beside it.',
         'Start with the attached_html_target_bundle suite command when the current attached pages are already the likely three-page compatibility bundle and you want the compact suite surface first.',
         'Keep the attached_html suite command nearby when the replay may still need the broader attached-page fallback before it locks onto the pinned bundle branch.',
         'Keep the google_attached_html suite command nearby when the current inputs include a Google-like attached page and the narrower Google-shaped helper chain still matters before bundle-first replay.',
         'Run google_attached_html_surface_check, google_attached_html_asset_closure, broader_attached_html_flow, google_attached_html_flow, and google_attached_html_runner before the bundle-only route when the next decision still depends on seeing the broader attached-page lane and the full Google-shaped attached-page chain beside the pinned bundle lane.',
         'Run bundle_surface_check before trusting the bundle-only replay after branch moves or helper renames.',
+        'Run bundle_check right after bundle_surface_check when you want the current saved-page set revalidated as the same known three-page compatibility bundle before the delegated runner takes over.',
         'Use bundle_proof_entrypoint after the bundle runner when the delegated bundle replay is green and the next decision depends on keeping the fixed-list screenshot-and-title proof pinned to the same saved inputs.',
         'Use top_level_attached_html_bridge when the bundle replay still needs the broader top-level attached-page bridge reprinted before the route drops into the bundle-first helper or the replay-route helpers.',
         'Use bundle_first_entrypoint when explicit input paths, repo-root context, or replay-route context are already in play and you want the narrower issue #3 bridge printed before the delegated bundle flow.',
@@ -219,7 +221,7 @@ $surface.recommended_next_command = $surface.helper_commands[$surface.recommende
 $surface.recommended_next_reason = if ($surface.recommended_next_key -eq 'bundle_first_entrypoint') {
     'Explicit attached-page paths are already pinned, so keep that same bundle context on the narrower issue #3 bridge before you delegate into the bundle flow and runner.'
 } else {
-    'No explicit bundle paths are pinned yet, so fail fast on the bundle surface first while the broader attached-page lane, the full Google-shaped attached-page route, and the proof-entry follow-up stay visible beside the suite surface.'
+    'No explicit bundle paths are pinned yet, so fail fast on the bundle surface first while the broader attached-page lane, the full Google-shaped attached-page route, the bundle checker, and the proof-entry follow-up stay visible beside the suite surface.'
 }
 
 if ($Json) {
@@ -254,6 +256,7 @@ Write-Host (("  Broader flow:    {0}") -f $surface.helper_commands.broader_attac
 Write-Host (("  Google flow:     {0}") -f $surface.helper_commands.google_attached_html_flow)
 Write-Host (("  Google runner:   {0}") -f $surface.helper_commands.google_attached_html_runner)
 Write-Host (("  Surface check:   {0}") -f $surface.helper_commands.bundle_surface_check)
+Write-Host (("  Bundle check:    {0}") -f $surface.helper_commands.bundle_check)
 Write-Host (("  Bundle flow:     {0}") -f $surface.helper_commands.bundle_flow)
 Write-Host (("  Bundle runner:   {0}") -f $surface.helper_commands.bundle_runner)
 Write-Host (("  Proof entry:     {0}") -f $surface.helper_commands.bundle_proof_entrypoint)
