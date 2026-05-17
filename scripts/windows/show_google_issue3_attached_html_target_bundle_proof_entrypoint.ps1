@@ -170,6 +170,11 @@ $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$reentryArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $reentryArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $reentryArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $reentryArguments -Name InputPath -Values $InputPath
+
 $fixtureSurfaceArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $fixtureSurfaceArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $fixtureSurfaceArguments -Name InputPath -Values $InputPath
@@ -204,8 +209,8 @@ $entrypoint = [ordered]@{
     local_html_fixture_probe_command = Format-PowerShellFileCommand -RelativePath 'tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1' -Arguments $fixtureProbeArguments
     broader_attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
     google_attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
-    bundle_suite_surface_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
-    bundle_first_entrypoint_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
+    bundle_suite_surface_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $reentryArguments
+    bundle_first_entrypoint_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $reentryArguments
     checklist_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md'
     reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md'
@@ -217,6 +222,7 @@ $entrypoint = [ordered]@{
         'Use local_html_fixture_surface_check_command and local_html_fixture_probe_command immediately after the bundle replay when you want tighter evidence for the same pinned inputs without reopening the broader attached-page wrapper flow.',
         'Keep broader_attached_html_flow_command and google_attached_html_flow_command nearby when the proof pass makes it clear that the next replay should widen back into the broader attached-page route or the dedicated Google-shaped attached-page lane.',
         'When explicit InputPath values are already pinned, this helper preserves the same repeated paths on the bundle check, bundle runner, and fixed-list proof commands so the proof pass stays on the exact same three inputs.',
+        'When SummaryPath is already pinned, this helper now preserves it on the suite-surface and bundle-first re-entry commands so the narrower issue #3 bundle bridge keeps the same replay context before or after proof.',
         'When explicit InputPath values are not pinned yet, the fixed-list proof command prints the exact saved filenames from the known three-page compatibility bundle so the narrower screenshot-and-title pass can be replayed without re-deriving placeholder names from the reference note.',
         'Keep the checklist, reference, and quickstart notes nearby when you want the page-by-page manual checks and bundle-first bridge visible beside this proof-only follow-up.'
     )
