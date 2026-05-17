@@ -103,8 +103,11 @@ $explicitInputPathCount = if ($InputPath) { @($InputPath).Count } else { 0 }
 
 $references = @(
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that documents the reusable local HTML fixture probe."),
+    (New-ValidationReference -Path "docs/LOCAL_HTML_FIXTURE_VALIDATION_FLOW.md" -Kind "file" -Purpose "Read-first note for the fixed-list localhost fixture replay path."),
+    (New-ValidationReference -Path "scripts/windows/show_local_html_fixture_validation_flow.ps1" -Kind "file" -Purpose "Printed flow helper for the fixed-list localhost fixture replay path."),
     (New-ValidationReference -Path "tmp-browser-smoke/README.md" -Kind "file" -Purpose "Top-level probe-suite index that routes saved-page follow-up into the local fixture probe."),
     (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures" -Kind "directory" -Purpose "Reusable staged localhost fixture workspace for saved HTML validation."),
+    (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures/README.md" -Kind "file" -Purpose "Compact probe contract for the fixed-list localhost fixture replay surface."),
     (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1" -Kind "file" -Purpose "Main reusable local HTML fixture probe runner."),
     (New-ValidationReference -Path "scripts/windows/check_local_html_fixture_asset_closure.ps1" -Kind "file" -Purpose "Dedicated deep asset-closure preflight for fixed local HTML fixture bundles."),
     (New-ValidationReference -Path "scripts/windows/check_attached_html_local_asset_closure.ps1" -Kind "file" -Purpose "Shared recursive CSS and module-asset audit used by the local fixture asset-closure preflight."),
@@ -195,5 +198,5 @@ if ($missing.Count -gt 0) {
 if ($inputProblems.Count -gt 0) {
     Write-Host ("Explicit fixture input validation found {0} problem path(s)." -f $inputProblems.Count)
 }
-Write-Host "Repair the missing guide, helper, deep asset audit dependency, or bad fixture input before trusting the reusable local fixture replay path."
+Write-Host "Repair the missing guide, flow helper, probe dependency, deep asset audit dependency, or bad fixture input before trusting the reusable local fixture replay path."
 exit 1
