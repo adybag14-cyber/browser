@@ -59,10 +59,11 @@ If you are reopening the route from `docs/WINDOWS_FULL_USE.md`, keep the
 broader Windows-first branch visible long enough to rerun its fail-fast route
 checker, reopen the newer validation-router and catalog-side bridge, keep the
 broader attached-page flow helper, the issue-specific Google attached-page
-checker, and the dedicated Google attached-page flow guide visible, surface the
-compact suite-router handoff that now reprints that same checker directly, and
-keep the replay-side attached-page ladder aligned before the narrower top-level
-attached-page helpers take over:
+checker, and the dedicated Google attached-page flow guide visible, rerun the
+compact suite-router handoff checker, surface the compact suite-router handoff
+that now reprints that same checker directly, and keep the replay-side
+attached-page ladder aligned before the narrower top-level attached-page
+helpers take over:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1
@@ -78,6 +79,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_handoff_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_handoff.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
@@ -95,9 +97,10 @@ the replay-side attached-html surface checker, the replay-side attached-html
 quickstart, the narrower validation-router and top-level attached-page helpers,
 the broader attached-page flow helper, the issue-specific Google attached-page
 checker, the dedicated Google attached-page flow guide, the issue-specific
-Google attached-page entrypoint, the compact suite-router handoff that now
-reprints that same issue-specific checker directly, and the suite-catalog-side
-bridge all describing the same re-entry order.
+Google attached-page entrypoint, the compact suite-router handoff checker, the
+compact suite-router handoff that now reprints that same issue-specific checker
+directly, and the suite-catalog-side bridge all describing the same re-entry
+order.
 
 When the top-level suite router already made attached localhost follow-up
 obvious, prefer this compact chain:
@@ -110,6 +113,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_handoff_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_handoff.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
@@ -173,8 +177,13 @@ chosen helper.
   the shorter top-level notes.
 - `show_google_issue3_google_attached_html_entrypoint.ps1`: use this when the
   issue-specific Google-shaped attached-page route should stay visible before
-  the compact suite-router handoff, replay-route shortcut bridge, replay
-  shortcuts, or the later safe-route map.
+  the compact suite-router handoff checker, the compact suite-router handoff,
+  replay-route shortcut bridge, replay shortcuts, or the later safe-route map.
+- `check_google_issue3_suite_router_handoff_validation_surface.ps1`: use this
+  immediately before `show_google_issue3_suite_router_handoff.ps1` when you
+  want the compact suite-router handoff to fail fast on missing bridge notes,
+  attached-page helpers, replay-route companions, or bundle-aware follow-up
+  before the smaller helper ladder takes over.
 - `show_google_issue3_suite_router_handoff.ps1`: use this when the
   issue-specific Google-shaped attached-page bridge is already visible and you
   want the compact suite-router handoff to reprint the narrower checker
@@ -257,6 +266,7 @@ reopen `show_attached_html_validation_flow.ps1`, then
 `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1`,
 then `show_google_attached_html_validation_flow.ps1`, then
 `show_google_issue3_google_attached_html_entrypoint.ps1`, then
+`check_google_issue3_suite_router_handoff_validation_surface.ps1`, then
 `show_google_issue3_suite_router_handoff.ps1` once the attached-page branch is
 back in view so the issue-specific checker is reprinted directly on the compact
 handoff surface, and then follow the same narrower attached-page helper
