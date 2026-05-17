@@ -52,7 +52,7 @@ try {
   $ready = Wait-LightpandaHttpReady -Url "http://$Host`:$Port/index.html" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "restore probe server did not become ready" }
 
-  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://$Host`:$Port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run1Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run1Out -RedirectStandardError $run1Err
+  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://$Host`:$Port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run1Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run1Out -RedirectStandardError $run1Err
   $run1ScreenshotReady = Wait-LightpandaFileReady -Path $run1Png -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $run1ScreenshotReady) { throw "restore probe run1 screenshot did not become ready" }
   $hwnd1 = Wait-TabWindowHandle -ProcessId $browser1.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
@@ -80,7 +80,7 @@ try {
   Start-Sleep -Milliseconds 300
   if (Get-Process -Id $browser1.Id -ErrorAction SilentlyContinue) { throw "restore probe run1 browser did not exit" }
 
-  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://$Host`:$Port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run2Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run2Out -RedirectStandardError $run2Err
+  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://$Host`:$Port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run2Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run2Out -RedirectStandardError $run2Err
   $run2ScreenshotReady = Wait-LightpandaFileReady -Path $run2Png -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $run2ScreenshotReady) { throw "restore probe run2 screenshot did not become ready" }
   $hwnd2 = Wait-TabWindowHandle -ProcessId $browser2.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
