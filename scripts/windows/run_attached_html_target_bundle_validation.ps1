@@ -9,7 +9,8 @@ param(
     [switch]$SummaryOnly,
     [switch]$Wait,
     [switch]$LeaveServerRunning,
-    [switch]$AllowMissingLocalAssets
+    [switch]$AllowMissingLocalAssets,
+    [switch]$AllowPartialBundle
 )
 
 Set-StrictMode -Version Latest
@@ -57,6 +58,54 @@ function Invoke-BundleChecker {
     }
 
     return $bundleJson | ConvertFrom-Json -Depth 12
+}
+
+function Assert-CompleteBundle {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Bundle,
+        [switch]$AllowPartialBundle
+    )
+
+    if ($AllowPartialBundle) {
+        return
+    }
+
+    $allTargets = @($Bundle.targets)
+    $resolvedTargets = @($allTargets | Where-Object { $_.status -eq "found" -and $_.path })
+    $missingTargets = @($allTargets | Where-Object { $_.status -ne "found" -or -not $_.path })
+    if ($missingTargets.Count -eq 0) {
+        return
+    }
+
+    $missingDisplayNames = @(
+        $missingTargets |
+            ForEach-Object { $_.display_name } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    $resolvedDisplayNames = @(
+        $resolvedTargets |
+            ForEach-Object { $_.display_name } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+
+    $missingSummary = if ($missingDisplayNames.Count -gt 0) {
+        $missingDisplayNames -join "; "
+    } else {
+        "${($missingTargets.Count)} unresolved target(s)"
+    }
+    $resolvedSummary = if ($resolvedDisplayNames.Count -gt 0) {
+        $resolvedDisplayNames -join "; "
+    } else {
+        "none"
+    }
+
+    throw (
+        "Attached HTML target bundle validation expects the full pinned compatibility set by default. " +
+        "Resolved $($resolvedTargets.Count) of $($allTargets.Count) targets. " +
+        "Missing: $missingSummary. Resolved: $resolvedSummary. " +
+        "Re-run .\\scripts\\windows\\check_attached_html_target_bundle.ps1 to inspect the current bundle set, or pass -AllowPartialBundle only when you intentionally want a narrower replay."
+    )
 }
 
 function Resolve-BundleRunnerMetadata {
@@ -117,6 +166,7 @@ if (-not (Test-Path -LiteralPath $bundleCheckerPath -PathType Leaf)) {
 
 Invoke-BundleSurfaceCheck -SurfaceCheckPath $bundleSurfaceCheckPath -RepoRoot $RepoRoot
 $bundle = Invoke-BundleChecker -CheckerPath $bundleCheckerPath -RepoRoot $RepoRoot -InputPath $InputPath
+Assert-CompleteBundle -Bundle $bundle -AllowPartialBundle:$AllowPartialBundle
 $runnerMetadata = Resolve-BundleRunnerMetadata -Bundle $bundle -PreferredInitialPage $PreferredInitialPage
 $runnerPath = Join-Path $PSScriptRoot $runnerMetadata.runner_leaf
 if (-not (Test-Path -LiteralPath $runnerPath -PathType Leaf)) {
@@ -163,7 +213,10 @@ if (-not $SummaryOnly) {
         Write-Host ("Preferred initial page: {0}" -f (Convert-ToDisplayPath -Path $runnerMetadata.preferred_initial_page -RepoRoot $resolvedRepoRoot))
     }
     Write-Host ("Bundle summary: {0}" -f $runnerMetadata.summary)
-    Write-Host ("Delegated runner: .\scripts\windows\{0}" -f $runnerMetadata.runner_leaf)
+    Write-Host ("Delegated runner: .\\scripts\\windows\\{0}" -f $runnerMetadata.runner_leaf)
+    if ($AllowPartialBundle) {
+        Write-Host "Bundle completeness policy: partial bundle allowed"
+    }
     if ($AllowMissingLocalAssets) {
         Write-Host "Attached asset policy: degraded mode allowed"
     }
