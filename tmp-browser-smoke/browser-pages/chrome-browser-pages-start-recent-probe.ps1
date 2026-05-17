@@ -1,5 +1,4 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-. "$repo\tmp-browser-smoke\browser-pages\BrowserPagesProbeCommon.ps1"
+. "$PSScriptRoot\BrowserPagesProbeCommon.ps1"
 
 $port = 8193
 $serverOut = Join-Path $Root "chrome-browser-pages-start-recent.server.stdout.txt"
