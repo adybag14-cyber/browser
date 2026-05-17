@@ -30,6 +30,7 @@ if (-not $BrowserExe) {
 }
 
 $probeRoot = Join-Path $RepoRoot "tmp-browser-smoke\form-controls"
+$googleEnterOrderRunner = Join-Path $scriptRoot "run_google_form_controls_enter_order_validation.ps1"
 $probeTable = [ordered]@{
     label = [ordered]@{
         Label = "label-click"
@@ -38,6 +39,7 @@ $probeTable = [ordered]@{
         DeferredEnter = $false
         GoogleEnterOrder = $false
         UsesInputText = $false
+        UsesDedicatedGoogleWrapper = $false
     }
     "default-enter" = [ordered]@{
         Label = "enter-submit-default"
@@ -46,6 +48,7 @@ $probeTable = [ordered]@{
         DeferredEnter = $false
         GoogleEnterOrder = $false
         UsesInputText = $true
+        UsesDedicatedGoogleWrapper = $false
     }
     "deferred-enter" = [ordered]@{
         Label = "enter-submit-deferred"
@@ -54,6 +57,7 @@ $probeTable = [ordered]@{
         DeferredEnter = $true
         GoogleEnterOrder = $false
         UsesInputText = $true
+        UsesDedicatedGoogleWrapper = $false
     }
     "google-title" = [ordered]@{
         Label = "google-home-title"
@@ -62,6 +66,7 @@ $probeTable = [ordered]@{
         DeferredEnter = $false
         GoogleEnterOrder = $false
         UsesInputText = $true
+        UsesDedicatedGoogleWrapper = $false
     }
     "reduced-google-home" = [ordered]@{
         Label = "google-home-enter-submit"
@@ -70,14 +75,16 @@ $probeTable = [ordered]@{
         DeferredEnter = $false
         GoogleEnterOrder = $false
         UsesInputText = $true
+        UsesDedicatedGoogleWrapper = $false
     }
     "google-enter-order" = [ordered]@{
         Label = "google-enter-order"
-        ScriptPath = Join-Path $probeRoot "chrome-google-enter-order-probe.ps1"
+        ScriptPath = $googleEnterOrderRunner
         Port = $GoogleEnterOrderPort
         DeferredEnter = $false
         GoogleEnterOrder = $false
         UsesInputText = $true
+        UsesDedicatedGoogleWrapper = $true
     }
 }
 
@@ -95,24 +102,38 @@ function Invoke-FormControlsProbe {
         throw "Form-controls probe script not found: $($entry.ScriptPath)"
     }
 
-    $arguments = @{
-        RepoRoot = $RepoRoot
-        BrowserExe = $BrowserExe
-        Host = $Host
-        Port = $entry.Port
-        ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
-        WindowReadyAttempts = $WindowReadyAttempts
-        TitleWaitAttempts = $TitleWaitAttempts
-        PollMilliseconds = $PollMilliseconds
-    }
-    if ($entry.UsesInputText) {
-        $arguments.InputText = $InputText
-    }
-    if ($entry.DeferredEnter) {
-        $arguments.DeferredEnter = $true
-    }
-    if ($entry.GoogleEnterOrder) {
-        $arguments.GoogleEnterOrder = $true
+    if ($entry.UsesDedicatedGoogleWrapper) {
+        $arguments = @{
+            RepoRoot = $RepoRoot
+            BrowserExe = $BrowserExe
+            Host = $Host
+            SharedInputText = $InputText
+            SharedEnterOrderPort = $entry.Port
+            ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
+            HomeWindowReadyAttempts = $WindowReadyAttempts
+            HomeTitleWaitAttempts = $TitleWaitAttempts
+            HomePollMilliseconds = $PollMilliseconds
+        }
+    } else {
+        $arguments = @{
+            RepoRoot = $RepoRoot
+            BrowserExe = $BrowserExe
+            Host = $Host
+            Port = $entry.Port
+            ServerReadyTimeoutSeconds = $ServerReadyTimeoutSeconds
+            WindowReadyAttempts = $WindowReadyAttempts
+            TitleWaitAttempts = $TitleWaitAttempts
+            PollMilliseconds = $PollMilliseconds
+        }
+        if ($entry.UsesInputText) {
+            $arguments.InputText = $InputText
+        }
+        if ($entry.DeferredEnter) {
+            $arguments.DeferredEnter = $true
+        }
+        if ($entry.GoogleEnterOrder) {
+            $arguments.GoogleEnterOrder = $true
+        }
     }
 
     Write-Host ""
@@ -161,7 +182,7 @@ switch ($Probe) {
         Write-Host "Next: if the reduced Google-home submit gate stays green, use -Probe google-enter-order for the stricter keypress-before-submit localhost check."
     }
     "google-enter-order" {
-        Write-Host "Next: if the stricter enter-order localhost check stays green, move on to the broader shared Google wrapper or the smallest live Google manual pass."
+        Write-Host "Next: if the dedicated form-controls Enter-order gate stays green, move on to the broader shared Google wrapper or the smallest live Google manual pass."
     }
     default {
         Write-Host "Next: if the shared label, Enter, reduced Google title, reduced Google-home, and enter-order gates stay green, move on to inline-flow, google-shared-enter-order, or the broader reduced Google localhost probes."
