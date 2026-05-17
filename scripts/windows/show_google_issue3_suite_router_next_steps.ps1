@@ -256,9 +256,9 @@ $matrix = @(
     }
     [ordered]@{
         start_point = 'show_google_issue3_replay_route.ps1'
-        default_next_helper = 'show_google_issue3_replay_shortcuts.ps1'
-        command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
-        use_when = 'You want the narrower shortcut map before deciding between the context-preserving helper, attached-bundle-first route, the fresh safe-route replay, or the safe-route entrypoints helper.'
+        default_next_helper = 'show_google_issue3_replay_route_shortcut_entrypoint.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $bundleArguments
+        use_when = 'You want the smaller replay-route bridge first so the attached-page shortcut, replay-to-Windows bridge, next-step matrix, contextual flow, bundle-first branch, and safe-route entrypoints stay visible before widening again.'
     }
     [ordered]@{
         start_point = 'saved summary or current pinned context already in play'
@@ -331,6 +331,7 @@ $helper = [ordered]@{
         google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
+        replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         contextual_flow = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
@@ -364,7 +365,7 @@ $helper = [ordered]@{
         'When SummaryPath is supplied, the replay-route, replay-shortcuts, contextual-flow, safe-route entrypoints, fresh safe-route replay, reuse-current-outputs, and runner next-step helpers keep that same saved summary context attached.',
         'When InputPath is supplied, the suite-router handoff, replay-route, replay-shortcuts, contextual-flow, attached-bundle-first, safe-route entrypoints, attached-html flow, and Google attached-html flow helpers keep the current fixed bundle inputs pinned instead of relying on auto-discovery.',
         'Use suite_router_shortcut_entrypoint as the default next helper after the higher-level suite router when you want the shorter issue #3 bridge to decide between replay_shortcuts, contextual_flow, or attached_bundle_first without reopening the wider compact helpers first.',
-        'Use replay_shortcuts after the shortcut-first entrypoint, suite_router_handoff, or replay_route when the route is already known to be issue #3 and no saved summary, repo-root override, or pinned bundle inputs need to stay visible first.',
+        'Use replay_shortcuts after the shortcut-first entrypoint, suite_router_handoff, or replay_route_shortcut when the route is already known to be issue #3 and no saved summary, repo-root override, or pinned bundle inputs need to stay visible first.',
         'Use contextual_flow as the default next helper whenever RepoRoot or SummaryPath is already in play and no pinned bundle inputs take precedence, so the next surface keeps that context aligned while you choose between the recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.',
         'Use replay_route when you want the slightly broader attached-bundle branch, safe-route bridge, and runner-state helper printed together after the shortcut map is already visible or when you deliberately want to widen back out from suite_router_handoff.',
         'Use attached_bundle_first when the saved or attached pages are still the known three-page compatibility set and you want that route exercised before reopening the broader Google-only safe-route ladder.',
@@ -434,6 +435,7 @@ Write-Host (("  Attached quickstart:    {0}") -f $helper.helper_commands.suite_r
 Write-Host (("  Google attached entry:  {0}") -f $helper.helper_commands.google_attached_html_entrypoint)
 Write-Host (("  Suite-router handoff:   {0}") -f $helper.helper_commands.suite_router_handoff)
 Write-Host (("  Replay route:           {0}") -f $helper.helper_commands.replay_route)
+Write-Host (("  Replay-route shortcut:  {0}") -f $helper.helper_commands.replay_route_shortcut)
 Write-Host (("  Replay shortcuts:       {0}") -f $helper.helper_commands.replay_shortcuts)
 Write-Host (("  Contextual flow:        {0}") -f $helper.helper_commands.contextual_flow)
 Write-Host (("  Bundle-first helper:    {0}") -f $helper.helper_commands.attached_bundle_first)
