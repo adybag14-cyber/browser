@@ -42,8 +42,10 @@ Known attached HTML compatibility bundle:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
@@ -51,7 +53,11 @@ powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures
 Use the bundle-suite helper when the replay is being reopened from the broader
 validation catalog and you want the compact `attached-html-target-bundle` suite
 surface while keeping the broader attached-page and Google-shaped attached-page
-helpers visible beside the pinned three-page route.
+helpers visible beside the pinned three-page route. Keep the bundle-first
+helper nearby when explicit bundle inputs are already pinned, and use the proof
+entrypoint after the delegated runner when you want the fixed-list
+screenshot-and-title follow-up reprinted with those same locked inputs before
+the route widens back out.
 
 When the bundle route is being chosen from the broader router instead of from
 already-pinned inputs, keep the wider attached-page helpers visible first:
@@ -105,16 +111,20 @@ Attached HTML target intent:
 
 For the pinned three-page route, keep
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` nearby. The reference
-note keeps the fail-fast bundle surfaces, the delegated bundle runner, and the
-reusable fixed-list screenshot-and-title probe on the same locked inputs before
-the replay widens back into the broader issue `#3` helper chain, the
-suite-surface note keeps the compact bundle-specific re-entry easy to rediscover
-beside the broader attached-page and Google-shaped attached-page helpers, while
-the Google attached-page note keeps the narrower Google-shaped fallback visible
-when one of the pinned pages makes that route the next obvious follow-up.
+note keeps the fail-fast bundle surfaces, the delegated bundle runner, the
+bundle-first helper, and the reusable fixed-list screenshot-and-title proof on
+the same locked inputs before the replay widens back into the broader issue
+`#3` helper chain. The quickstart note keeps the shortest read-first bridge
+visible when the bundle lane is already the next obvious branch. The
+suite-surface note keeps the compact bundle-specific re-entry easy to
+rediscover beside the broader attached-page and Google-shaped attached-page
+helpers, while the Google attached-page note keeps the narrower Google-shaped
+fallback visible when one of the pinned pages makes that route the next obvious
+follow-up.
 
 Saved-page or attached-page localhost follow-up:
 
@@ -175,6 +185,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
 Use the validation-router quickstart when the broader headed validation router
@@ -234,6 +245,7 @@ attached localhost follow-up:
   `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`,
   `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
+  `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`,
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, and
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the route has
   already narrowed to the suite-router side, the replay-route shortcut side,
@@ -255,6 +267,7 @@ For the broader Windows runbook and the longer validation chain, keep
 `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
 `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
+`docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`,
 `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, and
 `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` nearby.
