@@ -142,7 +142,7 @@ Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name In
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached-html entrypoint'
-    purpose = 'Keep the issue-specific attached-page route visible as the shortest bridge from the top-level headed validation suite router into the current issue-specific Google attached-html surface check, validation flow, shortcut-first, context-preserving, and bundle-aware helpers.'
+    purpose = 'Keep the issue-specific attached-page route visible as the shortest bridge from the top-level headed validation suite router into the current issue-specific Google attached-html surface check, validation flow, shortcut-first, context-preserving, and bundle-aware helpers, including the compact bundle-suite surface that sits ahead of the bundle-first branch.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -173,6 +173,7 @@ $entrypoint = [ordered]@{
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleArguments
         suite_router_handoff = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_handoff.ps1' -Arguments $bundleArguments
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
+        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
     }
@@ -181,6 +182,8 @@ $entrypoint = [ordered]@{
     suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
+    attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
+    attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
         'Use this helper when the top-level suite router has already narrowed the replay to the issue #3 attached-page route and you want the shortest current bridge back into the narrower helper chain.',
@@ -188,12 +191,12 @@ $entrypoint = [ordered]@{
         'Use google_attached_html_surface_check when the replay is already narrowed to the issue-specific attached-page route and you want the dedicated fail-fast entrypoint surface reprinted before the broader flow helper or its downstream runner handoff.',
         'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.',
         'Use attached_html_change_area when the next replay still needs the broader attached-page compatibility route rather than the issue-specific Google-attached path.',
-        'Use attached_bundle_change_area or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.',
+        'Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.',
         'Use suite_router_shortcut_entrypoint as the default next helper when no saved summary, non-default repo root, or pinned bundle inputs need to take precedence first.',
-        'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between replay shortcuts, replay route, the next-step matrix, the attached bundle branch, or the safe-route helpers.',
+        'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between replay shortcuts, replay route, the next-step matrix, the compact bundle-suite helper, the attached bundle branch, or the safe-route helpers.',
         'Use replay_shortcuts after the shortcut entrypoint when the route is already known to stay inside issue #3 and no pinned bundle inputs or saved summary need to stay visible first.',
         'Use suite_router_next_steps when you still want the compact start-point matrix after re-entering from the issue-specific attached-page route.',
-        'Keep the quickstart, suite-router bridge, suite-catalog guide, issue-specific Google attached-html entrypoint guide, Google attached-html validation-flow guide, and validation-chain notes nearby when you want the written route beside these commands.'
+        'Keep the quickstart, suite-router bridge, suite-catalog guide, issue-specific Google attached-html entrypoint guide, Google attached-html validation-flow guide, the attached-html target bundle reference note, the attached-html target-bundle suite-surface note, and validation-chain notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -206,9 +209,9 @@ $entrypoint.recommended_next_key = if ($entrypoint.explicit_input_path_count -gt
 }
 $entrypoint.recommended_next_command = $entrypoint.helper_commands[$entrypoint.recommended_next_key]
 $entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq 'attached_bundle_first') {
-    'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 helper chain.'
+    'Explicit input paths are already in play, so keep the compact bundle-suite helper visible and stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 helper chain.'
 } elseif ($entrypoint.recommended_next_key -eq 'contextual_flow') {
-    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between replay shortcuts, replay route, the next-step matrix, the attached bundle branch, or the safe-route helpers.'
+    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between replay shortcuts, replay route, the next-step matrix, the compact bundle-suite helper, the attached bundle branch, or the safe-route helpers.'
 } else {
     'No pinned bundle inputs, saved summary, or non-default repo root are in play yet, so jump straight from the issue-specific attached-page entrypoint into the newer shortcut-first helper.'
 }
@@ -245,7 +248,8 @@ Write-Host (("  8. Shortcut entry:       {0}") -f $entrypoint.helper_commands.su
 Write-Host (("  9. Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
 Write-Host ((" 10. Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
 Write-Host ((" 11. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 12. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host ((" 12. Bundle suite helper:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)
+Write-Host ((" 13. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host 'Companion helpers:'
 Write-Host (("  Google surface check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
@@ -257,6 +261,7 @@ Write-Host (("  Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite
 Write-Host (("  Suite-catalog:        {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
 Write-Host (("  Suite-router handoff: {0}") -f $entrypoint.helper_commands.suite_router_handoff)
 Write-Host (("  Replay route:         {0}") -f $entrypoint.helper_commands.replay_route)
+Write-Host (("  Bundle suite helper:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)
 Write-Host (("  Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host (("  Safe-route map:       {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
 Write-Host ''
@@ -265,6 +270,8 @@ Write-Host (("Suite-router bridge:          {0}") -f $entrypoint.suite_router_br
 Write-Host (("Suite-catalog guide:          {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
 Write-Host (("Google attached-html note:    {0}") -f $entrypoint.google_attached_html_entrypoint_note_path)
 Write-Host (("Google attached-html flow:    {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
+Write-Host (("Attached bundle ref:          {0}") -f $entrypoint.attached_html_target_bundle_reference_note_path)
+Write-Host (("Bundle suite note:            {0}") -f $entrypoint.attached_html_target_bundle_suite_surface_note_path)
 Write-Host (("Validation chain:             {0}") -f $entrypoint.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Notes:'
