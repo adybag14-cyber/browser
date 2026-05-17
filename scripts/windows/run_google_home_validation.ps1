@@ -4,7 +4,7 @@ param(
     [string]$BrowserExe,
     [string]$Host = "127.0.0.1",
     [int]$Port = 8168,
-    [string]$InputText = "n",
+    [string]$InputText = "QZ",
     [int]$ServerReadyTimeoutSeconds = 15,
     [int]$WindowReadyAttempts = 60,
     [int]$TitleWaitAttempts = 80,
