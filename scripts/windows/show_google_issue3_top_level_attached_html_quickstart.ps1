@@ -316,6 +316,7 @@ Write-Host (("  Catalog-side quickstart:   {0}") -f $helper.commands.suite_catal
 Write-Host ''
 Write-Host 'Compact follow-up helpers:'
 Write-Host (("  Top-level surface check:  {0}") -f $helper.commands.top_level_attached_html_surface_check)
+Write-Host (("  Google surface check:     {0}") -f $helper.commands.google_attached_html_surface_check)
 Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Suite-router quickstart:  {0}") -f $helper.commands.suite_router_attached_html_quickstart)
 Write-Host (("  Catalog attached bridge:  {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
