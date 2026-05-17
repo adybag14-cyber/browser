@@ -140,6 +140,9 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host "Mode: pinned attached HTML target bundle"
             Write-Host ("Inputs: {0}" -f $attachedSelection.resolved_input_path.Count)
             Write-Host ("Validation mode: {0}" -f $attachedSelection.validation_mode)
+            if ($attachedSelection.preferred_initial_page) {
+                Write-Host ("Preferred initial page: {0}" -f $attachedSelection.preferred_initial_page)
+            }
             Write-Host ("Runner: {0}" -f $attachedSelection.runner_label)
             if ($attachedSelection.summary) {
                 Write-Host ("Bundle route: {0}" -f $attachedSelection.summary)
@@ -154,6 +157,9 @@ switch ($PSCmdlet.ParameterSetName) {
                 $bundleArgs.InputPath = $attachedSelection.resolved_input_path
             } elseif ($InputPath -and $InputPath.Count -gt 0) {
                 $bundleArgs.InputPath = $InputPath
+            }
+            if ($attachedSelection.preferred_initial_page) {
+                $bundleArgs.PreferredInitialPage = $attachedSelection.preferred_initial_page
             }
             if ($AllowMissingLocalAssets) {
                 $bundleArgs.AllowMissingLocalAssets = $true
@@ -205,6 +211,9 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host "Mode: auto-discovered attached HTML target bundle"
             Write-Host ("Attached HTML inputs: {0}" -f $attachedSelection.resolved_input_path.Count)
             Write-Host ("Validation mode: {0}" -f $attachedSelection.validation_mode)
+            if ($attachedSelection.preferred_initial_page) {
+                Write-Host ("Preferred initial page: {0}" -f $attachedSelection.preferred_initial_page)
+            }
             if ($AllowMissingLocalAssets) {
                 Write-Host "Attached asset policy: degraded mode allowed"
             }
@@ -216,6 +225,9 @@ switch ($PSCmdlet.ParameterSetName) {
 
             $bundleArgs = $commonArgs.Clone()
             $bundleArgs.InputPath = $attachedSelection.resolved_input_path
+            if ($attachedSelection.preferred_initial_page) {
+                $bundleArgs.PreferredInitialPage = $attachedSelection.preferred_initial_page
+            }
             if ($AllowMissingLocalAssets) {
                 $bundleArgs.AllowMissingLocalAssets = $true
             }
