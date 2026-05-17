@@ -155,7 +155,8 @@ chosen helper.
 - `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`:
   use this when the Windows-first route should keep the validation-router
   handoff visible before the narrower top-level attached-page helpers take over.
-- `show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1`: use this when the Windows full-use branch should keep the catalog-side
+- `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`:
+  use this when the Windows full-use branch should keep the catalog-side
   attached-page quickstart visible beside the narrower top-level chain.
 - `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`:
   use this when the replay-side attached-page ladder needs a fail-fast check
@@ -194,7 +195,7 @@ chosen helper.
   when the top-level suite router already narrowed replay to attached localhost
   follow-up and you want the shortest top-level attached-page bridge before the
   broader attached-page notes reopen.
-- `show_google_issue3_top_level_attached_html_entrypoint.ps1`: use this when
+- `show_google_issue3_top_LEVEL_ATTACHED_HTML_ENTRYPOINT.ps1`: use this when
   you want the broader top-level attached-page bridge reprinted before the
   route narrows into the newer suite-router or suite-catalog attached-page
   helpers.
