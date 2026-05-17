@@ -1,16 +1,30 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8153,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Add-Type -AssemblyName System.Drawing
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+
+$repo = Resolve-LightpandaRepoRoot $PSScriptRoot
 $root = Join-Path $repo "tmp-browser-smoke\wrapped-link"
-$port = 8153
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $readyPng = Join-Path $root "chrome-history-keyboard.ready.png"
 $browserOut = Join-Path $root "chrome-history-keyboard.browser.stdout.txt"
 $browserErr = Join-Path $root "chrome-history-keyboard.browser.stderr.txt"
 $serverOut = Join-Path $root "chrome-history-keyboard.server.stdout.txt"
 $serverErr = Join-Path $root "chrome-history-keyboard.server.stderr.txt"
 Remove-Item $readyPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-
-Add-Type -AssemblyName System.Drawing
-. "$PSScriptRoot\..\common\Win32Input.ps1"
 
 function Get-ColorBounds([System.Drawing.Bitmap]$Bitmap, [scriptblock]$Matcher) {
   $bounds = [ordered]@{min_x=$null; min_y=$null; max_x=$null; max_y=$null; count=0}
@@ -30,8 +44,8 @@ function Get-ColorBounds([System.Drawing.Bitmap]$Bitmap, [scriptblock]$Matcher) 
 }
 
 function Count-Hits([string]$Pattern) {
-  if (-not (Test-Path $serverErr)) { return 0 }
-  return ([regex]::Matches((Get-Content $serverErr -Raw), $Pattern)).Count
+  if (-not (Test-Path -LiteralPath $serverErr)) { return 0 }
+  return ([regex]::Matches((Get-Content -LiteralPath $serverErr -Raw), $Pattern)).Count
 }
 
 $server = $null
@@ -47,26 +61,20 @@ $afterOverlayIndexHits = 0
 $failure = $null
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m","http.server",$Port,"--bind",$Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url "http://$Host`:$Port/index.html" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "history keyboard probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","240","--window_height","480","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $readyPng) -and ((Get-Item $readyPng).Length -gt 0)) { $pngReady = $true; break }
-  }
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://$Host`:$Port/index.html","--window_width","240","--window_height","480","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $pngReady = Wait-LightpandaFileReady -Path $readyPng -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $pngReady) { throw "history keyboard probe screenshot did not become ready" }
 
   $hwnd = [IntPtr]::Zero
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
+  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
     $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
     if ($proc -and $proc.MainWindowHandle -ne 0) {
       $hwnd = [IntPtr]$proc.MainWindowHandle
@@ -76,7 +84,7 @@ try {
   if ($hwnd -eq [IntPtr]::Zero) { throw "history keyboard probe window handle not found" }
 
   Show-SmokeWindow $hwnd
-  Start-Sleep -Milliseconds 250
+  Start-Sleep -Milliseconds $PollMilliseconds
 
   $initialIndexHits = Count-Hits 'GET /index\.html HTTP/1\.1" 200'
   $initialNextHits = Count-Hits 'GET /next\.html HTTP/1\.1" 200'
@@ -94,7 +102,7 @@ try {
   [void](Invoke-SmokeClientClick $hwnd $linkX $linkY)
 
   for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds $PollMilliseconds
     $afterLinkNextHits = Count-Hits 'GET /next\.html HTTP/1\.1" 200'
     if ($afterLinkNextHits -gt $initialNextHits) {
       $linkWorked = $true
@@ -106,13 +114,13 @@ try {
   Start-Sleep -Milliseconds 1200
   Show-SmokeWindow $hwnd
   Send-SmokeCtrlH
-  Start-Sleep -Milliseconds 250
+  Start-Sleep -Milliseconds $PollMilliseconds
   Send-SmokeUp
   Start-Sleep -Milliseconds 120
   Send-SmokeEnter
 
   for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds $PollMilliseconds
     $afterOverlayIndexHits = Count-Hits 'GET /index\.html HTTP/1\.1" 200'
     if ($afterOverlayIndexHits -gt $initialIndexHits) {
       $overlayWorked = $true
@@ -123,11 +131,15 @@ try {
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  if ($browser) { Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue }
-  if ($server) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
-  Start-Sleep -Milliseconds 250
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
+  Start-Sleep -Milliseconds 200
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    host = $Host
+    port = $Port
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
@@ -139,6 +151,8 @@ try {
     after_link_next_hits = $afterLinkNextHits
     after_overlay_index_hits = $afterOverlayIndexHits
     error = $failure
+    server_meta = $serverMeta
+    browser_meta = $browserMeta
     browser_gone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
     server_gone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
   } | ConvertTo-Json -Depth 6
