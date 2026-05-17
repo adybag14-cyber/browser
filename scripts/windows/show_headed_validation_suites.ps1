@@ -1,7 +1,7 @@
 param(
     [ValidateSet("", "google-recommended")]
     [string]$SuiteName = "",
-    [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-input", "input", "navigation")]
+    [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-input", "input", "manual-html", "navigation", "network", "rendering")]
     [string]$ChangeArea = "",
     [string]$RepoRoot = "",
     [string]$BrowserExe = "",
@@ -96,7 +96,9 @@ function Get-AttachedHtmlNotes {
     $notes = @(
         "This branch does not yet include the wrapper-heavy attached HTML helper chain referenced by some older notes.",
         "Use a simple localhost server and headed browse for saved-page follow-up until those wrappers are committed.",
-        "If a saved page has a sibling *_files directory, keep it beside the HTML file while serving localhost."
+        "If a saved page has a sibling *_files directory, keep it beside the HTML file while serving localhost.",
+        "The broader attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1.",
+        "The manual-html, rendering, and network change areas currently collapse back to this same attached-html localhost route on the live branch."
     )
 
     if ($InputPath) {
@@ -230,7 +232,7 @@ switch ($true) {
             (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
             (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
         ) -Notes @(
-            "Use the top-level attached-page quickstart when saved-page follow-up should stay on the shorter issue #3 helper ladder.",
+            "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
             "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
         )
         break
@@ -271,7 +273,7 @@ switch ($true) {
         )
         break
     }
-    { $ChangeArea -eq "attached-html" -or $ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "attached-html-target-bundle" } {
+    { $ChangeArea -eq "attached-html" -or $ChangeArea -eq "attached-html-target-bundle" -or $ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "manual-html" -or $ChangeArea -eq "network" -or $ChangeArea -eq "rendering" } {
         Write-Section $ChangeArea
         $commands = if ($InputPath) {
             Get-ManualAttachedHtmlRoute -TargetInputPath $InputPath
