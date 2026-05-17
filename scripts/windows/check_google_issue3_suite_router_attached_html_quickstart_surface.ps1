@@ -53,7 +53,8 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_router_attached_html_quickstart.ps1" -Kind "file" -Purpose "Validation-router attached-page quickstart helper surfaced by the suite-router quickstart."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_change_area_quickstart.ps1" -Kind "file" -Purpose "Change-area quickstart helper surfaced by the suite-router attached-page route."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Broader attached-page flow helper kept visible from the suite-router quickstart."),
-    (New-ValidationReference -Path "scripts/windows/check_google_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast checker for the narrower Google attached-page lane surfaced by the suite-router quickstart."),
+    (New-ValidationReference -Path "scripts/windows/check_google_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast checker for the broader Google-shaped attached-page lane surfaced by the suite-router quickstart."),
+    (New-ValidationReference -Path "scripts/windows/check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1" -Kind "file" -Purpose "Issue-specific Google attached-page entrypoint checker surfaced when the route narrows into the dedicated issue #3 lane."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Dedicated Google attached-page flow helper surfaced from the suite-router quickstart."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_catalog_entrypoints.ps1" -Kind "file" -Purpose "Suite-catalog entrypoint guide that remains available when the attached-page route widens back out."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Kind "file" -Purpose "Suite-catalog attached-page bridge kept visible from the suite-router quickstart."),
@@ -121,5 +122,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} suite-router attached HTML quickstart path(s).") -f $missing.Count)
-Write-Host "Repair the missing attached-page note, top-level bridge, suite-catalog helper, Google attached-page companion, pinned bundle helper, or safe-route script before trusting this compact issue #3 attached-page route."
+Write-Host "Repair the missing attached-page note, top-level bridge, suite-catalog helper, Google attached-page checker or companion flow, pinned bundle helper, or safe-route script before trusting this compact issue #3 attached-page route."
 exit 1
