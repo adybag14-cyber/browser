@@ -355,6 +355,11 @@ $helper = [ordered]@{
     discovery_handoff_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
+    suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
+    top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
+    top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
+    suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
+    windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
@@ -456,6 +461,11 @@ Write-Host (("Quickstart note:              {0}") -f $helper.quickstart_note_pat
 Write-Host (("Replay-discovery note:       {0}") -f $helper.discovery_handoff_note_path)
 Write-Host (("Suite-router bridge note:    {0}") -f $helper.suite_router_bridge_note_path)
 Write-Host (("Replay-route shortcut note:  {0}") -f $helper.replay_route_shortcut_bridge_note_path)
+Write-Host (("Suite-router attached note:  {0}") -f $helper.suite_router_attached_html_quickstart_note_path)
+Write-Host (("Top-level attached quick:    {0}") -f $helper.top_level_attached_html_quickstart_note_path)
+Write-Host (("Top-level attached note:     {0}") -f $helper.top_level_attached_html_bridge_note_path)
+Write-Host (("Suite-catalog attached note: {0}") -f $helper.suite_catalog_attached_html_bridge_note_path)
+Write-Host (("Windows replay attached:     {0}") -f $helper.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Google attached entrypoint:  {0}") -f $helper.google_attached_html_entrypoint_note_path)
 Write-Host (("Google attached flow note:   {0}") -f $helper.google_attached_html_validation_flow_note_path)
 Write-Host (("Validation chain note:       {0}") -f $helper.validation_chain_note_path)
