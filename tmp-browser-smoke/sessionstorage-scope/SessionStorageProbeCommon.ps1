@@ -1,9 +1,49 @@
-$script:Repo = "C:\Users\adyba\src\lightpanda-browser"
-$script:Root = Join-Path $script:Repo "tmp-browser-smoke\sessionstorage-scope"
-$script:BrowserExe = Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
-. "$script:Repo\tmp-browser-smoke\common\Win32Input.ps1"
-. "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
+function Resolve-SessionStorageRepoRoot([string]$StartPath) {
+  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    return [System.IO.Path]::GetFullPath($env:LIGHTPANDA_REPO_ROOT)
+  }
+
+  $cursor = [System.IO.Path]::GetFullPath($StartPath)
+  while ($true) {
+    if (Test-Path (Join-Path $cursor "build.zig")) {
+      return $cursor
+    }
+
+    $parent = Split-Path $cursor -Parent
+    if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $cursor) {
+      throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
+    }
+    $cursor = $parent
+  }
+}
+
+function Resolve-SessionStorageBrowserExe([string]$RepoRoot) {
+  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) {
+    return [System.IO.Path]::GetFullPath($env:LIGHTPANDA_BROWSER_EXE)
+  }
+
+  return Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+}
+
+function Resolve-SessionStoragePythonCommand {
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    return @{ FileName = "python"; Arguments = @() }
+  }
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    return @{ FileName = "py"; Arguments = @("-3") }
+  }
+  throw "Python was not found in PATH. Install Python or start the sessionStorage probe server separately."
+}
+
+$script:Root = $PSScriptRoot
+$script:Repo = Resolve-SessionStorageRepoRoot $script:Root
+$script:BrowserExe = Resolve-SessionStorageBrowserExe $script:Repo
+
+. (Join-Path (Split-Path $script:Root -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $script:Root -Parent) "tabs\TabProbeCommon.ps1")
 
 function Reset-SessionStorageProfile([string]$ProfileRoot) {
   $appDataRoot = Join-Path $ProfileRoot "lightpanda"
@@ -40,7 +80,8 @@ function Wait-SessionStorageServer([int]$Port, [int]$Attempts = 30) {
 }
 
 function Start-SessionStorageServer([int]$Port, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath "python" -ArgumentList (Join-Path $script:Root "session_storage_server.py"),"$Port" -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  $python = Resolve-SessionStoragePythonCommand
+  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $script:Root "session_storage_server.py"), "$Port")) -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Start-SessionStorageBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
