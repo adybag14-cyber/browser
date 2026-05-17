@@ -354,6 +354,7 @@ $helper = [ordered]@{
     quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     discovery_handoff_note_path = 'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md'
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
+    replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
     google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
@@ -379,7 +380,7 @@ $helper = [ordered]@{
         'Use google_attached_html_flow when the current attached-page set already includes a Google-like page and you want the dedicated Google-shaped attached-page helper surface printed before narrowing into the Google attached-html entrypoint, the shortcut-first bridge, replay shortcuts, or the pinned bundle-first branch.',
         'Use suite_router_attached_html_quickstart as the default next helper after change_area_attached_html when the replay is already narrowed to attached-page compatibility follow-up and no pinned bundle inputs, saved summary, or repo-root override need to take precedence first, because it keeps the shorter attached-page bridge visible before you decide whether to widen into the top-level attached-page bridge, replay shortcuts, the next-step matrix, the pinned bundle-first branch, or the safe-route helper chain.',
         'Use google_attached_html_entrypoint as the default next helper after change_area_google_attached_html when the replay is already narrowed to the issue-specific Google-shaped attached-page route and no pinned bundle inputs, saved summary, or repo-root override need to take precedence first, because it keeps the issue-specific attached-page bridge visible before you decide whether to widen into the dedicated flow helper, the shortcut-first bridge, replay shortcuts, the next-step matrix, the pinned bundle-first branch, or the safe-route helper chain.',
-        'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, quickstart_note_path for the shortest replay note, google_attached_html_entrypoint_note_path and google_attached_html_validation_flow_note_path for the narrower Google-shaped attached-page route, validation_chain_note_path for wrapper precedence and context-preserving lane handoffs, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
+        'Keep discovery_handoff_note_path open for the shortest prose bridge from the top-level suite catalog into the newer suite-router handoff and replay-route helpers, suite_router_bridge_note_path for the narrower prose bridge, replay_route_shortcut_bridge_note_path for the shorter replay-route companion note, quickstart_note_path for the shortest replay note, google_attached_html_entrypoint_note_path and google_attached_html_validation_flow_note_path for the narrower Google-shaped attached-page route, validation_chain_note_path for wrapper precedence and context-preserving lane handoffs, decision_table_note_path when the replay lands on ready-for-runner-patch, already-direct, or runner-already-wired-regenerate-outputs, and windows_runbook_path when the next replay should widen back into the broader attached or saved localhost HTML follow-up.'
     )
 }
 
@@ -454,6 +455,7 @@ Write-Host ''
 Write-Host (("Quickstart note:              {0}") -f $helper.quickstart_note_path)
 Write-Host (("Replay-discovery note:       {0}") -f $helper.discovery_handoff_note_path)
 Write-Host (("Suite-router bridge note:    {0}") -f $helper.suite_router_bridge_note_path)
+Write-Host (("Replay-route shortcut note:  {0}") -f $helper.replay_route_shortcut_bridge_note_path)
 Write-Host (("Google attached entrypoint:  {0}") -f $helper.google_attached_html_entrypoint_note_path)
 Write-Host (("Google attached flow note:   {0}") -f $helper.google_attached_html_validation_flow_note_path)
 Write-Host (("Validation chain note:       {0}") -f $helper.validation_chain_note_path)
