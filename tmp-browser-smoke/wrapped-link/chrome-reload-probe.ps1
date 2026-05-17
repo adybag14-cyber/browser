@@ -15,7 +15,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
 . (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
 
-$repo = Resolve-LightpandaRepoRoot $PSScriptRoot
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
 $root = Join-Path $repo "tmp-browser-smoke\wrapped-link"
 $browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $browserOut = Join-Path $root "chrome-reload.browser.stdout.txt"
@@ -47,7 +47,7 @@ try {
   $ready = Wait-LightpandaHttpReady -Url "http://$Host`:$Port/index.html" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "chrome reload probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://$Host`:$Port/index.html","--window_width","240","--window_height","480","--screenshot_png",$png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","240","--window_height","480","--screenshot_png",$png,"http://$Host`:$Port/index.html") -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $pngReady = Wait-LightpandaFileReady -Path $png -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $pngReady) { throw "chrome reload screenshot did not become ready" }
 
