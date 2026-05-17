@@ -514,6 +514,11 @@ def main() -> int:
         help="Audit local CSS, image, and script references across the selected HTML bundle before starting the server.",
     )
     parser.add_argument(
+        "--audit-assets-json",
+        action="store_true",
+        help="Print structured JSON from --audit-assets instead of the text summary.",
+    )
+    parser.add_argument(
         "--allow-missing-assets",
         action="store_true",
         help="Return success from --audit-assets even when the bundle has missing local assets.",
@@ -523,13 +528,19 @@ def main() -> int:
     selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
     root = Path(args.root) if args.root else None
 
+    if args.audit_assets_json and not args.audit_assets:
+        parser.error("--audit-assets-json requires --audit-assets")
+
     if args.print_manifest:
         print(json.dumps(build_manifest(root, selected_files=selected_files), indent=2))
         return 0
 
     if args.audit_assets:
         audit = build_asset_audit(root, selected_files=selected_files)
-        print(render_asset_audit_text(audit), end="")
+        if args.audit_assets_json:
+            print(json.dumps(audit, indent=2))
+        else:
+            print(render_asset_audit_text(audit), end="")
         if audit["fixtures_with_missing_assets"] > 0 and not args.allow_missing_assets:
             return 1
         return 0
