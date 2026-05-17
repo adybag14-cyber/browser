@@ -76,7 +76,7 @@ function Get-AttachedHtmlNotes {
         "Use the attached-pages catalog wrapper to pin the current HTML bundle and expose short localhost routes at /, /manifest.json, /pages/<n>, /named/<slug>, and /raw/... .",
         "The broader attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1.",
         "The issue #3 top-level attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1.",
-        "The manual-html, rendering, and network change areas currently collapse back to this same attached-pages catalog route on the live branch.",
+        "The manual-html change area still reuses this attached-pages catalog route when you want a direct saved-page replay without a narrower bounded family.",
         "Start the catalog in one shell, then open the generated catalog or a manifest-backed short route from a second shell."
     )
 
@@ -185,6 +185,34 @@ function Get-AttachedHtmlRouteCommands {
     )
 }
 
+function Get-RenderingRouteCommands {
+    return @(
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-layout-flex-center-probe.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-screenshot-load-complete-probe.ps1"
+    )
+}
+
+function Get-RenderingRouteNotes {
+    return @(
+        "Use these before attached-page replay when the change touched shared layout, paint, screenshot timing, or visible headed surface behavior.",
+        "The current layout-smoke helpers can still carry fixed checkout assumptions, so normalize repo-root and browser-exe paths first if the helper fails before browser behavior is exercised."
+    )
+}
+
+function Get-NetworkRouteCommands {
+    return @(
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stylesheet-smoke\chrome-stylesheet-auth-probe.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\fetch-credentials\chrome-fetch-credentials-probe.ps1"
+    )
+}
+
+function Get-NetworkRouteNotes {
+    return @(
+        "Use these before attached-page replay when the change touched shared subresource loading, authenticated asset fetches, or browser-managed request credentials.",
+        "The stylesheet route is the quickest bounded check for headed subresource loading, while the fetch-credentials route widens into credential and cross-origin request behavior on localhost fixtures."
+    )
+}
+
 $issue3AttachedHtmlArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name RepoRoot -Value $RepoRoot
 if ($InputPath) {
@@ -244,6 +272,9 @@ function Show-DefaultRoutes {
         "These are the current bounded input checks already committed on this branch.",
         "Use them before live-site or saved-page follow-up."
     )
+
+    Write-Route -Name "rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
+    Write-Route -Name "network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
 
     $attachedCommands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath
     Write-Route -Name "attached-html" -Commands $attachedCommands -Notes (Get-AttachedHtmlNotes)
@@ -327,7 +358,21 @@ switch ($true) {
         )
         break
     }
-    { $ChangeArea -eq "attached-html" -or $ChangeArea -eq "attached-html-target-bundle" -or $ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "manual-html" -or $ChangeArea -eq "network" -or $ChangeArea -eq "rendering" } {
+    { $ChangeArea -eq "rendering" } {
+        Write-Section "rendering"
+        Write-Route -Name "bounded-rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
+        Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath) -Notes (Get-AttachedHtmlNotes)
+        Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
+        break
+    }
+    { $ChangeArea -eq "network" } {
+        Write-Section "network"
+        Write-Route -Name "bounded-network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
+        Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath) -Notes (Get-AttachedHtmlNotes)
+        Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
+        break
+    }
+    { $ChangeArea -eq "attached-html" -or $ChangeArea -eq "attached-html-target-bundle" -or $ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "manual-html" } {
         Write-Section $ChangeArea
         $useGoogleStyleCatalog = $ChangeArea -eq "google-attached-html"
         $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -GoogleStyle:$useGoogleStyleCatalog
