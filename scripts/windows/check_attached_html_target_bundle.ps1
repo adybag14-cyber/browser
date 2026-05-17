@@ -28,6 +28,8 @@ function Get-AttachedBundleTargetSpec {
             DisplayName = "Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic"
             MatchPatterns = @(
                 "job application.+interpretability at anthropic",
+                "job-boards\.greenhouse\.io/.+anthropic",
+                "greenhouse\.io/.+anthropic",
                 "jobs\.ashbyhq\.com/.+anthropic",
                 "ashbyhq\.com/.+anthropic"
             )
