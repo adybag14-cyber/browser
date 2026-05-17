@@ -8,7 +8,6 @@ minimalist browser for real daily use".
 Read this together with:
 - `docs/FULL_BROWSER_MASTER_TRACKER.md`
 - `docs/HEADED_MODE_ROADMAP.md`
-- `docs/HEADED_MODE_VALIDATION_GATES.md`
 - `docs/WINDOWS_FULL_USE.md`
 
 The branch to treat as product truth is:
@@ -135,34 +134,6 @@ Timeout budgets:
 - warm rebuild: about 5 minutes
 - cold/fresh-cache build: 15 to 20 minutes
 
-### Linux Offline Restore Routine
-
-If Linux validation is running from saved archives instead of live package
-fetches:
-
-1. Restore the sibling dependency layout first.
-   - When the saved archives already live under the standard Memory path, run
-     `scripts/linux/restore_offline_build_inputs.sh`.
-   - Use `scripts/linux/prepare_offline_build_inputs.sh` only when the archives
-     are stored somewhere else and the explicit archive flags are needed.
-2. Confirm the restore created:
-   - `../zig-v8-fork`
-   - `../boringssl-zig`
-   - `../offline-deps/...` for brotli, zlib, nghttp2, and curl
-   - `.cargo/config.toml` and `vendor/` when html5ever is being validated
-3. Run `scripts/linux/check_offline_build_prereqs.sh` before `zig build`.
-   - Treat a failing preflight as a setup or toolchain issue, not a code
-     regression.
-   - The active `zig version` must match `build.zig.zon` exactly.
-4. Confirm `build.zig.zon` now uses local `.path` dependencies under
-   `../offline-deps/`.
-5. Re-run Linux validation with the restored prebuilt V8 archive:
-   - `zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a`
-6. Treat remaining failures after this point as compile or toolchain
-   compatibility issues, not missing offline inputs.
-
-Use `docs/LINUX_OFFLINE_BUILD_RECOVERY.md` as the detailed Linux runbook.
-
 ## Definite Execution Order
 
 Do the remaining work in this order. Do not jump ahead to packaging before the
@@ -186,58 +157,6 @@ Tasks:
 - separate warm-build expectations from cold-build expectations in docs
 - ensure the main validation runbook tells future assistants which probe family
   to run for each subsystem change
-
-Use `docs/HEADED_MODE_VALIDATION_GATES.md` as the suite-routing map and
-`tmp-browser-smoke/README.md` as the directory-level index for the current
-probe families.
-
-Validation routing cheat sheet:
-- build recovery, startup discipline, or Windows bring-up scripts:
-  `scripts/windows/check_lightpanda_windows_prereqs.ps1`,
-  `tmp-browser-smoke/browser-pages/chrome-browser-pages-start-shell-probe.ps1`,
-  `tmp-browser-smoke/browser-pages/chrome-browser-pages-home-restore-probe.ps1`
-- shell chrome, internal browser pages, tabs, settings, or address bar flows:
-  `tmp-browser-smoke/browser-pages/`, `tmp-browser-smoke/tabs/`,
-  `tmp-browser-smoke/settings/`, `tmp-browser-smoke/wrapped-link/`
-- navigation lifecycle, reload, stop, or committed-state recovery:
-  `tmp-browser-smoke/wrapped-link/probe.ps1`,
-  `tmp-browser-smoke/wrapped-link/chrome-reload-probe.ps1`,
-  `tmp-browser-smoke/stop-loading/chrome-stop-probe.ps1`,
-  `tmp-browser-smoke/stop-loading/chrome-stop-input-probe.ps1`
-- focus, typing, Enter submit, clipboard, caret, or keyboard interaction:
-  `tmp-browser-smoke/form-controls/`, `tmp-browser-smoke/find/`,
-  `tmp-browser-smoke/zoom/`, `tmp-browser-smoke/inline-flow/`
-- layout boxes, inline flow, hit-testing, or control placement:
-  `tmp-browser-smoke/layout-smoke/`, `tmp-browser-smoke/flow-layout/`,
-  `tmp-browser-smoke/inline-flow/`, `tmp-browser-smoke/rendered-link-dom/`
-- shared painter, images, stylesheets, fonts, or screenshot fidelity:
-  `tmp-browser-smoke/image-smoke/`, `tmp-browser-smoke/stylesheet-smoke/`,
-  `tmp-browser-smoke/font-smoke/`, `tmp-browser-smoke/font-render/`,
-  `tmp-browser-smoke/rendered-link-dom/`
-- canvas and WebGL slices:
-  `tmp-browser-smoke/canvas-smoke/`
-- downloads, uploads, file chooser, or attachment promotion:
-  `tmp-browser-smoke/file-upload/`, `tmp-browser-smoke/downloads/`,
-  `tmp-browser-smoke/attachment-downloads/`, and
-  `tmp-browser-smoke/browser-pages/` when the download manager UI also changed
-- cookies, localStorage, sessionStorage, IndexedDB, bookmarks, settings, or
-  restart persistence:
-  `tmp-browser-smoke/cookie-persistence/`,
-  `tmp-browser-smoke/localstorage-persistence/`,
-  `tmp-browser-smoke/sessionstorage-scope/`,
-  `tmp-browser-smoke/indexeddb-persistence/`, `tmp-browser-smoke/bookmarks/`,
-  `tmp-browser-smoke/settings/`, `tmp-browser-smoke/tabs/`
-- request policy, credentialed fetch, abort behavior, or WebSocket runtime:
-  `tmp-browser-smoke/fetch-abort/`,
-  `tmp-browser-smoke/fetch-credentials/`,
-  `tmp-browser-smoke/websocket-smoke/`,
-  `tmp-browser-smoke/stylesheet-smoke/`, `tmp-browser-smoke/image-smoke/`
-
-For the Google homepage regression tracked in issue `#3`, do not stop at
-localhost probes alone. After the bounded form-controls and inline-flow checks
-are green, manually retest `https://www.google.com/` on the real headed Win32
-surface and confirm visible focus, typed query text, and Enter-driven results
-navigation.
 
 Exit criteria:
 - a future assistant can recover from corrupted `.zig-cache` without guessing
@@ -272,7 +191,7 @@ Acceptance:
 - `tmp-browser-smoke/inline-flow`
 - `tmp-browser-smoke/flow-layout`
 - `tmp-browser-smoke/rendered-link-dom`
-- `tmp-browser-smoke/showcase`
+- `tmp-browser-smoke/multi-image`
 
 Exit criteria:
 - pages no longer depend on dummy layout/presentation behavior to remain usable
@@ -456,7 +375,7 @@ Acceptance:
 - `tmp-browser-smoke/settings`
 - `tmp-browser-smoke/popup`
 - `tmp-browser-smoke/file-upload`
-- `tmp-browser-smoke/manual-user`
+- `tmp-browser-smoke/bookmarks`
 
 Exit criteria:
 - a user can browse, close, reopen, recover, download, and manage settings over
@@ -519,7 +438,9 @@ mode on the release candidate build:
 - shell and navigation
   - `tmp-browser-smoke/tabs`
   - `tmp-browser-smoke/browser-pages`
+  - `tmp-browser-smoke/bookmarks`
   - `tmp-browser-smoke/settings`
+  - `tmp-browser-smoke/stop-loading`
   - `tmp-browser-smoke/wrapped-link`
   - `tmp-browser-smoke/popup`
 - rendering and layout
@@ -549,14 +470,6 @@ Also require:
 - successful default-cache Windows build
 - successful fresh-cache Windows build
 - one long manual session run on a non-trivial real-site mix
-- when that session is based on saved HTML exports, use
-  `tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1`
-  so screenshots and page-title checks are captured in a repeatable localhost
-  pass
-
-Treat `docs/HEADED_MODE_VALIDATION_GATES.md` as the canonical quick route into
-the release-gate suites when choosing the first bounded validation step for a
-change.
 
 ## Bare Metal Path
 
@@ -639,7 +552,7 @@ Acceptance:
 Exit criteria:
 - the browser no longer assumes desktop process semantics in core code
 
-### Phase 10: Boot and Presentation
+#### Phase 10: Boot and Presentation
 
 Objective:
 - get pixels and input on screen with the same shared display-list path
@@ -677,7 +590,7 @@ Exit criteria:
 - the same browser UI can be driven on the bare-metal surface without desktop
   dependencies
 
-### Phase 11: Persistence and Networking
+#### Phase 11: Persistence and Networking
 
 Objective:
 - make browser state survive power loss and restart on a non-desktop target
@@ -802,12 +715,12 @@ browser core.
 
 Split the first bring-up into these host modules:
 - `src/sys/boot.zig` for startup, panic routing, and shutdown
-- `src/sys/serial_log.zig` for non-console logging
-- `src/sys/timer.zig` for monotonic time, sleeps, and animation pacing
-- `src/sys/input.zig` for keyboard and pointer event ingestion
 - `src/sys/framebuffer.zig` for the pixel surface and screenshot capture
+- `src/sys/input.zig` for keyboard and pointer event ingestion
+- `src/sys/timer.zig` for monotonic time, sleeps, and animation pacing
 - `src/sys/storage.zig` for profile persistence and file emulation
 - `src/sys/net.zig` for the transport and socket/driver shim
+- `src/sys/serial_log.zig` for log output when no desktop console exists
 
 Rules:
 - browser code never talks to drivers directly
