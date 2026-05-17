@@ -130,6 +130,20 @@ module-script imports, and common local asset references, then reports missing
 sidecars per fixture. It exits with a nonzero status when anything is missing,
 which makes it a good first gate for repeatable localhost validation.
 
+If another script needs the same audit in machine-readable form, add
+`--audit-assets-json` alongside `--audit-assets` to print the structured audit
+payload instead of the text summary:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --root C:\path\to\saved-html `
+  --audit-assets `
+  --audit-assets-json
+```
+
+Use this when a Linux or mixed-environment helper wants to fail fast on missing
+assets without scraping console text.
+
 If you still want a best-effort replay after seeing the missing-asset report,
 add `--allow-missing-assets` so the helper prints the audit summary but exits
 successfully:
