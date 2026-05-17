@@ -181,7 +181,7 @@ $attachedHtmlShortcutSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached HTML shortcut entrypoint'
-    purpose = 'Print the shortest attached-page compatibility route from the headed validation suite router back into the current issue #3 shortcut helpers while also surfacing the route''s own fail-fast checker, the broader Windows-first route guard, the replay-side attached-html quickstart, the dedicated Google attached-page surface check, the matching Google attached-page guide, the newer attached-html change-area quickstart, the newer top-level attached-page quickstarts, and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Print the shortest attached-page compatibility route from the headed validation suite router back into the current issue #3 shortcut helpers while also surfacing the route''s own fail-fast checker, the broader Windows-first route guard, the replay-side attached-html quickstart, the dedicated Google attached-page surface check, the matching Google attached-page guide, the issue-specific Google attached-page bridge, the newer attached-html change-area quickstart, the newer top-level attached-page quickstarts, and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -194,6 +194,7 @@ $entrypoint = [ordered]@{
         }) -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand
+        google_issue_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         attached_html_shortcut_surface_check = $attachedHtmlShortcutSurfaceCheckCommand
         windows_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
@@ -225,6 +226,7 @@ $entrypoint = [ordered]@{
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     attached_html_change_area_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md'
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
+    google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
@@ -238,6 +240,7 @@ $entrypoint = [ordered]@{
         'Start with attached_html_change_area when the next replay is already narrowed to the attached-page compatibility path and you want that top-level route reprinted before you drop into the shorter issue #3 helper chain.',
         'Use attached_bundle_change_area instead when the current saved or attached pages are still the known three-page compatibility bundle and the next replay should stay pinned to that route first.',
         'Use google_attached_html_flow when you want the broader attached-page localhost-first helper chain and its matching written guide kept visible before you choose between the shortcut-first issue #3 route and the pinned bundle-first branch.',
+        'Use google_issue_attached_html_entrypoint when the replay should keep the narrower issue-specific Google attached-page bridge visible beside the broader attached-page flow before the route drops into the shortest shortcut-first helper chain.',
         'Use google_attached_html_surface_check when the replay still needs the dedicated Google-shaped attached-page fail-fast checker reprinted beside the broader attached-page flow helper before the route narrows into the shortcut-first issue #3 surfaces.',
         'Use attached_html_shortcut_surface_check when you want this shortest issue-specific attached-page bridge to fail fast on missing companion notes, replay-side helpers, or bundle-aware follow-up commands before widening back into the suite-router shortcut or safe-route ladders.',
         'Use windows_route_surface_check after reopening the broader Windows-first route so the current route guard still fails fast before the replay drops into the narrower attached-page helpers.',
@@ -254,7 +257,7 @@ $entrypoint = [ordered]@{
         'Use attached_bundle_flow and attached_bundle_runner when the current route should stay pinned to the three-page compatibility set all the way through the delegated localhost validation helper.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed the current replay into the wrapper-heavy issue #3 branch, and keep the same SummaryPath and InputPath values attached when they are already pinned.',
         'Use fresh_safe_route_replay when current outputs may be stale or missing. Use reuse_current_outputs only when a saved SummaryPath already exists and those outputs are still trusted.',
-        'Keep the quickstart, Windows route, Windows bridge, Windows catalog, replay-side attached-html quickstart, attached-html change-area quickstart, the Google attached-page validation-flow note, top-level attached-page quickstart, top-level attached-page bridge, top-level attached-page catalog quickstart, suite-router attached-page quickstart, suite-router bridge, suite-router entrypoint guide, suite-catalog guide, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
+        'Keep the quickstart, Windows route, Windows bridge, Windows catalog, replay-side attached-html quickstart, attached-html change-area quickstart, the Google attached-page validation-flow note, the Google attached-page entrypoint note, top-level attached-page quickstart, top-level attached-page bridge, top-level attached-page catalog quickstart, suite-router attached-page quickstart, suite-router bridge, suite-router entrypoint guide, suite-catalog guide, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -295,26 +298,28 @@ Write-Host (("  1. Attached HTML:       {0}") -f $entrypoint.top_level_commands.
 Write-Host (("  2. Attached bundle:     {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
 Write-Host (("  3. Google attached:     {0}") -f $entrypoint.top_level_commands.google_attached_html_flow)
 Write-Host (("  4. Google surface:      {0}") -f $entrypoint.top_level_commands.google_attached_html_surface_check)
-Write-Host (("  5. Shortcut surface:    {0}") -f $entrypoint.top_level_commands.attached_html_shortcut_surface_check)
-Write-Host (("  6. Windows route chk:   {0}") -f $entrypoint.top_level_commands.windows_route_surface_check)
-Write-Host (("  7. Windows route:       {0}") -f $entrypoint.top_level_commands.windows_full_use_attached_html_route)
-Write-Host (("  8. Windows bridge:      {0}") -f $entrypoint.top_level_commands.windows_full_use_validation_router_attached_html_bridge)
-Write-Host (("  9. Windows catalog:     {0}") -f $entrypoint.top_level_commands.windows_full_use_attached_html_catalog_quickstart)
-Write-Host ((" 10. Replay quickstart:   {0}") -f $entrypoint.top_level_commands.windows_replay_attached_html_quickstart)
-Write-Host ((" 11. Change-area quick:   {0}") -f $entrypoint.top_level_commands.attached_html_change_area_quickstart)
-Write-Host ((" 12. Top-level quick:     {0}") -f $entrypoint.top_level_commands.top_level_attached_html_quickstart)
-Write-Host ((" 13. Top-level bridge:    {0}") -f $entrypoint.top_level_commands.top_level_attached_html_entrypoint)
-Write-Host ((" 14. Top-level catalog:   {0}") -f $entrypoint.top_level_commands.top_level_attached_html_catalog_quickstart)
-Write-Host ((" 15. Top-level shortcut:  {0}") -f $entrypoint.top_level_commands.top_level_shortcut_entrypoint)
-Write-Host ((" 16. Router attached:     {0}") -f $entrypoint.top_level_commands.suite_router_attached_html_quickstart)
-Write-Host ((" 17. Shortcut helper:     {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host ((" 18. Replay shortcuts:    {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 19. Next-step matrix:    {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 20. Bundle first:        {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host (("  5. Google issue bridge: {0}") -f $entrypoint.top_level_commands.google_issue_attached_html_entrypoint)
+Write-Host (("  6. Shortcut surface:    {0}") -f $entrypoint.top_level_commands.attached_html_shortcut_surface_check)
+Write-Host (("  7. Windows route chk:   {0}") -f $entrypoint.top_level_commands.windows_route_surface_check)
+Write-Host (("  8. Windows route:       {0}") -f $entrypoint.top_level_commands.windows_full_use_attached_html_route)
+Write-Host (("  9. Windows bridge:      {0}") -f $entrypoint.top_level_commands.windows_full_use_validation_router_attached_html_bridge)
+Write-Host ((" 10. Windows catalog:     {0}") -f $entrypoint.top_level_commands.windows_full_use_attached_html_catalog_quickstart)
+Write-Host ((" 11. Replay quickstart:   {0}") -f $entrypoint.top_level_commands.windows_replay_attached_html_quickstart)
+Write-Host ((" 12. Change-area quick:   {0}") -f $entrypoint.top_level_commands.attached_html_change_area_quickstart)
+Write-Host ((" 13. Top-level quick:     {0}") -f $entrypoint.top_level_commands.top_level_attached_html_quickstart)
+Write-Host ((" 14. Top-level bridge:    {0}") -f $entrypoint.top_level_commands.top_level_attached_html_entrypoint)
+Write-Host ((" 15. Top-level catalog:   {0}") -f $entrypoint.top_level_commands.top_level_attached_html_catalog_quickstart)
+Write-Host ((" 16. Top-level shortcut:  {0}") -f $entrypoint.top_level_commands.top_level_shortcut_entrypoint)
+Write-Host ((" 17. Router attached:     {0}") -f $entrypoint.top_level_commands.suite_router_attached_html_quickstart)
+Write-Host ((" 18. Shortcut helper:     {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host ((" 19. Replay shortcuts:    {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 20. Next-step matrix:    {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 21. Bundle first:        {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host 'Companion helpers:'
 Write-Host (("  Windows route:          {0}") -f $entrypoint.top_level_commands.windows_full_use_attached_html_route)
 Write-Host (("  Google surface:         {0}") -f $entrypoint.top_level_commands.google_attached_html_surface_check)
+Write-Host (("  Google issue bridge:    {0}") -f $entrypoint.top_level_commands.google_issue_attached_html_entrypoint)
 Write-Host (("  Shortcut surface:       {0}") -f $entrypoint.top_level_commands.attached_html_shortcut_surface_check)
 Write-Host (("  Windows bridge:         {0}") -f $entrypoint.top_level_commands.windows_full_use_validation_router_attached_html_bridge)
 Write-Host (("  Windows catalog:        {0}") -f $entrypoint.top_level_commands.windows_full_use_attached_html_catalog_quickstart)
@@ -341,6 +346,7 @@ Write-Host (("Windows catalog note:     {0}") -f $entrypoint.windows_full_use_at
 Write-Host (("Replay quickstart note:   {0}") -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Change-area note:         {0}") -f $entrypoint.attached_html_change_area_quickstart_note_path)
 Write-Host (("Google flow note:         {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
+Write-Host (("Google issue note:        {0}") -f $entrypoint.google_attached_html_entrypoint_note_path)
 Write-Host (("Top-level quick note:     {0}") -f $entrypoint.top_level_attached_html_quickstart_note_path)
 Write-Host (("Top-level bridge note:    {0}") -f $entrypoint.top_level_attached_html_bridge_note_path)
 Write-Host (("Top-level catalog note:   {0}") -f $entrypoint.top_level_attached_html_catalog_quickstart_note_path)
