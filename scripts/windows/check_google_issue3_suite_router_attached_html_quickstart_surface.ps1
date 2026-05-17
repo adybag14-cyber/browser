@@ -90,8 +90,10 @@ $references = @(
 $contentExpectations = @(
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Snippet '$googleIssue3AttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName ''check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1'' -RepoRootOverride $RepoRoot' -Purpose "Suite-router quickstart wires the issue-specific Google surface checker into its shared command surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Snippet 'google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand' -Purpose "Suite-router quickstart exposes the issue-specific Google surface checker through the helper command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Snippet 'Write-Host (("  Google attached surface:      {0}") -f $helper.commands.google_attached_html_surface_check)' -Purpose "Attached-page follow-up helpers keep the broader Google surface checker visible before the narrower issue-specific lane takes over."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Snippet 'Write-Host (("  Issue-specific Google check: {0}") -f $helper.commands.google_issue3_attached_html_surface_check)' -Purpose "Broader attached-page handoffs keep the issue-specific Google checker visible before the route narrows again."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Snippet 'Write-Host (("  Issue-specific Google check:  {0}") -f $helper.commands.google_issue3_attached_html_surface_check)' -Purpose "Attached-page follow-up helpers keep the issue-specific Google checker visible inside the narrower suite-router helper surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Snippet 'Write-Host (("  Google attached flow helper:  {0}") -f $helper.commands.google_attached_html_flow)' -Purpose "Attached-page follow-up helpers keep the broader Google attached flow visible beside the narrower issue-specific follow-up set."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Snippet 'Use google_issue3_attached_html_surface_check when the replay has already narrowed from the broader Google-like attached-page lane into the issue-specific Google attached-page bridge and you want the entrypoint-specific fail-fast checker reprinted before the narrower helper chain.' -Purpose "Usage notes document when the issue-specific Google checker should be used from the suite-router attached-page route.")
 )
 
@@ -192,5 +194,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} suite-router attached HTML quickstart path or source contract check(s).") -f $missing.Count)
-Write-Host "Repair the missing attached-page note, helper script, or issue-specific Google checker surfacing before trusting this compact issue #3 attached-page route."
+Write-Host "Repair the missing attached-page note, helper script, broader Google follow-up surfacing, or issue-specific Google checker surfacing before trusting this compact issue #3 attached-page route."
 exit 1
