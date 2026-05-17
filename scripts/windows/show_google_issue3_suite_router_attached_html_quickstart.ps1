@@ -166,10 +166,11 @@ if ($InputPath) {
 }
 
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
+$suiteRouterAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_router_attached_html_quickstart_surface.ps1' -RepoRootOverride $RepoRoot
 
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router attached HTML quickstart'
-    purpose = 'Print the shortest attached-page-first bridge from the top-level headed validation suite router into the issue #3 attached-page helper chain, while preserving repo-root, saved-summary, and pinned bundle-input context when it already exists, surfacing the newer top-level attached-page quickstarts before the longer replay helper chain when possible, and keeping the broader attached-page flow helper plus the dedicated Google-shaped attached-page surface check and narrower Google-shaped attached-page flow helper one step earlier in the suite-router handoff.'
+    purpose = 'Print the shortest attached-page-first bridge from the top-level headed validation suite router into the issue #3 attached-page helper chain, while preserving repo-root, saved-summary, and pinned bundle-input context when it already exists, surfacing the dedicated suite-router attached-page surface check plus the newer top-level attached-page quickstarts before the longer replay helper chain when possible, and keeping the broader attached-page flow helper plus the dedicated Google-shaped attached-page surface check and narrower Google-shaped attached-page flow helper one step earlier in the suite-router handoff.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -198,6 +199,7 @@ $helper = [ordered]@{
         }) -RepoRootOverride $RepoRoot
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
+        suite_router_attached_html_surface_check = $suiteRouterAttachedHtmlSurfaceCheckCommand
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
@@ -219,6 +221,7 @@ $helper = [ordered]@{
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before narrowing again.',
         'Use validation_router_attached_html_quickstart when the replay is still one step higher in the broader validation router and you want that written bridge visible before this suite-router attached-page helper narrows the route again.',
         'Use attached_html_change_area_quickstart when the replay is already centered on show_headed_validation_suites.ps1 -ChangeArea attached-html and you want the generic attached-page flow helper, the dedicated Google-shaped attached-page surface check, and the narrower issue #3 route visible together before falling back to the shorter helper chain.',
+        'Use suite_router_attached_html_surface_check when you want the exact suite-router attached-page quickstart surface to fail fast on missing companion notes or helper scripts before you trust this narrower route.',
         'Use attached_html_flow when you want the broader attached-page localhost helper reprinted directly from this suite-router quickstart while keeping the current repo root and any fixed input paths pinned before the route narrows into the compact top-level or suite-catalog helpers.',
         'Use google_attached_html_surface_check when the current attached-page set already includes a Google-like page and you want the dedicated fail-fast checker reprinted before the narrower Google-shaped attached-page flow helper or its runner handoff.',
         'Use google_attached_html_flow when the current attached-page set already includes a Google-like page and you want the dedicated Google-shaped guide and helper ladder reprinted directly from this suite-router quickstart after the dedicated surface check, before the route narrows into the compact top-level, suite-catalog, or shortcut helpers.',
@@ -283,11 +286,13 @@ Write-Host ''
 Write-Host 'Broader attached-page handoffs:'
 Write-Host (("  Validation-router note:      {0}") -f $helper.commands.validation_router_attached_html_quickstart)
 Write-Host (("  Change-area quickstart:      {0}") -f $helper.commands.attached_html_change_area_quickstart)
+Write-Host (("  Suite-router surface check:  {0}") -f $helper.commands.suite_router_attached_html_surface_check)
 Write-Host (("  Attached-page flow helper:   {0}") -f $helper.commands.attached_html_flow)
 Write-Host (("  Google attached surface:     {0}") -f $helper.commands.google_attached_html_surface_check)
 Write-Host (("  Google attached flow helper: {0}") -f $helper.commands.google_attached_html_flow)
 Write-Host ''
 Write-Host 'Attached-page follow-up helpers:'
+Write-Host (("  Suite-router surface check:  {0}") -f $helper.commands.suite_router_attached_html_surface_check)
 Write-Host (("  Catalog entrypoints guide:    {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Top-level quickstart:         {0}") -f $helper.commands.top_level_attached_html_quickstart)
 Write-Host (("  Top-level catalog quickstart: {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
