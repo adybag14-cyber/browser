@@ -9,6 +9,7 @@ param(
     [string]$TraceInputText = "lightpanda",
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$PageRoot,
     [string]$PreferredInitialPage,
     [switch]$ManualGoogleStyle,
     [switch]$LeaveOpen
@@ -187,7 +188,11 @@ if ($LeaveOpen) {
 
 $attachedGoogleArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $attachedGoogleArgs -Name RepoRoot -Value $RepoRoot
-Add-SharedPathArrayArgument -Arguments $attachedGoogleArgs -Name InputPath -Values $InputPath
+if ($PageRoot) {
+    Add-SharedArgument -Arguments $attachedGoogleArgs -Name PageRoot -Value $PageRoot
+} else {
+    Add-SharedPathArrayArgument -Arguments $attachedGoogleArgs -Name InputPath -Values $InputPath
+}
 Add-SharedArgument -Arguments $attachedGoogleArgs -Name PreferredInitialPage -Value $PreferredInitialPage
 $attachedGoogleSwitches = @()
 if ($LeaveOpen) {
@@ -205,7 +210,7 @@ Add-SharedPathArrayArgument -Arguments $shortcutArgs -Name InputPath -Values $In
 
 $flow = [ordered]@{
     issue = "Headed Windows Google issue #3 contextual flow"
-    focus = "Keep the broader issue #3 replay chain on one context-preserving command surface so the top-level suite router, the newer shortcut-first suite-router entrypoint, the suite-catalog bridge, the next-step matrix, repo root, browser path, host, input text, trace text, and attached-page inputs stay aligned across the existing narrower helpers."
+    focus = "Keep the broader issue #3 replay chain on one context-preserving command surface so the top-level suite router, the newer shortcut-first suite-router entrypoint, the suite-catalog bridge, the next-step matrix, repo root, browser path, host, input text, trace text, attached-page inputs, and explicit page-root Google follow-up stay aligned across the existing narrower helpers."
     repo_root = $RepoRoot
     browser_exe = $BrowserExe
     host = $Host
@@ -214,6 +219,7 @@ $flow = [ordered]@{
     trace_input_text = $TraceInputText
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    page_root = $PageRoot
     preferred_initial_page = $PreferredInitialPage
     manual_google_style = [bool]$ManualGoogleStyle
     leave_open = [bool]$LeaveOpen
@@ -250,7 +256,7 @@ $flow = [ordered]@{
         "Use submit_timing_flow when the saved homepage fixture or submit-path ladder is already green and you only want the bounded keydown, keypress, and submit-order slice reopened on the same host, browser, and repo-root context.",
         "Use shared_enter_order_flow when the next question is whether the stricter shared keypress-before-submit gate still agrees with the same host, browser, repo-root, and shared input context.",
         "Use live_trace_flow only after the bounded localhost and shared Enter-order gates are green and you want the reduced-home or live-trace handoff reopened without losing the current browser, host, trace text, or LeaveOpen mode.",
-        "Use attached_google_flow when the next replay should keep the current attached-page set and preferred initial page pinned before widening back out to the broader manual follow-up.",
+        "Use attached_google_flow when the next replay should keep the current attached-page set pinned, or should preserve an explicit PageRoot for the Google-style attached-page route, before widening back out to the broader manual follow-up.",
         "Use attached_bundle_flow and attached_bundle_runner when the current inputs are still the known three-page compatibility bundle and you want that narrower route exercised before another broader Google-only replay.",
         "Keep suite_router_entrypoint_guide_path, suite_router_bridge_note_path, and quickstart_note_path nearby when you want the matching written bridge beside these commands without reopening the broader Windows runbook.",
         "When LeaveOpen is set, the emitted recommended runner, live trace flow, and attached Google flow preserve that same post-run inspection mode."
@@ -277,6 +283,9 @@ if ($flow.summary_path) {
 }
 if ($flow.explicit_input_path_count -gt 0) {
     Write-Host ("Attached input paths: {0}" -f $flow.explicit_input_path_count)
+}
+if ($flow.page_root) {
+    Write-Host ("Page root: {0}" -f $flow.page_root)
 }
 if ($flow.preferred_initial_page) {
     Write-Host ("Preferred initial page: {0}" -f $flow.preferred_initial_page)
