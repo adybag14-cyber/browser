@@ -108,6 +108,70 @@ function Get-AttachedHtmlNotes {
     return $notes
 }
 
+function Add-SharedArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return
+    }
+    if ($Value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    if ($Value -is [string]) {
+        $Arguments.Add("'" + ($Value -replace "'", "''") + "'")
+    } else {
+        $Arguments.Add([string]$Value)
+    }
+}
+
+function Add-SharedPathArrayArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string[]]$Values
+    )
+
+    if (-not $Values -or $Values.Count -eq 0) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    foreach ($value in $Values) {
+        $Arguments.Add("'" + ($value -replace "'", "''") + "'")
+    }
+}
+
+function Format-HelperCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [System.Collections.Generic.List[string]]$Arguments
+    )
+
+    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
+    if ($Arguments -and $Arguments.Count -gt 0) {
+        $command += " " + ($Arguments -join ' ')
+    }
+
+    return $command
+}
+
+$issue3AttachedHtmlArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name RepoRoot -Value $RepoRoot
+if ($InputPath) {
+    Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlArguments -Name InputPath -Values @($InputPath)
+}
+
 function Show-DefaultRoutes {
     Write-Section "Headed Validation Suites"
     Write-Host "Use the smallest bounded check first, then widen into manual headed follow-up."
@@ -143,9 +207,11 @@ function Show-DefaultRoutes {
     Write-Route -Name "google-recommended" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
         "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
-        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath <saved-html-or-folder>"
+        (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
     ) -Notes @(
-        "Use the bounded input probe first, then live Google, then the saved-page localhost follow-up that matches issue #3 triage."
+        "Use the bounded input probe first, then live Google, then the shorter issue #3 attached-page helper surface before falling back to the broader manual localhost replay.",
+        "Pass -InputPath when you already want the top-level attached-page quickstart or bundle-first helper pinned to a saved page or the current three-page compatibility bundle."
     )
 }
 
@@ -160,13 +226,13 @@ switch ($true) {
             "After that, verify Google homepage typing, focus retention, and Enter submit manually."
         )
 
-        Write-Route -Name "google-attached-html-follow-up" -Commands (
-            if ($InputPath) { Get-ManualAttachedHtmlRoute -TargetInputPath $InputPath } else {
-                @(
-                    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath <saved-html-or-folder>"
-                )
-            }
-        ) -Notes (Get-AttachedHtmlNotes)
+        Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
+            (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
+            (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
+        ) -Notes @(
+            "Use the top-level attached-page quickstart when saved-page follow-up should stay on the shorter issue #3 helper ladder.",
+            "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
+        )
         break
     }
     { $ChangeArea -eq "input" -or $ChangeArea -eq "google-input" } {
@@ -183,6 +249,14 @@ switch ($true) {
                 "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
             ) -Notes @(
                 "Use this after the bounded input probes are green."
+            )
+
+            Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
+                (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
+                (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
+            ) -Notes @(
+                "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
+                "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
             )
         }
         break
