@@ -7,6 +7,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from urllib.parse import quote
 
 import attached_pages_server as server_module
 
@@ -195,6 +196,60 @@ class AttachedPagesServerTests(unittest.TestCase):
                 payload = json.loads(response.read().decode("utf-8"))
                 self.assertEqual(1, len(payload))
                 self.assertEqual("beta.html", payload[0]["file"])
+            finally:
+                connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+    def test_export_style_unicode_filenames_stay_replayable(self):
+        export_name = "Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40)"
+        html_name = f"{export_name}.html"
+        asset_dir_name = f"{export_name}_files"
+        asset_file_name = "shared style.css"
+        page_path = self.root / html_name
+        asset_dir = self.root / asset_dir_name
+        asset_dir.mkdir()
+        page_path.write_text(
+            f"""<!doctype html>
+<html>
+  <head>
+    <title>{export_name}</title>
+    <link rel="stylesheet" href="./{asset_dir_name}/{asset_file_name}">
+  </head>
+  <body>google safety export</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+        (asset_dir / asset_file_name).write_text("body { color: green; }\n", encoding="utf-8")
+
+        selected_files = [page_path]
+        manifest = server_module.build_manifest(selected_files=selected_files)
+        self.assertEqual(1, len(manifest))
+        self.assertEqual(html_name, manifest[0]["file"])
+        self.assertTrue(manifest[0]["raw_path"].startswith("/raw/Control%20your%20online%20safety"))
+        self.assertIn("%E2%80%93", manifest[0]["raw_path"])
+
+        server, manifest = server_module.create_server(selected_files=selected_files, bind="127.0.0.1", port=0)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                connection.request("GET", manifest[0]["raw_path"])
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                self.assertIn("google safety export", response.read().decode("utf-8"))
+
+                encoded_asset_dir = quote(asset_dir_name)
+                encoded_asset_name = quote(asset_file_name)
+                connection.request("GET", f"/pages/1/{encoded_asset_dir}/{encoded_asset_name}")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                self.assertEqual("body { color: green; }\n", response.read().decode("utf-8"))
             finally:
                 connection.close()
         finally:
