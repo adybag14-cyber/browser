@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -77,7 +94,19 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Kind "file" -Purpose "Suite-router next-steps helper whose dependent surface this checker validates.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'suite_router_surface_check = $suiteRouterSurfaceCheckCommand' -Purpose "Helper command maps keep the suite-router surface checker wired into the next-steps surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the broader Google attached-html surface checker visible from the next-steps surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the issue-specific Google attached-html surface checker visible from the next-steps surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'Write-Host (("  Suite-router surface:       {0}") -f $helper.suite_router_commands.suite_router_surface_check)' -Purpose "Read-first suite-router output still prints the suite-router surface check command."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'Write-Host (("  Google attached surface:    {0}") -f $helper.suite_router_commands.google_attached_html_surface_check)' -Purpose "Read-first suite-router output still prints the broader Google attached-html surface check command."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'Write-Host (("  Issue-specific surface:     {0}") -f $helper.suite_router_commands.google_issue3_attached_html_surface_check)' -Purpose "Read-first suite-router output still prints the issue-specific Google attached-html surface check command."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'Write-Host (("  Surface check:            {0}") -f $helper.helper_commands.suite_router_surface_check)' -Purpose "Key helper command output still prints the suite-router surface check command."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'Write-Host (("  Google surface check:     {0}") -f $helper.helper_commands.google_attached_html_surface_check)' -Purpose "Key helper command output still prints the broader Google attached-html surface check command."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'Write-Host (("  Issue-specific check:     {0}") -f $helper.helper_commands.google_issue3_attached_html_surface_check)' -Purpose "Key helper command output still prints the issue-specific Google attached-html surface check command.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -86,6 +115,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -93,15 +123,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-suite-router-next-steps"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -116,10 +180,20 @@ Write-Host ""
 Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host (("[{0}] {1}") -f $status, $result.Path)
     Write-Host (("  {0}") -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host (("[{0}] {1}") -f $status, $result.Path)
+        Write-Host (("  {0}") -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -128,6 +202,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} suite-router next-steps path(s).") -f $missing.Count)
+Write-Host (("Missing {0} suite-router next-steps path or source contract check(s).") -f $missing.Count)
 Write-Host "Repair the suite-router shortcut bridge, replay-route shortcut note, attached-html quickstarts, Google attached-html entrypoint surface, bundle-aware helpers, runner-patch helpers, or later-stage validation flow stack before trusting the next-step matrix."
 exit 1
