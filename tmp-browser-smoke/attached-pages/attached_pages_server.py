@@ -256,7 +256,7 @@ MODULE_REFERENCE_PATTERNS = (
 )
 
 
-def classify_reference_value(reference: str) -> tuple[str, str] | None:
+def classify_reference_value(reference: str) -> tuple[str, str, bool] | None:
     stripped = reference.strip()
     if not stripped:
         return None
@@ -265,30 +265,36 @@ def classify_reference_value(reference: str) -> tuple[str, str] | None:
 
     parts = urlsplit(stripped)
     if parts.scheme or parts.netloc:
-        return ("external", stripped)
+        return ("external", stripped, False)
 
     normalized = parts.path.strip()
     if not normalized:
         return None
-    if normalized.startswith("/"):
+
+    is_root_relative = normalized.startswith("/")
+    if is_root_relative:
         normalized = normalized[1:]
     if not normalized or normalized in (".", ".."):
         return None
-    return ("local", normalized)
+    return ("local", normalized, is_root_relative)
 
 
-def extract_reference_candidates(content: str) -> tuple[list[str], list[str]]:
-    local_candidates: list[str] = []
+def extract_reference_candidates(content: str) -> tuple[list[tuple[str, bool]], list[str]]:
+    local_candidates: list[tuple[str, bool]] = []
     external_candidates: list[str] = []
 
     def add_candidate(value: str) -> None:
         classified = classify_reference_value(value)
         if classified is None:
             return
-        kind, normalized = classified
-        target_list = local_candidates if kind == "local" else external_candidates
-        if normalized not in target_list:
-            target_list.append(normalized)
+        kind, normalized, is_root_relative = classified
+        if kind == "local":
+            candidate = (normalized, is_root_relative)
+            if candidate not in local_candidates:
+                local_candidates.append(candidate)
+            return
+        if normalized not in external_candidates:
+            external_candidates.append(normalized)
 
     for pattern in LOCAL_REFERENCE_PATTERNS:
         for match in pattern.finditer(content):
@@ -307,6 +313,17 @@ def extract_reference_candidates(content: str) -> tuple[list[str], list[str]]:
             add_candidate(value)
 
     return local_candidates, external_candidates
+
+
+def resolve_local_asset_reference(bundle_root: Path, current_path: Path, current_relative: str, reference: str, is_root_relative: bool) -> tuple[Path | None, str]:
+    decoded_reference = unquote(reference)
+    if is_root_relative:
+        resolved = ensure_within_root(bundle_root, bundle_root / decoded_reference)
+        display_path = decoded_reference
+    else:
+        resolved = ensure_within_root(bundle_root, current_path.parent / decoded_reference)
+        display_path = Path(current_relative).parent.joinpath(decoded_reference).as_posix()
+    return resolved, display_path
 
 
 def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | None = None) -> dict[str, object]:
@@ -341,9 +358,14 @@ def build_asset_audit(root: Path | None = None, *, selected_files: list[Path] | 
                 if external_reference not in external_assets:
                     external_assets.append(external_reference)
 
-            for reference in local_references:
-                resolved = ensure_within_root(bundle_root, current_path.parent / unquote(reference))
-                display_path = Path(current_relative).parent.joinpath(unquote(reference)).as_posix()
+            for reference, is_root_relative in local_references:
+                resolved, display_path = resolve_local_asset_reference(
+                    bundle_root,
+                    current_path,
+                    current_relative,
+                    reference,
+                    is_root_relative,
+                )
                 if resolved is None or not resolved.is_file():
                     if display_path not in missing_assets:
                         missing_assets.append(display_path)
