@@ -35,9 +35,11 @@ if (-not $RepoRoot) {
     $RepoRoot = Resolve-RepoRoot -StartPath $PSScriptRoot
 }
 
+$defaultBrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
 if (-not $BrowserExe) {
-    $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+    $BrowserExe = $defaultBrowserExe
 }
+$isCustomBrowserExe = -not [string]::Equals($BrowserExe, $defaultBrowserExe, [System.StringComparison]::OrdinalIgnoreCase)
 
 function Write-Section {
     param(
@@ -84,6 +86,10 @@ function Get-AttachedHtmlNotes {
         $notes += "The commands below reuse the provided -InputPath across the audit, manifest, and catalog launch steps."
     } else {
         $notes += "Pass -InputPath to pin the audit, manifest, and catalog commands to a specific saved page or bundle folder."
+    }
+
+    if ($isCustomBrowserExe) {
+        $notes += "Current browser override: $BrowserExe"
     }
 
     return $notes
@@ -233,21 +239,31 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
     )
 
     if ($BundleFocused) {
-        return @(
+        $notes = @(
             "Use the compact bundle-suite surface first when the top-level router is already narrowed to the known three-page compatibility bundle.",
             "Only drop into the bundle-first helper after the suite surface is visible, so the pinned bundle route stays easy to reopen."
         )
+    } else {
+        $notes = @(
+            "Use the attached-html change-area quickstart when you want the shorter issue #3 attached-page helper ladder visible after the broader attached-pages catalog route.",
+            "Use the compact bundle-suite surface before the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
+        )
     }
 
-    return @(
-        "Use the attached-html change-area quickstart when you want the shorter issue #3 attached-page helper ladder visible after the broader attached-pages catalog route.",
-        "Use the compact bundle-suite surface before the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
-    )
+    if ($isCustomBrowserExe) {
+        $notes += "Current browser override: $BrowserExe"
+        $notes += "The shorter issue #3 attached-page helper ladder still assumes the default build location. Reopen this router with -BrowserExe whenever you hop between the input, attached-html, and bundle routes so the same custom binary stays pinned."
+    }
+
+    return $notes
 }
 
 function Show-DefaultRoutes {
     Write-Section "Headed Validation Suites"
     Write-Host "Use the smallest bounded check first, then widen into manual headed follow-up."
+    if ($isCustomBrowserExe) {
+        Write-Host ("Browser exe: {0}" -f $BrowserExe)
+    }
 
     Write-Route -Name "navigation" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\wrapped-link\chrome-history-probe.ps1",
@@ -280,20 +296,36 @@ function Show-DefaultRoutes {
     Write-Route -Name "attached-html" -Commands $attachedCommands -Notes (Get-AttachedHtmlNotes)
     Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
 
+    $googleRecommendedNotes = @(
+        "Use the bounded input probe first, then live Google, then the shorter issue #3 attached-page helper surface before falling back to the broader manual localhost replay.",
+        "Pass -InputPath when you already want the top-level attached-page quickstart or bundle-first helper pinned to a saved page or the current three-page compatibility bundle."
+    )
+    if ($isCustomBrowserExe) {
+        $googleRecommendedNotes += "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
+    }
+
     Write-Route -Name "google-recommended" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
         "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
         (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
-    ) -Notes @(
-        "Use the bounded input probe first, then live Google, then the shorter issue #3 attached-page helper surface before falling back to the broader manual localhost replay.",
-        "Pass -InputPath when you already want the top-level attached-page quickstart or bundle-first helper pinned to a saved page or the current three-page compatibility bundle."
-    )
+    ) -Notes $googleRecommendedNotes
 }
 
 switch ($true) {
     { $SuiteName -eq "google-recommended" } {
         Write-Section "google-recommended"
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+        $issue3FollowUpNotes = @(
+            "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
+            "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
+        )
+        if ($isCustomBrowserExe) {
+            $issue3FollowUpNotes += "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
+        }
+
         Write-Route -Name "google-recommended" -Commands @(
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
             "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
@@ -305,14 +337,14 @@ switch ($true) {
         Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
             (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
             (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
-        ) -Notes @(
-            "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
-            "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
-        )
+        ) -Notes $issue3FollowUpNotes
         break
     }
     { $ChangeArea -eq "input" -or $ChangeArea -eq "google-input" } {
         Write-Section $ChangeArea
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
         Write-Route -Name "bounded-input" -Commands @(
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\label-click-probe.ps1"
@@ -321,6 +353,14 @@ switch ($true) {
         )
 
         if ($ChangeArea -eq "google-input") {
+            $googleInputFollowUpNotes = @(
+                "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
+                "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
+            )
+            if ($isCustomBrowserExe) {
+                $googleInputFollowUpNotes += "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
+            }
+
             Write-Route -Name "manual-google" -Commands @(
                 "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
             ) -Notes @(
@@ -330,10 +370,7 @@ switch ($true) {
             Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
                 (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
                 (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
-            ) -Notes @(
-                "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
-                "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
-            )
+            ) -Notes $googleInputFollowUpNotes
         }
         break
     }
@@ -374,6 +411,9 @@ switch ($true) {
     }
     { $ChangeArea -eq "attached-html" -or $ChangeArea -eq "attached-html-target-bundle" -or $ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "manual-html" } {
         Write-Section $ChangeArea
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
         $useGoogleStyleCatalog = $ChangeArea -eq "google-attached-html"
         $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -GoogleStyle:$useGoogleStyleCatalog
         $notes = Get-AttachedHtmlNotes
