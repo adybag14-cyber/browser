@@ -171,13 +171,14 @@ if ($InputPath) {
 
 $googleFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
 $contextualFlowCommand = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
+$replayRouteShortcutSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_replay_route_shortcut_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $windowsReplayAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $windowsReplayAttachedHtmlQuickstartCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
 $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1' -Arguments $bundleArguments
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 replay-route shortcut entrypoint'
-    purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the attached-page shortcut, the broader attached-page localhost flow helper, the narrower Google-shaped attached-page flow helper, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay shortcuts, the pinned bundle-reference note and bundle route, and the current safe-route helpers while preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the replay-route shortcut surface check, the attached-page shortcut, the broader attached-page localhost flow helper, the narrower Google-shaped attached-page flow helper, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay shortcuts, the pinned bundle-reference note and bundle route, and the current safe-route helpers while preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -189,10 +190,12 @@ $entrypoint = [ordered]@{
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
+        replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
     }
     helper_commands = [ordered]@{
+        replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
@@ -218,6 +221,7 @@ $entrypoint = [ordered]@{
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
     notes = @(
         'Start with replay_route when the broader replay helper has already narrowed the current route and you now want the shortest attached-page and replay-shortcuts follow-up surfaced on one smaller command surface.',
+        'Use replay_route_shortcut_surface_check before trusting this compact replay-route branch after branch moves or from another checkout, because it fails fast on missing replay-route notes, attached-page helpers, replay-side bridges, bundle-aware follow-up commands, and safe-route companions.',
         'Use attached_html_change_area when you want the top-level attached-page route reprinted before you drop into the shorter attached-page shortcut or bundle-first branch.',
         'Use attached_html_flow when you want the broader attached-page localhost helper reprinted directly from the replay-route shortcut surface before choosing between the attached-page shortcut, replay shortcuts, the replay-shortcuts Windows replay attached-page bridge, the next-step matrix, contextual flow, or the bundle-first branch.',
         'Use google_attached_html_flow when the current attached inputs are already Google-shaped and you want that narrower attached-page flow helper reprinted directly from the replay-route shortcut surface before deciding whether to narrow into the attached-page shortcut, replay shortcuts, the replay-shortcuts Windows replay attached-page bridge, the next-step matrix, contextual flow, the bundle-first branch, or the safe-route map.',
@@ -233,7 +237,7 @@ $entrypoint = [ordered]@{
         'Use attached_bundle_first whenever explicit InputPath values are already pinned or when the replay should stay on the known three-page compatibility set, and reopen docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md first so that pinned branch stays visible before widening back into the broader Google-only issue #3 helpers.',
         'Use safe_route_entrypoints only after the attached-page, attached_html_flow, replay-shortcuts, replay-shortcuts Windows replay attached-page bridge, or google_attached_html_flow surfaces have already clarified that the route should reopen the wrapper-heavy issue #3 chain from the same SummaryPath and InputPath state.',
         'Use fresh_safe_route_replay when current outputs may be stale or missing. Use reuse_current_outputs only when a saved SummaryPath already exists and those outputs are still trusted.',
-        'Keep the replay-discovery, suite-router bridge, suite-catalog guide, Google attached-page flow note, replay-shortcuts Windows replay attached-page bridge note, Windows replay attached-page quickstart note, attached-html target bundle reference, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
+        'Keep the replay-discovery, replay-route shortcut bridge, suite-router bridge, suite-catalog guide, Google attached-page flow note, replay-shortcuts Windows replay attached-page bridge note, Windows replay attached-page quickstart note, attached-html target bundle reference, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -275,18 +279,20 @@ Write-Host (("Why:                    {0}") -f $entrypoint.recommended_next_help
 Write-Host ''
 Write-Host 'Replay-route bridge:'
 Write-Host (("  1. Replay route:      {0}") -f $entrypoint.top_level_commands.replay_route)
-Write-Host (("  2. Attached HTML:     {0}") -f $entrypoint.top_level_commands.attached_html_change_area)
-Write-Host (("  3. Attached bundle:   {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
-Write-Host (("  4. Attached shortcut: {0}") -f $entrypoint.top_level_commands.attached_html_shortcut)
-Write-Host (("  5. Shortcut helper:   {0}") -f $entrypoint.top_level_commands.suite_router_shortcut_entrypoint)
-Write-Host (("  6. Replay shortcuts:  {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host (("  7. Replay-to-Windows: {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)
-Write-Host (("  8. Replay quick check:{0}") -f (' ' + $entrypoint.helper_commands.windows_replay_attached_html_surface_check))
-Write-Host (("  9. Windows replay:    {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
-Write-Host ((" 10. Next-step matrix:  {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 11. Contextual flow:   {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host (("  2. Shortcut check:    {0}") -f $entrypoint.top_level_commands.replay_route_shortcut_surface_check)
+Write-Host (("  3. Attached HTML:     {0}") -f $entrypoint.top_level_commands.attached_html_change_area)
+Write-Host (("  4. Attached bundle:   {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
+Write-Host (("  5. Attached shortcut: {0}") -f $entrypoint.top_level_commands.attached_html_shortcut)
+Write-Host (("  6. Shortcut helper:   {0}") -f $entrypoint.top_level_commands.suite_router_shortcut_entrypoint)
+Write-Host (("  7. Replay shortcuts:  {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host (("  8. Replay-to-Windows: {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)
+Write-Host (("  9. Replay quick check:{0}") -f (' ' + $entrypoint.helper_commands.windows_replay_attached_html_surface_check))
+Write-Host ((" 10. Windows replay:    {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
+Write-Host ((" 11. Next-step matrix:  {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 12. Contextual flow:   {0}") -f $entrypoint.helper_commands.contextual_flow)
 Write-Host ''
 Write-Host 'Companion helpers:'
+Write-Host (("  Shortcut surface:     {0}") -f $entrypoint.helper_commands.replay_route_shortcut_surface_check)
 Write-Host (("  Attached-page flow:   {0}") -f $entrypoint.helper_commands.attached_html_flow)
 Write-Host (("  Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_flow)
 Write-Host (("  Attached shortcut:    {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
@@ -302,6 +308,7 @@ Write-Host (("  Fresh safe replay:    {0}") -f $entrypoint.helper_commands.fresh
 Write-Host (("  Reuse current outputs:{0}") -f (' ' + $entrypoint.helper_commands.reuse_current_outputs))
 Write-Host ''
 Write-Host (("Replay discovery:      {0}") -f $entrypoint.replay_discovery_note_path)
+Write-Host (("Replay shortcut note:  {0}") -f 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md')
 Write-Host (("Suite-router bridge:   {0}") -f $entrypoint.suite_router_bridge_note_path)
 Write-Host (("Suite-catalog guide:   {0}") -f $entrypoint.suite_catalog_entrypoint_note_path)
 Write-Host (("Google attached note:  {0}") -f $entrypoint.google_attached_html_flow_note_path)
