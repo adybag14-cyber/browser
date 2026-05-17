@@ -1,5 +1,4 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-. "$repo\tmp-browser-smoke\browser-pages\BrowserPagesProbeCommon.ps1"
+. "$PSScriptRoot\BrowserPagesProbeCommon.ps1"
 
 $profileRoot = Join-Path $Root "profile-history-filter"
 $app = Reset-BrowserPagesProfile $profileRoot
