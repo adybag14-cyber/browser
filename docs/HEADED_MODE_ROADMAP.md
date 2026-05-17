@@ -29,6 +29,7 @@ committed on this branch:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea navigation
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"
@@ -37,6 +38,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 Current validation truth on this branch:
 
 - bounded localhost navigation probes exist under `tmp-browser-smoke/wrapped-link/`
+- bounded localhost stop/reload probes exist under `tmp-browser-smoke/stop-loading/`
 - bounded localhost input probes exist under `tmp-browser-smoke/form-controls/`
 - `scripts/windows/show_headed_validation_suites.ps1` is the truthful router
   for current small Windows headed checks
