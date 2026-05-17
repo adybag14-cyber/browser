@@ -1,18 +1,35 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-. "$repo\tmp-browser-smoke\localstorage-persistence\StorageProbeCommon.ps1"
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8202,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$PollMilliseconds = 250
+)
 
-$profileRoot = Join-Path $Root "profile-localstorage-clear"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. "$PSScriptRoot\StorageProbeCommon.ps1"
+
+$config = Resolve-StorageProbeConfig -StartPath $PSScriptRoot -RepoRoot $RepoRoot -BrowserExe $BrowserExe -ProfileName "profile-localstorage-clear"
+$repo = $config.RepoRoot
+$root = $config.SmokeRoot
+$browserExe = $config.BrowserExe
+$profileRoot = $config.ProfileRoot
 $app = Reset-StorageProfile $profileRoot
+Set-StorageProfileEnvironment $profileRoot
 Seed-StorageProfile $app.AppDataRoot
-$port = 8202
-$origin = "http://127.0.0.1:$port"
+$origin = "http://$Host`:$Port"
 $entryPattern = ConvertTo-LocalStorageEntryPattern $origin "lppersist" "ok"
-$browserOneOut = Join-Path $Root "chrome-localstorage-clear.run1.browser.stdout.txt"
-$browserOneErr = Join-Path $Root "chrome-localstorage-clear.run1.browser.stderr.txt"
-$browserTwoOut = Join-Path $Root "chrome-localstorage-clear.run2.browser.stdout.txt"
-$browserTwoErr = Join-Path $Root "chrome-localstorage-clear.run2.browser.stderr.txt"
-$serverOut = Join-Path $Root "chrome-localstorage-clear.server.stdout.txt"
-$serverErr = Join-Path $Root "chrome-localstorage-clear.server.stderr.txt"
+$browserOneOut = Join-Path $root "chrome-localstorage-clear.run1.browser.stdout.txt"
+$browserOneErr = Join-Path $root "chrome-localstorage-clear.run1.browser.stderr.txt"
+$browserTwoOut = Join-Path $root "chrome-localstorage-clear.run2.browser.stdout.txt"
+$browserTwoErr = Join-Path $root "chrome-localstorage-clear.run2.browser.stderr.txt"
+$serverOut = Join-Path $root "chrome-localstorage-clear.server.stdout.txt"
+$serverErr = Join-Path $root "chrome-localstorage-clear.server.stderr.txt"
 Remove-Item $browserOneOut,$browserOneErr,$browserTwoOut,$browserTwoErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 
 $server = $null
@@ -31,16 +48,18 @@ $titles = [ordered]@{}
 $storageData = ""
 
 try {
-  $server = Start-StorageServer -Port $port -Stdout $serverOut -Stderr $serverErr
-  $ready = Wait-StorageServer -Port $port
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  $server = Start-StorageServer -WorkingDirectory $root -Port $Port -Stdout $serverOut -Stderr $serverErr
+  $ready = Wait-StorageServer -Host $Host -Port $Port -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "localstorage server did not become ready" }
 
-  $browserOne = Start-StorageBrowser -StartupUrl "$origin/seed.html" -Stdout $browserOneOut -Stderr $browserOneErr
-  $hwndOne = Wait-TabWindowHandle $browserOne.Id
+  $browserOne = Start-StorageBrowser -RepoRoot $repo -BrowserExe $browserExe -StartupUrl "$origin/seed.html" -Stdout $browserOneOut -Stderr $browserOneErr
+  $hwndOne = Wait-TabWindowHandle -ProcessId $browserOne.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if ($hwndOne -eq [IntPtr]::Zero) { throw "localstorage clear run1 window handle not found" }
   Show-SmokeWindow $hwndOne
 
-  $titles.seed = Wait-TabTitle $browserOne.Id "Local Storage Seeded" 40
+  $titles.seed = Wait-TabTitle -ProcessId $browserOne.Id -Needle "Local Storage Seeded" -Attempts 40 -PollMilliseconds $PollMilliseconds
   $seedWorked = [bool]$titles.seed
   if (-not $seedWorked) { throw "seed page did not finish localStorage write" }
 
@@ -67,14 +86,14 @@ try {
   $browserOneGoneBeforeRestart = Wait-OwnedProbeProcessGone $browserOne.Id
   $browserOne = $null
   if (-not $browserOneGoneBeforeRestart) { throw "run1 browser pid did not exit before restart" }
-  Start-Sleep -Milliseconds 300
+  Start-Sleep -Milliseconds ($PollMilliseconds + 50)
 
-  $browserTwo = Start-StorageBrowser -StartupUrl "$origin/echo.html" -Stdout $browserTwoOut -Stderr $browserTwoErr
-  $hwndTwo = Wait-TabWindowHandle $browserTwo.Id
+  $browserTwo = Start-StorageBrowser -RepoRoot $repo -BrowserExe $browserExe -StartupUrl "$origin/echo.html" -Stdout $browserTwoOut -Stderr $browserTwoErr
+  $hwndTwo = Wait-TabWindowHandle -ProcessId $browserTwo.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if ($hwndTwo -eq [IntPtr]::Zero) { throw "localstorage clear run2 window handle not found" }
   Show-SmokeWindow $hwndTwo
 
-  $titles.restart_missing = Wait-TabTitle $browserTwo.Id "Local Storage Echo missing" 40
+  $titles.restart_missing = Wait-TabTitle -ProcessId $browserTwo.Id -Needle "Local Storage Echo missing" -Attempts 40 -PollMilliseconds $PollMilliseconds
   $missingAfterRestart = [bool]$titles.restart_missing
   if (-not $missingAfterRestart) { throw "localStorage remained present after restart" }
 } catch {
@@ -91,6 +110,11 @@ try {
   $browserOneMetaValue = if ($browserOneMeta) { $browserOneMeta } else { $browserOneMetaFinal }
 
   $result = [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    profile_root = $profileRoot
+    host = $Host
+    port = $Port
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_one_pid = if ($browserOne) { $browserOne.Id } else { 0 }
     browser_two_pid = if ($browserTwo) { $browserTwo.Id } else { 0 }
