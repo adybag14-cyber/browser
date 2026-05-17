@@ -101,16 +101,20 @@ def normalize_selected_html_files(selected_files: list[Path]) -> tuple[Path, lis
         raise ValueError("selected HTML file list must not be empty")
 
     resolved_files: list[Path] = []
+    seen_files: set[Path] = set()
     for candidate in selected_files:
         resolved = Path(candidate).expanduser().resolve()
         if not resolved.is_file():
             raise FileNotFoundError(f"selected HTML file does not exist: {resolved}")
         if resolved.suffix.lower() not in HTML_EXPORT_EXTENSIONS:
             raise ValueError(f"selected file is not an attached HTML export (.html or .htm): {resolved}")
+        if resolved in seen_files:
+            continue
+        seen_files.add(resolved)
         resolved_files.append(resolved)
 
     common_root = Path(os.path.commonpath([str(path.parent) for path in resolved_files]))
-    return common_root, sorted(resolved_files)
+    return common_root, resolved_files
 
 
 def resolve_bundle_inputs(root: Path | None = None, selected_files: list[Path] | None = None) -> tuple[Path, list[Path]]:
