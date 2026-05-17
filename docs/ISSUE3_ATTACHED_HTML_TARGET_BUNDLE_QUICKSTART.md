@@ -46,6 +46,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
@@ -55,7 +56,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_
 Use that route when:
 
 - the current replay is already narrowed to the attached HTML target-bundle branch
-- the known three-page compatibility set should stay pinned through the compact bundle-suite surface, the bundle-first helper, the checker, the flow helper, the delegated localhost runner, the pinned manual checklist, and the reusable screenshot-and-title proof path
+- the known three-page compatibility set should stay pinned through the compact bundle-suite surface, the bundle-first helper, the checker, the flow helper, the delegated localhost runner, the proof entrypoint, the pinned manual checklist, and the reusable screenshot-and-title proof path
 - you still want both the broader attached-page fallback and the dedicated Google-shaped attached-page fallback printed before widening back into the larger issue `#3` helper chain
 
 ## Router-first bundle re-entry
@@ -97,6 +98,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
@@ -119,6 +121,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
@@ -153,6 +156,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
@@ -161,7 +165,7 @@ Use that route when:
 
 - the bundle-aware runner already proved the current three pages can be staged and replayed through localhost
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` is the next manual read-first surface for page-by-page validation notes
-- you want a reusable screenshot-and-title proof pass for the same pinned inputs before widening back into the broader attached-page helper chain
+- you want the proof entrypoint plus a reusable screenshot-and-title proof pass for the same pinned inputs before widening back into the broader attached-page helper chain
 
 ## Context-preserving variants
 
@@ -176,6 +180,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
@@ -198,6 +203,7 @@ The existing helpers already provide these pieces:
 - `check_attached_html_target_bundle.ps1` resolves the known three targets, prints the recommended first bounded step for each page, and keeps the Google Safety Centre page first when the Google-style route should stay aligned with issue `#3`.
 - `show_attached_html_target_bundle_validation_flow.ps1` prints the exact bundle-pinned command ladder, including the delegated runner.
 - `run_attached_html_target_bundle_validation.ps1` launches the bundle through the correct attached-page runner after the earlier checks are green.
+- `show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` reprints the shortest proof-only follow-up so the fixed-list screenshot-and-title pass stays attached to the same pinned bundle inputs after the delegated runner.
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` remains the page-by-page manual follow-up once the bundle route is green.
 - `check_local_html_fixture_validation_surface.ps1` and `chrome-local-html-fixture-probe.ps1` provide the reusable screenshot-and-title proof path for the same pinned bundle after the broader runner succeeds.
 - `show_attached_html_validation_flow.ps1` remains the default broader attached-page widen-back-out helper when the pinned bundle route should stop being the narrowest branch.
@@ -205,4 +211,4 @@ The existing helpers already provide these pieces:
 
 ## Practical rule
 
-Once the route has already made the pinned compatibility bundle the next obvious branch, prefer `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, then `show_google_issue3_attached_bundle_first_entrypoint.ps1`, keep the bundle surface checks, bundle flow helper, pinned checklist, and reusable fixed-list proof together, and leave `show_attached_html_validation_flow.ps1` plus `show_google_attached_html_validation_flow.ps1` visible as the default widen-back-out path. Start from the broader router surfaces first when the replay is still being chosen from `show_headed_validation_suites.ps1` or the replay-route helper family, reopen `show_google_attached_html_validation_flow.ps1` when the next failure still looks Google-shaped, and only widen back into the longer issue `#3` helper chain after the bundle checker, delegated runner, manual checklist, or reusable fixed-list proof makes the next failure state clear.
+Once the route has already made the pinned compatibility bundle the next obvious branch, prefer `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, then `show_google_issue3_attached_bundle_first_entrypoint.ps1`, keep the bundle surface checks, bundle flow helper, proof entrypoint, pinned checklist, and reusable fixed-list proof together, and leave `show_attached_html_validation_flow.ps1` plus `show_google_attached_html_validation_flow.ps1` visible as the default widen-back-out path. Start from the broader router surfaces first when the replay is still being chosen from `show_headed_validation_suites.ps1` or the replay-route helper family, reopen `show_google_attached_html_validation_flow.ps1` when the next failure still looks Google-shaped, and only widen back into the longer issue `#3` helper chain after the bundle checker, delegated runner, manual checklist, or reusable fixed-list proof makes the next failure state clear.
