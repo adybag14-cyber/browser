@@ -110,7 +110,7 @@ def normalize_selected_html_files(selected_files: list[Path]) -> tuple[Path, lis
         resolved_files.append(resolved)
 
     common_root = Path(os.path.commonpath([str(path.parent) for path in resolved_files]))
-    return common_root, resolved_files
+    return common_root, sorted(resolved_files)
 
 
 def resolve_bundle_inputs(root: Path | None = None, selected_files: list[Path] | None = None) -> tuple[Path, list[Path]]:
@@ -152,9 +152,21 @@ def build_manifest(root: Path | None = None, *, selected_files: list[Path] | Non
     return entries
 
 
-def render_index(manifest: list[dict[str, str]]) -> bytes:
+def render_index(manifest: list[dict[str, str]], *, audit_lookup: dict[str, dict[str, object]] | None = None) -> bytes:
     rows = []
     for entry in manifest:
+        audit_entry = audit_lookup.get(entry["file"]) if audit_lookup else None
+        audit_lines: list[str] = []
+        if audit_entry is not None:
+            missing_count = int(audit_entry["missing_asset_count"])
+            external_count = int(audit_entry["external_asset_count"])
+            if missing_count == 0:
+                audit_lines.append("<div>asset audit: <strong>local assets OK</strong></div>")
+            else:
+                audit_lines.append(f"<div>missing local assets: <strong>{missing_count}</strong></div>")
+            if external_count > 0:
+                audit_lines.append(f"<div>external dependencies: <strong>{external_count}</strong></div>")
+        audit_html = "".join(audit_lines)
         rows.append(
             "<li>"
             f"<a href=\"{html.escape(entry['route'])}/\">{html.escape(entry['title'])}</a>"
@@ -163,6 +175,7 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
             f"<div>named route: <code>{html.escape(entry['slug_route'])}</code></div>"
             f"<div><code>{html.escape(entry['file'])}</code></div>"
             f"<div><a href=\"{html.escape(entry['raw_path'])}\">raw file</a></div>"
+            f"{audit_html}"
             "</li>"
         )
     body = "\n".join(rows) if rows else "<li>No HTML files were found in the selected bundle.</li>"
@@ -207,6 +220,11 @@ def render_index(manifest: list[dict[str, str]]) -> bytes:
       Each entry includes a short route, a readable alias route, a named route, and raw-file
       access. The short and named routes redirect into an asset-safe directory form so relative
       CSS, images, and scripts keep working for exported bundles.
+    </p>
+    <p>
+      Bundle health is also exposed at <a href=\"/audit.json\"><code>/audit.json</code></a> and
+      <a href=\"/audit.txt\"><code>/audit.txt</code></a> so replay tooling can confirm missing
+      local sidecars or external network dependencies without rerunning a separate preflight step.
     </p>
     <ul>
       {body}
@@ -479,13 +497,17 @@ def render_asset_audit_text(audit: dict[str, object]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes]:
+def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes, bytes, bytes]:
     bundle_root, _ = resolve_bundle_inputs(root, selected_files)
     manifest = build_manifest(root, selected_files=selected_files)
+    audit = build_asset_audit(root, selected_files=selected_files)
+    audit_lookup = {fixture["display_path"]: fixture for fixture in audit["fixtures"]}
     route_lookup = build_route_lookup(manifest)
-    index_bytes = render_index(manifest)
+    index_bytes = render_index(manifest, audit_lookup=audit_lookup)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
-    return bundle_root, manifest, route_lookup, index_bytes, manifest_bytes
+    audit_json_bytes = json.dumps(audit, indent=2).encode("utf-8")
+    audit_text_bytes = render_asset_audit_text(audit).encode("utf-8")
+    return bundle_root, manifest, route_lookup, index_bytes, manifest_bytes, audit_json_bytes, audit_text_bytes
 
 
 class ReuseServer(ThreadingHTTPServer):
@@ -493,7 +515,7 @@ class ReuseServer(ThreadingHTTPServer):
 
 
 def create_server(root: Path | None = None, *, bind: str = "127.0.0.1", port: int = 8235, selected_files: list[Path] | None = None) -> tuple[ReuseServer, list[dict[str, str]]]:
-    bundle_root, manifest, route_lookup, index_bytes, manifest_bytes = build_bundle_state(root, selected_files=selected_files)
+    bundle_root, manifest, route_lookup, index_bytes, manifest_bytes, audit_json_bytes, audit_text_bytes = build_bundle_state(root, selected_files=selected_files)
 
     class AttachedPagesHandler(SimpleHTTPRequestHandler):
         def __init__(self, *handler_args, **handler_kwargs):
@@ -537,6 +559,12 @@ def create_server(root: Path | None = None, *, bind: str = "127.0.0.1", port: in
                 return
             if request_path == "/manifest.json":
                 self.send_bytes(manifest_bytes, "application/json; charset=utf-8", head_only=head_only)
+                return
+            if request_path == "/audit.json":
+                self.send_bytes(audit_json_bytes, "application/json; charset=utf-8", head_only=head_only)
+                return
+            if request_path == "/audit.txt":
+                self.send_bytes(audit_text_bytes, "text/plain; charset=utf-8", head_only=head_only)
                 return
 
             entry, asset_suffix = split_page_route(request_path, route_lookup)
@@ -618,13 +646,20 @@ def main() -> int:
         return 0
 
     server, manifest = create_server(root, bind=args.bind, port=args.port, selected_files=selected_files)
-    source_description = root.expanduser().resolve() if root is not None else f"{len(selected_files or [])} selected files"
-    host, port = server.server_address
-    print(f"Serving {len(manifest)} attached pages from {source_description} at http://{host}:{port}/")
+    print(f"Serving attached pages bundle with {len(manifest)} page(s) from {server.RequestHandlerClass.keywords['directory']}")
+    for entry in manifest:
+        print(f"- {entry['route']}/ -> {entry['title']} ({entry['file']})")
+    print(f"Catalog: http://{args.bind}:{args.port}/")
+    print(f"Manifest: http://{args.bind}:{args.port}/manifest.json")
+    print(f"Audit JSON: http://{args.bind}:{args.port}/audit.json")
+    print(f"Audit Text: http://{args.bind}:{args.port}/audit.txt")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        return 0
+        print("\nStopping attached pages server.")
+    finally:
+        server.server_close()
+    return 0
 
 
 if __name__ == "__main__":
