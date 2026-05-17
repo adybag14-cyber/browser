@@ -123,6 +123,10 @@ Interpret that first gate like this:
   `_files` asset directory is missing. The audit reports that damage before the
   browser is involved, which keeps missing-sidecar noise out of headed-runtime
   triage.
+- The audit now also reports external asset dependencies per fixture, which
+  makes it easier to see when a saved export still expects fonts, scripts,
+  videos, or other network-hosted resources even if every local sidecar is
+  present.
 - After the audit, reuse the same pinned `--input` list for `--print-manifest`,
   `--port 8235`, or `--allow-missing-assets` so the replay stays on the exact
   bundle definition you just checked.
@@ -157,8 +161,11 @@ python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
 
 The audit walks each selected HTML file, follows local CSS `@import` chains,
 module-script imports, and common local asset references, then reports missing
-sidecars per fixture. It exits with a nonzero status when anything is missing,
-which makes it a good first gate for repeatable localhost validation.
+sidecars per fixture. It now also reports external asset dependencies per
+fixture so replay notes can distinguish "bundle is missing local files" from
+"bundle still expects the network." The command exits with a nonzero status
+when anything local is missing, which makes it a good first gate for repeatable
+localhost validation.
 
 If another script needs the same audit in machine-readable form, add
 `--audit-assets-json` alongside `--audit-assets` to print the structured audit
@@ -172,7 +179,8 @@ python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
 ```
 
 Use this when a Linux or mixed-environment helper wants to fail fast on missing
-assets without scraping console text.
+assets without scraping console text, or when it needs to preserve the external
+dependency list alongside the missing-local-asset results.
 
 If you still want a best-effort replay after seeing the missing-asset report,
 add `--allow-missing-assets` so the helper prints the audit summary but exits
