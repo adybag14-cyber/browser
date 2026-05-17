@@ -195,7 +195,7 @@ chosen helper.
   when the top-level suite router already narrowed replay to attached localhost
   follow-up and you want the shortest top-level attached-page bridge before the
   broader attached-page notes reopen.
-- `show_google_issue3_top_LEVEL_ATTACHED_HTML_ENTRYPOINT.ps1`: use this when
+- `show_google_issue3_top_level_attached_html_entrypoint.ps1`: use this when
   you want the broader top-level attached-page bridge reprinted before the
   route narrows into the newer suite-router or suite-catalog attached-page
   helpers.
