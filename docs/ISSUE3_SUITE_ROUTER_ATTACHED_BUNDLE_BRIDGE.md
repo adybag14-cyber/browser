@@ -27,7 +27,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Keep the suite-router attached-page bridge, the compact bundle-suite surface, and the replay-route bundle-first bridge on one short read-first ladder so the pinned three-page compatibility path stays easy to reopen before the route drops into the narrower bundle-first helper, delegated bundle flow, or fixed-list proof path.
+Keep the suite-router attached-page bridge, the compact bundle-suite surface, and the replay-route helper plus `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` on one short read-first ladder so the pinned three-page compatibility path stays easy to reopen before the route drops into the narrower bundle-first helper, delegated bundle flow, or fixed-list proof path.
 
 ## Default read-first route
 
@@ -36,13 +36,13 @@ Use this sequence when the replay is already near the suite-router attached-page
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_bundle_first_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 ```
 
-Use that route when you want the suite-router attached-page quickstart, the compact suite-level bundle surface, the replay-route bundle-first written bridge, the narrower bundle-first helper, the delegated bundle flow, and the pinned runner kept on one compact branch.
+Use that route when you want the suite-router attached-page quickstart, the compact suite-level bundle surface, the replay-route helper, the replay-route bundle-first written bridge, the narrower bundle-first helper, the delegated bundle flow, and the pinned runner kept on one compact branch.
 
 ## Broader attached-page re-entry
 
@@ -55,7 +55,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_bundle_first_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
 ```
 
 Use that route when the replay is still proving whether it should stay on the pinned three-page bundle or fall back to the broader attached-page chain.
@@ -67,7 +67,7 @@ If repo-root, summary, or pinned bundle paths are already in play, keep the same
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_bundle_first_bridge.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -Wait
@@ -81,9 +81,9 @@ Use that context-preserving form when:
 
 ## Practical rule
 
-Prefer the compact bundle-suite surface first, then the replay-route bundle-first bridge, before dropping into the narrower bundle-first helper.
+Prefer the compact bundle-suite surface first, then the replay-route helper while keeping `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` nearby, before dropping into the narrower bundle-first helper.
 
-- suite-router replay already open and bundle inputs already pinned: go straight from the suite-router attached-page quickstart into `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, then `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, then the bundle-first helper
+- suite-router replay already open and bundle inputs already pinned: go straight from the suite-router attached-page quickstart into `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, then reopen `show_google_issue3_replay_route.ps1`, keep `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` nearby, then use the bundle-first helper
 - broader attached-page context still matters: reopen `show_attached_html_validation_flow.ps1` and `show_google_attached_html_validation_flow.ps1` before the compact bundle-suite surface so the fallback route stays visible
 - delegated bundle runner already looks like the next action: re-read `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` before execution so the replay-route handoff stays visible beside the narrower bundle-first branch
 
