@@ -234,6 +234,46 @@ function Convert-ToPowerShellArgumentList {
     return ($Values | ForEach-Object { Convert-ToSingleQuotedPowerShellArgument -Value $_ }) -join " "
 }
 
+function Get-OptionalPowerShellNamedArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ""
+    }
+
+    return "-$Name " + (Convert-ToSingleQuotedPowerShellArgument -Value $Value)
+}
+
+function Join-PowerShellCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+        [string[]]$Arguments = @(),
+        [string[]]$Switches = @()
+    )
+
+    $segments = [System.Collections.Generic.List[string]]::new()
+    $segments.Add("powershell -ExecutionPolicy Bypass -File $ScriptPath") | Out-Null
+
+    foreach ($argument in $Arguments) {
+        if (-not [string]::IsNullOrWhiteSpace($argument)) {
+            $segments.Add($argument) | Out-Null
+        }
+    }
+
+    foreach ($switchName in $Switches) {
+        if (-not [string]::IsNullOrWhiteSpace($switchName)) {
+            $segments.Add("-$switchName") | Out-Null
+        }
+    }
+
+    return $segments -join " "
+}
+
 function Get-ResolvedExplicitBundleInputPaths {
     param(
         [Parameter(Mandatory = $true)]
@@ -305,7 +345,8 @@ function Get-TargetValidationRouting {
         [string]$TargetName,
         [Parameter(Mandatory = $true)]
         [string]$Status,
-        [bool]$IsGoogleStyle = $false
+        [bool]$IsGoogleStyle = $false,
+        [string]$RepoRoot
     )
 
     if ($Status -ne "found") {
@@ -317,6 +358,8 @@ function Get-TargetValidationRouting {
         }
     }
 
+    $repoRootArgument = Get-OptionalPowerShellNamedArgument -Name "RepoRoot" -Value $RepoRoot
+
     switch ($TargetName) {
         "google-safety-centre" {
             return [ordered]@{
@@ -327,14 +370,14 @@ function Get-TargetValidationRouting {
                     "Start with the general attached HTML flow so the content-heavy Google-branded page stays on the broader localhost replay path before manual follow-up."
                 }
                 first_step = if ($IsGoogleStyle) {
-                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1"
+                    Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_google_attached_html_validation_flow.ps1' -Arguments @($repoRootArgument)
                 } else {
-                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
+                    Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_attached_html_validation_flow.ps1' -Arguments @($repoRootArgument)
                 }
                 follow_up = if ($IsGoogleStyle) {
-                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait"
+                    Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\run_google_attached_html_validation.ps1' -Arguments @($repoRootArgument) -Switches @('Wait')
                 } else {
-                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
+                    Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\run_localhost_html_validation_recommended.ps1' -Arguments @($repoRootArgument) -Switches @('Wait')
                 }
             }
         }
@@ -342,24 +385,24 @@ function Get-TargetValidationRouting {
             return [ordered]@{
                 change_area = "input"
                 summary = "Start with the shared input suites, then use the attached HTML localhost follow-up for the form-heavy page."
-                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input"
-                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
+                first_step = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_headed_validation_suites.ps1' -Arguments @($repoRootArgument, '-ChangeArea input')
+                follow_up = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\run_localhost_html_validation_recommended.ps1' -Arguments @($repoRootArgument) -Switches @('Wait')
             }
         }
         "uap-encounters" {
             return [ordered]@{
                 change_area = "rendering"
                 summary = "Start with the rendering suites, then use the attached HTML localhost follow-up for the dense document page."
-                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea rendering"
-                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
+                first_step = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_headed_validation_suites.ps1' -Arguments @($repoRootArgument, '-ChangeArea rendering')
+                follow_up = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_attached_html_validation_flow.ps1' -Arguments @($repoRootArgument)
             }
         }
         default {
             return [ordered]@{
                 change_area = "attached-html"
                 summary = "Start with the general attached HTML flow."
-                first_step = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1"
-                follow_up = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_localhost_html_validation_recommended.ps1 -Wait"
+                first_step = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_attached_html_validation_flow.ps1' -Arguments @($repoRootArgument)
+                follow_up = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\run_localhost_html_validation_recommended.ps1' -Arguments @($repoRootArgument) -Switches @('Wait')
             }
         }
     }
@@ -368,7 +411,8 @@ function Get-TargetValidationRouting {
 function Get-BundlePinnedValidationCommands {
     param(
         [Parameter(Mandatory = $true)]
-        [object[]]$ResultRows
+        [object[]]$ResultRows,
+        [string]$RepoRoot
     )
 
     $resolvedRows = @($ResultRows | Where-Object { $_.status -eq "found" -and $_.path })
@@ -388,6 +432,8 @@ function Get-BundlePinnedValidationCommands {
 
     $resolvedInputPath = @($resolvedRows | ForEach-Object { $_.path })
     $inputPathArguments = Convert-ToPowerShellArgumentList -Values $resolvedInputPath
+    $repoRootArgument = Get-OptionalPowerShellNamedArgument -Name "RepoRoot" -Value $RepoRoot
+    $inputPathArgument = if ([string]::IsNullOrWhiteSpace($inputPathArguments)) { "" } else { "-InputPath $inputPathArguments" }
     $googleStyleTarget = @(
         $resolvedRows |
             Where-Object { $_.is_google_style } |
@@ -395,6 +441,7 @@ function Get-BundlePinnedValidationCommands {
     ) | Select-Object -First 1
     $preferredTarget = if ($googleStyleTarget) { $googleStyleTarget } else { $resolvedRows | Select-Object -First 1 }
     $preferredInitialPageArgument = Convert-ToSingleQuotedPowerShellArgument -Value $preferredTarget.path
+    $preferredInitialPageNamedArgument = "-PreferredInitialPage $preferredInitialPageArgument"
 
     if ($googleStyleTarget) {
         return [ordered]@{
@@ -403,10 +450,10 @@ function Get-BundlePinnedValidationCommands {
             preferred_initial_page = $preferredTarget.path
             preferred_initial_page_display_path = $preferredTarget.display_path
             summary = "Keep the current compatibility bundle locked into the Google-style attached HTML route, with the strongest Google-style page pinned first for the issue #3 localhost-first follow-up."
-            surface_check = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1"
-            asset_closure = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle -InputPath $inputPathArguments"
-            flow = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument"
-            runner = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument -Wait"
+            surface_check = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\check_google_attached_html_validation_surface.ps1' -Arguments @($repoRootArgument)
+            asset_closure = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\check_attached_html_local_asset_closure.ps1' -Arguments @($repoRootArgument, '-GoogleStyle', $inputPathArgument)
+            flow = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_google_attached_html_validation_flow.ps1' -Arguments @($repoRootArgument, $inputPathArgument, $preferredInitialPageNamedArgument)
+            runner = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\run_google_attached_html_validation.ps1' -Arguments @($repoRootArgument, $inputPathArgument, $preferredInitialPageNamedArgument) -Switches @('Wait')
         }
     }
 
@@ -416,20 +463,21 @@ function Get-BundlePinnedValidationCommands {
         preferred_initial_page = $preferredTarget.path
         preferred_initial_page_display_path = $preferredTarget.display_path
         summary = "Keep the current compatibility bundle locked into the general attached HTML route, with the first resolved target pinned as the initial page."
-        surface_check = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_validation_surface.ps1"
-        asset_closure = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -InputPath $inputPathArguments"
-        flow = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument"
-        runner = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_localhost_validation.ps1 -InputPath $inputPathArguments -PreferredInitialPage $preferredInitialPageArgument -Wait"
+        surface_check = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\check_attached_html_validation_surface.ps1' -Arguments @($repoRootArgument)
+        asset_closure = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\check_attached_html_local_asset_closure.ps1' -Arguments @($repoRootArgument, $inputPathArgument)
+        flow = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\show_attached_html_validation_flow.ps1' -Arguments @($repoRootArgument, $inputPathArgument, $preferredInitialPageNamedArgument)
+        runner = Join-PowerShellCommand -ScriptPath '.\\scripts\\windows\\run_attached_html_localhost_validation.ps1' -Arguments @($repoRootArgument, $inputPathArgument, $preferredInitialPageNamedArgument) -Switches @('Wait')
     }
 }
 
 function Get-OverallBundleRecommendation {
     param(
         [Parameter(Mandatory = $true)]
-        [object[]]$ResultRows
+        [object[]]$ResultRows,
+        [string]$RepoRoot
     )
 
-    $bundlePinnedCommands = Get-BundlePinnedValidationCommands -ResultRows $ResultRows
+    $bundlePinnedCommands = Get-BundlePinnedValidationCommands -ResultRows $ResultRows -RepoRoot $RepoRoot
     $googleStyleTarget = @(
         $ResultRows |
             Where-Object { $_.status -eq "found" -and $_.is_google_style } |
@@ -544,7 +592,7 @@ $targetResults = foreach ($target in $targets) {
         }
     }
 
-    $routing = Get-TargetValidationRouting -TargetName $target.Name -Status $status -IsGoogleStyle:$selectedGoogleStyle
+    $routing = Get-TargetValidationRouting -TargetName $target.Name -Status $status -IsGoogleStyle:$selectedGoogleStyle -RepoRoot $RepoRoot
 
     [pscustomobject]@{
         name = $target.Name
@@ -609,7 +657,7 @@ $resultRows = @(
 $missingTargets = @($resultRows | Where-Object { $_.status -eq "missing" })
 $ambiguousTargets = @($resultRows | Where-Object { $_.status -eq "ambiguous" })
 $bundlePassed = $missingTargets.Count -eq 0 -and $ambiguousTargets.Count -eq 0
-$overallRecommendation = Get-OverallBundleRecommendation -ResultRows $resultRows
+$overallRecommendation = Get-OverallBundleRecommendation -ResultRows $resultRows -RepoRoot $RepoRoot
 
 if ($Json) {
     [ordered]@{
