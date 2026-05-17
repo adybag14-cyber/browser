@@ -22,7 +22,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 Before trusting that compact shortcut-first bridge after branch moves, rerun its dedicated checker too:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1
 ```
 
 If the replay is already running from a non-default checkout, from an already-saved summary, or from an explicit attached-bundle path, preserve that context directly in the helper:
@@ -44,7 +44,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 Before trusting that compact attached-page bridge after branch moves, rerun its dedicated checker too:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1
 ```
 
 If the replay is already running from a non-default checkout, from an already-saved summary, or from explicit attached bundle paths, preserve that context directly in the helper:
@@ -60,8 +60,8 @@ Use this when the next replay is already narrowed to attached-page compatibility
 If you still want the wider compact bridge after either short entrypoint, keep these companion helpers nearby:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
@@ -71,9 +71,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 ```
 
-Use `check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1` when the replay is already clearly inside issue `#3` and you want the exact shortcut-first bridge to fail fast before widening into broader attached-page helpers, replay shortcuts, replay-route follow-up, or the safe-route map.
+Use `check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1` when the replay is already clearly inside issue `#3` and you want the exact shortcut-first bridge to fail fast before widening into broader attached-page helpers, replay shortcuts, replay-route follow-up, or the safe-route map.
 
-Use `check_google_issue3_suite_router_attached_html_quickstart_surface.ps1` when the replay is already narrowed to the attached localhost compatibility lane and you want that exact compact suite-router bridge to fail fast before widening back into the top-level attached-page helpers, the suite-catalog attached-page bridge, or the replay-route follow-up.
+Use `check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1` when the replay is already narrowed to the attached localhost compatibility lane and you want that exact compact suite-router bridge to fail fast before widening back into the top-level attached-page helpers, the suite-catalog attached-page bridge, or the replay-route follow-up.
 
 Use `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` when the route already narrowed to the Google-shaped attached-page lane and you want the issue-specific fail-fast surface reprinted before the shorter shortcut ladder takes over.
 
@@ -105,7 +105,7 @@ Use this sequence when the route is already clearly inside issue `#3` and no att
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
@@ -120,7 +120,7 @@ Use this sequence when the route is already narrowed to attached localhost compa
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
@@ -138,7 +138,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
@@ -164,8 +164,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 If you want the wider compact bridge before choosing the narrower branch, reopen either companion helper after the shortcut-first entrypoint or the attached HTML quickstart:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
@@ -238,9 +238,9 @@ If the replay is running from a non-default checkout, from an already-saved summ
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
