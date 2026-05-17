@@ -203,6 +203,54 @@ class AttachedPagesServerTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=5)
 
+    def test_bundle_root_and_explicit_file_list_accept_htm_exports(self):
+        legacy_path = self.root / "legacy.htm"
+        legacy_path.write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Legacy Export</title>
+  </head>
+  <body>legacy export</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+
+        manifest = server_module.build_manifest(self.root)
+        self.assertEqual(3, len(manifest))
+        legacy_entry = next(entry for entry in manifest if entry["file"] == "legacy.htm")
+        self.assertEqual("Legacy Export", legacy_entry["title"])
+
+        selected_manifest = server_module.build_manifest(selected_files=[legacy_path])
+        self.assertEqual(1, len(selected_manifest))
+        self.assertEqual("legacy.htm", selected_manifest[0]["file"])
+
+        server, manifest = server_module.create_server(selected_files=[legacy_path], bind="127.0.0.1", port=0)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                connection.request("GET", "/manifest.json")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(1, len(payload))
+                self.assertEqual("legacy.htm", payload[0]["file"])
+
+                connection.request("GET", "/pages/1/")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                self.assertIn("legacy export", response.read().decode("utf-8"))
+            finally:
+                connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
     def test_export_style_unicode_filenames_stay_replayable(self):
         export_name = "Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40)"
         html_name = f"{export_name}.html"
