@@ -1,7 +1,24 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$root = Join-Path $repo "tmp-browser-smoke\tabs"
-$port = 8153
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8153,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. "$PSScriptRoot\TabProbeCommon.ps1"
+
+$config = Resolve-TabProbeConfig -StartPath $PSScriptRoot -RepoRoot $RepoRoot -BrowserExe $BrowserExe -ProfileName "profile-restore"
+$repo = $config.RepoRoot
+$root = $config.SmokeRoot
+$browserExe = $config.BrowserExe
+$profileRoot = $config.ProfileRoot
 $run1Png = Join-Path $root "chrome-restore.run1.png"
 $run2Png = Join-Path $root "chrome-restore.run2.png"
 $run1Out = Join-Path $root "chrome-restore.run1.browser.stdout.txt"
@@ -10,16 +27,10 @@ $run2Out = Join-Path $root "chrome-restore.run2.browser.stdout.txt"
 $run2Err = Join-Path $root "chrome-restore.run2.browser.stderr.txt"
 $serverOut = Join-Path $root "chrome-restore.server.stdout.txt"
 $serverErr = Join-Path $root "chrome-restore.server.stderr.txt"
-$profileRoot = Join-Path $root "profile-restore"
 
-cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
-New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
+Reset-TabProbeProfile $profileRoot
 Remove-Item $run1Png,$run2Png,$run1Out,$run1Err,$run2Out,$run2Err,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-
-$env:APPDATA = $profileRoot
-$env:LOCALAPPDATA = $profileRoot
-
-. "$PSScriptRoot\TabProbeCommon.ps1"
+Set-TabProbeProfileEnvironment $profileRoot
 
 $server = $null
 $browser1 = $null
@@ -34,43 +45,34 @@ $titles = [ordered]@{}
 $failure = $null
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m","http.server",$Port,"--bind",$Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url "http://$Host`:$Port/index.html" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "restore probe server did not become ready" }
 
-  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run1Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run1Out -RedirectStandardError $run1Err
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $run1Png) -and ((Get-Item $run1Png).Length -gt 0)) {
-      $run1ScreenshotReady = $true
-      break
-    }
-  }
+  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://$Host`:$Port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run1Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run1Out -RedirectStandardError $run1Err
+  $run1ScreenshotReady = Wait-LightpandaFileReady -Path $run1Png -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $run1ScreenshotReady) { throw "restore probe run1 screenshot did not become ready" }
-  $hwnd1 = Wait-TabWindowHandle $browser1.Id
+  $hwnd1 = Wait-TabWindowHandle -ProcessId $browser1.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if ($hwnd1 -eq [IntPtr]::Zero) { throw "restore probe run1 window handle not found" }
   Show-SmokeWindow $hwnd1
 
-  $titles.run1_initial = Wait-TabTitle $browser1.Id "Tab One"
+  $titles.run1_initial = Wait-TabTitle -ProcessId $browser1.Id -Needle "Tab One" -Attempts 40 -PollMilliseconds $PollMilliseconds
   if (-not $titles.run1_initial) { throw "restore probe run1 initial title missing" }
 
   $newTabPoint = Get-TabClientPoint 0 -New
   [void](Invoke-SmokeClientClick $hwnd1 $newTabPoint.X $newTabPoint.Y)
-  $titles.run1_new_tab = Wait-TabTitle $browser1.Id "New Tab"
+  $titles.run1_new_tab = Wait-TabTitle -ProcessId $browser1.Id -Needle "New Tab" -Attempts 40 -PollMilliseconds $PollMilliseconds
   if (-not $titles.run1_new_tab) { throw "restore probe run1 new tab missing" }
 
   [void](Invoke-SmokeClientClick $hwnd1 160 40)
   Start-Sleep -Milliseconds 150
-  Send-SmokeText "http://127.0.0.1:$port/two.html"
+  Send-SmokeText "http://$Host`:$Port/two.html"
   Start-Sleep -Milliseconds 100
   Send-SmokeEnter
-  $titles.run1_second = Wait-TabTitle $browser1.Id "Tab Two"
+  $titles.run1_second = Wait-TabTitle -ProcessId $browser1.Id -Needle "Tab Two" -Attempts 40 -PollMilliseconds $PollMilliseconds
   if (-not $titles.run1_second) { throw "restore probe run1 second tab navigation missing" }
   $sessionPrepared = $true
 
@@ -78,25 +80,19 @@ try {
   Start-Sleep -Milliseconds 300
   if (Get-Process -Id $browser1.Id -ErrorAction SilentlyContinue) { throw "restore probe run1 browser did not exit" }
 
-  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run2Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run2Out -RedirectStandardError $run2Err
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $run2Png) -and ((Get-Item $run2Png).Length -gt 0)) {
-      $run2ScreenshotReady = $true
-      break
-    }
-  }
+  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://$Host`:$Port/index.html","--window_width","960","--window_height","640","--screenshot_png",$run2Png -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run2Out -RedirectStandardError $run2Err
+  $run2ScreenshotReady = Wait-LightpandaFileReady -Path $run2Png -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $run2ScreenshotReady) { throw "restore probe run2 screenshot did not become ready" }
-  $hwnd2 = Wait-TabWindowHandle $browser2.Id
+  $hwnd2 = Wait-TabWindowHandle -ProcessId $browser2.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if ($hwnd2 -eq [IntPtr]::Zero) { throw "restore probe run2 window handle not found" }
   Show-SmokeWindow $hwnd2
 
-  $titles.run2_active = Wait-TabTitle $browser2.Id "Tab Two"
+  $titles.run2_active = Wait-TabTitle -ProcessId $browser2.Id -Needle "Tab Two" -Attempts 40 -PollMilliseconds $PollMilliseconds
   $activeRestoreWorked = [bool]$titles.run2_active
   if (-not $activeRestoreWorked) { throw "restore probe did not reopen the last active tab" }
 
   Send-SmokeCtrlShiftTab
-  $titles.run2_other = Wait-TabTitle $browser2.Id "Tab One"
+  $titles.run2_other = Wait-TabTitle -ProcessId $browser2.Id -Needle "Tab One" -Attempts 40 -PollMilliseconds $PollMilliseconds
   $otherTabWorked = [bool]$titles.run2_other
   if (-not $otherTabWorked) { throw "restore probe did not restore the other saved tab" }
 } catch {
@@ -111,6 +107,11 @@ try {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    profile_root = $profileRoot
+    host = $Host
+    port = $Port
     server_pid = if ($server) { $server.Id } else { 0 }
     run1_browser_pid = if ($browser1) { $browser1.Id } else { 0 }
     run2_browser_pid = if ($browser2) { $browser2.Id } else { 0 }
