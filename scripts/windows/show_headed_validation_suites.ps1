@@ -1,7 +1,7 @@
 param(
-    [ValidateSet("", "google-recommended")]
+    [ValidateSet("", "google-form-controls-enter-order", "google-recommended")]
     [string]$SuiteName = "",
-    [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-input", "input", "manual-html", "navigation", "network", "rendering", "stop-loading")]
+    [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-form-controls-enter-order", "google-input", "input", "manual-html", "navigation", "network", "rendering", "stop-loading")]
     [string]$ChangeArea = "",
     [string]$RepoRoot = "",
     [string]$BrowserExe = "",
@@ -226,6 +226,12 @@ if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlArguments -Name InputPath -Values @($InputPath)
 }
 
+$googleFormControlsEnterOrderArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $googleFormControlsEnterOrderArguments -Name RepoRoot -Value $RepoRoot
+if ($isCustomBrowserExe) {
+    Add-SharedArgument -Arguments $googleFormControlsEnterOrderArguments -Name BrowserExe -Value $BrowserExe
+}
+
 function Get-Issue3AttachedHtmlFollowUpCommands {
     return @(
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
@@ -262,6 +268,29 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
     return $notes
 }
 
+function Get-GoogleFormControlsEnterOrderCommands {
+    return @(
+        (Format-HelperCommand -ScriptName 'check_google_form_controls_enter_order_validation_surface.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+        (Format-HelperCommand -ScriptName 'show_google_form_controls_enter_order_trace_guide.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+        (Format-HelperCommand -ScriptName 'show_google_form_controls_enter_order_validation_flow.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+        (Format-HelperCommand -ScriptName 'run_google_form_controls_enter_order_validation.ps1' -Arguments $googleFormControlsEnterOrderArguments)
+    )
+}
+
+function Get-GoogleFormControlsEnterOrderNotes {
+    $notes = @(
+        "Use this when issue #3 is already narrowed to the smallest shared Enter-order checkpoint on the real headed surface.",
+        "Run the surface checker first so missing docs, wrappers, or the raw probe fail before you trust the dedicated runner.",
+        "Widen back out to the broader shared Enter-order ladder only after this dedicated gate stays green."
+    )
+
+    if ($isCustomBrowserExe) {
+        $notes += "Current browser override: $BrowserExe"
+    }
+
+    return $notes
+}
+
 function Show-DefaultRoutes {
     Write-Section "Headed Validation Suites"
     Write-Host "Use the smallest bounded check first, then widen into manual headed follow-up."
@@ -293,6 +322,7 @@ function Show-DefaultRoutes {
         "Use them before live-site or saved-page follow-up."
     )
 
+    Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes (Get-GoogleFormControlsEnterOrderNotes)
     Write-Route -Name "rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
     Write-Route -Name "network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
 
@@ -301,7 +331,7 @@ function Show-DefaultRoutes {
     Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
 
     $googleRecommendedNotes = @(
-        "Use the bounded input probe first, then live Google, then the dedicated Google-shaped attached-page flow before the shorter issue #3 helper surface or the broader manual localhost replay.",
+        "Use the bounded input probe first, then the dedicated Google form-controls Enter-order gate, then live Google, then the dedicated Google-shaped attached-page flow before the shorter issue #3 helper surface or the broader manual localhost replay.",
         "Pass -InputPath when you already want the top-level attached-page quickstart or bundle-first helper pinned to a saved page or the current three-page compatibility bundle."
     )
     if ($isCustomBrowserExe) {
@@ -310,6 +340,7 @@ function Show-DefaultRoutes {
 
     Write-Route -Name "google-recommended" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order",
         "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
         (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
@@ -318,6 +349,21 @@ function Show-DefaultRoutes {
 }
 
 switch ($true) {
+    { $SuiteName -eq "google-form-controls-enter-order" } {
+        Write-Section "google-form-controls-enter-order"
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+
+        Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes (Get-GoogleFormControlsEnterOrderNotes)
+        Write-Route -Name "shared-enter-order-follow-up" -Commands @(
+            (Format-HelperCommand -ScriptName 'show_google_shared_enter_order_validation_flow.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+            (Format-HelperCommand -ScriptName 'run_google_shared_enter_order_validation.ps1' -Arguments $googleFormControlsEnterOrderArguments)
+        ) -Notes @(
+            "Use these after the dedicated form-controls Enter-order gate is green and you want the broader shared Enter-order ladder back on one surface."
+        )
+        break
+    }
     { $SuiteName -eq "google-recommended" } {
         Write-Section "google-recommended"
         if ($isCustomBrowserExe) {
@@ -334,10 +380,10 @@ switch ($true) {
 
         Write-Route -Name "google-recommended" -Commands @(
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
+            "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1",
             "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
         ) -Notes @(
-            "Use the form-controls Enter-submit probe to confirm shared headed typing and submit behavior first.",
-            "After that, verify Google homepage typing, focus retention, and Enter submit manually."
+            "Use the shared Enter-submit probe first, then the dedicated Google form-controls Enter-order gate, then verify Google homepage typing, focus retention, and Enter submit manually."
         )
 
         Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
@@ -369,6 +415,10 @@ switch ($true) {
                 $googleInputFollowUpNotes += "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
             }
 
+            Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes @(
+                "Use this after the shared input probes are green when the next question is whether submit still waits until keypress on the Google-style form-controls path."
+            )
+
             Write-Route -Name "manual-google" -Commands @(
                 "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
             ) -Notes @(
@@ -381,6 +431,21 @@ switch ($true) {
                 (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
             ) -Notes $googleInputFollowUpNotes
         }
+        break
+    }
+    { $ChangeArea -eq "google-form-controls-enter-order" } {
+        Write-Section "google-form-controls-enter-order"
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+
+        Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes (Get-GoogleFormControlsEnterOrderNotes)
+        Write-Route -Name "shared-enter-order-follow-up" -Commands @(
+            (Format-HelperCommand -ScriptName 'show_google_shared_enter_order_validation_flow.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+            (Format-HelperCommand -ScriptName 'run_google_shared_enter_order_validation.ps1' -Arguments $googleFormControlsEnterOrderArguments)
+        ) -Notes @(
+            "Use these after the dedicated form-controls Enter-order gate is green and you want the broader shared Enter-order ladder back on one surface."
+        )
         break
     }
     { $ChangeArea -eq "navigation" } {
