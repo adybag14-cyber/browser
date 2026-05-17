@@ -40,6 +40,7 @@ Current validation truth on this branch:
 - bounded localhost navigation probes exist under `tmp-browser-smoke/wrapped-link/`
 - bounded localhost stop/reload probes exist under `tmp-browser-smoke/stop-loading/`
 - bounded localhost input probes exist under `tmp-browser-smoke/form-controls/`
+- the first-line navigation, stop-loading, and form-control probes auto-resolve the repo root and built browser path from the current checkout
 - `scripts/windows/show_headed_validation_suites.ps1` is the truthful router
   for current small Windows headed checks
 - saved or attached HTML follow-up currently expands to a manual localhost
