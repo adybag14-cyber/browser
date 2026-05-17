@@ -167,7 +167,7 @@ if ($InputPath) {
 
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $googleIssue3AttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
-$suiteRouterAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_router_attached_html_quickstart_surface.ps1' -RepoRootOverride $RepoRoot
+$suiteRouterAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
 
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router attached HTML quickstart'
