@@ -18,7 +18,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the Windows-first attached-page route, keep the route-level surface check visible, reopen the broader attached-page ladders only long enough to confirm the pinned bundle branch, then narrow into the compact bundle-suite helper before handing off to the bundle-first entrypoint and delegated runner.
+Start from the Windows-first attached-page route, keep the route-level and bridge-level surface checks visible, reopen the broader attached-page ladders only long enough to confirm the pinned bundle branch, then narrow into the compact bundle-suite helper before handing off to the bundle-first entrypoint and delegated runner.
 
 Use this note when the replay should stay pinned to:
 
@@ -33,6 +33,7 @@ Use this route when `docs/WINDOWS_FULL_USE.md` was the last broader note you ope
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
@@ -54,6 +55,7 @@ Use that route when:
 Use this route when the replay needs the wider attached-page ladders reprinted once before it narrows back to the pinned bundle branch:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
@@ -75,6 +77,7 @@ Use that route when:
 If the replay already carries a non-default repo root, a saved summary, or pinned bundle paths, preserve that same context all the way through the narrower bundle branch:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -91,23 +94,27 @@ Use that form when:
 
 ## Pick the next helper quickly
 
-1. `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
+1. `check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1`
+
+Use this first when you want a fail-fast check that the pinned bundle bridge note, helper chain, and wider fallback surfaces still line up before trusting the narrower bundle route.
+
+2. `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
 
 Use this first when you want the compact suite-level bundle surface before reopening the narrower bundle-first helper.
 
-2. `show_google_issue3_replay_route_bundle_first_bridge.ps1`
+3. `show_google_issue3_replay_route_bundle_first_bridge.ps1`
 
 Use this when the replay is already inside the replay-route helper family and you want the pinned bundle route plus the broader attached-page return path printed together.
 
-3. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+4. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
 
 Use this when the exact three-page bundle is already pinned and the next useful step is the narrower helper plus the delegated bundle flow.
 
-4. `show_attached_html_target_bundle_validation_flow.ps1`
+5. `show_attached_html_target_bundle_validation_flow.ps1`
 
 Use this when the bundle route is confirmed and you want the delegated localhost runner path reprinted before launch.
 
-5. `run_attached_html_target_bundle_validation.ps1 -Wait`
+6. `run_attached_html_target_bundle_validation.ps1 -Wait`
 
 Use this when the bundle checks and helper surfaces are already green and you want the pinned three-page route to execute directly.
 
@@ -115,7 +122,7 @@ Use this when the bundle checks and helper surfaces are already green and you wa
 
 Once `docs/WINDOWS_FULL_USE.md` or the broader Windows-first attached-page route has already narrowed the replay to attached localhost follow-up, prefer the compact bundle-suite helper before the narrower bundle-first helper whenever the current inputs are still the known three-page compatibility set.
 
-- replay reopened from `docs/WINDOWS_FULL_USE.md`: rerun the Windows-first attached-page route and its validation-router bridge, then surface `-ChangeArea attached-html-target-bundle`, then the compact bundle-suite helper, then the replay-route bundle bridge, then the narrower bundle-first helper
-- replay reopened from the shared validation catalog: reopen `-ChangeArea attached-html`, `-ChangeArea google-attached-html`, and `-ChangeArea attached-html-target-bundle` first, then the broader attached-page helpers with the same `InputPath`, then the compact bundle-suite helper, then the replay-route bundle bridge, then the narrower bundle-first helper
+- replay reopened from `docs/WINDOWS_FULL_USE.md`: rerun the Windows-first attached-page route, the route-level surface check, the attached-bundle bridge surface check, then the validation-router bridge, then surface `-ChangeArea attached-html-target-bundle`, then the compact bundle-suite helper, then the replay-route bundle bridge, then the narrower bundle-first helper
+- replay reopened from the shared validation catalog: rerun the attached-bundle bridge surface check, reopen `-ChangeArea attached-html`, `-ChangeArea google-attached-html`, and `-ChangeArea attached-html-target-bundle` first, then the broader attached-page helpers with the same `InputPath`, then the compact bundle-suite helper, then the replay-route bundle bridge, then the narrower bundle-first helper
 - saved summary or repo-root override already present: keep the same `RepoRoot`, `SummaryPath`, and `InputPath` attached to every helper until the pinned bundle runner takes over
 - broader attached-page discovery no longer matches the current inputs: widen back out to `show_attached_html_validation_flow.ps1` or `show_google_attached_html_validation_flow.ps1` only after the pinned bundle route is no longer the right fit
