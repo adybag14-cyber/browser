@@ -4,7 +4,7 @@ Use this note when the headed validation router, the broader suite-catalog surfa
 
 This note matches `show_google_issue3_google_attached_html_entrypoint.ps1`.
 
-Before trusting this compact route after helper or note changes, rerun `check_google_issue3_google_attached_html_entrypoint_surface.ps1` so the issue-specific surface fails fast before the replay narrows again.
+Before trusting this compact route after helper or note changes, rerun `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` so the issue-specific surface fails fast before the replay narrows again.
 
 Keep these companion notes nearby:
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
@@ -32,7 +32,7 @@ If the route is reopening from the top-level suite helper first, keep both `show
 Run this first when helper output, note pointers, or nearby bundle-aware follow-ups may have changed:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 ```
 
 Use that check when:
@@ -52,7 +52,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 ```
@@ -71,7 +71,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
@@ -91,7 +91,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
@@ -107,7 +107,7 @@ Use that route when:
 If the replay already carries a non-default repo root, a saved summary, or explicit attached-page inputs, keep that same context attached to the entrypoint helper:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
@@ -131,7 +131,7 @@ If the current inputs are still the known three-page compatibility bundle, keep 
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
@@ -172,12 +172,12 @@ Use this when the attached-page helper branch is out of the way and you want the
 
 ## Practical rule
 
-Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, the suite-catalog attached-page route, or the broader top-level suite helper has already made the Google-shaped attached localhost branch obvious, rerun the dedicated Google attached-page surface check, the asset audit, and `check_google_issue3_google_attached_html_entrypoint_surface.ps1` first, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
+Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, the suite-catalog attached-page route, or the broader top-level suite helper has already made the Google-shaped attached localhost branch obvious, rerun the dedicated Google attached-page surface check, the asset audit, and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` first, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
 
 - no pinned bundle inputs and no saved replay context yet: go from the Google attached-page flow to the issue-specific checker, then the issue-specific entrypoint, then the shortcut-first helper, then replay shortcuts
 - broader attached localhost compatibility context still matters: keep `show_headed_validation_suites.ps1 -ChangeArea attached-html` visible beside the dedicated Google-shaped route before the narrower entrypoint chain takes over
 - suite-catalog route still matters more than the narrower shortcuts: keep `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, and `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` open beside this note so the broader attached-page bridge stays visible while the route narrows
-- Google attached-page flow still matters more than the narrower shortcuts: keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` and `check_google_issue3_google_attached_html_entrypoint_surface.ps1` open beside this note so the surface checker, asset audit, helper, and runner stay visible while the route narrows
+- Google attached-page flow still matters more than the narrower shortcuts: keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` open beside this note so the surface checker, asset audit, helper, and runner stay visible while the route narrows
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before the bundle-first helper so the exact three-page compatibility set stays visible while the replay stays locked to the bundle-aware route
 - saved summary or repo-root override already present: pass the same replay context through the issue-specific checker and entrypoint first, then choose contextual flow, replay shortcuts, the bundle-first helper, or the safe-route map only as needed
 
