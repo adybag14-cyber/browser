@@ -101,6 +101,36 @@ running the heavier attached-page PowerShell helpers or when you want the exact
 same three pages available through short routes while you debug a headed-mode
 compatibility regression.
 
+## Recommended Issue #3 Replay Order
+
+For the current three-page issue `#3` bundle, run the asset audit before you
+start the localhost server or the headed browser session:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
+  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
+  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
+  --audit-assets
+```
+
+Interpret that first gate like this:
+
+- If the audit exits nonzero, fix the saved bundle first or consciously accept
+  the degraded replay before treating the next headed result as a browser
+  regression.
+- The currently saved UAP export is known to be incomplete because its sibling
+  `_files` asset directory is missing. The audit reports that damage before the
+  browser is involved, which keeps missing-sidecar noise out of headed-runtime
+  triage.
+- After the audit, reuse the same pinned `--input` list for `--print-manifest`,
+  `--port 8235`, or `--allow-missing-assets` so the replay stays on the exact
+  bundle definition you just checked.
+
+Use this audit-first order when you want the fastest honest answer to "is this
+page export locally complete enough to blame the browser yet?" before you widen
+back into the heavier PowerShell replay helpers.
+
 ## Asset Audit
 
 Before treating a localhost replay failure as a headed-runtime bug, you can ask
