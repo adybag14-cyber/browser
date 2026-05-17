@@ -195,7 +195,7 @@ function Get-RenderingRouteCommands {
 function Get-RenderingRouteNotes {
     return @(
         "Use these before attached-page replay when the change touched shared layout, paint, screenshot timing, or visible headed surface behavior.",
-        "The current layout-smoke helpers can still carry fixed checkout assumptions, so normalize repo-root and browser-exe paths first if the helper fails before browser behavior is exercised."
+        "The first-line layout-smoke probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
     )
 }
 
@@ -209,7 +209,7 @@ function Get-NetworkRouteCommands {
 function Get-NetworkRouteNotes {
     return @(
         "Use these before attached-page replay when the change touched shared subresource loading, authenticated asset fetches, or browser-managed request credentials.",
-        "The stylesheet route is the quickest bounded check for headed subresource loading, while the fetch-credentials route widens into credential and cross-origin request behavior on localhost fixtures."
+        "These first-line stylesheet and fetch-credentials probes now auto-resolve the current checkout before widening into deeper network helpers."
     )
 }
 
