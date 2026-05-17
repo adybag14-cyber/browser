@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -96,7 +113,16 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1" -Kind "file" -Purpose "Replay-side attached-html quickstart helper surfaced from the top-level route.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Snippet 'top_level_attached_html_surface_check = $topLevelAttachedHtmlSurfaceCheckCommand' -Purpose "Top-level attached-html helper wires its dedicated surface checker into the command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Snippet 'Write-Host (("  8. Top-level surface check:    {0}") -f $entrypoint.top_level_commands.top_level_attached_html_surface_check)' -Purpose "Printed top-level route keeps the dedicated surface checker visible before the shorter helper ladder."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Snippet 'Write-Host (("  Top-level surface check:  {0}") -f $entrypoint.top_level_commands.top_level_attached_html_surface_check)' -Purpose "Companion helper output keeps the dedicated top-level surface checker visible from the broader attached-page bridge."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Snippet 'Run top_level_attached_html_surface_check before suite_router_attached_html_quickstart or google_attached_html_entrypoint when you want this broader top-level attached-page route, its companion notes, and its delegated helper chain to fail fast before the replay narrows again.' -Purpose "Usage notes explain when to rerun the top-level attached-html surface checker from the broader bridge."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Snippet 'attached_html_change_area_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName ''check_google_issue3_attached_html_change_area_quickstart_validation_surface.ps1'' -RepoRootOverride $RepoRoot' -Purpose "Top-level bridge tracks the attached-html change-area surface checker beside the broader attached-page route."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Snippet 'Write-Host ((" 10. Change-area surface check:  {0}") -f $entrypoint.top_level_commands.attached_html_change_area_surface_check)' -Purpose "Printed top-level route keeps the change-area surface checker visible from the same compact bridge surface.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -105,6 +131,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -112,15 +139,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-top-level-attached-html-entrypoint"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -135,10 +196,20 @@ Write-Host ""
 Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host (("[{0}] {1}") -f $status, $result.Path)
     Write-Host (("  {0}") -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host (("[{0}] {1}") -f $status, $result.Path)
+        Write-Host (("  {0}") -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -147,6 +218,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} issue #3 top-level attached-html path(s).") -f $missing.Count)
-Write-Host "Repair the missing note, helper, or delegated attached-html branch before trusting the issue #3 top-level attached-html entrypoint route."
+Write-Host (("Missing {0} issue #3 top-level attached-html path or source contract check(s).") -f $missing.Count)
+Write-Host "Repair the broader attached-page bridge, its dedicated top-level checker surfacing, the compact change-area checker surfacing, the delegated helper chain, or the companion notes before trusting the issue #3 top-level attached-html entrypoint route."
 exit 1
