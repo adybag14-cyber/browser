@@ -46,7 +46,7 @@ function Start-CookieServer([int]$Port, [string]$Stdout, [string]$Stderr) {
 }
 
 function Start-CookieBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath $script:BrowserExe -ArgumentList "browse",$StartupUrl,"--window_width","960","--window_height","640" -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  return Start-Process -FilePath $script:BrowserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640",$StartupUrl) -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Invoke-CookieAddressCommit([IntPtr]$Hwnd, [string]$Url) {
