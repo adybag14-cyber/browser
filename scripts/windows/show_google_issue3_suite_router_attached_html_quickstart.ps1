@@ -297,12 +297,14 @@ Write-Host (("  Google attached flow helper: {0}") -f $helper.commands.google_at
 Write-Host ''
 Write-Host 'Attached-page follow-up helpers:'
 Write-Host (("  Suite-router surface check:   {0}") -f $helper.commands.suite_router_attached_html_surface_check)
+Write-Host (("  Google attached surface:      {0}") -f $helper.commands.google_attached_html_surface_check)
 Write-Host (("  Catalog entrypoints guide:    {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Top-level quickstart:         {0}") -f $helper.commands.top_level_attached_html_quickstart)
 Write-Host (("  Top-level catalog quickstart: {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
 Write-Host (("  Catalog attached bridge:      {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
 Write-Host (("  Top-level attached:           {0}") -f $helper.commands.top_level_attached_html_entrypoint)
 Write-Host (("  Issue-specific Google check:  {0}") -f $helper.commands.google_issue3_attached_html_surface_check)
+Write-Host (("  Google attached flow helper:  {0}") -f $helper.commands.google_attached_html_flow)
 Write-Host (("  Google attached bridge:       {0}") -f $helper.commands.google_attached_html_entrypoint)
 Write-Host (("  Attached shortcut:            {0}") -f $helper.commands.attached_html_shortcut)
 Write-Host (("  Replay shortcuts:             {0}") -f $helper.commands.replay_shortcuts)
