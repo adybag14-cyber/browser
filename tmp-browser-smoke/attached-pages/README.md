@@ -62,6 +62,47 @@ That same manifest-print path also works with repeated `--input` arguments when
 you want to prove the exact pinned file list before starting the localhost
 catalog server.
 
+## Windows wrapper
+
+When the saved pages are already under `agent_files/`, `user_files/`, or an
+explicit input list, use the Windows wrapper to reuse the same attached-page
+auto-discovery rules as the headed validation helpers without hand-building
+repeated `python --input ...` arguments.
+
+From the repo root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1
+```
+
+Useful variants:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -AuditAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -AuditAssets -AllowMissingAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '.\agent_files\saved-page.html'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '.\agent_files\bundle-root'
+```
+
+What the wrapper does:
+
+- auto-discovers attached HTML under the current repo, its workspace parent, or
+  the current working directory when `-InputPath` is omitted
+- resolves directory inputs to explicit pinned `.html` files before calling the
+  Python helper, so the manifest stays locked to the current replay set
+- can prefer the strongest Google-like page first with `-GoogleStyle` while
+  still keeping the whole pinned bundle available through `/pages/...`
+- prints the selected fixtures and localhost bind URL before launch mode so the
+  current pinned set is visible in replay notes
+- can switch between manifest-only, asset-audit, and long-running catalog
+  server modes without changing the pinned input set
+
+Use this wrapper when the next step is “start the short-route localhost catalog
+for the current saved bundle” rather than the broader headed-browser validation
+runner.
+
 ## Issue #3 Pinned Bundle
 
 For the current headed Google follow-up work, you can pin the known three-page
