@@ -171,8 +171,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
   Default next helper: `show_google_issue3_replay_shortcuts.ps1`
   Use this when the higher-level issue `#3` router state is already confirmed and you want the narrower shortcut map next before deciding whether to widen back into replay-route, stay pinned to attached-bundle-first, or reopen the safe-route helper.
 - `show_google_issue3_replay_route.ps1`
+  Default next helper: `show_google_issue3_replay_route_shortcut_entrypoint.ps1`
+  Use this when you want the narrower replay-route companion before deciding between the attached-bundle-first route, the fresh safe-route replay, or the wrapper-heavy safe-route entrypoints map.
+- `show_google_issue3_replay_route_shortcut_entrypoint.ps1`
   Default next helper: `show_google_issue3_replay_shortcuts.ps1`
-  Use this when you want the narrower shortcut map before deciding between the attached-bundle-first route, the replay-route shortcut helper, the fresh safe-route replay, or the wrapper-heavy safe-route entrypoints map.
+  Use this when replay-route is already open and you want the shorter printed bridge kept visible before widening back into replay shortcuts, the bundle-first route, or the wrapper-heavy safe-route map.
 - Wrapper-emitted runner state already known
   Default next helper: `show_google_issue3_runner_patch_next_step.ps1 -State <ready-for-runner-patch|already-direct|runner-already-wired-regenerate-outputs>`
   Use this when the current replay already has a saved summary path plus one of the three runner-patch states and you want the shortest exact next-step command map.
