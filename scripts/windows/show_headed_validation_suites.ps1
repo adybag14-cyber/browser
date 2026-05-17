@@ -77,6 +77,7 @@ function Get-AttachedHtmlNotes {
         "Run the attached-pages asset audit first so missing local sidecars are visible before the browser is blamed.",
         "Use the attached-pages catalog wrapper to pin the current HTML bundle and expose short localhost routes at /, /manifest.json, /pages/<n>, /named/<slug>, and /raw/... .",
         "The broader attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1.",
+        "The Google-shaped attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1.",
         "The issue #3 top-level attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1.",
         "The manual-html change area still reuses this attached-pages catalog route when you want a direct saved-page replay without a narrower bounded family.",
         "Start the catalog in one shell, then open the generated catalog or a manifest-backed short route from a second shell."
@@ -228,6 +229,7 @@ if ($InputPath) {
 function Get-Issue3AttachedHtmlFollowUpCommands {
     return @(
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
+        (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $issue3AttachedHtmlArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
     )
@@ -241,11 +243,13 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
     if ($BundleFocused) {
         $notes = @(
             "Use the compact bundle-suite surface first when the top-level router is already narrowed to the known three-page compatibility bundle.",
+            "Keep the dedicated Google-shaped attached-page flow visible until the current pages are clearly still the pinned bundle.",
             "Only drop into the bundle-first helper after the suite surface is visible, so the pinned bundle route stays easy to reopen."
         )
     } else {
         $notes = @(
             "Use the attached-html change-area quickstart when you want the shorter issue #3 attached-page helper ladder visible after the broader attached-pages catalog route.",
+            "Keep the dedicated Google-shaped attached-page flow visible when the replay still looks Google-like before you narrow into the bundle-only or shortcut-first helpers.",
             "Use the compact bundle-suite surface before the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
         )
     }
@@ -297,7 +301,7 @@ function Show-DefaultRoutes {
     Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
 
     $googleRecommendedNotes = @(
-        "Use the bounded input probe first, then live Google, then the shorter issue #3 attached-page helper surface before falling back to the broader manual localhost replay.",
+        "Use the bounded input probe first, then live Google, then the dedicated Google-shaped attached-page flow before the shorter issue #3 helper surface or the broader manual localhost replay.",
         "Pass -InputPath when you already want the top-level attached-page quickstart or bundle-first helper pinned to a saved page or the current three-page compatibility bundle."
     )
     if ($isCustomBrowserExe) {
@@ -307,6 +311,7 @@ function Show-DefaultRoutes {
     Write-Route -Name "google-recommended" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
         "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
+        (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
     ) -Notes $googleRecommendedNotes
@@ -319,6 +324,7 @@ switch ($true) {
             Write-Host ("Browser exe: {0}" -f $BrowserExe)
         }
         $issue3FollowUpNotes = @(
+            "Use the dedicated Google-shaped attached-page flow when the next step still needs the broader Google-like replay map visible before the shorter issue #3 helpers.",
             "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
             "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
         )
@@ -335,6 +341,7 @@ switch ($true) {
         )
 
         Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
+            (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
             (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
             (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
         ) -Notes $issue3FollowUpNotes
@@ -354,6 +361,7 @@ switch ($true) {
 
         if ($ChangeArea -eq "google-input") {
             $googleInputFollowUpNotes = @(
+                "Use the dedicated Google-shaped attached-page flow when the next step still needs the broader Google-like replay map visible before the shorter issue #3 helpers.",
                 "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
                 "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
             )
@@ -368,6 +376,7 @@ switch ($true) {
             )
 
             Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
+                (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
                 (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
                 (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
             ) -Notes $googleInputFollowUpNotes
