@@ -14,11 +14,13 @@ change area.
 Examples:
 
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1`
-- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName layout-smoke`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea rendering`
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea input`
-- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input -Json`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input`
+- `.\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended`
 - `.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea manual-html`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_input_validation_flow.ps1 -Json`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_submit_timing_validation_flow.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_trace_validation_flow.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1`
@@ -269,9 +271,10 @@ Use this order unless a narrower issue demands something more specific first.
 For live-site Google search-box work, start with
 `tmp-browser-smoke/google-investigation-next/`, then use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_title_probe.ps1`
-or `show_headed_validation_suites.ps1 -SuiteName google-title` when the next
-question is whether the reduced headed surface is reaching the expected title,
-focus, typing, and Enter-submit markers. Then use
+or
+`powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_title_validation_flow.ps1`
+when the next question is whether the reduced headed surface is reaching the
+expected title, focus, typing, and Enter-submit markers. Then use
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_quick_validation.ps1`
 for the fast title-plus-watch first pass, then
 `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_home_validation.ps1`
