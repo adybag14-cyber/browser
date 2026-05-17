@@ -81,21 +81,45 @@ What exists today:
 - bounded localhost probes under `tmp-browser-smoke\wrapped-link\`
 - bounded localhost probes under `tmp-browser-smoke\form-controls\`
 - the Windows prerequisite checker in `scripts\windows\`
+- the committed attached HTML helper chain rooted at `show_headed_validation_suites.ps1 -ChangeArea attached-html`
+- the Windows-first issue `#3` attached HTML re-entry helpers in `show_google_issue3_windows_full_use_attached_html_route.ps1` and `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`
+- the replay-side attached HTML quickstart in `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
+- the pinned three-page bundle helpers in `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` and `show_google_issue3_attached_bundle_first_entrypoint.ps1`
 
-What does not exist yet on this branch:
-
-- the larger wrapper-heavy attached HTML helper chain referenced by some older notes
-- a dedicated fixed-list attached bundle runner
-
-Use the router output as the source of truth for the currently committed helper
-surface.
+Treat the validation router output and the newer issue `#3` Windows attached HTML
+notes as the source of truth for the currently committed helper surface. Older
+notes that still describe the attached HTML or pinned bundle routes as missing
+are now stale.
 
 ## 6) Validate saved or attached HTML pages honestly
 
-The saved-page compatibility path is currently a manual localhost replay rather
-than a committed PowerShell wrapper. Keep the exported HTML file and any sibling
-`*_files` asset directory together, serve them locally, then browse the page in
-headed mode:
+The saved-page compatibility path now has committed helper surfaces for both the
+broader attached HTML route and the pinned three-page bundle route. Start with
+the router or the Windows-first issue `#3` attached HTML notes before dropping
+to a manual localhost replay:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1 -InputPath "<saved-html-or-folder>"
+```
+
+When the current inputs are still the known three-page compatibility bundle,
+keep these notes nearby and prefer the committed bundle helper chain before
+widening back into the broader attached-page route:
+
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_BUNDLE_BRIDGE.md`
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath "<bundle-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath "<bundle-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+```
+
+If you still need a plain manual localhost fallback, keep the exported HTML file
+and any sibling `*_files` asset directory together, serve them locally, then
+browse the page in headed mode:
 
 ```powershell
 cd <folder-containing-exported-html>
@@ -111,8 +135,8 @@ input path expanded:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"
 ```
 
-For the current three-page compatibility bundle, use this manual route for each
-page and verify:
+For the current three-page compatibility bundle, use the committed bundle route
+or the manual route for each page and verify:
 
 - the page title appears in the native window
 - top-of-page controls stay clickable
@@ -122,5 +146,5 @@ page and verify:
 
 Some older probe scripts still assume the repo checkout lives at
 `C:\Users\adyba\src\lightpanda-browser`. If your checkout differs, prefer the
-manual localhost route above or normalize those probe-local paths before
-depending on them.
+router and issue `#3` helper surfaces above or normalize those probe-local
+paths before depending on them.
