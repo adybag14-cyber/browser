@@ -8,6 +8,12 @@ If you want the matching helper first, run:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 ```
 
+Before trusting that compact replay-route branch after branch moves or helper/note updates, rerun its dedicated checker too:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_replay_route_shortcut_validation_surface.ps1
+```
+
 If the replay is already running from a non-default checkout, from a saved summary, or from explicit attached-bundle paths, preserve that same context directly in the helper:
 
 ```powershell
@@ -29,7 +35,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the broader replay-route helper, then reopen the shortest attached-page and replay-shortcut surfaces without losing the current repo-root, saved-summary, or pinned bundle-input context. Keep the attached-page shortcut, the suite-router shortcut bridge, the compact replay-shortcuts helper, the bundle-first branch, and the safe-route map aligned before the route widens again.
+Start from the broader replay-route helper, rerun `check_google_issue3_replay_route_shortcut_validation_surface.ps1` when the compact branch needs a fail-fast sanity check, then reopen the shortest attached-page and replay-shortcut surfaces without losing the current repo-root, saved-summary, or pinned bundle-input context. Keep the attached-page shortcut, the suite-router shortcut bridge, the compact replay-shortcuts helper, the bundle-first branch, and the safe-route map aligned before the route widens again.
 
 ## Default read-first route
 
@@ -37,6 +43,7 @@ Use this route when no explicit bundle inputs, non-default repo root, or saved s
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_replay_route_shortcut_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
@@ -50,7 +57,7 @@ Use that route when:
 
 - the broader replay-route helper already made issue `#3` obvious
 - the next step should stay on the shorter attached-page shortcut surface before replay shortcuts or the safe-route map
-- you still want the suite-router shortcut bridge and the next-step matrix visible before the route widens again
+- you still want the dedicated replay-route shortcut surface check and the suite-router shortcut bridge visible before the route widens again
 
 ## Bundle-first alternate route
 
@@ -75,6 +82,12 @@ If the replay already carries a non-default repo root, a saved summary path, or 
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
+If you want the dedicated replay-route shortcut check to use that same non-default checkout before the route narrows again, rerun:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_replay_route_shortcut_validation_surface.ps1 -RepoRoot '<repo-root>'
+```
+
 Then choose the narrower follow-up that matches the current state:
 
 ```powershell
@@ -94,6 +107,8 @@ Use that context-preserving form when:
 - explicit `InputPath` values are already pinned to the known three-page compatibility bundle
 
 ## Pick the next helper quickly
+
+Before the quick-pick list below, rerun `check_google_issue3_replay_route_shortcut_validation_surface.ps1` when helper names, note paths, replay-side bridge commands, or bundle-aware follow-ups may have drifted and you want the compact replay-route shortcut surface to fail fast before choosing the next branch.
 
 1. `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
 
@@ -127,9 +142,9 @@ Use this only after the attached-page shortcut and replay-shortcuts surfaces hav
 
 Only use this shortcut note after `show_google_issue3_replay_route.ps1` is already the current helper surface.
 
-- no pinned bundle inputs and no saved replay state yet: jump from the replay-route helper into the attached-page shortcut surface first, then keep replay shortcuts and the next-step matrix nearby
+- no pinned bundle inputs and no saved replay state yet: jump from the replay-route helper into `check_google_issue3_replay_route_shortcut_validation_surface.ps1` first, then the replay-route shortcut surface, then the attached-page shortcut surface, then keep replay shortcuts and the next-step matrix nearby
 - broader suite-router shortcut bridge still matters: keep the suite-router shortcut entrypoint visible before replay shortcuts or the safe-route map
-- saved summary or repo-root override already present: reopen this note with that same context first, then choose the narrower follow-up
+- saved summary or repo-root override already present: reopen this note with that same context first, rerun the replay-route shortcut surface check against the same checkout when branch drift is a concern, then choose the narrower follow-up
 - explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
 
 Only reopen the longer validation-chain notes after the route has narrowed as far as it can go through the shortcut-first helper family.
