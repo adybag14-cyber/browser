@@ -92,7 +92,7 @@ function Assert-CompleteBundle {
     $missingSummary = if ($missingDisplayNames.Count -gt 0) {
         $missingDisplayNames -join "; "
     } else {
-        "${($missingTargets.Count)} unresolved target(s)"
+        "$($missingTargets.Count) unresolved target(s)"
     }
     $resolvedSummary = if ($resolvedDisplayNames.Count -gt 0) {
         $resolvedDisplayNames -join "; "
