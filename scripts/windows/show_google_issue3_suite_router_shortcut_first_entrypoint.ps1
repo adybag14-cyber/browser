@@ -155,9 +155,11 @@ $attachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $attachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $attachedHtmlFlowArguments -Name InputPath -Values $InputPath
 
+$suiteRouterShortcutSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_router_shortcut_first_entrypoint_surface.ps1' -RepoRootOverride $RepoRoot
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 suite-router shortcut-first entrypoint'
-    purpose = 'Keep the shortest top-level route from the headed validation suite router into the newer replay-shortcuts helper, while also surfacing the broader attached-page localhost flow, the narrower Google-shaped attached-page flow, the issue #3-specific Google attached-page bridge, the issue #3-specific attached-page shortcut, and the replay-route shortcut bridge beside the pinned-bundle branch and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Keep the shortest top-level route from the headed validation suite router into the newer replay-shortcuts helper, while surfacing the route''s own fail-fast checker, the broader attached-page localhost flow, the narrower Google-shaped attached-page flow, the issue #3-specific Google attached-page bridge, the issue #3-specific attached-page shortcut, and the replay-route shortcut bridge beside the pinned-bundle branch and preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -180,6 +182,7 @@ $entrypoint = [ordered]@{
         google_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        suite_router_shortcut_surface_check = $suiteRouterShortcutSurfaceCheckCommand
         attached_html_flow = Add-RepoRootEnvToCommand -Command (Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments) -RepoRootOverride $RepoRoot
         google_attached_html_flow = Add-RepoRootEnvToCommand -Command (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments) -RepoRootOverride $RepoRoot
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_surface.ps1' -RepoRootOverride $RepoRoot
@@ -210,6 +213,7 @@ $entrypoint = [ordered]@{
         'Start with attached_html_change_area when the replay is already narrowed to the broader attached-page compatibility follow-up route and you want that top-level branch kept visible before deciding whether to stay on the pinned bundle-first path or narrow again into the issue #3-specific attached-page helper.',
         'Start with google_attached_html_change_area when the replay is already inside the issue #3-specific attached-page follow-up surface before the bundle is pinned, so that narrower Google-only route stays visible before you choose attached_html_flow, google_attached_html_flow, google_attached_html_surface_check, google_attached_html_entrypoint, attached_html_shortcut, replay_shortcuts, replay_route_shortcut, contextual_flow, attached_bundle_first, or the wrapper-heavy safe-route helpers.',
         'Start with attached_bundle_change_area when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned branch shown from the top-level suite router first.',
+        'Use suite_router_shortcut_surface_check when you want this exact compact suite-router shortcut route to fail fast on missing notes or helper scripts before you trust it as the shortest next step.',
         'Use attached_html_flow when you want the broader attached-page localhost helper reprinted directly from the compact suite-router surface before choosing between the narrower Google-shaped attached-page flow, the issue-specific Google attached-page checker, the issue-specific Google attached-page bridge, the attached-page shortcut, replay shortcuts, the replay-route shortcut bridge, contextual flow, attached_bundle_first, or the safe-route map.',
         'Use google_attached_html_flow when the current attached inputs are already Google-shaped and you want that narrower helper printed directly from the compact suite-router surface before deciding whether to rerun the issue-specific surface check, narrow into the issue-specific attached-page bridge, the attached-page shortcut, replay shortcuts, the replay-route shortcut bridge, contextual_flow, attached_bundle_first, or the wrapper-heavy safe-route helpers.',
         'Use google_attached_html_surface_check when the replay is already narrowed to the issue #3-specific Google attached-page route and you want the dedicated fail-fast checker reprinted before the narrower issue-specific bridge takes over.',
@@ -267,18 +271,20 @@ Write-Host (("  3. Attached HTML:        {0}") -f $entrypoint.top_level_commands
 Write-Host (("  4. Google attached HTML: {0}") -f $entrypoint.top_level_commands.google_attached_html_change_area)
 Write-Host (("  5. Attached bundle:      {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
 Write-Host (("  6. Google flow:          {0}") -f $entrypoint.top_level_commands.google_flow)
-Write-Host (("  7. Attached-page flow:   {0}") -f $entrypoint.helper_commands.attached_html_flow)
-Write-Host (("  8. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_flow)
-Write-Host (("  9. Google surface check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
-Write-Host ((" 10. Google entrypoint:    {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
-Write-Host ((" 11. Attached shortcut:    {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
-Write-Host ((" 12. Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 13. Replay-route shortcut:{0}") -f (' ' + $entrypoint.helper_commands.replay_route_shortcut))
-Write-Host ((" 14. Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host ((" 15. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 16. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host (("  7. Shortcut surface:     {0}") -f $entrypoint.helper_commands.suite_router_shortcut_surface_check)
+Write-Host (("  8. Attached-page flow:   {0}") -f $entrypoint.helper_commands.attached_html_flow)
+Write-Host (("  9. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_flow)
+Write-Host ((" 10. Google surface check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
+Write-Host ((" 11. Google entrypoint:    {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
+Write-Host ((" 12. Attached shortcut:    {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host ((" 13. Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 14. Replay-route shortcut:{0}") -f (' ' + $entrypoint.helper_commands.replay_route_shortcut))
+Write-Host ((" 15. Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host ((" 16. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 17. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host 'Companion helpers:'
+Write-Host (("  Shortcut surface:      {0}") -f $entrypoint.helper_commands.suite_router_shortcut_surface_check)
 Write-Host (("  Attached-page flow:    {0}") -f $entrypoint.helper_commands.attached_html_flow)
 Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_flow)
 Write-Host (("  Google surface check:  {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
