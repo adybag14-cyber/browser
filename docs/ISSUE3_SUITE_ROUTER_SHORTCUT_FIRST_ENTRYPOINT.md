@@ -10,6 +10,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_ATTACHED_HTML_SHORTCUT_ENTRYPOINT.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
@@ -21,7 +22,7 @@ Start from the top-level suite router, the attached-page shortcut surface, or th
 Use this note when:
 - the route is already clearly inside issue `#3` and you want the narrowest suite-router-side bridge first
 - the replay may still widen into the attached-page shortcut, but you do not want to reopen the longer attached-page notes too early
-- you still want the replay quickstart, suite-router bridge, and suite-catalog guidance easy to reach from one written entrypoint
+- you still want the replay quickstart, suite-router bridge, suite-catalog guidance, and the issue-specific Google attached-page bridge easy to reach from one written entrypoint
 
 ## Shortcut-First Bridge
 
@@ -47,11 +48,14 @@ If you want the broader suite-router surfaces visible before the shortcut-first 
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-Use that route when the replay is still re-entering from the shared validation catalog and you want the broader Google lane reprinted before the suite-router shortcut-first bridge hands off to the narrower issue `#3` helpers.
+Use that route when the replay is still re-entering from the shared validation catalog and you want the broader Google lane, the narrower Google-shaped attached-page surface checker, and the issue-specific Google attached-page bridge reprinted before the suite-router shortcut-first bridge hands off to the narrower issue `#3` helpers.
 
 ## Attached HTML Handoff
 
@@ -70,12 +74,14 @@ If the replay still needs the broader Google-shaped attached-page surface before
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-Use that route when the replay still needs the Google-specific attached-page surface checker visible before it collapses back into the shorter issue `#3` route.
+Use that route when the replay still needs the Google-specific attached-page surface checker and the issue-specific Google attached-page bridge visible before it collapses back into the shorter issue `#3` route.
 
 ## Bundle-First Route
 
@@ -146,6 +152,7 @@ Start from the top-level headed validation suite router, then use `show_google_i
 
 - route already clearly inside issue `#3` with no attached-page-specific bridge needed yet: go straight to `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`, then replay shortcuts, then the safe-route entrypoints helper
 - route already narrowed to attached localhost compatibility follow-up: go straight to `show_google_issue3_attached_html_shortcut_entrypoint.ps1`, then `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`, then replay shortcuts, then the next-step matrix or safe-route map
+- route already narrowed to the Google-shaped attached localhost branch: rerun `check_google_issue3_google_attached_html_entrypoint_surface.ps1`, reopen `show_google_issue3_google_attached_html_entrypoint.ps1`, then `show_google_issue3_attached_html_shortcut_entrypoint.ps1`, then `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`, then replay shortcuts
 - saved summary or repo-root override already present: reopen the matching compact helper with that same context first, then widen into contextual flow, the next-step matrix, or the bundle-first helper only as needed
 - explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
 
