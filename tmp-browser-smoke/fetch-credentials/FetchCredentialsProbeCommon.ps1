@@ -1,9 +1,9 @@
-$script:Repo = "C:\Users\adyba\src\lightpanda-browser"
-$script:Root = Join-Path $script:Repo "tmp-browser-smoke\fetch-credentials"
+$script:Root = $PSScriptRoot
+$script:Repo = (Resolve-Path (Join-Path $script:Root "..\..")).Path
 $script:BrowserExe = Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
 
-. "$script:Repo\tmp-browser-smoke\common\Win32Input.ps1"
-. "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
+. (Join-Path $script:Repo "tmp-browser-smoke\common\Win32Input.ps1")
+. (Join-Path $script:Repo "tmp-browser-smoke\tabs\TabProbeCommon.ps1")
 
 function Reset-FetchProfile([string]$ProfileRoot) {
   $appDataRoot = Join-Path $ProfileRoot "lightpanda"
