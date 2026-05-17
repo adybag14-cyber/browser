@@ -77,6 +77,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 ```
 
+For the broader subsystem-to-probe map across the existing `tmp-browser-smoke`
+families, read `docs/HEADED_MODE_VALIDATION_MATRIX.md` after the router output.
+Use that matrix when the change lands outside the router's currently named
+change areas or when you need a quick first pick for a deeper probe family.
+
 What exists today:
 
 - the Windows prerequisite checker in `scripts\windows\`
