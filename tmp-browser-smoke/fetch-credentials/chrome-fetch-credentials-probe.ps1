@@ -1,5 +1,4 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-. "$repo\tmp-browser-smoke\fetch-credentials\FetchCredentialsProbeCommon.ps1"
+. (Join-Path $PSScriptRoot "FetchCredentialsProbeCommon.ps1")
 
 $profileRoot = Join-Path $Root "profile-fetch-credentials"
 $app = Reset-FetchProfile $profileRoot
