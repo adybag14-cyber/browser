@@ -70,41 +70,20 @@ function Write-Route {
     }
 }
 
-function Get-ManualAttachedHtmlRoute {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$TargetInputPath
-    )
-
-    $resolved = Resolve-Path -LiteralPath $TargetInputPath -ErrorAction Stop
-    $item = Get-Item -LiteralPath $resolved -ErrorAction Stop
-    $root = if ($item.PSIsContainer) { $item.FullName } else { $item.DirectoryName }
-    $page = if ($item.PSIsContainer) {
-        "<page.html>"
-    } else {
-        $item.Name
-    }
-
-    return @(
-        "cd `"$root`"",
-        "python -m http.server 8123 --bind 127.0.0.1",
-        "& `"$BrowserExe`" browse --headed --window_width 1366 --window_height 900 `"http://127.0.0.1:8123/$page`""
-    )
-}
-
 function Get-AttachedHtmlNotes {
     $notes = @(
-        "This branch does not yet include the wrapper-heavy attached HTML helper chain referenced by some older notes.",
-        "Use a simple localhost server and headed browse for saved-page follow-up until those wrappers are committed.",
-        "If a saved page has a sibling *_files directory, keep it beside the HTML file while serving localhost.",
+        "Run the attached-pages asset audit first so missing local sidecars are visible before the browser is blamed.",
+        "Use the attached-pages catalog wrapper to pin the current HTML bundle and expose short localhost routes at /, /manifest.json, /pages/<n>, /named/<slug>, and /raw/... .",
         "The broader attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1.",
-        "The manual-html, rendering, and network change areas currently collapse back to this same attached-html localhost route on the live branch."
+        "The issue #3 top-level attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1.",
+        "The manual-html, rendering, and network change areas currently collapse back to this same attached-pages catalog route on the live branch.",
+        "Start the catalog in one shell, then open the generated catalog or a manifest-backed short route from a second shell."
     )
 
     if ($InputPath) {
-        $notes += "The commands below are expanded for the provided -InputPath."
+        $notes += "The commands below reuse the provided -InputPath across the audit, manifest, and catalog launch steps."
     } else {
-        $notes += "Pass -InputPath to print ready-to-run localhost commands for a specific saved page or bundle folder."
+        $notes += "Pass -InputPath to pin the audit, manifest, and catalog commands to a specific saved page or bundle folder."
     }
 
     return $notes
@@ -168,6 +147,44 @@ function Format-HelperCommand {
     return $command
 }
 
+function Get-AttachedHtmlCatalogCommand {
+    param(
+        [string]$TargetInputPath,
+        [switch]$GoogleStyle,
+        [string[]]$ExtraSwitches = @()
+    )
+
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    if ($GoogleStyle) {
+        $arguments.Add('-GoogleStyle')
+    }
+    if ($TargetInputPath) {
+        Add-SharedPathArrayArgument -Arguments $arguments -Name InputPath -Values @($TargetInputPath)
+    }
+    foreach ($switchName in $ExtraSwitches) {
+        if ([string]::IsNullOrWhiteSpace($switchName)) {
+            continue
+        }
+        $arguments.Add("-$switchName")
+    }
+
+    return Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $arguments
+}
+
+function Get-AttachedHtmlRouteCommands {
+    param(
+        [string]$TargetInputPath,
+        [switch]$GoogleStyle
+    )
+
+    return @(
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditAssets')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('PrintManifest')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle),
+        "& `"$BrowserExe`" browse --headed --window_width 1366 --window_height 900 `"http://127.0.0.1:8235/`""
+    )
+}
+
 $issue3AttachedHtmlArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name RepoRoot -Value $RepoRoot
 if ($InputPath) {
@@ -202,16 +219,7 @@ function Show-DefaultRoutes {
         "Use them before live-site or saved-page follow-up."
     )
 
-    $attachedCommands = if ($InputPath) {
-        Get-ManualAttachedHtmlRoute -TargetInputPath $InputPath
-    } else {
-        @(
-            "cd <folder-containing-exported-html>",
-            "python -m http.server 8123 --bind 127.0.0.1",
-            "& `"$BrowserExe`" browse --headed --window_width 1366 --window_height 900 `"http://127.0.0.1:8123/<page.html>`""
-        )
-    }
-
+    $attachedCommands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath
     Write-Route -Name "attached-html" -Commands $attachedCommands -Notes (Get-AttachedHtmlNotes)
 
     Write-Route -Name "google-recommended" -Commands @(
@@ -294,16 +302,13 @@ switch ($true) {
     }
     { $ChangeArea -eq "attached-html" -or $ChangeArea -eq "attached-html-target-bundle" -or $ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "manual-html" -or $ChangeArea -eq "network" -or $ChangeArea -eq "rendering" } {
         Write-Section $ChangeArea
-        $commands = if ($InputPath) {
-            Get-ManualAttachedHtmlRoute -TargetInputPath $InputPath
-        } else {
-            @(
-                "cd <folder-containing-exported-html>",
-                "python -m http.server 8123 --bind 127.0.0.1",
-                "& `"$BrowserExe`" browse --headed --window_width 1366 --window_height 900 `"http://127.0.0.1:8123/<page.html>`""
-            )
+        $useGoogleStyleCatalog = $ChangeArea -eq "google-attached-html"
+        $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -GoogleStyle:$useGoogleStyleCatalog
+        $notes = Get-AttachedHtmlNotes
+        if ($useGoogleStyleCatalog) {
+            $notes += "Google-style auto-discovery keeps the strongest Google-like saved page first when -InputPath is omitted."
         }
-        Write-Route -Name "manual-localhost-follow-up" -Commands $commands -Notes (Get-AttachedHtmlNotes)
+        Write-Route -Name "attached-pages-catalog-follow-up" -Commands $commands -Notes $notes
         break
     }
     default {
