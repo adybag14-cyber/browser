@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -70,7 +87,20 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1" -Kind "file" -Purpose "Existing-output safe-route wrapper surfaced from the replay-route shortcut surface.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet '$replayRouteShortcutSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName ''check_google_issue3_replay_route_shortcut_validation_surface.ps1'' -RepoRootOverride $RepoRoot' -Purpose "Replay-route shortcut helper wires its dedicated fail-fast checker into the shared command surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand' -Purpose "Replay-route shortcut helper exposes its dedicated checker through the printed route and companion helper maps."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'replay_shortcuts_windows_replay_attached_html_bridge = $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand' -Purpose "Replay-route shortcut helper keeps the replay-to-Windows attached-page bridge wired into the compact follow-up surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'Write-Host (("  2. Shortcut check:    {0}") -f $entrypoint.top_level_commands.replay_route_shortcut_surface_check)' -Purpose "Printed replay-route bridge keeps the dedicated checker visible before attached-page or replay-shortcuts follow-up."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'Write-Host (("  8. Replay-to-Windows: {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)' -Purpose "Printed replay-route bridge keeps the replay-to-Windows attached-page bridge visible before the route narrows again."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'Write-Host (("  Shortcut surface:     {0}") -f $entrypoint.helper_commands.replay_route_shortcut_surface_check)' -Purpose "Companion helper output reprints the dedicated replay-route shortcut checker inside the compact helper surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'Use replay_route_shortcut_surface_check before trusting this compact replay-route branch after branch moves or from another checkout' -Purpose "Usage notes explain when to rerun the replay-route shortcut checker before trusting the compact route."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'Use attached_html_shortcut as the default next helper whenever no explicit bundle inputs are already pinned' -Purpose "Usage notes preserve the default narrowing path from replay-route shortcut into the shorter attached-page helper."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'Use replay_shortcuts_windows_replay_attached_html_bridge when the replay-route shortcut still needs the replay-side surface check' -Purpose "Usage notes preserve the replay-to-Windows bridge follow-up from the compact replay-route surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'Use attached_bundle_first whenever explicit InputPath values are already pinned or when the replay should stay on the known three-page compatibility set' -Purpose "Usage notes preserve the bundle-pinned fallback beside the replay-route shortcut ladder.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -79,6 +109,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -86,15 +117,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-replay-route-shortcut"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -109,10 +174,20 @@ Write-Host ""
 Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host (("[{0}] {1}") -f $status, $result.Path)
     Write-Host (("  {0}") -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host (("[{0}] {1}") -f $status, $result.Path)
+        Write-Host (("  {0}") -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -121,6 +196,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} replay-route shortcut path(s).") -f $missing.Count)
-Write-Host "Repair the missing replay-route note, attached-page helper, replay-side bridge, bundle-aware follow-up, or safe-route companion before trusting this compact issue #3 replay-route branch."
+Write-Host (("Missing {0} replay-route shortcut path or source contract check(s).") -f $missing.Count)
+Write-Host "Repair the missing replay-route note, helper output contract, attached-page helper, replay-side bridge, bundle-aware follow-up, or safe-route companion before trusting this compact issue #3 replay-route branch."
 exit 1
