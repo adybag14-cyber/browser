@@ -81,7 +81,7 @@ $steps += [pscustomobject]@{
 }
 $steps += [pscustomobject]@{
   Name = "google-enter-order"
-  Script = Join-Path $probeRoot "google-enter-order-probe.ps1"
+  Script = Join-Path $scriptRoot "run_google_form_controls_enter_order_validation.ps1"
   Arguments = @() + $sharedArgs
 }
 
