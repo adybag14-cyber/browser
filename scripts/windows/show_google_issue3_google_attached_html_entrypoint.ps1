@@ -142,7 +142,7 @@ Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name In
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached-html entrypoint'
-    purpose = 'Keep the issue-specific attached-page route visible as the shortest bridge from the top-level headed validation suite router into the current Google attached-html surface check, validation flow, shortcut-first, context-preserving, and bundle-aware helpers.'
+    purpose = 'Keep the issue-specific attached-page route visible as the shortest bridge from the top-level headed validation suite router into the current issue-specific Google attached-html surface check, validation flow, shortcut-first, context-preserving, and bundle-aware helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -164,7 +164,7 @@ $entrypoint = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
-        google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
+        google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_surface.ps1' -RepoRootOverride $RepoRoot
         google_attached_html_validation_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
@@ -185,8 +185,8 @@ $entrypoint = [ordered]@{
     notes = @(
         'Use this helper when the top-level suite router has already narrowed the replay to the issue #3 attached-page route and you want the shortest current bridge back into the narrower helper chain.',
         'Keep google_attached_html_change_area as the first top-level command when the replay should stay on the issue-specific attached-page route before any bundle paths are pinned.',
-        'Use google_attached_html_surface_check when the replay is already narrowed to the issue-specific attached-page route and you want the fail-fast Google attached-html validation surface reprinted before the broader flow helper or its downstream runner handoff.',
-        'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the fail-fast surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.',
+        'Use google_attached_html_surface_check when the replay is already narrowed to the issue-specific attached-page route and you want the dedicated fail-fast entrypoint surface reprinted before the broader flow helper or its downstream runner handoff.',
+        'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.',
         'Use attached_html_change_area when the next replay still needs the broader attached-page compatibility route rather than the issue-specific Google-attached path.',
         'Use attached_bundle_change_area or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.',
         'Use suite_router_shortcut_entrypoint as the default next helper when no saved summary, non-default repo root, or pinned bundle inputs need to take precedence first.',
