@@ -18,6 +18,48 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
 
+function Get-AttachedPagesManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PythonExePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ServerPath,
+        [Parameter(Mandatory = $true)]
+        [string[]]$SelectedInputs
+    )
+
+    $manifestArgs = @($ServerPath)
+    foreach ($path in $SelectedInputs) {
+        $manifestArgs += @("--input", $path)
+    }
+    $manifestArgs += "--print-manifest"
+
+    $manifestJson = & $PythonExePath @manifestArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "attached pages catalog manifest generation failed with exit code $LASTEXITCODE"
+    }
+
+    return $manifestJson | ConvertFrom-Json
+}
+
+function Find-ManifestEntryForPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Manifest,
+        [Parameter(Mandatory = $true)]
+        [string]$PreferredPath
+    )
+
+    $preferredLeaf = Split-Path -Leaf $PreferredPath
+    foreach ($entry in $Manifest) {
+        if ($entry.file -eq $preferredLeaf -or $entry.file -like "*/$preferredLeaf") {
+            return $entry
+        }
+    }
+
+    return $null
+}
+
 if ($PrintManifest -and $AuditAssets) {
     throw "Choose either -PrintManifest or -AuditAssets. The attached-pages helper cannot print the manifest and run the asset audit in the same invocation."
 }
@@ -54,6 +96,11 @@ $resolvedPreferredInitialPage = if ($GoogleStyle) {
 } else {
     $null
 }
+$preferredManifestEntry = $null
+if ($resolvedPreferredInitialPage -and -not $PrintManifest -and -not $AuditAssets) {
+    $manifest = Get-AttachedPagesManifest -PythonExePath $resolvedPython -ServerPath $serverPath -SelectedInputs $resolvedInputPath
+    $preferredManifestEntry = Find-ManifestEntryForPath -Manifest $manifest -PreferredPath $resolvedPreferredInitialPage
+}
 $attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
 
 $serverArgs = @($serverPath)
@@ -84,6 +131,11 @@ if (-not $PrintManifest -and -not $AuditAssets) {
     Write-Host "Routes: /, /manifest.json, /pages/<n>, /named/<slug>, /raw/..."
     if ($resolvedPreferredInitialPage) {
         Write-Host ("Preferred Google-style page: {0}" -f $resolvedPreferredInitialPage)
+    }
+    if ($preferredManifestEntry) {
+        Write-Host ("Preferred route: http://{0}:{1}{2}/" -f $Bind, $Port, $preferredManifestEntry.route)
+        Write-Host ("Preferred alias route: http://{0}:{1}{2}/" -f $Bind, $Port, $preferredManifestEntry.alias_route)
+        Write-Host ("Preferred named route: http://{0}:{1}{2}/" -f $Bind, $Port, $preferredManifestEntry.slug_route)
     }
     Write-Host ""
     Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $resolvedRepoRoot -GoogleStyle:$GoogleStyle
