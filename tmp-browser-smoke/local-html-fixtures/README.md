@@ -8,6 +8,11 @@ This helper is for saved local pages that are richer than the existing focused
 probe fixtures, including pages exported from real sites for manual headed-mode
 triage.
 
+Read-first helpers:
+
+- `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_local_html_fixture_validation_flow.ps1 -InputPath '<saved-html-or-folder>'`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -InputPath '<saved-html-or-folder>'`
+
 Expected companion assets:
 
 - if a saved page has a sibling `<page-base>_files/` directory, the probe
