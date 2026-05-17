@@ -260,6 +260,15 @@ MODULE_REFERENCE_PATTERNS = (
     re.compile(r"(?<![\w$])import\s*\(\s*[\"']([^\"']+)[\"']\s*\)", re.IGNORECASE),
 )
 
+WORKER_REFERENCE_PATTERNS = (
+    re.compile(r"\bnew\s+(?:window\.)?Worker\s*\(\s*[\"']([^\"']+)[\"']", re.IGNORECASE),
+    re.compile(r"\bnew\s+(?:window\.)?SharedWorker\s*\(\s*[\"']([^\"']+)[\"']", re.IGNORECASE),
+    re.compile(r"\bnavigator\.serviceWorker\.register\s*\(\s*[\"']([^\"']+)[\"']", re.IGNORECASE),
+)
+
+IMPORT_SCRIPTS_PATTERN = re.compile(r"\bimportScripts\s*\((.*?)\)", re.IGNORECASE | re.DOTALL)
+QUOTED_REFERENCE_PATTERN = re.compile(r"[\"']([^\"']+)[\"']")
+
 
 def classify_reference_value(reference: str) -> tuple[str, str, bool] | None:
     stripped = reference.strip()
@@ -315,6 +324,16 @@ def extract_reference_candidates(content: str) -> tuple[list[tuple[str, bool]], 
     for pattern in MODULE_REFERENCE_PATTERNS:
         for match in pattern.finditer(content):
             value = match.group(1).strip()
+            add_candidate(value)
+
+    for pattern in WORKER_REFERENCE_PATTERNS:
+        for match in pattern.finditer(content):
+            value = match.group(1).strip()
+            add_candidate(value)
+
+    for match in IMPORT_SCRIPTS_PATTERN.finditer(content):
+        for quoted_reference in QUOTED_REFERENCE_PATTERN.finditer(match.group(1)):
+            value = quoted_reference.group(1).strip()
             add_candidate(value)
 
     return local_candidates, external_candidates
