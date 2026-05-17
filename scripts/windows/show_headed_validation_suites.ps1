@@ -3,13 +3,37 @@ param(
     [string]$SuiteName = "",
     [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-input", "input", "navigation")]
     [string]$ChangeArea = "",
-    [string]$RepoRoot = "C:\Users\adyba\src\lightpanda-browser",
+    [string]$RepoRoot = "",
     [string]$BrowserExe = "",
     [string]$InputPath = ""
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Resolve-RepoRoot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StartPath
+    )
+
+    $cursor = [System.IO.Path]::GetFullPath($StartPath)
+    while ($true) {
+        if (Test-Path (Join-Path $cursor "build.zig")) {
+            return $cursor
+        }
+
+        $parent = Split-Path $cursor -Parent
+        if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $cursor) {
+            throw "Could not resolve the Lightpanda repo root from $StartPath. Pass -RepoRoot to override."
+        }
+        $cursor = $parent
+    }
+}
+
+if (-not $RepoRoot) {
+    $RepoRoot = Resolve-RepoRoot -StartPath $PSScriptRoot
+}
 
 if (-not $BrowserExe) {
     $BrowserExe = Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
@@ -93,7 +117,7 @@ function Show-DefaultRoutes {
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\wrapped-link\chrome-reload-probe.ps1"
     ) -Notes @(
         "These probes exercise headed navigation, back, forward, and reload on localhost fixtures.",
-        "Several older probe scripts assume the repo lives at $RepoRoot."
+        "Repo root resolves automatically from this script unless -RepoRoot overrides it."
     )
 
     Write-Route -Name "input" -Commands @(
