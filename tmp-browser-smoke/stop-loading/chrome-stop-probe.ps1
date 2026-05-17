@@ -1,16 +1,32 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8152,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\stop-loading"
-$port = 8152
-$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$root = Join-Path $repo "tmp-browser-smoke\stop-loading"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $serverScript = Join-Path $root "slow_server.py"
 $browserOut = Join-Path $root "chrome-stop.browser.stdout.txt"
 $browserErr = Join-Path $root "chrome-stop.browser.stderr.txt"
 $serverOut = Join-Path $root "chrome-stop.server.stdout.txt"
 $serverErr = Join-Path $root "chrome-stop.server.stderr.txt"
 $beforePng = Join-Path $root "chrome-stop.before.png"
+$indexUrl = "http://$Host`:$Port/index.html"
+$slowUrl = "http://$Host`:$Port/slow.html"
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$beforePng -Force -ErrorAction SilentlyContinue
-
-. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
 
 $server = $null
 $browser = $null
@@ -27,26 +43,21 @@ $serverSawResponse = $false
 $failure = $null
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/ping" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+  if (-not (Test-Path -LiteralPath $serverScript)) { throw "stop-loading server script not found: $serverScript" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port, $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url "http://$Host`:$Port/ping" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "stop probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","240","--window_height","480","--screenshot_png",$beforePng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $beforePng) -and ((Get-Item $beforePng).Length -gt 0)) { $pngReady = $true; break }
-  }
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "240", "--window_height", "480", "--screenshot_png", $beforePng, $indexUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $pngReady = Wait-LightpandaFileReady -Path $beforePng -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $pngReady) { throw "stop probe screenshot did not become ready" }
 
   $hwnd = [IntPtr]::Zero
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
+  for ($i = 0; $i -lt $WindowReadyAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
     $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
     if ($proc -and $proc.MainWindowHandle -ne 0) {
       $hwnd = [IntPtr]$proc.MainWindowHandle
@@ -63,14 +74,14 @@ try {
   Start-Sleep -Milliseconds 200
   Send-SmokeCtrlA
   Start-Sleep -Milliseconds 100
-  Send-SmokeText "http://127.0.0.1:$port/slow.html"
+  Send-SmokeText $slowUrl
   Start-Sleep -Milliseconds 200
   Send-SmokeEnter
 
   for ($i = 0; $i -lt 20; $i++) {
-    Start-Sleep -Milliseconds 250
-    if (Test-Path $serverErr) {
-      $serverLog = Get-Content $serverErr -Raw
+    Start-Sleep -Milliseconds $PollMilliseconds
+    if (Test-Path -LiteralPath $serverErr) {
+      $serverLog = Get-Content -LiteralPath $serverErr -Raw
       if ($serverLog -match 'SLOW_RESPONSE_BEGIN /slow\.html') {
         $slowStarted = $true
         break
@@ -90,7 +101,7 @@ try {
   $titleAfterStop = Get-SmokeWindowTitle $hwnd
 
   for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds $PollMilliseconds
     $procTick = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
     $browserRunningAfterStop = $null -ne $procTick
     if (-not $browserRunningAfterStop) {
@@ -101,8 +112,8 @@ try {
       $titleAfterResume = $currentTitle
       $liveContextRestored = $true
     }
-    if (Test-Path $serverErr) {
-      $serverLog = Get-Content $serverErr -Raw
+    if (Test-Path -LiteralPath $serverErr) {
+      $serverLog = Get-Content -LiteralPath $serverErr -Raw
       $serverSawAbort = $serverLog -match 'SLOW_RESPONSE_ABORTED /slow\.html'
       $serverSawResponse = $serverLog -match 'SLOW_RESPONSE_SENT /slow\.html'
       if ($liveContextRestored -and ($serverSawAbort -or $serverSawResponse)) {
@@ -111,23 +122,27 @@ try {
     }
   }
 
-  if (Test-Path $serverErr) {
-    $serverLog = Get-Content $serverErr -Raw
+  if (Test-Path -LiteralPath $serverErr) {
+    $serverLog = Get-Content -LiteralPath $serverErr -Raw
     $serverSawAbort = $serverLog -match 'SLOW_RESPONSE_ABORTED /slow\.html'
     $serverSawResponse = $serverLog -match 'SLOW_RESPONSE_SENT /slow\.html'
   }
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  $serverMeta = if ($server) { Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  $browserMeta = if ($browser) { Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue }
-  if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    host = $Host
+    port = $Port
+    index_url = $indexUrl
+    slow_url = $slowUrl
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
