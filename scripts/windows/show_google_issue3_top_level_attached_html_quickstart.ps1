@@ -170,6 +170,7 @@ if ($InputPath) {
 }
 
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
+$topLevelAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_top_level_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
 
 $helper = [ordered]@{
     issue = 'Google issue #3 top-level attached HTML quickstart'
@@ -206,6 +207,7 @@ $helper = [ordered]@{
         }) -RepoRootOverride $RepoRoot
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $sharedArguments
+        top_level_attached_html_surface_check = $topLevelAttachedHtmlSurfaceCheckCommand
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand
         google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
@@ -229,6 +231,7 @@ $helper = [ordered]@{
     }
     notes = @(
         'Start with attached_html_change_area when the top-level headed validation router is already narrowed to the generic attached localhost compatibility route and you want the broader attached-page flow helper kept visible before this top-level quickstart narrows the route again.',
+        'Use top_level_attached_html_surface_check before trusting the compact attached-page helper map when you want the exact quickstart surface to fail fast on missing notes, bridge helpers, or pinned-bundle companion commands.',
         'Use attached_html_change_area_quickstart when the replay is already reopening from show_headed_validation_suites.ps1 -ChangeArea attached-html and you want the broader attached-page flow helper, the dedicated Google-style attached-page surface check, and the compact top-level attached-page route surfaced together before dropping deeper into issue #3 helper surfaces.',
         'Use attached_html_flow when the replay still needs the broader attached-page localhost helper visible from that same change-area branch before narrowing into the issue-specific quickstarts or shortcut helpers.',
         'Use google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page lane and you want the fail-fast checker reprinted before the broader Google-style attached-page helper or its runner handoff.',
@@ -266,9 +269,9 @@ $helper.recommended_next_command = $helper.commands[$helper.recommended_next_key
 $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_suite_surface') {
     'Explicit input paths are already in play, so keep the replay pinned to the known three-page compatibility bundle by reopening the compact suite-level bundle surface before narrowing into the bundle-first helper or the delegated bundle runner.'
 } elseif ($helper.recommended_next_key -eq 'contextual_flow') {
-    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the broader attached-page flow helper, the Google-style attached-page surface check, the Google-style attached-page flow helper, the attached-html change-area quickstart, the compact bundle suite surface, the validation-router attached-page quickstart, the compact attached-page quickstart, the broader top-level attached-page bridge, the matching shortcut-first bridge, top-level catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level catalog quickstart, the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.'
+    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the broader attached-page flow helper, the top-level attached-page surface check, the Google-style attached-page surface check, the Google-style attached-page flow helper, the attached-html change-area quickstart, the compact bundle suite surface, the validation-router attached-page quickstart, the compact attached-page quickstart, the broader top-level attached-page bridge, the matching shortcut-first bridge, top-level catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level catalog quickstart, the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.'
 } else {
-    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the compact top-level attached-page quickstart into the broader top-level attached-page bridge while still keeping the attached-html change-area quickstart, the broader attached-page flow helper, the Google-style attached-page surface check, the Google-style attached-page flow helper, the compact bundle suite surface, the validation-router quickstart, the matching shortcut-first bridge, top-level catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level catalog quickstart visible for the same route.'
+    'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the compact top-level attached-page quickstart into the broader top-level attached-page bridge while still keeping the attached-html change-area quickstart, the top-level attached-page surface check, the broader attached-page flow helper, the Google-style attached-page surface check, the Google-style attached-page flow helper, the compact bundle suite surface, the validation-router quickstart, the matching shortcut-first bridge, top-level catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level catalog quickstart visible for the same route.'
 }
 
 if ($Json) {
@@ -299,6 +302,7 @@ Write-Host (("  Attached HTML:             {0}") -f $helper.commands.attached_ht
 Write-Host (("  Google attached HTML:      {0}") -f $helper.commands.google_attached_html_change_area)
 Write-Host (("  Attached bundle:           {0}") -f $helper.commands.attached_bundle_change_area)
 Write-Host (("  Change-area quickstart:    {0}") -f $helper.commands.attached_html_change_area_quickstart)
+Write-Host (("  Top-level surface check:   {0}") -f $helper.commands.top_level_attached_html_surface_check)
 Write-Host (("  Attached flow helper:      {0}") -f $helper.commands.attached_html_flow)
 Write-Host (("  Google surface check:      {0}") -f $helper.commands.google_attached_html_surface_check)
 Write-Host (("  Google flow helper:        {0}") -f $helper.commands.google_attached_html_flow)
@@ -311,6 +315,7 @@ Write-Host (("  Catalog quickstart:        {0}") -f $helper.commands.top_level_a
 Write-Host (("  Catalog-side quickstart:   {0}") -f $helper.commands.suite_catalog_top_level_attached_html_catalog_quickstart)
 Write-Host ''
 Write-Host 'Compact follow-up helpers:'
+Write-Host (("  Top-level surface check:  {0}") -f $helper.commands.top_level_attached_html_surface_check)
 Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Suite-router quickstart:  {0}") -f $helper.commands.suite_router_attached_html_quickstart)
 Write-Host (("  Catalog attached bridge:  {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
