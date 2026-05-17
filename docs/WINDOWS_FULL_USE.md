@@ -90,7 +90,7 @@ What exists today:
 - bounded localhost input probes under `tmp-browser-smoke\form-controls\`
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
 - the first-line navigation, stop-loading, and form-control probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
-- an attached HTML route that currently expands to manual localhost replay steps instead of a larger issue-specific helper chain
+- an attached-pages localhost catalog and asset-audit helper under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
 
 Treat the validation router output as the source of truth for the currently
 committed helper surface on this branch.
@@ -105,26 +105,59 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
 ```
 
-The attached-page route on this branch currently resolves to a manual localhost
-replay. Keep the exported HTML file and any sibling `*_files` asset directory
-together, serve them locally, then browse the page in headed mode:
+The preferred localhost path on this branch is the attached-pages catalog
+helper, not a hand-built `python -m http.server` session. It gives the saved
+HTML bundle short stable routes, a generated manifest, and an asset audit that
+can fail fast before the browser is involved.
+
+For a concrete saved page or bundle root, use the Windows wrapper first:
 
 ```powershell
-cd <folder-containing-exported-html>
-python -m http.server 8123 --bind 127.0.0.1
-.\zig-out\bin\lightpanda.exe browse --headed --window_width 1366 --window_height 900 "http://127.0.0.1:8123/<page.html>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -Port 8235
 ```
 
-For the current three-page compatibility bundle, use the same localhost root
-for each page and verify:
+For the current issue `#3` style replay, let the wrapper auto-discover the
+attached pages and keep the strongest Google-like page first when one is
+available:
 
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -AuditAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -Port 8235
+```
+
+If you want to bypass the wrapper and run the Python helper directly from the
+repo root, use the same audit-first order:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root "<saved-html-or-folder>" --audit-assets
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root "<saved-html-or-folder>" --print-manifest
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root "<saved-html-or-folder>" --port 8235
+```
+
+Then browse the generated catalog or one of its short routes in headed mode:
+
+```powershell
+.\zig-out\bin\lightpanda.exe browse --headed --window_width 1366 --window_height 900 "http://127.0.0.1:8235/"
+```
+
+Use this flow to verify:
+
+- the generated catalog or pinned manifest resolves the expected pages
 - the page title appears in the native window
 - top-of-page controls stay clickable
 - scrolling works
 - text fields keep focus and accept typing
 - Enter-driven submit or button activation still behaves as expected
 
+If the asset audit reports missing local sidecars, fix the saved bundle first or
+rerun with the explicit allow-missing path only when you want a best-effort
+replay and are ready to treat the result as a narrower signal.
+
 The router's first-line navigation, stop-loading, and form-control probes now
 resolve the repo root from the current checkout automatically. Older deeper
 probe families under `tmp-browser-smoke\` can still carry fixed local path
-assumptions, so prefer the router output before widening into older helpers.
+assumptions, so prefer the router output and the attached-pages catalog helper
+before widening into older helpers.
