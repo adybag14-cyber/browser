@@ -252,6 +252,32 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertIn("nested/theme.css", beta_entry["inspected_css_files"])
         self.assertIn("nested/module.mjs", beta_entry["inspected_module_script_files"])
 
+    def test_asset_audit_treats_root_relative_paths_as_bundle_root_paths(self):
+        (self.root / "shared.css").write_text("body { color: blue; }\n", encoding="utf-8")
+        (self.root / "shared.js").write_text("window.sharedLoaded = true;\n", encoding="utf-8")
+        (self.root / "nested" / "root-relative.html").write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Root Relative</title>
+    <link rel="stylesheet" href="/shared.css">
+    <script src="/shared.js"></script>
+  </head>
+  <body>root relative</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+
+        audit = server_module.build_asset_audit(self.root)
+        self.assertEqual(3, audit["fixture_count"])
+        self.assertEqual(0, audit["fixtures_with_missing_assets"])
+
+        entry = next(entry for entry in audit["fixtures"] if entry["display_path"] == "nested/root-relative.html")
+        self.assertEqual([], entry["missing_assets"])
+        self.assertIn("shared.css", entry["inspected_css_files"])
+        self.assertIn("shared.js", entry["inspected_module_script_files"])
+
     def test_asset_audit_reports_external_assets_without_counting_them_missing(self):
         (self.root / "nested" / "beta.html").write_text(
             """<!doctype html>
