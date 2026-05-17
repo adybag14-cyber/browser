@@ -1,7 +1,7 @@
 param(
     [ValidateSet("", "google-recommended")]
     [string]$SuiteName = "",
-    [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-input", "input", "manual-html", "navigation", "network", "rendering")]
+    [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-input", "input", "manual-html", "navigation", "network", "rendering", "stop-loading")]
     [string]$ChangeArea = "",
     [string]$RepoRoot = "",
     [string]$BrowserExe = "",
@@ -186,6 +186,14 @@ function Show-DefaultRoutes {
         "Repo root resolves automatically from this script unless -RepoRoot overrides it."
     )
 
+    Write-Route -Name "stop-loading" -Commands @(
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-probe.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
+    ) -Notes @(
+        "These probes exercise headed stop/loading recovery and restored input behavior on localhost fixtures.",
+        "If your checkout does not match the standard repo-root path used by these older probes, normalize those paths before depending on them."
+    )
+
     Write-Route -Name "input" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\label-click-probe.ps1"
@@ -270,6 +278,17 @@ switch ($true) {
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\wrapped-link\chrome-reload-probe.ps1"
         ) -Notes @(
             "Use these for headed navigation, history, and reload behavior on bounded localhost pages."
+        )
+        break
+    }
+    { $ChangeArea -eq "stop-loading" } {
+        Write-Section "stop-loading"
+        Write-Route -Name "stop-loading" -Commands @(
+            "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-probe.ps1",
+            "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
+        ) -Notes @(
+            "Use these for headed stop/loading recovery and restored input behavior on bounded localhost pages.",
+            "If your checkout does not match the standard repo-root path used by these older probes, normalize those paths before depending on them."
         )
         break
     }
