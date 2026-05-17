@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\layout-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
+$root = $PSScriptRoot
+$repo = (Resolve-Path (Join-Path $root "..\..")).Path
 $browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $serverScript = Join-Path $root "layout_server.py"
 $common = Join-Path $root "LayoutProbeCommon.ps1"
