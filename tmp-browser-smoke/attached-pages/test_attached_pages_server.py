@@ -299,6 +299,61 @@ class AttachedPagesServerTests(unittest.TestCase):
 
         self.assertEqual(0, exit_code)
 
+    def test_asset_audit_cli_json_output(self):
+        (self.root / "alpha.html").write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Alpha Landing</title>
+    <link rel="stylesheet" href="missing.css">
+  </head>
+  <body>alpha</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+
+        original_argv = sys.argv[:]
+        buffer = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(server_module.__file__)),
+                "--root",
+                str(self.root),
+                "--audit-assets",
+                "--audit-assets-json",
+            ]
+            with contextlib.redirect_stdout(buffer):
+                exit_code = server_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        audit = json.loads(buffer.getvalue())
+        self.assertEqual(2, audit["fixture_count"])
+        self.assertEqual(1, audit["fixtures_with_missing_assets"])
+        alpha_entry = next(entry for entry in audit["fixtures"] if entry["display_path"] == "alpha.html")
+        self.assertIn("missing.css", alpha_entry["missing_assets"])
+
+    def test_audit_assets_json_requires_audit_assets(self):
+        original_argv = sys.argv[:]
+        stderr = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(server_module.__file__)),
+                "--root",
+                str(self.root),
+                "--audit-assets-json",
+            ]
+            with contextlib.redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as raised:
+                    server_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(2, raised.exception.code)
+        self.assertIn("--audit-assets-json requires --audit-assets", stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
