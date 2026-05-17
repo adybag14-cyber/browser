@@ -180,9 +180,9 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     Add-SharedPathArrayArgument -Arguments $fixtureProbeArguments -Name FixturePaths -Values $InputPath
 } else {
     $fixtureProbeArguments.Add('-FixturePaths')
-    $fixtureProbeArguments.Add("'<bundle-html-a>'")
-    $fixtureProbeArguments.Add("'<bundle-html-b>'")
-    $fixtureProbeArguments.Add("'<bundle-html-c>'")
+    $fixtureProbeArguments.Add("'Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html'")
+    $fixtureProbeArguments.Add("'Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html'")
+    $fixtureProbeArguments.Add("'Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html'")
 }
 
 $attachedHtmlFlowArguments = [ordered]@{}
@@ -217,6 +217,7 @@ $entrypoint = [ordered]@{
         'Use local_html_fixture_surface_check_command and local_html_fixture_probe_command immediately after the bundle replay when you want tighter evidence for the same pinned inputs without reopening the broader attached-page wrapper flow.',
         'Keep broader_attached_html_flow_command and google_attached_html_flow_command nearby when the proof pass makes it clear that the next replay should widen back into the broader attached-page route or the dedicated Google-shaped attached-page lane.',
         'When explicit InputPath values are already pinned, this helper preserves the same repeated paths on the bundle check, bundle runner, and fixed-list proof commands so the proof pass stays on the exact same three inputs.',
+        'When explicit InputPath values are not pinned yet, the fixed-list proof command prints the exact saved filenames from the known three-page compatibility bundle so the narrower screenshot-and-title pass can be replayed without re-deriving placeholder names from the reference note.',
         'Keep the checklist, reference, and quickstart notes nearby when you want the page-by-page manual checks and bundle-first bridge visible beside this proof-only follow-up.'
     )
 }
@@ -259,7 +260,7 @@ Write-Host ''
 Write-Host (("Checklist note:  {0}") -f $entrypoint.checklist_note_path)
 Write-Host (("Reference note:  {0}") -f $entrypoint.reference_note_path)
 Write-Host (("Quickstart note: {0}") -f $entrypoint.quickstart_note_path)
-Write-Host (("Google flow note:{0}") -f (" $($entrypoint.google_attached_html_flow_note_path)"))
+Write-Host (("Google flow:     {0}") -f $entrypoint.google_attached_html_flow_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $entrypoint.notes) {
