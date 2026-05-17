@@ -1,5 +1,4 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-. "$repo\tmp-browser-smoke\sessionstorage-scope\SessionStorageProbeCommon.ps1"
+. "$PSScriptRoot\SessionStorageProbeCommon.ps1"
 
 $profileRoot = Join-Path $Root "profile-sessionstorage-same-tab"
 $app = Reset-SessionStorageProfile $profileRoot
@@ -46,6 +45,10 @@ try {
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
   $result = [ordered]@{
+    repo_root = $Repo
+    browser_exe = $script:BrowserExe
+    port = $port
+    origin = $origin
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
