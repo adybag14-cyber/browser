@@ -155,8 +155,13 @@ $handoff = [ordered]@{
     suite_router_bridge_note_path = 'docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md'
     suite_router_attached_html_quickstart_note_path = 'docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
+    suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
     top_level_attached_html_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md'
     top_level_attached_html_bridge_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
+    top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
+    windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
+    validation_router_attached_html_quickstart_note_path = 'docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md'
+    replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
     suite_router_commands = [ordered]@{
         google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             SuiteName = 'google-recommended'
@@ -206,8 +211,8 @@ $handoff = [ordered]@{
         'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into suite_router_shortcut_entrypoint, replay_shortcuts, suite_router_next_steps, suite_catalog_entrypoints, replay_route, replay_route_shortcut, contextual_flow, or the attached-page route without reopening the longer Windows runbook or validation-chain notes first.',
         'Keep suite_router_attached_html_quickstart_note_path nearby when you want the written suite-router-side attached-page bridge beside the helper output before reopening the top-level attached-page helpers or the wider replay-route notes.',
         'Keep suite_catalog_entrypoint_note_path nearby when you want the shortest written bridge from the higher-level suite router into the newer suite-catalog helper order before reopening replay_shortcuts, suite_router_next_steps, replay_route, replay_route_shortcut, or contextual_flow.',
-        'Keep top_level_attached_html_quickstart_note_path nearby when you want the written compact top-level attached-page bridge beside this handoff before reopening the broader top-level attached-page bridge or the wider replay-route notes.',
-        'Keep top_level_attached_html_bridge_note_path nearby when you want the written broader top-level attached-page route beside this handoff before reopening replay_shortcuts, the next-step matrix, replay_route, replay_route_shortcut, or the wider safe-route notes.',
+        'Keep top_level_attached_html_quickstart_note_path, top_level_attached_html_bridge_note_path, and top_level_attached_html_catalog_quickstart_note_path nearby when you want the compact, broader, and catalog-flavored top-level attached-page bridges surfaced together beside this handoff.',
+        'Keep windows_replay_attached_html_quickstart_note_path, validation_router_attached_html_quickstart_note_path, suite_catalog_attached_html_bridge_note_path, and replay_route_shortcut_bridge_note_path nearby when you want the replay-side, validation-router, suite-catalog, and replay-route companion notes surfaced alongside this helper without reopening the longer validation-chain notes first.',
         'Use attached_bundle_first when the replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 chain.',
         'Use safe_route_entrypoints only after the higher-level suite router, the attached-page route, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router entrypoint, the shortcut-first replay helper, next-step matrix, suite-catalog bridge, replay-route helper, replay-route shortcut helper, contextual_flow surface, or attached bundle-first helper has already narrowed the replay into the current wrapper-heavy issue #3 path, and keep the same InputPath values attached when the bundle is already pinned.'
     )
@@ -308,8 +313,13 @@ Write-Host ("Validation chain:                 {0}" -f $handoff.validation_chain
 Write-Host ("Suite-router bridge:              {0}" -f $handoff.suite_router_bridge_note_path)
 Write-Host ("Suite-router attached quickstart: {0}" -f $handoff.suite_router_attached_html_quickstart_note_path)
 Write-Host ("Suite-catalog guide:              {0}" -f $handoff.suite_catalog_entrypoint_note_path)
+Write-Host ("Suite-catalog attached bridge:    {0}" -f $handoff.suite_catalog_attached_html_bridge_note_path)
 Write-Host ("Top-level attached quickstart:    {0}" -f $handoff.top_level_attached_html_quickstart_note_path)
 Write-Host ("Top-level attached bridge:        {0}" -f $handoff.top_level_attached_html_bridge_note_path)
+Write-Host ("Top-level attached catalog:       {0}" -f $handoff.top_level_attached_html_catalog_quickstart_note_path)
+Write-Host ("Windows replay note:              {0}" -f $handoff.windows_replay_attached_html_quickstart_note_path)
+Write-Host ("Validation-router note:           {0}" -f $handoff.validation_router_attached_html_quickstart_note_path)
+Write-Host ("Replay-route shortcut note:       {0}" -f $handoff.replay_route_shortcut_bridge_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $handoff.notes) {
