@@ -10,6 +10,9 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
 
 
+HTML_EXPORT_EXTENSIONS = {".html", ".htm"}
+
+
 def slugify(name: str) -> str:
     lowered = name.lower()
     normalized = re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
@@ -82,10 +85,12 @@ def choose_slug_route(rel_path: str, title: str, *, used_slug_routes: set[str]) 
 def normalize_bundle_root(root: Path) -> tuple[Path, list[Path]]:
     resolved_root = Path(root).expanduser().resolve()
     if resolved_root.is_dir():
-        html_files = sorted(path for path in resolved_root.rglob("*.html") if path.is_file())
+        html_files = sorted(
+            path for path in resolved_root.rglob("*") if path.is_file() and path.suffix.lower() in HTML_EXPORT_EXTENSIONS
+        )
         return resolved_root, html_files
 
-    if resolved_root.is_file() and resolved_root.suffix.lower() == ".html":
+    if resolved_root.is_file() and resolved_root.suffix.lower() in HTML_EXPORT_EXTENSIONS:
         return resolved_root.parent, [resolved_root]
 
     raise FileNotFoundError(f"bundle root does not exist: {resolved_root}")
@@ -100,8 +105,8 @@ def normalize_selected_html_files(selected_files: list[Path]) -> tuple[Path, lis
         resolved = Path(candidate).expanduser().resolve()
         if not resolved.is_file():
             raise FileNotFoundError(f"selected HTML file does not exist: {resolved}")
-        if resolved.suffix.lower() != ".html":
-            raise ValueError(f"selected file is not an .html export: {resolved}")
+        if resolved.suffix.lower() not in HTML_EXPORT_EXTENSIONS:
+            raise ValueError(f"selected file is not an attached HTML export (.html or .htm): {resolved}")
         resolved_files.append(resolved)
 
     common_root = Path(os.path.commonpath([str(path.parent) for path in resolved_files]))
