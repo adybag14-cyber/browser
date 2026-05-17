@@ -203,6 +203,32 @@ class AttachedPagesServerTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=5)
 
+    def test_explicit_file_list_preserves_selected_order(self):
+        selected_files = [self.root / "nested" / "beta.html", self.root / "alpha.html"]
+        manifest = server_module.build_manifest(selected_files=selected_files)
+        self.assertEqual(["nested/beta.html", "alpha.html"], [entry["file"] for entry in manifest])
+        self.assertEqual(["/pages/1", "/pages/2"], [entry["route"] for entry in manifest])
+
+        server, manifest = server_module.create_server(selected_files=selected_files, bind="127.0.0.1", port=0)
+        self.assertEqual(["nested/beta.html", "alpha.html"], [entry["file"] for entry in manifest])
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                connection.request("GET", "/manifest.json")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(["nested/beta.html", "alpha.html"], [entry["file"] for entry in payload])
+            finally:
+                connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
     def test_bundle_root_and_explicit_file_list_accept_htm_exports(self):
         legacy_path = self.root / "legacy.htm"
         legacy_path.write_text(
