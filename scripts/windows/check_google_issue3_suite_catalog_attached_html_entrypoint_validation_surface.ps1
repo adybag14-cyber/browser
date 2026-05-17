@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -79,7 +96,22 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Kind "file" -Purpose "Windows-side attached-html catalog quickstart helper surfaced by the suite-catalog bridge.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'suite_catalog_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName ''check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1'' -RepoRootOverride $RepoRoot' -Purpose "Suite-catalog attached-html bridge keeps the suite-catalog fail-fast checker wired into its helper command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'windows_replay_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName ''check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1'' -RepoRootOverride $RepoRoot' -Purpose "Suite-catalog attached-html bridge keeps the replay-side attached-html fail-fast checker wired into its helper command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName ''show_attached_html_validation_flow.ps1'' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot' -Purpose "Suite-catalog attached-html bridge keeps the broader attached-html flow helper visible before the route narrows again."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand' -Purpose "Suite-catalog attached-html bridge keeps the Google-shaped attached-html fail-fast checker surfaced from the helper command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Write-Host (("  7. Suite-catalog check:    {0}") -f $entrypoint.helper_commands.suite_catalog_surface_check)' -Purpose "Bridge output prints the suite-catalog fail-fast checker before the replay-side ladder narrows further."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Write-Host ((" 10. Replay surface check:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_surface_check)' -Purpose "Bridge output prints the replay-side attached-html fail-fast checker before the Windows replay quickstart."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Write-Host (("  13. Google surface check:   {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)' -Purpose "Bridge output keeps the Google-shaped attached-html checker visible before the top-level attached-page helpers."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Write-Host (("  17. Router attached quick:  {0}") -f $entrypoint.helper_commands.suite_router_attached_html_quickstart)' -Purpose "Bridge output keeps the shorter suite-router attached-html quickstart visible as the default narrowing path."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Write-Host (("  18. Google attached:        {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)' -Purpose "Bridge output keeps the issue-specific Google attached-html entrypoint visible after the suite-router quickstart."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Write-Host (("  20. Bundle suite helper:    {0}") -f $entrypoint.helper_commands.attached_html_target_bundle_suite_surface)' -Purpose "Bridge output keeps the compact bundle-suite helper visible before the route drops to the bundle-first branch."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Use suite_router_attached_html_quickstart as the default next helper when explicit InputPath values are not already pinned and no saved replay context needs to take precedence first' -Purpose "Usage notes explain the default next helper for the suite-catalog attached-html bridge."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Snippet 'Use google_attached_html_entrypoint after the suite_router_attached_html_quickstart when the issue-specific attached-page bridge should stay visible before the replay narrows to the Google attached-html validation flow' -Purpose "Usage notes preserve the narrower issue-specific Google attached-html branch after the suite-router quickstart.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -88,6 +120,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -95,15 +128,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-suite-catalog-attached-html-entrypoint"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -118,10 +185,20 @@ Write-Host ""
 Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host (("[{0}] {1}") -f $status, $result.Path)
     Write-Host (("  {0}") -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host (("[{0}] {1}") -f $status, $result.Path)
+        Write-Host (("  {0}") -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -130,6 +207,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} issue #3 suite-catalog attached-html path(s).") -f $missing.Count)
-Write-Host "Repair the missing guide, helper, or delegated attached-page branch before trusting the issue #3 suite-catalog attached-html bridge."
+Write-Host (("Missing {0} issue #3 suite-catalog attached-html path or source contract check(s).") -f $missing.Count)
+Write-Host "Repair the missing guide, helper, delegated attached-page branch, or helper-output contract before trusting the issue #3 suite-catalog attached-html bridge."
 exit 1
