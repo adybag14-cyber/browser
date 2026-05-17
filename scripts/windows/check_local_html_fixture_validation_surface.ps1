@@ -29,7 +29,7 @@ function New-ValidationReference {
 }
 
 function Test-HtmlFixtureFileName([string]$Path) {
-    return [System.String]::Equals([System.IO.Path]::GetExtension($Path), ".html", [System.StringComparison]::OrdinalIgnoreCase)
+    return [System.IO.Path]::GetExtension($Path) -in @(".html", ".htm")
 }
 
 function Get-ExplicitInputChecks {
@@ -53,23 +53,24 @@ function Get-ExplicitInputChecks {
             if ($item.PSIsContainer) {
                 $itemKind = "directory"
                 $htmlFileCount = @(
-                    Get-ChildItem -LiteralPath $resolvedPath -Recurse -File -Filter *.html
+                    Get-ChildItem -LiteralPath $resolvedPath -Recurse -File |
+                        Where-Object { Test-HtmlFixtureFileName $_.FullName }
                 ).Count
 
                 if ($htmlFileCount -gt 0) {
                     $status = "PASS"
                     $detail = ("Directory contains {0} HTML file(s)." -f $htmlFileCount)
                 } else {
-                    $detail = "Directory does not contain any HTML files."
+                    $detail = "Directory does not contain any HTML or HTM files."
                 }
             } else {
                 $itemKind = "file"
                 if (Test-HtmlFixtureFileName $resolvedPath) {
                     $htmlFileCount = 1
                     $status = "PASS"
-                    $detail = "HTML file is ready for fixture replay."
+                    $detail = "HTML or HTM file is ready for fixture replay."
                 } else {
-                    $detail = "File is not an HTML document."
+                    $detail = "File is not an HTML or HTM document."
                 }
             }
         }
