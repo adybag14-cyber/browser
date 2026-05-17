@@ -45,7 +45,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
 
 Use the bundle-suite helper when the replay is being reopened from the broader
@@ -171,6 +171,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_handoff.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 ```
 
@@ -185,14 +188,15 @@ attached-html catalog quickstart, and suite-catalog attached-html bridge when
 you want the replay-side ladder, the dedicated suite-catalog command map, the
 newer top-level attached-page catalog note family, and the suite-catalog
 attached-page bridge visible together before the route collapses into the
-shortcut-first helpers. Keep the Google-shaped attached-page entrypoint and the
-shortcut-first helpers nearby when the route is already clearly inside issue
-`#3` and the next step is choosing between replay shortcuts, the next-step
-matrix, contextual flow, or the bundle-first branch. Use the bundle-first
-helper whenever the current inputs are already the known three-page
-compatibility bundle and you want that exact set pinned before widening back
-into the broader helper chain. Keep the target-bundle reference note nearby
-when you want the pinned manual checklist plus the reusable fixed-list
+shortcut-first helpers. Keep the Google-shaped attached-page entrypoint, the
+suite-router handoff, the replay-route helper, the replay-route shortcut
+helper, and the shortcut-first helpers nearby when the route is already clearly
+inside issue `#3` and the next step is choosing between replay shortcuts, the
+next-step matrix, contextual flow, the bundle-first branch, or the safe-route
+map. Use the bundle-first helper whenever the current inputs are already the
+known three-page compatibility bundle and you want that exact set pinned before
+widening back into the broader helper chain. Keep the target-bundle reference
+note nearby when you want the pinned manual checklist plus the reusable fixed-list
 screenshot-and-title proof path surfaced with that same three-page set.
 
 When the replay is already running from a non-default checkout, saved summary,
@@ -226,13 +230,15 @@ attached localhost follow-up:
   the attached-page bridge kept visible beside the replay-side and top-level
   attached-page catalog notes.
 - `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`,
+  `docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md`,
+  `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`,
   `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`,
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`,
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, and
   `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` when the route has
-  already narrowed to the suite-router side, the compact companion notes, or
-  the pinned three-page compatibility bundle and you want the reusable
-  fixed-list screenshot-and-title proof path kept nearby.
+  already narrowed to the suite-router side, the replay-route shortcut side,
+  the compact companion notes, or the pinned three-page compatibility bundle and
+  you want the reusable fixed-list screenshot-and-title proof path kept nearby.
 
 For the broader Windows runbook and the longer validation chain, keep
 `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`,
