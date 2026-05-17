@@ -37,6 +37,32 @@ Use that route when:
   wrapper
 - screenshot-and-title proof is the next most useful checkpoint
 
+## Current three-page compatibility bundle
+
+When the current reproduction set is the saved three-page compatibility bundle
+attached to this project, pin the same three files directly so the printed flow,
+the surface check, and the probe all stay on one fixed localhost route:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_local_html_fixture_validation_flow.ps1 -InputPath `
+  '.\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html' `
+  '.\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html' `
+  '.\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -InputPath `
+  '.\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html' `
+  '.\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html' `
+  '.\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths `
+  '.\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html' `
+  '.\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html' `
+  '.\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html'
+```
+
+Use this fixed-list route when those three saved exports are still the active
+compatibility bundle and you want the fastest screenshot-and-title checkpoint
+before widening back into the broader attached-page or Google-shaped helper
+chains.
+
 ## What the probe proves
 
 For each saved HTML page, the probe:
