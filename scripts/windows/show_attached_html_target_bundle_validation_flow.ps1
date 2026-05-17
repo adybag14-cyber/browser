@@ -61,8 +61,34 @@ function Add-SharedPathArrayArgument {
     }
 }
 
+function Format-HelperCommandWithRepoRootEnv {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptName,
+        [System.Collections.Generic.List[string]]$Arguments,
+        [string]$RepoRootOverride
+    )
+
+    $fileCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    if ($Arguments -and $Arguments.Count -gt 0) {
+        $fileCommand += " " + ($Arguments -join ' ')
+    }
+
+    if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        return $fileCommand
+    }
+
+    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    if ($Arguments -and $Arguments.Count -gt 0) {
+        $command += " " + ($Arguments -join ' ')
+    }
+
+    $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+}
+
 $bundleSurfaceCheckPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle_validation_surface.ps1"
-$bundleSurfaceCheckCommand = '.\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1'
+$bundleSurfaceCheckCommand = '.\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1'
 if (-not (Test-Path -LiteralPath $bundleSurfaceCheckPath -PathType Leaf)) {
     throw "Attached HTML target-bundle validation surface checker not found: $bundleSurfaceCheckPath"
 }
@@ -75,7 +101,7 @@ if ($bundleSurfaceCheckArgs.Count -gt 0) {
 }
 
 $bundleCheckerPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle.ps1"
-$bundleCheckerCommand = '.\scripts\windows\check_attached_html_target_bundle.ps1'
+$bundleCheckerCommand = '.\\scripts\\windows\\check_attached_html_target_bundle.ps1'
 if (-not (Test-Path -LiteralPath $bundleCheckerPath -PathType Leaf)) {
     throw "Attached HTML target bundle checker not found: $bundleCheckerPath"
 }
@@ -107,14 +133,16 @@ if (-not $overall.bundle_validation_profile) {
     throw "Attached HTML target bundle checker did not return bundle-pinned validation metadata."
 }
 
+$suiteRouterArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $suiteRouterArgs -Name ChangeArea -Value $overall.first_change_area
 $suiteRouterCommand = if ($overall.first_change_area) {
-    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea $($overall.first_change_area)"
+    Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $suiteRouterArgs -RepoRootOverride $RepoRoot
 } else {
     $null
 }
 
 $suiteRouterNote = if ($suiteRouterCommand) {
-    "Use the shared suite router shortcut '$suiteRouterCommand' when you want the main validation map to point back at the same primary change area before you lock into the bundle-pinned attached-page follow-up."
+    "Use the shared suite router shortcut '$suiteRouterCommand' when you want the main validation map to point back at the same primary change area before you lock into the bundle-pinned attached-page follow-up, while keeping a non-default repo root attached when one is already in play."
 } else {
     "Resolve at least one bundle target first so the shared suite router shortcut can point back at the matching primary change area before localhost replay."
 }
@@ -141,17 +169,17 @@ if ($resolvedFixturePaths.Count -gt 0) {
     Add-SharedPathArrayArgument -Arguments $pinnedBundleFollowUpArgs -Name InputPath -Values $InputPath
 }
 
-$issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1"
+$issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
 if ($pinnedBundleFollowUpArgs.Count -gt 0) {
     $issue3SuiteRouterNextStepsCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
 }
 
-$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1"
+$issue3ReplayShortcutsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1"
 if ($pinnedBundleFollowUpArgs.Count -gt 0) {
     $issue3ReplayShortcutsCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
 }
 
-$localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1"
+$localHtmlFixtureSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_local_html_fixture_validation_surface.ps1"
 if ($pinnedBundleFollowUpArgs.Count -gt 0) {
     $localHtmlFixtureSurfaceCheckCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
 }
@@ -161,7 +189,7 @@ if ($resolvedFixturePaths.Count -gt 0) {
     $fixtureProbeArgs = [System.Collections.Generic.List[string]]::new()
     Add-SharedArgument -Arguments $fixtureProbeArgs -Name RepoRoot -Value $RepoRoot
     Add-SharedPathArrayArgument -Arguments $fixtureProbeArgs -Name FixturePaths -Values $resolvedFixturePaths
-    $localHtmlFixtureProbeCommand = "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1"
+    $localHtmlFixtureProbeCommand = "powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\local-html-fixtures\\chrome-local-html-fixture-probe.ps1"
     if ($fixtureProbeArgs.Count -gt 0) {
         $localHtmlFixtureProbeCommand += " " + ($fixtureProbeArgs -join " ")
     }
@@ -240,7 +268,7 @@ $flow = [ordered]@{
         "Use the issue #3 replay-shortcuts helper after the bundle flow or bundle runner when the attached-page replay has already narrowed the failure and you want the narrower safe-route, replay-route, and bundle-first commands preserved with the same pinned inputs.",
         "The preferred initial page stays pinned to the Google Safety Centre target when the current bundle includes the Google-style page, so the issue #3 localhost-first follow-up remains aligned with the current runbook.",
         "Pass -InputPath when you want the same printed bundle flow but against an explicit saved-page set rather than the auto-discovered workspace bundle.",
-        "Pass -RepoRoot when you want the bundle route surface check and bundle checker to evaluate a non-default working tree before printing the pinned commands."
+        "Pass -RepoRoot when you want the bundle route surface check, the bundle checker, and the shared suite-router shortcut to stay attached to a non-default working tree before printing the pinned commands."
     )
     next_steps = @(
         "Use the bundle route surface-check command first when the branch has moved and you want the bundle-aware guide, checklist, helper, runner, reusable fixture probe, and delegated attached-HTML surfaces to fail fast before anything else.",
