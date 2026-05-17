@@ -2,6 +2,7 @@
 param(
     [string[]]$InputPath,
     [string]$PreferredInitialPage,
+    [string]$BrowserExe,
     [int]$Port = 8123,
     [switch]$GoogleStyle,
     [switch]$Json,
@@ -30,6 +31,7 @@ function Get-AttachedHtmlFlowMetadata {
         [bool]$LeaveOpen,
         [Parameter(Mandatory = $true)]
         [int]$Port,
+        [string]$BrowserExe,
         [Parameter(Mandatory = $true)]
         [bool]$AllowMissingLocalAssets
     )
@@ -49,6 +51,7 @@ function Get-AttachedHtmlFlowMetadata {
         preferred_initial_page = $ResolvedPreferredInitialPage
         preferred_initial_page_mode = $preferredInitialPageMode
         validation_mode = if ($GoogleStyle) { "google-style" } else { "general" }
+        browser_exe = $BrowserExe
         leave_open = $LeaveOpen
         port = $Port
         allow_missing_local_assets = $AllowMissingLocalAssets
@@ -287,6 +290,9 @@ if (-not ($GoogleStyle -and -not $usingExplicitInputPath)) {
 if ($resolvedPreferredInitialPage) {
     $helperArgs["PreferredInitialPage"] = $resolvedPreferredInitialPage
 }
+if ($BrowserExe) {
+    $helperArgs["BrowserExe"] = $BrowserExe
+}
 if ($GoogleStyle) {
     $helperArgs["ManualGoogleStyle"] = $true
 }
@@ -303,6 +309,7 @@ $attachedHtmlMetadata = Get-AttachedHtmlFlowMetadata `
     -GoogleStyle ([bool]$GoogleStyle) `
     -LeaveOpen ([bool]$LeaveOpen) `
     -Port $Port `
+    -BrowserExe $BrowserExe `
     -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 
 if ($Json) {
@@ -334,6 +341,9 @@ if ($resolvedPreferredInitialPage) {
     Write-Host "Preferred initial page: auto (from saved-page summary)"
 }
 Write-Host ("Validation mode: {0}" -f $attachedHtmlMetadata.validation_mode)
+if ($attachedHtmlMetadata.browser_exe) {
+    Write-Host ("Browser exe: {0}" -f $attachedHtmlMetadata.browser_exe)
+}
 if ($AllowMissingLocalAssets) {
     Write-Host "Attached asset policy: degraded mode allowed"
 }
