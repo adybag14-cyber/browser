@@ -56,6 +56,10 @@ function Remove-TreeIfPresent([string]$Path) {
   }
 }
 
+function Test-HtmlFixturePath([string]$Path) {
+  return [System.IO.Path]::GetExtension($Path) -in @(".html", ".htm")
+}
+
 function Get-HtmlTitle([string]$Path) {
   $raw = Get-Content -LiteralPath $Path -Raw
   $match = [regex]::Match($raw, '(?is)<title[^>]*>(.*?)</title>')
@@ -221,8 +225,13 @@ function Resolve-FixtureFiles {
       }
       $item = Get-Item -LiteralPath $path
       if ($item.PSIsContainer) {
-        $resolved += Get-ChildItem -LiteralPath $item.FullName -Recurse -File -Filter *.html | Sort-Object FullName
+        $resolved += Get-ChildItem -LiteralPath $item.FullName -Recurse -File |
+          Where-Object { Test-HtmlFixturePath $_.FullName } |
+          Sort-Object FullName
       } else {
+        if (-not (Test-HtmlFixturePath $item.FullName)) {
+          throw "fixture file must be .html or .htm: $path"
+        }
         $resolved += $item
       }
     }
@@ -233,9 +242,13 @@ function Resolve-FixtureFiles {
   if (-not (Test-Path -LiteralPath $root)) {
     throw "fixture root not found: $root"
   }
-  $resolved = @(Get-ChildItem -LiteralPath $root -Recurse -File -Filter *.html | Sort-Object FullName)
+  $resolved = @(
+    Get-ChildItem -LiteralPath $root -Recurse -File |
+      Where-Object { Test-HtmlFixturePath $_.FullName } |
+      Sort-Object FullName
+  )
   if (-not $resolved) {
-    throw "fixture root does not contain any .html files: $root"
+    throw "fixture root does not contain any .html or .htm files: $root"
   }
   if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
     $preferredFullPath = [System.IO.Path]::GetFullPath((Join-Path $root $PreferredInitialPage))
