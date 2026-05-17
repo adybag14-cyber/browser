@@ -38,9 +38,11 @@ Current validation truth on this branch:
 
 - bounded localhost navigation probes exist under `tmp-browser-smoke/wrapped-link/`
 - bounded localhost input probes exist under `tmp-browser-smoke/form-controls/`
-- saved or attached HTML follow-up currently uses a manual localhost replay path
-  rather than the larger wrapper-heavy helper chain referenced by some older
-  notes
+- `scripts/windows/show_headed_validation_suites.ps1` is the truthful router
+  for current small Windows headed checks
+- saved or attached HTML follow-up currently expands to a manual localhost
+  replay path instead of the larger wrapper-heavy helper chain referenced by
+  some older notes
 
 See `docs/WINDOWS_FULL_USE.md` for the current Windows-first runbook and the
 manual localhost replay steps for attached compatibility pages.
