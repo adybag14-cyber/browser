@@ -10,9 +10,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
-Keep `docs/HEADED_MODE_VALIDATION_GATES.md`, `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md` nearby when you need the broader route context around this checklist.
+Keep `docs/HEADED_MODE_VALIDATION_GATES.md`, `docs/WINDOWS_FULL_USE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, and `scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` nearby when you need the broader route context around this checklist.
+
+Use that start order when you want the compact bundle-focused suite surface, the fail-fast bundle surface check, the printed bundle-aware helper ladder, the delegated bundle runner, and the proof-entry handoff visible together before you widen back into the broader attached-page helpers.
 
 ## Broader helper re-entry
 
@@ -25,9 +28,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_va
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
-Use that shorter re-entry when the current three pages are still the likely compatibility target but you want the compact bundle-focused suite surface, the broader attached-page flow helper, the Google-shaped attached-page flow helper, the replay-route shortcut, the replay-route bundle-first bridge, and the bundle-first helper visible together before you drop back into the locked runner and page-by-page manual checks.
+Use that shorter re-entry when the current three pages are still the likely compatibility target but you want the compact bundle-focused suite surface, the broader attached-page flow helper, the Google-shaped attached-page flow helper, the replay-route shortcut, the replay-route bundle-first bridge, the bundle-first helper, and the proof-entry handoff visible together before you drop back into the locked runner and page-by-page manual checks.
 
 ## Fixed-list proof follow-up
 
