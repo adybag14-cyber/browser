@@ -31,13 +31,14 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
+- `docs/ISSUE3_ATTACHED_HTML_CONTEXT_SURFACE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
 ## Goal
 
 Start from the generic attached localhost route surfaced by `show_headed_validation_suites.ps1 -ChangeArea attached-html`, then move through `show_google_issue3_attached_html_change_area_quickstart.ps1` when the next replay is already known to stay on the attached-page follow-up path.
 
-When replay context is already pinned, reopen `show_google_issue3_attached_html_context_surface.ps1` early so the broader attached-page flow helper, the dedicated Google attached-page surface checker, the dedicated Google attached-page flow guide, and the pinned three-page bundle lane stay visible together with the same `RepoRoot`, `SummaryPath`, and `InputPath` values.
+When replay context is already pinned, reopen `show_google_issue3_attached_html_context_surface.ps1` early so the broader attached-page flow helper, the dedicated Google attached-page surface checker, the dedicated Google attached-page flow guide, and the pinned three-page bundle lane stay visible together with the same `RepoRoot`, `SummaryPath`, and `InputPath` values. See `docs/ISSUE3_ATTACHED_HTML_CONTEXT_SURFACE.md` when you want that context-preserving helper route written down beside the commands before replay narrows again.
 
 Treat the broader attached-page flow helper printed by `show_headed_validation_suites.ps1` as the normal widen-back-out step from this note. Reopen `check_google_attached_html_validation_surface.ps1` plus `show_google_attached_html_validation_flow.ps1` whenever the replay still needs the Google-shaped attached-page route to fail fast before narrowing further. When the current pages are still the pinned three-page compatibility bundle, reopen `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before `show_google_issue3_attached_bundle_first_entrypoint.ps1` so the compact bundle route stays visible while the change-area helper hands off into the pinned bundle lane.
 
@@ -120,7 +121,7 @@ If the replay already carries a non-default repo root, a saved summary, or pinne
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-Then reopen the compact context surface before choosing the narrower follow-up that matches the current state:
+Then reopen the compact context surface before choosing the narrower follow-up that matches the current state. `docs/ISSUE3_ATTACHED_HTML_CONTEXT_SURFACE.md` is the read-first companion for this exact branch when you want the broader attached-page, Google-shaped attached-page, and pinned bundle lanes written down beside the same replay context:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_context_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -156,7 +157,7 @@ Use that context-preserving form when:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_context_surface.ps1
 ```
 
-Use this when replay context already matters and you want the broader attached-page lane, the Google-shaped attached-page lane, and the pinned bundle lane printed together before narrowing again.
+Use this when replay context already matters and you want the broader attached-page lane, the Google-shaped attached-page lane, and the pinned bundle lane printed together before narrowing again. `docs/ISSUE3_ATTACHED_HTML_CONTEXT_SURFACE.md` is the matching read-first note.
 
 2. Attached HTML validation flow
 
