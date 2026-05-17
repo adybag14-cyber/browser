@@ -50,7 +50,7 @@ From there, keep the broader attached-page handoffs visible long enough to repri
 
 From there, prefer one of these narrower follow-ups before reopening the broader wrapper-heavy safe route:
 
-- `show_google_issue3_validation_ROUTER_ATTACHED_HTML_QUICKSTART.ps1`
+- `show_google_issue3_validation_router_attached_html_quickstart.ps1`
 - `show_google_issue3_attached_html_change_area_quickstart.ps1`
 - `show_attached_html_validation_flow.ps1`
 - `check_google_attached_html_validation_surface.ps1`
@@ -96,7 +96,7 @@ When the broader Windows headed runbook already reopened the attached localhost 
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 ```
