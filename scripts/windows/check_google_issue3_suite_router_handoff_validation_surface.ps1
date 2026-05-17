@@ -63,7 +63,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Kind "file" -Purpose "Replay-route shortcut helper kept visible from the handoff surface."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_contextual_flow.ps1" -Kind "file" -Purpose "Context-preserving helper surfaced when repo root, summary, or pinned bundle inputs already matter."),
     (New-ValidationReference -Path "scripts/windows/show_google_input_validation_flow.ps1" -Kind "file" -Purpose "Broader Google localhost-first validation helper surfaced from the handoff route."),
-    (New-ValidationReference -Path "scripts/windows/check_google_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast surface checker for the dedicated Google attached-html lane."),
+    (New-ValidationReference -Path "scripts/windows/check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast surface checker for the issue-specific Google attached-html entrypoint lane."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Dedicated Google attached-html flow helper that should remain easy to reopen from the handoff route."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1" -Kind "file" -Purpose "Issue-specific Google attached-html entrypoint helper that should remain available from the handoff route."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_bundle_first_entrypoint.ps1" -Kind "file" -Purpose "Pinned attached-bundle helper surfaced when the handoff route should stay on the three-page compatibility set."),
@@ -122,5 +122,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} suite-router handoff path(s).") -f $missing.Count)
-Write-Host "Repair the missing suite-router note, top-level attached-html helper, Google attached-html helper, replay-route shortcut, or later-stage fallback before trusting the issue #3 suite-router handoff surface."
+Write-Host "Repair the missing suite-router note, top-level attached-html helper, issue-specific Google attached-html checker, Google attached-html helper, replay-route shortcut, or later-stage fallback before trusting the issue #3 suite-router handoff surface."
 exit 1
