@@ -11,7 +11,7 @@ Read this together with:
 
 - Start with the smallest bounded localhost probe that touches the shared path you changed.
 - Widen into manual `browse --headed` replay only after the bounded probe is green.
-- Prefer `scripts\windows\show_headed_validation_suites.ps1` first for the change areas it already routes directly: `navigation`, `stop-loading`, `input`, `attached-html`, `attached-html-target-bundle`, `google-input`, and `google-attached-html`.
+- Prefer `scripts\windows\show_headed_validation_suites.ps1` first for the change areas it already routes directly: `navigation`, `stop-loading`, `input`, `rendering`, `network`, `attached-html`, `attached-html-target-bundle`, `google-input`, and `google-attached-html`.
 - For probe families that are not yet first-class router change areas, use the direct PowerShell entrypoints below.
 - Older deeper probe families can still carry fixed checkout assumptions. If a helper fails before browser behavior is exercised, normalize the local repo-root or browser-exe path first.
 
@@ -22,6 +22,8 @@ Read this together with:
 | Browser chrome navigation, history, reload | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea navigation` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\wrapped-link\addressbar-probe.ps1` | Use for back, forward, reload, wrapped-link hit-testing, and address-bar driven transitions. |
 | Stop/loading lifecycle and restore-after-stop behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\wrapped-link\chrome-history-close-probe.ps1` | Use when stop, cancel, reload-after-stop, or restored page state changed. |
 | Shared text input, focus, label activation, Enter submit | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input` | Start here before any live Google or saved-page follow-up. |
+| Shared layout, paint, screenshot timing, or visible headed surface behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-screenshot-load-complete-probe.ps1` | Start here before widening into attached-page replay for rendering or screenshot issues. |
+| Shared subresource loading, authenticated asset fetches, or browser-managed request credentials | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\fetch-credentials\chrome-fetch-credentials-probe.ps1` | Start here before widening into attached-page replay for network, credential, or asset-loading changes. |
 | Saved HTML compatibility bundle or attached exported pages | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"` | Use this for the current three-page localhost compatibility bundle and other exported saved-page replays. |
 
 ## Probe Families
