@@ -71,9 +71,9 @@ From there, prefer one of these narrower follow-ups before reopening the broader
 
 ## Top-level router surfacing
 
-Because `show_headed_validation_suites.ps1` now prints the issue `#3` top-level attached HTML route, the compact top-level attached-page quickstart, and the bundle-first helper directly from the broader `google-recommended` and `google-input` entrypoints, reopen one of those top-level router surfaces first when attached localhost follow-up has become the next obvious branch but the replay has not been narrowed to `-ChangeArea attached-html` yet.
+Because `show_headed_validation_suites.ps1` now prints the issue `#3` top-level attached HTML route and the bundle-first helper directly from the broader `google-recommended` and `google-input` entrypoints, reopen one of those top-level router surfaces first when attached localhost follow-up has become the next obvious branch but the replay has not been narrowed to `-ChangeArea attached-html` yet. Then step into `show_google_issue3_top_level_attached_html_quickstart.ps1` when you want the compact top-level attached-page bridge reprinted before you drop into the suite-router attached-page quickstart.
 
-Use this route when you want the attached-page bridge surfaced directly from the main validation catalog before you drop into the suite-router attached-page quickstart:
+Use this route when you want the broader attached-page bridge surfaced directly from the main validation catalog before you drop into the suite-router attached-page quickstart:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
