@@ -252,6 +252,36 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertIn("nested/theme.css", beta_entry["inspected_css_files"])
         self.assertIn("nested/module.mjs", beta_entry["inspected_module_script_files"])
 
+    def test_asset_audit_reports_external_assets_without_counting_them_missing(self):
+        (self.root / "nested" / "beta.html").write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Alpha Landing</title>
+    <script src="https://cdn.example.test/app.js"></script>
+    <link rel="preconnect" href="https://fonts.example.test">
+  </head>
+  <body><img src="https://images.example.test/banner.png"></body>
+</html>
+""",
+            encoding="utf-8",
+        )
+
+        audit = server_module.build_asset_audit(self.root)
+        self.assertEqual(2, audit["fixture_count"])
+        self.assertEqual(0, audit["fixtures_with_missing_assets"])
+        self.assertEqual(1, audit["fixtures_with_external_assets"])
+
+        beta_entry = next(entry for entry in audit["fixtures"] if entry["display_path"] == "nested/beta.html")
+        self.assertEqual(0, beta_entry["missing_asset_count"])
+        self.assertIn("https://cdn.example.test/app.js", beta_entry["external_assets"])
+        self.assertIn("https://fonts.example.test", beta_entry["external_assets"])
+        self.assertIn("https://images.example.test/banner.png", beta_entry["external_assets"])
+
+        rendered = server_module.render_asset_audit_text(audit)
+        self.assertIn("Fixtures with external assets: 1", rendered)
+        self.assertIn("External assets: 3", rendered)
+
     def test_asset_audit_cli_exit_codes_and_allow_missing_flag(self):
         (self.root / "alpha.html").write_text(
             """<!doctype html>
