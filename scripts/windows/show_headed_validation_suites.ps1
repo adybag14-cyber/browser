@@ -191,6 +191,32 @@ if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlArguments -Name InputPath -Values @($InputPath)
 }
 
+function Get-Issue3AttachedHtmlFollowUpCommands {
+    return @(
+        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $issue3AttachedHtmlArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
+    )
+}
+
+function Get-Issue3AttachedHtmlFollowUpNotes {
+    param(
+        [switch]$BundleFocused
+    )
+
+    if ($BundleFocused) {
+        return @(
+            "Use the compact bundle-suite surface first when the top-level router is already narrowed to the known three-page compatibility bundle.",
+            "Only drop into the bundle-first helper after the suite surface is visible, so the pinned bundle route stays easy to reopen."
+        )
+    }
+
+    return @(
+        "Use the attached-html change-area quickstart when you want the shorter issue #3 attached-page helper ladder visible after the broader attached-pages catalog route.",
+        "Use the compact bundle-suite surface before the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
+    )
+}
+
 function Show-DefaultRoutes {
     Write-Section "Headed Validation Suites"
     Write-Host "Use the smallest bounded check first, then widen into manual headed follow-up."
@@ -221,6 +247,7 @@ function Show-DefaultRoutes {
 
     $attachedCommands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath
     Write-Route -Name "attached-html" -Commands $attachedCommands -Notes (Get-AttachedHtmlNotes)
+    Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
 
     Write-Route -Name "google-recommended" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
@@ -309,6 +336,8 @@ switch ($true) {
             $notes += "Google-style auto-discovery keeps the strongest Google-like saved page first when -InputPath is omitted."
         }
         Write-Route -Name "attached-pages-catalog-follow-up" -Commands $commands -Notes $notes
+        $bundleFocused = $ChangeArea -eq "attached-html-target-bundle"
+        Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes -BundleFocused:$bundleFocused)
         break
     }
     default {
