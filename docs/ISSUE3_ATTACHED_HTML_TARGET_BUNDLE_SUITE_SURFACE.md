@@ -6,6 +6,7 @@ Keep these nearby when the route may still reopen from a broader validation surf
 
 - `docs/HEADED_MODE_ROADMAP.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
@@ -16,13 +17,13 @@ Keep these nearby when the route may still reopen from a broader validation surf
 - `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
-Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up, keep `docs/HEADED_MODE_ROADMAP.md` close when the replay is being rediscovered from the higher-level validation catalog first, keep `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` and `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` close when the replay is re-entering from the broader Windows-first ladders, and keep the top-level attached-html notes plus `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` close when the replay is already narrowing from the top-level or replay-route surfaces before it commits to the pinned bundle lane.
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md` close when the broader attached-page route has already made the bundle lane the next likely branch and you want the shortest read-first bridge visible before the route narrows into bundle-first execution, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up, keep `docs/HEADED_MODE_ROADMAP.md` close when the replay is being rediscovered from the higher-level validation catalog first, keep `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` and `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` close when the replay is re-entering from the broader Windows-first ladders, and keep the top-level attached-html notes plus `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` close when the replay is already narrowing from the top-level or replay-route surfaces before it commits to the pinned bundle lane.
 
 ## Goal
 
 Start from the dedicated suite-surface helper when the current replay is already near `show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle` and you want the bundle surface, the broader attached-page suite surfaces, the broader attached-page flow helper, and the dedicated Google-shaped attached-page flow helper visible in one compact place before the replay narrows into bundle-only execution.
 
-If the route is still reopening from the suite-catalog side first, keep the suite-catalog guide and the suite-catalog attached-page bridge visible long enough to confirm that the pinned bundle lane is still the right next branch before this narrower suite-surface helper takes over. If the route is already reopening from the top-level attached-html helpers, keep the compact top-level quickstart and the broader top-level bridge visible long enough to confirm that the replay should stay on the pinned bundle lane before this suite-surface helper takes over.
+If the route is still reopening from the suite-catalog side first, keep the suite-catalog guide and the suite-catalog attached-page bridge visible long enough to confirm that the pinned bundle lane is still the right next branch before this narrower suite-surface helper takes over. If the route is already reopening from the top-level attached-html helpers, keep the compact top-level quickstart, the bundle quickstart, and the broader top-level bridge visible long enough to confirm that the replay should stay on the pinned bundle lane before this suite-surface helper takes over.
 
 ## Current default next helper
 
@@ -102,7 +103,7 @@ Use that route when:
 
 ## Top-level attached-html re-entry
 
-If the replay is already reopening from the top-level attached-html route and the known three-page compatibility bundle now looks like the most likely next branch, keep the top-level quickstart and the broader top-level bridge visible long enough to hand off into the bundle-focused suite surface before the narrower bundle-first helper takes over:
+If the replay is already reopening from the top-level attached-html route and the known three-page compatibility bundle now looks like the most likely next branch, keep the top-level quickstart, the bundle quickstart, and the broader top-level bridge visible long enough to hand off into the bundle-focused suite surface before the narrower bundle-first helper takes over:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
@@ -115,7 +116,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 Use that route when:
 
 - the replay already narrowed through the top-level attached-html quickstart or bridge
-- you want the compact top-level route and the broader top-level bridge kept visible beside the dedicated bundle suite surface before the replay collapses into the narrower bundle-first helper
+- you want the bundle quickstart, the compact top-level route, and the broader top-level bridge kept visible beside the dedicated bundle suite surface before the replay collapses into the narrower bundle-first helper
 - explicit bundle paths are already pinned and should stay attached to the top-level helper chain while the replay decides whether to stay on the bundle lane or widen back into the broader attached-page flow helpers
 
 ## Use the dedicated helper first
@@ -170,6 +171,8 @@ Use that context-preserving form when:
 ## Practical rule
 
 Prefer the dedicated suite-surface helper when the replay is already close to the attached bundle lane and only needs a compact re-entry surface before bundle-only validation. Reopen the broader `attached-html` or `google-attached-html` suite surfaces first only when the replay still needs the wider attached-page route visible before it commits to the pinned three-page bundle. When the replay is being rediscovered from the higher-level validation catalog, reopen that catalog context first, then use this note and the dedicated suite-surface helper to keep the bundle lane aligned with the broader catalog-first guidance before narrowing into the bundle-first helper.
+
+If the replay has already made the bundle lane the next obvious branch, reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md` beside this note before narrowing into the bundle-first helper so the shorter read-first bridge stays visible.
 
 If the replay is still arriving from the suite-catalog side, reopen `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, then `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before narrowing into the bundle-first helper.
 
