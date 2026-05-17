@@ -170,12 +170,13 @@ if ($InputPath -and @($InputPath).Count -gt 0) {
 }
 
 $replayRouteShortcutCommand = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $bundleArguments
+$handoffSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_router_handoff_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $googleAttachedHtmlFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
 
 $handoff = [ordered]@{
     issue = 'Google issue #3 suite router handoff'
-    purpose = 'Keep the higher-level suite-router entrypoints, the attached-page route, the dedicated Google-shaped attached-page route, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the newer suite-router attached-page quickstart, the newer top-level attached-page quickstart, the newer top-level attached-page bridge, the issue-specific Google attached-page bridge, the new shortcut-first suite-router entrypoint, the shortcut-first replay helper, the compact next-step matrix, the suite-catalog bridge, the replay-route helper, the replay-route shortcut helper, and the current issue #3 replay helpers on one command surface before the replay narrows further, without dropping pinned bundle-input context.'
+    purpose = 'Keep the higher-level suite-router entrypoints, the attached-page route, the dedicated Google-shaped attached-page route, the suite-router handoff surface check, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the newer suite-router attached-page quickstart, the newer top-level attached-page quickstart, the newer top-level attached-page bridge, the issue-specific Google attached-page bridge, the new shortcut-first suite-router entrypoint, the shortcut-first replay helper, the compact next-step matrix, the suite-catalog bridge, the replay-route helper, the replay-route shortcut helper, and the current issue #3 replay helpers on one command surface before the replay narrows further, without dropping pinned bundle-input context.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -213,6 +214,7 @@ $handoff = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        suite_router_surface_check = $handoffSurfaceCheckCommand
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleArguments
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
@@ -235,6 +237,7 @@ $handoff = [ordered]@{
         'Use google_input_change_area when the next replay may need the title, homepage-fixture, submit-path, shared Enter-order, live-trace, or attached-page slices instead of the broader recommended runner.',
         'Use attached_html_change_area when the next replay is already narrowed to the attached-page compatibility route and you want that top-level branch visible before deciding whether to jump into the suite-router attached-page quickstart, the dedicated Google attached-page bridge, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first helper, or stay pinned to the bundle-first path.',
         'Use google_attached_html_change_area when the next replay is already narrowed to the issue-specific Google-shaped attached-page route and you want that top-level branch kept visible before deciding whether to jump into the dedicated surface check, the dedicated Google attached-page flow helper, the issue-specific Google attached-page bridge, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page bridge, replay_shortcuts, suite_router_next_steps, suite_catalog_entrypoints, replay_route, replay_route_shortcut, or the bundle-first branch.',
+        'Use suite_router_surface_check when you want the handoff helper itself to fail fast on missing bridge notes, attached-page helpers, issue-specific checker dependencies, or replay-route companion scripts before you trust the printed handoff surface.',
         'Use suite_router_attached_html_quickstart when the route is already narrowed to attached localhost follow-up from the higher-level suite router and you want the shortest suite-router-side attached-page bridge before deciding whether to reopen top_level_attached_html_quickstart, top_level_attached_html_entrypoint, google_attached_html_surface_check, google_attached_html_flow, google_attached_html_entrypoint, replay_shortcuts, suite_router_next_steps, suite_catalog_entrypoints, replay_route, replay_route_shortcut, or the bundle-first branch.',
         'Use google_attached_html_surface_check when the route is already narrowed to the issue-specific Google-shaped attached-page branch and you want the fail-fast checker surfaced immediately before the dedicated Google attached-page flow helper or the narrower issue-specific attached-page bridge.',
         'Use google_attached_html_flow when the route is already narrowed to the issue-specific Google-shaped attached-page branch and you want the dedicated flow helper surfaced before deciding whether to reopen the issue-specific attached-page bridge, the shortcut-first route, replay_shortcuts, suite_router_next_steps, suite_catalog_entrypoints, replay_route, replay_route_shortcut, contextual_flow, or the bundle-first branch.',
@@ -242,14 +245,14 @@ $handoff = [ordered]@{
         'Use top_level_attached_html_quickstart when the route is already clearly inside the top-level attached-page lane and you want the shortest top-level attached-page bridge kept visible before the broader top-level attached-page bridge, replay_shortcuts, suite_router_next_steps, suite_catalog_entrypoints, replay_route, replay_route_shortcut, or the safe-route map.',
         'Use top_level_attached_html_entrypoint when the route is already clearly inside the issue-specific attached-page branch and you want the shorter top-level attached-page bridge kept visible before replay_shortcuts, the next-step matrix, suite_catalog_entrypoints, replay_route, replay_route_shortcut, or the safe-route map.',
         'Use suite_router_shortcut_entrypoint when you want the shortest issue #3 top-level bridge from the current suite-router state into replay_shortcuts while still preserving SummaryPath and InputPath context when those values are already pinned.',
-        'Use suite_catalog_entrypoints when you want the exact top-level suite-router entrypoints, the attached-page route, the dedicated Google-shaped attached-page route, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the newer suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the newer top-level attached-page quickstart, the newer top-level attached-page bridge, the shortcut-first suite-router entrypoint, the shortcut-first replay helper, the compact next-step matrix, the suite-catalog bridge, the broader Google flow helper, the replay-route helper, the replay-route shortcut helper, and the current replay helpers reprinted together before narrowing further, while keeping SummaryPath and InputPath context attached when they are already pinned.',
+        'Use suite_catalog_entrypoints when you want the exact top-level suite-router entrypoints, the attached-page route, the dedicated Google-shaped attached-page route, the suite-router handoff surface check, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the newer suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the newer top-level attached-page quickstart, the newer top-level attached-page bridge, the shortcut-first suite-router entrypoint, the shortcut-first replay helper, the compact next-step matrix, the suite-catalog bridge, the broader Google flow helper, the replay-route helper, the replay-route shortcut helper, and the current replay helpers reprinted together before narrowing further, while keeping SummaryPath and InputPath context attached when they are already pinned.',
         'Use replay_shortcuts as the default follow-up after the higher-level suite router, the attached-page route, the dedicated Google-shaped attached-page route, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router entrypoint, or the suite-catalog bridge when the route is already known to stay inside issue #3 and no pinned bundle inputs, saved summary, or repo-root override need to take precedence first.',
         'Use suite_router_next_steps when you still want the explicit start-point table after the attached-page bridges, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the issue-specific Google attached-page bridge, or the shortcut-first bridge, or when you want the helper recommendation reprinted before deciding whether to widen into replay_route, replay_route_shortcut, stay pinned to attached_bundle_first, or reopen the safe-route map.',
         'Use replay_route when you want the slightly broader bridge after replay_shortcuts, the dedicated Google-shaped attached-page route, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the top-level attached-page quickstart, the top-level attached-page bridge, or the next-step matrix so the attached-bundle branch, the replay-route shortcut, the safe-route map, and repo-root-aware runner-state choices stay together before narrowing again.',
         'Use replay_route_shortcut when replay-route follow-up is already open and you want the shorter printed bridge kept visible before the bundle-first branch or the wrapper-heavy safe-route map takes over.',
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and you want the broader recommended runner, replay shortcuts, attached bundle, live trace, later follow-up commands, replay route, and replay-route shortcut kept on one context-preserving surface before reopening the wrapper-heavy safe route.',
-        'Use the read-first bridge when you want the exact route from the higher-level suite router into the attached-page route, the dedicated Google-shaped attached-page route, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router entrypoint, the shortcut-first replay helper, the next-step matrix, the suite-catalog bridge, the broader Google flow helper, the replay-route helper, the replay-route shortcut helper, and the companion bundle-first branch printed in one place before reopening any longer notes.',
-        'Keep replay_discovery_note_path nearby when you want the shortest written bridge from the top-level Windows validation catalog into this suite-router handoff, the attached-page route, the dedicated Google-shaped attached-page route, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router entrypoint, the shortcut-first replay helper, the next-step matrix, the suite-catalog bridge, the broader Google flow helper, the replay-route helper, the replay-route shortcut helper, and the bundle-first branch without reopening the longer validation-chain notes first.',
+        'Use the read-first bridge when you want the exact route from the higher-level suite router into the attached-page route, the dedicated Google-shaped attached-page route, the suite-router handoff surface check, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router entrypoint, the shortcut-first replay helper, the next-step matrix, the suite-catalog bridge, the broader Google flow helper, the replay-route helper, the replay-route shortcut helper, and the companion bundle-first branch printed in one place before reopening any longer notes.',
+        'Keep replay_discovery_note_path nearby when you want the shortest written bridge from the top-level Windows validation catalog into this suite-router handoff, the attached-page route, the dedicated Google-shaped attached-page route, the suite-router handoff surface check, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the suite-router attached-page quickstart, the issue-specific Google attached-page bridge, the top-level attached-page quickstart, the top-level attached-page bridge, the shortcut-first suite-router entrypoint, the shortcut-first replay helper, the next-step matrix, the suite-catalog bridge, the broader Google flow helper, the replay-route helper, the replay-route shortcut helper, and the bundle-first branch without reopening the longer validation-chain notes first.',
         'Use attached_bundle_change_area when the current saved or attached inputs are the known three-page compatibility bundle and you want the suite router itself to reopen on that pinned branch first.',
         'Keep suite_router_bridge_note_path nearby when you want the shortest written bridge from the higher-level suite router into suite_router_shortcut_entrypoint, replay_shortcuts, suite_router_next_steps, suite_catalog_entrypoints, replay_route, replay_route_shortcut, contextual_flow, google_attached_html_surface_check, google_attached_html_flow, google_attached_html_entrypoint, or the attached-page route without reopening the longer Windows runbook or validation-chain notes first.',
         'Keep suite_router_attached_html_quickstart_note_path nearby when you want the written suite-router-side attached-page bridge beside the helper output before reopening the top-level attached-page helpers, the dedicated Google attached-page surface check, the dedicated Google attached-page flow helper, the issue-specific Google attached-page bridge, or the wider replay-route notes.',
@@ -266,6 +269,7 @@ $handoff.bridge_sequence = [ordered]@{
     google_input_change_area = $handoff.suite_router_commands.google_input_change_area
     attached_html_change_area = $handoff.suite_router_commands.attached_html_change_area
     google_attached_html_change_area = $handoff.suite_router_commands.google_attached_html_change_area
+    suite_router_surface_check = $handoff.helper_commands.suite_router_surface_check
     google_attached_html_surface_check = $handoff.helper_commands.google_attached_html_surface_check
     google_attached_html_flow = $handoff.helper_commands.google_attached_html_flow
     suite_router_attached_html_quickstart = $handoff.helper_commands.suite_router_attached_html_quickstart
@@ -321,20 +325,21 @@ Write-Host ("  1. Google recommended:            {0}" -f $handoff.bridge_sequenc
 Write-Host ("  2. Google input:                  {0}" -f $handoff.bridge_sequence.google_input_change_area)
 Write-Host ("  3. Attached HTML:                 {0}" -f $handoff.bridge_sequence.attached_html_change_area)
 Write-Host ("  4. Google attached HTML:          {0}" -f $handoff.bridge_sequence.google_attached_html_change_area)
-Write-Host ("  5. Google attached surface check: {0}" -f $handoff.bridge_sequence.google_attached_html_surface_check)
-Write-Host ("  6. Google attached flow:          {0}" -f $handoff.bridge_sequence.google_attached_html_flow)
-Write-Host ("  7. Suite-router attached quickstart: {0}" -f $handoff.bridge_sequence.suite_router_attached_html_quickstart)
-Write-Host ("  8. Google attached bridge:        {0}" -f $handoff.bridge_sequence.google_attached_html_entrypoint)
-Write-Host ("  9. Top-level attached quickstart: {0}" -f $handoff.bridge_sequence.top_level_attached_html_quickstart)
-Write-Host (" 10. Top-level attached bridge:     {0}" -f $handoff.bridge_sequence.top_level_attached_html_entrypoint)
-Write-Host (" 11. Shortcut entry:                {0}" -f $handoff.bridge_sequence.suite_router_shortcut_entrypoint)
-Write-Host (" 12. Replay shortcuts:              {0}" -f $handoff.bridge_sequence.replay_shortcuts)
-Write-Host (" 13. Next-step matrix:              {0}" -f $handoff.bridge_sequence.suite_router_next_steps)
-Write-Host (" 14. Suite-catalog:                 {0}" -f $handoff.bridge_sequence.suite_catalog_entrypoints)
-Write-Host (" 15. Google flow:                   {0}" -f $handoff.bridge_sequence.google_flow)
-Write-Host (" 16. Replay route:                  {0}" -f $handoff.bridge_sequence.replay_route)
-Write-Host (" 17. Replay-route shortcut:         {0}" -f $handoff.bridge_sequence.replay_route_shortcut)
-Write-Host (" 18. Bundle-first branch:           {0}" -f $handoff.bridge_sequence.attached_bundle_change_area)
+Write-Host ("  5. Handoff surface check:         {0}" -f $handoff.bridge_sequence.suite_router_surface_check)
+Write-Host ("  6. Google attached surface check: {0}" -f $handoff.bridge_sequence.google_attached_html_surface_check)
+Write-Host ("  7. Google attached flow:          {0}" -f $handoff.bridge_sequence.google_attached_html_flow)
+Write-Host ("  8. Suite-router attached quickstart: {0}" -f $handoff.bridge_sequence.suite_router_attached_html_quickstart)
+Write-Host ("  9. Google attached bridge:        {0}" -f $handoff.bridge_sequence.google_attached_html_entrypoint)
+Write-Host (" 10. Top-level attached quickstart: {0}" -f $handoff.bridge_sequence.top_level_attached_html_quickstart)
+Write-Host (" 11. Top-level attached bridge:     {0}" -f $handoff.bridge_sequence.top_level_attached_html_entrypoint)
+Write-Host (" 12. Shortcut entry:                {0}" -f $handoff.bridge_sequence.suite_router_shortcut_entrypoint)
+Write-Host (" 13. Replay shortcuts:              {0}" -f $handoff.bridge_sequence.replay_shortcuts)
+Write-Host (" 14. Next-step matrix:              {0}" -f $handoff.bridge_sequence.suite_router_next_steps)
+Write-Host (" 15. Suite-catalog:                 {0}" -f $handoff.bridge_sequence.suite_catalog_entrypoints)
+Write-Host (" 16. Google flow:                   {0}" -f $handoff.bridge_sequence.google_flow)
+Write-Host (" 17. Replay route:                  {0}" -f $handoff.bridge_sequence.replay_route)
+Write-Host (" 18. Replay-route shortcut:         {0}" -f $handoff.bridge_sequence.replay_route_shortcut)
+Write-Host (" 19. Bundle-first branch:           {0}" -f $handoff.bridge_sequence.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Suite-router entrypoints:'
 Write-Host ("  Google recommended: {0}" -f $handoff.suite_router_commands.google_recommended)
@@ -344,22 +349,23 @@ Write-Host ("  Google attached:    {0}" -f $handoff.suite_router_commands.google
 Write-Host ("  Attached bundle:    {0}" -f $handoff.suite_router_commands.attached_bundle_change_area)
 Write-Host ''
 Write-Host 'Shortcut helpers:'
-Write-Host ("  Suite-router shortcut:          {0}" -f $handoff.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host ("  Suite-router attached bridge:   {0}" -f $handoff.helper_commands.suite_router_attached_html_quickstart)
-Write-Host ("  Google attached surface check:  {0}" -f $handoff.helper_commands.google_attached_html_surface_check)
-Write-Host ("  Google attached flow:           {0}" -f $handoff.helper_commands.google_attached_html_flow)
-Write-Host ("  Google attached bridge:         {0}" -f $handoff.helper_commands.google_attached_html_entrypoint)
-Write-Host ("  Top-level attached quickstart:  {0}" -f $handoff.helper_commands.top_level_attached_html_quickstart)
-Write-Host ("  Top-level attached bridge:      {0}" -f $handoff.helper_commands.top_level_attached_html_entrypoint)
-Write-Host ("  Replay shortcuts:               {0}" -f $handoff.helper_commands.replay_shortcuts)
-Write-Host ("  Next-step matrix:               {0}" -f $handoff.helper_commands.suite_router_next_steps)
-Write-Host ("  Suite-catalog bridge:           {0}" -f $handoff.helper_commands.suite_catalog_entrypoints)
-Write-Host ("  Replay route:                   {0}" -f $handoff.helper_commands.replay_route)
-Write-Host ("  Replay-route shortcut:          {0}" -f $handoff.helper_commands.replay_route_shortcut)
-Write-Host ("  Contextual flow:                {0}" -f $handoff.helper_commands.contextual_flow)
-Write-Host ("  Google flow:                    {0}" -f $handoff.helper_commands.google_flow)
-Write-Host ("  Bundle first:                   {0}" -f $handoff.helper_commands.attached_bundle_first)
-Write-Host ("  Safe route map:                 {0}" -f $handoff.helper_commands.safe_route_entrypoints)
+Write-Host ("  Handoff surface check:         {0}" -f $handoff.helper_commands.suite_router_surface_check)
+Write-Host ("  Suite-router shortcut:         {0}" -f $handoff.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host ("  Suite-router attached bridge:  {0}" -f $handoff.helper_commands.suite_router_attached_html_quickstart)
+Write-Host ("  Google attached surface check: {0}" -f $handoff.helper_commands.google_attached_html_surface_check)
+Write-Host ("  Google attached flow:          {0}" -f $handoff.helper_commands.google_attached_html_flow)
+Write-Host ("  Google attached bridge:        {0}" -f $handoff.helper_commands.google_attached_html_entrypoint)
+Write-Host ("  Top-level attached quickstart: {0}" -f $handoff.helper_commands.top_level_attached_html_quickstart)
+Write-Host ("  Top-level attached bridge:     {0}" -f $handoff.helper_commands.top_level_attached_html_entrypoint)
+Write-Host ("  Replay shortcuts:              {0}" -f $handoff.helper_commands.replay_shortcuts)
+Write-Host ("  Next-step matrix:              {0}" -f $handoff.helper_commands.suite_router_next_steps)
+Write-Host ("  Suite-catalog bridge:          {0}" -f $handoff.helper_commands.suite_catalog_entrypoints)
+Write-Host ("  Replay route:                  {0}" -f $handoff.helper_commands.replay_route)
+Write-Host ("  Replay-route shortcut:         {0}" -f $handoff.helper_commands.replay_route_shortcut)
+Write-Host ("  Contextual flow:               {0}" -f $handoff.helper_commands.contextual_flow)
+Write-Host ("  Google flow:                   {0}" -f $handoff.helper_commands.google_flow)
+Write-Host ("  Bundle first:                  {0}" -f $handoff.helper_commands.attached_bundle_first)
+Write-Host ("  Safe route map:                {0}" -f $handoff.helper_commands.safe_route_entrypoints)
 Write-Host ''
 Write-Host ("Quickstart note:                  {0}" -f $handoff.quickstart_note_path)
 Write-Host ("Replay discovery:                 {0}" -f $handoff.replay_discovery_note_path)
