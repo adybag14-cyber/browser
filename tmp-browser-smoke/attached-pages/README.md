@@ -101,6 +101,49 @@ running the heavier attached-page PowerShell helpers or when you want the exact
 same three pages available through short routes while you debug a headed-mode
 compatibility regression.
 
+## Asset Audit
+
+Before treating a localhost replay failure as a headed-runtime bug, you can ask
+the helper to recursively inspect local asset references across the selected
+bundle.
+
+From a bundle root:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --root C:\path\to\saved-html `
+  --audit-assets
+```
+
+Against the pinned issue `#3` file list:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
+  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
+  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
+  --audit-assets
+```
+
+The audit walks each selected HTML file, follows local CSS `@import` chains,
+module-script imports, and common local asset references, then reports missing
+sidecars per fixture. It exits with a nonzero status when anything is missing,
+which makes it a good first gate for repeatable localhost validation.
+
+If you still want a best-effort replay after seeing the missing-asset report,
+add `--allow-missing-assets` so the helper prints the audit summary but exits
+successfully:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
+  --root C:\path\to\saved-html `
+  --audit-assets `
+  --allow-missing-assets
+```
+
+Use this path when the bundle is already known to be incomplete and you want to
+keep that fact visible in logs without blocking the rest of the replay flow.
+
 ## Self-check
 
 Run the focused harness regression locally with:
@@ -111,5 +154,6 @@ python .\tmp-browser-smoke\attached-pages\test_attached_pages_server.py
 
 The test covers the generated catalog, manifest route, short-route redirect,
 named-route redirect and asset loading, `HEAD` handling, `/raw/...`
-passthrough, the manifest-print CLI path, the single-file root path, and the
-new explicit file-list path that pins the manifest to selected saved exports.
+passthrough, the manifest-print CLI path, the single-file root path, the
+explicit file-list path that pins the manifest to selected saved exports, and
+the asset-audit CLI behavior.
