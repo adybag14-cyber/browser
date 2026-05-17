@@ -110,7 +110,7 @@ def normalize_selected_html_files(selected_files: list[Path]) -> tuple[Path, lis
         resolved_files.append(resolved)
 
     common_root = Path(os.path.commonpath([str(path.parent) for path in resolved_files]))
-    return common_root, sorted(resolved_files)
+    return common_root, resolved_files
 
 
 def resolve_bundle_inputs(root: Path | None = None, selected_files: list[Path] | None = None) -> tuple[Path, list[Path]]:
