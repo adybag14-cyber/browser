@@ -171,7 +171,7 @@ $suiteRouterAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEn
 
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router attached HTML quickstart'
-    purpose = 'Print the shortest attached-page-first bridge from the top-level headed validation suite router into the issue #3 attached-page helper chain, while preserving repo-root, saved-summary, and pinned bundle-input context when it already exists, surfacing the dedicated suite-router attached-page surface check plus the newer top-level attached-page quickstarts before the longer replay helper chain when possible, and keeping both the broader Google-shaped attached-page surface check and the issue-specific Google attached-page entrypoint surface check visible alongside the narrower Google-shaped attached-page flow helper one step earlier in the suite-router handoff.'
+    purpose = 'Print the shortest attached-page-first bridge from the top-level headed validation suite router into the issue #3 attached-page helper chain, while preserving repo-root, saved-summary, and pinned bundle-input context when it already exists, surfacing the dedicated suite-router attached-page surface check plus the newer top-level attached-page quickstarts before the longer replay helper chain when possible, and keeping both the broader Google-shaped attached-page surface check, the issue-specific Google attached-page entrypoint surface check, and the compact attached bundle suite surface visible alongside the narrower Google-shaped attached-page flow helper one step earlier in the suite-router handoff.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -186,6 +186,7 @@ $helper = [ordered]@{
     top_level_attached_html_companion_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md'
     suite_catalog_entrypoint_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
     suite_catalog_attached_html_bridge_note_path = 'docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md'
+    attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     commands = [ordered]@{
@@ -210,6 +211,7 @@ $helper = [ordered]@{
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
         top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $bundleArguments
+        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
         google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
@@ -228,15 +230,15 @@ $helper = [ordered]@{
         'Use google_attached_html_surface_check when the current attached-page set already includes a Google-like page and you want the broader dedicated fail-fast checker reprinted before the narrower Google-shaped flow guide or its runner handoff.',
         'Use google_issue3_attached_html_surface_check when the replay has already narrowed from the broader Google-like attached-page lane into the issue-specific Google attached-page bridge and you want the entrypoint-specific fail-fast checker reprinted before the narrower helper chain.',
         'Use google_attached_html_flow when the current attached-page set already includes a Google-like page and you want the dedicated Google-shaped guide and helper ladder reprinted directly from this suite-router quickstart after the broader surface check, before the issue-specific Google bridge or the narrower compact helpers.',
-        'Use suite_catalog_entrypoints when you want the wider suite-catalog command map reprinted before the attached-page route narrows into the suite-catalog-side bridge, the top-level attached-page helpers, the attached-page shortcut, replay shortcuts, the next-step matrix, contextual flow, the bundle-first branch, or the safe-route helper.',
+        'Use suite_catalog_entrypoints when you want the wider suite-catalog command map reprinted before the attached-page route narrows into the suite-catalog-side bridge, the top-level attached-page helpers, the compact bundle suite surface, the attached-page shortcut, replay shortcuts, the next-step matrix, contextual flow, the bundle-first branch, or the safe-route helper.',
         'Use top_level_attached_html_quickstart as the default next helper when no pinned bundle inputs, non-default repo root, or saved summary need to take precedence, because it keeps the shorter top-level attached-page bridge visible before reopening the catalog bridge, the catalog quickstart, the attached-page shortcut, replay shortcuts, or the next-step matrix.',
         'Use top_level_attached_html_catalog_quickstart when you want the shorter top-level attached-page quickstart plus the suite-catalog-facing catalog quickstart kept visible together before the replay narrows again.',
         'Use suite_catalog_attached_html_entrypoint when the replay is already narrowed to attached-page follow-up but you want the suite-catalog-side attached-page bridge kept visible before reopening the shorter attached-page shortcut, replay shortcuts, next-step matrix, bundle-first route, or safe-route helper.',
         'Use top_level_attached_html_entrypoint when the route is already clearly inside the issue-specific attached-page branch and you want the broader top-level attached-page bridge before the newer top-level quickstarts, replay shortcuts, or the next-step matrix.',
         'Use google_attached_html_entrypoint when you still want the issue-specific Google-shaped attached-page bridge kept visible before the smaller attached-page shortcut helper.',
         'Use attached_html_shortcut when you want the shortest attached-page bridge before widening back into replay_shortcuts, the next-step matrix, or the safe-route helper.',
-        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before choosing between the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.',
-        'Use attached_bundle_change_area and attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only helper chain.',
+        'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that replay context aligned before choosing between the attached-page bridges, the compact bundle suite surface, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.',
+        'Use attached_bundle_change_area, then attached_bundle_suite_surface, and only then attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only helper chain.',
         'Use safe_route_entrypoints only after the attached-page route has already narrowed the replay enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
         'Keep the validation-router attached-html quickstart note nearby when the replay is still one step higher in the broader validation router and you want that written bridge visible before the suite-router-side attached-page helper chain narrows the route again.',
         'Keep the attached-html change-area quickstart note nearby when the replay is already centered on show_headed_validation_suites.ps1 -ChangeArea attached-html and you still want the generic attached-page flow helper plus the narrower issue #3 route visible together.',
@@ -246,17 +248,17 @@ $helper = [ordered]@{
 }
 
 $helper.recommended_next_key = if ($helper.explicit_input_path_count -gt 0) {
-    'attached_bundle_first'
+    'attached_bundle_suite_surface'
 } elseif (-not [string]::IsNullOrWhiteSpace($helper.repo_root) -or -not [string]::IsNullOrWhiteSpace($helper.summary_path)) {
     'contextual_flow'
 } else {
     'top_level_attached_html_quickstart'
 }
 $helper.recommended_next_command = $helper.commands[$helper.recommended_next_key]
-$helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_first') {
-    'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 attached-page helper chain.'
+$helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_suite_surface') {
+    'Explicit input paths are already in play, so reopen the compact attached bundle suite surface first and keep the replay pinned to the known three-page compatibility bundle before narrowing into the bundle-first helper or widening back into the broader issue #3 attached-page helper chain.'
 } elseif ($helper.recommended_next_key -eq 'contextual_flow') {
-    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.'
+    'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the attached-page bridges, the compact bundle suite surface, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.'
 } else {
     'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so jump straight from the suite router into the shorter top-level attached-page quickstart and keep the attached localhost route compact before widening back out.'
 }
@@ -303,6 +305,7 @@ Write-Host (("  Top-level quickstart:         {0}") -f $helper.commands.top_leve
 Write-Host (("  Top-level catalog quickstart: {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
 Write-Host (("  Catalog attached bridge:      {0}") -f $helper.commands.suite_catalog_attached_html_entrypoint)
 Write-Host (("  Top-level attached:           {0}") -f $helper.commands.top_level_attached_html_entrypoint)
+Write-Host (("  Bundle suite surface:        {0}") -f $helper.commands.attached_bundle_suite_surface)
 Write-Host (("  Issue-specific Google check:  {0}") -f $helper.commands.google_issue3_attached_html_surface_check)
 Write-Host (("  Google attached flow helper:  {0}") -f $helper.commands.google_attached_html_flow)
 Write-Host (("  Google attached bridge:       {0}") -f $helper.commands.google_attached_html_entrypoint)
@@ -324,6 +327,7 @@ Write-Host (("Top-level attached note:  {0}") -f (' ' + $helper.top_level_attach
 Write-Host (("Top-level companion note: {0}") -f (' ' + $helper.top_level_attached_html_companion_note_path))
 Write-Host (("Catalog guide note:       {0}") -f (' ' + $helper.suite_catalog_entrypoint_note_path))
 Write-Host (("Catalog attached note:    {0}") -f (' ' + $helper.suite_catalog_attached_html_bridge_note_path))
+Write-Host (("Bundle suite note:        {0}") -f (' ' + $helper.attached_html_target_bundle_suite_surface_note_path))
 Write-Host (("Google attached flow:     {0}") -f (' ' + $helper.google_attached_html_validation_flow_note_path))
 Write-Host (("Validation chain note:    {0}") -f (' ' + $helper.validation_chain_note_path))
 Write-Host ''
