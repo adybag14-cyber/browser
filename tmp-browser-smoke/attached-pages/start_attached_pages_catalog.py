@@ -265,10 +265,36 @@ def render_strict_sidecar_failure(report: str) -> str:
     )
 
 
+def build_selected_file_lookup(selected_files: list[Path]) -> dict[str, Path]:
+    resolved_files = [Path(path).expanduser().resolve() for path in selected_files]
+    if not resolved_files:
+        return {}
+
+    common_root = (
+        resolved_files[0].parent
+        if len(resolved_files) == 1
+        else Path(os.path.commonpath([str(path.parent) for path in resolved_files]))
+    )
+
+    lookup: dict[str, Path] = {}
+    for path in resolved_files:
+        lookup[path.relative_to(common_root).as_posix()] = path
+    return lookup
+
+
 def find_manifest_entry_for_path(
-    manifest: list[dict[str, str]], preferred_path: Path
+    manifest: list[dict[str, str]],
+    preferred_path: Path,
+    *,
+    selected_files: list[Path] | None = None,
 ) -> dict[str, str] | None:
-    preferred_leaf = preferred_path.name
+    exact_lookup = build_selected_file_lookup(selected_files or [])
+    resolved_preferred = preferred_path.expanduser().resolve()
+    for entry in manifest:
+        if exact_lookup.get(entry.get("file", "")) == resolved_preferred:
+            return entry
+
+    preferred_leaf = resolved_preferred.name
     for entry in manifest:
         entry_file = entry.get("file", "")
         if entry_file == preferred_leaf or entry_file.endswith(f"/{preferred_leaf}"):
@@ -370,6 +396,8 @@ def main(argv: list[str] | None = None) -> int:
             sidecar_audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
         return sidecar_module, sidecar_audit
 
+    selected_manifest: list[dict[str, str]] | None = None
+
     if args.print_manifest:
         if args.require_complete_sidecars:
             sidecar_module, sidecar_audit = ensure_sidecar_audit()
@@ -381,7 +409,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 1
         server_module = load_server_module(repo_root)
-        print(json.dumps(server_module.build_manifest(selected_files=selected_files), indent=2))
+        selected_manifest = server_module.build_manifest(selected_files=selected_files)
+        print(json.dumps(selected_manifest, indent=2))
         return 0
 
     if args.audit_assets:
@@ -419,9 +448,11 @@ def main(argv: list[str] | None = None) -> int:
     preferred_manifest_entry = None
     preferred_fixture_path = selected_files[0] if args.google_style and selected_files else None
     if preferred_fixture_path is not None:
+        selected_manifest = server_module.build_manifest(selected_files=selected_files)
         preferred_manifest_entry = find_manifest_entry_for_path(
-            server_module.build_manifest(selected_files=selected_files),
+            selected_manifest,
             preferred_fixture_path,
+            selected_files=selected_files,
         )
 
     _, sidecar_audit = ensure_sidecar_audit()
