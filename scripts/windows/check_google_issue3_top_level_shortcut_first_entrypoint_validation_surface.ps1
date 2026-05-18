@@ -64,6 +64,7 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md" -Kind "file" -Purpose "Suite-catalog guide note surfaced from the top-level shortcut-first route."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md" -Kind "file" -Purpose "Suite-catalog attached-html bridge note surfaced from the shortcut-first route."),
     (New-ValidationReference -Path "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md" -Kind "file" -Purpose "Dedicated Google attached-html flow note kept visible when the shortcut-first route widens back into the Google-shaped attached-page lane."),
+    (New-ValidationReference -Path "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md" -Kind "file" -Purpose "Issue-specific Google attached-html entrypoint note kept visible when the shortcut-first route narrows from the broader Google-shaped attached-page lane into the narrower replay bridge."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md" -Kind "file" -Purpose "Pinned bundle reference note kept visible when the shortcut-first route stays on the known three-page compatibility set."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Kind "file" -Purpose "Compact attached-bundle suite-surface note surfaced from the shortcut-first route."),
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md" -Kind "file" -Purpose "Broader validation-chain note that remains the later fallback for this shortcut-first route."),
@@ -71,7 +72,9 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Top-level validation router whose change-area commands feed the shortcut-first route."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Broader attached-html flow helper surfaced from the shortcut-first route."),
     (New-ValidationReference -Path "scripts/windows/check_google_attached_html_validation_surface.ps1" -Kind "file" -Purpose "Dedicated Google attached-html surface checker surfaced directly from the shortcut-first route before the narrower helper chain takes over."),
+    (New-ValidationReference -Path "scripts/windows/check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1" -Kind "file" -Purpose "Issue-specific Google attached-html surface checker kept visible when the shortcut-first route narrows from the broader Google-shaped attached-page lane into the narrower replay bridge."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Dedicated Google attached-html flow helper surfaced from the shortcut-first route."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1" -Kind "file" -Purpose "Issue-specific Google attached-html bridge helper kept visible when the shortcut-first route narrows from the broader Google-shaped attached-page lane into the narrower replay bridge."),
     (New-ValidationReference -Path "scripts/windows/show_google_input_validation_flow.ps1" -Kind "file" -Purpose "Broader Google input flow helper that can widen back out from the shortcut-first route."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Kind "file" -Purpose "Top-level shortcut-first helper that this checker validates."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Kind "file" -Purpose "Default next helper after the top-level shortcut-first route when no bundle inputs are pinned."),
@@ -97,6 +100,7 @@ $references = @(
 
 $contentExpectations = @(
     (New-ValidationContentExpectation -Path "docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_top_level_shortcut_first_entrypoint_validation_surface.ps1' -Purpose "Top-level shortcut-first note still reprints the live fail-fast checker command before the compact helper chain is trusted."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md" -Snippet 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -Purpose "Top-level shortcut-first note still reprints the issue-specific Google attached-html checker before the route narrows into the narrower replay bridge."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'top_level_shortcut_surface_check = $topLevelShortcutSurfaceCheckCommand' -Purpose "Helper command maps keep the dedicated top-level shortcut-first checker wired into the compact route surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the broader Google-shaped attached-page checker visible from the compact route surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName ''show_google_issue3_suite_router_shortcut_first_entrypoint.ps1'' -Arguments $bundleArguments' -Purpose "Helper command maps keep the suite-router shortcut-first entrypoint wired as the default narrower follow-up."),
@@ -204,5 +208,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} top-level shortcut-first path or source contract check(s).") -f $missing.Count)
-Write-Host "Repair the missing shortcut note, attached-page companion, Google attached-page surface checker, helper, or bundle fallback before trusting the issue #3 top-level shortcut-first route."
+Write-Host "Repair the missing shortcut note, attached-page companion, broader or issue-specific Google attached-page checker or bridge, helper, or bundle fallback before trusting the issue #3 top-level shortcut-first route."
 exit 1
