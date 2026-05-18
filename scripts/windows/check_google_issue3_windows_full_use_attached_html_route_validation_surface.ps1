@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -89,7 +106,20 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_bundle_first_entrypoint.ps1" -Kind "file" -Purpose "Pinned three-page bundle helper referenced by the route helper.") )
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditSidecars' -Purpose "Windows full-use keeps the wrapper-backed sidecar audit in the attached-pages preflight ladder before replay is blamed."),
+    (New-ValidationContentExpectation -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1' -Purpose "Windows full-use keeps the pinned bundle bridge checker visible before the route narrows into the locked three-page branch."),
+    (New-ValidationContentExpectation -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1' -Purpose "Windows full-use keeps the pinned bundle bridge helper visible before replay commits to the locked three-page branch."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1' -Purpose "Route note keeps the catalog-level fail-fast checker visible before the narrower Windows-first attached-page ladder is trusted."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Purpose "Route note keeps the Windows-first attached-page catalog quickstart visible before the route narrows further."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Purpose "Route note keeps the replay-side attached-page quickstart visible beside the broader Windows-full-use ladder."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1' -Purpose "Route note keeps the attached-html change-area bridge visible before the issue-specific helper chain narrows further."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --input ''<attached-html-root>'' --audit-sidecars' -Purpose "Route note keeps the attached-pages sidecar audit surfaced in the current attached-html follow-up ladder."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose "Route note keeps the compact attached-bundle suite surface visible before the replay narrows into the locked three-page branch."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose "Route note keeps the bundle-first helper visible once the route is pinned to the known three-page compatibility set.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -98,6 +128,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -105,15 +136,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-windows-full-use-attached-html-route"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -128,18 +193,28 @@ Write-Host ""
 Write-Host ("Repo root: {0}" -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host ("[{0}] {1}" -f $status, $result.Path)
     Write-Host ("  {0}" -f $result.Purpose)
 }
 
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host ("[{0}] {1}" -f $status, $result.Path)
+        Write-Host ("  {0}" -f $result.Purpose)
+    }
+}
+
 Write-Host ""
 if ($missing.Count -eq 0) {
-    Write-Host "Google issue #3 Windows full-use attached HTML route surface is intact."
+    Write-Host "Google issue #3 Windows full-use attached HTML route surface is intact, including the narrower catalog ladder, the replay-side attached-page quickstart, the sidecar-audit preflight, and the pinned bundle branch." 
     exit 0
 }
 
-Write-Host ("Missing {0} Windows full-use attached HTML route path(s)." -f $missing.Count)
-Write-Host "Repair the missing route note, helper, or attached-page bridge script before trusting the Windows full-use issue #3 attached localhost route."
+Write-Host ("Missing {0} Windows full-use attached HTML route path or source contract check(s)." -f $missing.Count)
+Write-Host "Repair the missing route note, helper, sidecar-audit preflight, pinned bundle bridge, or attached-page quickstart contract before trusting the Windows full-use issue #3 attached localhost route."
 exit 1
