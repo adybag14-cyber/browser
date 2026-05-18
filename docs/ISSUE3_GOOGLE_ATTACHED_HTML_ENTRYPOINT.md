@@ -4,7 +4,7 @@ Use this note when the headed validation router, the broader suite-catalog surfa
 
 This note matches `show_google_issue3_google_attached_html_entrypoint.ps1`.
 
-Before trusting this compact route after helper or note changes, rerun `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` so the issue-specific surface fails fast before the replay narrows again.
+Before trusting this compact route after helper or note changes, rerun `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` so the issue-specific surface fails fast before the replay narrows again, and keep the lighter sibling `_files` sidecar-bundle audit visible before the deeper local asset crawl when the saved export itself may be incomplete.
 
 Keep these companion notes nearby:
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
@@ -21,7 +21,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the Google-specific attached-page route, rerun the issue-specific Google attached-page surface check, the broader Google attached-page surface check, and the asset checks first, print the dedicated Google attached-page flow when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` as the shortest route back into the current issue `#3` shortcut-first, context-preserving, bundle-aware, and safe-route helpers.
+Start from the Google-specific attached-page route, rerun the lighter sidecar-bundle audit, the broader Google attached-page surface check, and the asset checks first, print the dedicated Google attached-page flow when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` as the shortest route back into the current issue `#3` shortcut-first, context-preserving, bundle-aware, and safe-route helpers.
 
 If the route is reopening from the suite-catalog side first, keep the suite-catalog entrypoints guide, the suite-catalog attached-page bridge, and the suite-catalog-to-top-level attached-page catalog quickstart visible long enough to confirm the Google-shaped branch before this narrower issue-specific bridge takes over.
 
@@ -88,18 +88,18 @@ Use this route when no saved summary, non-default repo root, or explicit attache
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
 Use that route when:
 - the next replay should stay on the Google-shaped attached localhost branch
-- you want the dedicated Google attached-page surface checker, asset audit, flow helper, and issue-specific entrypoint checker visible before the route collapses into the narrower issue `#3` helpers
+- you want the lighter sibling `_files` bundle audit to rule out an incomplete saved export before the broader Google attached-page surface checker, deeper asset audit, flow helper, and issue-specific entrypoint checker take over
 - you are not yet ready to widen back into the broader validation-router, replay-route, or safe-route notes
 
 ## Preserve replay context
@@ -107,6 +107,7 @@ Use that route when:
 If the replay already carries a non-default repo root, a saved summary, or explicit attached-page inputs, keep that same context attached to the entrypoint helper:
 
 ```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
@@ -144,40 +145,44 @@ Use that route when the replay should stay pinned to the Google Safety Centre pa
 
 1. `show_google_attached_html_validation_flow.ps1`
 
-Use this first when the dedicated Google attached-page route still needs the broader surface checker, asset-closure audit, saved-page handoff, and issue-specific entrypoint checker visible before you narrow again.
+Use this first when the dedicated Google attached-page route still needs the broader surface checker, sidecar-bundle audit, asset-closure audit, saved-page handoff, and issue-specific entrypoint checker visible before you narrow again.
 
-2. `show_google_issue3_google_attached_html_entrypoint.ps1`
+2. `python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'`
+
+Use this next when the current export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the deeper local asset crawl begins.
+
+3. `show_google_issue3_google_attached_html_entrypoint.ps1`
 
 Use this next when the Google-shaped attached-page route is already confirmed and you want the shortest issue `#3` bridge back into the narrower helper chain.
 
-3. `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`
+4. `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1`
 
 Use this when no pinned bundle inputs, saved summary, or non-default repo root need to take precedence and you want the newer shortcut-first helper immediately after the issue-specific attached-page entrypoint.
 
-4. `show_google_issue3_contextual_flow.ps1`
+5. `show_google_issue3_contextual_flow.ps1`
 
 Use this instead when repo-root, summary, or input-path state is already in play and the next helper should keep that replay context aligned.
 
-5. `show_google_issue3_replay_shortcuts.ps1`
+6. `show_google_issue3_replay_shortcuts.ps1`
 
 Use this when the route is already clearly inside issue `#3` and you want the tightest helper surface before deciding whether to widen again.
 
-6. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
+7. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
 
 Use this after `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` when explicit `InputPath` values are already pinned or when the replay should stay on the known three-page compatibility bundle before widening back into the broader issue `#3` helper chain.
 
-7. `show_google_issue3_safe_route_entrypoints.ps1`
+8. `show_google_issue3_safe_route_entrypoints.ps1`
 
 Use this when the attached-page helper branch is out of the way and you want the wrapper-heavy commands, notes, and runner-state helpers surfaced in one place.
 
 ## Practical rule
 
-Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, the suite-catalog attached-page route, or the broader top-level suite helper has already made the Google-shaped attached localhost branch obvious, rerun the dedicated Google attached-page surface check, the asset audit, and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` first, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
+Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, the suite-catalog attached-page route, or the broader top-level suite helper has already made the Google-shaped attached localhost branch obvious, rerun the lighter sibling `_files` sidecar-bundle audit before the deeper local asset crawl, keep the dedicated Google attached-page surface check and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` visible, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
 
-- no pinned bundle inputs and no saved replay context yet: go from the Google attached-page flow to the issue-specific checker, then the issue-specific entrypoint, then the shortcut-first helper, then replay shortcuts
+- no pinned bundle inputs and no saved replay context yet: go from the Google attached-page flow to the sidecar-bundle audit, the issue-specific checker, then the issue-specific entrypoint, then the shortcut-first helper, then replay shortcuts
 - broader attached localhost compatibility context still matters: keep `show_headed_validation_suites.ps1 -ChangeArea attached-html` visible beside the dedicated Google-shaped route before the narrower entrypoint chain takes over
 - suite-catalog route still matters more than the narrower shortcuts: keep `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, and `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` open beside this note so the broader attached-page bridge stays visible while the route narrows
-- Google attached-page flow still matters more than the narrower shortcuts: keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` open beside this note so the surface checker, asset audit, helper, and runner stay visible while the route narrows
+- Google attached-page flow still matters more than the narrower shortcuts: keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` open beside this note so the surface checker, sidecar-bundle audit, asset audit, helper, and runner stay visible while the route narrows
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` and `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before the bundle-first helper so the exact three-page compatibility set stays visible while the replay stays locked to the bundle-aware route
 - saved summary or repo-root override already present: pass the same replay context through the issue-specific checker and entrypoint first, then choose contextual flow, replay shortcuts, the bundle-first helper, or the safe-route map only as needed
 
