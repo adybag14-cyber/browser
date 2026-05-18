@@ -14,7 +14,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Value
-    }
+    )
 
     return "'" + ($Value -replace "'", "''") + "'"
 }
