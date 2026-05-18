@@ -52,7 +52,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
@@ -189,7 +189,7 @@ Use this next when you still want the broader validation-router attached-page br
 
 Use this next when the replay already reopened `show_headed_validation_suites.ps1 -ChangeArea attached-html` and you want the broader attached-page flow helper kept visible beside the newer quickstarts.
 
-7. `show_google_issue3_top_level_attached_html_quickstart.ps1`
+7. `show_google_issue3_top_level_attached_html_quICKSTART.ps1`
 
 Use this when you want the shortest top-level attached-page bridge kept visible before the route narrows again.
 
