@@ -4,7 +4,7 @@ Use this note when the headed validation router, the broader suite-catalog surfa
 
 This note matches `show_google_issue3_google_attached_html_entrypoint.ps1`.
 
-Before trusting this compact route after helper or note changes, rerun `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` so the issue-specific surface fails fast before the replay narrows again, and keep the lighter sibling `_files` sidecar-bundle audit visible before the deeper local asset crawl when the saved export itself may be incomplete.
+Before trusting this compact route after helper or note changes, rerun `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` so the issue-specific surface fails fast before the replay narrows again, and keep the Windows wrapper-backed sidecar-bundle audit visible before the deeper local asset crawl when the saved export itself may be incomplete.
 
 Keep these companion notes nearby:
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
@@ -18,6 +18,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
+- `scripts/windows/start_attached_pages_catalog.ps1`
 
 ## Goal
 
@@ -88,7 +89,7 @@ Use this route when no saved summary, non-default repo root, or explicit attache
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
@@ -99,7 +100,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 
 Use that route when:
 - the next replay should stay on the Google-shaped attached localhost branch
-- you want the lighter sibling `_files` bundle audit to rule out an incomplete saved export before the broader Google attached-page surface checker, deeper asset audit, flow helper, and issue-specific entrypoint checker take over
+- you want the wrapper-backed sidecar-bundle audit to rule out an incomplete saved export before the broader Google attached-page surface checker, deeper asset audit, flow helper, and issue-specific entrypoint checker take over
 - you are not yet ready to widen back into the broader validation-router, replay-route, or safe-route notes
 
 ## Preserve replay context
@@ -107,7 +108,7 @@ Use that route when:
 If the replay already carries a non-default repo root, a saved summary, or explicit attached-page inputs, keep that same context attached to the entrypoint helper:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --repo-root '<repo-root>' --input '<attached-html-or-folder>' --google-style --audit-sidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
@@ -147,9 +148,9 @@ Use that route when the replay should stay pinned to the Google Safety Centre pa
 
 Use this first when the dedicated Google attached-page route still needs the broader surface checker, sidecar-bundle audit, asset-closure audit, saved-page handoff, and issue-specific entrypoint checker visible before you narrow again.
 
-2. `python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars`
+2. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars`
 
-Use this next when the current export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the deeper local asset crawl begins.
+Use this next when the current export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the deeper local asset crawl begins while staying on the same Windows wrapper-backed route as the broader attached-page replay helpers.
 
 3. `show_google_issue3_google_attached_html_entrypoint.ps1`
 
@@ -177,9 +178,9 @@ Use this when the attached-page helper branch is out of the way and you want the
 
 ## Practical rule
 
-Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, the suite-catalog attached-page route, or the broader top-level suite helper has already made the Google-shaped attached localhost branch obvious, rerun the launcher-backed sidecar-bundle audit before the deeper local asset crawl, keep the dedicated Google attached-page surface check and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` visible, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
+Once `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`, the suite-catalog attached-page route, or the broader top-level suite helper has already made the Google-shaped attached localhost branch obvious, rerun the wrapper-backed sidecar-bundle audit before the deeper local asset crawl, keep the dedicated Google attached-page surface check and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` visible, print `show_google_attached_html_validation_flow.ps1` when you still want the broader localhost-first helper chain visible, then use `show_google_issue3_google_attached_html_entrypoint.ps1` before dropping to the shortcut-first helper, replay shortcuts, contextual flow, bundle-first branch, or the safe-route map.
 
-- no pinned bundle inputs and no saved replay context yet: go from the Google attached-page flow to the launcher-backed sidecar-bundle audit, the issue-specific checker, then the issue-specific entrypoint, then the shortcut-first helper, then replay shortcuts
+- no pinned bundle inputs and no saved replay context yet: go from the Google attached-page flow to the wrapper-backed sidecar-bundle audit, the issue-specific checker, then the issue-specific entrypoint, then the shortcut-first helper, then replay shortcuts
 - broader attached localhost compatibility context still matters: keep `show_headed_validation_suites.ps1 -ChangeArea attached-html` visible beside the dedicated Google-shaped route before the narrower entrypoint chain takes over
 - suite-catalog route still matters more than the narrower shortcuts: keep `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, and `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` open beside this note so the broader attached-page bridge stays visible while the route narrows
 - Google attached-page flow still matters more than the narrower shortcuts: keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` and `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` open beside this note so the surface checker, sidecar-bundle audit, asset audit, helper, and runner stay visible while the route narrows
