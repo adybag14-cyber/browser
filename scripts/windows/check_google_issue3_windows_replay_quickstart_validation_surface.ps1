@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -72,10 +89,25 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_handoff.ps1" -Kind "file" -Purpose "Wider suite-router handoff helper reused when the compact replay route needs to widen again."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_replay_route.ps1" -Kind "file" -Purpose "Replay-route helper reused when the compact replay route needs a wider bridge."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_bundle_first_entrypoint.ps1" -Kind "file" -Purpose "Bundle-first helper reused when the compact replay route should stay pinned to the three-page compatibility bundle."),
-    (New-ValidationReference -Path "scripts/windows/show_google_issue3_safe_route_entrypoints.ps1" -Kind "file" -Purpose "Wrapper-heavy safe-route map reopened only after the compact replay route narrows as far as it can go." )
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_safe_route_entrypoints.ps1" -Kind "file" -Purpose "Wrapper-heavy safe-route map reopened only after the compact replay route narrows as far as it can go.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1' -Purpose "Replay quickstart keeps the suite-catalog fail-fast checker visible before the broader catalog helper is reused."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1' -Purpose "Replay quickstart keeps the suite-catalog helper visible as the broader read-first re-entry surface."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_quickstart_validation_surface.ps1' -Purpose "Replay quickstart keeps the suite-router quickstart checker visible before the shorter router-side bridge is trusted."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_quickstart.ps1' -Purpose "Replay quickstart keeps the shorter suite-router bridge visible for the compact route."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Purpose "Replay quickstart keeps the replay-side attached-html fail-fast checker visible before the narrower attached-page ladder is reused."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1' -Purpose "Replay quickstart keeps the suite-router next-step checker visible before the executable matrix is reused."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet '- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`' -Purpose "Replay quickstart keeps the compact attached-bundle suite note visible as a companion reference."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Purpose "Replay quickstart keeps the compact attached-bundle suite helper visible before the bundle-first branch is chosen."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1" -Snippet "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments `$sharedArguments" -Purpose "Helper output keeps the suite-catalog entrypoint helper wired into the compact replay surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1" -Snippet "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments `$routeSurfaceArguments" -Purpose "Helper output keeps the replay-side attached-html surface checker wired into the compact replay surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1" -Snippet "attached_html_target_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments `$sharedArguments" -Purpose "Helper output keeps the compact attached-bundle suite helper wired into the compact replay surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1" -Snippet 'Treat replay_attached_html_note_path as the read-first written companion to windows_replay_attached_html_quickstart' -Purpose "Helper notes keep the replay-side attached-html note visible as the written companion once the route narrows.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -84,6 +116,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -91,15 +124,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-windows-replay-quickstart"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -114,10 +181,20 @@ Write-Host ""
 Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host (("[{0}] {1}") -f $status, $result.Path)
     Write-Host (("  {0}") -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host (("[{0}] {1}") -f $status, $result.Path)
+        Write-Host (("  {0}") -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -126,6 +203,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} Windows replay quickstart path(s).") -f $missing.Count)
-Write-Host "Repair the missing note, helper, or narrower attached-html bridge before trusting the issue #3 Windows replay quickstart route."
+Write-Host (("Missing {0} Windows replay quickstart path or source contract check(s).") -f $missing.Count)
+Write-Host "Repair the replay quickstart note, the compact suite-catalog or suite-router surfaces, the replay-side attached-html ladder, the bundle-aware helper surface, or the narrower helper contracts before trusting the issue #3 Windows replay quickstart route."
 exit 1
