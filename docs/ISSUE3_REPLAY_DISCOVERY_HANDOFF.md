@@ -142,6 +142,8 @@ obvious, prefer this compact chain:
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
@@ -159,7 +161,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top-level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1
@@ -174,8 +176,9 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 ```
 
 Use the same helper order after `-ChangeArea google-attached-html` when the
-broader Google-shaped attached-page checker, the lighter sidecar-bundle audit,
-the deeper Google-style asset audit, the shortcut-first checker, and the
+replay-side attached-page surface checker and quickstart, the broader
+Google-shaped attached-page checker, the lighter sidecar-bundle audit, the
+deeper Google-style asset audit, the shortcut-first checker, and the
 issue-specific bridge all need to stay visible first.
 
 When the top-level suite router already points at
@@ -236,8 +239,8 @@ chosen helper.
   top-level notes and replay-route helper take over.
 - `show_google_issue3_validation_router_attached_html_quickstart.ps1`: use this
   when the broader validation-router attached-page bridge should stay visible
-  before the replay collapses into the shorter top-level and replay-route
-  helpers.
+  before the replay-side attached-page surface checker, the replay-side
+  attached-page quickstart, and the shorter top-level and replay-route helpers.
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars`:
   use this when the current export may simply be missing its whole sibling
   `_files` bundle and you want that lighter failure mode ruled in or out before
@@ -307,7 +310,7 @@ chosen helper.
 - `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`: use this
   when the compact top-level attached-page route and the suite-catalog-side
   bridge should stay visible together before the replay narrows again.
-- `show_google_issue3_top-level-shortcut_first_entrypoint.ps1`: use this when
+- `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`: use this when
   the top-level shortcut-first bridge should stay visible before the narrower
   attached-page shortcut, replay-route, or replay-shortcuts surfaces take over.
 - `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`:
@@ -384,8 +387,14 @@ chosen helper.
 
 From the top-level suite router, prefer
 `show_google_issue3_validation_router_attached_html_quickstart.ps1` first
-whenever attached localhost follow-up is already the next obvious branch. If
-you are arriving from `docs/WINDOWS_FULL_USE.md`, rerun
+whenever attached localhost follow-up is already the next obvious branch, then
+rerun
+`check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`,
+then `show_google_issue3_windows_replay_attached_html_quickstart.ps1`, so the
+replay-side attached-page ladder fails fast before the route narrows into the
+broader attached-page flow helper, the dedicated Google-shaped attached-page
+lane, the shorter top-level helpers, or the replay-route helpers. If you are
+arriving from `docs/WINDOWS_FULL_USE.md`, rerun
 `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`,
 reopen
 `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`,
