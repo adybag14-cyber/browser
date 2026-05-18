@@ -214,7 +214,7 @@ Use this when the issue-specific Google attached-page bridge should stay visible
 
 Use this when the route is already clearly inside the top-level attached-page lane and you want the shortest top-level bridge kept visible before narrowing again.
 
-7. `show_google_issue3_top_LEVEL_attached_html_entrypoint.ps1`
+7. `show_google_issue3_top_level_attached_html_entrypoint.ps1`
 
 Use this when the broader top-level attached-page bridge should stay visible beside replay shortcuts or the next-step matrix before the route narrows again.
 
