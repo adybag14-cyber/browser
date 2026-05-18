@@ -135,11 +135,11 @@ Add-SharedArgument -Arguments $surfaceCheckArguments -Name RepoRoot -Value $reso
 
 $helper = [ordered]@{
     issue = 'Google issue #3 attached-pages launcher companion'
-    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis.'
+    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving.'
     repo_root = $resolvedRepoRoot
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     recommended_next_key = 'wrapper_sidecar_audit'
-    recommended_next_reason = 'The wrapper-backed sidecar audit is the cheapest honest preflight for issue #3 attached-page replay, so it should run before the broader asset audit, manifest print, or strict localhost launch.'
+    recommended_next_reason = 'The wrapper-backed sidecar audit is the cheapest honest preflight for issue #3 attached-page replay, so it should run before the broader asset audit, manifest print, or strict-launch gates.'
     surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments
     surface_check_reason = 'Use this first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted.'
     helper_commands = [ordered]@{
@@ -147,6 +147,7 @@ $helper = [ordered]@{
         wrapper_asset_audit = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('AuditAssets')
         wrapper_print_manifest = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('PrintManifest')
         wrapper_strict_launch = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('RequireCompleteSidecars')
+        wrapper_strict_assets = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('RequireCompleteAssets')
         wrapper_google_sidecar_audit = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle', 'AuditSidecars')
         wrapper_google_asset_audit = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle', 'AuditAssets')
         wrapper_google_manifest = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle', 'PrintManifest')
@@ -155,6 +156,7 @@ $helper = [ordered]@{
         python_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--audit-assets')
         python_print_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--print-manifest')
         python_strict_launch = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--require-complete-sidecars')
+        python_strict_assets = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--require-complete-assets')
         python_google_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--audit-sidecars')
         python_google_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--audit-assets')
         python_google_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--print-manifest')
@@ -173,7 +175,7 @@ $helper = [ordered]@{
     notes = @(
         'Run the surface check first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted.',
         'Use this helper when the issue #3 replay has already moved into attached localhost follow-up and you want the wrapper-backed preflight ladder and the lower-level Python launcher kept on one compact surface.',
-        'Prefer wrapper_sidecar_audit first, then wrapper_asset_audit, then wrapper_print_manifest or wrapper_strict_launch. That keeps missing sibling _files bundles from being mistaken for headed-browser regressions.',
+        'Prefer wrapper_sidecar_audit first, then wrapper_asset_audit, then wrapper_print_manifest, wrapper_strict_launch, or wrapper_strict_assets. That keeps missing sibling _files bundles or still-missing local assets from being mistaken for headed-browser regressions.',
         'Prefer the GoogleStyle variants when the current attached-page set should keep the strongest Google-like page first while replay narrows back into the issue-specific helper chain.',
         'Keep the attached-pages README, the Windows wrapper, and the lower-level Python launcher visible beside the issue #3 Google attached HTML flow and entrypoint notes so the preflight order stays aligned across Windows and cross-platform replay.'
     )
@@ -204,21 +206,23 @@ Write-Host 'Windows wrapper ladder:'
 Write-Host (("  1. Sidecar audit:      {0}") -f $helper.helper_commands.wrapper_sidecar_audit)
 Write-Host (("  2. Asset audit:        {0}") -f $helper.helper_commands.wrapper_asset_audit)
 Write-Host (("  3. Print manifest:     {0}") -f $helper.helper_commands.wrapper_print_manifest)
-Write-Host (("  4. Strict launch:      {0}") -f $helper.helper_commands.wrapper_strict_launch)
-Write-Host (("  5. Google sidecars:    {0}") -f $helper.helper_commands.wrapper_google_sidecar_audit)
-Write-Host (("  6. Google assets:      {0}") -f $helper.helper_commands.wrapper_google_asset_audit)
-Write-Host (("  7. Google manifest:    {0}") -f $helper.helper_commands.wrapper_google_manifest)
-Write-Host (("  8. Google launch:      {0}") -f $helper.helper_commands.wrapper_google_launch)
+Write-Host (("  4. Strict sidecars:    {0}") -f $helper.helper_commands.wrapper_strict_launch)
+Write-Host (("  5. Strict assets:      {0}") -f $helper.helper_commands.wrapper_strict_assets)
+Write-Host (("  6. Google sidecars:    {0}") -f $helper.helper_commands.wrapper_google_sidecar_audit)
+Write-Host (("  7. Google assets:      {0}") -f $helper.helper_commands.wrapper_google_asset_audit)
+Write-Host (("  8. Google manifest:    {0}") -f $helper.helper_commands.wrapper_google_manifest)
+Write-Host (("  9. Google launch:      {0}") -f $helper.helper_commands.wrapper_google_launch)
 Write-Host ''
 Write-Host 'Cross-platform launcher ladder:'
 Write-Host (("  1. Sidecar audit:      {0}") -f $helper.helper_commands.python_sidecar_audit)
 Write-Host (("  2. Asset audit:        {0}") -f $helper.helper_commands.python_asset_audit)
 Write-Host (("  3. Print manifest:     {0}") -f $helper.helper_commands.python_print_manifest)
-Write-Host (("  4. Strict launch:      {0}") -f $helper.helper_commands.python_strict_launch)
-Write-Host (("  5. Google sidecars:    {0}") -f $helper.helper_commands.python_google_sidecar_audit)
-Write-Host (("  6. Google assets:      {0}") -f $helper.helper_commands.python_google_asset_audit)
-Write-Host (("  7. Google manifest:    {0}") -f $helper.helper_commands.python_google_manifest)
-Write-Host (("  8. Google launch:      {0}") -f $helper.helper_commands.python_google_launch)
+Write-Host (("  4. Strict sidecars:    {0}") -f $helper.helper_commands.python_strict_launch)
+Write-Host (("  5. Strict assets:      {0}") -f $helper.helper_commands.python_strict_assets)
+Write-Host (("  6. Google sidecars:    {0}") -f $helper.helper_commands.python_google_sidecar_audit)
+Write-Host (("  7. Google assets:      {0}") -f $helper.helper_commands.python_google_asset_audit)
+Write-Host (("  8. Google manifest:    {0}") -f $helper.helper_commands.python_google_manifest)
+Write-Host (("  9. Google launch:      {0}") -f $helper.helper_commands.python_google_launch)
 Write-Host ''
 Write-Host (("Launcher surface check: {0}") -f $helper.companion_paths.launcher_companion_surface_check)
 Write-Host (("Attached-pages guide:    {0}") -f $helper.companion_paths.attached_pages_launcher_readme)
