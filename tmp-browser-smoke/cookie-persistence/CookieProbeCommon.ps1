@@ -1,14 +1,23 @@
-$script:Repo = "C:\Users\adyba\src\lightpanda-browser"
-$script:Root = Join-Path $script:Repo "tmp-browser-smoke\cookie-persistence"
-$script:BrowserExe = Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
+[CmdletBinding()]
+param()
 
-. "$script:Repo\tmp-browser-smoke\common\Win32Input.ps1"
-. "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
+
+$script:Root = $PSScriptRoot
+$script:Repo = Resolve-LightpandaRepoRoot $script:Root
+$script:BrowserExe = Resolve-LightpandaBrowserExe $script:Repo $null
 
 function Reset-CookieProfile([string]$ProfileRoot) {
   $appDataRoot = Join-Path $ProfileRoot "lightpanda"
   $downloadsDir = Join-Path $appDataRoot "downloads"
-  cmd /c "rmdir /s /q `"$ProfileRoot`"" | Out-Null
+  if (Test-Path -LiteralPath $ProfileRoot) {
+    Remove-Item -LiteralPath $ProfileRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
   New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
   $env:APPDATA = $ProfileRoot
   $env:LOCALAPPDATA = $ProfileRoot
@@ -30,19 +39,13 @@ homepage_url
 "@ | Set-Content -Path (Join-Path $AppDataRoot "browse-settings-v1.txt") -NoNewline
 }
 
-function Wait-CookieServer([int]$Port, [int]$Attempts = 30) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port/seed.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { return $true }
-    } catch {}
-  }
-  return $false
+function Wait-CookieServer([int]$Port, [int]$TimeoutSeconds = 15, [int]$PollMilliseconds = 250) {
+  return Wait-LightpandaHttpReady -Url "http://127.0.0.1:$Port/seed.html" -TimeoutSeconds $TimeoutSeconds -PollMilliseconds $PollMilliseconds
 }
 
 function Start-CookieServer([int]$Port, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath "python" -ArgumentList (Join-Path $script:Root "cookie_server.py"),"$Port" -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  $python = Resolve-LightpandaPythonCommand
+  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $script:Root "cookie_server.py"),"$Port")) -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Start-CookieBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
