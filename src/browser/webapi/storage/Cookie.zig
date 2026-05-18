@@ -31,6 +31,7 @@ const Cookie = @This();
 const max_cookie_size = 4 * 1024;
 const max_cookie_header_size = 8 * 1024;
 const max_jar_size = 1024;
+const google_skip_sg_ss_cookie_env = "LIGHTPANDA_GOOGLE_SKIP_SG_SS_COOKIE";
 
 arena: ArenaAllocator,
 arena_owned: ?*ArenaAllocator = null,
@@ -520,6 +521,9 @@ pub const Jar = struct {
             if (!cookie.appliesTo(&target, same_site, opts.is_navigation, opts.is_http)) {
                 continue;
             }
+            if (shouldSkipCookieForRequest(cookie, target.host)) {
+                continue;
+            }
 
             // we have a match!
             if (first) {
@@ -554,6 +558,21 @@ pub const Jar = struct {
         }
     }
 };
+
+fn shouldSkipCookieForRequest(cookie: *const Cookie, target_host: []const u8) bool {
+    if (!compat.envFlagEnabled(google_skip_sg_ss_cookie_env)) {
+        return false;
+    }
+    if (!std.mem.eql(u8, cookie.name, "SG_SS")) {
+        return false;
+    }
+    return isGoogleHost(target_host);
+}
+
+fn isGoogleHost(host: []const u8) bool {
+    return std.ascii.eqlIgnoreCase(host, "google.com") or
+        std.ascii.endsWithIgnoreCase(host, ".google.com");
+}
 
 fn isCookieExpired(cookie: *const Cookie, now: i64) bool {
     const ce = cookie.expires orelse return false;

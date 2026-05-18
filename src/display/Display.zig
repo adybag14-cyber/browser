@@ -352,6 +352,13 @@ pub fn dispatchNativeInput(self: *Display, page: anytype) !bool {
     };
 }
 
+pub fn discardNativeInput(self: *Display) void {
+    switch (self.backend) {
+        .headed_windows => |*backend| backend.discardInput(),
+        else => {},
+    }
+}
+
 pub fn hasPendingNativeInput(self: *Display) bool {
     return switch (self.backend) {
         .bare_metal => |*backend| backend.hasPendingInput(),

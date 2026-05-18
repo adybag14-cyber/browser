@@ -340,3 +340,40 @@
   testing.expectEqual('', form.elements['choice'].value)
 }
 </script>
+
+<script id="request_submit_fires_submit_event">
+{
+  const form = document.createElement('form')
+  form.action = '/should-not-load'
+  document.body.appendChild(form)
+
+  let submitted = false
+  form.addEventListener('submit', event => {
+    submitted = true
+    event.preventDefault()
+  })
+
+  testing.expectEqual('function', typeof form.requestSubmit)
+  form.requestSubmit()
+  testing.expectEqual(true, submitted)
+}
+</script>
+
+<script id="request_submit_accepts_owned_submitter">
+{
+  const form = document.createElement('form')
+  const submitter = document.createElement('button')
+  submitter.type = 'submit'
+  form.appendChild(submitter)
+  document.body.appendChild(form)
+
+  let submitted = false
+  form.addEventListener('submit', event => {
+    submitted = true
+    event.preventDefault()
+  })
+
+  form.requestSubmit(submitter)
+  testing.expectEqual(true, submitted)
+}
+</script>

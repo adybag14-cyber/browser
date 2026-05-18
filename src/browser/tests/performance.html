@@ -89,6 +89,16 @@
   }
 </script>
 
+<script id=getEntriesByType_navigation>
+  {
+    const entries = performance.getEntriesByType("navigation");
+    testing.expectEqual(true, Array.isArray(entries));
+    testing.expectEqual(1, entries.length);
+    testing.expectEqual("navigation", entries[0].entryType);
+    testing.expectEqual(location.href, entries[0].name);
+  }
+</script>
+
 <script id=getEntriesByName>
   {
     performance.clearMarks();
@@ -287,7 +297,7 @@
     // navigationStart must be a number (sites access performance.timing.navigationStart)
     const timing = performance.timing;
     testing.expectEqual('number', typeof timing.navigationStart);
-    testing.expectEqual(0, timing.navigationStart);
+    testing.expectEqual(true, timing.navigationStart > 0);
   }
 </script>
 
@@ -359,7 +369,7 @@
   {
     // The most commonly used property — must be a number (not undefined)
     testing.expectEqual('number', typeof performance.timing.navigationStart);
-    testing.expectEqual(0, performance.timing.navigationStart);
+    testing.expectEqual(true, performance.timing.navigationStart > 0);
   }
 </script>
 

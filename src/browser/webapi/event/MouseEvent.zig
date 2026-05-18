@@ -151,6 +151,14 @@ pub fn getClientY(self: *const MouseEvent) f64 {
     return self._client_y;
 }
 
+pub fn getOffsetX(_: *const MouseEvent) f64 {
+    return 0.0;
+}
+
+pub fn getOffsetY(_: *const MouseEvent) f64 {
+    return 0.0;
+}
+
 pub fn getCtrlKey(self: *const MouseEvent) bool {
     return self._ctrl_key;
 }
@@ -185,6 +193,25 @@ pub fn getShiftKey(self: *const MouseEvent) bool {
     return self._shift_key;
 }
 
+pub fn getModifierState(self: *const MouseEvent, key: []const u8) bool {
+    if (std.mem.eql(u8, key, "Alt") or std.mem.eql(u8, key, "AltGraph")) {
+        return self._alt_key;
+    }
+    if (std.mem.eql(u8, key, "Control")) {
+        return self._ctrl_key;
+    }
+    if (std.mem.eql(u8, key, "Meta")) {
+        return self._meta_key;
+    }
+    if (std.mem.eql(u8, key, "Shift")) {
+        return self._shift_key;
+    }
+    if (std.mem.eql(u8, key, "Accel")) {
+        return self._ctrl_key or self._meta_key;
+    }
+    return false;
+}
+
 pub const JsApi = struct {
     pub const bridge = js.Bridge(MouseEvent);
 
@@ -204,14 +231,15 @@ pub const JsApi = struct {
     pub const clientY = bridge.accessor(getClientY, null, .{});
     pub const ctrlKey = bridge.accessor(getCtrlKey, null, .{});
     pub const metaKey = bridge.accessor(getMetaKey, null, .{});
-    pub const offsetX = bridge.property(0.0, .{ .template = false });
-    pub const offsetY = bridge.property(0.0, .{ .template = false });
+    pub const offsetX = bridge.accessor(getOffsetX, null, .{});
+    pub const offsetY = bridge.accessor(getOffsetY, null, .{});
     pub const pageX = bridge.accessor(getPageX, null, .{});
     pub const pageY = bridge.accessor(getPageY, null, .{});
     pub const relatedTarget = bridge.accessor(getRelatedTarget, null, .{});
     pub const screenX = bridge.accessor(getScreenX, null, .{});
     pub const screenY = bridge.accessor(getScreenY, null, .{});
     pub const shiftKey = bridge.accessor(getShiftKey, null, .{});
+    pub const getModifierState = bridge.function(MouseEvent.getModifierState, .{});
     pub const x = bridge.accessor(getClientX, null, .{});
     pub const y = bridge.accessor(getClientY, null, .{});
 };

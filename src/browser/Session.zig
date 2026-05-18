@@ -40,10 +40,12 @@ const QueuedNavigation = Page.QueuedNavigation;
 const Allocator = std.mem.Allocator;
 const IS_DEBUG = builtin.mode == .Debug;
 var google_wait_trace_lock: lp.compat.Mutex = .{};
+const google_diagnostics_env = "LIGHTPANDA_GOOGLE_DIAGNOSTICS";
 
 fn googleWaitTraceEnabled(url: []const u8) bool {
-    return std.mem.indexOf(u8, url, "google-home-") != null or
-        std.mem.indexOf(u8, url, "google.com") != null;
+    return compat.envFlagEnabled(google_diagnostics_env) and
+        (std.mem.indexOf(u8, url, "google-home-") != null or
+        std.mem.indexOf(u8, url, "google.com") != null);
 }
 
 fn appendGoogleWaitTrace(stage: []const u8, url: []const u8, detail: []const u8) void {
@@ -398,12 +400,19 @@ fn _wait(self: *Session, page: *Page, wait_ms: u32, dispatch_native_input: bool)
         const ms_remaining: u32 = @intCast((deadline_ns - elapsed_ns) / std.time.ns_per_ms);
 
         var handled_native_input = false;
+        const can_dispatch_native_input = dispatch_native_input and switch (page._parse_state) {
+            .html, .complete => true,
+            else => false,
+        };
         if (dispatch_native_input and googleWaitTraceEnabled(page.url) and self.browser.app.display.hasPendingNativeInput()) {
             log.warn(.browser, "session wait pending input", .{
                 .url = page.url,
             });
         }
-        if (dispatch_native_input) {
+        if (dispatch_native_input and !can_dispatch_native_input and self.browser.app.display.hasPendingNativeInput()) {
+            appendGoogleWaitTrace("dispatch_native_input", page.url, "defer_until_document_ready");
+        }
+        if (can_dispatch_native_input) {
             appendGoogleWaitTrace("dispatch_native_input", page.url, "enter");
             if (googleWaitTraceEnabled(page.url)) {
                 log.warn(.browser, "session dispatch native input", .{
@@ -720,6 +729,8 @@ fn processRootQueuedNavigation(self: *Session) !void {
     defer self.browser.arena_pool.release(qn.arena);
 
     const browser = self.browser;
+
+    browser.app.display.discardNativeInput();
 
     // Scheduled navigation replaces the page/context, but the browser window
     // belongs to the session and should remain open across navigations.

@@ -42,12 +42,14 @@ const modifier_ctrl = 1 << 1;
 const modifier_alt = 1 << 2;
 const modifier_meta = 1 << 3;
 const win32_input_mailbox_env = "LIGHTPANDA_WIN32_INPUT";
+const google_diagnostics_env = "LIGHTPANDA_GOOGLE_DIAGNOSTICS";
 var runtime_input_trace_lock: compat.Mutex = .{};
 var google_window_trace_lock: compat.Mutex = .{};
 
 fn googleInputTraceEnabled(url: []const u8) bool {
-    return std.mem.indexOf(u8, url, "google-home-") != null or
-        std.mem.indexOf(u8, url, "google.com") != null;
+    return compat.envFlagEnabled(google_diagnostics_env) and
+        (std.mem.indexOf(u8, url, "google-home-") != null or
+        std.mem.indexOf(u8, url, "google.com") != null);
 }
 
 fn runtimeInputTraceEnabled(url: []const u8) bool {
@@ -1209,6 +1211,11 @@ pub const Win32Backend = struct {
         return processed_input;
     }
 
+    pub fn discardInput(self: *Win32Backend) void {
+        pollMailboxInput(self) catch {};
+        clearQueuedPageInput(self);
+    }
+
     pub fn hasPendingInput(self: *Win32Backend) bool {
         self.input_lock.lock();
         const has_queued = self.input_events.items.len > 0;
@@ -1463,24 +1470,33 @@ fn inputEventsCanCoalesce(existing: Win32Backend.InputEvent, incoming: Win32Back
     };
 }
 
-fn coalesceQueuedInputEvent(existing: *Win32Backend.InputEvent, incoming: Win32Backend.InputEvent) void {
+fn coalesceQueuedInputEvent(existing: *Win32Backend.InputEvent, incoming: Win32Backend.InputEvent) bool {
     switch (existing.*) {
         .mouse_move => switch (incoming) {
-            .mouse_move => |move| existing.* = .{ .mouse_move = move },
-            else => unreachable,
+            .mouse_move => |move| {
+                existing.* = .{ .mouse_move = move };
+                return true;
+            },
+            else => return false,
         },
         .mouse_wheel => |wheel| switch (incoming) {
-            .mouse_wheel => |incoming_wheel| existing.* = .{ .mouse_wheel = .{
-                .x = incoming_wheel.x,
-                .y = incoming_wheel.y,
-                .delta_x = wheel.delta_x + incoming_wheel.delta_x,
-                .delta_y = wheel.delta_y + incoming_wheel.delta_y,
-                .modifiers = wheel.modifiers,
-            } },
-            else => unreachable,
+            .mouse_wheel => |incoming_wheel| {
+                existing.* = .{ .mouse_wheel = .{
+                    .x = incoming_wheel.x,
+                    .y = incoming_wheel.y,
+                    .delta_x = wheel.delta_x + incoming_wheel.delta_x,
+                    .delta_y = wheel.delta_y + incoming_wheel.delta_y,
+                    .modifiers = wheel.modifiers,
+                } };
+                return true;
+            },
+            else => return false,
         },
-        .window_blur => {},
-        else => unreachable,
+        .window_blur => switch (incoming) {
+            .window_blur => return true,
+            else => return false,
+        },
+        else => return false,
     }
 }
 
@@ -1491,8 +1507,9 @@ fn queueInputEvent(self: *Win32Backend, event: Win32Backend.InputEvent) void {
     if (self.input_events.items.len > 0) {
         const last_index = self.input_events.items.len - 1;
         if (inputEventsCanCoalesce(self.input_events.items[last_index], event)) {
-            coalesceQueuedInputEvent(&self.input_events.items[last_index], event);
-            return;
+            if (coalesceQueuedInputEvent(&self.input_events.items[last_index], event)) {
+                return;
+            }
         }
     }
 
@@ -9651,6 +9668,29 @@ test "win32 queueInputEvent coalesces trailing mouse_move updates" {
             try std.testing.expectEqual(@as(f64, 30), move.x);
             try std.testing.expectEqual(@as(f64, 40), move.y);
             try std.testing.expect(move.modifiers.shift);
+        },
+        else => return error.TestUnexpectedEventType,
+    }
+}
+
+test "win32 input coalescing ignores mismatched event kinds defensively" {
+    var existing: Win32Backend.InputEvent = .{ .mouse_move = .{
+        .x = 10,
+        .y = 20,
+        .modifiers = .{},
+    } };
+    const incoming: Win32Backend.InputEvent = .{ .mouse_down = .{
+        .x = 10,
+        .y = 20,
+        .button = .main,
+        .modifiers = .{ .buttons = 1 },
+    } };
+
+    try std.testing.expect(!coalesceQueuedInputEvent(&existing, incoming));
+    switch (existing) {
+        .mouse_move => |move| {
+            try std.testing.expectEqual(@as(f64, 10), move.x);
+            try std.testing.expectEqual(@as(f64, 20), move.y);
         },
         else => return error.TestUnexpectedEventType,
     }

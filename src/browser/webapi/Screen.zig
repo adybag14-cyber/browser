@@ -16,9 +16,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+const builtin = @import("builtin");
 const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
 const EventTarget = @import("EventTarget.zig");
+const win = if (builtin.os.tag == .windows) @import("win32_c") else struct {};
 
 pub fn registerTypes() []const type {
     return &.{
@@ -29,15 +31,74 @@ pub fn registerTypes() []const type {
 
 const Screen = @This();
 
+const fallback_width: u32 = 1920;
+const fallback_height: u32 = 1080;
+const fallback_avail_height: u32 = 1040;
+
+const Dimensions = struct {
+    width: u32 = fallback_width,
+    height: u32 = fallback_height,
+    avail_width: u32 = fallback_width,
+    avail_height: u32 = fallback_avail_height,
+};
+
 _proto: *EventTarget,
 _orientation: ?*Orientation = null,
-_width: u32 = 1920,
-_height: u32 = 1080,
-_avail_height: u32 = 1040,
+_width: u32 = fallback_width,
+_height: u32 = fallback_height,
+_avail_width: u32 = fallback_width,
+_avail_height: u32 = fallback_avail_height,
+
+pub fn initDefault() Screen {
+    const dimensions = defaultDimensions();
+    return .{
+        ._proto = undefined,
+        ._orientation = null,
+        ._width = dimensions.width,
+        ._height = dimensions.height,
+        ._avail_width = dimensions.avail_width,
+        ._avail_height = dimensions.avail_height,
+    };
+}
+
+fn defaultDimensions() Dimensions {
+    if (comptime builtin.os.tag == .windows) {
+        const width = positiveMetric(win.GetSystemMetrics(win.SM_CXSCREEN), fallback_width);
+        const height = positiveMetric(win.GetSystemMetrics(win.SM_CYSCREEN), fallback_height);
+        const avail_width = clampToMetric(
+            positiveMetric(win.GetSystemMetrics(win.SM_CXFULLSCREEN), width),
+            width,
+        );
+        const avail_height = clampToMetric(
+            positiveMetric(win.GetSystemMetrics(win.SM_CYFULLSCREEN), if (height > 40) height - 40 else height),
+            height,
+        );
+
+        return .{
+            .width = width,
+            .height = height,
+            .avail_width = avail_width,
+            .avail_height = avail_height,
+        };
+    }
+
+    return .{};
+}
+
+fn positiveMetric(value: c_int, fallback: u32) u32 {
+    if (value <= 0) return fallback;
+    return @intCast(value);
+}
+
+fn clampToMetric(value: u32, maximum: u32) u32 {
+    if (maximum == 0) return value;
+    return @min(value, maximum);
+}
 
 pub fn setDimensions(self: *Screen, width: u32, height: u32) void {
     self._width = if (width == 0) 1 else width;
     self._height = if (height == 0) 1 else height;
+    self._avail_width = self._width;
     self._avail_height = if (self._height > 40) self._height - 40 else self._height;
 }
 
@@ -50,7 +111,7 @@ pub fn getHeight(self: *const Screen) u32 {
 }
 
 pub fn getAvailWidth(self: *const Screen) u32 {
-    return self._width;
+    return self._avail_width;
 }
 
 pub fn getAvailHeight(self: *const Screen) u32 {
@@ -83,8 +144,8 @@ pub const JsApi = struct {
     pub const height = bridge.accessor(Screen.getHeight, null, .{});
     pub const availWidth = bridge.accessor(Screen.getAvailWidth, null, .{});
     pub const availHeight = bridge.accessor(Screen.getAvailHeight, null, .{});
-    pub const colorDepth = bridge.property(24, .{ .template = false });
-    pub const pixelDepth = bridge.property(24, .{ .template = false });
+    pub const colorDepth = bridge.property(32, .{ .template = false });
+    pub const pixelDepth = bridge.property(32, .{ .template = false });
     pub const orientation = bridge.accessor(Screen.getOrientation, null, .{});
 };
 

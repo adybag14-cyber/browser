@@ -110,8 +110,9 @@ pub fn runMacrotasks(self: *Browser) !?u64 {
     defer env.isolate.exit();
 
     var time_to_next: ?u64 = null;
+    const max_iterations: usize = if (self.http_client.cdp_client != null) 4 else 32;
     var iterations: usize = 0;
-    while (iterations < 32) : (iterations += 1) {
+    while (iterations < max_iterations) : (iterations += 1) {
         var iteration_next = try self.env.runMacrotasks();
         const pumped_message = env.pumpMessageLoopStep();
         if (pumped_message and (iteration_next == null or iteration_next.? > 1)) {

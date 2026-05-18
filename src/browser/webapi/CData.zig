@@ -150,8 +150,9 @@ pub fn asNode(self: *CData) *Node {
 }
 
 pub fn is(self: *CData, comptime T: type) ?*T {
+    const active_tag = std.meta.activeTag(self._type);
     inline for (@typeInfo(Type).@"union".fields) |f| {
-        if (f.type == T and @field(Type, f.name) == self._type) {
+        if (f.type == T and @field(Type, f.name) == active_tag) {
             return &@field(self._type, f.name);
         }
     }

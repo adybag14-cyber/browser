@@ -156,12 +156,16 @@
 </script>
 
 <script id=screen>
-  testing.expectEqual(1920, screen.width);
-  testing.expectEqual(1080, screen.height);
-  testing.expectEqual(1920, screen.availWidth);
-  testing.expectEqual(1040, screen.availHeight);
-  testing.expectEqual(24, screen.colorDepth);
-  testing.expectEqual(24, screen.pixelDepth);
+  testing.expectEqual('number', typeof screen.width);
+  testing.expectEqual('number', typeof screen.height);
+  testing.expectEqual(true, screen.width > 0);
+  testing.expectEqual(true, screen.height > 0);
+  testing.expectEqual(true, screen.availWidth > 0);
+  testing.expectEqual(true, screen.availHeight > 0);
+  testing.expectEqual(true, screen.availWidth <= screen.width);
+  testing.expectEqual(true, screen.availHeight <= screen.height);
+  testing.expectEqual(32, screen.colorDepth);
+  testing.expectEqual(32, screen.pixelDepth);
   testing.expectEqual(screen, window.screen);
 </script>
 
@@ -188,12 +192,21 @@
 <script id=chrome>
   testing.expectEqual('object', typeof chrome);
   testing.expectEqual(chrome, window.chrome);
-  testing.expectEqual('object', typeof chrome.runtime);
+  testing.expectEqual('loadTimes,csi,app', Object.keys(chrome).join(','));
+  const chromeDescriptor = Object.getOwnPropertyDescriptor(window, 'chrome');
+  testing.expectEqual(true, chromeDescriptor.enumerable);
+  testing.expectEqual(false, chromeDescriptor.configurable);
+  testing.expectEqual(true, chromeDescriptor.writable);
   testing.expectEqual('object', typeof chrome.app);
   testing.expectEqual(false, chrome.app.isInstalled);
-  testing.expectEqual('object', typeof chrome.webstore);
+  testing.expectEqual('undefined', typeof chrome.runtime);
+  testing.expectEqual('undefined', typeof chrome.webstore);
   testing.expectEqual('function', typeof chrome.loadTimes);
   testing.expectEqual('function', typeof chrome.csi);
+  testing.expectEqual('function', typeof BroadcastChannel);
+  const channel = new BroadcastChannel('lightpanda-window-test');
+  testing.expectEqual('lightpanda-window-test', channel.name);
+  channel.close();
 </script>
 
 <script id=compression_stream>

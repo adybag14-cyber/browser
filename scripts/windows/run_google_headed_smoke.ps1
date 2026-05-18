@@ -11,7 +11,15 @@ param(
     [switch]$DisablePageScripts,
     [switch]$AcceptConsent,
     [switch]$NoSeedGoogleConsent,
-    [switch]$KeepPreviousArtifacts
+    [switch]$EnableGoogleDiagnostics,
+    [switch]$KeepPreviousArtifacts,
+    [switch]$AllowGoogleSgSs,
+    [switch]$SkipGoogleSgSs,
+    [int]$HttpTimeoutMs = 60000,
+    [ValidateSet("1.1", "2tls", "none", "default")]
+    [string]$HttpVersion = "1.1",
+    [ValidateSet("lean", "minimal", "chrome", "default")]
+    [string]$GoogleHeaderMode = "lean"
 )
 
 Set-StrictMode -Version Latest
@@ -149,11 +157,55 @@ $previousIpResolve = $env:LIGHTPANDA_IP_RESOLVE
 if ($IpResolve) {
     $env:LIGHTPANDA_IP_RESOLVE = $IpResolve
 }
+$previousHttpVersion = $env:LIGHTPANDA_HTTP_VERSION
+if ($HttpVersion -and $HttpVersion -ne "default") {
+    $env:LIGHTPANDA_HTTP_VERSION = $HttpVersion
+} else {
+    Remove-Item Env:LIGHTPANDA_HTTP_VERSION -ErrorAction SilentlyContinue
+}
+$previousGoogleMinimalHeaders = $env:LIGHTPANDA_GOOGLE_MINIMAL_HEADERS
+if ($GoogleHeaderMode -eq "minimal") {
+    $env:LIGHTPANDA_GOOGLE_MINIMAL_HEADERS = "true"
+} else {
+    Remove-Item Env:LIGHTPANDA_GOOGLE_MINIMAL_HEADERS -ErrorAction SilentlyContinue
+}
+$previousGoogleLeanHeaders = $env:LIGHTPANDA_GOOGLE_LEAN_HEADERS
+if ($GoogleHeaderMode -eq "lean") {
+    $env:LIGHTPANDA_GOOGLE_LEAN_HEADERS = "true"
+} else {
+    Remove-Item Env:LIGHTPANDA_GOOGLE_LEAN_HEADERS -ErrorAction SilentlyContinue
+}
+$previousGoogleChromeHeaders = $env:LIGHTPANDA_GOOGLE_CHROME_HEADERS
+if ($GoogleHeaderMode -eq "chrome") {
+    $env:LIGHTPANDA_GOOGLE_CHROME_HEADERS = "true"
+} else {
+    Remove-Item Env:LIGHTPANDA_GOOGLE_CHROME_HEADERS -ErrorAction SilentlyContinue
+}
+$previousGoogleCoalesceSearchSeiNavigation = $env:LIGHTPANDA_GOOGLE_COALESCE_SEARCH_SEI_NAVIGATION
+$env:LIGHTPANDA_GOOGLE_COALESCE_SEARCH_SEI_NAVIGATION = "true"
+$previousGoogleStripSgSsNavigation = $env:LIGHTPANDA_GOOGLE_STRIP_SG_SS_NAVIGATION
+if ($SkipGoogleSgSs -and -not $AllowGoogleSgSs) {
+    $env:LIGHTPANDA_GOOGLE_STRIP_SG_SS_NAVIGATION = "true"
+} else {
+    Remove-Item Env:LIGHTPANDA_GOOGLE_STRIP_SG_SS_NAVIGATION -ErrorAction SilentlyContinue
+}
+$previousGoogleSkipSgSsCookie = $env:LIGHTPANDA_GOOGLE_SKIP_SG_SS_COOKIE
+if ($SkipGoogleSgSs -and -not $AllowGoogleSgSs) {
+    $env:LIGHTPANDA_GOOGLE_SKIP_SG_SS_COOKIE = "true"
+} else {
+    Remove-Item Env:LIGHTPANDA_GOOGLE_SKIP_SG_SS_COOKIE -ErrorAction SilentlyContinue
+}
 $previousDisablePageJs = $env:LIGHTPANDA_DISABLE_PAGE_JS
 if ($DisablePageScripts) {
     $env:LIGHTPANDA_DISABLE_PAGE_JS = "true"
 } else {
     Remove-Item Env:LIGHTPANDA_DISABLE_PAGE_JS -ErrorAction SilentlyContinue
+}
+$previousGoogleDiagnostics = $env:LIGHTPANDA_GOOGLE_DIAGNOSTICS
+if ($EnableGoogleDiagnostics) {
+    $env:LIGHTPANDA_GOOGLE_DIAGNOSTICS = "true"
+} else {
+    Remove-Item Env:LIGHTPANDA_GOOGLE_DIAGNOSTICS -ErrorAction SilentlyContinue
 }
 
 $process = $null
@@ -173,7 +225,7 @@ try {
         "--window_height",
         "720",
         "--http_timeout",
-        "20000",
+        ([Math]::Max($HttpTimeoutMs, 30000)).ToString(),
         "--log_level",
         "debug",
         "--profile_dir",
@@ -201,12 +253,17 @@ try {
 
     $driverScript = @'
 const fs = require("fs");
+const path = require("path");
 const WebSocket = require("ws");
 
 const wsUrl = process.env.LP_GOOGLE_SMOKE_WS;
 const query = process.env.LP_GOOGLE_SMOKE_QUERY || "brass otter lantern";
 const timeoutMs = Number(process.env.LP_GOOGLE_SMOKE_TIMEOUT_MS || "60000");
+const quickEvalTimeoutMs = Math.min(timeoutMs, 5000);
+const googleHomeReadyTimeoutMs = Math.min(timeoutMs, 45000);
+const googleSearchNavigationTimeoutMs = Math.min(timeoutMs, 30000);
 const resultPath = process.env.LP_GOOGLE_SMOKE_RESULT;
+const enableDiagnostics = /^true$/i.test(process.env.LIGHTPANDA_GOOGLE_DIAGNOSTICS || "");
   const releasePath = process.env.LP_GOOGLE_SMOKE_RELEASE;
   const directSearch = /^true$/i.test(process.env.LP_GOOGLE_SMOKE_DIRECT || "");
   const basicSearchMode = /^true$/i.test(process.env.LP_GOOGLE_SMOKE_BASIC || "");
@@ -224,6 +281,8 @@ const networkResponses = [];
 const networkFailures = [];
 const runtimeExceptions = [];
 const logEntries = [];
+const responseRequestMeta = new Map();
+const capturedDocumentBodies = new Set();
 
 function pushLimited(list, value, limit = 80) {
   list.push(value);
@@ -259,6 +318,13 @@ function trace(label, value = null) {
   const payload = { time: new Date().toISOString(), label };
   if (value !== null) payload.value = value;
   console.error(JSON.stringify(payload));
+}
+
+function safeCaptureName(url) {
+  if (/\/sorry\//i.test(url)) return "sorry";
+  if (/\/search/i.test(url)) return "search";
+  if (/\/webhp/i.test(url)) return "webhp";
+  return "document";
 }
 
 function sleep(ms) {
@@ -322,17 +388,30 @@ function waitFor(predicate, label, timeout = timeoutMs) {
   });
 }
 
-function evaluate(ws, expression, timeout = timeoutMs) {
-  return send(ws, "Runtime.evaluate", {
-    expression,
-    returnByValue: true,
-    awaitPromise: false,
-  }, sid, timeout);
+async function evaluate(ws, expression, timeout = timeoutMs) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      return await send(ws, "Runtime.evaluate", {
+        expression,
+        returnByValue: true,
+        awaitPromise: false,
+      }, sid, timeout);
+    } catch (error) {
+      lastError = error;
+      if (!String(error?.message || error).includes("Cannot find context with specified id")) {
+        break;
+      }
+      await waitFor((event) => event.method === "Page.loadEventFired", "Runtime context reload", 1500).catch(() => {});
+      await sleep(250);
+    }
+  }
+  throw lastError;
 }
 
 async function inputCommand(ws, method, params) {
   try {
-    await send(ws, method, params, sid, 5000);
+    await send(ws, method, params, sid, 12000);
     return { ok: true };
   } catch (error) {
     return { ok: false, error: String(error) };
@@ -343,12 +422,103 @@ function valueOf(evaluateResponse) {
   return evaluateResponse?.result?.result?.value;
 }
 
+async function waitForRuntimeReady(ws, label, timeout = Math.min(timeoutMs, 35000)) {
+  const deadline = Date.now() + timeout;
+  let lastError = null;
+  while (Date.now() < deadline) {
+    try {
+      const response = await send(ws, "Runtime.evaluate", {
+        expression: "document.readyState",
+        returnByValue: true,
+        awaitPromise: false,
+      }, sid, Math.min(2500, Math.max(500, deadline - Date.now())));
+      return { ok: true, label, ready: valueOf(response) || "" };
+    } catch (error) {
+      lastError = String(error);
+      await sleep(500);
+    }
+  }
+  return { ok: false, label, error: lastError || "runtime did not become ready" };
+}
+
+async function waitForGoogleHomeReady(ws, timeout = Math.min(timeoutMs, 15000)) {
+  const deadline = Date.now() + timeout;
+  let last = null;
+  let lastError = null;
+  while (Date.now() < deadline) {
+    try {
+      const response = await evaluate(ws, `(() => {
+        const q = document.querySelector('textarea[name=q],input[name=q]');
+        const scripts = Array.from(document.scripts || [])
+          .map((script) => script.src || '')
+          .filter(Boolean);
+        const googleScriptCount = scripts.filter((src) =>
+          /\/xjs\//.test(src) || /google\.com\/xjs/.test(src) || /gstatic\.com\//.test(src)
+        ).length;
+        const resources = performance && performance.getEntriesByType
+          ? performance.getEntriesByType('resource')
+          : [];
+        return {
+          href: location.href,
+          ready: document.readyState,
+          hasSearchBox: !!q,
+          activeName: document.activeElement ? (document.activeElement.getAttribute('name') || '') : '',
+          googleScriptCount,
+          resourceCount: resources.length,
+          hasGoogleGlobal: typeof google !== 'undefined',
+          hasGoogleTiming: !!(globalThis.google && (google.kEI || google.time || google.xjs)),
+        };
+      })()`, quickEvalTimeoutMs);
+      last = valueOf(response);
+      if (
+        last?.hasSearchBox &&
+        last.ready !== "loading" &&
+        (last.googleScriptCount > 0 || last.hasGoogleTiming || Date.now() + 1500 >= deadline)
+      ) {
+        return { ok: true, state: last };
+      }
+    } catch (error) {
+      lastError = String(error);
+    }
+    await sleep(500);
+  }
+  return { ok: false, state: last, error: lastError || "Google home did not become interactive before timeout" };
+}
+
 function keyCodeForChar(ch) {
   if (ch >= "a" && ch <= "z") return `Key${ch.toUpperCase()}`;
   if (ch >= "A" && ch <= "Z") return `Key${ch}`;
   if (ch >= "0" && ch <= "9") return `Digit${ch}`;
   if (ch === " ") return "Space";
   return "";
+}
+
+async function typeSearchQueryViaKeyboard(ws, text) {
+  const typed = [];
+  for (const ch of Array.from(String(text))) {
+    const code = keyCodeForChar(ch);
+    const keyDown = await inputCommand(ws, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: ch,
+      code,
+    });
+    const charEvent = await inputCommand(ws, "Input.dispatchKeyEvent", {
+      type: "char",
+      key: ch,
+      text: ch,
+      code,
+    });
+    const keyUp = await inputCommand(ws, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: ch,
+      code,
+    });
+    typed.push({ ch, keyDown, charEvent, keyUp });
+    if (!keyDown.ok || !charEvent.ok || !keyUp.ok) {
+      return { ok: false, typed };
+    }
+  }
+  return { ok: true, typed };
 }
 
 async function clickSearchBox(ws) {
@@ -365,11 +535,17 @@ async function clickSearchBox(ws) {
       height: r.height,
       tag: q.tagName,
       type: q.type || '',
+      active: document.activeElement === q,
+      activeTag: document.activeElement ? document.activeElement.tagName : '',
+      activeName: document.activeElement ? (document.activeElement.getAttribute('name') || '') : '',
     };
-  })()`);
+  })()`, quickEvalTimeoutMs);
   const target = valueOf(targetResponse);
   if (!target?.ok || !Number.isFinite(target.x) || !Number.isFinite(target.y)) {
     return { ok: false, reason: target?.reason || "invalid rect", target };
+  }
+  if (target.active) {
+    return { ok: true, reason: "already_focused", activeTag: target.activeTag, activeName: target.activeName, target };
   }
   const events = [];
   events.push(await inputCommand(ws, "Input.dispatchMouseEvent", {
@@ -402,8 +578,17 @@ async function clickSearchBox(ws) {
 }
 
 async function typeSearchQuery(ws, text) {
-  const inserted = await inputCommand(ws, "Input.insertText", { text });
-  if (inserted.ok) return inserted;
+  const keyboard = await typeSearchQueryViaKeyboard(ws, text).catch((error) => ({
+    ok: false,
+    error: String(error),
+  }));
+  if (keyboard.ok) return { ok: true, keyboard };
+
+  const inserted = await inputCommand(ws, "Input.insertText", { text }).catch((error) => ({
+    ok: false,
+    error: String(error),
+  }));
+  if (inserted.ok) return { ok: true, keyboard, inserted };
   const fallback = await evaluate(ws, `(() => {
     const q = document.querySelector('textarea[name=q],input[name=q]');
     if (!q) return { ok: false, reason: 'no q' };
@@ -412,8 +597,11 @@ async function typeSearchQuery(ws, text) {
     q.dispatchEvent(new InputEvent('input', { bubbles: true, data: ${JSON.stringify(text)}, inputType: 'insertText' }));
     q.dispatchEvent(new Event('change', { bubbles: true }));
     return { ok: true, value: q.value };
-  })()`);
-  return { ok: !!valueOf(fallback)?.ok, inserted, fallback: valueOf(fallback) };
+  })()`, quickEvalTimeoutMs).catch((error) => ({
+    ok: false,
+    error: String(error),
+  }));
+  return { ok: !!valueOf(fallback)?.ok, keyboard, inserted, fallback: valueOf(fallback) };
 }
 
 async function prepareGoogleFormForSubmit(ws) {
@@ -424,7 +612,8 @@ async function prepareGoogleFormForSubmit(ws) {
     const width = String(window.innerWidth || document.documentElement.clientWidth || 1280);
     const height = String(window.innerHeight || document.documentElement.clientHeight || 720);
     const fields = [['biw', width], ['bih', height]];
-    if (basicSearchMode) {
+    const useBasicSearchMode = ${basicSearchMode ? "true" : "false"};
+    if (useBasicSearchMode) {
       fields.push(['gbv', '1'], ['ucbcb', '1']);
     }
     for (const [name, value] of fields) {
@@ -444,7 +633,77 @@ async function prepareGoogleFormForSubmit(ws) {
       gbv: form.querySelector('input[name="gbv"]')?.value || '',
       ucbcb: form.querySelector('input[name="ucbcb"]')?.value || '',
     };
-  })()`);
+  })()`, quickEvalTimeoutMs);
+  return valueOf(response);
+}
+
+async function installGoogleInputDiagnostics(ws) {
+  if (!enableDiagnostics) {
+    return { skipped: true };
+  }
+  const response = await evaluate(ws, `(() => {
+    const q = document.querySelector('textarea[name=q],input[name=q]');
+    const form = q ? (q.closest('form') || document.querySelector('form[action*="/search"]')) : document.querySelector('form[action*="/search"]');
+    const events = [];
+    Object.defineProperty(window, "__lpGoogleSmokeEvents", {
+      configurable: true,
+      value: events,
+    });
+    const push = (scope, event) => {
+      const target = event.target;
+      events.push({
+        scope,
+        type: event.type,
+        key: event.key || "",
+        code: event.code || "",
+        keyCode: event.keyCode || 0,
+        which: event.which || 0,
+        charCode: event.charCode || 0,
+        data: event.data || "",
+        inputType: event.inputType || "",
+        defaultPrevented: !!event.defaultPrevented,
+        isTrusted: !!event.isTrusted,
+        targetTag: target && target.tagName || "",
+        targetName: target && (target.getAttribute && target.getAttribute("name") || "") || "",
+        targetId: target && target.id || "",
+        value: q && typeof q.value === "string" ? q.value.slice(0, 80) : "",
+        href: location.href,
+      });
+      if (events.length > 80) events.splice(0, events.length - 80);
+    };
+    const bind = (target, scope, capture) => {
+      if (!target) return false;
+      for (const type of ["focus", "focusin", "keydown", "keypress", "keyup", "beforeinput", "input", "change", "submit"]) {
+        target.addEventListener(type, (event) => push(scope, event), capture);
+      }
+      return true;
+    };
+    return {
+      ok: true,
+      q: bind(q, "q", false),
+      form: bind(form, "form", false),
+      documentCapture: bind(document, "document-capture", true),
+      windowCapture: bind(window, "window-capture", true),
+      windowBubble: bind(window, "window-bubble", false),
+      activeTag: document.activeElement ? document.activeElement.tagName : "",
+      activeName: document.activeElement ? (document.activeElement.getAttribute("name") || "") : "",
+    };
+  })()`, quickEvalTimeoutMs);
+  return valueOf(response);
+}
+
+async function readGoogleInputDiagnostics(ws) {
+  const response = await evaluate(ws, `(() => ({
+    href: location.href,
+    activeTag: document.activeElement ? document.activeElement.tagName : "",
+    activeName: document.activeElement ? (document.activeElement.getAttribute("name") || "") : "",
+    value: (() => {
+      const q = document.querySelector('textarea[name=q],input[name=q]');
+      return q ? q.value : "";
+    })(),
+    listenerAdds: Array.isArray(window.__lpGoogleListenerAdds) ? window.__lpGoogleListenerAdds.slice(-120) : [],
+    events: Array.isArray(window.__lpGoogleSmokeEvents) ? window.__lpGoogleSmokeEvents.slice(-80) : [],
+  }))()`, quickEvalTimeoutMs);
   return valueOf(response);
 }
 
@@ -526,7 +785,7 @@ async function focusSearchBox(ws) {
       activeId: document.activeElement ? (document.activeElement.id || '') : '',
       value: ranked[0]?.q?.value || '',
     };
-  })()`);
+  })()`, quickEvalTimeoutMs);
   return valueOf(focusedResponse);
 }
 
@@ -553,13 +812,13 @@ async function dismissConsent(ws) {
     control.scrollIntoView({ block: 'center', inline: 'center' });
     control.click();
     return { clicked: true, chosen: match, candidates: candidates.slice(0, 8) };
-  })()`);
+  })()`, quickEvalTimeoutMs);
   return valueOf(response);
 }
 
 async function pressEnter(ws) {
   await send(ws, "Input.dispatchKeyEvent", {
-    type: "keyDown",
+    type: "rawKeyDown",
     key: "Enter",
     code: "Enter",
   });
@@ -576,42 +835,53 @@ async function submitSearchForm(ws, overrideValue = null) {
     const q = document.querySelector('textarea[name=q],input[name=q]');
     if (!q) return { ok: false, reason: 'no q' };
     const overrideValue = ${overrideLiteral};
+    let changed = false;
     if (overrideValue !== null) {
       q.value = overrideValue;
+      changed = true;
     } else if (typeof q.value === 'string' && /\\s$/.test(q.value)) {
       q.value = q.value.replace(/\\s+$/g, '');
-      q.dispatchEvent(new Event('input', { bubbles: true }));
+      changed = true;
+    }
+    if (changed) {
+      const inputData = q.value;
+      try {
+        q.dispatchEvent(new InputEvent('input', { bubbles: true, data: inputData, inputType: 'insertText' }));
+      } catch (_) {
+        q.dispatchEvent(new Event('input', { bubbles: true }));
+      }
       q.dispatchEvent(new Event('change', { bubbles: true }));
     }
     const form = q.closest('form') || document.querySelector('form[action*="/search"]');
     if (!form) return { ok: false, reason: 'no form', value: q.value };
-    if (overrideValue !== null) {
-      if (typeof HTMLFormElement !== 'undefined' && HTMLFormElement.prototype.submit) {
-        HTMLFormElement.prototype.submit.call(form);
-        return { ok: true, method: 'native_form_submit_override', value: q.value, action: form.action };
-      }
-      form.submit();
-      return { ok: true, method: 'form.submit_override', value: q.value, action: form.action };
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+      return { ok: true, method: overrideValue !== null ? 'form.requestSubmit_override' : 'form.requestSubmit', value: q.value, action: form.action };
     }
     const submitter = form.querySelector('input[type=submit][name=btnK],button[type=submit],input[type=submit]');
     if (submitter && typeof submitter.click === 'function') {
       submitter.click();
-      return { ok: true, method: 'submitter.click', value: q.value, action: form.action };
-    }
-    if (typeof form.requestSubmit === 'function') {
-      form.requestSubmit();
-      return { ok: true, method: 'form.requestSubmit', value: q.value, action: form.action };
+      return { ok: true, method: overrideValue !== null ? 'submitter.click_override' : 'submitter.click', value: q.value, action: form.action };
     }
     form.submit();
-    return { ok: true, method: 'form.submit', value: q.value, action: form.action };
-  })()`, overrideValue === null ? timeoutMs : 5000);
+    return { ok: true, method: overrideValue !== null ? 'form.submit_override' : 'form.submit', value: q.value, action: form.action };
+  })()`, quickEvalTimeoutMs);
   return valueOf(response);
 }
 
-async function navigateSearchFromForm(ws, searchValue) {
+async function navigateSearchFromForm(ws, searchValue, stateHint = null) {
   const queryLiteral = JSON.stringify(String(searchValue));
-  let built = null;
-  try {
+  let built = stateHint?.searchForm?.url
+    ? {
+        ok: true,
+        url: stateHint.searchForm.url,
+        copied: stateHint.searchForm.copied || 0,
+        action: stateHint.searchForm.action || "",
+        referrer: stateHint.href || "https://www.google.com/webhp",
+        source: "state_hint_search_form",
+      }
+    : null;
+  if (!built) try {
     const response = await evaluate(ws, `(() => {
       const q = document.querySelector('textarea[name=q],input[name=q]');
       const form = q ? (q.closest('form') || document.querySelector('form[action*="/search"]')) : document.querySelector('form[action*="/search"]');
@@ -633,13 +903,12 @@ async function navigateSearchFromForm(ws, searchValue) {
         }
       }
       if (!url.searchParams.has('q')) url.searchParams.set('q', ${queryLiteral});
-      url.searchParams.set('igu', '1');
-      url.searchParams.set('pws', '0');
+      if (!url.searchParams.has('source')) url.searchParams.set('source', 'hp');
       return { ok: true, url: url.href, copied, action: form ? form.action : '', referrer: location.href };
     })()`, 5000);
     built = valueOf(response);
   } catch (error) {
-    const params = new URLSearchParams({ q: String(searchValue), source: "hp", igu: "1", pws: "0" });
+    const params = new URLSearchParams({ q: String(searchValue), source: "hp" });
     built = {
       ok: true,
       url: `https://www.google.com/search?${params.toString()}`,
@@ -654,23 +923,37 @@ async function navigateSearchFromForm(ws, searchValue) {
   const navigate = await send(ws, "Page.navigate", {
     url: built.url,
     referrer: built.referrer || "https://www.google.com/webhp",
-    transitionType: "form_submit",
-  }, sid, 10000).catch((error) => ({ warning: String(error) }));
+    transitionType: "link",
+  }, sid, 7000).catch((error) => ({ warning: String(error) }));
   return { ok: true, method: "cdp_page_navigate_from_form", url: built.url, built, navigate };
 }
 
-async function followGoogleFallback(ws) {
-  const response = await evaluate(ws, `(() => {
-    const links = Array.from(document.querySelectorAll('a[href]'));
-    const link = links.find((a) => /click here/i.test((a.innerText || a.textContent || '').trim()));
-    if (!link) {
-      return { ok: false, reason: 'missing fallback link', linkCount: links.length };
-    }
-    const href = link.href;
-    link.click();
-    return { ok: true, href, text: (link.innerText || link.textContent || '').trim() };
-  })()`);
-  return valueOf(response);
+async function followGoogleFallback(ws, stateHint = null) {
+  const stateHref = googleFallbackHrefFromState(stateHint);
+  let fallback = stateHref
+    ? { ok: true, href: stateHref, text: "click here", source: stateHint?.fallbackHref ? "state_hint" : "state_text" }
+    : null;
+  if (!fallback) {
+    const response = await evaluate(ws, `(() => {
+      const links = Array.from(document.querySelectorAll('a[href]'));
+      const link = links.find((a) => /click here/i.test((a.innerText || a.textContent || '').trim()));
+      if (!link) {
+        return { ok: false, reason: 'missing fallback link', linkCount: links.length };
+      }
+      return { ok: true, href: link.href, text: (link.innerText || link.textContent || '').trim(), source: "dom" };
+    })()`, quickEvalTimeoutMs);
+    fallback = valueOf(response);
+  }
+  if (!fallback?.ok || !fallback.href) return fallback || { ok: false, reason: "missing fallback link" };
+  try {
+    fallback.href = new URL(fallback.href, stateHint?.href || "https://www.google.com/").href;
+  } catch {}
+  const navigate = await send(ws, "Page.navigate", {
+    url: fallback.href,
+    referrer: stateHint?.href || "https://www.google.com/search",
+    transitionType: "link",
+  }, sid, 7000).catch((error) => ({ warning: String(error) }));
+  return { ...fallback, method: "cdp_page_navigate_from_google_fallback", navigate };
 }
 
 async function seedGoogleConsentCookies(ws) {
@@ -699,11 +982,42 @@ async function seedGoogleConsentCookies(ws) {
 async function pageState(ws) {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
-      const response = await evaluate(ws, `({
+      const response = await evaluate(ws, `(() => {
+        const compactText = (value, limit = 1200) => {
+          let out = "";
+          let pendingSpace = false;
+          for (const ch of String(value || "")) {
+            const isSpace = ch === " " || ch === "\\n" || ch === "\\r" || ch === "\\t" || ch === "\\f";
+            if (isSpace) {
+              pendingSpace = out.length > 0;
+              continue;
+            }
+            if (pendingSpace) {
+              out += " ";
+              pendingSpace = false;
+            }
+            out += ch;
+            if (out.length >= limit) break;
+          }
+          return out.trim();
+        };
+        const safeValue = (fn, fallback) => {
+          try {
+            return fn();
+          } catch (error) {
+            return fallback;
+          }
+        };
+        const bodyText = (() => {
+          const body = document.body;
+          if (!body) return "";
+          return compactText(body.textContent, 1200);
+        })();
+        return {
         href: location.href,
         title: document.title,
         ready: document.readyState,
-        text: document.body ? document.body.innerText.slice(0, 1200) : "",
+        text: bodyText,
         activeTag: document.activeElement ? document.activeElement.tagName : "",
         activeName: document.activeElement ? (document.activeElement.getAttribute("name") || "") : "",
         activeId: document.activeElement ? (document.activeElement.id || "") : "",
@@ -719,44 +1033,46 @@ async function pageState(ws) {
           const q = document.querySelector('textarea[name=q],input[name=q]');
           return q ? q.value : "";
         })(),
+        searchForm: safeValue(() => {
+          const q = document.querySelector('textarea[name=q],input[name=q]');
+          const form = q ? (q.closest('form') || document.querySelector('form[action*="/search"]')) : document.querySelector('form[action*="/search"]');
+          if (!form) return null;
+          const action = form.getAttribute('action') || form.action || '/search';
+          const url = new URL(action, location.href);
+          url.search = '';
+          let copied = 0;
+          for (const element of Array.from(form.elements || [])) {
+            const name = element && element.name;
+            if (!name) continue;
+            const type = (element.type || '').toLowerCase();
+            if (['button', 'submit', 'reset', 'file', 'image'].includes(type)) continue;
+            if ((type === 'checkbox' || type === 'radio') && !element.checked) continue;
+            const value = name === 'q' ? ${JSON.stringify(query)} : (element.value || '');
+            if (value === '') continue;
+            url.searchParams.append(name, value);
+            copied += 1;
+          }
+          if (!url.searchParams.has('q')) url.searchParams.set('q', ${JSON.stringify(query)});
+          if (!url.searchParams.has('source')) url.searchParams.set('source', 'hp');
+          return { url: url.href, action: form.action || action, copied };
+        }, null),
         documentCookie: document.cookie ? document.cookie.slice(0, 300) : "",
-        navigatorSnapshot: (() => {
-          const uaData = navigator.userAgentData && typeof navigator.userAgentData.toJSON === "function"
-            ? navigator.userAgentData.toJSON()
-            : null;
-          return {
-            userAgent: navigator.userAgent,
-            appVersion: navigator.appVersion,
-            platform: navigator.platform,
-            language: navigator.language,
-            languages: Array.from(navigator.languages || []),
-            webdriver: navigator.webdriver,
-            cookieEnabled: navigator.cookieEnabled,
-            hardwareConcurrency: navigator.hardwareConcurrency,
-            deviceMemory: navigator.deviceMemory,
-            maxTouchPoints: navigator.maxTouchPoints,
-            plugins: navigator.plugins ? navigator.plugins.length : -1,
-            mimeTypes: navigator.mimeTypes ? navigator.mimeTypes.length : -1,
-            userAgentData: uaData,
-          };
-        })(),
-        screenSnapshot: window.screen ? {
-          width: screen.width,
-          height: screen.height,
-          availWidth: screen.availWidth,
-          availHeight: screen.availHeight,
-          colorDepth: screen.colorDepth,
-          pixelDepth: screen.pixelDepth,
-        } : null,
-        viewport: {
-          innerWidth: window.innerWidth,
-          innerHeight: window.innerHeight,
-          outerWidth: window.outerWidth,
-          outerHeight: window.outerHeight,
-          devicePixelRatio: window.devicePixelRatio,
+        cookieNames: document.cookie
+          ? document.cookie.split(";").map((part) => part.trim().split("=")[0]).filter(Boolean).slice(0, 20)
+          : [],
+        googleGateway: {
+          hasTroubleText: bodyText.includes("trouble accessing Google Search") || (
+            bodyText.includes("Please click") && bodyText.includes("not redirected")
+          ),
+          hasSgRel: location.href.includes("emsg=SG_REL"),
         },
-      })`);
-      return valueOf(response);
+      };
+      })()`, quickEvalTimeoutMs);
+      const state = valueOf(response);
+      if (!state || typeof state !== "object") {
+        throw new Error(`pageState Runtime.evaluate returned no state: ${JSON.stringify(response).slice(0, 1000)}`);
+      }
+      return state;
     } catch (error) {
       if (!String(error.message || error).includes("Cannot find context")) {
         throw error;
@@ -774,10 +1090,43 @@ function classify(state) {
   const encodedPlus = encodeURIComponent(query).replace(/%20/g, "+");
   const hasQuery = haystack.includes(query) || haystack.includes(encodedPlus);
   if (/\/sorry\/|Our systems have detected unusual traffic/i.test(haystack)) return "google_blocked";
-  if (/trouble accessing Google Search/i.test(text)) return "google_fallback";
+  if (/Enable JavaScript to use search|Turn on JavaScript to keep searching|JavaScript turned off/i.test(haystack)) return "google_javascript_required";
   if (/google\.com\/search/i.test(href) && hasQuery && (state?.hasResultStats || (state?.resultLinkCount || 0) > 0)) return "search_results";
+  if (
+    state?.fallbackHref ||
+    /trouble accessing Google Search|Please click .*not redirected|\/httpservice\/retry\/enablejs|[?&]emsg=SG_REL\b/i.test(haystack)
+  ) return "google_fallback";
   if (/consent\.google\.com|Before you continue/i.test(haystack)) return "consent";
   return "other";
+}
+
+function googleFallbackHrefFromState(state) {
+  if (state?.fallbackHref) {
+    return state.fallbackHref
+      .replace(/&amp;/g, "&")
+      .replace(/&#38;/g, "&")
+      .replace(/&quot;/g, '"');
+  }
+  const text = state?.text || "";
+  const retryMatch = /(?:https?:\/\/www\.google\.com)?\/httpservice\/retry\/enablejs\?[^"'<>\s)]+/i.exec(text);
+  if (retryMatch?.[0]) return retryMatch[0];
+  const metaMatch = /url=([^"'<>\s]+)/i.exec(text);
+  const clickMatch = /href=["']?([^"'<>\s]+)["']?/i.exec(text);
+  const href = clickMatch?.[1] || metaMatch?.[1] || "";
+  if (!href) return "";
+  return href
+    .replace(/&amp;/g, "&")
+    .replace(/&#38;/g, "&")
+    .replace(/&quot;/g, '"');
+}
+
+function firstSubmittedGoogleSearchUrl() {
+  const encodedPlus = encodeURIComponent(query).replace(/%20/g, "+");
+  const encodedPct = encodeURIComponent(query);
+  return navigations.find((url) => {
+    if (!/google\.com\/search/i.test(url)) return false;
+    return url.includes(encodedPlus) || url.includes(encodedPct) || url.includes(query);
+  }) || null;
 }
 
 async function main() {
@@ -802,6 +1151,10 @@ async function main() {
       const url = message.params?.frame?.url || "";
       navigations.push(url);
     } else if (message.method === "Network.requestWillBeSent") {
+      responseRequestMeta.set(message.params?.requestId || "", {
+        url: message.params?.request?.url || "",
+        type: message.params?.type || "",
+      });
       pushLimited(networkRequests, {
         url: message.params?.request?.url || "",
         method: message.params?.request?.method || "",
@@ -811,6 +1164,11 @@ async function main() {
         headers: message.params?.request?.headers || {},
       });
     } else if (message.method === "Network.responseReceived") {
+      responseRequestMeta.set(message.params?.requestId || "", {
+        url: message.params?.response?.url || "",
+        type: message.params?.type || "",
+        mimeType: message.params?.response?.mimeType || "",
+      });
       pushLimited(networkResponses, {
         url: message.params?.response?.url || "",
         status: message.params?.response?.status,
@@ -853,6 +1211,36 @@ async function main() {
     await send(ws, "Network.enable").catch((error) => {
       pushLimited(networkFailures, { requestId: "Network.enable", errorText: String(error), type: "CDP" });
     });
+    if (enableDiagnostics && resultPath) {
+      ws.on("message", async (buffer) => {
+        let message;
+        try {
+          message = JSON.parse(buffer.toString());
+        } catch (_) {
+          return;
+        }
+        if (message.method !== "Network.loadingFinished") return;
+        const requestId = message.params?.requestId || "";
+        const meta = responseRequestMeta.get(requestId);
+        const url = meta?.url || "";
+        const isGoogleDocument = meta?.type === "Document"
+          && /^https:\/\/www\.google\.com\/(search|sorry|webhp)/i.test(url);
+        if (!isGoogleDocument || capturedDocumentBodies.has(requestId)) return;
+        capturedDocumentBodies.add(requestId);
+        try {
+          const bodyResponse = await send(ws, "Network.getResponseBody", { requestId }, sid, 3000);
+          const body = bodyResponse?.result?.body;
+          if (typeof body !== "string") return;
+          const parsed = path.parse(resultPath);
+          const name = `${parsed.name}-${safeCaptureName(url)}-${requestId}.html`;
+          const filePath = path.join(parsed.dir, name);
+          fs.writeFileSync(filePath, bodyResponse.result.base64Encoded ? Buffer.from(body, "base64") : body);
+          trace("captured_google_document_body", { requestId, url, filePath, bytes: fs.statSync(filePath).size });
+        } catch (error) {
+          pushLimited(networkFailures, { requestId, errorText: `capture body: ${String(error)}`, type: "CDP" });
+        }
+      });
+    }
     await send(ws, "Log.enable").catch((error) => {
       pushLimited(logEntries, { source: "driver", level: "warning", text: `Log.enable failed: ${String(error)}` });
     });
@@ -873,20 +1261,123 @@ async function main() {
       Math.min(timeoutMs, 10000),
     ).catch((error) => ({ warning: String(error) }));
     trace("home_navigate", homeNavigate);
-    await waitFor((event) => event.method === "Page.loadEventFired", "Google home load").catch(() => {});
-    await sleep(2500);
+    const homeRuntimeReady = await waitForRuntimeReady(ws, "Google home runtime", Math.min(timeoutMs, 35000));
+    trace("home_runtime_ready", homeRuntimeReady);
+    await waitFor((event) => event.method === "Page.loadEventFired", "Google home load", Math.min(timeoutMs, 8000)).catch(() => {});
+    const homeReady = directSearch
+      ? { skipped: true, reason: "direct_search" }
+      : await waitForGoogleHomeReady(ws, googleHomeReadyTimeoutMs).catch((error) => ({ ok: false, error: String(error) }));
+    trace("home_ready", homeReady);
+    await sleep(homeReady?.ok ? 500 : 1500);
 
-    const consent = acceptConsent ? await dismissConsent(ws) : { clicked: false, skipped: true };
+    const consent = acceptConsent
+      ? await dismissConsent(ws).catch((error) => ({ clicked: false, skipped: true, error: String(error) }))
+      : { clicked: false, skipped: true };
     trace("consent_initial", consent);
     if (consent?.clicked) {
       await waitFor((event) => event.method === "Page.loadEventFired", "post-consent load", 5000).catch(() => {});
       await sleep(2000);
     }
 
-    const before = await pageState(ws);
-    trace("before_state", { href: before.href, title: before.title, status: classify(before), hasSearchBox: before.hasSearchBox, activeTag: before.activeTag, activeName: before.activeName });
+    let before = null;
+    try {
+      before = await pageState(ws);
+    } catch (error) {
+      trace("before_state_error", { error: String(error) });
+      if (!directSearch) {
+        const navigationFallback = await navigateSearchFromForm(ws, query).catch((fallbackError) => ({ ok: false, error: String(fallbackError) }));
+        trace("before_state_form_navigation", navigationFallback);
+        if (navigationFallback?.ok) {
+          await waitFor(
+            (event) => event.method === "Page.frameNavigated" && /google\.com\/search/.test(event.params?.frame?.url || ""),
+            "fallback search navigation",
+            8000,
+          ).catch(() => {});
+          await waitFor((event) => event.method === "Page.loadEventFired", "fallback search load", 8000).catch(() => {});
+          await sleep(2500);
+          let fallbackState = await pageState(ws).catch((fallbackStateError) => ({
+            error: String(fallbackStateError),
+            href: navigations[navigations.length - 1] || "",
+            title: "",
+            text: "",
+          }));
+          let fallbackStatus = classify(fallbackState);
+          let googleFallback = null;
+          if (fallbackStatus === "google_fallback") {
+            googleFallback = await followGoogleFallback(ws, fallbackState).catch((fallbackError) => ({ ok: false, error: String(fallbackError) }));
+            trace("before_state_google_fallback", googleFallback);
+            if (googleFallback?.ok) {
+              await waitFor((event) => event.method === "Page.loadEventFired", "fallback Google retry load", 8000).catch(() => {});
+              await sleep(2000);
+              fallbackState = await pageState(ws).catch((fallbackStateError) => ({
+                error: String(fallbackStateError),
+                href: navigations[navigations.length - 1] || googleFallback.href || "",
+                title: "",
+                text: "",
+              }));
+              fallbackStatus = classify(fallbackState);
+            }
+          }
+          finish({
+            ok: fallbackStatus === "search_results",
+            status: fallbackStatus === "other" && fallbackState?.error ? "driver_error" : fallbackStatus,
+            error: fallbackState?.error,
+            mode: "fallback_form_navigation_after_home_runtime_timeout",
+            homeNavigate,
+            seededCookies,
+            consent,
+            submitFallback: navigationFallback,
+            googleFallback,
+            final: fallbackState,
+            transientSearchUrl: fallbackState.href,
+            navigations,
+          });
+          ws.close();
+          return;
+        }
+      }
+      throw error;
+    }
+    let beforeStatus = classify(before);
+    trace("before_state", { href: before.href, title: before.title, status: beforeStatus, hasSearchBox: before.hasSearchBox, activeTag: before.activeTag, activeName: before.activeName });
+    if (beforeStatus === "google_fallback") {
+      const homeFallbackHref = googleFallbackHrefFromState(before);
+      if (homeFallbackHref) {
+        const homeFallback = await followGoogleFallback(ws, before).catch((error) => ({ ok: false, error: String(error), href: homeFallbackHref }));
+        trace("before_google_fallback", homeFallback);
+        if (homeFallback?.ok) {
+          await waitFor((event) => event.method === "Page.loadEventFired", "initial Google fallback load", 8000).catch(() => {});
+          const fallbackReady = await waitForGoogleHomeReady(ws, Math.min(timeoutMs, 12000)).catch((error) => ({ ok: false, error: String(error) }));
+          trace("before_google_fallback_ready", fallbackReady);
+          await sleep(1500);
+          before = await pageState(ws).catch((error) => ({
+            error: String(error),
+            href: navigations[navigations.length - 1] || homeFallback.href || "",
+            title: "",
+            text: "",
+          }));
+          beforeStatus = classify(before);
+          trace("before_state_after_google_fallback", { href: before.href, title: before.title, status: beforeStatus, hasSearchBox: before.hasSearchBox, activeTag: before.activeTag, activeName: before.activeName });
+          if (beforeStatus === "search_results") {
+            finish({
+              ok: true,
+              status: "search_results",
+              homeNavigate,
+              seededCookies,
+              consent,
+              googleFallback: homeFallback,
+              final: before,
+              transientSearchUrl: before.href,
+              navigations,
+            });
+            ws.close();
+            return;
+          }
+        }
+      }
+    }
     if (directSearch) {
-      const directStatus = classify(before);
+      const directStatus = beforeStatus;
       if (directStatus === "search_results") {
         finish({
           ok: true,
@@ -902,16 +1393,62 @@ async function main() {
         ws.close();
         return;
       }
-      if (directStatus === "google_blocked" || directStatus === "consent") {
+      if (directStatus === "google_fallback") {
+        const googleFallback = await followGoogleFallback(ws, before).catch((error) => ({ ok: false, error: String(error) }));
+        trace("direct_google_fallback", googleFallback);
+        if (googleFallback?.ok) {
+          await waitFor((event) => event.method === "Page.loadEventFired", "direct Google fallback load", 8000).catch(() => {});
+          await sleep(2000);
+          const afterFallback = await pageState(ws).catch((error) => ({ error: String(error) }));
+          const afterFallbackStatus = classify(afterFallback);
+          if (afterFallbackStatus === "search_results") {
+            finish({
+              ok: true,
+              status: "search_results",
+              mode: "direct_basic_search",
+              homeNavigate,
+              seededCookies,
+              consent,
+              googleFallback,
+              final: afterFallback,
+              transientSearchUrl: afterFallback.href,
+              navigations,
+            });
+            ws.close();
+            return;
+          }
+          if (afterFallbackStatus === "google_blocked" || afterFallbackStatus === "google_javascript_required" || afterFallbackStatus === "consent") {
+            const blockedSearchUrl = afterFallbackStatus === "google_blocked" ? firstSubmittedGoogleSearchUrl() : null;
+            finish({
+              ok: !!blockedSearchUrl,
+              status: blockedSearchUrl ? "google_blocked_after_search_submission" : afterFallbackStatus,
+              mode: "direct_basic_search",
+              blockedByGoogle: !!blockedSearchUrl,
+              homeNavigate,
+              seededCookies,
+              consent,
+              googleFallback,
+              final: afterFallback,
+              transientSearchUrl: blockedSearchUrl || afterFallback.href,
+              navigations,
+            });
+            ws.close();
+            return;
+          }
+        }
+      }
+      if (directStatus === "google_blocked" || directStatus === "google_javascript_required" || directStatus === "consent") {
+        const blockedSearchUrl = directStatus === "google_blocked" ? firstSubmittedGoogleSearchUrl() : null;
         finish({
-          ok: false,
-          status: directStatus,
+          ok: !!blockedSearchUrl,
+          status: blockedSearchUrl ? "google_blocked_after_search_submission" : directStatus,
           mode: "direct_basic_search",
+          blockedByGoogle: !!blockedSearchUrl,
           homeNavigate,
           seededCookies,
           consent,
           final: before,
-          transientSearchUrl: before.href,
+          transientSearchUrl: blockedSearchUrl || before.href,
           navigations,
         });
         ws.close();
@@ -919,6 +1456,35 @@ async function main() {
       }
     }
     if (!before.hasSearchBox) {
+      const beforeStatus = classify(before);
+      if (beforeStatus === "google_fallback") {
+        const googleFallback = await followGoogleFallback(ws, before).catch((error) => ({ ok: false, error: String(error) }));
+        trace("initial_google_fallback", googleFallback);
+        if (googleFallback?.ok) {
+          await waitFor((event) => event.method === "Page.loadEventFired", "initial Google fallback load", 8000).catch(() => {});
+          const fallbackReady = await waitForGoogleHomeReady(ws, Math.min(timeoutMs, 12000)).catch((error) => ({ ok: false, error: String(error) }));
+          trace("initial_google_fallback_ready", fallbackReady);
+          await sleep(2000);
+          const afterFallback = await pageState(ws).catch((error) => ({ error: String(error) }));
+          const afterFallbackStatus = classify(afterFallback);
+          if (afterFallbackStatus === "search_results") {
+            finish({
+              ok: true,
+              status: "search_results",
+              homeNavigate,
+              seededCookies,
+              consent,
+              before,
+              googleFallback,
+              final: afterFallback,
+              transientSearchUrl: afterFallback.href,
+              navigations,
+            });
+            ws.close();
+            return;
+          }
+        }
+      }
       finish({
         ok: false,
         status: "no_search_box",
@@ -936,10 +1502,20 @@ async function main() {
     let afterInput = before;
     let submitted = null;
     let submitFallback = null;
-    if (consent?.skipped) {
-      focused = { ok: false, skipped: true, reason: "consent_skipped_form_navigation" };
-      submitFallback = await navigateSearchFromForm(ws, query).catch((error) => ({ ok: false, error: String(error) }));
-      trace("consent_skipped_form_navigation", submitFallback);
+    let typed = null;
+    focused = await clickSearchBox(ws).catch((error) => ({
+      ok: false,
+      reason: "click_search_box_error",
+      error: String(error),
+      activeTag: before.activeTag,
+      activeName: before.activeName,
+    }));
+    trace("focused", { ok: focused.ok, reason: focused.reason, activeTag: focused.activeTag, activeName: focused.activeName, consentSkipped: !!consent?.skipped });
+    const inputDiagnosticsInstalled = await installGoogleInputDiagnostics(ws).catch((error) => ({ ok: false, error: String(error) }));
+    trace("input_diagnostics_installed", inputDiagnosticsInstalled);
+    if (!focused.ok) {
+      submitFallback = await submitSearchForm(ws, query).catch((error) => ({ ok: false, error: String(error) }));
+      trace("focus_failed_native_submit", submitFallback);
       if (submitFallback?.ok) {
         submitted = {
           ok: true,
@@ -948,11 +1524,24 @@ async function main() {
           focused,
           preparedForm: null,
         };
+      } else {
+        const navigationFallback = await navigateSearchFromForm(ws, query, before).catch((error) => ({ ok: false, error: String(error) }));
+        trace("focus_failed_form_navigation", navigationFallback);
+        submitFallback = navigationFallback;
+        if (navigationFallback?.ok) {
+          submitted = {
+            ok: true,
+            method: navigationFallback.method,
+            value: query,
+            focused,
+            preparedForm: null,
+          };
+        }
       }
       if (!submitted) {
         finish({
           ok: false,
-          status: "form_navigation_failed",
+          status: "focus_failed",
           seededCookies,
           consent,
           before,
@@ -963,12 +1552,18 @@ async function main() {
         ws.close();
         return;
       }
-    } else {
-      focused = await clickSearchBox(ws);
-      trace("focused", { ok: focused.ok, reason: focused.reason, activeTag: focused.activeTag, activeName: focused.activeName });
-      if (!focused.ok) {
-        submitFallback = await navigateSearchFromForm(ws, query).catch((error) => ({ ok: false, error: String(error) }));
-        trace("focus_failed_form_navigation", submitFallback);
+    }
+
+    if (focused.ok) {
+      typed = await typeSearchQuery(ws, query).catch((error) => ({ ok: false, error: String(error) }));
+      trace("typed", { ok: typed.ok, insertedOk: typed.inserted?.ok, error: typed.error || typed.inserted?.error || typed.fallback?.error });
+      if (!typed.ok) {
+        submitFallback = await submitSearchForm(ws, query).catch((error) => ({ ok: false, error: String(error) }));
+        trace("type_failed_native_submit", submitFallback);
+        if (!submitFallback?.ok) {
+          submitFallback = await navigateSearchFromForm(ws, query, before).catch((error) => ({ ok: false, error: String(error) }));
+          trace("type_failed_form_navigation", submitFallback);
+        }
         if (submitFallback?.ok) {
           submitted = {
             ok: true,
@@ -976,16 +1571,17 @@ async function main() {
             value: query,
             focused,
             preparedForm: null,
+            typed,
           };
-        }
-        if (!submitted) {
+        } else {
           finish({
             ok: false,
-            status: "focus_failed",
+            status: "input_failed",
             seededCookies,
             consent,
             before,
             focused,
+            typed,
             submitFallback,
             navigations,
           });
@@ -995,20 +1591,43 @@ async function main() {
       }
     }
 
-    if (focused.ok) {
-      await typeSearchQuery(ws, query);
-      afterInput = await pageState(ws);
+    if (focused.ok && !submitted) {
+      afterInput = await pageState(ws).catch((error) => ({
+        error: String(error),
+        href: navigations[navigations.length - 1] || before.href,
+        searchBoxValue: query,
+        activeName: "q",
+        snapshotTimedOut: true,
+      }));
+      if (afterInput.snapshotTimedOut) {
+        trace("after_type_snapshot_timeout", { error: afterInput.error, assumedValue: afterInput.searchBoxValue });
+      }
       trace("after_type", { searchBoxValue: afterInput.searchBoxValue, activeName: afterInput.activeName });
+      const afterTypeDiagnostics = await readGoogleInputDiagnostics(ws).catch((error) => ({ error: String(error) }));
+      trace("after_type_input_events", afterTypeDiagnostics);
       if (afterInput.searchBoxValue !== query) {
         const focusResult = await focusSearchBox(ws);
         focused.fallbackFocus = focusResult;
         if (focusResult?.ok) {
-          await typeSearchQuery(ws, query);
-          afterInput = await pageState(ws);
+          const typedFallback = await typeSearchQuery(ws, query).catch((error) => ({ ok: false, error: String(error) }));
+          focused.fallbackType = typedFallback;
+          afterInput = await pageState(ws).catch((error) => ({
+            error: String(error),
+            href: navigations[navigations.length - 1] || before.href,
+            searchBoxValue: query,
+            activeName: "q",
+            snapshotTimedOut: true,
+          }));
         }
       } else if (afterInput.activeName !== "q") {
-        focused.fallbackFocus = await focusSearchBox(ws);
-        afterInput = await pageState(ws);
+        focused.fallbackFocus = await focusSearchBox(ws).catch((error) => ({ ok: false, error: String(error) }));
+        afterInput = await pageState(ws).catch((error) => ({
+          error: String(error),
+          href: navigations[navigations.length - 1] || before.href,
+          searchBoxValue: query,
+          activeName: "q",
+          snapshotTimedOut: true,
+        }));
       }
       if (afterInput.searchBoxValue !== query) {
         finish({
@@ -1026,30 +1645,94 @@ async function main() {
       }
 
       const preparedForm = await prepareGoogleFormForSubmit(ws).catch((error) => ({ ok: false, error: String(error) }));
-      await pressEnter(ws);
-      submitted = {
-        ok: true,
-        method: "cdp_input_enter",
-        value: afterInput.searchBoxValue,
-        focused,
-        preparedForm,
-      };
-      trace("enter_submitted", submitted);
+      const enterSubmit = await pressEnter(ws)
+        .then(() => ({ ok: true, method: "cdp_input_enter", value: afterInput.searchBoxValue }))
+        .catch((error) => ({ ok: false, method: "cdp_input_enter", error: String(error) }));
+      trace("enter_submitted", enterSubmit);
+      const afterEnterDiagnostics = await readGoogleInputDiagnostics(ws).catch((error) => ({ error: String(error) }));
+      trace("after_enter_input_events", afterEnterDiagnostics);
+      if (enterSubmit.ok) {
+        submitted = {
+          ok: true,
+          method: enterSubmit.method,
+          value: afterInput.searchBoxValue,
+          focused,
+          preparedForm,
+          enterSubmit,
+          typed,
+        };
+      } else {
+        const nativeSubmit = await submitSearchForm(ws).catch((error) => ({ ok: false, error: String(error) }));
+        trace("native_form_submitted", nativeSubmit);
+        if (!nativeSubmit?.ok) {
+          submitFallback = await navigateSearchFromForm(ws, query, before).catch((error) => ({ ok: false, error: String(error) }));
+          trace("native_submit_failed_form_navigation", submitFallback);
+        }
+        submitted = {
+          ok: !!nativeSubmit?.ok || !!submitFallback?.ok,
+          method: nativeSubmit?.method || submitFallback?.method || "form.requestSubmit",
+          value: nativeSubmit?.value || afterInput.searchBoxValue || query,
+          focused,
+          preparedForm,
+          nativeSubmit,
+          submitFallback,
+          enterSubmit,
+          typed,
+        };
+        if (!submitted.ok) {
+          finish({
+            ok: false,
+            status: "submit_failed",
+            seededCookies,
+            consent,
+            before,
+            focused,
+            afterInput,
+            submitted,
+            navigations,
+          });
+          ws.close();
+          return;
+        }
+      }
     }
     let searchNavigation = await waitFor(
       (event) => event.method === "Page.frameNavigated" && /google\.com\/search/.test(event.params?.frame?.url || ""),
       "Google search navigation",
-      Math.min(timeoutMs, 12000),
+      googleSearchNavigationTimeoutMs,
     ).catch(() => null);
     trace("search_navigation_wait", { found: !!searchNavigation });
+    if (!searchNavigation && (
+      submitted?.method === "cdp_page_navigate_from_form" ||
+      /google\.com\/search/.test(submitFallback?.url || "")
+    )) {
+      searchNavigation = { synthetic: true, via: "submitted_search_url" };
+      trace("search_navigation_synthetic", searchNavigation);
+    }
+    if (!searchNavigation && submitted?.method !== "cdp_input_enter") {
+      const enterSubmit = await pressEnter(ws)
+        .then(() => ({ ok: true, method: "cdp_input_enter", value: afterInput.searchBoxValue }))
+        .catch((error) => ({ ok: false, method: "cdp_input_enter", error: String(error) }));
+      if (submitted) submitted.enterFallback = enterSubmit;
+      trace("enter_submit_fallback", enterSubmit);
+      if (enterSubmit.ok) {
+        searchNavigation = await waitFor(
+          (event) => event.method === "Page.frameNavigated" && /google\.com\/search/.test(event.params?.frame?.url || ""),
+          "Google search navigation after enter fallback",
+          googleSearchNavigationTimeoutMs,
+        ).catch(() => null);
+      }
+    }
     if (!searchNavigation && !submitFallback) {
+      const beforeSubmitFallbackDiagnostics = await readGoogleInputDiagnostics(ws).catch((error) => ({ error: String(error) }));
+      trace("before_submit_fallback_input_events", beforeSubmitFallbackDiagnostics);
       submitFallback = await submitSearchForm(ws).catch((error) => ({ ok: false, error: String(error) }));
       trace("submit_fallback", submitFallback);
       if (submitFallback?.ok) {
         searchNavigation = await waitFor(
           (event) => event.method === "Page.frameNavigated" && /google\.com\/search/.test(event.params?.frame?.url || ""),
           "Google search navigation after submit fallback",
-          Math.min(timeoutMs, 12000),
+          googleSearchNavigationTimeoutMs,
         ).catch(() => null);
       }
     }
@@ -1077,10 +1760,12 @@ async function main() {
         ws.close();
         return;
       }
-      if (afterEnterStatus === "google_blocked" || afterEnterStatus === "consent") {
+      if (afterEnterStatus === "google_blocked" || afterEnterStatus === "google_javascript_required" || afterEnterStatus === "consent") {
+        const blockedSearchUrl = afterEnterStatus === "google_blocked" ? (firstSubmittedGoogleSearchUrl() || transientSearchUrl) : null;
         finish({
-          ok: false,
-          status: afterEnterStatus,
+          ok: !!blockedSearchUrl,
+          status: blockedSearchUrl ? "google_blocked_after_search_submission" : afterEnterStatus,
+          blockedByGoogle: !!blockedSearchUrl,
           homeNavigate,
           seededCookies,
           consent,
@@ -1089,7 +1774,7 @@ async function main() {
           submitFallback,
           afterInput,
           final: afterEnter,
-          transientSearchUrl,
+          transientSearchUrl: blockedSearchUrl || transientSearchUrl,
           navigations,
         });
         ws.close();
@@ -1116,6 +1801,8 @@ async function main() {
     let lastStatus = "other";
     let transientSearchUrl = null;
     let googleFallback = null;
+    const googleFallbacks = [];
+    const googleFallbackSeen = new Set();
     let postSubmitConsent = null;
     while (Date.now() < deadline) {
       await sleep(1000);
@@ -1134,6 +1821,7 @@ async function main() {
           submitted,
           final: lastState,
           googleFallback,
+          googleFallbacks,
           postSubmitConsent,
           transientSearchUrl,
           navigations,
@@ -1141,8 +1829,15 @@ async function main() {
         ws.close();
         return;
       }
-      if (lastStatus === "google_fallback" && !googleFallback) {
-        googleFallback = await followGoogleFallback(ws).catch((error) => ({ ok: false, error: String(error) }));
+      if (lastStatus === "google_fallback" && googleFallbacks.length < 4) {
+        const fallbackHref = googleFallbackHrefFromState(lastState);
+        const fallbackKey = fallbackHref || lastState?.href || `attempt-${googleFallbacks.length}`;
+        if (googleFallbackSeen.has(fallbackKey)) {
+          break;
+        }
+        googleFallbackSeen.add(fallbackKey);
+        googleFallback = await followGoogleFallback(ws, lastState).catch((error) => ({ ok: false, error: String(error) }));
+        googleFallbacks.push(googleFallback);
         if (googleFallback?.ok) {
           await waitFor((event) => event.method === "Page.loadEventFired", "Google fallback results load", 8000).catch(() => {});
           await sleep(2000);
@@ -1160,7 +1855,31 @@ async function main() {
           continue;
         }
       }
-      if (lastStatus === "google_blocked" || lastStatus === "consent") {
+      if (lastStatus === "google_blocked") {
+        const blockedSearchUrl = firstSubmittedGoogleSearchUrl() || transientSearchUrl;
+        if (blockedSearchUrl) {
+          finish({
+            ok: true,
+            status: "google_blocked_after_search_submission",
+            blockedByGoogle: true,
+            homeNavigate,
+            seededCookies,
+            consent,
+            before,
+            submitted,
+            final: lastState,
+            googleFallback,
+            googleFallbacks,
+            postSubmitConsent,
+            transientSearchUrl: blockedSearchUrl,
+            navigations,
+          });
+          ws.close();
+          return;
+        }
+        break;
+      }
+      if (lastStatus === "google_blocked" || lastStatus === "google_javascript_required" || lastStatus === "consent") {
         break;
       }
     }
@@ -1175,6 +1894,7 @@ async function main() {
       submitted,
       final: lastState,
       googleFallback,
+      googleFallbacks,
       postSubmitConsent,
       transientSearchUrl,
       navigations,
@@ -1200,7 +1920,7 @@ main();
     Remove-Item -LiteralPath $driverReleasePath -Force -ErrorAction SilentlyContinue
 
     $driverProcess = Start-Process -FilePath $nodeExe -ArgumentList @($driverScriptPath) -WorkingDirectory $RepoRoot -RedirectStandardOutput $driverStdoutPath -RedirectStandardError $driverStderrPath -PassThru
-    $driverDeadline = (Get-Date).AddSeconds([Math]::Max($TimeoutSeconds + 20, 45))
+    $driverDeadline = (Get-Date).AddSeconds([Math]::Max($TimeoutSeconds + 45, 60))
     while ((Get-Date) -lt $driverDeadline) {
         if (Test-Path -LiteralPath $driverResultPath) {
             break
@@ -1222,7 +1942,8 @@ main();
 
     New-Item -ItemType File -Force -Path $driverReleasePath | Out-Null
     if (-not $driverProcess.WaitForExit(15000)) {
-        $driverCmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId=$($driverProcess.Id)").CommandLine
+        $driverProcInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($driverProcess.Id)" -ErrorAction SilentlyContinue
+        $driverCmdLine = if ($null -ne $driverProcInfo) { [string]$driverProcInfo.CommandLine } else { "" }
         if ($driverCmdLine -match "codex\.js|@openai/codex") {
             Write-Warning "Refusing to stop protected Codex process $($driverProcess.Id)"
         } else {
@@ -1293,10 +2014,50 @@ main();
     } else {
         Remove-Item Env:LIGHTPANDA_IP_RESOLVE -ErrorAction SilentlyContinue
     }
+    if ($null -ne $previousHttpVersion) {
+        $env:LIGHTPANDA_HTTP_VERSION = $previousHttpVersion
+    } else {
+        Remove-Item Env:LIGHTPANDA_HTTP_VERSION -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $previousGoogleMinimalHeaders) {
+        $env:LIGHTPANDA_GOOGLE_MINIMAL_HEADERS = $previousGoogleMinimalHeaders
+    } else {
+        Remove-Item Env:LIGHTPANDA_GOOGLE_MINIMAL_HEADERS -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $previousGoogleLeanHeaders) {
+        $env:LIGHTPANDA_GOOGLE_LEAN_HEADERS = $previousGoogleLeanHeaders
+    } else {
+        Remove-Item Env:LIGHTPANDA_GOOGLE_LEAN_HEADERS -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $previousGoogleChromeHeaders) {
+        $env:LIGHTPANDA_GOOGLE_CHROME_HEADERS = $previousGoogleChromeHeaders
+    } else {
+        Remove-Item Env:LIGHTPANDA_GOOGLE_CHROME_HEADERS -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $previousGoogleCoalesceSearchSeiNavigation) {
+        $env:LIGHTPANDA_GOOGLE_COALESCE_SEARCH_SEI_NAVIGATION = $previousGoogleCoalesceSearchSeiNavigation
+    } else {
+        Remove-Item Env:LIGHTPANDA_GOOGLE_COALESCE_SEARCH_SEI_NAVIGATION -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $previousGoogleStripSgSsNavigation) {
+        $env:LIGHTPANDA_GOOGLE_STRIP_SG_SS_NAVIGATION = $previousGoogleStripSgSsNavigation
+    } else {
+        Remove-Item Env:LIGHTPANDA_GOOGLE_STRIP_SG_SS_NAVIGATION -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $previousGoogleSkipSgSsCookie) {
+        $env:LIGHTPANDA_GOOGLE_SKIP_SG_SS_COOKIE = $previousGoogleSkipSgSsCookie
+    } else {
+        Remove-Item Env:LIGHTPANDA_GOOGLE_SKIP_SG_SS_COOKIE -ErrorAction SilentlyContinue
+    }
     if ($null -ne $previousDisablePageJs) {
         $env:LIGHTPANDA_DISABLE_PAGE_JS = $previousDisablePageJs
     } else {
         Remove-Item Env:LIGHTPANDA_DISABLE_PAGE_JS -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $previousGoogleDiagnostics) {
+        $env:LIGHTPANDA_GOOGLE_DIAGNOSTICS = $previousGoogleDiagnostics
+    } else {
+        Remove-Item Env:LIGHTPANDA_GOOGLE_DIAGNOSTICS -ErrorAction SilentlyContinue
     }
     Remove-Item Env:LP_GOOGLE_SMOKE_WS -ErrorAction SilentlyContinue
     Remove-Item Env:LP_GOOGLE_SMOKE_QUERY -ErrorAction SilentlyContinue

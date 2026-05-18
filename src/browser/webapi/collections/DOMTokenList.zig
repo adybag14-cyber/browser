@@ -77,6 +77,16 @@ pub fn contains(self: *const DOMTokenList, search: []const u8) !bool {
     return false;
 }
 
+pub fn supports(self: *const DOMTokenList, token: []const u8) !bool {
+    try validateToken(token);
+
+    if (self._attribute_name.eqlSlice("sandbox")) {
+        return isSupportedSandboxToken(token);
+    }
+
+    return false;
+}
+
 pub fn add(self: *DOMTokenList, tokens: []const []const u8, page: *Page) !void {
     for (tokens) |token| {
         try validateToken(token);
@@ -263,6 +273,27 @@ fn validateToken(token: []const u8) !void {
     }
 }
 
+fn isSupportedSandboxToken(token: []const u8) bool {
+    return inline for (.{
+        "allow-downloads",
+        "allow-forms",
+        "allow-modals",
+        "allow-orientation-lock",
+        "allow-pointer-lock",
+        "allow-popups",
+        "allow-popups-to-escape-sandbox",
+        "allow-presentation",
+        "allow-same-origin",
+        "allow-scripts",
+        "allow-storage-access-by-user-activation",
+        "allow-top-navigation",
+        "allow-top-navigation-by-user-activation",
+        "allow-top-navigation-to-custom-protocols",
+    }) |supported| {
+        if (std.mem.eql(u8, token, supported)) break true;
+    } else false;
+}
+
 fn updateAttribute(self: *DOMTokenList, tokens: Lookup, page: *Page) !void {
     if (tokens.count() > 0) {
         const joined = try std.mem.join(page.call_arena, " ", tokens.keys());
@@ -314,6 +345,7 @@ pub const JsApi = struct {
     pub const remove = bridge.function(DOMTokenList.remove, .{ .dom_exception = true });
     pub const toggle = bridge.function(DOMTokenList.toggle, .{ .dom_exception = true });
     pub const replace = bridge.function(DOMTokenList.replace, .{ .dom_exception = true });
+    pub const supports = bridge.function(DOMTokenList.supports, .{ .dom_exception = true });
     pub const value = bridge.accessor(DOMTokenList.getValue, DOMTokenList.setValue, .{});
     pub const toString = bridge.function(DOMTokenList.getValue, .{});
     pub const keys = bridge.function(DOMTokenList.keys, .{});

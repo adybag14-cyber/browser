@@ -13,6 +13,9 @@
   testing.expectEqual({ foo: 'bar', count: 42 }, evt.data);
   testing.expectEqual('https://example.com', evt.origin);
   testing.expectEqual(window, evt.source);
+  testing.expectEqual('', evt.lastEventId);
+  testing.expectEqual(true, Array.isArray(evt.ports));
+  testing.expectEqual(0, evt.ports.length);
   testing.expectEqual(false, evt.bubbles);
   testing.expectEqual(false, evt.cancelable);
 }
@@ -35,8 +38,25 @@
   const evt3 = new MessageEvent('message');
 
   testing.expectEqual('', evt3.origin);
+  testing.expectEqual('', evt3.lastEventId);
+  testing.expectEqual(0, evt3.ports.length);
   testing.expectEqual(false, evt3.bubbles);
   testing.expectEqual(false, evt3.cancelable);
+}
+</script>
+
+<script id=messageEventPortsAndLastEventId>
+{
+  const port = { postMessage() {} };
+  const evt = new MessageEvent('message', {
+    data: 'with ports',
+    lastEventId: 'event-7',
+    ports: [port],
+  });
+
+  testing.expectEqual('event-7', evt.lastEventId);
+  testing.expectEqual(1, evt.ports.length);
+  testing.expectEqual(port, evt.ports[0]);
 }
 </script>
 
@@ -55,15 +75,18 @@
   let receivedEvent = null;
 
   const handler = (e) => {
-    receivedEvent = e;
+    if (e.data === 'test data') {
+      receivedEvent = e;
+    }
   };
-  window.addEventListener('message', handler, { once: true });
+  window.addEventListener('message', handler);
 
   window.postMessage('test data', '*');
 
   testing.eventually(() => {
     testing.expectEqual('test data', receivedEvent.data);
     testing.expectEqual(window, receivedEvent.source);
+    testing.expectEqual(0, receivedEvent.ports.length);
     testing.expectEqual('message', receivedEvent.type);
   });
 }
@@ -74,9 +97,11 @@
   let receivedData = null;
 
   const handler = (e) => {
-    receivedData = e.data;
+    if (e.data === testObj) {
+      receivedData = e.data;
+    }
   };
-  window.addEventListener('message', handler, { once: true });
+  window.addEventListener('message', handler);
 
   const testObj = { type: 'test', value: 123, nested: { key: 'value' } };
   window.postMessage(testObj, '*');
@@ -105,9 +130,11 @@
   let received = null;
 
   const handler = (e) => {
-    received = e.data;
+    if (e.data === 42) {
+      received = e.data;
+    }
   };
-  window.addEventListener('message', handler, { once: true });
+  window.addEventListener('message', handler);
 
   window.postMessage(42, '*');
 
@@ -122,9 +149,11 @@
   let received = null;
 
   const handler = (e) => {
-    received = e.data;
+    if (e.data === arr) {
+      received = e.data;
+    }
   };
-  window.addEventListener('message', handler, { once: true });
+  window.addEventListener('message', handler);
 
   const arr = [1, 2, 3, 'test'];
   window.postMessage(arr, '*');
@@ -140,9 +169,11 @@
   let received = undefined;
 
   const handler = (e) => {
-    received = e.data;
+    if (e.data === null) {
+      received = e.data;
+    }
   };
-  window.addEventListener('message', handler, { once: true });
+  window.addEventListener('message', handler);
 
   window.postMessage(null, '*');
 
@@ -157,9 +188,11 @@
   let receivedOrigin = null;
 
   const handler = (e) => {
-    receivedOrigin = e.origin;
+    if (e.data === 'test') {
+      receivedOrigin = e.origin;
+    }
   };
-  window.addEventListener('message', handler, { once: true });
+  window.addEventListener('message', handler);
 
   window.postMessage('test', '*');
 

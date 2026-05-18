@@ -139,7 +139,7 @@ fn deleteCookies(cmd: anytype) !void {
 }
 
 fn clearBrowserCookies(cmd: anytype) !void {
-    if (try cmd.params(struct {}) != null) return error.InvalidParams;
+    _ = try cmd.params(struct {});
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
     bc.session.cookie_jar.clearRetainingCapacity();
     return cmd.sendResult(null, .{});
@@ -505,10 +505,7 @@ test "cdp.Network: cookies" {
     try ctx.expectSentResult(.{ .cookies = &[_]ResCookie{.{ .name = "test4", .value = "value4", .domain = ".example.com", .path = "/mango", .size = 11 }} }, .{ .id = 8 });
 
     // Empty after clearBrowserCookies
-    try ctx.processMessage(.{
-        .id = 9,
-        .method = "Network.clearBrowserCookies",
-    });
+    try ctx.processMessage("{\"id\":9,\"method\":\"Network.clearBrowserCookies\",\"params\":{}}");
     try ctx.expectSentResult(null, .{ .id = 9 });
     try ctx.processMessage(.{
         .id = 10,

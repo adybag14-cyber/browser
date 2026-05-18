@@ -1137,9 +1137,10 @@ pub const Build = struct {
     // Calls `func_name` with `args` on the most specific type where it is
     // implement. This could be on the Node itself (as a last-resort);
     pub fn call(self: *const Node, comptime func_name: []const u8, args: anytype) !void {
+        const active_tag = std.meta.activeTag(self._type);
         inline for (@typeInfo(Node.Type).@"union".fields) |f| {
             // The inner type has its own "call" method. Defer to it.
-            if (@field(Node.Type, f.name) == self._type) {
+            if (@field(Node.Type, f.name) == active_tag) {
                 const S = reflect.Struct(f.type);
                 if (@hasDecl(S, "Build")) {
                     if (@hasDecl(S.Build, "call")) {

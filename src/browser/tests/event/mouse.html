@@ -10,7 +10,21 @@
   testing.expectEqual(0, event.clientY);
   testing.expectEqual(0, event.screenX);
   testing.expectEqual(0, event.screenY);
+  testing.expectEqual(0, event.offsetX);
+  testing.expectEqual(0, event.offsetY);
   testing.expectEqual(0, event.buttons);
+  testing.expectEqual('function', typeof event.getModifierState);
+  testing.expectEqual(false, event.getModifierState('Alt'));
+</script>
+
+<script id=descriptorShape>
+  const offsetXDescriptor = Object.getOwnPropertyDescriptor(MouseEvent.prototype, 'offsetX');
+  const offsetYDescriptor = Object.getOwnPropertyDescriptor(MouseEvent.prototype, 'offsetY');
+
+  testing.expectEqual('function', typeof offsetXDescriptor.get);
+  testing.expectEqual('function', typeof offsetYDescriptor.get);
+  testing.expectEqual(0, offsetXDescriptor.get.call(new MouseEvent('click')));
+  testing.expectEqual(0, offsetYDescriptor.get.call(new MouseEvent('click')));
 </script>
 
 <script id=parameters>
@@ -23,6 +37,25 @@
   testing.expectEqual(20, new_event.pageY);
   testing.expectEqual(200, new_event.screenX);
   testing.expectEqual(500, new_event.screenY);
+</script>
+
+<script id=modifierState>
+  const altMouse = new MouseEvent('click', { altKey: true });
+  testing.expectEqual(true, altMouse.altKey);
+  testing.expectEqual(true, altMouse.getModifierState('Alt'));
+  testing.expectEqual(true, altMouse.getModifierState('AltGraph'));
+  testing.expectEqual(false, altMouse.getModifierState('Control'));
+
+  const ctrlMouse = new MouseEvent('click', { ctrlKey: true });
+  testing.expectEqual(true, ctrlMouse.getModifierState('Control'));
+  testing.expectEqual(true, ctrlMouse.getModifierState('Accel'));
+
+  const metaShiftMouse = new MouseEvent('click', { metaKey: true, shiftKey: true });
+  testing.expectEqual(true, metaShiftMouse.getModifierState('Meta'));
+  testing.expectEqual(true, metaShiftMouse.getModifierState('Shift'));
+  testing.expectEqual(true, metaShiftMouse.getModifierState('Accel'));
+  testing.expectEqual(false, metaShiftMouse.getModifierState('CapsLock'));
+  testing.expectEqual(false, metaShiftMouse.getModifierState('alt'));
 </script>
 
 <script id=listener>

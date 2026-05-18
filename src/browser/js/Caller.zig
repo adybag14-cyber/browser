@@ -559,7 +559,8 @@ pub const Function = struct {
             args = try getArgs(F, 0, local, info);
         } else if (comptime opts.embedded_receiver) {
             args = try getArgs(F, 1, local, info);
-            @field(args, "0") = @ptrCast(@alignCast(info.getData() orelse unreachable));
+            const receiver_data = info.getData() orelse return error.MissingEmbeddedReceiver;
+            @field(args, "0") = @ptrCast(@alignCast(receiver_data));
         } else {
             args = try getArgs(F, 1, local, info);
             @field(args, "0") = try TaggedOpaque.fromJS(*T, info.getThis());

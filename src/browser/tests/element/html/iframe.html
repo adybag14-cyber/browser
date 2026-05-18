@@ -19,5 +19,11 @@
   iframe.sandbox = 'allow-forms';
   testing.expectEqual('allow-forms', iframe.sandbox.value);
   testing.expectEqual('allow-forms', iframe.getAttribute('sandbox'));
+
+  testing.expectEqual('function', typeof iframe.sandbox.supports);
+  testing.expectEqual(true, iframe.sandbox.supports('allow-scripts'));
+  testing.expectEqual(true, iframe.sandbox.supports('allow-same-origin'));
+  testing.expectEqual(true, iframe.sandbox.supports('allow-storage-access-by-user-activation'));
+  testing.expectEqual(false, iframe.sandbox.supports('allow-not-real'));
 }
 </script>

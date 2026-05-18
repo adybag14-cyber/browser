@@ -172,10 +172,10 @@ test "Location search setter queues script navigation with updated query" {
     defer page._session.removePage();
 
     page.url = "https://www.google.com/search?q=openai&gbv=1";
-    page.window._location = try Location.init(page.url, &page);
+    page.window._location = try Location.init(page.url, page);
     page.document._location = page.window._location;
 
-    try page.window._location.setSearch("?q=openai&gbv=2&sg_ss=abc", &page);
+    try page.window._location.setSearch("?q=openai&gbv=2&sg_ss=abc", page);
 
     const queued = page._queued_navigation orelse return error.ExpectedQueuedNavigation;
     try std.testing.expectEqualStrings(

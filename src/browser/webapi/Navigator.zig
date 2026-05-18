@@ -416,12 +416,20 @@ const MediaCapabilities = struct {
 };
 
 const UserActivation = struct {
-    pub fn getIsActive(_: *const UserActivation) bool {
-        return false;
+    is_active: bool = false,
+    has_been_active: bool = false,
+
+    pub fn markActive(self: *UserActivation) void {
+        self.is_active = true;
+        self.has_been_active = true;
     }
 
-    pub fn getHasBeenActive(_: *const UserActivation) bool {
-        return false;
+    pub fn getIsActive(self: *const UserActivation) bool {
+        return self.is_active;
+    }
+
+    pub fn getHasBeenActive(self: *const UserActivation) bool {
+        return self.has_been_active;
     }
 
     pub const JsApi = struct {
@@ -1371,6 +1379,10 @@ pub fn getUserActivation(self: *Navigator) *UserActivation {
     return &self._user_activation;
 }
 
+pub fn markUserActivation(self: *Navigator) void {
+    self._user_activation.markActive();
+}
+
 pub fn getServiceWorker(self: *Navigator) *ServiceWorkerContainer {
     return &self._service_worker;
 }
@@ -1658,8 +1670,8 @@ pub const JsApi = struct {
     pub const onLine = bridge.property(true, .{ .template = false });
     pub const cookieEnabled = bridge.property(true, .{ .template = false });
     pub const hardwareConcurrency = bridge.accessor(Navigator.getHardwareConcurrency, null, .{});
-    pub const maxTouchPoints = bridge.property(0, .{ .template = false });
-    pub const deviceMemory = bridge.property(8, .{ .template = false });
+    pub const maxTouchPoints = bridge.property(2, .{ .template = false });
+    pub const deviceMemory = bridge.property(32, .{ .template = false });
     pub const mediaDevices = bridge.accessor(Navigator.getMediaDevices, null, .{});
     pub const permissions = bridge.accessor(Navigator.getPermissions, null, .{});
     pub const connection = bridge.accessor(Navigator.getConnection, null, .{});

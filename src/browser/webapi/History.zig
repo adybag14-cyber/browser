@@ -20,6 +20,7 @@ const std = @import("std");
 const js = @import("../js/js.zig");
 
 const Page = @import("../Page.zig");
+const URL = @import("../URL.zig");
 const PopStateEvent = @import("event/PopStateEvent.zig");
 
 const History = @This();
@@ -33,7 +34,8 @@ pub fn getLength(_: *const History, page: *Page) u32 {
 }
 
 pub fn getState(_: *const History, page: *Page) !?js.Value {
-    if (page._session.navigation.getCurrentEntry()._state.value) |state| {
+    const entry = page._session.navigation.getCurrentEntryOrNull() orelse return null;
+    if (entry._state.value) |state| {
         const value = try page.js.local.?.parseJSON(state);
         return value;
     } else return null;
@@ -49,24 +51,51 @@ pub fn setScrollRestoration(self: *History, str: []const u8) void {
     }
 }
 
+fn resolveStateUrl(_url: ?[]const u8, page: *Page) ![:0]const u8 {
+    const arena = page._session.arena;
+    const url = if (_url) |u|
+        try URL.resolve(arena, page.url, u, .{ .always_dupe = true, .encode = true })
+    else
+        try arena.dupeSentinel(u8, page.url, 0);
+
+    if (!try page.isSameOrigin(url)) {
+        return error.SecurityError;
+    }
+    return url;
+}
+
+fn updateCurrentUrl(url: [:0]const u8, page: *Page) !void {
+    page.url = try page.arena.dupeSentinel(u8, url, 0);
+}
+
 pub fn pushState(_: *History, state: js.Value, _: ?[]const u8, _url: ?[]const u8, page: *Page) !void {
     const arena = page._session.arena;
-    const url = if (_url) |u| try arena.dupeSentinel(u8, u, 0) else try arena.dupeSentinel(u8, page.url, 0);
+    const url = try resolveStateUrl(_url, page);
 
     const json = state.toJson(arena) catch return error.DataClone;
     _ = try page._session.navigation.pushEntry(url, .{ .source = .history, .value = json }, page, true);
+    try updateCurrentUrl(url, page);
 }
 
 pub fn replaceState(_: *History, state: js.Value, _: ?[]const u8, _url: ?[]const u8, page: *Page) !void {
     const arena = page._session.arena;
-    const url = if (_url) |u| try arena.dupeSentinel(u8, u, 0) else try arena.dupeSentinel(u8, page.url, 0);
+    const url = try resolveStateUrl(_url, page);
 
     const json = state.toJson(arena) catch return error.DataClone;
-    _ = try page._session.navigation.replaceEntry(url, .{ .source = .history, .value = json }, page, true);
+    if (page._session.navigation.getCurrentEntryOrNull() == null) {
+        _ = try page._session.navigation.pushEntry(url, .{ .source = .history, .value = json }, page, false);
+    } else {
+        _ = try page._session.navigation.replaceEntry(url, .{ .source = .history, .value = json }, page, true);
+    }
+    try updateCurrentUrl(url, page);
 }
 
 fn goInner(delta: i32, page: *Page) !void {
     // 0 behaves the same as no argument, both reloading the page.
+
+    if (page._session.navigation._entries.items.len == 0) {
+        return;
+    }
 
     const current = page._session.navigation._index;
     const index_s: i64 = @intCast(@as(i64, @intCast(current)) + @as(i64, @intCast(delta)));

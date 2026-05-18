@@ -19,6 +19,7 @@
 const std = @import("std");
 const compat = @import("../../compat.zig");
 const lp = @import("lightpanda");
+const google_diagnostics_env = "LIGHTPANDA_GOOGLE_DIAGNOSTICS";
 
 const log = @import("../../log.zig");
 const String = @import("../../string.zig").String;
@@ -1357,7 +1358,7 @@ fn populateDerivedLayoutBox(self: *Element, page: *Page) void {
     }
 
     const derived = deriveLayoutBoxFromChildren(self, page) orelse return;
-    if (std.mem.indexOf(u8, page.url, "consent.google.com") != null) {
+    if (compat.envFlagEnabled(google_diagnostics_env) and std.mem.indexOf(u8, page.url, "consent.google.com") != null) {
         const class_name = self.getAttributeSafe(comptime .wrap("class")) orelse "";
         const href = self.getAttributeSafe(comptime .wrap("href")) orelse "";
         const should_log = std.mem.indexOf(u8, class_name, "footer") != null or
@@ -2080,8 +2081,9 @@ pub const Build = struct {
     // Calls `func_name` with `args` on the most specific type where it is
     // implement. This could be on the Element itself.
     pub fn call(self: *const Element, comptime func_name: []const u8, args: anytype) !bool {
+        const active_tag = std.meta.activeTag(self._type);
         inline for (@typeInfo(Element.Type).@"union".fields) |f| {
-            if (@field(Element.Type, f.name) == self._type) {
+            if (@field(Element.Type, f.name) == active_tag) {
                 // The inner type implements this function. Call it and we're done.
                 const S = reflect.Struct(f.type);
                 if (@hasDecl(S, "Build")) {

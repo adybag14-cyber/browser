@@ -32,11 +32,15 @@ _proto: *Event,
 _data: ?js.Value.Temp = null,
 _origin: []const u8 = "",
 _source: ?*Window = null,
+_last_event_id: []const u8 = "",
+_ports: ?js.Value.Temp = null,
 
 const MessageEventOptions = struct {
     data: ?js.Value.Temp = null,
     origin: ?[]const u8 = null,
     source: ?*Window = null,
+    lastEventId: ?[]const u8 = null,
+    ports: ?js.Value.Temp = null,
 };
 
 const Options = Event.inheritOptions(MessageEvent, MessageEventOptions);
@@ -65,6 +69,8 @@ fn initWithTrusted(arena: Allocator, typ: String, opts_: ?Options, trusted: bool
             ._data = opts.data,
             ._origin = if (opts.origin) |str| try arena.dupe(u8, str) else "",
             ._source = opts.source,
+            ._last_event_id = if (opts.lastEventId) |str| try arena.dupe(u8, str) else "",
+            ._ports = opts.ports,
         },
     );
 
@@ -75,6 +81,9 @@ fn initWithTrusted(arena: Allocator, typ: String, opts_: ?Options, trusted: bool
 pub fn deinit(self: *MessageEvent, shutdown: bool, page: *Page) void {
     if (self._data) |d| {
         page.js.release(d);
+    }
+    if (self._ports) |p| {
+        page.js.release(p);
     }
     self._proto.deinit(shutdown, page);
 }
@@ -95,6 +104,17 @@ pub fn getSource(self: *const MessageEvent) ?*Window {
     return self._source;
 }
 
+pub fn getLastEventId(self: *const MessageEvent) []const u8 {
+    return self._last_event_id;
+}
+
+pub fn getPorts(self: *const MessageEvent, page: *Page) js.Value {
+    if (self._ports) |ports| {
+        return page.js.toLocal(ports);
+    }
+    return page.js.local.?.newArray(0).toValue();
+}
+
 pub const JsApi = struct {
     pub const bridge = js.Bridge(MessageEvent);
 
@@ -110,6 +130,8 @@ pub const JsApi = struct {
     pub const data = bridge.accessor(MessageEvent.getData, null, .{});
     pub const origin = bridge.accessor(MessageEvent.getOrigin, null, .{});
     pub const source = bridge.accessor(MessageEvent.getSource, null, .{});
+    pub const lastEventId = bridge.accessor(MessageEvent.getLastEventId, null, .{});
+    pub const ports = bridge.accessor(MessageEvent.getPorts, null, .{});
 };
 
 const testing = @import("../../../testing.zig");

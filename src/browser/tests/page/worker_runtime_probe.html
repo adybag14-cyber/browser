@@ -7,6 +7,7 @@
       worker: typeof Worker,
       sharedWorker: typeof SharedWorker,
       workerReply: null,
+      workerRuntime: null,
       sharedReply: null,
       errors: [],
     };
@@ -43,6 +44,29 @@
     }
 
     try {
+      const worker = new Worker("/src/browser/tests/page/support/chatgpt_probe_worker.js");
+      result.workerRuntime = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          worker.terminate();
+          reject(new Error("timeout"));
+        }, 1000);
+        worker.onmessage = (event) => {
+          clearTimeout(timer);
+          worker.terminate();
+          resolve(event.data);
+        };
+        worker.onerror = (event) => {
+          clearTimeout(timer);
+          worker.terminate();
+          reject(event.error || new Error(event.message || "worker runtime error"));
+        };
+        worker.postMessage("probe-runtime");
+      });
+    } catch (error) {
+      recordError("workerRuntime", error);
+    }
+
+    try {
       const sharedWorker = new SharedWorker("/src/browser/tests/page/support/chatgpt_probe_shared_worker.js");
       if (typeof sharedWorker.port.start === "function") {
         sharedWorker.port.start();
@@ -72,6 +96,13 @@
     if (result.worker !== "function") blockers.push("worker-missing");
     if (result.sharedWorker !== "function") blockers.push("shared-worker-missing");
     if (result.workerReply !== "worker:ping") blockers.push("worker-reply");
+    if (result.workerRuntime?.chrome !== "object") blockers.push("worker-chrome");
+    if (result.workerRuntime?.chromeCsi !== "function") blockers.push("worker-chrome-csi");
+    if (result.workerRuntime?.chromeLoadTimes !== "function") blockers.push("worker-chrome-load-times");
+    if (result.workerRuntime?.navigator !== "object") blockers.push("worker-navigator");
+    if (result.workerRuntime?.performanceNow !== "function") blockers.push("worker-performance");
+    if (result.workerRuntime?.caches !== "function") blockers.push("worker-caches");
+    if (result.workerRuntime?.messagePorts !== 0) blockers.push("worker-message-ports");
     if (result.sharedReply !== "shared:pong") blockers.push("shared-reply");
     blockers.push(...result.errors);
 

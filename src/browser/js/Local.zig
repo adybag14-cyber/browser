@@ -1121,8 +1121,9 @@ pub fn resolveValue(value: anytype) Resolved {
     }
 
     const U = @typeInfo(@TypeOf(value._type)).@"union";
+    const active_tag = std.meta.activeTag(value._type);
     inline for (U.fields) |field| {
-        if (value._type == @field(U.tag_type.?, field.name)) {
+        if (active_tag == @field(U.tag_type.?, field.name)) {
             const child = switch (@typeInfo(field.type)) {
                 .pointer => @field(value._type, field.name),
                 .@"struct" => &@field(value._type, field.name),

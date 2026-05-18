@@ -224,6 +224,17 @@ pub fn getEnvVarOwned(allocator: std.mem.Allocator, key: []const u8) GetEnvVarOw
     };
 }
 
+pub fn envFlagEnabled(key: []const u8) bool {
+    const value = getEnvVarOwned(std.heap.page_allocator, key) catch return false;
+    defer std.heap.page_allocator.free(value);
+
+    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
+    return std.mem.eql(u8, trimmed, "1") or
+        std.ascii.eqlIgnoreCase(trimmed, "true") or
+        std.ascii.eqlIgnoreCase(trimmed, "yes") or
+        std.ascii.eqlIgnoreCase(trimmed, "on");
+}
+
 pub fn unixTimestamp() i64 {
     return std.Io.Clock.real.now(io()).toSeconds();
 }

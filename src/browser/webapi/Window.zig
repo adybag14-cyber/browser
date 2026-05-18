@@ -162,11 +162,11 @@ pub fn getInnerHeight(self: *const Window) u32 {
 }
 
 pub fn getOuterWidth(self: *const Window) u32 {
-    return self._screen.getWidth();
+    return self._visual_viewport.getWidth();
 }
 
 pub fn getOuterHeight(self: *const Window) u32 {
-    return self._screen.getHeight();
+    return self._visual_viewport.getHeight();
 }
 
 pub fn getScreenX(_: *const Window) i32 {
@@ -203,7 +203,7 @@ pub fn getChrome(self: *Window) *Chrome {
 
 pub fn installOwnJsProperties(self: *Window, js_obj: js.Object) error{JsException}!void {
     const chrome = js_obj.local.zigValueToJs(self.getChrome(), .{}) catch return error.JsException;
-    if (js_obj.defineOwnProperty("chrome", chrome, js.v8.ReadOnly + js.v8.DontDelete) != true) {
+    if (js_obj.defineOwnProperty("chrome", chrome, js.v8.DontDelete) != true) {
         return error.JsException;
     }
 }
@@ -300,12 +300,6 @@ const ChromeRuntime = struct {
 };
 
 const Chrome = struct {
-    _runtime: ChromeRuntime = .{},
-
-    pub fn getRuntime(self: *Chrome) *ChromeRuntime {
-        return &self._runtime;
-    }
-
     pub const JsApi = struct {
         pub const bridge = js.Bridge(Chrome);
 
@@ -315,8 +309,6 @@ const Chrome = struct {
             pub var class_id: bridge.ClassId = undefined;
             pub const empty_with_no_proto = true;
         };
-
-        pub const runtime = bridge.accessor(Chrome.getRuntime, null, .{});
     };
 };
 

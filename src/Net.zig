@@ -33,6 +33,7 @@ const IS_DEBUG = builtin.mode == .Debug;
 pub const DISABLED_PROXY: [:0]const u8 = "";
 const LOOPBACK_NO_PROXY: [:0]const u8 = "localhost,127.0.0.1,::1,[::1]";
 const IP_RESOLVE_ENV = "LIGHTPANDA_IP_RESOLVE";
+const HTTP_VERSION_ENV = "LIGHTPANDA_HTTP_VERSION";
 
 pub const Blob = libcurl.CurlBlob;
 pub const WaitFd = libcurl.CurlWaitFd;
@@ -267,6 +268,33 @@ fn configuredIpResolve() ?i32 {
     return null;
 }
 
+fn configuredHttpVersion() ?i32 {
+    const value = compat.getEnvVarOwned(std.heap.page_allocator, HTTP_VERSION_ENV) catch return null;
+    defer std.heap.page_allocator.free(value);
+
+    if (std.ascii.eqlIgnoreCase(value, "1.1") or
+        std.ascii.eqlIgnoreCase(value, "http/1.1") or
+        std.ascii.eqlIgnoreCase(value, "http1.1") or
+        std.ascii.eqlIgnoreCase(value, "h1"))
+    {
+        return libcurl.http_version_1_1;
+    }
+    if (std.ascii.eqlIgnoreCase(value, "2") or
+        std.ascii.eqlIgnoreCase(value, "2tls") or
+        std.ascii.eqlIgnoreCase(value, "http/2") or
+        std.ascii.eqlIgnoreCase(value, "http2") or
+        std.ascii.eqlIgnoreCase(value, "h2"))
+    {
+        return libcurl.http_version_2tls;
+    }
+    if (std.ascii.eqlIgnoreCase(value, "default") or std.ascii.eqlIgnoreCase(value, "none")) {
+        return libcurl.http_version_none;
+    }
+
+    log.warn(.http, "invalid http version env", .{ .value = value });
+    return null;
+}
+
 pub const Connection = struct {
     easy: *libcurl.Curl,
     node: Handles.HandleList.Node = .{},
@@ -286,7 +314,7 @@ pub const Connection = struct {
         try libcurl.curl_easy_setopt(easy, .max_redirs, config.httpMaxRedirects());
         try libcurl.curl_easy_setopt(easy, .follow_location, 2);
         try libcurl.curl_easy_setopt(easy, .redir_protocols_str, "HTTP,HTTPS"); // remove FTP and FTPS from the default
-        try libcurl.curl_easy_setopt(easy, .http_version, libcurl.http_version_2tls);
+        try libcurl.curl_easy_setopt(easy, .http_version, configuredHttpVersion() orelse libcurl.http_version_2tls);
         if (configuredIpResolve()) |ip_resolve| {
             try libcurl.curl_easy_setopt(easy, .ip_resolve, ip_resolve);
         }

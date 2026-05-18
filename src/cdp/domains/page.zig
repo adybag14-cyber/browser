@@ -301,6 +301,20 @@ pub fn pageNavigate(bc: anytype, event: *const Notification.PageNavigate) !void 
     try cdp.sendEvent("Page.frameStartedLoading", .{
         .frameId = frame_id,
     }, .{ .session_id = session_id });
+
+    // Respond to Page.navigate once the navigation is accepted and loading has
+    // started. Waiting for full document completion makes CDP clients time out
+    // on script-heavy pages that continue fetching and scheduling work.
+    if (event.opts.cdp_id) |input_id| {
+        try cdp.sendJSON(.{
+            .id = input_id,
+            .result = .{
+                .frameId = frame_id,
+                .loaderId = loader_id,
+            },
+            .sessionId = session_id,
+        });
+    }
 }
 
 pub fn pageRemove(bc: anytype) !void {
@@ -355,22 +369,6 @@ pub fn pageNavigated(arena: Allocator, bc: anytype, event: *const Notification.P
     const loader_id = &id.toLoaderId(event.req_id);
 
     var cdp = bc.cdp;
-
-    // Drivers are sensitive to the order of events. Some more than others.
-    // The result for the Page.navigate seems like it _must_ come after
-    // the frameStartedLoading, but before any lifecycleEvent. So we
-    // unfortunately have to put the input_id ito the NavigateOpts which gets
-    // passed back into the notification.
-    if (event.opts.cdp_id) |input_id| {
-        try cdp.sendJSON(.{
-            .id = input_id,
-            .result = .{
-                .frameId = frame_id,
-                .loaderId = loader_id,
-            },
-            .sessionId = session_id,
-        });
-    }
 
     if (bc.page_life_cycle_events) {
         try cdp.sendEvent("Page.lifecycleEvent", LifecycleEvent{
@@ -571,4 +569,33 @@ test "cdp.page: frameAttached event uses direct params" {
         .frameId = "FID-0000000002",
         .parentFrameId = "FID-0000000001",
     }, .{ .session_id = "SESS-1" });
+}
+
+test "cdp.page: Page.navigate responds after frameStartedLoading" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    const bc = try ctx.loadBrowserContext(.{ .session_id = "SESS-1" });
+
+    try pageNavigate(bc, &.{
+        .frame_id = 1,
+        .req_id = 9,
+        .timestamp = 123,
+        .url = "https://example.test/",
+        .opts = .{ .cdp_id = 77 },
+    });
+
+    try ctx.expectSentEvent("Page.frameStartedNavigating", .{
+        .frameId = "FID-0000000001",
+        .url = "https://example.test/",
+        .loaderId = "LID-0000000009",
+        .navigationType = "differentDocument",
+    }, .{ .session_id = "SESS-1" });
+    try ctx.expectSentEvent("Page.frameStartedLoading", .{
+        .frameId = "FID-0000000001",
+    }, .{ .session_id = "SESS-1" });
+    try ctx.expectSentResult(.{
+        .frameId = "FID-0000000001",
+        .loaderId = "LID-0000000009",
+    }, .{ .id = 77, .session_id = "SESS-1" });
 }

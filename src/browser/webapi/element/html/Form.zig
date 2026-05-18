@@ -104,6 +104,39 @@ pub fn submit(self: *Form, page: *Page) !void {
     return page.submitForm(null, self, .{ .fire_event = false });
 }
 
+fn isSubmitButton(submitter: *Element) bool {
+    if (submitter.is(Input)) |input| {
+        return input._input_type == .submit or input._input_type == .image;
+    }
+    if (submitter.is(Button)) |button| {
+        return std.ascii.eqlIgnoreCase(button.getType(), "submit");
+    }
+    return false;
+}
+
+fn submitterForm(submitter: *Element, page: *Page) ?*Form {
+    if (submitter.is(Input)) |input| {
+        return input.getForm(page);
+    }
+    if (submitter.is(Button)) |button| {
+        return button.getForm(page);
+    }
+    return null;
+}
+
+pub fn requestSubmit(self: *Form, submitter_: ?*Element, page: *Page) !void {
+    if (submitter_) |submitter| {
+        if (!isSubmitButton(submitter)) {
+            return error.TypeError;
+        }
+        if (submitterForm(submitter, page) != self) {
+            return error.NotFound;
+        }
+    }
+
+    return page.submitForm(submitter_, self, .{ .fire_event = true });
+}
+
 pub const JsApi = struct {
     pub const bridge = js.Bridge(Form);
     pub const Meta = struct {
@@ -118,6 +151,7 @@ pub const JsApi = struct {
     pub const length = bridge.accessor(Form.getLength, null, .{});
     pub const @"[str]" = bridge.namedIndexed(Form.namedItem, null, null, .{ .null_as_undefined = true });
     pub const submit = bridge.function(Form.submit, .{});
+    pub const requestSubmit = bridge.function(Form.requestSubmit, .{ .dom_exception = true });
 };
 
 const testing = @import("../../../../testing.zig");

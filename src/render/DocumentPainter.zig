@@ -22,6 +22,7 @@ const ClipRect = @import("DisplayList.zig").ClipRect;
 const CSSStyleSheet = @import("../browser/webapi/css/CSSStyleSheet.zig");
 const CSSStyleProperties = @import("../browser/webapi/css/CSSStyleProperties.zig");
 const win = if (builtin.os.tag == .windows) @import("win32_c") else struct {};
+const google_diagnostics_env = "LIGHTPANDA_GOOGLE_DIAGNOSTICS";
 
 pub const PaintOpts = struct {
     viewport_width: i32,
@@ -312,7 +313,8 @@ fn pointWithinBounds(x: i32, y: i32, bounds: Bounds) bool {
 }
 
 fn rendererDiagnosticsEnabled(page: *Page) bool {
-    return std.mem.indexOf(u8, page.url, "consent.google.com") != null;
+    return compat.envFlagEnabled(google_diagnostics_env) and
+        std.mem.indexOf(u8, page.url, "consent.google.com") != null;
 }
 
 fn appendRendererDiagnosticsLine(comptime label: []const u8, message: []const u8) void {

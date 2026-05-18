@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+const std = @import("std");
 const String = @import("../../../string.zig").String;
 
 const js = @import("../../js/js.zig");
@@ -36,8 +37,9 @@ pub const Type = union(enum) {
 };
 
 pub fn is(self: *Svg, comptime T: type) ?*T {
+    const active_tag = std.meta.activeTag(self._type);
     inline for (@typeInfo(Type).@"union".fields) |f| {
-        if (@field(Type, f.name) == self._type) {
+        if (@field(Type, f.name) == active_tag) {
             if (f.type == T) {
                 return &@field(self._type, f.name);
             }

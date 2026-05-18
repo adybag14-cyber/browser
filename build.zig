@@ -389,7 +389,16 @@ fn linkCurl(b: *Build, mod: *Build.Module) !void {
     curl.root_module.linkLibrary(nghttp2);
 
     const boringssl = buildBoringSsl(b, target, mod.optimize.?);
-    for (boringssl) |lib| curl.root_module.linkLibrary(lib);
+    for (boringssl) |lib| {
+        curl.root_module.linkLibrary(lib);
+    }
+
+    if (target.result.os.tag == .windows) {
+        curl.root_module.linkSystemLibrary("secur32", .{ .use_pkg_config = .no });
+        curl.root_module.linkSystemLibrary("crypt32", .{ .use_pkg_config = .no });
+        curl.root_module.linkSystemLibrary("bcrypt", .{ .use_pkg_config = .no });
+        for (boringssl) |lib| mod.linkLibrary(lib);
+    }
 
     switch (target.result.os.tag) {
         .macos => {
@@ -613,6 +622,8 @@ fn buildCurl(
 
         .USE_OPENSSL = true,
         .OPENSSL_IS_BORINGSSL = true,
+        .USE_SCHANNEL = false,
+        .USE_WINDOWS_SSPI = is_windows,
         .CURL_CA_PATH = null,
         .CURL_CA_BUNDLE = null,
         .CURL_CA_FALLBACK = false,

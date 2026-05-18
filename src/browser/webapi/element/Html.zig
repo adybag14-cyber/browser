@@ -179,8 +179,9 @@ pub const Type = union(enum) {
 };
 
 pub fn is(self: *HtmlElement, comptime T: type) ?*T {
+    const active_tag = std.meta.activeTag(self._type);
     inline for (@typeInfo(Type).@"union".fields) |f| {
-        if (@field(Type, f.name) == self._type) {
+        if (@field(Type, f.name) == active_tag) {
             if (f.type == T) {
                 return &@field(self._type, f.name);
             }
@@ -1341,8 +1342,9 @@ pub const Build = struct {
     // Calls `func_name` with `args` on the most specific type where it is
     // implement. This could be on the HtmlElement itself.
     pub fn call(self: *const HtmlElement, comptime func_name: []const u8, args: anytype) !bool {
+        const active_tag = std.meta.activeTag(self._type);
         inline for (@typeInfo(HtmlElement.Type).@"union".fields) |f| {
-            if (@field(HtmlElement.Type, f.name) == self._type) {
+            if (@field(HtmlElement.Type, f.name) == active_tag) {
                 // The inner type implements this function. Call it and we're done.
                 const S = reflect.Struct(f.type);
                 if (@hasDecl(S, "Build")) {

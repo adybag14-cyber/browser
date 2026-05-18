@@ -67,18 +67,23 @@ fn dispatchKeyEvent(cmd: anytype) !void {
         .keyDown, .rawKeyDown => {
             if (params.key.len == 0 and params.text.len == 0) return;
             const key = if (params.key.len > 0) params.key else params.text;
-            _ = try current_page.triggerKeyboardKeyDownWithRepeat(key, mods, params.autoRepeat);
+            if (params.text.len > 0) {
+                _ = try current_page.triggerKeyboardKeyDownWithCodeAndRepeat(key, params.code, mods, params.autoRepeat);
+            } else {
+                _ = try current_page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat(key, params.code, mods, params.autoRepeat);
+            }
         },
         .keyUp => {
             if (params.key.len == 0 and params.text.len == 0) return;
             const key = if (params.key.len > 0) params.key else params.text;
-            _ = try current_page.triggerKeyboardKeyUp(key, mods);
+            _ = try current_page.triggerKeyboardKeyUpWithCode(key, params.code, mods);
         },
         .char => {
-            if (params.text.len > 0) {
-                try current_page.insertText(params.text);
-            } else if (params.key.len > 0) {
-                try current_page.insertText(params.key);
+            const text = if (params.text.len > 0) params.text else params.key;
+            if (text.len == 0) return;
+            const allowed = try current_page.triggerKeyboardKeyPressWithCode(text, params.code, mods, params.autoRepeat);
+            if (allowed) {
+                try current_page.insertText(text);
             }
         },
     }

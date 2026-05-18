@@ -86,6 +86,12 @@ var browse_invalidation_trace_lock: lp.compat.Mutex = .{};
 pub const BUF_SIZE = 1024;
 
 const Page = @This();
+const google_diagnostics_env = "LIGHTPANDA_GOOGLE_DIAGNOSTICS";
+const google_chrome_headers_env = "LIGHTPANDA_GOOGLE_CHROME_HEADERS";
+const google_lean_headers_env = "LIGHTPANDA_GOOGLE_LEAN_HEADERS";
+const google_minimal_headers_env = "LIGHTPANDA_GOOGLE_MINIMAL_HEADERS";
+const google_strip_sg_ss_navigation_env = "LIGHTPANDA_GOOGLE_STRIP_SG_SS_NAVIGATION";
+const google_coalesce_search_sei_navigation_env = "LIGHTPANDA_GOOGLE_COALESCE_SEARCH_SEI_NAVIGATION";
 
 pub const PresentationHint = union(enum) {
     none,
@@ -94,8 +100,9 @@ pub const PresentationHint = union(enum) {
 };
 
 fn googlePresentationTraceEnabled(url: []const u8) bool {
-    return std.mem.indexOf(u8, url, "google-home-") != null or
-        std.mem.indexOf(u8, url, "google.com") != null;
+    return compat.envFlagEnabled(google_diagnostics_env) and
+        (std.mem.indexOf(u8, url, "google-home-") != null or
+            std.mem.indexOf(u8, url, "google.com") != null);
 }
 
 fn appendBrowseInvalidationTrace(stage: []const u8, url: []const u8, detail: []const u8) void {
@@ -337,13 +344,7 @@ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void
         visual_viewport = p.window._visual_viewport;
     } else {
         const viewport = session.browser.app.display.viewport;
-        screen = try factory.eventTarget(Screen{
-            ._proto = undefined,
-            ._orientation = null,
-            ._width = viewport.width,
-            ._height = viewport.height,
-            ._avail_height = viewport.availHeight(),
-        });
+        screen = try factory.eventTarget(Screen.initDefault());
         visual_viewport = try factory.eventTarget(VisualViewport{
             ._proto = undefined,
             ._width = viewport.width,
@@ -397,18 +398,20 @@ fn installRuntimeShims(self: *Page) !void {
     _ = try ls.local.exec(
         \\(() => {
         \\  const enqueue = (callback) => Promise.resolve().then(callback);
-        \\  const installValue = (name, value) => {
+        \\  const installValueOn = (target, name, value) => {
+        \\    if (!target) return;
         \\    try {
-        \\      Object.defineProperty(globalThis, name, {
+        \\      Object.defineProperty(target, name, {
         \\        configurable: true,
         \\        enumerable: true,
         \\        writable: true,
         \\        value,
         \\      });
         \\    } catch (_) {
-        \\      globalThis[name] = value;
+        \\      target[name] = value;
         \\    }
         \\  };
+        \\  const installValue = (name, value) => installValueOn(globalThis, name, value);
         \\  const installAccessor = (target, name, getter) => {
         \\    if (!target) return false;
         \\    try {
@@ -489,42 +492,22 @@ fn installRuntimeShims(self: *Page) !void {
         \\      } catch (_) {}
         \\    }
         \\  };
-        \\  const ensureChromeSurface = () => {
-        \\    let chromeObject = globalThis.chrome;
+        \\  const ensureChromeSurface = (target = globalThis, options = {}) => {
+        \\    let chromeObject = target.chrome;
         \\    if (!chromeObject || typeof chromeObject !== "object") {
         \\      chromeObject = {};
-        \\      installValue("chrome", chromeObject);
-        \\    }
-        \\    if (!chromeObject.runtime || typeof chromeObject.runtime !== "object") {
-        \\      defineChromeValue(chromeObject, "runtime", {});
-        \\    }
-        \\    if (!chromeObject.app || typeof chromeObject.app !== "object") {
-        \\      defineChromeValue(chromeObject, "app", {
-        \\        isInstalled: false,
-        \\        InstallState: {
-        \\          DISABLED: "disabled",
-        \\          INSTALLED: "installed",
-        \\          NOT_INSTALLED: "not_installed",
-        \\        },
-        \\        RunningState: {
-        \\          CANNOT_RUN: "cannot_run",
-        \\          READY_TO_RUN: "ready_to_run",
-        \\          RUNNING: "running",
-        \\        },
-        \\      });
-        \\    }
-        \\    if (!chromeObject.webstore || typeof chromeObject.webstore !== "object") {
-        \\      defineChromeValue(chromeObject, "webstore", {});
+        \\      installValueOn(target, "chrome", chromeObject);
         \\    }
         \\    const makeChromeTiming = () => {
         \\      const now = Date.now();
+        \\      const perf = target.performance || globalThis.performance;
         \\      const requestTime =
-        \\        globalThis.performance && typeof globalThis.performance.timeOrigin === "number"
-        \\          ? globalThis.performance.timeOrigin / 1000
+        \\        perf && typeof perf.timeOrigin === "number"
+        \\          ? perf.timeOrigin / 1000
         \\          : now / 1000;
         \\      const pageT =
-        \\        globalThis.performance && typeof globalThis.performance.now === "function"
-        \\          ? Math.floor(globalThis.performance.now())
+        \\        perf && typeof perf.now === "function"
+        \\          ? Math.floor(perf.now())
         \\          : 0;
         \\      const firstPaintTime = requestTime + pageT / 1000;
         \\      return {
@@ -551,11 +534,32 @@ fn installRuntimeShims(self: *Page) !void {
         \\        startE: Date.now(),
         \\        onloadT: Date.now(),
         \\        pageT:
-        \\          globalThis.performance && typeof globalThis.performance.now === "function"
-        \\            ? Math.floor(globalThis.performance.now())
+        \\          target.performance && typeof target.performance.now === "function"
+        \\            ? Math.floor(target.performance.now())
         \\            : 0,
         \\        tran: 15,
         \\      }));
+        \\    }
+        \\    if (!chromeObject.app || typeof chromeObject.app !== "object") {
+        \\      defineChromeValue(chromeObject, "app", {
+        \\        isInstalled: false,
+        \\        InstallState: {
+        \\          DISABLED: "disabled",
+        \\          INSTALLED: "installed",
+        \\          NOT_INSTALLED: "not_installed",
+        \\        },
+        \\        RunningState: {
+        \\          CANNOT_RUN: "cannot_run",
+        \\          READY_TO_RUN: "ready_to_run",
+        \\          RUNNING: "running",
+        \\        },
+        \\      });
+        \\    }
+        \\    if (options.extensionLike && (!chromeObject.runtime || typeof chromeObject.runtime !== "object")) {
+        \\      defineChromeValue(chromeObject, "runtime", {});
+        \\    }
+        \\    if (options.extensionLike && (!chromeObject.webstore || typeof chromeObject.webstore !== "object")) {
+        \\      defineChromeValue(chromeObject, "webstore", {});
         \\    }
         \\  };
         \\  ensureChromeSurface();
@@ -641,6 +645,91 @@ fn installRuntimeShims(self: *Page) !void {
         \\    };
         \\  };
         \\
+        \\  const createShimEvent = (type, init = {}) => {
+        \\    const event = {
+        \\      type,
+        \\      data: init.data,
+        \\      ports: Array.isArray(init.ports) ? init.ports : [],
+        \\      origin: init.origin || "",
+        \\      source: init.source || null,
+        \\      lastEventId: init.lastEventId || "",
+        \\      target: init.target || null,
+        \\      currentTarget: init.currentTarget || init.target || null,
+        \\      defaultPrevented: false,
+        \\      preventDefault() {
+        \\        this.defaultPrevented = true;
+        \\      },
+        \\      stopPropagation() {},
+        \\      stopImmediatePropagation() {},
+        \\    };
+        \\    return event;
+        \\  };
+        \\
+        \\  if (typeof globalThis.BroadcastChannel === "undefined") {
+        \\    const broadcastChannels = new Map();
+        \\    class BroadcastChannelShim {
+        \\      constructor(name) {
+        \\        this.name = String(name);
+        \\        this.onmessage = null;
+        \\        this.onmessageerror = null;
+        \\        this._closed = false;
+        \\        let bucket = broadcastChannels.get(this.name);
+        \\        if (!bucket) {
+        \\          bucket = new Set();
+        \\          broadcastChannels.set(this.name, bucket);
+        \\        }
+        \\        bucket.add(this);
+        \\        addEventTargetMethods(this, (type) => {
+        \\          if (type === "message") return this.onmessage;
+        \\          if (type === "messageerror") return this.onmessageerror;
+        \\          return null;
+        \\        });
+        \\      }
+        \\
+        \\      postMessage(data) {
+        \\        if (this._closed) return;
+        \\        const bucket = broadcastChannels.get(this.name);
+        \\        if (!bucket) return;
+        \\        for (const channel of [...bucket]) {
+        \\          if (channel === this || channel._closed) continue;
+        \\          channel._dispatchShimEvent("message", createShimEvent("message", {
+        \\            data,
+        \\            target: channel,
+        \\            currentTarget: channel,
+        \\          }));
+        \\        }
+        \\      }
+        \\
+        \\      close() {
+        \\        if (this._closed) return;
+        \\        this._closed = true;
+        \\        const bucket = broadcastChannels.get(this.name);
+        \\        if (!bucket) return;
+        \\        bucket.delete(this);
+        \\        if (bucket.size === 0) {
+        \\          broadcastChannels.delete(this.name);
+        \\        }
+        \\      }
+        \\    }
+        \\    installValue("BroadcastChannel", BroadcastChannelShim);
+        \\  }
+        \\
+        \\  const shouldExecuteShimWorkerSource = (url) => {
+        \\    try {
+        \\      const parsed = new URL(
+        \\        String(url),
+        \\        globalThis.location && globalThis.location.href ? globalThis.location.href : "http://lightpanda.invalid/",
+        \\      );
+        \\      if (parsed.protocol === "file:") return true;
+        \\      if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]") {
+        \\        return true;
+        \\      }
+        \\      return /\/src\/browser\/tests\//.test(parsed.pathname);
+        \\    } catch (_) {
+        \\      return false;
+        \\    }
+        \\  };
+        \\
         \\  const executeWorkerSource = async (url, workerGlobal) => {
         \\    const response = await fetch(url);
         \\    const source = await response.text();
@@ -655,6 +744,17 @@ fn installRuntimeShims(self: *Page) !void {
         \\      "clearTimeout",
         \\      "queueMicrotask",
         \\      "console",
+        \\      "chrome",
+        \\      "navigator",
+        \\      "performance",
+        \\      "crypto",
+        \\      "caches",
+        \\      "location",
+        \\      "scheduler",
+        \\      "cookieStore",
+        \\      "registration",
+        \\      "clients",
+        \\      "skipWaiting",
         \\      `${source}\n//# sourceURL=${url}`,
         \\    );
         \\    evaluator(
@@ -668,6 +768,17 @@ fn installRuntimeShims(self: *Page) !void {
         \\      clearTimeout,
         \\      queueMicrotask,
         \\      console,
+        \\      workerGlobal.chrome,
+        \\      workerGlobal.navigator,
+        \\      workerGlobal.performance,
+        \\      workerGlobal.crypto,
+        \\      workerGlobal.caches,
+        \\      workerGlobal.location,
+        \\      workerGlobal.scheduler,
+        \\      workerGlobal.cookieStore,
+        \\      workerGlobal.registration,
+        \\      workerGlobal.clients,
+        \\      typeof workerGlobal.skipWaiting === "function" ? workerGlobal.skipWaiting.bind(workerGlobal) : undefined,
         \\    );
         \\  };
         \\
@@ -680,12 +791,11 @@ fn installRuntimeShims(self: *Page) !void {
         \\      },
         \\      postMessage(data) {
         \\        if (host._terminated) return;
-        \\        host._dispatchShimEvent("message", {
+        \\        host._dispatchShimEvent("message", createShimEvent("message", {
         \\          data,
-        \\          type: "message",
         \\          target: host,
         \\          currentTarget: host,
-        \\        });
+        \\        }));
         \\      },
         \\    };
         \\    addEventTargetMethods(workerGlobal, (type) => {
@@ -696,6 +806,16 @@ fn installRuntimeShims(self: *Page) !void {
         \\    });
         \\    workerGlobal.self = workerGlobal;
         \\    workerGlobal.globalThis = workerGlobal;
+        \\    installValueOn(workerGlobal, "navigator", globalThis.navigator);
+        \\    installValueOn(workerGlobal, "performance", globalThis.performance);
+        \\    installValueOn(workerGlobal, "crypto", globalThis.crypto);
+        \\    installValueOn(workerGlobal, "caches", cacheStorage);
+        \\    installValueOn(workerGlobal, "scheduler", globalThis.scheduler);
+        \\    installValueOn(workerGlobal, "cookieStore", globalThis.cookieStore);
+        \\    installValueOn(workerGlobal, "originAgentCluster", true);
+        \\    installValueOn(workerGlobal, "credentialless", false);
+        \\    installValueOn(workerGlobal, "location", new URL(globalThis.location && globalThis.location.href ? globalThis.location.href : "about:blank"));
+        \\    ensureChromeSurface(workerGlobal, { extensionLike: true });
         \\    return workerGlobal;
         \\  };
         \\
@@ -734,12 +854,11 @@ fn installRuntimeShims(self: *Page) !void {
         \\
         \\    _dispatchToWorker(data) {
         \\      if (this._terminated) return;
-        \\      this._workerGlobal._dispatchShimEvent("message", {
+        \\      this._workerGlobal._dispatchShimEvent("message", createShimEvent("message", {
         \\        data,
-        \\        type: "message",
         \\        target: this._workerGlobal,
         \\        currentTarget: this._workerGlobal,
-        \\      });
+        \\      }));
         \\    }
         \\
         \\    postMessage(data) {
@@ -775,12 +894,11 @@ fn installRuntimeShims(self: *Page) !void {
         \\        }
         \\      },
         \\      dispatchConnect(port, onConnected) {
-        \\        const event = {
+        \\        const event = createShimEvent("connect", {
         \\          ports: [port],
-        \\          type: "connect",
         \\          target: workerGlobal,
         \\          currentTarget: workerGlobal,
-        \\        };
+        \\        });
         \\        if (typeof workerGlobal.onconnect === "function") {
         \\          workerGlobal.onconnect.call(workerGlobal, event);
         \\        }
@@ -857,12 +975,11 @@ fn installRuntimeShims(self: *Page) !void {
         \\    }
         \\
         \\    postMessage(data) {
-        \\      this._workerGlobal._dispatchShimEvent("message", {
+        \\      this._workerGlobal._dispatchShimEvent("message", createShimEvent("message", {
         \\        data,
-        \\        type: "message",
         \\        target: this._workerGlobal,
         \\        currentTarget: this._workerGlobal,
-        \\      });
+        \\      }));
         \\    }
         \\  }
         \\
@@ -1001,13 +1118,25 @@ fn installRuntimeShims(self: *Page) !void {
         \\            currentTarget: registration,
         \\          });
         \\        }
-        \\        await executeWorkerSource(scriptHref, workerGlobal);
-        \\        await dispatchLifecycleEvent("install");
+        \\        const executeSource = shouldExecuteShimWorkerSource(scriptHref);
+        \\        if (executeSource) {
+        \\          await executeWorkerSource(scriptHref, workerGlobal);
+        \\          await dispatchLifecycleEvent("install");
+        \\        }
         \\        registration.installing = null;
         \\        registration.waiting = null;
         \\        registration.active = worker;
         \\        setWorkerState("activating");
-        \\        await dispatchLifecycleEvent("activate");
+        \\        if (executeSource) {
+        \\          await dispatchLifecycleEvent("activate");
+        \\        } else if (serviceWorkerContainer.controller !== worker) {
+        \\          serviceWorkerContainer.controller = worker;
+        \\          serviceWorkerContainer._dispatchShimEvent("controllerchange", {
+        \\            type: "controllerchange",
+        \\            target: serviceWorkerContainer,
+        \\            currentTarget: serviceWorkerContainer,
+        \\          });
+        \\        }
         \\        setWorkerState("activated");
         \\        serviceWorkerReadyDeferred.resolve(registration);
         \\        return registration;
@@ -1178,11 +1307,216 @@ fn chromeFetchSite(previous_url: [:0]const u8, request_url: [:0]const u8, reason
     return "cross-site";
 }
 
+fn isGoogleOwnedHost(host: []const u8) bool {
+    const suffixes = &.{
+        "google.com",
+        ".google.com",
+        "gstatic.com",
+        ".gstatic.com",
+        "googleapis.com",
+        ".googleapis.com",
+        "googleusercontent.com",
+        ".googleusercontent.com",
+    };
+
+    inline for (suffixes) |suffix| {
+        if (host.len >= suffix.len and std.ascii.eqlIgnoreCase(host[host.len - suffix.len ..], suffix)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+fn isGoogleOwnedRequestUrl(url: [:0]const u8) bool {
+    const host = URL.getHostname(url);
+    return host.len > 0 and isGoogleOwnedHost(host);
+}
+
+fn shouldStripGoogleSmokeQueryParam(raw_param: []const u8) bool {
+    const name_end = std.mem.indexOfScalar(u8, raw_param, '=') orelse raw_param.len;
+    return std.ascii.eqlIgnoreCase(raw_param[0..name_end], "sg_ss");
+}
+
+fn stripGoogleSmokeNavigationParams(arena: Allocator, url: [:0]const u8) ![:0]const u8 {
+    const search = URL.getSearch(url);
+    if (search.len <= 1) {
+        return url;
+    }
+
+    var cleaned: std.ArrayList(u8) = .empty;
+    var removed = false;
+    var params = std.mem.splitScalar(u8, search[1..], '&');
+    while (params.next()) |param| {
+        if (param.len == 0) {
+            continue;
+        }
+        if (shouldStripGoogleSmokeQueryParam(param)) {
+            removed = true;
+            continue;
+        }
+        if (cleaned.items.len == 0) {
+            try cleaned.append(arena, '?');
+        } else {
+            try cleaned.append(arena, '&');
+        }
+        try cleaned.appendSlice(arena, param);
+    }
+
+    if (!removed) {
+        return url;
+    }
+
+    return URL.buildUrl(
+        arena,
+        URL.getProtocol(url),
+        URL.getHost(url),
+        URL.getPathname(url),
+        cleaned.items,
+        URL.getHash(url),
+    );
+}
+
+fn sanitizeGoogleSmokeNavigationUrl(arena: Allocator, url: [:0]const u8) ![:0]const u8 {
+    if (!compat.envFlagEnabled(google_strip_sg_ss_navigation_env)) {
+        return url;
+    }
+    if (!isGoogleOwnedRequestUrl(url)) {
+        return url;
+    }
+    return stripGoogleSmokeNavigationParams(arena, url);
+}
+
+fn queryParamValue(search: []const u8, name: []const u8) ?[]const u8 {
+    if (search.len <= 1) {
+        return null;
+    }
+
+    var params = std.mem.splitScalar(u8, search[1..], '&');
+    while (params.next()) |param| {
+        const name_end = std.mem.indexOfScalar(u8, param, '=') orelse param.len;
+        if (!std.mem.eql(u8, param[0..name_end], name)) {
+            continue;
+        }
+        if (name_end == param.len) {
+            return "";
+        }
+        return param[name_end + 1 ..];
+    }
+    return null;
+}
+
+fn hasQueryParam(search: []const u8, name: []const u8) bool {
+    return queryParamValue(search, name) != null;
+}
+
+fn queryParamName(raw_param: []const u8) []const u8 {
+    const name_end = std.mem.indexOfScalar(u8, raw_param, '=') orelse raw_param.len;
+    return raw_param[0..name_end];
+}
+
+fn queryParamHasName(raw_param: []const u8, name: []const u8) bool {
+    return std.mem.eql(u8, queryParamName(raw_param), name);
+}
+
+fn queryContainsRawParam(search: []const u8, raw_param: []const u8) bool {
+    const search_body = if (search.len > 0 and search[0] == '?') search[1..] else search;
+    var params = std.mem.splitScalar(u8, search_body, '&');
+    while (params.next()) |param| {
+        if (std.mem.eql(u8, param, raw_param)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+fn queriesEqualIgnoringParam(first: []const u8, second: []const u8, ignored_name: []const u8) bool {
+    const first_body = if (first.len > 0 and first[0] == '?') first[1..] else first;
+    const second_body = if (second.len > 0 and second[0] == '?') second[1..] else second;
+
+    var first_params = std.mem.splitScalar(u8, first_body, '&');
+    while (first_params.next()) |param| {
+        if (param.len == 0 or queryParamHasName(param, ignored_name)) {
+            continue;
+        }
+        if (!queryContainsRawParam(second, param)) {
+            return false;
+        }
+    }
+
+    var second_params = std.mem.splitScalar(u8, second_body, '&');
+    while (second_params.next()) |param| {
+        if (param.len == 0 or queryParamHasName(param, ignored_name)) {
+            continue;
+        }
+        if (!queryContainsRawParam(first, param)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+fn shouldCoalesceGoogleSearchSeiNavigation(previous_url: [:0]const u8, request_url: [:0]const u8, reason: NavigateReason) bool {
+    if (reason != .script) {
+        return false;
+    }
+    if (!isGoogleOwnedRequestUrl(previous_url) or !isGoogleOwnedRequestUrl(request_url)) {
+        return false;
+    }
+    if (!std.mem.eql(u8, URL.getPathname(previous_url), "/search") or
+        !std.mem.eql(u8, URL.getPathname(request_url), "/search"))
+    {
+        return false;
+    }
+
+    const previous_search = URL.getSearch(previous_url);
+    const request_search = URL.getSearch(request_url);
+    return hasQueryParam(request_search, "sei") and
+        queriesEqualIgnoringParam(previous_search, request_search, "sei");
+}
+
+fn shouldCoalesceGoogleSmokeNavigation(previous_url: [:0]const u8, request_url: [:0]const u8, reason: NavigateReason) bool {
+    return compat.envFlagEnabled(google_coalesce_search_sei_navigation_env) and
+        shouldCoalesceGoogleSearchSeiNavigation(previous_url, request_url, reason);
+}
+
+fn addGoogleChromeHeaders(headers: *Http.Headers) !void {
+    if (!compat.envFlagEnabled(google_chrome_headers_env)) {
+        return;
+    }
+    try headers.add("X-Browser-Channel: stable");
+    try headers.add("X-Browser-Copyright: Copyright 2026 Google LLC. All Rights Reserved.");
+    try headers.add("X-Browser-Validation: puPtlXuojC+VILE1bgaJ40YGt+E=");
+    try headers.add("X-Browser-Year: 2026");
+    try headers.add("X-Client-Data: CKWVywE=");
+}
+
+fn addGoogleLeanNavigationHeaders(headers: *Http.Headers, previous_url: [:0]const u8) !void {
+    try headers.add("Sec-CH-UA: " ++ chromium_compat.sec_ch_ua);
+    try headers.add("Sec-CH-UA-Mobile: ?0");
+    try headers.add("Sec-CH-UA-Platform: \"Windows\"");
+    if (std.mem.startsWith(u8, previous_url, "https://www.google.")) {
+        try headers.add("Downlink: 1.45");
+        try headers.add("RTT: 0");
+        try headers.add("Sec-CH-Prefers-Color-Scheme: light");
+        try headers.add("Sec-CH-UA-Arch: \"x86\"");
+        try headers.add("Sec-CH-UA-Bitness: \"64\"");
+        try headers.add("Sec-CH-UA-Form-Factors: \"Desktop\"");
+        try headers.add("Sec-CH-UA-Full-Version: " ++ chromium_compat.sec_ch_ua_full_version);
+        try headers.add("Sec-CH-UA-Full-Version-List: " ++ chromium_compat.sec_ch_ua_full_version_list);
+        try headers.add("Sec-CH-UA-Model: \"\"");
+        try headers.add("Sec-CH-UA-Platform-Version: \"19.0.0\"");
+        try headers.add("Sec-CH-UA-WoW64: ?0");
+    }
+    try headers.add("Upgrade-Insecure-Requests: 1");
+}
+
 fn addChromeNavigationHeaders(
     headers: *Http.Headers,
     previous_url: [:0]const u8,
     request_url: [:0]const u8,
     reason: NavigateReason,
+    has_user_activation: bool,
 ) !void {
     const fetch_site = chromeFetchSite(previous_url, request_url, reason);
     const sec_fetch_site = if (std.mem.eql(u8, fetch_site, "same-origin"))
@@ -1192,8 +1526,16 @@ fn addChromeNavigationHeaders(
     else
         "Sec-Fetch-Site: none";
 
-    try headers.add("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
+    if (isGoogleOwnedRequestUrl(request_url) and compat.envFlagEnabled(google_lean_headers_env)) {
+        try addGoogleLeanNavigationHeaders(headers, previous_url);
+        return;
+    }
+
+    try headers.add("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
     try headers.add("Accept-Language: en-GB,en-US;q=0.9,en;q=0.8");
+    if (isGoogleOwnedRequestUrl(request_url) and compat.envFlagEnabled(google_minimal_headers_env)) {
+        return;
+    }
     try headers.add("Sec-CH-UA: " ++ chromium_compat.sec_ch_ua);
     try headers.add("Sec-CH-UA-Mobile: ?0");
     try headers.add("Sec-CH-UA-Platform: \"Windows\"");
@@ -1212,17 +1554,24 @@ fn addChromeNavigationHeaders(
     }
     try headers.add(sec_fetch_site);
     try headers.add("Sec-Fetch-Mode: navigate");
-    if (navigationHasUserActivation(reason)) {
+    if (has_user_activation or navigationHasUserActivation(reason)) {
         try headers.add("Sec-Fetch-User: ?1");
     }
     try headers.add("Sec-Fetch-Dest: document");
+    if (isGoogleOwnedRequestUrl(request_url)) {
+        try headers.add("Priority: u=0, i");
+        try addGoogleChromeHeaders(headers);
+    }
     try headers.add("Upgrade-Insecure-Requests: 1");
 }
 
 fn navigationHasUserActivation(reason: NavigateReason) bool {
     return switch (reason) {
-        .address_bar, .anchor, .form => true,
+        .address_bar, .anchor => true,
         .script, .history, .navigation, .initialFrameNavigation => false,
+        // Programmatic form submission is common; callers with a trusted user
+        // activation can opt in through NavigateOpts.has_user_activation.
+        .form => false,
     };
 }
 
@@ -1276,6 +1625,9 @@ pub fn headersForRequestWithPolicy(
     // If the referer is empty, ignore the header.
     if (referer.len > 0) {
         try headers.add(referer);
+    }
+    if (isGoogleOwnedRequestUrl(url)) {
+        try addGoogleChromeHeaders(headers);
     }
 }
 
@@ -1395,6 +1747,7 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
     lp.assert(self._load_state == .waiting, "page.renavigate", .{});
     const session = self._session;
     self._load_state = .parsing;
+    self.window._performance = Performance.init();
 
     const req_id = self._session.browser.http_client.nextReqId();
     log.info(.page, "navigate", .{
@@ -1466,7 +1819,7 @@ pub fn navigate(self: *Page, request_url: [:0]const u8, opts: NavigateOpts) !voi
     };
 
     var headers = try http_client.newHeaders();
-    try addChromeNavigationHeaders(&headers, previous_url, self.url, opts.reason);
+    try addChromeNavigationHeaders(&headers, previous_url, self.url, opts.reason, opts.has_user_activation);
     if (navigationSendsReferer(opts.reason) and std.mem.startsWith(u8, previous_url, "http")) {
         const referer_value = try refererValueForUrl(self.arena, previous_url);
         const referer_header = try std.mem.concatWithSentinel(self.arena, u8, &.{ "Referer: ", referer_value }, 0);
@@ -1577,7 +1930,7 @@ fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url:
             request_url,
             .{ .always_dupe = true, .encode = true },
         );
-        break :blk .{ u, false };
+        break :blk .{ try sanitizeGoogleSmokeNavigationUrl(arena, u), false };
     };
 
     const target = switch (nt) {
@@ -1590,6 +1943,10 @@ fn scheduleNavigationWithArena(originator: *Page, arena: Allocator, request_url:
     };
 
     const session = target._session;
+    if (!opts.force and shouldCoalesceGoogleSmokeNavigation(target.url, resolved_url, opts.reason)) {
+        target.arena_pool.release(arena);
+        return;
+    }
     if (!opts.force and URL.eqlDocument(target.url, resolved_url)) {
         target.url = try target.arena.dupeSentinel(u8, resolved_url, 0);
         target.window._location = try Location.init(target.url, target);
@@ -4445,12 +4802,169 @@ fn nodeIsReady(self: *Page, comptime from_parser: bool, node: *Node) !void {
             log.err(.page, "page.nodeIsReady", .{ .err = err, .element = "link", .type = self._type });
             return error.LinkLoadError;
         };
+    } else if (node.is(Element.Html.Meta)) |meta| {
+        self.metaAddedCallback(meta) catch |err| {
+            log.err(.page, "page.nodeIsReady", .{ .err = err, .element = "meta", .type = self._type, .url = self.url });
+            return err;
+        };
     } else if (node.is(Element.Html.Style)) |style| {
         style.styleAddedCallback(self) catch |err| {
             log.err(.page, "page.nodeIsReady", .{ .err = err, .element = "style", .type = self._type });
             return error.StyleLoadError;
         };
     }
+}
+
+fn isInsideHtmlNoscript(node: *const Node) bool {
+    var current = node._parent;
+    while (current) |parent| : (current = parent._parent) {
+        const element = parent.is(Element) orelse continue;
+        if (element.getTag() == .noscript) {
+            return true;
+        }
+    }
+    return false;
+}
+
+fn metaAddedCallback(self: *Page, meta: *Element.Html.Meta) !void {
+    if (isInsideHtmlNoscript(meta.asNode())) {
+        return;
+    }
+
+    const http_equiv = std.mem.trim(u8, meta.getHttpEquiv(), ascii_whitespace);
+    if (!std.ascii.eqlIgnoreCase(http_equiv, "refresh")) {
+        return;
+    }
+
+    const refresh = parseMetaRefreshContent(meta.getContent()) orelse return;
+    const arena = try self.getArena(.{ .debug = "Page.metaRefresh" });
+    errdefer self.releaseArena(arena);
+
+    const task = try arena.create(MetaRefreshNavigation);
+    task.* = .{
+        .page = self,
+        .arena = arena,
+        .req_id = self._req_id,
+        .url = try arena.dupe(u8, refresh.url),
+    };
+
+    try self.js.scheduler.add(task, MetaRefreshNavigation.run, refresh.delay_ms, .{
+        .name = "Page.metaRefresh",
+        .finalizer = MetaRefreshNavigation.cancelled,
+    });
+}
+
+const MetaRefreshNavigation = struct {
+    page: *Page,
+    arena: Allocator,
+    req_id: u32,
+    url: []const u8,
+
+    fn cancelled(ctx: *anyopaque) void {
+        const self: *MetaRefreshNavigation = @ptrCast(@alignCast(ctx));
+        self.page.releaseArena(self.arena);
+    }
+
+    fn run(ctx: *anyopaque) !?u32 {
+        const self: *MetaRefreshNavigation = @ptrCast(@alignCast(ctx));
+        const page = self.page;
+        defer page.releaseArena(self.arena);
+
+        if (page._req_id != self.req_id) {
+            return null;
+        }
+
+        try page.scheduleNavigation(self.url, .{
+            .reason = .script,
+            .kind = .{ .push = null },
+        }, .{ .script = page });
+        return null;
+    }
+};
+
+const ascii_whitespace = " \t\r\n\x0c";
+
+const MetaRefreshContent = struct {
+    delay_ms: u32,
+    url: []const u8,
+};
+
+fn parseMetaRefreshContent(content: []const u8) ?MetaRefreshContent {
+    const trimmed = std.mem.trim(u8, content, ascii_whitespace);
+    const separator = std.mem.indexOfScalar(u8, trimmed, ';') orelse return null;
+    const delay_ms = parseMetaRefreshDelayMs(trimmed[0..separator]) orelse return null;
+    var rest = std.mem.trim(u8, trimmed[separator + 1 ..], ascii_whitespace);
+    if (!std.ascii.startsWithIgnoreCase(rest, "url")) {
+        return null;
+    }
+    rest = std.mem.trim(u8, rest[3..], ascii_whitespace);
+    if (rest.len == 0 or rest[0] != '=') {
+        return null;
+    }
+    rest = std.mem.trim(u8, rest[1..], ascii_whitespace);
+    const url = trimMatchingQuotes(rest);
+    if (url.len == 0) {
+        return null;
+    }
+    return .{ .delay_ms = delay_ms, .url = url };
+}
+
+fn trimMatchingQuotes(value: []const u8) []const u8 {
+    if (value.len < 2) {
+        return value;
+    }
+    const first = value[0];
+    const last = value[value.len - 1];
+    if ((first == '"' and last == '"') or (first == '\'' and last == '\'')) {
+        return value[1 .. value.len - 1];
+    }
+    return value;
+}
+
+fn parseMetaRefreshDelayMs(value: []const u8) ?u32 {
+    const trimmed = std.mem.trim(u8, value, ascii_whitespace);
+    if (trimmed.len == 0) {
+        return null;
+    }
+
+    var seconds: u64 = 0;
+    var millis: u64 = 0;
+    var fractional_digits: u8 = 0;
+    var seen_digit = false;
+    var seen_dot = false;
+
+    for (trimmed) |ch| {
+        if (ch >= '0' and ch <= '9') {
+            seen_digit = true;
+            const digit: u64 = ch - '0';
+            if (!seen_dot) {
+                seconds = seconds * 10 + digit;
+            } else if (fractional_digits < 3) {
+                millis = millis * 10 + digit;
+                fractional_digits += 1;
+            }
+            continue;
+        }
+        if (ch == '.' and !seen_dot) {
+            seen_dot = true;
+            continue;
+        }
+        return null;
+    }
+
+    if (!seen_digit) {
+        return null;
+    }
+    while (fractional_digits < 3) : (fractional_digits += 1) {
+        millis *= 10;
+    }
+
+    const max = std.math.maxInt(u32);
+    if (seconds > max / 1000) {
+        return max;
+    }
+    const total = seconds * 1000 + millis;
+    return @intCast(@min(total, max));
 }
 
 const ParseState = union(enum) {
@@ -4568,6 +5082,7 @@ pub const NavigateOpts = struct {
     body: ?[]const u8 = null,
     header: ?[:0]const u8 = null,
     source_url: ?[:0]const u8 = null,
+    has_user_activation: bool = false,
     force: bool = false,
     kind: NavigationKind = .{ .push = null },
 };
@@ -5089,6 +5604,7 @@ fn dispatchMouseActivationResult(
     button: MouseButton,
     modifiers: MouseModifiers,
 ) !MouseClickDispatchResult {
+    self.window._navigator.markUserActivation();
     _ = try self.dispatchMouseButtonEventResult(target, "mousedown", x, y, button, modifiers);
     _ = try self.dispatchMouseButtonEventResult(target, "mouseup", x, y, button, modifiers);
     return self.dispatchMouseButtonEventResult(target, "click", x, y, button, modifiers);
@@ -5332,6 +5848,7 @@ pub fn triggerKeyboardKeyDownWithCodeAndRepeat(
     modifiers: KeyboardModifiers,
     repeat: bool,
 ) !bool {
+    self.window._navigator.markUserActivation();
     const keyboard_event = try KeyboardEvent.initTrusted(comptime .wrap("keydown"), .{
         .key = key,
         .code = code,
@@ -6210,6 +6727,7 @@ pub fn submitForm(self: *Page, submitter_: ?*Element, form_: ?*Element.Html.Form
     var opts = NavigateOpts{
         .reason = .form,
         .source_url = try arena.dupeSentinel(u8, self.url, 0),
+        .has_user_activation = self.window._navigator.getUserActivation().getIsActive(),
         .kind = .{ .push = null },
     };
     if (std.ascii.eqlIgnoreCase(method, "post")) {
@@ -7049,6 +7567,98 @@ test "Page scheduleNavigation preserves source URL for script redirects" {
     try testing.expectString(source_url, queued.opts.source_url.?);
 }
 
+test "Page Google smoke navigation sanitizer strips sg_ss query parameter" {
+    var arena_instance = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_instance.deinit();
+    const arena = arena_instance.allocator();
+
+    const stripped = try stripGoogleSmokeNavigationParams(
+        arena,
+        "https://www.google.com/search?q=green%20kettle&sg_ss=opaque&sei=ok#top",
+    );
+    try testing.expectString(
+        "https://www.google.com/search?q=green%20kettle&sei=ok#top",
+        stripped,
+    );
+
+    const only_removed = try stripGoogleSmokeNavigationParams(
+        arena,
+        "https://www.google.com/search?sg_ss=opaque",
+    );
+    try testing.expectString("https://www.google.com/search", only_removed);
+
+    const unchanged = try stripGoogleSmokeNavigationParams(
+        arena,
+        "https://www.google.com/search?q=green%20kettle&sei=ok",
+    );
+    try testing.expectString(
+        "https://www.google.com/search?q=green%20kettle&sei=ok",
+        unchanged,
+    );
+}
+
+test "Page Google smoke navigation coalesces repeated sei-only script redirects" {
+    try testing.expect(shouldCoalesceGoogleSearchSeiNavigation(
+        "https://www.google.com/search?q=green%20kettle&sei=first",
+        "https://www.google.com/search?q=green%20kettle&sei=retry",
+        .script,
+    ));
+    try testing.expect(shouldCoalesceGoogleSearchSeiNavigation(
+        "https://www.google.com/search?q=green%20kettle",
+        "https://www.google.com/search?q=green%20kettle&sei=first",
+        .script,
+    ));
+    try testing.expect(!shouldCoalesceGoogleSearchSeiNavigation(
+        "https://www.google.com/search?q=green%20kettle",
+        "https://www.google.com/search?q=blue%20kettle&sei=retry",
+        .script,
+    ));
+    try testing.expect(!shouldCoalesceGoogleSearchSeiNavigation(
+        "https://www.google.com/search?q=green%20kettle",
+        "https://www.google.com/search?q=green%20kettle&sei=retry",
+        .address_bar,
+    ));
+    try testing.expect(!shouldCoalesceGoogleSearchSeiNavigation(
+        "https://www.google.com/search?q=green+kettle&source=hp",
+        "https://www.google.com/search?q=green+kettle&source=hp&emsg=SG_REL&sei=retry",
+        .script,
+    ));
+}
+
+test "Page meta refresh parser accepts Google retry redirects" {
+    const google_retry = parseMetaRefreshContent("0;url=/httpservice/retry/enablejs?ei=abc123") orelse return error.TestMissingMetaRefresh;
+    try testing.expectEqual(@as(u32, 0), google_retry.delay_ms);
+    try testing.expectString("/httpservice/retry/enablejs?ei=abc123", google_retry.url);
+
+    const quoted = parseMetaRefreshContent(" 1.25 ; URL = 'https://example.test/next' ") orelse return error.TestMissingMetaRefresh;
+    try testing.expectEqual(@as(u32, 1250), quoted.delay_ms);
+    try testing.expectString("https://example.test/next", quoted.url);
+
+    try testing.expect(parseMetaRefreshContent("0") == null);
+    try testing.expect(parseMetaRefreshContent("now;url=/next") == null);
+    try testing.expect(parseMetaRefreshContent("0; href=/next") == null);
+    try testing.expect(parseMetaRefreshContent("0; url=") == null);
+}
+
+test "Page meta refresh ignores noscript fallback nodes" {
+    var page = try testing.pageTest("page/noscript_meta_refresh.html");
+    defer page._session.removePage();
+
+    page._queued_navigation = null;
+
+    const noscript = (try page.window._document.createElement("noscript", null, page)).asNode();
+    const meta_element = try page.window._document.createElement("meta", null, page);
+    try meta_element.setAttribute(comptime .wrap("http-equiv"), comptime .wrap("refresh"), page);
+    const content = try String.init(page.arena, "0;url=/httpservice/retry/enablejs?sei=test", .{});
+    try meta_element.setAttribute(comptime .wrap("content"), content, page);
+
+    const meta = meta_element.is(Element.Html.Meta).?;
+    meta.asNode()._parent = noscript;
+
+    try page.metaAddedCallback(meta);
+    try testing.expect(page._queued_navigation == null);
+}
+
 test "Page chatgpt compat probe reports runtime blockers" {
     var page = try testing.pageTest("page/chatgpt_compat_probe.html");
     defer page._session.removePage();
@@ -7671,6 +8281,7 @@ test "Page navigation requests include Chrome-like client hint and fetch headers
         "about:blank",
         "https://example.com/",
         .address_bar,
+        false,
     );
 
     var found_accept = false;
@@ -7769,7 +8380,7 @@ test "Page chromeFetchSite follows navigation initiator" {
 test "Page navigation headers mark only user-activated fetches" {
     try std.testing.expect(navigationHasUserActivation(.address_bar));
     try std.testing.expect(navigationHasUserActivation(.anchor));
-    try std.testing.expect(navigationHasUserActivation(.form));
+    try std.testing.expect(!navigationHasUserActivation(.form));
     try std.testing.expect(!navigationHasUserActivation(.script));
     try std.testing.expect(!navigationHasUserActivation(.history));
     try std.testing.expect(!navigationHasUserActivation(.navigation));
@@ -7783,6 +8394,7 @@ test "Page navigation headers mark only user-activated fetches" {
         "https://www.google.com/search?q=lightpanda",
         "https://www.google.com/search?sei=retry",
         .script,
+        false,
     );
 
     var found_sec_fetch_user = false;
@@ -7794,6 +8406,28 @@ test "Page navigation headers mark only user-activated fetches" {
     }
 
     try std.testing.expect(!found_sec_fetch_user);
+
+    var activated_headers = try Http.Headers.init("User-Agent: test");
+    defer activated_headers.deinit();
+
+    try addChromeNavigationHeaders(
+        &activated_headers,
+        "https://www.google.com/search?q=lightpanda",
+        "https://www.google.com/search?q=lightpanda&sei=retry",
+        .script,
+        true,
+    );
+
+    var found_activated_sec_fetch_user = false;
+    var activated_iterator = activated_headers.iterator();
+    while (activated_iterator.next()) |header| {
+        if (std.ascii.eqlIgnoreCase(header.name, "Sec-Fetch-User")) {
+            try std.testing.expectEqualStrings("?1", header.value);
+            found_activated_sec_fetch_user = true;
+        }
+    }
+
+    try std.testing.expect(found_activated_sec_fetch_user);
 }
 
 test "WebApi: Frames" {

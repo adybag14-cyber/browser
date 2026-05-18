@@ -3,8 +3,12 @@
 
 <script id=screen>
   let screen = window.screen;
-  testing.expectEqual(1920, screen.width);
-  testing.expectEqual(1080, screen.height);
+  testing.expectEqual(true, screen.width > 0);
+  testing.expectEqual(true, screen.height > 0);
+  testing.expectEqual(true, screen.availWidth > 0);
+  testing.expectEqual(true, screen.availHeight > 0);
+  testing.expectEqual(true, screen.availWidth <= screen.width);
+  testing.expectEqual(true, screen.availHeight <= screen.height);
 
   let orientation = screen.orientation;
   testing.expectEqual(0, orientation.angle);
