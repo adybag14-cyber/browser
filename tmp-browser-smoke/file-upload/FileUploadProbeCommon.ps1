@@ -1,9 +1,53 @@
-$script:Repo = 'C:\Users\adyba\src\lightpanda-browser'
-$script:Root = Join-Path $script:Repo 'tmp-browser-smoke\file-upload'
-$script:BrowserExe = Join-Path $script:Repo 'zig-out\bin\lightpanda.exe'
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
-. "$script:Repo\tmp-browser-smoke\common\Win32Input.ps1"
-. "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
+function Resolve-FileUploadRepoRoot([string]$StartPath) {
+  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
+    return [System.IO.Path]::GetFullPath($env:LIGHTPANDA_REPO_ROOT)
+  }
+
+  $cursor = [System.IO.Path]::GetFullPath($StartPath)
+  while ($true) {
+    if (Test-Path (Join-Path $cursor "build.zig")) {
+      return $cursor
+    }
+
+    $parent = Split-Path $cursor -Parent
+    if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $cursor) {
+      throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
+    }
+    $cursor = $parent
+  }
+}
+
+function Resolve-FileUploadBrowserExe([string]$RepoRoot, [string]$BrowserExe = "") {
+  if (-not [string]::IsNullOrWhiteSpace($BrowserExe)) {
+    return [System.IO.Path]::GetFullPath($BrowserExe)
+  }
+  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) {
+    return [System.IO.Path]::GetFullPath($env:LIGHTPANDA_BROWSER_EXE)
+  }
+
+  return Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
+}
+
+function Resolve-FileUploadPythonCommand {
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    return @{ FileName = "python"; Arguments = @() }
+  }
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    return @{ FileName = "py"; Arguments = @("-3") }
+  }
+
+  throw "Python was not found in PATH. Install Python or start the file-upload probe server separately."
+}
+
+$script:Repo = Resolve-FileUploadRepoRoot $PSScriptRoot
+$script:Root = Join-Path $script:Repo 'tmp-browser-smoke\file-upload'
+$script:BrowserExe = Resolve-FileUploadBrowserExe $script:Repo
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
 
 if (-not ('SmokeProbeWindowEnum' -as [type])) {
   Add-Type @"
@@ -74,7 +118,8 @@ function Reset-FileUploadProfile([string]$ProfileRoot) {
 }
 
 function Start-FileUploadServer([int]$Port, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath 'python' -ArgumentList (Join-Path $script:Root 'upload_server.py'),$Port -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  $python = Resolve-FileUploadPythonCommand
+  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $script:Root 'upload_server.py'), "$Port")) -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Wait-FileUploadServer([int]$Port, [int]$Attempts = 30) {
@@ -89,7 +134,7 @@ function Wait-FileUploadServer([int]$Port, [int]$Attempts = 30) {
 }
 
 function Start-FileUploadBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath $script:BrowserExe -ArgumentList @('browse','--browser_mode','headed','--window_width','960','--window_height','640',$StartupUrl) -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  return Start-Process -FilePath $script:BrowserExe -ArgumentList @('browse', '--browser_mode', 'headed', '--window_width', '960', '--window_height', '640', $StartupUrl) -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Wait-UploadDialogWindow([int]$ProcessId, [int]$Attempts = 40, [int]$SleepMs = 200) {
