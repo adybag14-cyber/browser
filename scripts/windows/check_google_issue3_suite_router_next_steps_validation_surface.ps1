@@ -95,6 +95,8 @@ $references = @(
 )
 
 $contentExpectations = @(
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1' -Purpose "Windows replay quickstart keeps the suite-router next-steps fail-fast checker visible before the matrix is trusted."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1' -Purpose "Windows replay quickstart keeps the executable next-step matrix visible when the replay wants the helper to choose the fastest correct follow-up."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'suite_router_surface_check = $suiteRouterSurfaceCheckCommand' -Purpose "Helper command maps keep the suite-router surface checker wired into the next-steps surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the broader Google attached-html surface checker visible from the next-steps surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the issue-specific Google attached-html surface checker visible from the next-steps surface."),
