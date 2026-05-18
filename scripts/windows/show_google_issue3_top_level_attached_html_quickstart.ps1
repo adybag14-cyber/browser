@@ -158,22 +158,16 @@ function Format-AttachedPagesSidecarAuditCommand {
         [string[]]$InputPath
     )
 
-    $command = 'python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --audit-sidecars'
-    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        $command += ' --repo-root ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot)
-    }
+    $wrapperArguments = [System.Collections.Generic.List[string]]::new()
+    Add-SharedArgument -Arguments $wrapperArguments -Name RepoRoot -Value $RepoRoot
     if ($InputPath -and $InputPath.Count -gt 0) {
-        foreach ($value in $InputPath) {
-            if ([string]::IsNullOrWhiteSpace($value)) {
-                continue
-            }
-
-            $command += ' --input ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $value)
-        }
-        return $command
+        Add-SharedPathArrayArgument -Arguments $wrapperArguments -Name InputPath -Values $InputPath
+    } else {
+        $wrapperArguments.Add('-InputPath')
+        $wrapperArguments.Add("'<attached-html-root>'")
     }
 
-    return $command + " --input '<attached-html-root>'"
+    return Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('AuditSidecars')
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
