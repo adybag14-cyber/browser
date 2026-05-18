@@ -9,11 +9,11 @@ Windows full-use route.
 This keeps the shortest current Windows-full-use-to-catalog path in one place
 without reopening the broader suite-catalog, replay-route, or wrapper-heavy
 safe-route notes first, while still keeping the broader attached-page flow
-helper, the attached-pages launcher guide, the Windows wrapper-backed sidecar
-preflight, the dedicated Google-shaped attached-page surface check and flow
-helper, the newer Top-level shortcut bridge, the replay-route shortcut bridge,
-and the compact attached-bundle suite surface visible before the route narrows
-again.
+helper, the attached-pages launcher guide, the attached-pages launcher
+entrypoint, the Windows wrapper-backed sidecar preflight, the dedicated
+Google-shaped attached-page surface check and flow helper, the newer Top-level
+shortcut bridge, the replay-route shortcut bridge, and the compact
+attached-bundle suite surface visible before the route narrows again.
 
 If you want that route printed directly from the broader Windows headed context
 before reopening the newer top-level catalog quickstart, run:
@@ -48,6 +48,7 @@ Keep these companion notes and launcher surfaces nearby:
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
 - `tmp-browser-smoke/attached-pages/README.md`
+- `tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py`
 - `scripts/windows/start_attached_pages_catalog.ps1`
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
@@ -127,7 +128,7 @@ wrapper-heavy safe route:
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`
 - `show_google_issue3_replay_route_shortcut_entrypoint.ps1`
 - `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
-- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`
+- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quICKSTART.ps1`
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
 - `show_google_issue3_google_attached_html_entrypoint.ps1`
 - `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
