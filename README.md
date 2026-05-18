@@ -152,6 +152,27 @@ CDP viewport control is also wired in this fork:
 Windows run/build guide for this fork:
 - [`docs/WINDOWS_FULL_USE.md`](docs/WINDOWS_FULL_USE.md)
 
+### Headed validation quick start (fork)
+
+When a headed-mode change needs local proof on Windows, use the committed
+validation surfaces in this order:
+
+1. `docs/WINDOWS_FULL_USE.md` for the main build, run, and validation-router
+   entrypoints.
+2. `scripts/windows/show_headed_validation_suites.ps1` to print the narrowest
+   probe family for the subsystem you changed.
+3. `tmp-browser-smoke/README.md` for the full suite map and the saved-page or
+   attached-page localhost follow-up ladder.
+4. `scripts/windows/start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars -RequireCompleteAssets -PrintManifest`
+   when you need the attached-page bundle to fail fast on missing sidecars or
+   local assets before replay.
+5. `scripts/windows/run_localhost_html_validation_recommended.ps1 -InputPath "<saved-html-or-folder>" -Wait`
+   when the bounded suite is already green and you want the routed localhost
+   follow-up for saved or attached HTML pages.
+
+This keeps headed validation on the branch's committed router and smoke-suite
+surfaces instead of jumping straight to an unbounded manual pass.
+
 Once the CDP server started, you can run a Puppeteer script by configuring the
 `browserWSEndpoint`.
 
