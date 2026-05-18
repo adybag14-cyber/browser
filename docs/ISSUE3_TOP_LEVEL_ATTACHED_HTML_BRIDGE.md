@@ -83,12 +83,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_a
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quICKSTART.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
@@ -119,7 +119,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_wi
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
@@ -142,7 +142,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
@@ -164,7 +164,7 @@ If you want the broader Google-shaped attached-page surface first, keep `docs/IS
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
@@ -210,7 +210,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 Then choose the narrower follow-up that matches the current state:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --input '<bundle-html-or-folder>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --repo-root '<repo-root>' --input '<bundle-html-or-folder>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -240,7 +240,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_sa
 - `show_google_issue3_contextual_flow.ps1`: use when `RepoRoot`, `SummaryPath`, or pinned bundle inputs already matter and the next helper should keep that replay context aligned.
 - `show_google_issue3_attached_bundle_first_entrypoint.ps1`: use when explicit `InputPath` values are already pinned or the replay should stay on the known three-page compatibility bundle.
 - `show_google_issue3_safe_route_entrypoints.ps1`: use when the attached-page helper branch is out of the way and you want the wrapper-heavy commands, notes, and runner-state helpers surfaced in one place.
-- `python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'`: use when the current export may simply be missing its whole sibling `_files` directory and you want that simpler failure mode ruled in or out before the broader Google-shaped checks or the narrower issue-specific helpers take over.
+- `python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars`: use when the current export may simply be missing its whole sibling `_files` directory and you want that simpler failure mode ruled in or out before the broader Google-shaped checks or the narrower issue-specific helpers take over.
 
 ## Practical Rule
 
