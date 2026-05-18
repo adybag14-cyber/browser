@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -78,7 +95,19 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1" -Kind "file" -Purpose "Existing-output safe-route wrapper surfaced from the shortcut-first route.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_top_level_shortcut_first_entrypoint_validation_surface.ps1' -Purpose "Top-level shortcut-first note still reprints the live fail-fast checker command before the compact helper chain is trusted."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'top_level_shortcut_surface_check = $topLevelShortcutSurfaceCheckCommand' -Purpose "Helper command maps keep the dedicated top-level shortcut-first checker wired into the compact route surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the broader Google-shaped attached-page checker visible from the compact route surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName ''show_google_issue3_suite_router_shortcut_first_entrypoint.ps1'' -Arguments $bundleArguments' -Purpose "Helper command maps keep the suite-router shortcut-first entrypoint wired as the default narrower follow-up."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'attached_bundle_suite_surface = Format-HelperCommand -ScriptName ''show_google_issue3_attached_html_target_bundle_suite_surface.ps1'' -Arguments $bundleArguments' -Purpose "Helper command maps keep the compact attached-bundle suite helper visible when the replay stays pinned to the three-page compatibility set."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'Write-Host (("  6. Shortcut surface check:    {0}") -f $entrypoint.top_level_commands.top_level_shortcut_surface_check)' -Purpose "Printed top-level route keeps the dedicated checker visible before the shorter attached-page ladder takes over."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'Write-Host (("  8. Google attached check:     {0}") -f $entrypoint.top_level_commands.google_attached_html_surface_check)' -Purpose "Printed top-level route keeps the broader Google-shaped attached-page checker visible before the narrower helper chain takes over."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'Write-Host ((" 17. Bundle suite helper:       {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)' -Purpose "Printed top-level route keeps the compact bundle helper visible before the route widens back out from pinned inputs."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Snippet 'Use top_level_shortcut_surface_check before trusting this compact route when you want the helper surface to fail fast on missing shortcut notes, attached-page companion helpers, or pinned bundle follow-up commands.' -Purpose "Usage notes preserve when operators should rerun the dedicated shortcut-first checker from the top-level route.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -87,6 +116,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -94,15 +124,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-top-level-shortcut-first-entrypoint"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -117,10 +181,20 @@ Write-Host ""
 Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host (("[{0}] {1}") -f $status, $result.Path)
     Write-Host (("  {0}") -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host (("[{0}] {1}") -f $status, $result.Path)
+        Write-Host (("  {0}") -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -129,6 +203,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} top-level shortcut-first path(s).") -f $missing.Count)
+Write-Host (("Missing {0} top-level shortcut-first path or source contract check(s).") -f $missing.Count)
 Write-Host "Repair the missing shortcut note, attached-page companion, Google attached-page surface checker, helper, or bundle fallback before trusting the issue #3 top-level shortcut-first route."
 exit 1
