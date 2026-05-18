@@ -44,7 +44,7 @@ Start from the higher-level suite-router surface, keep the attached localhost ch
 Prefer one of these narrower follow-ups before reopening the longer wrapper-heavy safe-route notes:
 
 - `check_google_issue3_suite_router_handoff_validation_surface.ps1`
-- `show_google_issue3_suite_router_attached_html_quICKSTART.ps1`
+- `show_google_issue3_suite_router_attached_html_quickstart.ps1`
 - `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1`
 - `show_google_attached_html_validation_flow.ps1`
 - `show_google_issue3_google_attached_html_entrypoint.ps1`
