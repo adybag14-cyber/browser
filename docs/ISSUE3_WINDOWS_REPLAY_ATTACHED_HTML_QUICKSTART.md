@@ -51,11 +51,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
@@ -85,11 +85,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1 -InputPath '<bundle-html-or-folder>'
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --input '<bundle-html-or-folder>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --repo-root '<repo-root>' --input '<bundle-html-or-folder>' --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -137,7 +137,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1 -InputPath '<bundle-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
@@ -166,7 +166,7 @@ Use this next when the broader Windows route already made attached localhost fol
 
 Use this next when the Windows-full-use route should stay visible beside the narrower validation-router and attached-page helpers.
 
-4. `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`
+4. `show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1`
 
 Use this next when you want the Windows-side catalog step kept visible between the broader Windows full-use bridge and the narrower validation-router attached-page quickstart.
 
@@ -231,7 +231,7 @@ Use this when the route is already clearly inside issue `#3` and you want the ti
 When `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md` already made attached localhost follow-up the next obvious branch, rerun the replay quickstart surface check first, then rerun the route-level surface check, then keep the Windows-full-use bridge, the Windows-full-use attached-html catalog quickstart, the validation-router attached-page quickstart, the attached-html change-area quickstart, the broader attached-page flow helper, the lighter sidecar-bundle audit, the dedicated Google attached-page flow guide, the issue-specific Google attached-page bridge, the compact bundle-suite surface helper, the top-level attached-page quickstarts, the broader top-level companion-note map, the suite-catalog-to-top-level attached-html catalog bridge, the wider suite-catalog entrypoints guide, the suite-catalog attached-page bridge, the newer top-level shortcut bridge, and the replay-route shortcut bridge in view before dropping to the shorter attached-page shortcut surface.
 
 - replay reopened from `docs/WINDOWS_FULL_USE.md`: keep the broader Windows-full-use route, its validation-router bridge, and the Windows-side catalog quickstart in front of the narrower attached-page quickstarts
-- replay already narrowed to `-ChangeArea attached-html`: keep `show_google_issue3_attached_html_change_area_quickstart.ps1`, `show_attached_html_validation_flow.ps1`, `python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'`, and `show_google_attached_html_validation_flow.ps1` beside this note so the shorter change-area bridge, the lighter sidecar-bundle audit, and the dedicated Google attached-page flow stay visible before the route widens again
+- replay already narrowed to `-ChangeArea attached-html`: keep `show_google_issue3_attached_html_change_area_quickstart.ps1`, `show_attached_html_validation_flow.ps1`, `python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars`, and `show_google_attached_html_validation_flow.ps1` beside this note so the shorter change-area bridge, the lighter sidecar-bundle audit, and the dedicated Google attached-page flow stay visible before the route widens again
 - replay already narrowed through `-ChangeArea google-attached-html`: keep `show_google_attached_html_validation_flow.ps1` and `show_google_issue3_google_attached_html_entrypoint.ps1` visible beside `show_headed_validation_suites.ps1 -ChangeArea attached-html` so the broader attached-page fallback and the issue-specific Google bridge stay in view before the top-level shortcut bridge and replay-route shortcut take over
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, and `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` before `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` and the bundle-first helper so the exact three-page compatibility set stays visible while the replay stays locked to the bundle flow
 - saved summary or repo-root override already present: pass the same replay context through the broader route guard, the Windows-side catalog quickstart, the narrower helper chain, the broader attached-page flow helper, the lighter sidecar-bundle audit, the dedicated Google attached-page flow guide, the issue-specific Google attached-page bridge, the compact bundle-suite helper, the suite-catalog-to-top-level attached-html catalog quickstart, the wider suite-catalog entrypoints guide, the suite-catalog attached-page bridge, the top-level shortcut bridge, and the replay-route shortcut bridge so later follow-ups stay aligned
