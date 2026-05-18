@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -13,7 +14,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Value
-    )
+    }
 
     return "'" + ($Value -replace "'", "''") + "'"
 }
@@ -188,6 +189,7 @@ Add-SharedPathArrayArgument -Arguments $bundleCheckerArguments -Name InputPath -
 
 $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $bundleArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
 $localHtmlFixtureSurfaceArguments = [System.Collections.Generic.List[string]]::new()
@@ -222,11 +224,20 @@ if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
 
+$googleAttachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $googleAttachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
+}
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached bundle first entrypoint'
     purpose = 'Print the pinned three-page compatibility bundle route first while keeping the replay-side attached-html quickstart, the top-level attached-page quickstart, the issue-specific attached-page shortcut, the broader attached-page flow helper, the narrower Google-shaped attached-page flow guide, and the reusable fixed-list proof path visible as the narrow re-entry ladder immediately before and after the bundle-only branch.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     broader_attached_html_suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
         ChangeArea = 'attached-html'
@@ -238,7 +249,7 @@ $entrypoint = [ordered]@{
     top_level_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $reentryArguments
     attached_html_shortcut_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $reentryArguments
     attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
-    google_attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+    google_attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
     bundle_surface_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
     bundle_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle.ps1' -Arguments $bundleCheckerArguments
     suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
@@ -272,6 +283,7 @@ $entrypoint = [ordered]@{
         'Run bundle_check_command next when you want the current saved-page set revalidated as the same three-page compatibility bundle before you trust the printed flow helper or runner.',
         'Use suite_router_command when you want the attached-html-target-bundle suite surface reprinted beside the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the bundle checker, and the bundle flow helper before the delegated localhost runner.',
         'After the bundle runner turns green, reopen local_html_fixture_surface_check_command and local_html_fixture_probe_command so the same pinned bundle can pass through the reusable screenshot-and-title proof path before the route widens back into the larger issue #3 helper chain.',
+        'Pass -BrowserExe when the replay should stay pinned to a non-default Windows headed build through the Google-shaped flow helper, bundle flow helper, and delegated bundle runner instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
         'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the bundle check, the broader attached-page flow helper, the Google-shaped attached-page flow guide, the flow, runner, local fixture proof command, replay-shortcuts helper, and safe-route return command instead of relying on auto-discovery.',
         'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
@@ -292,6 +304,9 @@ if ($entrypoint.repo_root) {
 }
 if ($entrypoint.summary_path) {
     Write-Host ("Summary path:{0}" -f " $($entrypoint.summary_path)")
+}
+if ($entrypoint.browser_exe) {
+    Write-Host ("Browser exe: {0}" -f $entrypoint.browser_exe)
 }
 if ($entrypoint.explicit_input_path_count -gt 0) {
     Write-Host ("Input paths: {0}" -f $entrypoint.explicit_input_path_count)
