@@ -8,7 +8,8 @@ catalog. The current preferred entrypoints are:
 - `scripts/windows/start_attached_pages_catalog.ps1`
 
 Together they wrap fixture discovery, manifest printing, sidecar preflight
-checks, broader asset audits, and the lower-level server helper in one place.
+checks, broader asset audits, staged-route persistence, and the lower-level
+server helper in one place.
 
 ## Preferred launchers
 
@@ -68,6 +69,25 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_
   -RepoRoot "C:\path\to\browser" \
   -InputPath "C:\path\to\saved-pages-dir"
 ```
+
+When you want staged route copies to persist in a known directory while the
+catalog is running, pass the staging root through the same launcher surface:
+
+```bash
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
+  --input /path/to/saved-pages-dir \
+  --staging-root /path/to/staged-route-copies
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -StagingRoot "C:\path\to\staged-route-copies"
+```
+
+Use this when later probes or manual headed replay need the staged route copies
+to stay stable even if the original exported HTML or sibling `*_files` bundle
+changes underneath the running localhost server.
 
 ## Sidecar-first preflight
 
@@ -203,6 +223,7 @@ The launchers print:
 - selected fixture paths
 - the bound catalog URL
 - warning text when sidecars or local assets are missing
+- the requested staging root and the active staged-route copy directory when one is pinned
 - the available routes: `/`, `/manifest.json`, `/audit.json`, `/audit.txt`,
   `/pages/<n>`, `/named/<slug>`, and `/raw/...`
 
@@ -211,8 +232,9 @@ The launchers print:
 1. Run the sidecar audit first for the current saved-page set.
 2. Run the broader asset audit only after the sidecar bundle exists.
 3. Print the manifest or start the catalog launcher for the same pinned inputs.
-4. Open one of the printed localhost routes in headed mode.
-5. Reuse the same pinned inputs while collecting screenshots, traces, or probe
+4. Pin `--staging-root` or `-StagingRoot` when later replay steps need stable staged copies to survive source-file churn.
+5. Open one of the printed localhost routes in headed mode.
+6. Reuse the same pinned inputs while collecting screenshots, traces, or probe
    notes.
 
 ## Lower-level helpers
