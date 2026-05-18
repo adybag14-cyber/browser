@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -173,7 +174,20 @@ if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_R
 
 $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $bundleArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
+
+$bundleSurfaceArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleSurfaceArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $bundleSurfaceArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $bundleSurfaceArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedPathArrayArgument -Arguments $bundleSurfaceArguments -Name InputPath -Values $InputPath
+
+$bundleFirstArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleFirstArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $bundleFirstArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $bundleFirstArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedPathArrayArgument -Arguments $bundleFirstArguments -Name InputPath -Values $InputPath
 
 $reentryArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $reentryArguments -Name RepoRoot -Value $RepoRoot
@@ -197,24 +211,63 @@ if ($InputPath -and $InputPath.Count -gt 0) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
 
+$googleAttachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $googleAttachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedHtmlSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedHtmlSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+
+$googleAttachedHtmlSuiteArguments = [ordered]@{
+    ChangeArea = 'google-attached-html'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $googleAttachedHtmlSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedBundleSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedBundleSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedBundleSuiteArguments['BrowserExe'] = $BrowserExe
+}
+
 $bridge = [ordered]@{
     issue = 'Google issue #3 replay-route bundle-first bridge'
     purpose = 'Print the shortest replay-route-to-bundle bridge for the known three-page attached HTML compatibility set while keeping the broader attached-page and Google-shaped attached-page follow-up surfaces visible beside the pinned bundle lane.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     top_level_commands = [ordered]@{
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $reentryArguments
         replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $reentryArguments
-        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html' }) -RepoRootOverride $RepoRoot
-        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'google-attached-html' }) -RepoRootOverride $RepoRoot
-        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html-target-bundle' }) -RepoRootOverride $RepoRoot
+        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
+        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
+        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleSuiteArguments -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
-        google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
-        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $reentryArguments
-        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $reentryArguments
+        google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleSurfaceArguments
+        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleFirstArguments
         attached_bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
         attached_bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
         local_fixture_surface_check = Format-HelperCommand -ScriptName 'check_local_html_fixture_validation_surface.ps1' -Arguments $fixtureSurfaceArguments
@@ -243,6 +296,7 @@ $bridge = [ordered]@{
         'Use attached_bundle_first when the replay should stay on the pinned three-page compatibility set before reopening the broader helper chain.',
         'Use attached_bundle_flow when you want the exact bundle checker and delegated runner printed before execution.',
         'Use attached_bundle_runner when the next useful decision depends on the pinned bundle replay outcome instead of a wider wrapper pass.',
+        'Pass -BrowserExe when the replay should keep a non-default Windows headed build pinned through the suite router handoff, the compact bundle-suite surface, the bundle-first helper, and the delegated bundle runner instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
         'After the bundle runner turns green, reopen local_fixture_surface_check and local_fixture_probe so the same pinned bundle can pass through the reusable screenshot-and-title proof path before the route widens again.'
     )
 }
@@ -271,6 +325,9 @@ if ($bridge.repo_root) {
 }
 if ($bridge.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($bridge.summary_path)"))
+}
+if ($bridge.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $bridge.browser_exe)
 }
 if ($bridge.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $bridge.explicit_input_path_count)
