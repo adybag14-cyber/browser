@@ -14,6 +14,7 @@ Read this together with:
 - Prefer `scripts\windows\show_headed_validation_suites.ps1` first for the change areas it already routes directly: `navigation`, `stop-loading`, `input`, `google-form-controls-enter-order`, `rendering`, `network`, `browser-shell`, `popup`, `attached-html`, `attached-html-target-bundle`, `google-input`, and `google-attached-html`.
 - For probe families that are not yet first-class router change areas, use the direct PowerShell entrypoints below.
 - Older deeper probe families can still carry fixed checkout assumptions. If a helper fails before browser behavior is exercised, normalize the local repo-root or browser-exe path first.
+- When replay depends on saved-page exports, keep the router's strict `-RequireCompleteSidecars` and `-RequireCompleteAssets` attached-pages catalog variants in play before treating missing files as headed regressions.
 
 ## Fast Picks
 
@@ -27,7 +28,7 @@ Read this together with:
 | Shared subresource loading, authenticated asset fetches, or browser-managed request credentials | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\fetch-credentials\chrome-fetch-credentials-probe.ps1` | Start here before widening into attached-page replay for network, credential, or asset-loading changes. |
 | Browser shell tabs, settings, and related chrome behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\tabs\chrome-tabs-probe.ps1` | Use this for tab strip, duplicate/reopen, settings persistence, and shell keyboard-shortcut changes before widening into older deeper helpers. |
 | Popup creation, named-target flows, or popup policy | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-anchor-probe.ps1` | Start here for the checkout-portable first popup proof, then use the direct popup probes below if you need deeper form-submit or script-open coverage. |
-| Saved HTML compatibility bundle or attached exported pages | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"` | Use this for exported saved-page replays, bundle asset auditing, and the first router pass before bundle-specific narrowing. |
+| Saved HTML compatibility bundle or attached exported pages | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"` | Use this for exported saved-page replays, sidecar and asset audits, strict completeness checks, and the first router pass before bundle-specific narrowing. |
 | Pinned three-page compatibility bundle | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath "<bundle-html-or-folder>"` | Use this when the replay should stay on the known three-page compatibility set and you want the compact bundle-specific helper chain surfaced immediately. |
 
 ## Pinned Bundle Fast Path
@@ -103,7 +104,7 @@ Use this route when:
 After the matching bounded family is green:
 
 1. Re-run the nearest manual headed flow with `.\zig-out\bin\lightpanda.exe browse --headed ...`.
-2. For saved HTML or exported pages, use the attached-pages catalog route instead of an ad hoc `python -m http.server` whenever the branch helper can express the replay cleanly.
+2. For saved HTML or exported pages, use the attached-pages catalog route instead of an ad hoc `python -m http.server` whenever the branch helper can express the replay cleanly, and reuse the router's strict `-RequireCompleteSidecars` and `-RequireCompleteAssets` variants when you want localhost replay to fail fast on incomplete exports.
 3. For the pinned three-page compatibility bundle, prefer the `attached-html-target-bundle` router output and the compact bundle-specific helper chain before dropping back to the broader attached-page discovery route.
 4. For live Google issue work, keep the sequence bounded-input probe -> google-form-controls-enter-order gate -> manual Google replay -> attached-page follow-up.
 5. If a deeper helper fails because of repo-root assumptions rather than browser behavior, fix the helper pathing before treating it as a headed regression.
