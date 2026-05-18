@@ -241,6 +241,9 @@ if ($BrowserExe) {
 $attachedHtmlTargetBundleSuiteArguments = [ordered]@{
     ChangeArea = 'attached-html-target-bundle'
 }
+if ($SummaryPath) {
+    $attachedHtmlTargetBundleSuiteArguments['SummaryPath'] = $SummaryPath
+}
 if ($InputPath) {
     $attachedHtmlTargetBundleSuiteArguments['InputPath'] = @($InputPath)
 }
@@ -251,6 +254,9 @@ if ($BrowserExe) {
 $broaderAttachedHtmlSuiteRouterArguments = [ordered]@{
     ChangeArea = 'attached-html'
 }
+if ($SummaryPath) {
+    $broaderAttachedHtmlSuiteRouterArguments['SummaryPath'] = $SummaryPath
+}
 if ($InputPath) {
     $broaderAttachedHtmlSuiteRouterArguments['InputPath'] = @($InputPath)
 }
@@ -260,6 +266,9 @@ if ($BrowserExe) {
 
 $googleAttachedHtmlSuiteRouterArguments = [ordered]@{
     ChangeArea = 'google-attached-html'
+}
+if ($SummaryPath) {
+    $googleAttachedHtmlSuiteRouterArguments['SummaryPath'] = $SummaryPath
 }
 if ($InputPath) {
     $googleAttachedHtmlSuiteRouterArguments['InputPath'] = @($InputPath)
@@ -319,7 +328,7 @@ $entrypoint = [ordered]@{
         'After the bundle runner turns green, reopen local_html_fixture_surface_check_command and local_html_fixture_probe_command so the same pinned bundle can pass through the reusable screenshot-and-title proof path before the route widens back into the larger issue #3 helper chain.',
         'Pass -BrowserExe when the replay should stay pinned to a non-default Windows headed build through the broader attached-page suite routers, the top-level attached-page quickstart, the Google-shaped flow helper, the bundle flow helper, and the delegated bundle runner instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
         'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the bundle check, the broader attached-page flow helper, the Google-shaped attached-page flow guide, the proof-entrypoint helper, the flow, runner, local fixture proof command, replay-shortcuts helper, and safe-route return command instead of relying on auto-discovery.',
-        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the proof-entrypoint helper, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
+        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the broader attached-page suite routers, the proof-entrypoint helper, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
         'Return to the broader issue #3 safe-route helper only after the bundle replay or the reusable fixed-list proof path makes the next Google-style input or submit failure state clear.',
         'Keep the Windows replay note, the replay-side attached-html quickstart note, the top-level attached-page quickstart note, the attached-page shortcut note, the Google attached-page flow note, the attached-html target-bundle reference note, the attached-html target-bundle quickstart note, the written proof note, the pinned manual checklist note, and the validation-chain note nearby when you want the written route beside these commands.'
