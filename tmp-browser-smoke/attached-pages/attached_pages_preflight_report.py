@@ -35,6 +35,22 @@ def select_inputs(
     return module, selected_files
 
 
+def choose_preferred_manifest_entry(
+    manifest: list[dict[str, str]],
+    *,
+    selected_files: list[Path],
+    launcher_module: ModuleType,
+) -> dict[str, str] | None:
+    if not selected_files:
+        return None
+
+    return launcher_module.find_manifest_entry_for_path(
+        manifest,
+        selected_files[0],
+        selected_files=selected_files,
+    )
+
+
 def assemble_preflight_report(
     repo_root: Path,
     *,
@@ -48,13 +64,11 @@ def assemble_preflight_report(
     sidecar_audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
     asset_audit = server_module.build_asset_audit(selected_files=selected_files)
 
-    preferred_manifest_entry = None
-    if google_style and selected_files:
-        preferred_manifest_entry = launcher_module.find_manifest_entry_for_path(
-            manifest,
-            selected_files[0],
-            selected_files=selected_files,
-        )
+    preferred_manifest_entry = choose_preferred_manifest_entry(
+        manifest,
+        selected_files=selected_files,
+        launcher_module=launcher_module,
+    )
 
     missing_sidecars = int(sidecar_audit["fixtures_with_missing_sidecars"])
     missing_assets = int(asset_audit["fixtures_with_missing_assets"])
@@ -78,6 +92,8 @@ def assemble_preflight_report(
         "selected_fixtures": [str(path) for path in selected_files],
         "selected_fixture_lines": selected_fixture_lines,
         "fixture_count": len(manifest),
+        "preferred_display_path": preferred_manifest_entry["file"] if preferred_manifest_entry else None,
+        "preferred_title": preferred_manifest_entry["title"] if preferred_manifest_entry else None,
         "preferred_route": preferred_manifest_entry["route"] if preferred_manifest_entry else None,
         "preferred_alias_route": preferred_manifest_entry["alias_route"] if preferred_manifest_entry else None,
         "preferred_named_route": preferred_manifest_entry["slug_route"] if preferred_manifest_entry else None,
@@ -143,6 +159,8 @@ def render_text_report(report: dict[str, object]) -> str:
         f"Recommended next step: {report['recommended_next_step']}",
     ]
     if report["preferred_route"] is not None:
+        lines.append(f"Preferred fixture: {report['preferred_display_path']}")
+        lines.append(f"Preferred title: {report['preferred_title']}")
         lines.append(f"Preferred route: {report['preferred_route']}/")
         lines.append(f"Preferred alias route: {report['preferred_alias_route']}/")
         lines.append(f"Preferred named route: {report['preferred_named_route']}/")
