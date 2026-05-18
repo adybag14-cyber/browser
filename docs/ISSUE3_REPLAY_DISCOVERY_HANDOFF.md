@@ -60,15 +60,16 @@ or attached inputs are already the pinned three-page compatibility bundle.
 If you are reopening the route from `docs/WINDOWS_FULL_USE.md`, keep the
 broader Windows-first branch visible long enough to rerun its fail-fast route
 checker, reopen the newer validation-router and catalog-side bridge, keep the
-broader attached-page flow helper, the broader Google-shaped attached-page
-surface checker, the deeper Google-style asset audit, the issue-specific Google
-attached-page checker, and the dedicated Google attached-page flow guide
-visible, rerun the suite-router next-step checker, surface the executable
-next-step matrix, rerun the shortcut-first checker, reopen the shorter
-shortcut-first bridge, rerun the compact suite-router handoff checker, surface
-the compact suite-router handoff that remains available beside that shorter
-bridge, and keep the replay-side attached-page ladder aligned before the
-narrower top-level attached-page helpers take over:
+broader attached-page flow helper, the lighter sibling `_files` sidecar-bundle
+audit, the broader Google-shaped attached-page surface checker, the deeper
+Google-style asset audit, the issue-specific Google attached-page checker, and
+the dedicated Google attached-page flow guide visible, rerun the suite-router
+next-step checker, surface the executable next-step matrix, rerun the
+shortcut-first checker, reopen the shorter shortcut-first bridge, rerun the
+compact suite-router handoff checker, surface the compact suite-router handoff
+that remains available beside that shorter bridge, and keep the replay-side
+attached-page ladder aligned before the narrower top-level attached-page
+helpers take over:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1
@@ -81,6 +82,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1
+python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
@@ -106,14 +108,14 @@ follow-up obvious and you want the route-level surface checker, the
 validation-router attached-html bridge, the Windows-first catalog quickstart,
 the replay-side attached-page surface checker, the replay-side attached-page
 quickstart, the narrower validation-router and top-level attached-page helpers,
-the broader attached-page flow helper, the broader Google-shaped attached-page
-surface checker, the deeper Google-style asset audit, the issue-specific Google
-attached-page checker, the dedicated Google attached-page flow guide, the
-issue-specific Google attached-page entrypoint, the suite-router next-step
-checker, the executable next-step matrix, the shortcut-first checker, the
-shortcut-first bridge, the compact suite-router handoff checker, the compact
-suite-router handoff, and the suite-catalog-side bridge all describing the
-same re-entry order.
+the broader attached-page flow helper, the lighter sidecar-bundle audit, the
+broader Google-shaped attached-page surface checker, the deeper Google-style
+asset audit, the issue-specific Google attached-page checker, the dedicated
+Google attached-page flow guide, the issue-specific Google attached-page
+entrypoint, the suite-router next-step checker, the executable next-step
+matrix, the shortcut-first checker, the shortcut-first bridge, the compact
+suite-router handoff checker, the compact suite-router handoff, and the
+suite-catalog-side bridge all describing the same re-entry order.
 
 When the top-level suite router already made attached localhost follow-up
 obvious, prefer this compact chain:
@@ -123,6 +125,7 @@ obvious, prefer this compact chain:
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1
+python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
@@ -152,11 +155,12 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 ```
 
 Use the same helper order after `-ChangeArea google-attached-html` when the
-broader Google-shaped attached-page checker, the deeper Google-style asset
-audit, the shortcut-first checker, and the issue-specific bridge all need to
-stay visible first. Use the same helper order after `-ChangeArea
-attached-html-target-bundle` when the route should stay pinned to the known
-three-page bundle before widening back into the broader safe-route chain.
+broader Google-shaped attached-page checker, the lighter sidecar-bundle audit,
+the deeper Google-style asset audit, the shortcut-first checker, and the
+issue-specific bridge all need to stay visible first. Use the same helper order
+after `-ChangeArea attached-html-target-bundle` when the route should stay
+pinned to the known three-page bundle before widening back into the broader
+safe-route chain.
 
 If the replay already carries a non-default checkout, a saved summary, or
 explicit bundle inputs, preserve that same context on the helper that you open
@@ -188,6 +192,10 @@ chosen helper.
   when the broader validation-router attached-page bridge should stay visible
   before the replay collapses into the shorter top-level and replay-route
   helpers.
+- `python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'`:
+  use this when the current export may simply be missing its whole sibling
+  `_files` bundle and you want that lighter failure mode ruled in or out before
+  the broader Google-shaped surface checker or deeper asset audit take over.
 - `check_google_attached_html_validation_surface.ps1`: use this when the replay
   already looks Google-shaped and you want the broader attached-page surface to
   fail fast before the deeper asset audit or the narrower issue-specific
@@ -195,15 +203,16 @@ chosen helper.
 - `check_attached_html_local_asset_closure.ps1 -GoogleStyle`: use this when
   missing sidecars or other saved local asset drift might explain the current
   Google-shaped attached-page failure and you want the deeper asset audit
-  reprinted before the narrower issue-specific checker or bridge takes over.
+  reprinted after the lighter sidecar-bundle audit and before the narrower
+  issue-specific checker or bridge takes over.
 - `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1`:
   use this when the replay already looks Google-shaped and you want the
   narrower issue-specific attached-page lane to fail fast before the dedicated
   Google flow helper or the shorter issue-specific entrypoint takes over.
 - `show_google_attached_html_validation_flow.ps1`: use this when the replay
   still needs the dedicated Google-shaped attached-page flow guide reprinted
-  after the broader checker, the deeper asset audit, and before the route
-  narrows into the shorter top-level notes.
+  after the broader checker, the lighter sidecar-bundle audit, the deeper asset
+  audit, and before the route narrows into the shorter top-level notes.
 - `show_google_issue3_google_attached_html_entrypoint.ps1`: use this when the
   issue-specific Google-shaped attached-page route should stay visible before
   the suite-router next-step checker, the executable next-step matrix, the
@@ -320,6 +329,7 @@ keep `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`,
 `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`,
 and `show_google_issue3_windows_replay_attached_html_quickstart.ps1` nearby,
 reopen `show_attached_html_validation_flow.ps1`, then
+`python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'`, then
 `check_google_attached_html_validation_surface.ps1`, then
 `check_attached_html_local_asset_closure.ps1 -GoogleStyle`, then
 `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1`,
