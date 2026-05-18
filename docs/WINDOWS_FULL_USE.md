@@ -98,6 +98,7 @@ What exists today:
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
 - the first-line navigation, stop-loading, and form-control probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
 - an attached-pages localhost catalog, sidecar audit, and broader asset-audit helper surface under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
+- a Windows-first attached-bundle bridge surface under `scripts\windows\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1` plus the fail-fast checker `scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1`
 
 Treat the validation router output as the source of truth for the currently
 committed helper surface on this branch.
@@ -137,8 +138,17 @@ the broader attached-page ladders:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath "<bundle-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_bundle_first_bridge.ps1 -InputPath "<bundle-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath "<bundle-html-or-folder>"
 ```
+
+Use the bundle-bridge surface checker first so renamed notes or helper scripts
+fail fast after branch moves, then reopen the bundle-bridge helper when the
+Windows-first runbook already narrowed the replay to the exact three-page
+compatibility set and you want that pinned route printed before the validation
+router narrows further.
