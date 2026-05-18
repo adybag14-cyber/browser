@@ -104,7 +104,7 @@ What exists today:
 - a checkout-portable first-line canvas screenshot probe at `tmp-browser-smoke\canvas-smoke\chrome-canvas-render-probe.ps1`
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
 - the first-line navigation, stop-loading, input, browser-shell, and popup probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
-- an attached-pages localhost catalog, sidecar audit, and broader asset-audit helper surface under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
+- an attached-pages localhost catalog, sidecar audit, broader asset-audit helper, and strict completeness launch surface under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
 - a Windows-first attached-bundle bridge surface under `scripts\windows\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1` plus the fail-fast checker `scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1`
 
 Treat the validation router output as the source of truth for the currently
@@ -135,15 +135,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditAssets
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteAssets -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars -RequireCompleteAssets -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars -RequireCompleteAssets
 ```
 
 Run the sidecar audit first so missing sibling `_files` directories fail fast
 before deeper replay diagnosis, run the asset audit second so broader local
 export drift stays visible before the browser is blamed, use the manifest
 command when you want the pinned localhost routes printed without starting the
-server, and add `-RequireCompleteSidecars` when the manifest or localhost launch
-should stop on incomplete saved-page bundles.
+server, add `-RequireCompleteSidecars` when the manifest or localhost launch
+should stop on incomplete saved-page bundles, add `-RequireCompleteAssets` when
+the same route should also stop on missing local assets, and pair both require
+switches when replay should stay pinned to a fully closed saved-page bundle
+before the browser is blamed.
 
 When the current replay should stay pinned to the known three-page compatibility
 bundle, use the compact Windows-first bundle bridge before widening back into
