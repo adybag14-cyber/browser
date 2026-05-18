@@ -72,7 +72,7 @@ preflight, `check_google_attached_html_validation_surface.ps1`,
 `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` visible
 before the replay narrows into the newer top-level attached-page catalog
 quickstart, the suite-catalog-to-top-level attached-page catalog quickstart,
-the suite-catalog bridge, the broader Google-shaped attached-page bridge, the
+ the suite-catalog bridge, the broader Google-shaped attached-page bridge, the
 attached-page shortcut, replay shortcuts, or the safe-route map.
 
 Before you trust the narrower Windows-first catalog ladder itself, rerun its
@@ -128,7 +128,7 @@ wrapper-heavy safe route:
 - `show_google_issue3_top_level_shortcut_first_entrypoint.ps1`
 - `show_google_issue3_replay_route_shortcut_entrypoint.ps1`
 - `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
-- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quICKSTART.ps1`
+- `show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1`
 - `show_google_issue3_suite_catalog_attached_html_entrypoint.ps1`
 - `show_google_issue3_google_attached_html_entrypoint.ps1`
 - `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
@@ -153,7 +153,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_wi
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quICKSTART.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
@@ -461,7 +461,7 @@ then rerun
 `check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1`,
 then `show_headed_validation_suites.ps1 -ChangeArea attached-html`,
 then `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`,
-then prefer `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`,
+then prefer `show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1`,
 then `show_attached_html_validation_flow.ps1`,
 then `powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars`,
 then `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`,
