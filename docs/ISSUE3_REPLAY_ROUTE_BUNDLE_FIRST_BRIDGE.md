@@ -20,6 +20,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
@@ -101,7 +102,7 @@ Use that context-preserving form when:
 - `show_attached_html_validation_flow.ps1`: use when the broader attached-page localhost flow still needs to stay visible before the bundle decision.
 - `show_google_attached_html_validation_flow.ps1`: use when the current attached inputs are already Google-shaped and you still want that narrower flow guide visible before the bundle branch.
 - `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`: use when you want the compact bundle-suite surface reprinted before the bundle-first helper so the pinned bundle lane stays visible beside the broader attached-page and Google-shaped attached-page fallbacks.
-- `show_google_issue3_attached_bundle_first_entrypoint.ps1`: use when the replay should stay on the pinned three-page compatibility set before reopening the broader helper chain. Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md` and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md` nearby when you want the compact suite-level and quickstart notes beside that helper before the delegated bundle runner takes over.
+- `show_google_issue3_attached_bundle_first_entrypoint.ps1`: use when the replay should stay on the pinned three-page compatibility set before reopening the broader helper chain. Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md` nearby when you want the compact suite-level note, the shorter bundle-first bridge, and the proof-only follow-up visible beside that helper before the delegated bundle runner takes over.
 - `show_attached_html_target_bundle_validation_flow.ps1`: use when you want the exact bundle checker and delegated runner printed before execution.
 - `run_attached_html_target_bundle_validation.ps1 -Wait`: use when the next useful decision depends on the pinned bundle replay outcome, not on a wider wrapper pass.
 - `show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1`: use immediately after the delegated bundle runner when you want the narrower proof-only handoff printed before the fixed-list fixture surface check and screenshot-and-title probe.
@@ -111,7 +112,7 @@ Use that context-preserving form when:
 
 Only jump straight to the bundle-first helper when the current replay inputs are already pinned or when the broader attached-page and replay-route surfaces have already made the three-page compatibility bundle the next obvious branch.
 
-- replay-route already open and explicit bundle paths already pinned: go from the replay-route helper to the replay-route shortcut, reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md` and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, then use the compact bundle-suite surface helper, the bundle-first helper, the bundle flow helper, the delegated runner, the proof entrypoint, and the fixed-list proof path
+- replay-route already open and explicit bundle paths already pinned: go from the replay-route helper to the replay-route shortcut, reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`, then use the compact bundle-suite surface helper, the bundle-first helper, the bundle flow helper, the delegated runner, the proof entrypoint, and the fixed-list proof path
 - replay-route already open but broader attached-page context still matters: reopen `show_attached_html_validation_flow.ps1` and `show_google_attached_html_validation_flow.ps1` before the compact bundle-suite surface and bundle-first helper so the broader attached-page recovery path stays visible
 - broader validation catalog still choosing the next branch: reopen `show_headed_validation_suites.ps1 -ChangeArea attached-html`, `-ChangeArea google-attached-html`, and `-ChangeArea attached-html-target-bundle` before the replay-route shortcut and the compact bundle-suite surface so the broader router and the pinned bundle branch stay aligned
 - after the bundle runner finishes: prefer `show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1`, then the fixed-list local fixture proof, when you want tighter screenshot-and-title evidence for the same pinned inputs, and only widen back into the broader safe-route helpers after the bundle route makes the next failure state clear
