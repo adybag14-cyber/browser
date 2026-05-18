@@ -190,7 +190,7 @@ Use this first when the broader Windows headed runbook already narrowed replay t
 
 Use this next when the Windows full-use route already narrowed replay to attached localhost follow-up and you want the broader validation-router attached-html quickstart reprinted before the route drops back into the smaller attached-page helpers.
 
-3. `show_google_issue3_windows_full_USE_attached_html_catalog_quickstart.ps1`
+3. `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`
 
 Use this next when the broader Windows runbook route is already in view and you want the Windows-first attached-page catalog quickstart visible before the replay-side attached-page quickstart and the narrower top-level helper family.
 
