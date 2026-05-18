@@ -51,6 +51,7 @@ $resolvedRepoRoot = if ($RepoRoot) {
 }
 
 $references = @(
+    (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Kind "file" -Purpose "Compact Windows replay quickstart note that should keep the replay-route shortcut checker and helper visible from the higher-level replay route."),
     (New-ValidationReference -Path "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_ENTRYPOINT.md" -Kind "file" -Purpose "Primary replay-route shortcut entrypoint note that should stay aligned with the compact helper output."),
     (New-ValidationReference -Path "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md" -Kind "file" -Purpose "Replay-route shortcut bridge note that keeps the shorter attached-page and replay follow-up route visible."),
     (New-ValidationReference -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Kind "file" -Purpose "Replay discovery note kept nearby when the compact replay-route helper widens back out."),
@@ -88,6 +89,12 @@ $references = @(
 )
 
 $contentExpectations = @(
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1' -Purpose "Windows replay quickstart keeps the compact replay-route shortcut checker visible before the replay-route helper narrows into the smaller bridge."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Purpose "Windows replay quickstart keeps the compact replay-route shortcut helper visible after the replay-route checker."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet '- `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`' -Purpose "Windows replay quickstart keeps the written replay-route shortcut note visible as a companion reference."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet 'check_google_issue3_replay_route_shortcut_validation_surface.ps1' -Purpose "Replay discovery handoff keeps the compact replay-route shortcut checker visible before the replay-route bridge narrows further."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Purpose "Replay discovery handoff keeps the compact replay-route shortcut helper visible after the replay-route surface is reopened."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet '- `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`' -Purpose "Replay discovery handoff keeps the written replay-route shortcut note visible as a companion reference."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet '$replayRouteShortcutSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName ''check_google_issue3_replay_route_shortcut_validation_surface.ps1'' -RepoRootOverride $RepoRoot' -Purpose "Replay-route shortcut helper wires its dedicated fail-fast checker into the shared command surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand' -Purpose "Replay-route shortcut helper exposes its dedicated checker through the printed route and companion helper maps."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1" -Snippet 'replay_shortcuts_windows_replay_attached_html_bridge = $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand' -Purpose "Replay-route shortcut helper keeps the replay-to-Windows attached-page bridge wired into the compact follow-up surface."),
@@ -197,5 +204,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} replay-route shortcut path or source contract check(s).") -f $missing.Count)
-Write-Host "Repair the missing replay-route note, helper output contract, attached-page helper, replay-side bridge, bundle-aware follow-up, or safe-route companion before trusting this compact issue #3 replay-route branch."
+Write-Host "Repair the missing replay-route note, higher-level replay companion, helper output contract, attached-page helper, replay-side bridge, bundle-aware follow-up, or safe-route companion before trusting this compact issue #3 replay-route branch."
 exit 1
