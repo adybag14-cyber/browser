@@ -130,6 +130,9 @@ $wrapperArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $wrapperArguments -Name RepoRoot -Value $resolvedRepoRoot
 Add-SharedPathArrayArgument -Arguments $wrapperArguments -Name InputPath -Values $InputPath
 
+$surfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $surfaceCheckArguments -Name RepoRoot -Value $resolvedRepoRoot
+
 $helper = [ordered]@{
     issue = 'Google issue #3 attached-pages launcher companion'
     purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis.'
@@ -137,6 +140,8 @@ $helper = [ordered]@{
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     recommended_next_key = 'wrapper_sidecar_audit'
     recommended_next_reason = 'The wrapper-backed sidecar audit is the cheapest honest preflight for issue #3 attached-page replay, so it should run before the broader asset audit, manifest print, or strict localhost launch.'
+    surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments
+    surface_check_reason = 'Use this first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted.'
     helper_commands = [ordered]@{
         wrapper_sidecar_audit = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('AuditSidecars')
         wrapper_asset_audit = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('AuditAssets')
@@ -156,6 +161,7 @@ $helper = [ordered]@{
         python_google_launch = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style')
     }
     companion_paths = [ordered]@{
+        launcher_companion_surface_check = 'scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1'
         attached_pages_launcher_readme = 'tmp-browser-smoke/attached-pages/README.md'
         attached_pages_launcher_wrapper = 'scripts/windows/start_attached_pages_catalog.ps1'
         attached_pages_launcher_entrypoint = 'tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py'
@@ -165,6 +171,7 @@ $helper = [ordered]@{
         windows_replay_attached_html_quickstart_note = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     }
     notes = @(
+        'Run the surface check first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted.',
         'Use this helper when the issue #3 replay has already moved into attached localhost follow-up and you want the wrapper-backed preflight ladder and the lower-level Python launcher kept on one compact surface.',
         'Prefer wrapper_sidecar_audit first, then wrapper_asset_audit, then wrapper_print_manifest or wrapper_strict_launch. That keeps missing sibling _files bundles from being mistaken for headed-browser regressions.',
         'Prefer the GoogleStyle variants when the current attached-page set should keep the strongest Google-like page first while replay narrows back into the issue-specific helper chain.',
@@ -187,6 +194,8 @@ if ($helper.repo_root) {
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
 }
+Write-Host (("Surface check:         {0}") -f $helper.surface_check_command)
+Write-Host (("Guard reason:          {0}") -f $helper.surface_check_reason)
 Write-Host ''
 Write-Host (("Recommended next helper: {0}") -f $helper.recommended_next_command)
 Write-Host (("Why:                    {0}") -f $helper.recommended_next_reason)
@@ -211,13 +220,14 @@ Write-Host (("  6. Google assets:      {0}") -f $helper.helper_commands.python_g
 Write-Host (("  7. Google manifest:    {0}") -f $helper.helper_commands.python_google_manifest)
 Write-Host (("  8. Google launch:      {0}") -f $helper.helper_commands.python_google_launch)
 Write-Host ''
-Write-Host (("Attached-pages guide:     {0}") -f $helper.companion_paths.attached_pages_launcher_readme)
-Write-Host (("Windows wrapper:          {0}") -f $helper.companion_paths.attached_pages_launcher_wrapper)
-Write-Host (("Python launcher:          {0}") -f $helper.companion_paths.attached_pages_launcher_entrypoint)
-Write-Host (("Google flow note:         {0}") -f $helper.companion_paths.google_attached_html_validation_flow_note)
-Write-Host (("Google entrypoint note:   {0}") -f $helper.companion_paths.google_attached_html_entrypoint_note)
-Write-Host (("Windows catalog note:     {0}") -f $helper.companion_paths.windows_full_use_attached_html_catalog_quickstart_note)
-Write-Host (("Windows replay note:      {0}") -f $helper.companion_paths.windows_replay_attached_html_quickstart_note)
+Write-Host (("Launcher surface check: {0}") -f $helper.companion_paths.launcher_companion_surface_check)
+Write-Host (("Attached-pages guide:    {0}") -f $helper.companion_paths.attached_pages_launcher_readme)
+Write-Host (("Windows wrapper:         {0}") -f $helper.companion_paths.attached_pages_launcher_wrapper)
+Write-Host (("Python launcher:         {0}") -f $helper.companion_paths.attached_pages_launcher_entrypoint)
+Write-Host (("Google flow note:        {0}") -f $helper.companion_paths.google_attached_html_validation_flow_note)
+Write-Host (("Google entrypoint note:  {0}") -f $helper.companion_paths.google_attached_html_entrypoint_note)
+Write-Host (("Windows catalog note:    {0}") -f $helper.companion_paths.windows_full_use_attached_html_catalog_quickstart_note)
+Write-Host (("Windows replay note:     {0}") -f $helper.companion_paths.windows_replay_attached_html_quickstart_note)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
