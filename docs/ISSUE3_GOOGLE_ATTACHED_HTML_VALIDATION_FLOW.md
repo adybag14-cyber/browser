@@ -5,7 +5,7 @@ Use this note when the next issue `#3` replay should auto-discover the current a
 The matching helper script is:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 ```
 
 Use that helper when you want one read-first command surface that:
@@ -44,19 +44,33 @@ Keep these companion notes nearby:
 
 Start from the current attached-page set, run the launcher-backed sidecar-bundle audit plus the Google-style fail-fast checks first, keep the broader attached-page entrypoints visible long enough to confirm the right route, keep the Windows-first attached-html catalog quickstart visible when the replay is reopening from the broader Windows runbook, keep the newer suite-router and top-level attached-page ladders visible when the replay has already narrowed to attached localhost follow-up, then let `show_google_attached_html_validation_flow.ps1` print and hand off the same locked inputs into the saved-page Google validation flow before you widen back into replay shortcuts, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
 
+## Current builder-attached compatibility bundle
+
+The current scheduled-run compatibility bundle is the three attached HTML exports currently present in `agent_files/`:
+
+- `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html`
+- `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html`
+- `Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html`
+
+When a nearby issue `#3` note says the replay is still pinned to the known three-page compatibility bundle, it means this exact file set.
+
+For the pinned bundle route, pass the folder containing these three files as `-InputPath` when you want the helper chain to keep the same bundle locked end-to-end. If you need to reopen only one page first, pin that file directly instead.
+
+Prefer `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html` as `-PreferredInitialPage` when the replay should keep one Google-like page first while still staying on the same three-page bundle.
+
 ## Top-level re-entry points
 
 Use these when the broader router should pick the next branch before the Google-style attached-page flow narrows again:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
 ```
 
 Use `google-attached-html` when the replay should stay on the Google-shaped attached-page lane.
@@ -71,12 +85,12 @@ Use `show_google_issue3_attached_bundle_first_entrypoint.ps1` when the current p
 When the next replay should reopen the live suite catalog before you commit to the broader attached-page route or the bundle-pinned route, use these focused catalog surfaces first:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-attached-html
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 ```
 
 Use `-SuiteName google-attached-html` when you want the dedicated Google-style attached-page surface checker, helper, broader attached-page helper, and nearby issue `#3` re-entry commands reprinted without widening back to the rest of the catalog first.
@@ -90,13 +104,13 @@ Use `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` when the 
 When the replay is already narrowed to attached localhost follow-up and you want the shorter issue `#3` bridge surfaces reprinted before this Google-style flow takes over, keep these helpers nearby:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_shortcut_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1
 ```
 
 Use `show_google_issue3_suite_router_attached_html_quickstart.ps1` when the higher-level router already narrowed the replay to attached-page compatibility follow-up and you want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the narrower helper family printed together before the route narrows again.
@@ -111,12 +125,12 @@ Use `show_google_issue3_replay_shortcuts.ps1` when the issue `#3` branch is alre
 If the broader Windows runbook already made attached localhost follow-up the next obvious issue `#3` branch, reopen the wider Windows-first route guard, bridge, and catalog quickstart before dropping into this narrower Google-style flow:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_route.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 ```
 
 Use that route when `docs/WINDOWS_FULL_USE.md` already narrowed the replay to attached localhost follow-up and you want the route-level surface check, the broader Windows-to-validation-router bridge, the Windows-first attached-html catalog quickstart, and the replay-side attached-page quickstart visible before this note narrows the same inputs into the Google-style helper and runner.
@@ -126,11 +140,11 @@ Use that route when `docs/WINDOWS_FULL_USE.md` already narrowed the replay to at
 If the replay is already reopening from the replay-route helper family and you still want the broader attached-page route plus the pinned bundle branch visible before the Google-style helper takes over, use:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 ```
 
 Use that route when the replay-route helper already became the main read-first surface, but you still want the broader attached-page fallback, the compact bundle-suite re-entry, and the pinned three-page bundle branch visible before you commit to the narrower Google-style helper and runner.
@@ -141,11 +155,11 @@ Keep `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` nearby when you want the 
 Use this route when auto-discovery should choose the current attached HTML inputs:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --audit-sidecars
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
+python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --audit-sidecars
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -Wait
 ```
 
 Use that route when:
@@ -161,11 +175,11 @@ Use that route when:
 If the replay already carries a non-default repo root, a preferred starting page, an explicit browser binary, or pinned attached-page inputs, keep that same context attached to the helper chain:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --repo-root '<repo-root>' --audit-sidecars --input '<attached-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>' -Wait
+python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --repo-root '<repo-root>' --audit-sidecars --input '<attached-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>' -Wait
 ```
 
 Use that form when:
@@ -180,8 +194,8 @@ Use that form when:
 If the attached pages live under one page root and you want to skip saved-file auto-discovery entirely, use `-PageRoot`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -PageRoot '<page-root>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -PageRoot '<page-root>' -Wait
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -PageRoot '<page-root>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -PageRoot '<page-root>' -Wait
 ```
 
 Use that route when the replay is already organized around a single local host directory and you do not need the saved-file search roots to choose the current inputs.
@@ -191,10 +205,10 @@ Use that route when the replay is already organized around a single local host d
 If the current replay must continue even though some local sibling assets are known to be missing, allow that explicitly and treat the result as a narrower signal:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --audit-sidecars --allow-missing-sidecars
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -AllowMissingAssets
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -AllowMissingLocalAssets
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -AllowMissingLocalAssets -Wait
+python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --audit-sidecars --allow-missing-sidecars
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle -AllowMissingAssets
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -AllowMissingLocalAssets
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_google_attached_html_validation.ps1 -AllowMissingLocalAssets -Wait
 ```
 
 Use this only when the missing local assets are already understood and the run still needs a best-effort Google-style attached-page replay instead of a strict asset-complete pass.
@@ -204,9 +218,9 @@ Use this only when the missing local assets are already understood and the run s
 If no Google-style attached HTML files are found automatically, do one of these instead:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -InputPath '<attached-html-or-folder>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -PageRoot '<page-root>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -InputPath '<attached-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -PageRoot '<page-root>'
 ```
 
 Use the broader attached-page flow helper when the current inputs are not clearly Google-shaped yet.
@@ -218,7 +232,7 @@ Use `-InputPath` or `-PageRoot` when the Google-style replay is still the right 
 
 Use this first when branch state may have moved and you want the Google-style attached-page guide, helper, and downstream runner surface checked before the replay starts.
 
-2. `python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --audit-sidecars`
+2. `python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --audit-sidecars`
 
 Use this next when the current export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the deeper local asset crawl begins.
 
@@ -257,27 +271,3 @@ Use this when the replay is already narrowed to attached localhost follow-up and
 11. `show_google_issue3_google_attached_html_entrypoint.ps1`
 
 Use this when the replay is already narrowed to the issue-specific Google-shaped attached-page route and you want the dedicated surface check, the dedicated flow helper, and the shorter shortcut-first bridge reprinted together.
-
-12. `show_google_issue3_attached_html_shortcut_entrypoint.ps1`
-
-Use this when you want the shortest attached-page bridge before widening back into replay shortcuts, the next-step matrix, or the safe-route helper chain.
-
-13. `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`
-
-Use this when the current inputs are still the known three-page compatibility bundle and you want the compact bundle-specific re-entry surfaced before the route narrows into the bundle-first helper or widens back into the broader attached-page fallback.
-
-14. `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
-
-Use this when the replay is already centered on the attached localhost compatibility pages and you want the shorter issue `#3` replay ladder beside this Google-style flow.
-
-15. `show_google_issue3_replay_route.ps1`
-
-Use this when you want the replay-route helper, the broader attached-page route, the compact bundle-suite re-entry, and the pinned bundle branch reprinted together before you commit to the narrower Google-style helper or the shorter attached-page shortcut chain.
-
-16. `show_google_issue3_attached_bundle_first_entrypoint.ps1`
-
-Use this when the current inputs are still the known three-page compatibility bundle and the replay should stay pinned there before widening back into the broader Google-only helper chain.
-
-## Practical rule
-
-Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard, the Windows-to-validation-router bridge, and the Windows-first attached-html catalog quickstart first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route, the compact bundle-suite re-entry, the pinned bundle route, and the neighboring top-level or suite-router attached-page ladders printed together before picking the next replay branch. Reopen the suite-router and top-level attached-page helpers first when the replay is already narrowed to attached localhost follow-up but you still want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the shorter issue `#3` bridges surfaced together before this guide takes over. Keep the replay-route helper family nearby when you want the broader attached-page fallback, the compact bundle-specific re-entry, and the pinned bundle-first branch surfaced together before this guide narrows the route. Run the launcher-backed sidecar-bundle audit before the deeper asset-closure crawl when a saved export might simply be missing its sibling `_files` directory, then treat the deeper asset crawl as the next step only after the bundle itself is present. Keep the broader attached-page router nearby when the route is still ambiguous, keep the compact bundle-suite helper and bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, sidecar audit, asset audit, helper output, or runner makes the next failure state clear.
