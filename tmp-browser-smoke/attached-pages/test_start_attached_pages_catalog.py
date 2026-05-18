@@ -163,6 +163,43 @@ def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
         self.assertEqual(0, exit_code)
         self.assertIn('"route": "/pages/1"', stdout.getvalue())
 
+    def test_main_print_manifest_can_require_complete_sidecars(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            """def build_sidecar_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_sidecars": 1,
+        "fixtures": [],
+    }
+
+def render_text_report(audit):
+    return "Attached Pages Sidecar Audit\\n\\nFixtures with missing sidecars: 1\\n"
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--print-manifest",
+                    "--require-complete-sidecars",
+                ]
+            )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertIn("Attached Pages Sidecar Audit", stderr.getvalue())
+        self.assertIn("Refusing to continue", stderr.getvalue())
+
     def test_main_audit_sidecars_json_uses_repo_sidecar_module(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
         attached_pages_dir.mkdir(parents=True)
@@ -243,6 +280,42 @@ def render_text_report(audit):
                 ]
             )
         self.assertEqual(0, exit_code)
+
+    def test_main_server_mode_can_require_complete_sidecars(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            """def build_sidecar_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_sidecars": 1,
+        "fixtures": [],
+    }
+
+def render_text_report(audit):
+    return "Attached Pages Sidecar Audit\\n\\nFixtures with missing sidecars: 1\\n"
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--require-complete-sidecars",
+                ]
+            )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertIn("Attached Pages Sidecar Audit", stderr.getvalue())
+        self.assertIn("Refusing to continue", stderr.getvalue())
 
     def test_repo_override_takes_precedence_over_environment(self):
         other_repo = self.workspace_root / "other-browser"
