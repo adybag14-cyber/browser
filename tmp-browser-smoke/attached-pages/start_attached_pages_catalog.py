@@ -399,6 +399,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("choose only one of --audit-assets or --audit-sidecars")
     if args.allow_missing_assets and args.require_complete_assets:
         parser.error("choose only one of --allow-missing-assets or --require-complete-assets")
+    if args.allow_missing_sidecars and args.require_complete_sidecars:
+        parser.error("choose only one of --allow-missing-sidecars or --require-complete-sidecars")
 
     explicit_repo_root = Path(args.repo_root) if args.repo_root else None
     repo_root = resolve_repo_root(Path(__file__), explicit_root=explicit_repo_root)
