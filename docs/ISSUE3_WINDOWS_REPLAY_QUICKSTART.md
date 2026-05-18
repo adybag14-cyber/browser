@@ -29,6 +29,11 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`
 
 ## Read-first discovery
 
@@ -139,7 +144,7 @@ Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS
 
 Because `show_headed_validation_suites.ps1` now prints the issue `#3` top-level attached HTML route, the compact top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-html catalog quickstart, and the bundle-first helper directly from the broader `google-recommended` and `google-input` entrypoints, reopen the route guard, the Windows-full-use attached-html route, the Windows-to-validation-router bridge, the Windows-side catalog quickstart, and the replay-side attached-page quickstart first when attached localhost follow-up has become the next obvious branch but the replay has not been narrowed to `-ChangeArea attached-html` yet.
 
-Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`, and `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` nearby when the replay is being reopened from `docs/WINDOWS_FULL_USE.md` first and you want that broader Windows runbook entrypoint, its route-level surface check, the Windows-to-validation-router bridge, the Windows-first catalog quickstart, the replay-side attached-page guide, the suite-catalog re-entry guide, the suite-catalog-to-top-level catalog bridge, and the narrower top-level attached-page note family to stay aligned with the shorter replay order described in this quickstart.
+Keep `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, and `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md` nearby when the replay is being reopened from `docs/WINDOWS_FULL_USE.md` first and you want that broader Windows runbook entrypoint, its route-level surface check, the Windows-to-validation-router bridge, the Windows-first catalog quickstart, the replay-side attached-page guide, the suite-catalog re-entry guide, and the suite-catalog-to-top-level catalog bridge to stay aligned with the shorter replay order described in this quickstart. Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby too when the replay may stay pinned to the current three-page compatibility bundle before widening back out.
 
 If the broader validation router already narrowed the replay to `-ChangeArea attached-html` and you want the shortest handoff into the replay-side attached-page quickstart before reopening the wider top-level helper family, use:
 
@@ -186,7 +191,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_safe_route_entrypoints.ps1
 ```
 
-If you are arriving from `docs/WINDOWS_FULL_USE.md` rather than the replay quickstart itself, reopen `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, and `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`, or print their companion helpers first and rerun the Windows-side surface check, then follow the same replay-side and top-level route so the broader Windows runbook, its route-level surface check, its Windows-to-validation-router bridge, its Windows-first catalog quickstart, this replay-side attached-page guide, this suite-catalog-to-top-level catalog bridge, and this narrower replay note stay in sync:
+If you are arriving from `docs/WINDOWS_FULL_USE.md` rather than the replay quickstart itself, reopen `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md`, `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md`, `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md`, `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`, and the pinned bundle companion notes, or print their companion helpers first and rerun the Windows-side surface check, then follow the same replay-side and top-level route so the broader Windows runbook, its route-level surface check, its Windows-to-validation-router bridge, its Windows-first catalog quickstart, this replay-side attached-page guide, this suite-catalog-to-top-level catalog bridge, this narrower replay note, the compact bundle suite surface, the proof entrypoint, and the pinned checklist stay in sync:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1
@@ -324,9 +329,18 @@ When those top-level suite-router commands are pointing at the current attached 
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
+
+Use that tighter bundle-first route when:
+- the current saved or attached pages are still the known three-page compatibility bundle
+- you want the compact bundle suite surface, the bundle-first helper, the fail-fast bundle surface checker, the delegated localhost runner, and the proof entrypoint all anchored to the same locked inputs before you widen back out
+- you want to return to `show_google_issue3_safe_route_entrypoints.ps1`, `show_attached_html_validation_flow.ps1`, or `show_google_attached_html_validation_flow.ps1` only after the bundle replay or the proof path makes the next Google-style failure state clearer
 
 If you still want the fuller branch matrix before choosing between the handoff, replay-route, bundle-first, shortcut, or safe-route helpers, rerun the matrix surface check first and then reopen the current next-step matrix after the catalog helper, the suite-router quickstart helper, the validation-router attached-page quickstart, the replay-side attached-page quickstart, the suite-router attached-page quickstart, those top-level router commands, the top-level shortcut bridge, the top-level attached-page bridge, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-html catalog quickstart, or the suite-catalog attached-page bridge:
 
@@ -453,18 +467,24 @@ If the replay is running from a non-default checkout, from an already-saved summ
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-That helper prints the same bundle-first commands plus the return-to-safe-route command in one place. The underlying route is still:
+That helper prints the same bundle-first commands plus the return-to-safe-route command in one place. The underlying route is now:
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
+
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`, and `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby when you want the written pinned-bundle route, the suite-level companion surface, the proof companion, and the page-by-page follow-up to stay aligned with the shorter replay entrypoint.
 
 Use this route when:
 - the current saved or attached pages are the known three-page compatibility bundle
-- you want the pinned bundle surface check, flow helper, and delegated localhost runner to keep the same locked inputs all the way through replay
-- you want to return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay makes the next Google-style input or submit failure state clear
+- you want the pinned bundle suite surface, the bundle-first helper, the fail-fast bundle surface checker, the flow helper, the delegated localhost runner, and the proof entrypoint to keep the same locked inputs all the way through replay
+- you want to return to `show_google_issue3_safe_route_entrypoints.ps1` only after the bundle replay, the proof path, or the pinned checklist makes the next Google-style input or submit failure state clear
 
 ## Default fresh replay
 
