@@ -6,6 +6,7 @@ param(
     [string]$PythonExe = "python",
     [string]$Bind = "127.0.0.1",
     [int]$Port = 8235,
+    [string]$StagingRoot,
     [switch]$GoogleStyle,
     [switch]$PrintManifest,
     [switch]$AuditAssets,
@@ -73,6 +74,10 @@ if ($PSCmdlet.ParameterSetName -eq "InputPath") {
 
 if ($GoogleStyle) {
     $launcherArgs += "--google-style"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($StagingRoot)) {
+    $launcherArgs += @("--staging-root", $StagingRoot)
 }
 
 if ($PrintManifest) {
