@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -158,15 +159,40 @@ if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_R
 $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $bundleArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
 $googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values $InputPath
 
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedHtmlChangeAreaArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($InputPath) {
+    $attachedHtmlChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlChangeAreaArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedBundleChangeAreaArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($InputPath) {
+    $attachedBundleChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedBundleChangeAreaArguments['BrowserExe'] = $BrowserExe
 }
 
 $helper = [ordered]@{
@@ -174,6 +200,7 @@ $helper = [ordered]@{
     purpose = 'Print the shortest bridge from the Windows full-use attached-page route into the validation-router attached-html quickstart, while keeping the attached-html change-area route, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the top-level attached-page quickstarts, the suite-router attached-page quickstart, and the replay shortcuts visible for the next narrow replay step.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     bridge_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md'
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
@@ -187,12 +214,8 @@ $helper = [ordered]@{
     commands = [ordered]@{
         windows_full_use_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -RepoRootOverride $RepoRoot
         validation_router_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_validation_router_attached_html_quickstart_surface.ps1' -RepoRootOverride $RepoRoot
-        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html'
-        }) -RepoRootOverride $RepoRoot
-        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html-target-bundle'
-        }) -RepoRootOverride $RepoRoot
+        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
+        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleChangeAreaArguments -RepoRootOverride $RepoRoot
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
@@ -214,6 +237,7 @@ $helper = [ordered]@{
         'Use attached_html_change_area_quickstart after the validation-router quickstart when you want the shorter change-area bridge and the compact top-level attached-page route kept visible together.',
         'Use attached_html_flow when the broader attached-page localhost flow should stay visible after the shorter change-area quickstart and explicit InputPath values should keep the same pinned page set instead of reopening auto-discovery.',
         'Use google_attached_html_flow when the dedicated Google-shaped attached-page flow helper should stay visible before the route drops from the validation-router bridge into the smaller top-level attached-page quickstarts.',
+        'Pass -BrowserExe when this bridge should stay pinned to a non-default headed build through the validation-router handoff, the attached-html change-area route, the bundle change-area route, the broader attached-page flow helper, the dedicated Google attached-page flow helper, and the bundle-first follow-up.',
         'Use top_level_attached_html_quickstart when the route is already ready to stay on the shortest top-level attached-page bridge before narrowing again.',
         'Use top_level_attached_html_catalog_quickstart when you want the compact top-level attached-page route plus the suite-catalog-side attached-page bridge preserved before the route narrows again.',
         'Use suite_router_attached_html_quickstart when the next replay should stay closer to the suite-router side of the attached-page helper chain before dropping into the shorter attached-page shortcut or replay shortcuts.',
@@ -251,6 +275,9 @@ if ($helper.repo_root) {
 }
 if ($helper.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($helper.summary_path)"))
+}
+if ($helper.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $helper.browser_exe)
 }
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
