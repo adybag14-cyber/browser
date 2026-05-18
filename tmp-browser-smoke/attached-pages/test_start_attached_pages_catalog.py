@@ -113,6 +113,18 @@ class StartAttachedPagesCatalogTests(unittest.TestCase):
 
         self.assertEqual(7, module.VALUE)
 
+    def test_load_sidecar_module_reads_repo_copy(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            "VALUE = 11\n",
+            encoding="utf-8",
+        )
+
+        module = helper.load_sidecar_module(self.repo_root)
+
+        self.assertEqual(11, module.VALUE)
+
     def test_main_print_manifest_uses_repo_server_module(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
         attached_pages_dir.mkdir(parents=True)
@@ -150,6 +162,87 @@ def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
 
         self.assertEqual(0, exit_code)
         self.assertIn('"route": "/pages/1"', stdout.getvalue())
+
+    def test_main_audit_sidecars_json_uses_repo_sidecar_module(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            """from pathlib import Path
+
+def build_sidecar_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_sidecars": 0,
+        "fixtures": [{"path": str(Path(selected_files[0]))}],
+    }
+
+def render_text_report(audit):
+    return "sidecars\\n"
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--audit-sidecars",
+                    "--audit-sidecars-json",
+                ]
+            )
+
+        self.assertEqual(0, exit_code)
+        self.assertIn('"fixtures_with_missing_sidecars": 0', stdout.getvalue())
+
+    def test_main_audit_sidecars_missing_returns_nonzero_unless_allowed(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            """def build_sidecar_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_sidecars": 1,
+        "fixtures": [],
+    }
+
+def render_text_report(audit):
+    return "sidecars\\n"
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--audit-sidecars",
+                ]
+            )
+        self.assertEqual(1, exit_code)
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--audit-sidecars",
+                    "--allow-missing-sidecars",
+                ]
+            )
+        self.assertEqual(0, exit_code)
 
     def test_repo_override_takes_precedence_over_environment(self):
         other_repo = self.workspace_root / "other-browser"
