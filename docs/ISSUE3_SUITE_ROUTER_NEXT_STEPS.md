@@ -26,6 +26,19 @@ If you want the helper to choose the fastest correct follow-up for you, run:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
 ```
 
+Before trusting the printed matrix after helper or note edits, rerun the fail-fast checks that protect the current route surface:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_next_steps_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
+```
+
+Use those checks when:
+- the suite-router next-step note or helper output just changed and you want the compact decision surface to fail fast before reuse
+- the replay is about to narrow into the broader Google-shaped attached-page route and you want that wider helper surface revalidated first
+- the replay is about to narrow from the broader Google-shaped attached-page route into the issue-specific entrypoint and you want the narrower checker rerun before trusting that bridge
+
 ## Next-step matrix
 
 Use these defaults after the top-level router:
@@ -88,6 +101,14 @@ Google attached-html flow helper, Google-attached-html entrypoint,
 attached-bundle-first helper, safe-route entrypoints, or runner next-step
 helper.
 
+If the replay is already carrying a non-default checkout, keep that same repo root on the fail-fast checks too:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_next_steps_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
+```
+
 ## When to choose each branch
 
 - Use `show_google_issue3_suite_router_shortcut_first_entrypoint.ps1` when you want the shorter issue `#3` bridge immediately after the higher-level suite router before deciding whether to widen into replay shortcuts, contextual flow, the replay-route shortcut, or the bundle-first path.
@@ -98,7 +119,7 @@ helper.
 - Use `show_google_issue3_contextual_flow.ps1` when `RepoRoot`, `SummaryPath`, or pinned `InputPath` values already matter and you want the next helper surface to keep that context aligned before choosing between the recommended runner, replay shortcuts, replay-route shortcut, attached bundle, live trace, or later-stage follow-up commands.
 - Use `show_google_issue3_validation_router_attached_html_quickstart.ps1` when the broader validation router already narrowed the replay to attached localhost follow-up and you want the validation-router bridge, the broader attached-page flow helper, and the dedicated Google-shaped attached-page follow-up kept visible before the route drops to the smaller issue `#3` helpers.
 - Use `show_google_issue3_suite_router_attached_html_quickstart.ps1` when the replay is already inside the issue `#3` helper chain and you want the shorter suite-router-side attached-page bridge visible before the wider replay helpers return.
-- Use `show_google_issue3_google_attached_html_entrypoint.ps1` when the Google-shaped attached-page lane still matters and you want the dedicated attached-page flow reopened before the route narrows again.
+- Use `show_google_issue3_google_attached_html_entrypoint.ps1` when the Google-shaped attached-page lane still matters and you want the dedicated attached-page flow reopened before the route narrows again. Rerun `check_google_attached_html_validation_surface.ps1` first when the broader Google-shaped route just changed, then rerun `check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1` before trusting the narrower entrypoint.
 - Use `show_google_issue3_attached_bundle_first_entrypoint.ps1` when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned route exercised first.
 - Use `show_google_issue3_safe_route_entrypoints.ps1` after the broader suite-router work is already done and the replay is ready to choose between fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, or runner-wiring helpers.
 - Use `show_google_issue3_runner_patch_next_step.ps1` only after a safe-route wrapper has already emitted one of the current runner-patch states.
@@ -128,6 +149,7 @@ When returning to issue `#3` after time away, prefer this order:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_next_steps_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
@@ -140,13 +162,12 @@ instead:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-That keeps the higher-level router, the shorter suite-router-side attached-page
-bridge, the compact issue `#3` helper chooser, the dedicated Google-shaped
-attached-page helper, and the replay shortcuts aligned on the same current
-branch guidance.
+That keeps the higher-level router, the compact issue `#3` helper chooser, the broader Google-shaped attached-page surface check, the narrower issue-specific checker, the shorter suite-router-side attached-page bridge, the dedicated Google-shaped attached-page helper, and the replay shortcuts aligned on the same current branch guidance.
