@@ -141,10 +141,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_
 ```
 
 The broader Google-shaped attached-page flow already preserves `-BrowserExe`.
-Some of the shorter issue `#3` attached-page quickstarts still assume the
-default build location, so rerun the validation router with `-BrowserExe`
-before switching between the general attached-html route and the pinned bundle
-route.
+The replay-side issue `#3` attached-page quickstart now preserves `-BrowserExe`
+through its printed replay bridge, broader attached-page flow helper, dedicated
+Google-shaped attached-page flow helper, and top-level attached-page quickstart.
+Before widening from that replay ladder into older attached-page helpers, rerun
+the validation router with `-BrowserExe` so any still-default shortcut is easy
+to spot.
 
 For a concrete saved page or bundle root, use the Windows wrapper first and run
 the same pinned input set through the sidecar check before the broader asset
