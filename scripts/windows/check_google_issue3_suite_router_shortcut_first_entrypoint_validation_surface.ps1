@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -58,7 +75,22 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1" -Kind "file" -Purpose "Reuse-current-output safe-route wrapper surfaced from the compact shortcut-first bridge.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'suite_router_shortcut_surface_check = $suiteRouterShortcutSurfaceCheckCommand' -Purpose "Shortcut-first helper keeps its dedicated fail-fast checker wired into the helper command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'suite_router_attached_html_surface_check = $suiteRouterAttachedHtmlSurfaceCheckCommand' -Purpose "Shortcut-first helper keeps the adjacent suite-router attached-html checker wired beside the compact route."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand' -Purpose "Shortcut-first helper keeps the issue-specific Google attached-page checker surfaced before the route narrows again."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'replay_route_shortcut = Format-HelperCommand -ScriptName ''show_google_issue3_replay_route_shortcut_entrypoint.ps1'' -Arguments $bundleArguments' -Purpose "Shortcut-first helper keeps the narrower replay-route bridge wired into the compact follow-up surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'Write-Host (("  7. Shortcut surface:       {0}") -f $entrypoint.helper_commands.suite_router_shortcut_surface_check)' -Purpose "Printed shortcut-first route keeps the dedicated checker visible before the attached-page and replay follow-up ladder."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'Write-Host (("  9. Attached quick check:   {0}") -f $entrypoint.helper_commands.suite_router_attached_html_surface_check)' -Purpose "Printed shortcut-first route keeps the adjacent attached-html checker visible beside the compact bridge."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'Write-Host ((" 13. Issue-specific check:   {0}") -f $entrypoint.helper_commands.google_issue3_attached_html_surface_check)' -Purpose "Printed shortcut-first route keeps the issue-specific Google checker visible before the narrower issue #3 bridge takes over."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'Write-Host ((" 17. Replay-route shortcut:  {0}") -f $entrypoint.helper_commands.replay_route_shortcut)' -Purpose "Printed shortcut-first route keeps the replay-route shortcut bridge visible beside replay shortcuts."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1" -Snippet 'Use replay_shortcuts as the default next helper when no pinned bundle inputs, saved summary, or non-default repo root need to stay visible first.' -Purpose "Usage notes preserve the default narrowing path from the shortcut-first bridge into replay shortcuts."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_shortcut_first_entrypoint_validation_surface.ps1' -Purpose "Companion bridge note still reprints the live shortcut-first checker command."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1' -Purpose "Companion bridge note still reprints the live attached-html checker command beside the compact shortcut bridge."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Purpose "Companion bridge note still surfaces the replay-route shortcut helper from the compact suite-router route.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -67,6 +99,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -74,15 +107,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-suite-router-shortcut-first-entrypoint"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -97,10 +164,20 @@ Write-Host ""
 Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host (("[{0}] {1}") -f $status, $result.Path)
     Write-Host (("  {0}") -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host (("[{0}] {1}") -f $status, $result.Path)
+        Write-Host (("  {0}") -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -109,6 +186,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} suite-router shortcut-first entrypoint path(s).") -f $missing.Count)
-Write-Host "Repair the missing shortcut note, attached-page companion helper, replay-route shortcut, or safe-route fallback before trusting the compact issue #3 shortcut-first bridge."
+Write-Host (("Missing {0} suite-router shortcut-first path or source contract check(s).") -f $missing.Count)
+Write-Host "Repair the missing shortcut note, helper output contract, attached-page companion helper, replay-route shortcut, or safe-route fallback before trusting the compact issue #3 shortcut-first bridge."
 exit 1
