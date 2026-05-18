@@ -55,6 +55,7 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md" -Kind "file" -Purpose "Google-shaped attached-page validation flow note kept visible when the replay stays on the Google-style attached-html lane."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md" -Kind "file" -Purpose "Pinned three-page attached-html bundle reference note kept nearby when the replay stays on the locked compatibility set."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Kind "file" -Purpose "Compact bundle-suite surface note kept nearby when the replay re-enters the locked compatibility bundle before narrowing further."),
+    (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md" -Kind "file" -Purpose "Pinned bundle proof note kept nearby when the replay-side attached-html route narrows into the fixed-list screenshot-and-title proof path."),
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md" -Kind "file" -Purpose "Longer Windows validation-chain note that stays aligned with the replay attached-html route."),
     (New-ValidationReference -Path "scripts/windows/HeadedValidationHelpers.ps1" -Kind "file" -Purpose "Shared helper surface used to resolve repo-root-aware validation commands."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1" -Kind "file" -Purpose "Replay attached-html quickstart helper that this checker validates."),
@@ -137,5 +138,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} Windows replay attached-html quickstart path(s).") -f $missing.Count)
-Write-Host "Repair the missing route note, helper, or bundle-aware follow-up before trusting the issue #3 Windows replay attached-html quickstart."
+Write-Host "Repair the missing route note, helper, bundle proof note, or bundle-aware follow-up before trusting the issue #3 Windows replay attached-html quickstart."
 exit 1
