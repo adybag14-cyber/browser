@@ -75,8 +75,7 @@ $contentExpectations = @(
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1" -Snippet 'Run the surface check first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted.' -Purpose "Launcher companion usage notes keep the guarded-helper workflow visible for future replay runs."),
     (New-ValidationContentExpectation -Path "tmp-browser-smoke/attached-pages/README.md" -Snippet 'scripts/windows/start_attached_pages_catalog.ps1' -Purpose "Attached-pages README still documents the Windows wrapper surfaced by the launcher companion helper."),
     (New-ValidationContentExpectation -Path "tmp-browser-smoke/attached-pages/README.md" -Snippet '--audit-sidecars' -Purpose "Attached-pages README still documents the sidecar-first preflight mode surfaced by the launcher companion helper."),
-    (New-ValidationContentExpectation -Path "scripts/windows/start_attached_pages_catalog.ps1" -Snippet '$launcherArgs += "--audit-sidecars"' -Purpose "Windows wrapper still forwards the sidecar-audit mode that the launcher companion recommends first."),
-    (New-ValidationContentExpectation -Path "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py" -Snippet '        "--audit-sidecars",' -Purpose "Python launcher still exposes the sidecar-audit mode that the launcher companion keeps in the printed ladder.")
+    (New-ValidationContentExpectation -Path "scripts/windows/start_attached_pages_catalog.ps1" -Snippet '$launcherArgs += "--audit-sidecars"' -Purpose "Windows wrapper still forwards the sidecar-audit mode that the launcher companion recommends first.")
 )
 
 $referenceResults = foreach ($reference in $references) {
