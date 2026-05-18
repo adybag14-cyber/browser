@@ -11,7 +11,15 @@ from types import ModuleType
 HTML_EXPORT_EXTENSIONS = {".html", ".htm"}
 
 
-def resolve_repo_root(start_path: Path) -> Path:
+def resolve_repo_root(start_path: Path, explicit_root: Path | None = None) -> Path:
+    if explicit_root is not None:
+        resolved_explicit_root = Path(explicit_root).expanduser().resolve()
+        if (resolved_explicit_root / "build.zig").is_file():
+            return resolved_explicit_root
+        raise FileNotFoundError(
+            f"explicit repo root does not look like a Lightpanda checkout: {resolved_explicit_root}"
+        )
+
     override = os.environ.get("LIGHTPANDA_REPO_ROOT", "").strip()
     if override:
         return Path(override).expanduser().resolve()
@@ -377,7 +385,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.audit_assets and args.audit_sidecars:
         parser.error("choose only one of --audit-assets or --audit-sidecars")
 
-    repo_root = resolve_repo_root(Path(args.repo_root) if args.repo_root else Path(__file__))
+    explicit_repo_root = Path(args.repo_root) if args.repo_root else None
+    repo_root = resolve_repo_root(Path(__file__), explicit_root=explicit_repo_root)
     selected_files = select_attached_html_inputs(
         repo_root,
         explicit_inputs=args.explicit_inputs,
