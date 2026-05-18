@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -160,12 +161,21 @@ Add-SharedArgument -Arguments $sharedArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values $InputPath
 
+$browserAwareSharedArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $browserAwareSharedArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $browserAwareSharedArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $browserAwareSharedArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedPathArrayArgument -Arguments $browserAwareSharedArguments -Name InputPath -Values $InputPath
+
 $routeSurfaceArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $RepoRoot
 
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
 }
 
 $attachedHtmlChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
@@ -183,6 +193,7 @@ $helper = [ordered]@{
     purpose = 'Print the narrow attached-localhost ladder that matches the current Windows replay route for issue #3, while keeping the replay-side fail-fast checker, the broader attached-page flow helper, the dedicated Google-shaped attached-page surface check, the top-level attached-html, Google-attached-html, and bundle-aware re-entry points, the Windows full-use route-level surface check, the Windows-to-validation-router bridge, the Windows-first attached-html catalog step, the broader top-level companion-note map, the wider suite-catalog guide, the suite-catalog-to-top-level attached-html catalog quickstart, the newer top-level shortcut bridge, the compact bundle-suite surface helper, and the replay-route shortcut bridge visible before the route narrows back into the compact attached-page helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
@@ -214,11 +225,11 @@ $helper = [ordered]@{
     commands = [ordered]@{
         windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
-        windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
+        windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $browserAwareSharedArguments
         windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
-        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $sharedArguments
-        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $browserAwareSharedArguments
+        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $browserAwareSharedArguments
         top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
         suite_catalog_top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments
@@ -295,6 +306,9 @@ if ($helper.repo_root) {
 }
 if ($helper.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($helper.summary_path)"))
+}
+if ($helper.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $helper.browser_exe)
 }
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
