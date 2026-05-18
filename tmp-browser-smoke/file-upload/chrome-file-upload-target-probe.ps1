@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
-$repo = 'C:\Users\adyba\src\lightpanda-browser'
-$root = Join-Path $repo 'tmp-browser-smoke\file-upload'
+. "$PSScriptRoot\FileUploadProbeCommon.ps1"
+$repo = $script:Repo
+$root = $script:Root
 $profileRoot = Join-Path $root 'profile-upload-target'
 $port = 8166
 $browserOut = Join-Path $root 'upload-target.browser.stdout.txt'
@@ -9,7 +10,6 @@ $serverOut = Join-Path $root 'upload-target.server.stdout.txt'
 $serverErr = Join-Path $root 'upload-target.server.stderr.txt'
 
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-. "$PSScriptRoot\FileUploadProbeCommon.ps1"
 
 $samplePath = (Resolve-Path (Join-Path $root 'sample-upload.txt')).Path
 $server = $null
