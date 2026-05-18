@@ -1,3 +1,4 @@
+[CmdletBinding()]
 param(
     [ValidateSet("", "google-form-controls-enter-order", "google-recommended")]
     [string]$SuiteName = "",
@@ -202,7 +203,7 @@ function Get-RenderingRouteCommands {
 function Get-RenderingRouteNotes {
     return @(
         "Use these before attached-page replay when the change touched shared layout, paint, screenshot timing, or visible headed surface behavior.",
-        "The first-line layout-smoke probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
+        "The first-line layout-smoke probes now auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
     )
 }
 
@@ -222,6 +223,7 @@ function Get-NetworkRouteNotes {
 
 $issue3AttachedHtmlArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name BrowserExe -Value $BrowserExe
 if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlArguments -Name InputPath -Values @($InputPath)
 }
@@ -262,7 +264,7 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
 
     if ($isCustomBrowserExe) {
         $notes += "Current browser override: $BrowserExe"
-        $notes += "The shorter issue #3 attached-page helper ladder still assumes the default build location. Reopen this router with -BrowserExe whenever you hop between the input, attached-html, and bundle routes so the same custom binary stays pinned."
+        $notes += "The printed issue #3 follow-up commands now preserve -BrowserExe through the router handoff. Keep rerunning this router before hopping between helper surfaces so the same custom binary stays pinned."
     }
 
     return $notes
@@ -311,7 +313,7 @@ function Show-DefaultRoutes {
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
     ) -Notes @(
         "These probes exercise headed stop/loading recovery and restored input behavior on localhost fixtures.",
-        "These first-line stop-loading probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
+        "These first-line stop-loading probes now auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
     )
 
     Write-Route -Name "input" -Commands @(
@@ -465,7 +467,7 @@ switch ($true) {
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
         ) -Notes @(
             "Use these for headed stop/loading recovery and restored input behavior on bounded localhost pages.",
-            "These first-line stop-loading probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
+            "These first-line stop-loading probes now auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
         )
         break
     }
