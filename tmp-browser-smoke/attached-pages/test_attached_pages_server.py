@@ -325,6 +325,75 @@ class AttachedPagesServerTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=5)
 
+    def test_staging_root_persists_route_copies_and_serves_staged_sidecars(self):
+        export_name = "Google Search Export"
+        page_path = self.root / f"{export_name}.html"
+        sidecar_dir = self.root / f"{export_name}_files"
+        sidecar_dir.mkdir()
+        page_path.write_text(
+            f"""<!doctype html>
+<html>
+  <head>
+    <title>{export_name}</title>
+    <link rel="stylesheet" href="./{sidecar_dir.name}/theme.css">
+  </head>
+  <body>staged export body</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+        (sidecar_dir / "theme.css").write_text("body { color: green; }\n", encoding="utf-8")
+
+        staging_root = self.root / "staged-output"
+        server, manifest = server_module.create_server(
+            selected_files=[page_path],
+            bind="127.0.0.1",
+            port=0,
+            staging_root=staging_root,
+        )
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            staged_page = staging_root / "pages" / "1" / "index.html"
+            staged_asset = staging_root / "pages" / "1" / sidecar_dir.name / "theme.css"
+            self.assertTrue(staged_page.is_file())
+            self.assertTrue(staged_asset.is_file())
+
+            page_path.write_text(
+                """<!doctype html>
+<html>
+  <head>
+    <title>Changed Export</title>
+  </head>
+  <body>changed body</body>
+</html>
+""",
+                encoding="utf-8",
+            )
+            (sidecar_dir / "theme.css").write_text("body { color: red; }\n", encoding="utf-8")
+
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                connection.request("GET", "/pages/1/")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                self.assertIn("staged export body", response.read().decode("utf-8"))
+
+                connection.request("GET", f"/pages/1/{quote(sidecar_dir.name)}/theme.css")
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                self.assertEqual("body { color: green; }\n", response.read().decode("utf-8"))
+            finally:
+                connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+        self.assertTrue(staging_root.is_dir())
+        self.assertEqual(1, len(manifest))
+
     def test_print_manifest_with_explicit_file_list_outputs_only_selected_files(self):
         original_argv = sys.argv[:]
         buffer = io.StringIO()
