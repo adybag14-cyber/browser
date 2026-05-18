@@ -140,6 +140,8 @@ $googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::ne
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values $InputPath
 
+$suiteRouterSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_router_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
+
 $helper = [ordered]@{
     issue = 'Google issue #3 suite-router quickstart'
     purpose = 'Print the shortest bridge from the top-level headed validation suite router into the current issue #3 validation-router attached HTML quickstart, top-level shortcut-first entrypoint, top-level attached HTML bridge, dedicated Google attached-page flow helper, Google-shaped attached-page entrypoint, suite-router attached HTML quickstart, top-level attached HTML quickstart, top-level attached HTML catalog quickstart, suite-catalog entrypoints helper, suite-catalog attached HTML, issue-specific attached HTML shortcut, replay-shortcuts, attached-bundle, and safe-route helpers, while preserving repo-root, saved-summary, and pinned attached-bundle context when it already exists.'
@@ -175,6 +177,7 @@ $helper = [ordered]@{
         attached_bundle_suite = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
         }) -RepoRootOverride $RepoRoot
+        suite_router_surface_check = $suiteRouterSurfaceCheckCommand
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
         top_level_attached_html = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
@@ -196,6 +199,7 @@ $helper = [ordered]@{
         'Start with google_recommended or google_input when you are re-entering issue #3 from the top-level headed validation suite catalog and want the same router commands that the higher-level catalog prints.',
         'Use attached_html_suite when the next replay is already narrowed to attached-page compatibility follow-up and you want that top-level route reprinted before dropping into the validation-router attached-page quickstart or the shorter issue-specific helper chain.',
         'Use google_attached_html_suite when the next replay is already narrowed to the issue-specific attached-page follow-up route and you want that dedicated suite-router entrypoint visible before choosing between the validation-router attached-page quickstart, the dedicated Google attached-page flow helper, the top-level attached-page bridge, the Google-shaped attached-page entrypoint, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog entrypoints helper, the suite-catalog attached-page bridge, the attached-page shortcut, replay shortcuts, the next-step matrix, or the bundle-first route.',
+        'Use suite_router_surface_check when the compact suite-router bridge itself may have drifted and you want missing notes or renamed helpers to fail fast before trusting the shorter replay route.',
         'Use validation_router_attached_html_quickstart when the replay is already entering from the broader validation-router attached-page route and you want that bridge kept visible before narrowing into the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog entrypoints helper, the suite-catalog attached-page bridge, the attached-page shortcut, replay shortcuts, the next-step matrix, or the bundle-first route.',
         'Use top_level_shortcut_first when the top-level suite router already made issue #3 obvious and you want the shorter top-level shortcut bridge kept visible beside the attached localhost quickstarts before the route narrows further.',
         'Use top_level_attached_html when the replay is already narrowed to attached-page follow-up and you want the broader top-level attached-page bridge kept visible before choosing between the validation-router attached-page quickstart, the dedicated Google attached-page flow helper, the Google-shaped attached-page entrypoint, the suite-router attached-page quickstart, the top-level attached-page quickstart, the top-level attached-page catalog quickstart, the suite-catalog entrypoints helper, the suite-catalog attached-page bridge, the attached-page shortcut, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.',
@@ -260,6 +264,7 @@ Write-Host (("  Google attached HTML: {0}") -f $helper.commands.google_attached_
 Write-Host (("  Attached bundle:      {0}") -f $helper.commands.attached_bundle_suite)
 Write-Host ''
 Write-Host 'Follow-up helpers:'
+Write-Host (("  Quickstart surface: {0}") -f $helper.commands.suite_router_surface_check)
 Write-Host (("  Validation-router:    {0}") -f $helper.commands.validation_router_attached_html_quickstart)
 Write-Host (("  Top-level shortcut:   {0}") -f $helper.commands.top_level_shortcut_first)
 Write-Host (("  Top-level attached:   {0}") -f $helper.commands.top_level_attached_html)
