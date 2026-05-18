@@ -35,7 +35,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -InputPath "<saved-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
 ```
 
 Current validation truth on this branch:
@@ -46,15 +47,20 @@ Current validation truth on this branch:
 - the router now surfaces a dedicated `google-form-controls-enter-order` gate for the smallest issue #3 shared Enter-submit checkpoint on the real headed surface
 - the router now surfaces checkout-portable `browser-shell` first-line probes for tabs and settings behavior on the real headed window
 - the router now surfaces a checkout-portable `popup` first-line probe for popup creation and named-target behavior on the real headed window
+- the router now surfaces dedicated `google-attached-html` and `attached-html-target-bundle` routes for issue #3 attached-page replay, including the pinned three-page compatibility-bundle path
 - the first-line navigation, stop-loading, input, browser-shell, and popup probes auto-resolve the repo root and built browser path from the current checkout
 - `scripts/windows/show_headed_validation_suites.ps1` is the truthful router
   for current small Windows headed checks
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` is the read-first companion when the replay should keep one Google-like attached page first through the localhost route
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` is the smaller bridge when the replay is already narrowed to the issue #3 attached localhost ladder and needs the next helper chain surfaced quickly
 - saved or attached HTML follow-up currently expands to a manual localhost
   replay path instead of the larger wrapper-heavy helper chain referenced by
   some older notes
 
-See `docs/WINDOWS_FULL_USE.md` for the current Windows-first runbook and the
-manual localhost replay steps for attached compatibility pages.
+See `docs/WINDOWS_FULL_USE.md` for the current Windows-first runbook, and use
+`docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` plus
+`docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` when issue #3 is already down
+to the attached-page replay path.
 
 ## Milestones
 
