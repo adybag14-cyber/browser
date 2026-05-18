@@ -143,6 +143,41 @@ class StartAttachedPagesCatalogTests(unittest.TestCase):
         self.assertIsNotNone(entry)
         self.assertEqual("/pages/1", entry["route"])
 
+    def test_find_manifest_entry_for_path_prefers_exact_relative_path_when_leaf_names_collide(self):
+        manifest = [
+            {
+                "file": "one/google-home.html",
+                "route": "/pages/1",
+                "alias_route": "/pages/1-google-home",
+                "slug_route": "/named/google-home",
+            },
+            {
+                "file": "two/google-home.html",
+                "route": "/pages/2",
+                "alias_route": "/pages/2-google-home",
+                "slug_route": "/named/google-home-2",
+            },
+        ]
+        first = self.write_html(
+            self.workspace_root / "agent_files" / "one" / "google-home.html",
+            "Google Home One",
+            "first",
+        )
+        second = self.write_html(
+            self.workspace_root / "agent_files" / "two" / "google-home.html",
+            "Google Home Two",
+            "second",
+        )
+
+        entry = helper.find_manifest_entry_for_path(
+            manifest,
+            second,
+            selected_files=[first, second],
+        )
+
+        self.assertIsNotNone(entry)
+        self.assertEqual("/pages/2", entry["route"])
+
     def test_main_print_manifest_uses_repo_server_module(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
         attached_pages_dir.mkdir(parents=True)
