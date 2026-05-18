@@ -35,7 +35,7 @@ function New-ValidationContentExpectation {
         [string]$Snippet,
         [Parameter(Mandatory = $true)]
         [string]$Purpose
-    )
+    }
 
     return [pscustomobject]@{
         Path = $Path
@@ -53,6 +53,7 @@ $resolvedRepoRoot = if ($RepoRoot) {
 $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Kind "file" -Purpose "Compact replay quickstart note that still anchors the suite-router next-steps handoff."),
     (New-ValidationReference -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Kind "file" -Purpose "Replay-discovery handoff note that remains part of the read-first suite-router bridge into the next-step matrix."),
+    (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_NEXT_STEPS.md" -Kind "file" -Purpose "Focused suite-router next-steps note that should stay aligned with the live helper and the broader replay notes."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md" -Kind "file" -Purpose "Suite-router shortcut bridge note that explains the shorter issue 3 handoff kept visible by the next-step matrix."),
     (New-ValidationReference -Path "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md" -Kind "file" -Purpose "Replay-route shortcut bridge note that stays adjacent to the narrower replay-route entrypoint from the next-step matrix."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Suite-router attached-html quickstart note surfaced when the matrix re-enters through attached localhost follow-up."),
@@ -97,6 +98,8 @@ $references = @(
 $contentExpectations = @(
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1' -Purpose "Windows replay quickstart keeps the suite-router next-steps fail-fast checker visible before the matrix is trusted."),
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1' -Purpose "Windows replay quickstart keeps the executable next-step matrix visible when the replay wants the helper to choose the fastest correct follow-up."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1' -Purpose "Replay-discovery handoff keeps the suite-router next-steps fail-fast checker visible before the compact matrix is trusted."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1' -Purpose "Replay-discovery handoff keeps the executable next-step matrix visible when the read-first route still needs the compact chooser."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'suite_router_surface_check = $suiteRouterSurfaceCheckCommand' -Purpose "Helper command maps keep the suite-router surface checker wired into the next-steps surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the broader Google attached-html surface checker visible from the next-steps surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_next_steps.ps1" -Snippet 'google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the issue-specific Google attached-html surface checker visible from the next-steps surface."),
@@ -205,5 +208,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} suite-router next-steps path or source contract check(s).") -f $missing.Count)
-Write-Host "Repair the suite-router shortcut bridge, replay-route shortcut note, attached-html quickstarts, Google attached-html entrypoint surface, bundle-aware helpers, runner-patch helpers, or later-stage validation flow stack before trusting the next-step matrix."
+Write-Host "Repair the replay quickstart or discovery handoff notes, the suite-router shortcut bridge, replay-route shortcut note, attached-html quickstarts, Google attached-html entrypoint surface, bundle-aware helpers, runner-patch helpers, or later-stage validation flow stack before trusting the next-step matrix."
 exit 1
