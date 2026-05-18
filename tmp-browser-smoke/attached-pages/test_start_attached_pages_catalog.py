@@ -377,6 +377,7 @@ def render_asset_audit_text(audit):
 
 class FakeServer:
     server_address = ("127.0.0.1", 8235)
+    stage_root = Path("/tmp/attached-pages-stage")
 
     def serve_forever(self):
         raise KeyboardInterrupt()
@@ -384,7 +385,7 @@ class FakeServer:
     def server_close(self):
         return None
 
-def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None, staging_root=None):
     return FakeServer(), build_manifest(root=root, selected_files=selected_files)
 """,
             encoding="utf-8",
@@ -416,6 +417,80 @@ def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
             "Preferred named route: http://127.0.0.1:8235/named/google-search-home/",
             output,
         )
+        self.assertIn("Staging route copies under: /tmp/attached-pages-stage", output)
+
+    def test_main_server_mode_passes_requested_staging_root(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        requested_staging_root = (self.workspace_root / "staged-route-copies").resolve()
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            """def build_sidecar_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_sidecars": 0,
+        "fixtures": [],
+    }
+
+def render_text_report(audit):
+    return "Attached Pages Sidecar Audit\\n"
+""",
+            encoding="utf-8",
+        )
+        (attached_pages_dir / "attached_pages_server.py").write_text(
+            """from pathlib import Path
+
+def build_manifest(root=None, selected_files=None):
+    return [{
+        "file": Path(selected_files[0]).name,
+        "route": "/pages/1",
+        "alias_route": "/pages/1-fixture",
+        "slug_route": "/named/fixture",
+    }]
+
+def build_asset_audit(root=None, selected_files=None):
+    return {
+        "fixtures_with_missing_assets": 0,
+    }
+
+def render_asset_audit_text(audit):
+    return "audit\\n"
+
+class FakeServer:
+    server_address = ("127.0.0.1", 8235)
+
+    def __init__(self, staging_root):
+        self.stage_root = Path(staging_root) if staging_root is not None else Path("/tmp/fallback-stage")
+
+    def serve_forever(self):
+        raise KeyboardInterrupt()
+
+    def server_close(self):
+        return None
+
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None, staging_root=None):
+    return FakeServer(staging_root), build_manifest(root=root, selected_files=selected_files)
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--staging-root",
+                    str(requested_staging_root),
+                ]
+            )
+
+        output = stdout.getvalue()
+        self.assertEqual(0, exit_code)
+        self.assertIn(f"Requested staging root: {requested_staging_root}", output)
+        self.assertIn(f"Staging route copies under: {requested_staging_root}", output)
 
     def test_repo_override_takes_precedence_over_environment(self):
         other_repo = self.workspace_root / "other-browser"
