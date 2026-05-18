@@ -273,6 +273,14 @@ def render_strict_sidecar_failure(report: str) -> str:
     )
 
 
+def render_strict_asset_failure(report: str) -> str:
+    return (
+        report.rstrip()
+        + "\n\n"
+        + "Refusing to continue because the selected attached HTML bundle still has missing local assets.\n"
+    )
+
+
 def build_selected_file_lookup(selected_files: list[Path]) -> dict[str, Path]:
     resolved_files = [Path(path).expanduser().resolve() for path in selected_files]
     if not resolved_files:
@@ -372,6 +380,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Fail before printing a manifest or starting the server when the selected bundle is missing sibling _files directories.",
     )
+    parser.add_argument(
+        "--require-complete-assets",
+        action="store_true",
+        help="Fail before printing a manifest or starting the server when the selected bundle still has missing local assets.",
+    )
     args = parser.parse_args(argv)
 
     if args.audit_assets_json and not args.audit_assets:
@@ -384,6 +397,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--allow-missing-sidecars requires --audit-sidecars")
     if args.audit_assets and args.audit_sidecars:
         parser.error("choose only one of --audit-assets or --audit-sidecars")
+    if args.allow_missing_assets and args.require_complete_assets:
+        parser.error("choose only one of --allow-missing-assets or --require-complete-assets")
 
     explicit_repo_root = Path(args.repo_root) if args.repo_root else None
     repo_root = resolve_repo_root(Path(__file__), explicit_root=explicit_repo_root)
@@ -396,6 +411,9 @@ def main(argv: list[str] | None = None) -> int:
 
     sidecar_module: ModuleType | None = None
     sidecar_audit: dict[str, object] | None = None
+    server_module: ModuleType | None = None
+    asset_audit: dict[str, object] | None = None
+    selected_manifest: list[dict[str, str]] | None = None
 
     def ensure_sidecar_audit() -> tuple[ModuleType, dict[str, object]]:
         nonlocal sidecar_module, sidecar_audit
@@ -405,7 +423,25 @@ def main(argv: list[str] | None = None) -> int:
             sidecar_audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
         return sidecar_module, sidecar_audit
 
-    selected_manifest: list[dict[str, str]] | None = None
+    def ensure_server_module() -> ModuleType:
+        nonlocal server_module
+        if server_module is None:
+            server_module = load_server_module(repo_root)
+        return server_module
+
+    def ensure_asset_audit() -> tuple[ModuleType, dict[str, object]]:
+        nonlocal asset_audit
+        module = ensure_server_module()
+        if asset_audit is None:
+            asset_audit = module.build_asset_audit(selected_files=selected_files)
+        return module, asset_audit
+
+    def ensure_manifest() -> tuple[ModuleType, list[dict[str, str]]]:
+        nonlocal selected_manifest
+        module = ensure_server_module()
+        if selected_manifest is None:
+            selected_manifest = module.build_manifest(selected_files=selected_files)
+        return module, selected_manifest
 
     if args.print_manifest:
         if args.require_complete_sidecars:
@@ -417,14 +453,21 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 1
-        server_module = load_server_module(repo_root)
-        selected_manifest = server_module.build_manifest(selected_files=selected_files)
+        if args.require_complete_assets:
+            server_module, asset_audit = ensure_asset_audit()
+            if asset_audit["fixtures_with_missing_assets"] > 0:
+                print(
+                    render_strict_asset_failure(server_module.render_asset_audit_text(asset_audit)),
+                    end="",
+                    file=sys.stderr,
+                )
+                return 1
+        _, selected_manifest = ensure_manifest()
         print(json.dumps(selected_manifest, indent=2))
         return 0
 
     if args.audit_assets:
-        server_module = load_server_module(repo_root)
-        audit = server_module.build_asset_audit(selected_files=selected_files)
+        server_module, audit = ensure_asset_audit()
         if args.audit_assets_json:
             print(json.dumps(audit, indent=2))
         else:
@@ -453,11 +496,20 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
 
-    server_module = load_server_module(repo_root)
+    if args.require_complete_assets:
+        server_module, asset_audit = ensure_asset_audit()
+        if asset_audit["fixtures_with_missing_assets"] > 0:
+            print(
+                render_strict_asset_failure(server_module.render_asset_audit_text(asset_audit)),
+                end="",
+                file=sys.stderr,
+            )
+            return 1
+
     preferred_manifest_entry = None
     preferred_fixture_path = selected_files[0] if args.google_style and selected_files else None
     if preferred_fixture_path is not None:
-        selected_manifest = server_module.build_manifest(selected_files=selected_files)
+        _, selected_manifest = ensure_manifest()
         preferred_manifest_entry = find_manifest_entry_for_path(
             selected_manifest,
             preferred_fixture_path,
@@ -465,7 +517,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     _, sidecar_audit = ensure_sidecar_audit()
-    audit = server_module.build_asset_audit(selected_files=selected_files)
+    _, audit = ensure_asset_audit()
     print("Attached pages catalog")
     print("")
     print(
@@ -478,6 +530,8 @@ def main(argv: list[str] | None = None) -> int:
     print("Routes: /, /manifest.json, /audit.json, /audit.txt, /pages/<n>, /named/<slug>, /raw/...")
     if args.require_complete_sidecars:
         print("Strict sidecar gate: enabled")
+    if args.require_complete_assets:
+        print("Strict asset gate: enabled")
     if staging_root is not None:
         print(f"Requested staging root: {staging_root}")
     if preferred_fixture_path is not None:
@@ -504,11 +558,12 @@ def main(argv: list[str] | None = None) -> int:
         print("")
     if audit["fixtures_with_missing_assets"] > 0:
         print(
-            "Warning: some attached HTML files still have missing local sidecars. "
+            "Warning: some attached HTML files still have missing local assets. "
             "Headed localhost replay may differ until those files are restored."
         )
         print("")
 
+    server_module = ensure_server_module()
     server, manifest = server_module.create_server(
         bind=args.bind,
         port=args.port,
