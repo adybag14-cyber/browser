@@ -15,7 +15,8 @@ param(
     [switch]$AuditSidecars,
     [switch]$AuditSidecarsJson,
     [switch]$AllowMissingSidecars,
-    [switch]$RequireCompleteSidecars
+    [switch]$RequireCompleteSidecars,
+    [switch]$RequireCompleteAssets
 )
 
 Set-StrictMode -Version Latest
@@ -43,6 +44,9 @@ if ($AllowMissingSidecars -and -not $AuditSidecars) {
 }
 if ($RequireCompleteSidecars -and ($AuditAssets -or $AuditSidecars)) {
     throw "-RequireCompleteSidecars is only supported with the catalog launch or -PrintManifest modes. Run the sidecar audit first, then rerun with -RequireCompleteSidecars when you want the manifest or localhost server to fail fast on incomplete bundles."
+}
+if ($RequireCompleteAssets -and ($AuditAssets -or $AuditSidecars)) {
+    throw "-RequireCompleteAssets is only supported with the catalog launch or -PrintManifest modes. Run the asset audit first, then rerun with -RequireCompleteAssets when you want the manifest or localhost server to fail fast on incomplete bundles."
 }
 
 $resolvedRepoRoot = if ($RepoRoot) {
@@ -104,6 +108,9 @@ if ($PrintManifest) {
 
 if ($RequireCompleteSidecars) {
     $launcherArgs += "--require-complete-sidecars"
+}
+if ($RequireCompleteAssets) {
+    $launcherArgs += "--require-complete-assets"
 }
 
 & $resolvedPython @launcherArgs
