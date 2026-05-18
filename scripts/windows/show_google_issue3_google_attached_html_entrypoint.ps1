@@ -134,12 +134,16 @@ function Format-SidecarAuditCommand {
     )
 
     $scriptPath = if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
-        '.\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py'
+        '.\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py'
     } else {
-        Join-Path $RepoRootOverride 'tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py'
+        Join-Path $RepoRootOverride 'tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py'
     }
 
     $command = "python " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $scriptPath)
+    $command += ' --google-style --audit-sidecars'
+    if (-not [string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        $command += ' --repo-root ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRootOverride)
+    }
     if ($InputPathOverride -and $InputPathOverride.Count -gt 0) {
         foreach ($value in $InputPathOverride) {
             $command += " --input " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $value)
