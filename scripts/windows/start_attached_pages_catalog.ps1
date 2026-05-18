@@ -110,6 +110,27 @@ function Find-ManifestEntryForPath {
     return $null
 }
 
+function Move-PreferredInputPathToFront {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$SelectedInputs,
+        [Parameter(Mandatory = $true)]
+        [string]$PreferredPath
+    )
+
+    if (-not $SelectedInputs -or $SelectedInputs.Count -le 1) {
+        return @($SelectedInputs)
+    }
+
+    $orderedInputs = [System.Collections.Generic.List[string]]::new()
+    Add-UniqueString -List $orderedInputs -Value $PreferredPath
+    foreach ($path in $SelectedInputs) {
+        Add-UniqueString -List $orderedInputs -Value $path
+    }
+
+    return @($orderedInputs)
+}
+
 if ($PrintManifest -and $AuditAssets) {
     throw "Choose either -PrintManifest or -AuditAssets. The attached-pages helper cannot print the manifest and run the asset audit in the same invocation."
 }
@@ -135,7 +156,7 @@ $resolvedPython = (Get-Command $PythonExe -ErrorAction Stop).Source
 $resolvedInputPath = if ($PSCmdlet.ParameterSetName -eq "InputPath") {
     @(Get-ResolvedExplicitBundleInputPaths -InputPath $InputPath)
 } else {
-    Get-DefaultAttachedHtmlInputPath -RepoRoot $resolvedRepoRoot -GoogleStyle:$GoogleStyle
+    Get-DefaultAttachedHtmlInputPath -RepoRoot $resolvedRepoRoot
 }
 if (-not $resolvedInputPath -or $resolvedInputPath.Count -eq 0) {
     throw "No attached HTML inputs were resolved for the catalog server."
@@ -145,6 +166,9 @@ $resolvedPreferredInitialPage = if ($GoogleStyle) {
     Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 } else {
     $null
+}
+if ($resolvedPreferredInitialPage) {
+    $resolvedInputPath = @(Move-PreferredInputPathToFront -SelectedInputs $resolvedInputPath -PreferredPath $resolvedPreferredInitialPage)
 }
 $preferredManifestEntry = $null
 if ($resolvedPreferredInitialPage -and -not $PrintManifest -and -not $AuditAssets) {
