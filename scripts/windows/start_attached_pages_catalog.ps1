@@ -13,7 +13,8 @@ param(
     [switch]$AllowMissingAssets,
     [switch]$AuditSidecars,
     [switch]$AuditSidecarsJson,
-    [switch]$AllowMissingSidecars
+    [switch]$AllowMissingSidecars,
+    [switch]$RequireCompleteSidecars
 )
 
 Set-StrictMode -Version Latest
@@ -152,6 +153,9 @@ if ($AuditSidecarsJson -and -not $AuditSidecars) {
 if ($AllowMissingSidecars -and -not $AuditSidecars) {
     throw "-AllowMissingSidecars is only supported with -AuditSidecars."
 }
+if ($RequireCompleteSidecars -and ($AuditAssets -or $AuditSidecars)) {
+    throw "-RequireCompleteSidecars is only supported with the catalog launch or -PrintManifest modes. Run the sidecar audit first, then rerun with -RequireCompleteSidecars when you want the manifest or localhost server to fail fast on incomplete bundles."
+}
 
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -214,6 +218,9 @@ if ($PrintManifest) {
 } else {
     $serverArgs += @("--bind", $Bind, "--port", "$Port")
 }
+if ($RequireCompleteSidecars) {
+    $serverArgs += "--require-complete-sidecars"
+}
 
 if (-not $PrintManifest -and -not $AuditAssets -and -not $AuditSidecars) {
     $attachedAssetAudit = Get-AttachedPagesAssetAudit -PythonExePath $resolvedPython -ServerPath $serverPath -SelectedInputs $resolvedInputPath
@@ -224,6 +231,9 @@ if (-not $PrintManifest -and -not $AuditAssets -and -not $AuditSidecars) {
     Write-Host ("Inputs pinned: {0}" -f $resolvedInputPath.Count)
     Write-Host ("Bind: http://{0}:{1}/" -f $Bind, $Port)
     Write-Host "Routes: /, /manifest.json, /audit.json, /audit.txt, /pages/<n>, /named/<slug>, /raw/..."
+    if ($RequireCompleteSidecars) {
+        Write-Host "Strict sidecar gate: enabled"
+    }
     if ($resolvedPreferredInitialPage) {
         Write-Host ("Preferred Google-style page: {0}" -f $resolvedPreferredInitialPage)
     }
