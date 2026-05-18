@@ -49,6 +49,8 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
             build_manifest=lambda selected_files=None: manifest
             or [
                 {
+                    "file": "bundle/google-search.html",
+                    "title": "Google Search",
                     "route": "/pages/1",
                     "alias_route": "/pages/1-google-search",
                     "slug_route": "/named/google-search",
@@ -63,7 +65,7 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
         )
         return launcher_module, sidecar_module, server_module
 
-    def test_complete_bundle_reports_ready_for_launch(self):
+    def test_complete_bundle_reports_ready_for_launch_and_preferred_routes(self):
         fixture = self.write_html("bundle/google-search.html", "<html><title>Google Search</title></html>")
         launcher_module, sidecar_module, server_module = self.make_fake_modules()
 
@@ -78,9 +80,13 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
 
         self.assertTrue(report["ready_for_launch"])
         self.assertEqual("print-manifest-or-start-server", report["recommended_next_step"])
-        self.assertIsNone(report["preferred_route"])
+        self.assertEqual("bundle/google-search.html", report["preferred_display_path"])
+        self.assertEqual("Google Search", report["preferred_title"])
+        self.assertEqual("/pages/1", report["preferred_route"])
+        self.assertEqual("/pages/1-google-search", report["preferred_alias_route"])
+        self.assertEqual("/named/google-search", report["preferred_named_route"])
 
-    def test_google_style_report_surfaces_preferred_route_and_sidecar_blocker(self):
+    def test_sidecar_blocker_keeps_preferred_route_visible_in_google_style_mode(self):
         fixture = self.write_html("bundle/google-search.html", "<html><title>Google Search</title></html>")
         launcher_module, sidecar_module, server_module = self.make_fake_modules(
             missing_sidecars=1,
@@ -114,6 +120,8 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
             "fixtures_with_external_assets": 0,
             "ready_for_launch": False,
             "recommended_next_step": "restore-missing-sidecar-bundles",
+            "preferred_display_path": None,
+            "preferred_title": None,
             "preferred_route": None,
             "preferred_alias_route": None,
             "preferred_named_route": None,
