@@ -218,6 +218,7 @@ $entrypoint = [ordered]@{
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
+    attached_html_target_bundle_proof_entrypoint_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
         'Use this helper when the top-level suite router has already narrowed the replay to the issue #3 attached-page route and you want the shortest current bridge back into the narrower helper chain.',
@@ -229,11 +230,12 @@ $entrypoint = [ordered]@{
         'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.',
         'Use attached_html_change_area when the next replay still needs the broader attached-page compatibility route rather than the issue-specific Google-attached path.',
         'Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.',
+        'Keep attached_html_target_bundle_proof_entrypoint_note_path nearby when the pinned bundle lane is already in play and the next decision depends on the fixed-list screenshot-and-title proof route staying attached to those same inputs.',
         'Use suite_router_shortcut_entrypoint as the default next helper when no saved summary, non-default repo root, or pinned bundle inputs need to take precedence first.',
         'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between replay shortcuts, replay route, the next-step matrix, the compact bundle-suite helper, the attached bundle branch, or the safe-route helpers.',
         'Use replay_shortcuts after the shortcut entrypoint when the route is already known to stay inside issue #3 and no pinned bundle inputs or saved summary need to stay visible first.',
         'Use suite_router_next_steps when you still want the compact start-point matrix after re-entering from the issue-specific attached-page route.',
-        'Keep the quickstart, suite-router bridge, suite-catalog guide, issue-specific Google attached-html entrypoint guide, Google attached-html validation-flow guide, the attached-html target bundle reference note, the attached-html target-bundle suite-surface note, and validation-chain notes nearby when you want the written route beside these commands.'
+        'Keep the quickstart, suite-router bridge, suite-catalog guide, issue-specific Google attached-html entrypoint guide, Google attached-html validation-flow guide, the attached-html target bundle reference note, the attached-html target-bundle suite-surface note, the attached-html target-bundle proof note, and validation-chain notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -257,7 +259,6 @@ if ($Json) {
     $entrypoint | ConvertTo-Json -Depth 5
     exit 0
 }
-
 Write-Host 'Google issue #3 attached-html entrypoint'
 Write-Host ''
 if ($entrypoint.repo_root) {
@@ -315,6 +316,7 @@ Write-Host (("Google attached-html note:    {0}") -f $entrypoint.google_attached
 Write-Host (("Google attached-html flow:    {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
 Write-Host (("Attached bundle ref:          {0}") -f $entrypoint.attached_html_target_bundle_reference_note_path)
 Write-Host (("Bundle suite note:            {0}") -f $entrypoint.attached_html_target_bundle_suite_surface_note_path)
+Write-Host (("Bundle proof note:            {0}") -f $entrypoint.attached_html_target_bundle_proof_entrypoint_note_path)
 Write-Host (("Validation chain:             {0}") -f $entrypoint.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Notes:'
