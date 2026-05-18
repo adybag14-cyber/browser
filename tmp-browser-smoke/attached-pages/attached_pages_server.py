@@ -4,6 +4,8 @@ import json
 import mimetypes
 import os
 import re
+import shutil
+import tempfile
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -459,6 +461,44 @@ def render_asset_audit_text(audit: dict[str, object]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def derive_export_sidecar_dir(entry_file: str) -> str:
+    return f"{Path(entry_file).stem}_files"
+
+
+def stage_manifest_entries(
+    bundle_root: Path,
+    manifest: list[dict[str, str]],
+    *,
+    staging_root: Path | None = None,
+) -> tuple[Path, dict[str, Path], tempfile.TemporaryDirectory[str] | None]:
+    cleanup_context: tempfile.TemporaryDirectory[str] | None = None
+    if staging_root is None:
+        cleanup_context = tempfile.TemporaryDirectory(prefix="attached-pages-stage-")
+        stage_root = Path(cleanup_context.name)
+    else:
+        stage_root = Path(staging_root).expanduser().resolve()
+        stage_root.mkdir(parents=True, exist_ok=True)
+
+    staged_entry_dirs: dict[str, Path] = {}
+    for entry in manifest:
+        entry_dir = stage_root / "pages" / entry["index"]
+        entry_dir.mkdir(parents=True, exist_ok=True)
+
+        page_file = bundle_root / entry["file"]
+        shutil.copy2(page_file, entry_dir / "index.html")
+
+        sidecar_dir_name = derive_export_sidecar_dir(entry["file"])
+        original_sidecar = page_file.parent / sidecar_dir_name
+        staged_sidecar = entry_dir / sidecar_dir_name
+        if original_sidecar.is_dir():
+            shutil.copytree(original_sidecar, staged_sidecar, dirs_exist_ok=True)
+
+        for route_name in ("route", "alias_route", "slug_route"):
+            staged_entry_dirs[entry[route_name]] = entry_dir
+
+    return stage_root, staged_entry_dirs, cleanup_context
+
+
 def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes, dict[str, object], bytes]:
     bundle_root, _ = resolve_bundle_inputs(root, selected_files)
     manifest = build_manifest(root, selected_files=selected_files)
@@ -473,12 +513,29 @@ def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] |
 class ReuseServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
+    def server_close(self) -> None:
+        super().server_close()
+        cleanup_context = getattr(self, "_cleanup_context", None)
+        if cleanup_context is not None:
+            cleanup_context.cleanup()
+            self._cleanup_context = None
 
-def create_server(root: Path | None = None, *, bind: str = "127.0.0.1", port: int = 8235, selected_files: list[Path] | None = None) -> tuple[ReuseServer, list[dict[str, str]]]:
+
+def create_server(
+    root: Path | None = None,
+    *,
+    bind: str = "127.0.0.1",
+    port: int = 8235,
+    selected_files: list[Path] | None = None,
+    staging_root: Path | None = None,
+) -> tuple[ReuseServer, list[dict[str, str]]]:
     bundle_root, manifest, route_lookup, index_bytes, manifest_bytes, audit, audit_text_bytes = build_bundle_state(
         root, selected_files=selected_files
     )
     audit_json_bytes = json.dumps(audit, indent=2).encode("utf-8")
+    stage_root, staged_entry_dirs, cleanup_context = stage_manifest_entries(
+        bundle_root, manifest, staging_root=staging_root
+    )
 
     class AttachedPagesHandler(SimpleHTTPRequestHandler):
         def __init__(self, *handler_args, **handler_kwargs):
@@ -502,6 +559,21 @@ def create_server(root: Path | None = None, *, bind: str = "127.0.0.1", port: in
             self.end_headers()
 
         def send_page_asset(self, entry: dict[str, str], asset_suffix: str, *, head_only: bool = False):
+            staged_entry_dir = staged_entry_dirs.get(entry["route"])
+            staged_suffix = asset_suffix or "index.html"
+            if staged_entry_dir is not None:
+                staged_asset = ensure_within_root(staged_entry_dir, staged_entry_dir / unquote(staged_suffix))
+                if staged_asset is not None and staged_asset.is_file():
+                    content_type, _ = mimetypes.guess_type(str(staged_asset))
+                    if staged_asset.suffix.lower() in HTML_EXPORT_EXTENSIONS and not content_type:
+                        content_type = "text/html; charset=utf-8"
+                    self.send_bytes(
+                        staged_asset.read_bytes(),
+                        content_type or "application/octet-stream",
+                        head_only=head_only,
+                    )
+                    return
+
             page_file = bundle_root / entry["file"]
             if asset_suffix in ("", "index.html"):
                 self.send_bytes(page_file.read_bytes(), "text/html; charset=utf-8", head_only=head_only)
@@ -551,6 +623,8 @@ def create_server(root: Path | None = None, *, bind: str = "127.0.0.1", port: in
             return self.handle_attached_request(head_only=True)
 
     server = ReuseServer((bind, port), partial(AttachedPagesHandler))
+    server._cleanup_context = cleanup_context
+    server.stage_root = stage_root
     return server, manifest
 
 
@@ -566,6 +640,10 @@ def main() -> int:
     )
     parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
     parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
+    parser.add_argument(
+        "--staging-root",
+        help="Directory where staged route copies should be written. Defaults to a temporary staging tree that is cleaned up when the server stops.",
+    )
     parser.add_argument(
         "--print-manifest",
         action="store_true",
@@ -590,6 +668,7 @@ def main() -> int:
 
     selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
     root = Path(args.root) if args.root else None
+    staging_root = Path(args.staging_root) if args.staging_root else None
 
     if args.audit_assets_json and not args.audit_assets:
         parser.error("--audit-assets-json requires --audit-assets")
@@ -608,14 +687,23 @@ def main() -> int:
             return 1
         return 0
 
-    server, manifest = create_server(root, bind=args.bind, port=args.port, selected_files=selected_files)
+    server, manifest = create_server(
+        root,
+        bind=args.bind,
+        port=args.port,
+        selected_files=selected_files,
+        staging_root=staging_root,
+    )
     source_description = root.expanduser().resolve() if root is not None else f"{len(selected_files or [])} selected files"
     host, port = server.server_address
     print(f"Serving {len(manifest)} attached pages from {source_description} at http://{host}:{port}/")
+    print(f"Staging route copies under {server.stage_root}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         return 0
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
