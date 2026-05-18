@@ -173,24 +173,11 @@ if ($InputPath) {
 $routeSurfaceArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $RepoRoot
 
-$attachedPagesSidecarAuditParts = [System.Collections.Generic.List[string]]::new()
-$attachedPagesSidecarAuditParts.Add('python')
-$attachedPagesSidecarAuditParts.Add('.\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py')
-if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-    $attachedPagesSidecarAuditParts.Add('--repo-root')
-    $attachedPagesSidecarAuditParts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot))
-}
-if ($InputPath) {
-    foreach ($path in $InputPath) {
-        if ([string]::IsNullOrWhiteSpace($path)) {
-            continue
-        }
-        $attachedPagesSidecarAuditParts.Add('--input')
-        $attachedPagesSidecarAuditParts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $path))
-    }
-}
-$attachedPagesSidecarAuditParts.Add('--audit-sidecars')
-$attachedPagesSidecarAuditCommand = $attachedPagesSidecarAuditParts -join ' '
+$attachedPagesLauncherArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $attachedPagesLauncherArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $attachedPagesLauncherArguments -Name InputPath -Values $InputPath
+
+$attachedPagesSidecarAuditCommand = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $attachedPagesLauncherArguments -Switches @('AuditSidecars')
 
 $windowsFullUseAttachedHtmlRouteSurfaceCheckCommand = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
 $windowsFullUseAttachedHtmlCatalogSurfaceCheckCommand = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments
@@ -253,6 +240,8 @@ $entrypoint = [ordered]@{
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     replay_route_shortcut_bridge_note_path = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
     attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
+    attached_pages_launcher_readme_path = 'tmp-browser-smoke/attached-pages/README.md'
+    attached_pages_launcher_wrapper_path = 'scripts/windows/start_attached_pages_catalog.ps1'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     notes = @(
         'Use this helper when docs/WINDOWS_FULL_USE.md has already narrowed the next replay to attached localhost follow-up and you want the route-level surface check, the catalog-level surface check, the Windows-to-validation-router bridge, the broader attached-page flow helper, the launcher-backed sidecar audit, and the replay-side attached-page quickstart reprinted beside the newer top-level attached-page catalog quickstart.',
@@ -270,7 +259,7 @@ $entrypoint = [ordered]@{
         'Use attached_bundle_suite_surface when the current attached or saved pages are still close to the known three-page compatibility bundle and you want that compact suite surface visible before the route commits to the bundle-first branch.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that bundle-first branch should stay visible before widening back into the broader issue #3 helper chain.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the suite-catalog attached-page bridge, replay shortcuts, the next-step matrix, the bundle-first branch, or the safe-route map.',
-        'Keep the Windows runbook, the Windows full-use attached-page route note, the Windows validation-router attached-page bridge note, the Windows replay attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the Google attached-page validation-flow note, the replay-route shortcut bridge note, the bundle-suite surface note, and the Windows replay quickstart nearby when you want the written route beside these commands.'
+        'Keep the Windows runbook, the Windows full-use attached-page route note, the Windows validation-router attached-page bridge note, the Windows replay attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the Google attached-page validation-flow note, the replay-route shortcut bridge note, the bundle-suite surface note, the attached-pages launcher README, the Windows launcher wrapper, and the Windows replay quickstart nearby when you want the written route beside these commands.'
     )
 }
 
@@ -339,6 +328,8 @@ Write-Host (("Catalog bridge note:        {0}") -f $entrypoint.suite_catalog_att
 Write-Host (("Google attached flow note:  {0}") -f $entrypoint.google_attached_html_validation_flow_note_path)
 Write-Host (("Replay-route shortcut note: {0}") -f $entrypoint.replay_route_shortcut_bridge_note_path)
 Write-Host (("Bundle suite note:          {0}") -f $entrypoint.attached_html_target_bundle_suite_surface_note_path)
+Write-Host (("Attached-pages guide:       {0}") -f $entrypoint.attached_pages_launcher_readme_path)
+Write-Host (("Attached-pages wrapper:     {0}") -f $entrypoint.attached_pages_launcher_wrapper_path)
 Write-Host (("Replay quickstart note:     {0}") -f $entrypoint.windows_replay_quickstart_note_path)
 Write-Host ''
 Write-Host 'Notes:'
