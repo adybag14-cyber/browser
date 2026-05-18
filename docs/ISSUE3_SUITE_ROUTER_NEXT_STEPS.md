@@ -162,6 +162,7 @@ instead:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_router_next_steps_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
@@ -170,4 +171,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_go
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 ```
 
-That keeps the higher-level router, the compact issue `#3` helper chooser, the broader Google-shaped attached-page surface check, the narrower issue-specific checker, the shorter suite-router-side attached-page bridge, the dedicated Google-shaped attached-page helper, and the replay shortcuts aligned on the same current branch guidance.
+That keeps the higher-level router, the suite-router matrix surface check, the compact issue `#3` helper chooser, the broader Google-shaped attached-page surface check, the narrower issue-specific checker, the shorter suite-router-side attached-page bridge, the dedicated Google-shaped attached-page helper, and the replay shortcuts aligned on the same current branch guidance.
