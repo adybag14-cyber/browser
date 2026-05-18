@@ -4,6 +4,12 @@ Use this note when the issue `#3` replay is already pinned to the known three-pa
 
 This note matches `show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1`.
 
+Before trusting this proof-only bridge after helper or note updates, rerun its dedicated surface checker:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
+```
+
 Keep these companion notes nearby:
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`
@@ -76,9 +82,10 @@ Use that form when:
 
 ## Practical rule
 
-1. Reconfirm the current inputs still match the known three-page bundle.
-2. Keep the delegated bundle replay visible until the same inputs are ready for proof.
-3. Run the local HTML fixture surface check and the fixed-list screenshot-and-title proof on those same pages.
-4. Widen back into the broader attached-page or Google-shaped helper routes only after the proof pass is in hand.
+1. Rerun the proof-entrypoint surface checker when the helper chain or note set has changed.
+2. Reconfirm the current inputs still match the known three-page bundle.
+3. Keep the delegated bundle replay visible until the same inputs are ready for proof.
+4. Run the local HTML fixture surface check and the fixed-list screenshot-and-title proof on those same pages.
+5. Widen back into the broader attached-page or Google-shaped helper routes only after the proof pass is in hand.
 
 When explicit `InputPath` values are already pinned, preserve those same paths across the bundle checks, the delegated bundle replay, and the proof helper so the evidence stays attached to the exact same three local pages.
