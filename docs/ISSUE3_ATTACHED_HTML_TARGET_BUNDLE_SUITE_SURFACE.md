@@ -7,6 +7,7 @@ Keep these nearby when the route may still reopen from a broader validation surf
 - `docs/HEADED_MODE_ROADMAP.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
@@ -18,7 +19,7 @@ Keep these nearby when the route may still reopen from a broader validation surf
 - `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
-Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md` close when the broader attached-page route has already made the bundle lane the next likely branch and you want the shortest read-first bridge visible before the route narrows into bundle-first execution, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` close when the delegated bundle runner is already green and you want the page-by-page manual checks pinned to the same saved inputs, keep `scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` close when the next decision depends on the narrower fixed-list screenshot-and-title proof route, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up, keep `docs/HEADED_MODE_ROADMAP.md` close when the replay is being rediscovered from the higher-level validation catalog first, keep `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` and `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` close when the replay is re-entering from the broader Windows-first ladders, and keep the top-level attached-html notes plus `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` close when the replay is already narrowing from the top-level or replay-route surfaces before it commits to the pinned bundle lane.
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md` especially close when the replay is already pinned to the exact three-page bundle, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md` close when the broader attached-page route has already made the bundle lane the next likely branch and you want the shortest read-first bridge visible before the route narrows into bundle-first execution, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md` close when the next decision depends on the narrower fixed-list screenshot-and-title proof route as a read-first companion, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` close when the delegated bundle runner is already green and you want the page-by-page manual checks pinned to the same saved inputs, keep `scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` close when you want the executable proof surface itself reprinted beside that note, keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` close when one of those pages makes the Google-shaped attached-page route the next likely follow-up, keep `docs/HEADED_MODE_ROADMAP.md` close when the replay is being rediscovered from the higher-level validation catalog first, keep `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` and `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md` close when the replay is re-entering from the broader Windows-first ladders, and keep the top-level attached-html notes plus `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` close when the replay is already narrowing from the top-level or replay-route surfaces before it commits to the pinned bundle lane.
 
 ## Goal
 
@@ -63,7 +64,7 @@ Use that route when:
 - you want the fail-fast Google attached-page surface and asset-closure checks visible before the broader attached-page flow helper, the dedicated Google-shaped attached-page flow helper, and the delegated Google-shaped attached-page runner take over
 - you want the broader attached-page flow helper plus the full Google-shaped attached-page validation route kept in view before the replay locks onto the delegated bundle validation runner
 - you want the bundle surface checker and the pinned three-page bundle checker kept visible together so the current saved-page set can be revalidated before the delegated bundle runner starts
-- you want the pinned checklist and proof-entrypoint handoff visible immediately after the delegated bundle runner instead of rediscovering them later from the broader helper stack
+- you want the pinned proof note, checklist, and proof-entrypoint handoff visible immediately after the delegated bundle runner instead of rediscovering them later from the broader helper stack
 
 ## Validation-catalog re-entry
 
@@ -90,7 +91,7 @@ Use that route when:
 - the higher-level validation catalog or roadmap still needs to stay visible before the replay narrows into the pinned bundle lane
 - you want the broader attached-page and Google-shaped attached-page routes surfaced beside the compact bundle-focused suite helper rather than rediscovered later
 - you want the fail-fast Google attached-page surface and asset-closure checks carried forward before the narrower bundle-first helper takes over
-- you want the top-level attached-page bridge, the dedicated suite-surface helper, the bundle-first helper, the replay-route helpers, the delegated Google-shaped runner, and the proof-entrypoint handoff aligned with the same broader catalog-first route that the surrounding bundle-reference and roadmap notes already describe
+- you want the top-level attached-page bridge, the dedicated suite-surface helper, the bundle-first helper, the replay-route helpers, the delegated Google-shaped runner, and the proof-entrypoint handoff aligned with the same broader catalog-first route that the surrounding bundle-reference, proof-entry, and roadmap notes already describe
 
 ## Suite-catalog re-entry
 
@@ -108,7 +109,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 Use that route when:
 
 - the suite-catalog surface still matters more than the narrower bundle-first route
-- you want the suite-catalog guide, the suite-catalog attached-page bridge, the dedicated bundle suite-surface helper, and the proof-entrypoint handoff printed in one truthful order before bundle-only execution begins
+- you want the suite-catalog guide, the suite-catalog attached-page bridge, the dedicated bundle suite-surface helper, the proof note, and the proof-entrypoint handoff printed in one truthful order before bundle-only execution begins
 - the replay may still widen back into the broader attached-page or Google-shaped attached-page ladders if the pinned three-page bundle is no longer the right next branch
 
 ## Top-level attached-html re-entry
@@ -127,7 +128,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 Use that route when:
 
 - the replay already narrowed through the top-level attached-html quickstart or bridge
-- you want the bundle quickstart, the compact top-level route, the broader top-level bridge, and the proof-entrypoint handoff kept visible beside the dedicated bundle suite surface before the replay collapses into the narrower bundle-first helper
+- you want the bundle quickstart, the compact top-level route, the broader top-level bridge, the proof note, and the proof-entrypoint handoff kept visible beside the dedicated bundle suite surface before the replay collapses into the narrower bundle-first helper
 - explicit bundle paths are already pinned and should stay attached to the top-level helper chain while the replay decides whether to stay on the bundle lane or widen back into the broader attached-page flow helpers
 
 ## Use the dedicated helper first
@@ -142,7 +143,7 @@ That helper is the best starting point when:
 
 - the replay is already close to bundle-only validation and the broader route context only needs a compact reminder
 - you want the `attached-html-target-bundle`, `attached-html`, and `google-attached-html` suite commands kept together beside the broader attached-page flow helper, the full Google-shaped attached-page validation route, the bundle checker, and the proof-entrypoint handoff
-- you want the top-level attached-html bridge, bundle surface checker, bundle checker, bundle flow helper, bundle runner, bundle-first entrypoint, replay route, replay shortcuts, and proof entrypoint printed on one smaller issue `#3` surface before you choose the next replay branch
+- you want the top-level attached-html bridge, bundle surface checker, bundle checker, bundle flow helper, bundle runner, bundle-first entrypoint, replay route, replay shortcuts, proof note, and proof entrypoint printed on one smaller issue `#3` surface before you choose the next replay branch
 
 ## Narrower issue #3 re-entry
 
@@ -179,7 +180,7 @@ Use that context-preserving form when:
 
 - `LIGHTPANDA_REPO_ROOT` already points at a non-default checkout
 - `SummaryPath` already captures the current replay outputs
-- explicit `InputPath` values should stay pinned through the top-level re-entry, the suite-catalog side re-entry, the dedicated bundle suite surface, the narrower bundle-first helper, the replay-route helpers, and the proof-entrypoint handoff without relying on auto-discovery
+- explicit `InputPath` values should stay pinned through the top-level re-entry, the suite-catalog side re-entry, the dedicated bundle suite surface, the narrower bundle-first helper, the replay-route helpers, the proof-entrypoint handoff, and the proof note without relying on auto-discovery
 
 ## Practical rule
 
@@ -187,7 +188,7 @@ Prefer the dedicated suite-surface helper when the replay is already close to th
 
 If the replay has already made the bundle lane the next obvious branch, reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md` beside this note before narrowing into the bundle-first helper so the shorter read-first bridge stays visible.
 
-If the delegated bundle runner is already green, reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` and `scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` beside this note before widening back out so the page-by-page manual checks and the fixed-list screenshot-and-title proof stay attached to the same pinned inputs.
+If the delegated bundle runner is already green, reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md`, `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`, and `scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` beside this note before widening back out so the page-by-page manual checks, the read-first proof note, and the fixed-list screenshot-and-title proof stay attached to the same pinned inputs.
 
 If the replay is still arriving from the suite-catalog side, reopen `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, then `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before narrowing into the bundle-first helper.
 
