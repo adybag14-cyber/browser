@@ -152,6 +152,26 @@ function Format-HelperCommandWithRepoRootEnv {
     return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
+function Format-AttachedPagesSidecarAuditCommand {
+    param(
+        [string[]]$InputPath
+    )
+
+    $command = 'python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py'
+    if ($InputPath -and $InputPath.Count -gt 0) {
+        foreach ($value in $InputPath) {
+            if ([string]::IsNullOrWhiteSpace($value)) {
+                continue
+            }
+
+            $command += ' --input ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $value)
+        }
+        return $command
+    }
+
+    return $command + " --root '<attached-html-root>'"
+}
+
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
     $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
 }
@@ -172,6 +192,7 @@ if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
 
+$attachedPagesSidecarAuditCommand = Format-AttachedPagesSidecarAuditCommand -InputPath $InputPath
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $googleIssue3AttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $topLevelAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_top_level_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
@@ -217,6 +238,7 @@ $helper = [ordered]@{
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $sharedArguments
         top_level_attached_html_surface_check = $topLevelAttachedHtmlSurfaceCheckCommand
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        attached_pages_sidecar_audit = $attachedPagesSidecarAuditCommand
         google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand
         google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand
         google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
@@ -282,7 +304,7 @@ $helper.recommended_next_command = $helper.commands[$helper.recommended_next_key
 $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_suite_surface') {
     'Explicit input paths are already in play, so keep the replay pinned to the known three-page compatibility bundle by reopening the compact suite-level bundle surface before narrowing into the bundle-first helper or the delegated bundle runner.'
 } elseif ($helper.recommended_next_key -eq 'contextual_flow') {
-    'A saved summary is already in play, so keep that replay context aligned before choosing between the broader attached-page flow helper, the top-level attached-page surface check, the broader Google-shaped attached-page surface check, the issue-specific Google attached-page surface check, the broader Google-shaped attached-page flow helper, the attached-html change-area quickstart, the compact bundle suite surface, the attached bundle proof entrypoint, the validation-router attached-page quickstart, the compact attached-page quickstart, the broader top-level attached-page bridge, the matching shortcut-first bridge, top-level catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level attached-page catalog quickstart, the attached-page bridges, replay shortcuts, the next-step matrix, the bundle-first route, or the safe-route helper.'
+    'A saved summary is already in play, so keep that replay context aligned before choosing between the broader attached-page flow helper, the top-level attached-page surface check, the broader Google-shaped attached-page surface check, the issue-specific Google attached-page surface check, the broader Google-shaped attached-page flow helper, the attached-html change-area quickstart, the compact bundle suite surface, the attached bundle proof entrypoint, the validation-router attached-page quickstart, the compact attached-page quickstart, the broader top-level attached-page bridge, the matching shortcut-first bridge, top-level catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level attached-page catalog quickstart, the attached-page bridges, replay shortcuts, the next-step matrix, contextual flow, the bundle-first route, or the safe-route helper.'
 } else {
     'No pinned bundle inputs or saved summary are in play yet, so jump straight from the compact top-level attached-page quickstart into the broader top-level attached-page bridge while still keeping the attached-html change-area quickstart, the top-level attached-page surface check, the broader attached-page flow helper, the broader Google-shaped attached-page surface check, the issue-specific Google attached-page surface check, the broader Google-shaped attached-page flow helper, the compact bundle suite surface, the attached bundle proof entrypoint, the validation-router quickstart, the matching shortcut-first bridge, top-level catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level catalog quickstart visible for the same route.'
 }
@@ -320,6 +342,7 @@ Write-Host (("  Attached bundle:           {0}") -f $helper.commands.attached_bu
 Write-Host (("  Change-area quickstart:    {0}") -f $helper.commands.attached_html_change_area_quickstart)
 Write-Host (("  Top-level surface check:   {0}") -f $helper.commands.top_level_attached_html_surface_check)
 Write-Host (("  Attached flow helper:      {0}") -f $helper.commands.attached_html_flow)
+Write-Host (("  Attached pages audit:      {0}") -f $helper.commands.attached_pages_sidecar_audit)
 Write-Host (("  Google surface check:      {0}") -f $helper.commands.google_attached_html_surface_check)
 Write-Host (("  Issue-specific Google:     {0}") -f $helper.commands.google_issue3_attached_html_surface_check)
 Write-Host (("  Google flow helper:        {0}") -f $helper.commands.google_attached_html_flow)
@@ -334,6 +357,7 @@ Write-Host (("  Catalog-side quickstart:   {0}") -f $helper.commands.suite_catal
 Write-Host ''
 Write-Host 'Compact follow-up helpers:'
 Write-Host (("  Top-level surface check:   {0}") -f $helper.commands.top_level_attached_html_surface_check)
+Write-Host (("  Attached pages audit:      {0}") -f $helper.commands.attached_pages_sidecar_audit)
 Write-Host (("  Google surface check:      {0}") -f $helper.commands.google_attached_html_surface_check)
 Write-Host (("  Issue-specific Google:     {0}") -f $helper.commands.google_issue3_attached_html_surface_check)
 Write-Host (("  Suite-catalog guide:       {0}") -f $helper.commands.suite_catalog_entrypoints)
