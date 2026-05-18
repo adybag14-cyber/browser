@@ -101,7 +101,6 @@ if ($resolvedPreferredInitialPage -and -not $PrintManifest -and -not $AuditAsset
     $manifest = Get-AttachedPagesManifest -PythonExePath $resolvedPython -ServerPath $serverPath -SelectedInputs $resolvedInputPath
     $preferredManifestEntry = Find-ManifestEntryForPath -Manifest $manifest -PreferredPath $resolvedPreferredInitialPage
 }
-$attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
 
 $serverArgs = @($serverPath)
 foreach ($path in $resolvedInputPath) {
@@ -123,12 +122,14 @@ if ($PrintManifest) {
 }
 
 if (-not $PrintManifest -and -not $AuditAssets) {
+    $attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
+
     Write-Host "Attached pages catalog"
     Write-Host ""
     Write-Host ("Mode: {0}" -f $(if ($GoogleStyle) { "google-style auto-discovery" } elseif ($PSCmdlet.ParameterSetName -eq "InputPath") { "explicit pinned inputs" } else { "auto-discovery" }))
     Write-Host ("Inputs pinned: {0}" -f $resolvedInputPath.Count)
     Write-Host ("Bind: http://{0}:{1}/" -f $Bind, $Port)
-    Write-Host "Routes: /, /manifest.json, /pages/<n>, /named/<slug>, /raw/..."
+    Write-Host "Routes: /, /manifest.json, /audit.json, /audit.txt, /pages/<n>, /named/<slug>, /raw/..."
     if ($resolvedPreferredInitialPage) {
         Write-Host ("Preferred Google-style page: {0}" -f $resolvedPreferredInitialPage)
     }
