@@ -11,6 +11,7 @@ TARGET_DOCS = (
     "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
     "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md",
 )
+QUICKSTART_DOC_PATH = "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"
 RAW_LAUNCHER_NEEDLE = "start_attached_pages_catalog.py"
 WRAPPER_LAUNCHER_NEEDLE = r"scripts\windows\start_attached_pages_catalog.ps1"
 LAUNCHER_COMPANION_NEEDLE = (
@@ -157,6 +158,23 @@ def collect_failure_reasons(
     failure_reasons: list[str] = []
     if audit["raw_python_reference_count"] > 0 and not allow_raw_launcher:
         failure_reasons.append("raw Python attached-pages launcher references remain")
+
+        quickstart_result = next(
+            (
+                file_result
+                for file_result in audit["files"]
+                if file_result["display_path"] == QUICKSTART_DOC_PATH
+            ),
+            None,
+        )
+        if (
+            quickstart_result is not None
+            and quickstart_result["raw_python_reference_count"] > 0
+        ):
+            failure_reasons.append(
+                "Windows replay quickstart still carries raw Python attached-pages launcher references"
+            )
+
     if require_wrapper_sidecar and audit["wrapper_sidecar_reference_count"] == 0:
         failure_reasons.append(
             "no wrapper-backed sidecar audit references were found in the replay notes"
