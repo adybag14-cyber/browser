@@ -127,6 +127,28 @@ function Format-HelperCommandWithRepoRootEnv {
     return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
+function Format-SidecarAuditCommand {
+    param(
+        [string]$RepoRootOverride,
+        [string[]]$InputPathOverride
+    )
+
+    $scriptPath = if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
+        '.\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py'
+    } else {
+        Join-Path $RepoRootOverride 'tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py'
+    }
+
+    $command = "python " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $scriptPath)
+    if ($InputPathOverride -and $InputPathOverride.Count -gt 0) {
+        foreach ($value in $InputPathOverride) {
+            $command += " --input " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $value)
+        }
+    }
+
+    return $command
+}
+
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
     $RepoRoot = $env:LIGHTPANDA_REPO_ROOT
 }
@@ -147,9 +169,11 @@ $googleAttachedHtmlAssetAuditArguments = [System.Collections.Generic.List[string
 Add-SharedArgument -Arguments $googleAttachedHtmlAssetAuditArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlAssetAuditArguments -Name InputPath -Values $InputPath
 
+$googleAttachedHtmlSidecarAuditCommand = Format-SidecarAuditCommand -RepoRootOverride $RepoRoot -InputPathOverride $InputPath
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached-html entrypoint'
-    purpose = 'Keep the issue-specific attached-page route visible as the shortest bridge from the top-level headed validation suite router into the broader Google-shaped surface check, the deeper asset-closure audit, the broader Google attached-page validation flow, the shortcut-first route, the context-preserving route, and the bundle-aware helpers, including the compact bundle-suite surface that sits ahead of the bundle-first branch.'
+    purpose = 'Keep the issue-specific attached-page route visible as the shortest bridge from the top-level headed validation suite router into the lighter sidecar-bundle audit, the broader Google-shaped surface check, the deeper asset-closure audit, the broader Google attached-page validation flow, the shortcut-first route, the context-preserving route, and the bundle-aware helpers, including the compact bundle-suite surface that sits ahead of the bundle-first branch.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -171,6 +195,7 @@ $entrypoint = [ordered]@{
         }) -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
+        google_attached_html_sidecar_audit = $googleAttachedHtmlSidecarAuditCommand
         broader_google_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_attached_html_validation_surface.ps1' -Arguments $googleAttachedHtmlSurfaceCheckArguments
         google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
@@ -197,10 +222,11 @@ $entrypoint = [ordered]@{
     notes = @(
         'Use this helper when the top-level suite router has already narrowed the replay to the issue #3 attached-page route and you want the shortest current bridge back into the narrower helper chain.',
         'Keep google_attached_html_change_area as the first top-level command when the replay should stay on the issue-specific attached-page route before any bundle paths are pinned.',
-        'Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted before the deeper asset audit or the narrower issue-specific checker.',
-        'Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted before the route narrows into the issue-specific checker or shortcut ladder.',
-        'Use google_attached_html_surface_check when the replay is already narrowed to the issue-specific attached-page route and you want the dedicated fail-fast entrypoint surface reprinted after the broader Google-shaped surface check and asset audit but before the broader flow helper or its downstream runner handoff.',
-        'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.',
+        'Use google_attached_html_sidecar_audit when the current saved export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the broader surface check or the deeper asset audit.',
+        'Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.',
+        'Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.',
+        'Use google_attached_html_surface_check when the replay is already narrowed to the issue-specific attached-page route and you want the dedicated fail-fast entrypoint surface reprinted after the sidecar audit, broader Google-shaped surface check, and asset audit but before the broader flow helper or its downstream runner handoff.',
+        'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.',
         'Use attached_html_change_area when the next replay still needs the broader attached-page compatibility route rather than the issue-specific Google-attached path.',
         'Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.',
         'Use suite_router_shortcut_entrypoint as the default next helper when no saved summary, non-default repo root, or pinned bundle inputs need to take precedence first.',
@@ -253,18 +279,20 @@ Write-Host (("  2. Attached HTML:        {0}") -f $entrypoint.top_level_commands
 Write-Host (("  3. Attached bundle:      {0}") -f $entrypoint.top_level_commands.attached_bundle_change_area)
 Write-Host (("  4. Google input:         {0}") -f $entrypoint.top_level_commands.google_input_change_area)
 Write-Host (("  5. Google recommended:   {0}") -f $entrypoint.top_level_commands.google_recommended)
-Write-Host (("  6. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)
-Write-Host (("  7. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)
-Write-Host (("  8. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
-Write-Host (("  9. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)
-Write-Host ((" 10. Shortcut entry:       {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
-Write-Host ((" 11. Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 12. Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host ((" 13. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 14. Bundle suite helper:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)
-Write-Host ((" 15. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)
+Write-Host (("  7. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)
+Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)
+Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
+Write-Host ((" 10. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)
+Write-Host ((" 11. Shortcut entry:       {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
+Write-Host ((" 12. Replay shortcuts:     {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 13. Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host ((" 14. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 15. Bundle suite helper:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)
+Write-Host ((" 16. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host ''
 Write-Host 'Companion helpers:'
+Write-Host (("  Sidecar audit:         {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)
 Write-Host (("  Broader surface check: {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)
 Write-Host (("  Asset closure audit:   {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)
 Write-Host (("  Google surface check:  {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
