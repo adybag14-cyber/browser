@@ -363,20 +363,20 @@ Write-Host ("  Local fixture surface: {0}" -f $entrypoint.local_html_fixture_sur
 Write-Host ("  Fixed-list proof:     {0}" -f $entrypoint.local_html_fixture_probe_command)
 Write-Host ''
 Write-Host 'Return after bundle replay:'
-Write-Host ("  Replay shortcuts: {0}") -f $entrypoint.replay_shortcuts_command
-Write-Host ("  Safe route:       {0}") -f $entrypoint.return_to_safe_route_command
+Write-Host ("  Replay shortcuts: {0}" -f $entrypoint.replay_shortcuts_command)
+Write-Host ("  Safe route:       {0}" -f $entrypoint.return_to_safe_route_command)
 Write-Host ''
-Write-Host ("Windows replay note:          {0}") -f $entrypoint.windows_replay_quickstart_note_path
-Write-Host ("Replay attached-html note:    {0}") -f $entrypoint.windows_replay_attached_html_quickstart_note_path
-Write-Host ("Top-level quickstart note:    {0}") -f $entrypoint.top_level_attached_html_quickstart_note_path
-Write-Host ("Attached shortcut note:       {0}") -f $entrypoint.attached_html_shortcut_note_path
-Write-Host ("Google flow note:             {0}") -f $entrypoint.google_attached_html_validation_flow_note_path
-Write-Host ("Bundle reference note:        {0}") -f $entrypoint.attached_html_target_bundle_reference_note_path
-Write-Host ("Bundle quickstart note:       {0}") -f $entrypoint.attached_html_target_bundle_quickstart_note_path
-Write-Host ("Pinned checklist note:        {0}") -f $entrypoint.attached_html_target_bundle_checklist_note_path
-Write-Host ("Validation chain note:        {0}") -f $entrypoint.validation_chain_note_path
+Write-Host ("Windows replay note:          {0}" -f $entrypoint.windows_replay_quickstart_note_path)
+Write-Host ("Replay attached-html note:    {0}" -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
+Write-Host ("Top-level quickstart note:    {0}" -f $entrypoint.top_level_attached_html_quickstart_note_path)
+Write-Host ("Attached shortcut note:       {0}" -f $entrypoint.attached_html_shortcut_note_path)
+Write-Host ("Google flow note:             {0}" -f $entrypoint.google_attached_html_validation_flow_note_path)
+Write-Host ("Bundle reference note:        {0}" -f $entrypoint.attached_html_target_bundle_reference_note_path)
+Write-Host ("Bundle quickstart note:       {0}" -f $entrypoint.attached_html_target_bundle_quickstart_note_path)
+Write-Host ("Pinned checklist note:        {0}" -f $entrypoint.attached_html_target_bundle_checklist_note_path)
+Write-Host ("Validation chain note:        {0}" -f $entrypoint.validation_chain_note_path)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $entrypoint.notes) {
-    Write-Host ("- {0}") -f $note
+    Write-Host ("- {0}" -f $note)
 }
