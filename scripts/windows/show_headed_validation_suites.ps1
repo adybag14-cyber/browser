@@ -6,6 +6,7 @@ param(
     [string]$ChangeArea = "",
     [string]$RepoRoot = "",
     [string]$BrowserExe = "",
+    [string]$SummaryPath = "",
     [string]$InputPath = ""
 )
 
@@ -223,9 +224,24 @@ function Get-NetworkRouteNotes {
 
 $issue3AttachedHtmlArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name RepoRoot -Value $RepoRoot
-Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name SummaryPath -Value $SummaryPath
 if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlArguments -Name InputPath -Values @($InputPath)
+}
+
+$issue3AttachedHtmlBrowserArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name BrowserExe -Value $BrowserExe
+if ($InputPath) {
+    Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name InputPath -Values @($InputPath)
+}
+
+$googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name BrowserExe -Value $BrowserExe
+if ($InputPath) {
+    Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values @($InputPath)
 }
 
 $googleFormControlsEnterOrderArguments = [System.Collections.Generic.List[string]]::new()
@@ -237,9 +253,9 @@ if ($isCustomBrowserExe) {
 function Get-Issue3AttachedHtmlFollowUpCommands {
     return @(
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
-        (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
-        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $issue3AttachedHtmlArguments),
-        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
+        (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlBrowserArguments)
     )
 }
 
@@ -262,9 +278,14 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
         )
     }
 
+    if ($SummaryPath) {
+        $notes += "Current saved summary: $SummaryPath"
+        $notes += "The printed issue #3 follow-up commands now preserve -SummaryPath through the router handoff, so saved validation state can be reopened without manual re-entry."
+    }
+
     if ($isCustomBrowserExe) {
         $notes += "Current browser override: $BrowserExe"
-        $notes += "The printed issue #3 follow-up commands now preserve -BrowserExe through the router handoff. Keep rerunning this router before hopping between helper surfaces so the same custom binary stays pinned."
+        $notes += "The printed issue #3 follow-up commands now preserve -BrowserExe through the router handoff where the downstream helper accepts it. Keep rerunning this router before hopping between helper surfaces so the same custom binary stays pinned."
     }
 
     return $notes
@@ -336,6 +357,9 @@ function Show-DefaultRoutes {
         "Use the bounded input probe first, then the dedicated Google form-controls Enter-order gate, then live Google, then the dedicated Google-shaped attached-page flow before the shorter issue #3 helper surface or the broader manual localhost replay.",
         "Pass -InputPath when you already want the top-level attached-page quickstart or bundle-first helper pinned to a saved page or the current three-page compatibility bundle."
     )
+    if ($SummaryPath) {
+        $googleRecommendedNotes += "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder."
+    }
     if ($isCustomBrowserExe) {
         $googleRecommendedNotes += "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
     }
@@ -344,9 +368,9 @@ function Show-DefaultRoutes {
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order",
         "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
-        (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
-        (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
-        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
+        (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlBrowserArguments)
     ) -Notes $googleRecommendedNotes
 }
 
@@ -376,6 +400,9 @@ switch ($true) {
             "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
             "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
         )
+        if ($SummaryPath) {
+            $issue3FollowUpNotes += "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder."
+        }
         if ($isCustomBrowserExe) {
             $issue3FollowUpNotes += "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
         }
@@ -389,9 +416,9 @@ switch ($true) {
         )
 
         Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
-            (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
-            (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
-            (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
+            (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
+            (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
+            (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlBrowserArguments)
         ) -Notes $issue3FollowUpNotes
         break
     }
@@ -413,6 +440,9 @@ switch ($true) {
                 "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
                 "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
             )
+            if ($SummaryPath) {
+                $googleInputFollowUpNotes += "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder."
+            }
             if ($isCustomBrowserExe) {
                 $googleInputFollowUpNotes += "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
             }
@@ -428,9 +458,9 @@ switch ($true) {
             )
 
             Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
-                (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $issue3AttachedHtmlArguments),
-                (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
-                (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlArguments)
+                (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
+                (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
+                (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlBrowserArguments)
             ) -Notes $googleInputFollowUpNotes
         }
         break
