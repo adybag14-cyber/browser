@@ -21,7 +21,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the pinned three-page compatibility bundle, keep the compact bundle-suite surface and the broader bundle quickstart visible while branch state or inputs are still being re-checked, rerun the bundle surface checks when branch state or attached inputs may have changed, keep the delegated bundle replay visible until the same three pages are green, then use the fixed-list local HTML fixture proof on those same inputs before widening back into the broader attached-page or Google-shaped follow-up routes.
+Start from the pinned three-page compatibility bundle, keep the compact bundle-suite surface and the broader bundle quickstart visible while branch state or inputs are still being re-checked, rerun the bundle surface checks when branch state or attached inputs may have changed, keep the delegated bundle replay visible until the same three pages are green, then use the proof-entrypoint surface checker plus the fixed-list local HTML fixture proof on those same inputs before widening back into the broader attached-page or Google-shaped follow-up routes.
 
 ## Bundle replay before proof
 
@@ -34,6 +34,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
 ```
 
 Use that route when:
@@ -41,19 +42,22 @@ Use that route when:
 - you want the fail-fast surface check and bundle check rerun before collecting proof
 - the compact bundle-suite surface and the broader quickstart should remain visible until the route is clearly ready to collapse into proof collection
 - the headed localhost replay still needs to run on the same bundle inputs before the narrower proof pass
+- you want the proof-entrypoint surface checker rerun before the proof-only helper and the fixed-list screenshot-and-title proof take over
 
 ## Fixed-list proof
 
 Use this route immediately after the bundle replay when you want the fixed screenshot-and-title proof attached to the same three pages:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths 'Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html' 'Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html' 'Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html'
 ```
 
 Use that route when:
 - the delegated bundle replay already turned green and you want tighter proof for the same pinned inputs
-- the next follow-up depends on keeping the exact three attached pages visible instead of widening back into a looser attached-page route immediately
+- the next follow-up depends on keeping the proof-entrypoint surface checker, the proof-only helper, and the exact three attached pages visible instead of widening back into a looser attached-page route immediately
 - you want the proof pass to stay tied to the known fixed filename set without re-deriving placeholder names from the bundle reference note
 
 ## Widen back out when needed
@@ -90,7 +94,7 @@ Use that form when:
 2. Reconfirm the current inputs still match the known three-page bundle.
 3. Keep the compact bundle-suite surface and the broader bundle quickstart visible until the route is ready to collapse into proof-only follow-up.
 4. Keep the delegated bundle replay visible until the same inputs are ready for proof.
-5. Run the local HTML fixture surface check and the fixed-list screenshot-and-title proof on those same pages.
+5. Run the proof-entrypoint surface checker, the proof entrypoint helper, the local HTML fixture surface check, and the fixed-list screenshot-and-title proof on those same pages.
 6. Widen back into the broader attached-page or Google-shaped helper routes only after the proof pass is in hand.
 
-When explicit `InputPath` values are already pinned, preserve those same paths across the bundle checks, the delegated bundle replay, and the proof helper so the evidence stays attached to the exact same three local pages.
+When explicit `InputPath` values are already pinned, preserve those same paths across the bundle checks, the delegated bundle replay, the proof-entrypoint helper, and the proof helper so the evidence stays attached to the exact same three local pages.
