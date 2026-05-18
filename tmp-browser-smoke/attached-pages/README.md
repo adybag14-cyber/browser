@@ -1,252 +1,41 @@
-# Attached Pages Smoke Harness
+Attached pages localhost harness
 
-Use this helper when headed-mode work needs a stable localhost bundle for saved
-HTML exports that do not already live inside the repository.
+This helper stages saved `.html` snapshots and optional sibling `*_files`
+directories behind a small localhost server so headed validation can exercise
+real attached pages without hand-copying files into ad hoc probe folders.
 
-## Goal
+Usage:
 
-Expose a directory of saved `.html` files, one saved `.html` file with its
-sibling assets, or an explicit list of saved `.html` files through short
-localhost routes so the headed browser can open them without depending on long
-exported filenames.
-
-## Usage
-
-From the repo root:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root C:\path\to\saved-html --port 8235
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_server.py \
+  /path/to/page-one.html \
+  /path/to/page-two.html \
+  /path/to/page-three.html
 ```
 
-`--root` can point at either:
+The server prints a JSON manifest with:
+- `staging_root`: the temporary directory holding the staged page copies
+- `pages[*].route`: the localhost route for each staged page
+- `pages[*].sidecar_directory`: the original sibling asset folder when one was found
 
-- a directory that contains one or more saved `.html` files
-- a single saved `.html` file when you want to replay one export without
-  first moving it into a dedicated folder
+The manifest is also exposed at `http://127.0.0.1:8176/__pages.json`.
 
-If you want the manifest to stay pinned to a specific attached-page set even
-when the surrounding directory contains extra HTML exports, pass the exact file
-list instead:
+Directory input is supported:
 
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --input C:\path\to\Google Safety Centre.html `
-  --input C:\path\to\Anthropic Application.html `
-  --input C:\path\to\UAP Encounters.html `
-  --port 8235
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_server.py /path/to/saved-pages-dir
 ```
 
-Then open one of these URLs in the headed browser:
+That mode stages every top-level `.html` or `.htm` file in the directory.
 
-- `http://127.0.0.1:8235/` for the generated catalog
-- `http://127.0.0.1:8235/manifest.json` for the route list
-- `http://127.0.0.1:8235/pages/1` for the shortest stable route to the first page in the manifest
-- `http://127.0.0.1:8235/pages/1-<short-title-slug>` for the readable alias route when you want a descriptive path in logs or manual replay notes
-- `http://127.0.0.1:8235/named/<short-title-slug>` for a descriptive route that stays usable even if the bundle order changes
+Typical Windows headed workflow:
 
-The short `pages/...` routes and the named `named/...` routes redirect into an
-asset-safe directory form such as `/pages/1/` or `/named/google-search/`, so
-relative CSS, images, scripts, and other sibling assets keep loading from the
-exported bundle instead of resolving against the synthetic route root. The
-server still exposes each original file under `/raw/...`, which is useful when
-you want the exact original path layout during manual debugging.
+1. Start the helper with the saved attached pages.
+2. Copy one `pages[*].route` value from the manifest.
+3. Launch `lightpanda.exe browse http://127.0.0.1:8176/<route>` in headed mode.
+4. Repeat against the other routes while collecting screenshots, traces, or probe notes.
 
-If you only need the generated short routes before starting a browser session,
-print the manifest JSON and exit without binding a port:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root C:\path\to\saved-html --print-manifest
-```
-
-That same manifest-print path also works with repeated `--input` arguments when
-you want to prove the exact pinned file list before starting the localhost
-catalog server.
-
-## Windows wrapper
-
-When the saved pages are already under `agent_files/`, `user_files/`, or an
-explicit input list, use the Windows wrapper to reuse the same attached-page
-auto-discovery rules as the headed validation helpers without hand-building
-repeated `python --input ...` arguments.
-
-From the repo root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1
-```
-
-Useful variants:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -PrintManifest
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -AuditAssets
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -AuditAssets -AllowMissingAssets
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '.\agent_files\saved-page.html'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '.\agent_files\bundle-root'
-```
-
-What the wrapper does:
-
-- auto-discovers attached HTML under the current repo, its workspace parent, or
-  the current working directory when `-InputPath` is omitted
-- resolves directory inputs to explicit pinned `.html` files before calling the
-  Python helper, so the manifest stays locked to the current replay set
-- can prefer the strongest Google-like page first with `-GoogleStyle` while
-  still keeping the whole pinned bundle available through `/pages/...`
-- prints the selected fixtures and localhost bind URL before launch mode so the
-  current pinned set is visible in replay notes
-- can switch between manifest-only, asset-audit, and long-running catalog
-  server modes without changing the pinned input set
-
-Use this wrapper when the next step is “start the short-route localhost catalog
-for the current saved bundle” rather than the broader headed-browser validation
-runner.
-
-## Issue #3 Pinned Bundle
-
-For the current headed Google follow-up work, you can pin the known three-page
-compatibility bundle directly from `agent_files/` so the generated short routes
-stay locked to the same saved exports even if that folder later gains more HTML
-files:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
-  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
-  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
-  --print-manifest
-```
-
-Once the manifest looks correct, start the localhost catalog on the same pinned
-file list:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
-  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
-  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
-  --port 8235
-```
-
-That gives the current issue `#3` replay work one stable localhost catalog with
-short routes such as:
-
-- `http://127.0.0.1:8235/` for the generated three-page catalog
-- `http://127.0.0.1:8235/pages/1` for the first pinned page
-- `http://127.0.0.1:8235/pages/2` for the second pinned page
-- `http://127.0.0.1:8235/pages/3` for the third pinned page
-
-Use this pinned-file form when you want the quick manual replay surface before
-running the heavier attached-page PowerShell helpers or when you want the exact
-same three pages available through short routes while you debug a headed-mode
-compatibility regression.
-
-## Recommended Issue #3 Replay Order
-
-For the current three-page issue `#3` bundle, run the asset audit before you
-start the localhost server or the headed browser session:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
-  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
-  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
-  --audit-assets
-```
-
-Interpret that first gate like this:
-
-- If the audit exits nonzero, fix the saved bundle first or consciously accept
-  the degraded replay before treating the next headed result as a browser
-  regression.
-- The currently saved UAP export is known to be incomplete because its sibling
-  `_files` asset directory is missing. The audit reports that damage before the
-  browser is involved, which keeps missing-sidecar noise out of headed-runtime
-  triage.
-- The audit now also reports external asset dependencies per fixture, which
-  makes it easier to see when a saved export still expects fonts, scripts,
-  videos, or other network-hosted resources even if every local sidecar is
-  present.
-- After the audit, reuse the same pinned `--input` list for `--print-manifest`,
-  `--port 8235`, or `--allow-missing-assets` so the replay stays on the exact
-  bundle definition you just checked.
-
-Use this audit-first order when you want the fastest honest answer to "is this
-page export locally complete enough to blame the browser yet?" before you widen
-back into the heavier PowerShell replay helpers.
-
-## Asset Audit
-
-Before treating a localhost replay failure as a headed-runtime bug, you can ask
-the helper to recursively inspect local asset references across the selected
-bundle.
-
-From a bundle root:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --root C:\path\to\saved-html `
-  --audit-assets
-```
-
-Against the pinned issue `#3` file list:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --input ".\agent_files\Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" `
-  --input ".\agent_files\Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html" `
-  --input ".\agent_files\Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html" `
-  --audit-assets
-```
-
-The audit walks each selected HTML file, follows local CSS `@import` chains,
-module-script imports, and common local asset references, then reports missing
-sidecars per fixture. It now also reports external asset dependencies per
-fixture so replay notes can distinguish "bundle is missing local files" from
-"bundle still expects the network." The command exits with a nonzero status
-when anything local is missing, which makes it a good first gate for repeatable
-localhost validation.
-
-If another script needs the same audit in machine-readable form, add
-`--audit-assets-json` alongside `--audit-assets` to print the structured audit
-payload instead of the text summary:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --root C:\path\to\saved-html `
-  --audit-assets `
-  --audit-assets-json
-```
-
-Use this when a Linux or mixed-environment helper wants to fail fast on missing
-assets without scraping console text, or when it needs to preserve the external
-dependency list alongside the missing-local-asset results.
-
-If you still want a best-effort replay after seeing the missing-asset report,
-add `--allow-missing-assets` so the helper prints the audit summary but exits
-successfully:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_server.py `
-  --root C:\path\to\saved-html `
-  --audit-assets `
-  --allow-missing-assets
-```
-
-Use this path when the bundle is already known to be incomplete and you want to
-keep that fact visible in logs without blocking the rest of the replay flow.
-
-## Self-check
-
-Run the focused harness regression locally with:
-
-```powershell
-python .\tmp-browser-smoke\attached-pages\test_attached_pages_server.py
-```
-
-The test covers the generated catalog, manifest route, short-route redirect,
-named-route redirect and asset loading, `HEAD` handling, `/raw/...`
-passthrough, the manifest-print CLI path, the single-file root path, the
-explicit file-list path that pins the manifest to selected saved exports, and
-the asset-audit CLI behavior.
+Notes:
+- Each page is staged under its own route directory as `index.html`.
+- If a saved page has a sibling asset folder named like `<page>_files`, that folder is copied beside the staged `index.html` so relative asset references keep working.
+- Use `--staging-root` when you want the staged output to persist after the server stops.
