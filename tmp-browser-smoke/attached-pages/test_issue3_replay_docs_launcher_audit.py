@@ -165,6 +165,40 @@ class Issue3ReplayDocsLauncherAuditTests(unittest.TestCase):
             stdout.getvalue(),
         )
 
+    def test_quickstart_google_wrapper_path_replaces_raw_launcher(self):
+        replay_handoff = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
+            "-InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars\n"
+        )
+        replay_quickstart = replay_handoff
+        replay_attached_html_quickstart = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
+            "-InputPath '<attached-html-root>' -AuditSidecars\n"
+        )
+        top_level_attached_html_quickstart = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
+            "-InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars\n"
+        )
+        self.write_docs(
+            replay_handoff,
+            replay_quickstart,
+            replay_attached_html_quickstart,
+            top_level_attached_html_quickstart,
+        )
+
+        audit = AUDIT.build_replay_doc_audit(self.root)
+        quickstart_result = next(
+            file_result
+            for file_result in audit["files"]
+            if file_result["display_path"] == "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"
+        )
+
+        self.assertEqual(0, quickstart_result["raw_python_reference_count"])
+        self.assertEqual(1, quickstart_result["google_wrapper_sidecar_reference_count"])
+
 
 if __name__ == "__main__":
     unittest.main()
