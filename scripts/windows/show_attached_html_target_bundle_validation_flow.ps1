@@ -85,7 +85,7 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
-    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command ``"``$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command``""
 }
 
 $bundleSurfaceCheckPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle_validation_surface.ps1"
@@ -196,6 +196,19 @@ if ($bundleRunnerArgs.Count -gt 0) {
     $bundleRunnerCommand += " " + ($bundleRunnerArgs -join " ")
 }
 
+$attachedPagesSidecarAuditArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $attachedPagesSidecarAuditArgs -Name RepoRoot -Value $RepoRoot
+if ($resolvedFixturePaths.Count -gt 0) {
+    Add-SharedPathArrayArgument -Arguments $attachedPagesSidecarAuditArgs -Name InputPath -Values $resolvedFixturePaths
+} else {
+    Add-SharedPathArrayArgument -Arguments $attachedPagesSidecarAuditArgs -Name InputPath -Values $InputPath
+}
+$attachedPagesSidecarAuditCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1"
+if ($attachedPagesSidecarAuditArgs.Count -gt 0) {
+    $attachedPagesSidecarAuditCommand += " " + ($attachedPagesSidecarAuditArgs -join " ")
+}
+$attachedPagesSidecarAuditCommand += " -AuditSidecars"
+
 $issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
 if ($pinnedBundleFollowUpArgs.Count -gt 0) {
     $issue3SuiteRouterNextStepsCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
@@ -239,6 +252,7 @@ $flow = [ordered]@{
     issue3_replay_shortcuts_command = $issue3ReplayShortcutsCommand
     local_html_fixture_surface_check_command = $localHtmlFixtureSurfaceCheckCommand
     local_html_fixture_probe_command = $localHtmlFixtureProbeCommand
+    attached_pages_sidecar_audit_command = $attachedPagesSidecarAuditCommand
     first_bounded_step = $overall.first_step
     follow_up = $overall.follow_up
     bundle_summary = $overall.bundle_summary
@@ -253,6 +267,11 @@ $flow = [ordered]@{
             name = "bundle-check"
             goal = "Confirm the current saved-page set still resolves to the expected three-page compatibility bundle and reuse the same locked InputPath set for the rest of the flow."
             command = $printedBundleCheckerCommand
+        }
+        [ordered]@{
+            name = "bundle-sidecar-audit"
+            goal = "Fail fast if any locked bundle export is missing its sibling `_files` sidecar before broader attached-page surface checks or the delegated runner start."
+            command = $attachedPagesSidecarAuditCommand
         }
         [ordered]@{
             name = "bundle-surface-check"
@@ -290,6 +309,7 @@ $flow = [ordered]@{
         "Use this helper after the bundle route surface check when you want a stable read-first command surface for the current compatibility set instead of copying commands out of free-form checker output.",
         $suiteRouterNote,
         "Keep docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md nearby for the page-by-page manual checks once the bundle-pinned localhost route is green.",
+        'Run the attached-pages sidecar audit command before the broader attached-page surface checks when you want a missing sibling `_files` bundle to fail fast on the same locked inputs instead of looking like a deeper browser regression.',
         "Use the reusable fixed-list fixture surface check and probe when you want screenshot-and-title proof for the same locked inputs without reopening the broader attached-page wrapper flow.",
         "When the bundle targets resolve successfully, the printed issue #3 next-step, replay-shortcuts, and local-fixture surface-check commands already carry the same locked paths forward, even when the current bundle started from auto-discovery.",
         "Use the issue #3 next-step matrix when you want the compact branch chooser reprinted with the same pinned bundle inputs before deciding whether to stay on the bundle route or reopen the narrower replay-shortcuts helper.",
@@ -301,6 +321,7 @@ $flow = [ordered]@{
     )
     next_steps = @(
         "Use the bundle route surface-check command first when the branch has moved and you want the bundle-aware guide, checklist, helper, runner, reusable fixture probe, and delegated attached-HTML surfaces to fail fast before anything else.",
+        'Use the attached-pages sidecar audit command right after the bundle check when you want missing sibling `_files` bundles ruled out before broader attached-page surface checks or the delegated runner make the failure look deeper than it is.',
         "Use the bundle-pinned flow command when you want the exact printed localhost ladder with the current paths and BrowserExe already locked in.",
         "Use the bundle-pinned runner command when the bundle checks are green and you want to launch the headed localhost replay directly.",
         "Use the reusable local fixture surface check and probe when you want screenshot-and-title proof for the same three saved pages after the broader bundle route is confirmed.",
@@ -346,6 +367,9 @@ if ($flow.local_html_fixture_surface_check_command) {
 }
 if ($flow.local_html_fixture_probe_command) {
     Write-Host ("Local fixture probe: {0}" -f $flow.local_html_fixture_probe_command)
+}
+if ($flow.attached_pages_sidecar_audit_command) {
+    Write-Host ("Attached-pages sidecar audit: {0}" -f $flow.attached_pages_sidecar_audit_command)
 }
 if ($flow.checklist_note) {
     Write-Host ("Manual checklist: {0}" -f $flow.checklist_note)
