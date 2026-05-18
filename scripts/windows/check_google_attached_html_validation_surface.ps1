@@ -68,6 +68,8 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Kind "file" -Purpose "Compact bundle-suite note that keeps the pinned three-page compatibility lane visible beside the broader attached-page helpers."),
     (New-ValidationReference -Path "tmp-browser-smoke/README.md" -Kind "file" -Purpose "Top-level probe-suite index for bounded headed validation."),
     (New-ValidationReference -Path "tmp-browser-smoke/manual-user/README.md" -Kind "file" -Purpose "Manual saved-page and attached-page follow-up guide."),
+    (New-ValidationReference -Path "tmp-browser-smoke/attached-pages/attached_pages_sidecar_audit.py" -Kind "file" -Purpose "Fail-fast sidecar-bundle audit that separates missing export sidecars from browser-runtime regressions."),
+    (New-ValidationReference -Path "tmp-browser-smoke/attached-pages/test_attached_pages_sidecar_audit.py" -Kind "file" -Purpose "Focused tests for the attached-pages sidecar-bundle audit helper."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "General attached-HTML flow helper."),
     (New-ValidationReference -Path "scripts/windows/run_attached_html_localhost_validation.ps1" -Kind "file" -Purpose "General attached-HTML localhost runner."),
     (New-ValidationReference -Path "scripts/windows/check_attached_html_local_asset_closure.ps1" -Kind "file" -Purpose "Deep attached-HTML asset audit that catches missing nested CSS, image, and font dependencies before launch."),
@@ -92,10 +94,13 @@ $references = @(
 )
 
 $contentExpectations = @(
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'function Get-SidecarAuditCommand {' -Purpose "Google-style attached-html flow keeps a dedicated sidecar-bundle audit command builder."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'sidecar_audit_command = $SidecarAuditCommand' -Purpose "Google-style attached-html flow keeps the sidecar-bundle audit command in its structured helper metadata."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet '$surfaceCheck = ''.\\scripts\\windows\\check_google_attached_html_validation_surface.ps1''' -Purpose "Google-style attached-html flow keeps the dedicated broader surface check script pinned in its helper metadata."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet '$attachedHtmlBundleSuiteRouterCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle"' -Purpose "Google-style attached-html flow keeps the bundle-oriented suite-router fallback visible beside the broader attached-page lane."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet '$googleAttachedHtmlMetadata.broader_attached_html_route = [ordered]@{' -Purpose "Google-style attached-html flow preserves the structured broader-route metadata that downstream helpers can inspect."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'Write-Host "Start with the dedicated surface check and deep asset-closure audit before the printed flow or runner:"' -Purpose "Printed helper output keeps the surface-check and asset-closure gate visible before the narrower runner handoff."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'Write-Host "Start with the dedicated surface check, sidecar-bundle audit, and deep asset-closure audit before the printed flow or runner:"' -Purpose "Printed helper output keeps the sidecar-bundle audit visible between the broader surface check and the deeper asset-closure gate."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'Write-Host ("- {0}" -f $sidecarAuditCommand)' -Purpose "Printed helper output includes the sidecar-bundle audit command before the route narrows into the delegated Google-style helper handoff."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'Write-Host "Keep the broader attached-page fallback visible when the route should stay general longer or the current inputs are still the pinned bundle:"' -Purpose "Printed helper output keeps the broader attached-page fallback visible before the route narrows further."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'Write-Host ("- {0}" -f $attachedHtmlBundleSuiteRouterCommand)' -Purpose "Printed helper output includes the bundle-oriented suite-router fallback beside the general and Google-style flow commands."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Snippet 'Write-Host ("Helper: {0}" -f $handoffCommands.helper_command)' -Purpose "Printed helper output keeps the delegated Google-style helper handoff visible after the broader fallback commands."),
@@ -199,5 +204,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} attached-HTML validation path or source contract check(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, shortcut, suite-catalog helper, Windows-side bridge, bundle-surface helper, broader helper-output contract, runner, or asset-audit script before trusting the Google-style attached-HTML follow-up."
+Write-Host "Repair the missing guide, shortcut, suite-catalog helper, Windows-side bridge, sidecar-bundle audit surface, bundle-surface helper, broader helper-output contract, runner, or asset-audit script before trusting the Google-style attached-HTML follow-up."
 exit 1
