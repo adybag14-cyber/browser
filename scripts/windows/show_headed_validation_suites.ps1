@@ -311,7 +311,7 @@ function Show-DefaultRoutes {
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
     ) -Notes @(
         "These probes exercise headed stop/loading recovery and restored input behavior on localhost fixtures.",
-        "If your checkout does not match the standard repo-root path used by these older probes, normalize those paths before depending on them."
+        "These first-line stop-loading probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
     )
 
     Write-Route -Name "input" -Commands @(
@@ -465,7 +465,7 @@ switch ($true) {
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
         ) -Notes @(
             "Use these for headed stop/loading recovery and restored input behavior on bounded localhost pages.",
-            "If your checkout does not match the standard repo-root path used by these older probes, normalize those paths before depending on them."
+            "These first-line stop-loading probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
         )
         break
     }
