@@ -189,7 +189,7 @@ Use this next when you still want the broader validation-router attached-page br
 
 Use this next when the replay already reopened `show_headed_validation_suites.ps1 -ChangeArea attached-html` and you want the broader attached-page flow helper kept visible beside the newer quickstarts.
 
-7. `show_google_issue3_top_level_attached_html_quICKSTART.ps1`
+7. `show_google_issue3_top_level_attached_html_quickstart.ps1`
 
 Use this when you want the shortest top-level attached-page bridge kept visible before the route narrows again.
 
