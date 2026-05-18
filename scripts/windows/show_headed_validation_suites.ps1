@@ -192,7 +192,7 @@ function Get-AttachedHtmlRouteCommands {
         (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditAssets')),
         (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('PrintManifest')),
         (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle),
-        "& `\"$BrowserExe`\" browse --headed --window_width 1366 --window_height 900 `\"http://127.0.0.1:8235/`\""
+        "& `"$BrowserExe`" browse --headed --window_width 1366 --window_height 900 `"http://127.0.0.1:8235/`""
     )
 }
 
@@ -206,7 +206,7 @@ function Get-RenderingRouteCommands {
 function Get-RenderingRouteNotes {
     return @(
         "Use these before attached-page replay when the change touched shared layout, paint, screenshot timing, or visible headed surface behavior.",
-        "The first-line layout-smoke probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
+        "The first-line layout-smoke probes now auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
     )
 }
 
@@ -336,7 +336,7 @@ function Show-DefaultRoutes {
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
     ) -Notes @(
         "These probes exercise headed stop/loading recovery and restored input behavior on localhost fixtures.",
-        "These first-line stop-loading probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
+        "These first-line stop-loading probes now auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
     )
 
     Write-Route -Name "input" -Commands @(
@@ -369,7 +369,7 @@ function Show-DefaultRoutes {
     Write-Route -Name "google-recommended" -Commands @(
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order",
-        "& `\"$BrowserExe`\" browse --headed `\"https://www.google.com/`\"",
+        "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
         (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlBrowserArguments)
@@ -412,7 +412,7 @@ switch ($true) {
         Write-Route -Name "google-recommended" -Commands @(
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
             "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1",
-            "& `\"$BrowserExe`\" browse --headed `\"https://www.google.com/`\""
+            "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
         ) -Notes @(
             "Use the shared Enter-submit probe first, then the dedicated Google form-controls Enter-order gate, then verify Google homepage typing, focus retention, and Enter submit manually."
         )
@@ -454,7 +454,7 @@ switch ($true) {
             )
 
             Write-Route -Name "manual-google" -Commands @(
-                "& `\"$BrowserExe`\" browse --headed `\"https://www.google.com/`\""
+                "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
             ) -Notes @(
                 "Use this after the bounded input probes are green."
             )
@@ -499,7 +499,7 @@ switch ($true) {
             "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\stop-loading\chrome-stop-input-probe.ps1"
         ) -Notes @(
             "Use these for headed stop/loading recovery and restored input behavior on bounded localhost pages.",
-            "These first-line stop-loading probes now auto-resolve the repo root and zig-out\\bin\\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
+            "These first-line stop-loading probes now auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
         )
         break
     }
