@@ -85,7 +85,7 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
-    return "powershell -NoProfile -ExecutionPolicy Bypass -Command ``"``$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command``""
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
 }
 
 $bundleSurfaceCheckPath = Join-Path $PSScriptRoot "check_attached_html_target_bundle_validation_surface.ps1"
