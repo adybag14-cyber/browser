@@ -253,6 +253,49 @@ def render_text_report(audit):
         self.assertIn("Attached Pages Sidecar Audit", stderr.getvalue())
         self.assertIn("Refusing to continue", stderr.getvalue())
 
+    def test_main_print_manifest_can_require_complete_assets(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_server.py").write_text(
+            """def build_manifest(root=None, selected_files=None):
+    raise AssertionError("manifest generation should not happen when strict asset gating fails")
+
+def build_asset_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_assets": 1,
+        "fixtures": [],
+    }
+
+def render_asset_audit_text(audit):
+    return "Attached Pages Asset Audit\\n\\nFixtures with missing assets: 1\\n"
+
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None, staging_root=None):
+    raise AssertionError("server launch should not happen during --print-manifest")
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--print-manifest",
+                    "--require-complete-assets",
+                ]
+            )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertIn("Attached Pages Asset Audit", stderr.getvalue())
+        self.assertIn("Refusing to continue", stderr.getvalue())
+
     def test_main_audit_sidecars_json_uses_repo_sidecar_module(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
         attached_pages_dir.mkdir(parents=True)
@@ -370,6 +413,48 @@ def render_text_report(audit):
         self.assertIn("Attached Pages Sidecar Audit", stderr.getvalue())
         self.assertIn("Refusing to continue", stderr.getvalue())
 
+    def test_main_server_mode_can_require_complete_assets(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_server.py").write_text(
+            """def build_manifest(root=None, selected_files=None):
+    return [{"file": "fixture.html", "route": "/pages/1"}]
+
+def build_asset_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_assets": 1,
+        "fixtures": [],
+    }
+
+def render_asset_audit_text(audit):
+    return "Attached Pages Asset Audit\\n\\nFixtures with missing assets: 1\\n"
+
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None, staging_root=None):
+    raise AssertionError("server launch should not happen when strict asset gating fails")
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--require-complete-assets",
+                ]
+            )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertIn("Attached Pages Asset Audit", stderr.getvalue())
+        self.assertIn("Refusing to continue", stderr.getvalue())
+
     def test_main_server_mode_prints_preferred_routes_and_strict_gate(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
         attached_pages_dir.mkdir(parents=True)
@@ -436,12 +521,14 @@ def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None, s
                     str(fixture),
                     "--google-style",
                     "--require-complete-sidecars",
+                    "--require-complete-assets",
                 ]
             )
 
         output = stdout.getvalue()
         self.assertEqual(0, exit_code)
         self.assertIn("Strict sidecar gate: enabled", output)
+        self.assertIn("Strict asset gate: enabled", output)
         self.assertIn("Preferred Google-style page:", output)
         self.assertIn("Preferred route: http://127.0.0.1:8235/pages/1/", output)
         self.assertIn(
@@ -596,6 +683,26 @@ def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
         self.assertEqual(0, exit_code)
         self.assertIn('"route": "/pages/1"', stdout.getvalue())
         self.assertNotIn('"route": "/wrong"', stdout.getvalue())
+
+    def test_main_rejects_conflicting_allow_missing_and_strict_asset_flags(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as raised:
+                helper.main(
+                    [
+                        "--repo-root",
+                        str(self.repo_root),
+                        "--audit-assets",
+                        "--allow-missing-assets",
+                        "--require-complete-assets",
+                    ]
+                )
+
+        self.assertEqual(2, raised.exception.code)
+        self.assertIn(
+            "choose only one of --allow-missing-assets or --require-complete-assets",
+            stderr.getvalue(),
+        )
 
 
 if __name__ == "__main__":
