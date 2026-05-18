@@ -87,7 +87,7 @@ If the replay is already centered on the Google-shaped attached localhost branch
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
@@ -105,7 +105,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 If the replay is running from a non-default checkout, preserve that same repo root on the sidecar audit and fail-fast checks before you narrow into the issue-specific Google attached-page bridge, the shortcut-first bridge, or the suite-router handoff:
 
 ```powershell
-python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --repo-root '<repo-root>' --input '<attached-html-or-folder>' --google-style --audit-sidecars
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>'
