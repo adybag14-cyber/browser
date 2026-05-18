@@ -47,6 +47,7 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md" -Kind "file" -Purpose "Dedicated Google-shaped attached-page guide kept visible when the narrower catalog route still needs the Google follow-up branch nearby."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md" -Kind "file" -Purpose "Pinned three-page compatibility bundle reference note reopened from the catalog quickstart when the replay stays on the locked bundle."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Kind "file" -Purpose "Compact bundle-suite note that keeps the locked three-page route visible beside the Windows-first catalog quickstart."),
+    (New-ValidationReference -Path "tmp-browser-smoke/attached-pages/README.md" -Kind "file" -Purpose "Lower-level attached-pages launcher guide that should stay aligned with the Windows-first catalog quickstart's sidecar-first replay order."),
     (New-ValidationReference -Path "scripts/windows/HeadedValidationHelpers.ps1" -Kind "file" -Purpose "Shared helper surface used by the catalog quickstart and its companion route scripts when repo-root context is preserved."),
     (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Top-level headed validation router that exposes the attached HTML, Google attached HTML, and target-bundle change areas."),
     (New-ValidationReference -Path "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1" -Kind "file" -Purpose "Broader Windows full-use route checker that should stay green before the narrower catalog quickstart is trusted."),
@@ -57,6 +58,8 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1" -Kind "file" -Purpose "Replay-side attached-page quickstart helper kept visible beside the Windows-first catalog helper."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Broader attached-page flow helper reopened when the current pages no longer stay on the narrower catalog route."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Dedicated Google-shaped attached-page flow helper reopened when the current pages still need the issue #3 follow-up lane."),
+    (New-ValidationReference -Path "scripts/windows/start_attached_pages_catalog.ps1" -Kind "file" -Purpose "Windows wrapper that keeps the attached-pages launcher, sidecar audit, asset audit, and localhost startup on the same PowerShell entrypoint."),
+    (New-ValidationReference -Path "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py" -Kind "file" -Purpose "Cross-platform attached-pages launcher that the Windows-first catalog quickstart now depends on for sidecar-first audit and localhost startup."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_quickstart.ps1" -Kind "file" -Purpose "Compact top-level attached-page quickstart helper kept beside the Windows-first catalog route."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_entrypoint.ps1" -Kind "file" -Purpose "Broader top-level attached-page bridge helper referenced by the catalog quickstart."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_catalog_quickstart.ps1" -Kind "file" -Purpose "Top-level attached-page catalog quickstart helper that follows the Windows-first catalog route."),
@@ -125,5 +128,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} Windows full-use attached HTML catalog quickstart path(s)." -f $missing.Count)
-Write-Host "Repair the missing route note, attached-html change-area bridge, catalog quickstart helper, companion top-level or suite-catalog bridge, Google-shaped fallback, bundle re-entry helper, or safe-route return script before trusting this narrower attached-page ladder."
+Write-Host "Repair the missing route note, launcher guide, launcher entrypoint, Windows wrapper, attached-html change-area bridge, catalog quickstart helper, companion top-level or suite-catalog bridge, Google-shaped fallback, bundle re-entry helper, or safe-route return script before trusting this narrower attached-page ladder."
 exit 1
