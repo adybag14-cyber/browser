@@ -61,7 +61,7 @@ The live attached-html helper chooses its default next command from replay
 context:
 
 - No pinned bundle inputs, non-default repo root, or saved summary:
-  `show_google_issue3_replay_shortcuts.ps1`
+  `show_google_issue3_suite_router_attached_html_quickstart.ps1`
 - Non-default repo root or saved summary already in play:
   `show_google_issue3_contextual_flow.ps1`
 - Explicit bundle input paths already pinned:
@@ -177,9 +177,11 @@ Keep these nearby when you want the written route beside the helper output:
 ## Practical Rule
 
 From the suite-catalog attached-html side, trust the helper ordering over older
-note wording. Default to replay shortcuts only when there is no pinned bundle
-input, no non-default repo root, and no saved summary already in play. Move to
-contextual flow when replay context already matters. Move to the bundle-first
-helper when the three-page compatibility set is already pinned. Reopen the
-broader safe-route wrappers only after the narrower attached-page and
-bundle-specific branches have already been surfaced.
+note wording. Default to `show_google_issue3_suite_router_attached_html_quickstart.ps1`
+only when there is no pinned bundle input, no non-default repo root, and no
+saved summary already in play. Move to contextual flow when replay context
+already matters. Move to the bundle-first helper when the three-page
+compatibility set is already pinned. Reopen replay shortcuts only after the
+attached-page ladder has already narrowed that far, and reopen the broader
+safe-route wrappers only after the narrower attached-page and bundle-specific
+branches have already been surfaced.
