@@ -704,6 +704,26 @@ def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
             stderr.getvalue(),
         )
 
+    def test_main_rejects_conflicting_allow_missing_and_strict_sidecar_flags(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as raised:
+                helper.main(
+                    [
+                        "--repo-root",
+                        str(self.repo_root),
+                        "--audit-sidecars",
+                        "--allow-missing-sidecars",
+                        "--require-complete-sidecars",
+                    ]
+                )
+
+        self.assertEqual(2, raised.exception.code)
+        self.assertIn(
+            "choose only one of --allow-missing-sidecars or --require-complete-sidecars",
+            stderr.getvalue(),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
