@@ -2,6 +2,7 @@
 param(
     [switch]$Json,
     [string]$RepoRoot,
+    [string]$BrowserExe,
     [string[]]$InputPath
 )
 
@@ -169,6 +170,32 @@ if ($resolvedFixturePaths.Count -gt 0) {
     Add-SharedPathArrayArgument -Arguments $pinnedBundleFollowUpArgs -Name InputPath -Values $InputPath
 }
 
+$bundleFlowArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleFlowArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $bundleFlowArgs -Name BrowserExe -Value $BrowserExe
+if ($resolvedFixturePaths.Count -gt 0) {
+    Add-SharedPathArrayArgument -Arguments $bundleFlowArgs -Name InputPath -Values $resolvedFixturePaths
+} else {
+    Add-SharedPathArrayArgument -Arguments $bundleFlowArgs -Name InputPath -Values $InputPath
+}
+$bundleFlowCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1"
+if ($bundleFlowArgs.Count -gt 0) {
+    $bundleFlowCommand += " " + ($bundleFlowArgs -join " ")
+}
+
+$bundleRunnerArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleRunnerArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $bundleRunnerArgs -Name BrowserExe -Value $BrowserExe
+if ($resolvedFixturePaths.Count -gt 0) {
+    Add-SharedPathArrayArgument -Arguments $bundleRunnerArgs -Name InputPath -Values $resolvedFixturePaths
+} else {
+    Add-SharedPathArrayArgument -Arguments $bundleRunnerArgs -Name InputPath -Values $InputPath
+}
+$bundleRunnerCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1"
+if ($bundleRunnerArgs.Count -gt 0) {
+    $bundleRunnerCommand += " " + ($bundleRunnerArgs -join " ")
+}
+
 $issue3SuiteRouterNextStepsCommand = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1"
 if ($pinnedBundleFollowUpArgs.Count -gt 0) {
     $issue3SuiteRouterNextStepsCommand += " " + ($pinnedBundleFollowUpArgs -join " ")
@@ -205,6 +232,7 @@ $flow = [ordered]@{
     locked_input_count = $overall.bundle_locked_input_count
     locked_input_paths = $resolvedFixturePaths
     preferred_initial_page = $overall.preferred_initial_page_display_path
+    browser_exe = $BrowserExe
     first_change_area = $overall.first_change_area
     suite_router_command = $suiteRouterCommand
     issue3_suite_router_next_steps_command = $issue3SuiteRouterNextStepsCommand
@@ -239,12 +267,12 @@ $flow = [ordered]@{
         [ordered]@{
             name = "bundle-flow"
             goal = "Print the exact localhost-first validation ladder with the current bundle paths and preferred initial page already pinned."
-            command = $overall.bundle_flow
+            command = $bundleFlowCommand
         }
         [ordered]@{
             name = "bundle-runner"
             goal = "Launch the headed localhost replay through the same bundle-pinned route after the earlier checks stay green."
-            command = $overall.bundle_runner
+            command = $bundleRunnerCommand
         }
         [ordered]@{
             name = "local-fixture-surface-check"
@@ -267,12 +295,13 @@ $flow = [ordered]@{
         "Use the issue #3 next-step matrix when you want the compact branch chooser reprinted with the same pinned bundle inputs before deciding whether to stay on the bundle route or reopen the narrower replay-shortcuts helper.",
         "Use the issue #3 replay-shortcuts helper after the bundle flow or bundle runner when the attached-page replay has already narrowed the failure and you want the narrower safe-route, replay-route, and bundle-first commands preserved with the same pinned inputs.",
         "The preferred initial page stays pinned to the Google Safety Centre target when the current bundle includes the Google-style page, so the issue #3 localhost-first follow-up remains aligned with the current runbook.",
+        "Pass -BrowserExe when the replay should stay pinned to a non-default headed build all the way through the printed bundle flow and delegated bundle runner instead of falling back to .\\zig-out\\bin\\lightpanda.exe.",
         "Pass -InputPath when you want the same printed bundle flow but against an explicit saved-page set rather than the auto-discovered workspace bundle.",
         "Pass -RepoRoot when you want the bundle route surface check, the bundle checker, and the shared suite-router shortcut to stay attached to a non-default working tree before printing the pinned commands."
     )
     next_steps = @(
         "Use the bundle route surface-check command first when the branch has moved and you want the bundle-aware guide, checklist, helper, runner, reusable fixture probe, and delegated attached-HTML surfaces to fail fast before anything else.",
-        "Use the bundle-pinned flow command when you want the exact printed localhost ladder with the current paths already locked in.",
+        "Use the bundle-pinned flow command when you want the exact printed localhost ladder with the current paths and BrowserExe already locked in.",
         "Use the bundle-pinned runner command when the bundle checks are green and you want to launch the headed localhost replay directly.",
         "Use the reusable local fixture surface check and probe when you want screenshot-and-title proof for the same three saved pages after the broader bundle route is confirmed.",
         "Use the issue #3 next-step matrix when you want the same pinned bundle inputs carried back into the compact branch chooser before reopening replay shortcuts or the broader safe-route map.",
@@ -296,6 +325,9 @@ Write-Host ("Validation profile: {0}" -f $flow.validation_profile)
 Write-Host ("Locked input count: {0}" -f $flow.locked_input_count)
 if ($flow.preferred_initial_page) {
     Write-Host ("Preferred initial page: {0}" -f $flow.preferred_initial_page)
+}
+if ($flow.browser_exe) {
+    Write-Host ("Browser exe: {0}" -f $flow.browser_exe)
 }
 if ($flow.first_change_area) {
     Write-Host ("First change area: {0}" -f $flow.first_change_area)
