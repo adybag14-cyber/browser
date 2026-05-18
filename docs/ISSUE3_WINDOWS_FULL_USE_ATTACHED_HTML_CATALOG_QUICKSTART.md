@@ -9,10 +9,11 @@ Windows full-use route.
 This keeps the shortest current Windows-full-use-to-catalog path in one place
 without reopening the broader suite-catalog, replay-route, or wrapper-heavy
 safe-route notes first, while still keeping the broader attached-page flow
-helper, the launcher-backed sidecar-bundle audit, the dedicated Google-shaped
-attached-page surface check and flow helper, the newer Top-level shortcut
-bridge, the replay-route shortcut bridge, and the compact attached-bundle suite
-surface visible before the route narrows again.
+helper, the attached-pages launcher guide, the Windows wrapper-backed sidecar
+preflight, the dedicated Google-shaped attached-page surface check and flow
+helper, the newer Top-level shortcut bridge, the replay-route shortcut bridge,
+and the compact attached-bundle suite surface visible before the route narrows
+again.
 
 If you want that route printed directly from the broader Windows headed context
 before reopening the newer top-level catalog quickstart, run:
@@ -29,7 +30,7 @@ same context directly in the helper:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
-Keep these companion notes nearby:
+Keep these companion notes and launcher surfaces nearby:
 
 - `docs/WINDOWS_FULL_USE.md`
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
@@ -46,6 +47,8 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
+- `tmp-browser-smoke/attached-pages/README.md`
+- `scripts/windows/start_attached_pages_catalog.ps1`
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
 
@@ -81,16 +84,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 ```
 
 Before you trust the saved export enough to widen back into the replay-side or
-Google-shaped attached-page ladder, rerun the launcher-backed sidecar audit too
-so a missing sibling `_files` bundle fails fast before deeper replay diagnosis
-starts:
+Google-shaped attached-page ladder, rerun the Windows wrapper-backed sidecar
+audit too so a missing sibling `_files` bundle fails fast before deeper replay
+diagnosis starts:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars
 ```
 
 If the replay is already running from a non-default checkout or from explicit
 bundle paths, preserve that context on the same preflight:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -AuditSidecars
+```
+
+Use the lower-level Python launcher directly only when you need to bypass the
+wrapper while keeping the same sidecar-first preflight pinned to the current
+repo root or bundle inputs:
 
 ```powershell
 python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --repo-root '<repo-root>' --input '<bundle-html-or-folder>' --audit-sidecars
@@ -107,7 +118,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_w
 From there, prefer one of these narrower follow-ups before reopening the
 wrapper-heavy safe route:
 
-- `python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars`
 - `show_google_issue3_windows_replay_attached_html_quickstart.ps1`
 - `show_attached_html_validation_flow.ps1`
 - `check_google_attached_html_validation_surface.ps1`
@@ -269,11 +280,18 @@ you want the cheapest honest export-integrity check before replay widens into
 the Google-shaped or replay-side helper chain:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars
 ```
 
 Use the repo-root-preserving form when the replay is already running from a
 non-default checkout or pinned bundle paths:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -AuditSidecars
+```
+
+If you need the lower-level launcher directly instead of the Windows wrapper,
+keep the same sidecar-audit intent and replay context:
 
 ```powershell
 python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --repo-root '<repo-root>' --input '<bundle-html-or-folder>' --audit-sidecars
@@ -444,7 +462,7 @@ then `show_headed_validation_suites.ps1 -ChangeArea attached-html`,
 then `show_headed_validation_suites.ps1 -ChangeArea google-attached-html`,
 then prefer `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`,
 then `show_attached_html_validation_flow.ps1`,
-then `python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars`,
+then `powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars`,
 then `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`,
 then `show_google_issue3_windows_replay_attached_html_quickstart.ps1`,
 then `check_google_attached_html_validation_surface.ps1`,
