@@ -119,7 +119,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue
 - Use `show_google_issue3_contextual_flow.ps1` when `RepoRoot`, `SummaryPath`, or pinned `InputPath` values already matter and you want the next helper surface to keep that context aligned before choosing between the recommended runner, replay shortcuts, replay-route shortcut, attached bundle, live trace, or later-stage follow-up commands.
 - Use `show_google_issue3_validation_router_attached_html_quickstart.ps1` when the broader validation router already narrowed the replay to attached localhost follow-up and you want the validation-router bridge, the broader attached-page flow helper, and the dedicated Google-shaped attached-page follow-up kept visible before the route drops to the smaller issue `#3` helpers.
 - Use `show_google_issue3_suite_router_attached_html_quickstart.ps1` when the replay is already inside the issue `#3` helper chain and you want the shorter suite-router-side attached-page bridge visible before the wider replay helpers return.
-- Use `show_google_attached_html_validation_flow.ps1` when the Google-shaped attached-page lane still matters and you want the broader sidecar-bundle audit, the wider Google attached-html surface check, the narrower issue-specific checker, and the dedicated flow reopened before the route narrows into the issue-specific bridge.
+- Use `show_google_attached_html_validation_flow.ps1` when the Google-shaped attached-page lane still matters and you want the broader launcher-backed sidecar-bundle audit, the wider Google attached-html surface check, the narrower issue-specific checker, and the dedicated flow reopened before the route narrows into the issue-specific bridge.
 - Use `show_google_issue3_google_attached_html_entrypoint.ps1` only after `show_google_attached_html_validation_flow.ps1` is already back in view and the broader plus narrower checks have been rerun, so the issue-specific bridge narrows the route instead of skipping the sidecar-first branch too early.
 - Use `show_google_issue3_attached_bundle_first_entrypoint.ps1` when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned route exercised first.
 - Use `show_google_issue3_safe_route_entrypoints.ps1` after the broader suite-router work is already done and the replay is ready to choose between fresh replay, reuse-current-outputs, refresh-status, handoff, summary-guide, or runner-wiring helpers.
@@ -163,6 +163,7 @@ If the Google-shaped attached-page lane is already obvious, prefer this narrower
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
@@ -174,4 +175,4 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1
 ```
 
-That keeps the higher-level router, the suite-router matrix surface check, the broader Google-shaped attached-page surface check, the narrower issue-specific checker, the sidecar-first Google attached-page flow, the issue-specific bridge, the executable next-step matrix, the shortcut-first checker, the shortcut-first bridge, and the replay shortcuts aligned on the same current branch guidance.
+That keeps the higher-level router, the suite-router matrix surface check, the launcher-backed sidecar-bundle audit, the broader Google-shaped attached-page surface check, the narrower issue-specific checker, the sidecar-first Google attached-page flow, the issue-specific bridge, the executable next-step matrix, the shortcut-first checker, the shortcut-first bridge, and the replay shortcuts aligned on the same current branch guidance.
