@@ -211,6 +211,13 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --print-manifest
 ```
 
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -RequireCompleteSidecars \
+  -PrintManifest
+```
+
 ## Asset audit
 
 After the sidecar bundle exists, use the broader asset audit when you need to
@@ -245,6 +252,23 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_
   -AuditAssetsJson
 ```
 
+Refuse to print a manifest or start the catalog when referenced local assets
+are still missing:
+
+```bash
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
+  --input /path/to/saved-pages-dir \
+  --require-complete-assets \
+  --print-manifest
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -RequireCompleteAssets \
+  -PrintManifest
+```
+
 ## Start the localhost catalog
 
 Once the sidecar or asset preflight looks good, start the replay catalog:
@@ -259,6 +283,26 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
   -InputPath "C:\path\to\page-one.html","C:\path\to\page-two.html","C:\path\to\page-three.html"
+```
+
+When both sidecars and referenced local assets must be complete before the
+manifest or localhost server is trusted, keep both strict gates pinned on the
+same launcher surface:
+
+```bash
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
+  --input /path/to/saved-pages-dir \
+  --require-complete-sidecars \
+  --require-complete-assets \
+  --port 8235
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -RequireCompleteSidecars \
+  -RequireCompleteAssets \
+  -Port 8235
 ```
 
 For an issue `#3` style replay where you want the strongest Google-like page
@@ -291,10 +335,11 @@ The launchers print:
 
 1. Run the sidecar audit first for the current saved-page set.
 2. Run the broader asset audit only after the sidecar bundle exists.
-3. Print the manifest or start the catalog launcher for the same pinned inputs.
-4. Pin `--staging-root` or `-StagingRoot` when later replay steps need stable staged copies to survive source-file churn.
-5. Open one of the printed localhost routes in headed mode.
-6. Reuse the same pinned inputs while collecting screenshots, traces, or probe
+3. If incomplete bundles or local assets should stop the run, rerun the manifest or launch step with `--require-complete-sidecars`, `--require-complete-assets`, `-RequireCompleteSidecars`, or `-RequireCompleteAssets`.
+4. Print the manifest or start the catalog launcher for the same pinned inputs.
+5. Pin `--staging-root` or `-StagingRoot` when later replay steps need stable staged copies to survive source-file churn.
+6. Open one of the printed localhost routes in headed mode.
+7. Reuse the same pinned inputs while collecting screenshots, traces, or probe
    notes.
 
 ## Lower-level helpers
@@ -352,3 +397,6 @@ python tmp-browser-smoke/attached-pages/attached_pages_server.py \
   do not need discovery, manifest ranking, or preflight helpers.
 - Use `--staging-root` on `attached_pages_server.py` when you want staged output
   to persist after the server stops.
+- Use the launcher-level strict flags when a manifest or localhost run should
+  fail fast on incomplete sidecar bundles or missing local assets instead of
+  serving a known-bad export.
