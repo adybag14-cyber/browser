@@ -1,6 +1,6 @@
 # Issue #3 Suite-Catalog Top-Level Attached HTML Catalog Quickstart
 
-Use this note when the suite-catalog surface is already open and you want the generic attached-html change-area bridge, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the replay-side attached HTML ladder, the suite-catalog surface check, the compact top-level attached HTML quickstart, and the top-level attached HTML catalog quickstart visible together before the route narrows again.
+Use this note when the suite-catalog surface is already open and you want the generic attached-html change-area bridge, the broader attached-page flow helper, the lighter sibling `_files` sidecar-bundle audit, the dedicated Google attached-page surface checker, the issue-specific Google attached-page surface checker, the dedicated Google attached-page flow helper, the replay-side attached HTML ladder, the broader top-level attached-page bridge, and the top-level attached HTML catalog quickstart visible together before the route narrows again.
 
 If you want that compact suite-catalog-to-top-level route first, start with:
 
@@ -34,7 +34,9 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
@@ -43,7 +45,33 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `show_google_issue3_suite_catalog_entrypoints.ps1`, or the broader suite-catalog change-area surfaces, rerun the suite-catalog surface check when needed, then move through the generic attached-html change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page flow helper, the replay-side attached HTML quickstart, the validation-router attached-page quickstart, the compact top-level attached-page quickstart, and the top-level attached-page catalog quickstart before the route narrows into the suite-catalog attached-page bridge, the broader Google-shaped attached-page bridge, the shorter attached-page shortcut, replay shortcuts, the next-step matrix, or the safe-route map.
+Start from `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`, `show_google_issue3_suite_catalog_entrypoints.ps1`, or the broader suite-catalog change-area surfaces, rerun the suite-catalog surface check when needed, then move through the generic attached-html change-area quickstart, the broader attached-page flow helper, the lighter sibling `_files` sidecar-bundle audit, the dedicated Google attached-page surface checker, the issue-specific Google attached-page surface checker, the dedicated Google attached-page flow helper, the replay-side attached HTML quickstart, the validation-router attached-page quickstart, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, and the top-level attached-page catalog quickstart before the route narrows into the suite-catalog attached-page bridge, the broader Google-shaped attached-page bridge, the shorter attached-page shortcut, replay shortcuts, the next-step matrix, or the safe-route map.
+
+## Google Fail-Fast Handoff
+
+If the current attached pages already include a Google-like page and you want the suite-catalog route to fail fast before the compact top-level and suite-catalog attached-page helpers take over, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_entrypoints.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
+python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1
+```
+
+Use that route when:
+- the suite-catalog surface already made attached localhost follow-up obvious
+- you still want the sidecar-bundle audit, the broader Google surface checker, the issue-specific Google surface checker, the dedicated Google flow helper, and the issue-specific Google attached-page bridge visible before the top-level catalog handoff narrows again
+- you want the helper chain to fail fast on missing sidecars or stale Google-specific entrypoint drift before the narrower attached-html bridges are trusted
 
 ## Default read-first route
 
