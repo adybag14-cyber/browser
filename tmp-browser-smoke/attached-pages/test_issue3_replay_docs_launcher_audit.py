@@ -57,12 +57,14 @@ class Issue3ReplayDocsLauncherAuditTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def test_build_audit_counts_raw_and_wrapper_references(self):
+    def test_build_audit_counts_raw_wrapper_and_companion_references(self):
         self.write_docs(
             "\n".join(
                 [
                     "python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars",
                     "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars",
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1",
                 ]
             )
             + "\n",
@@ -77,43 +79,10 @@ class Issue3ReplayDocsLauncherAuditTests(unittest.TestCase):
         self.assertEqual(3, audit["wrapper_reference_count"])
         self.assertEqual(3, audit["wrapper_sidecar_reference_count"])
         self.assertEqual(2, audit["google_wrapper_sidecar_reference_count"])
+        self.assertEqual(1, audit["launcher_companion_reference_count"])
+        self.assertEqual(1, audit["launcher_companion_surface_check_reference_count"])
 
-    def test_json_output_reports_failure_reason_for_missing_google_wrapper(self):
-        wrapper_line = (
-            "powershell -ExecutionPolicy Bypass -File "
-            ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
-            "-InputPath '<attached-html-root>' -AuditSidecars\n"
-        )
-        self.write_docs(
-            "python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --input '<attached-html-root>' --audit-sidecars\n",
-            wrapper_line,
-            wrapper_line,
-            wrapper_line,
-        )
-
-        stdout = io.StringIO()
-        original_argv = sys.argv[:]
-        try:
-            sys.argv = [
-                str(MODULE_PATH),
-                "--repo-root",
-                str(self.root),
-                "--json",
-                "--require-google-wrapper-sidecar",
-            ]
-            with contextlib.redirect_stdout(stdout):
-                exit_code = AUDIT.main()
-        finally:
-            sys.argv = original_argv
-
-        self.assertEqual(1, exit_code)
-        payload = json.loads(stdout.getvalue())
-        self.assertIn(
-            "no Google-style wrapper-backed sidecar audit references were found in the replay notes",
-            payload["failure_reasons"],
-        )
-
-    def test_requirement_switches_succeed_for_wrapper_backed_google_path(self):
+    def test_json_output_reports_failure_reasons_for_missing_companion_surface(self):
         wrapper_line = (
             "powershell -ExecutionPolicy Bypass -File "
             ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
@@ -127,6 +96,50 @@ class Issue3ReplayDocsLauncherAuditTests(unittest.TestCase):
         )
 
         stdout = io.StringIO()
+        original_argv = sys.argv[:]
+        try:
+            sys.argv = [
+                str(MODULE_PATH),
+                "--repo-root",
+                str(self.root),
+                "--json",
+                "--require-launcher-companion",
+                "--require-launcher-companion-surface-check",
+            ]
+            with contextlib.redirect_stdout(stdout):
+                exit_code = AUDIT.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertIn(
+            "no launcher companion helper references were found in the replay notes",
+            payload["failure_reasons"],
+        )
+        self.assertIn(
+            "no launcher companion surface-check references were found in the replay notes",
+            payload["failure_reasons"],
+        )
+
+    def test_requirement_switches_succeed_for_wrapper_and_companion_coverage(self):
+        wrapper_line = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
+            "-InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars\n"
+        )
+        surface_check_line = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1\n"
+        )
+        companion_line = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1\n"
+        )
+        combined = wrapper_line + surface_check_line + companion_line
+        self.write_docs(combined, combined, combined, combined)
+
+        stdout = io.StringIO()
         stderr = io.StringIO()
         original_argv = sys.argv[:]
         try:
@@ -136,6 +149,8 @@ class Issue3ReplayDocsLauncherAuditTests(unittest.TestCase):
                 str(self.root),
                 "--require-wrapper-sidecar",
                 "--require-google-wrapper-sidecar",
+                "--require-launcher-companion",
+                "--require-launcher-companion-surface-check",
             ]
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 exit_code = AUDIT.main()
@@ -144,7 +159,11 @@ class Issue3ReplayDocsLauncherAuditTests(unittest.TestCase):
 
         self.assertEqual(0, exit_code)
         self.assertEqual("", stderr.getvalue())
-        self.assertIn("Google-style wrapper sidecar references: 4", stdout.getvalue())
+        self.assertIn("Launcher companion references: 4", stdout.getvalue())
+        self.assertIn(
+            "Launcher companion surface-check references: 4",
+            stdout.getvalue(),
+        )
 
 
 if __name__ == "__main__":
