@@ -242,6 +242,20 @@ def load_server_module(repo_root: Path) -> ModuleType:
     return module
 
 
+def load_sidecar_module(repo_root: Path) -> ModuleType:
+    sidecar_path = repo_root / "tmp-browser-smoke" / "attached-pages" / "attached_pages_sidecar_audit.py"
+    if not sidecar_path.is_file():
+        raise FileNotFoundError(f"attached pages sidecar audit helper not found: {sidecar_path}")
+
+    spec = importlib.util.spec_from_file_location("attached_pages_sidecar_audit", sidecar_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"could not load attached pages sidecar audit helper from {sidecar_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Start or inspect the attached-pages localhost catalog using auto-discovery or explicit pinned inputs."
@@ -280,12 +294,33 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Return success from --audit-assets even when the bundle has missing local assets.",
     )
+    parser.add_argument(
+        "--audit-sidecars",
+        action="store_true",
+        help="Audit sibling _files sidecar directories for the selected bundle before starting the server.",
+    )
+    parser.add_argument(
+        "--audit-sidecars-json",
+        action="store_true",
+        help="Print structured JSON from --audit-sidecars instead of the text summary.",
+    )
+    parser.add_argument(
+        "--allow-missing-sidecars",
+        action="store_true",
+        help="Return success from --audit-sidecars even when the bundle has missing sidecar directories.",
+    )
     args = parser.parse_args(argv)
 
     if args.audit_assets_json and not args.audit_assets:
         parser.error("--audit-assets-json requires --audit-assets")
     if args.allow_missing_assets and not args.audit_assets:
         parser.error("--allow-missing-assets requires --audit-assets")
+    if args.audit_sidecars_json and not args.audit_sidecars:
+        parser.error("--audit-sidecars-json requires --audit-sidecars")
+    if args.allow_missing_sidecars and not args.audit_sidecars:
+        parser.error("--allow-missing-sidecars requires --audit-sidecars")
+    if args.audit_assets and args.audit_sidecars:
+        parser.error("choose only one of --audit-assets or --audit-sidecars")
 
     repo_root = resolve_repo_root(Path(args.repo_root) if args.repo_root else Path(__file__))
     selected_files = select_attached_html_inputs(
@@ -293,13 +328,14 @@ def main(argv: list[str] | None = None) -> int:
         explicit_inputs=args.explicit_inputs,
         google_style=args.google_style,
     )
-    server_module = load_server_module(repo_root)
 
     if args.print_manifest:
+        server_module = load_server_module(repo_root)
         print(json.dumps(server_module.build_manifest(selected_files=selected_files), indent=2))
         return 0
 
     if args.audit_assets:
+        server_module = load_server_module(repo_root)
         audit = server_module.build_asset_audit(selected_files=selected_files)
         if args.audit_assets_json:
             print(json.dumps(audit, indent=2))
@@ -309,7 +345,21 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
 
+    if args.audit_sidecars:
+        sidecar_module = load_sidecar_module(repo_root)
+        audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
+        if args.audit_sidecars_json:
+            print(json.dumps(audit, indent=2))
+        else:
+            print(sidecar_module.render_text_report(audit), end="")
+        if audit["fixtures_with_missing_sidecars"] > 0 and not args.allow_missing_sidecars:
+            return 1
+        return 0
+
+    server_module = load_server_module(repo_root)
+    sidecar_module = load_sidecar_module(repo_root)
     audit = server_module.build_asset_audit(selected_files=selected_files)
+    sidecar_audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
     print("Attached pages catalog")
     print("")
     print(
@@ -326,6 +376,12 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(line)
     print("")
+    if sidecar_audit["fixtures_with_missing_sidecars"] > 0:
+        print(
+            "Warning: some attached HTML files are missing their sibling _files directories. "
+            "Replay may reflect an incomplete export bundle before it reflects a browser regression."
+        )
+        print("")
     if audit["fixtures_with_missing_assets"] > 0:
         print(
             "Warning: some attached HTML files still have missing local sidecars. "
