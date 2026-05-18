@@ -78,6 +78,7 @@ function Get-AttachedHtmlNotes {
     $notes = @(
         "Run the attached-pages sidecar audit first so missing sibling _files directories are visible before the browser is blamed.",
         "Run the attached-pages asset audit second so missing local assets stay visible before the browser is blamed.",
+        "After the sidecar audit passes, reuse -RequireCompleteSidecars when you want the manifest or localhost catalog launch to fail fast on incomplete saved-page bundles.",
         "Use the attached-pages catalog wrapper to pin the current HTML bundle and expose short localhost routes at /, /manifest.json, /pages/<n>, /named/<slug>, and /raw/... .",
         "The broader attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1.",
         "The Google-shaped attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1.",
@@ -193,7 +194,9 @@ function Get-AttachedHtmlRouteCommands {
         (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditSidecars')),
         (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditAssets')),
         (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('PrintManifest')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars', 'PrintManifest')),
         (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars')),
         "& `"$BrowserExe`" browse --headed --window_width 1366 --window_height 900 `"http://127.0.0.1:8235/`""
     )
 }
