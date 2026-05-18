@@ -26,6 +26,7 @@ Keep this note beside:
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
 - `docs/ISSUE3_REPLAY_SHORTCUTS_WINDOWS_REPLAY_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
@@ -180,7 +181,7 @@ issue-specific bridge all need to stay visible first.
 When the top-level suite router already points at
 `-ChangeArea attached-html-target-bundle`, reopen the compact bundle-specific
 surface and fail-fast check before narrowing into the pinned bundle-first
-branch:
+branch and its fixed-list proof follow-up:
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
@@ -188,13 +189,16 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
 Use that compact bundle path when the saved or attached inputs are already the
 known three-page compatibility set and you want the bundle-specific re-entry
 surface, the pinned-bundle fail-fast check, the printed bundle helper ladder,
-and the bundle-first branch aligned before widening back into the broader
-issue `#3` replay helpers.
+the delegated localhost bundle replay, the fixed-list proof surface, and the
+bundle-first branch aligned before widening back into the broader issue `#3`
+replay helpers.
 
 If the replay already carries a non-default checkout, a saved summary, or
 explicit bundle inputs, preserve that same context on the helper that you open
@@ -354,6 +358,14 @@ chosen helper.
 - `show_attached_html_target_bundle_validation_flow.ps1`: use this when the
   printed pinned-bundle helper ladder should stay visible between the compact
   bundle surface and the narrower bundle-first branch.
+- `run_attached_html_target_bundle_validation.ps1 -Wait`: use this when the
+  pinned bundle surface is already confirmed and you want the delegated
+  localhost replay to refresh the fixed three-page proof artifacts before
+  returning to the broader issue `#3` helpers.
+- `show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1`: use
+  this after the delegated bundle replay when you want the fixed-list
+  screenshot-and-title proof surface kept visible before widening back into the
+  broader attached-page or safe-route helpers.
 - `show_google_issue3_replay_shortcuts.ps1`: use this when the route is already
   clear and you want the narrowest stable helper surface. Keep
   `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md` nearby when the replay is
@@ -377,7 +389,7 @@ you are arriving from `docs/WINDOWS_FULL_USE.md`, rerun
 `check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1`,
 reopen
 `show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1`,
-keep `show_google_issue3_windows_full_use_attached_html_catalog_quICKSTART.ps1`,
+keep `show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1`,
 `check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`,
 and `show_google_issue3_windows_replay_attached_html_quickstart.ps1` nearby,
 reopen `show_attached_html_validation_flow.ps1`, then
@@ -398,8 +410,10 @@ aligned, and then follow the same narrower attached-page helper chain. If the
 top-level suite router already points at the pinned three-page compatibility
 bundle, rerun `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`,
 then `check_attached_html_target_bundle_validation_surface.ps1`, then
-`show_attached_html_target_bundle_validation_flow.ps1`, and only then narrow
-into `show_google_issue3_attached_bundle_first_entrypoint.ps1`. Once the route
+`show_attached_html_target_bundle_validation_flow.ps1`, then
+`show_google_issue3_attached_bundle_first_entrypoint.ps1`, then
+`run_attached_html_target_bundle_validation.ps1 -Wait`, then
+`show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1`. Once the route
 is clearly inside the narrower attached-page helpers, prefer
 `show_google_issue3_replay_route.ps1`, then
 `check_google_issue3_replay_route_shortcut_validation_surface.ps1`, then
@@ -413,5 +427,6 @@ longer validation-chain notes, or the wrapper-heavy safe-route work.
   `check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1` and
   reopen `show_google_issue3_suite_catalog_entrypoints.ps1` before falling back
   to the suite-catalog attached-page bridge, replay-route helper,
-  replay shortcuts, compact bundle surface, bundle flow helper, bundle-first
-  branch, or the safe-route map.
+  replay shortcuts, compact bundle surface, bundle flow helper, delegated
+  bundle replay, bundle proof surface, bundle-first branch, or the safe-route
+  map.
