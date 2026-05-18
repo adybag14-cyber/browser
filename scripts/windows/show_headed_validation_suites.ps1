@@ -82,6 +82,8 @@ function Get-AttachedHtmlNotes {
         "The broader attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1.",
         "The Google-shaped attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1.",
         "The issue #3 top-level attached-page helper remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_attached_html_quickstart.ps1.",
+        "The shorter issue #3 attached-page change-area quickstart remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1.",
+        "The dedicated issue #3 validation-router attached-html surface checker remains available at powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1.",
         "The manual-html change area still reuses this attached-pages catalog route when you want a direct saved-page replay without a narrower bounded family.",
         "Start the catalog in one shell, then open the generated catalog or a manifest-backed short route from a second shell."
     )
@@ -231,6 +233,9 @@ if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlArguments -Name InputPath -Values @($InputPath)
 }
 
+$issue3AttachedHtmlSurfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $issue3AttachedHtmlSurfaceCheckArguments -Name RepoRoot -Value $RepoRoot
+
 $issue3AttachedHtmlBrowserArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name SummaryPath -Value $SummaryPath
@@ -254,6 +259,7 @@ if ($isCustomBrowserExe) {
 
 function Get-Issue3AttachedHtmlFollowUpCommands {
     return @(
+        (Format-HelperCommand -ScriptName 'check_google_issue3_validation_router_attached_html_quickstart_surface.ps1' -Arguments $issue3AttachedHtmlSurfaceCheckArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
         (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
@@ -279,6 +285,8 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
             "Use the compact bundle-suite surface before the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
         )
     }
+
+    $notes += "Run the validation-router attached-html surface checker first so missing quickstart notes or downstream helper paths fail fast before you trust the shorter issue #3 attached-page ladder."
 
     if ($SummaryPath) {
         $notes += "Current saved summary: $SummaryPath"
