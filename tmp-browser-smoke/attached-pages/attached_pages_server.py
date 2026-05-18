@@ -604,7 +604,7 @@ def main() -> int:
             print(json.dumps(audit, indent=2))
         else:
             print(render_asset_audit_text(audit), end="")
-        if audit["fixtures_with_missing_assets"] > 0 and not args.allow_missing-assets:
+        if audit["fixtures_with_missing_assets"] > 0 and not args.allow_missing_assets:
             return 1
         return 0
 
