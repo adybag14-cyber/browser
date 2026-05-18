@@ -2,7 +2,7 @@
 
 Use this note when the current headed localhost replay should stay pinned to the known three-page attached HTML compatibility bundle before widening back into the broader issue `#3` helper stack.
 
-Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby once the bundle route is green so the page-by-page manual checks stay attached to the same pinned inputs, and use `scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` when you want the fixed-list proof commands reprinted with that same locked input set before the route widens back out.
+Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md` nearby when you want the fixed-list screenshot-and-title proof route described as a read-first companion, keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md` nearby once the bundle route is green so the page-by-page manual checks stay attached to the same pinned inputs, and use `scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1` when you want the executable proof commands reprinted with that same locked input set before the route widens back out.
 
 ## Known bundle
 
@@ -33,7 +33,7 @@ If you point the helpers at a folder instead of three explicit files, confirm th
 
 ## Read-first commands
 
-Start with the fail-fast bundle surfaces, keep the pinned manual checklist nearby, then print and run the locked route before widening into the reusable fixed-list proof path:
+Start with the fail-fast bundle surfaces, keep the pinned proof note and manual checklist nearby, then print and run the locked route before widening into the reusable fixed-list proof path:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
@@ -45,7 +45,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixt
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-a>' '<bundle-html-b>' '<bundle-html-c>'
 ```
 
-Use this route when the current saved or attached pages are still the known three-page compatibility set and you want the exact same locked inputs carried from the checker into the flow helper, the delegated localhost runner, the page-by-page manual checklist, the proof entrypoint, and the reusable screenshot-and-title probe.
+Use this route when the current saved or attached pages are still the known three-page compatibility set and you want the exact same locked inputs carried from the checker into the flow helper, the delegated localhost runner, the pinned proof note, the page-by-page manual checklist, the proof entrypoint, and the reusable screenshot-and-title probe.
 
 ## Keep the issue #3 route nearby
 
@@ -70,7 +70,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1
 ```
 
-Use the broader suite-router surfaces first when the replay has not narrowed to the pinned bundle branch yet but the three-page compatibility set is already the likely next move. Use the dedicated attached-html-target-bundle suite helper when you want that suite-level branch reprinted with the broader attached-page and Google-shaped attached-page follow-up helpers already arranged beside the pinned bundle lane. Keep the broader attached-page flow helper, the dedicated Google attached-page flow guide, and the narrower issue-specific Google checker plus entrypoint nearby when you still want the wider attached-page route reprinted before the replay locks onto the pinned bundle branch. Use the bundle-first helper when explicit bundle paths are already pinned and the replay should stay on that known three-page set before widening back into the broader Google-only helper chain. Use the proof entrypoint when the delegated bundle runner is green and the next decision depends on keeping the fixed-list screenshot-and-title proof pinned to those same inputs.
+Use the broader suite-router surfaces first when the replay has not narrowed to the pinned bundle branch yet but the three-page compatibility set is already the likely next move. Use the dedicated attached-html-target-bundle suite helper when you want that suite-level branch reprinted with the broader attached-page and Google-shaped attached-page follow-up helpers already arranged beside the pinned bundle lane. Keep the broader attached-page flow helper, the dedicated Google attached-page flow guide, and the narrower issue-specific Google checker plus entrypoint nearby when you still want the wider attached-page route reprinted before the replay locks onto the pinned bundle branch. Use the bundle-first helper when explicit bundle paths are already pinned and the replay should stay on that known three-page set before widening back into the broader Google-only helper chain. Keep `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md` nearby when the fixed-list proof route should stay visible as a read-first companion while the delegated bundle runner and proof helper remain on the same locked inputs. Use the proof entrypoint when the delegated bundle runner is green and the next decision depends on keeping the fixed-list screenshot-and-title proof pinned to those same inputs.
 
 ## Broader router-first bundle re-entry
 
