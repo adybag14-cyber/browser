@@ -39,6 +39,7 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Kind "file" -Purpose "Broader Windows full-use attached-page route note that precedes the catalog quickstart."),
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md" -Kind "file" -Purpose "Windows-to-validation-router bridge note used before the catalog quickstart narrows the route again."),
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Kind "file" -Purpose "Windows-first attached-page catalog quickstart note guarded by this surface check."),
+    (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md" -Kind "file" -Purpose "Attached-html change-area quickstart note that the Windows-first catalog helper now routes through before the broader attached-page flow helper and replay-side quickstarts."),
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Replay-side attached-page quickstart note kept beside the broader Windows full-use route."),
     (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Kind "file" -Purpose "Top-level attached-page catalog quickstart note kept visible beside the Windows-first helper."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Kind "file" -Purpose "Suite-catalog companion note for the top-level attached-page catalog ladder."),
@@ -52,6 +53,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1" -Kind "file" -Purpose "Windows full-use attached-page route helper that precedes the catalog quickstart."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1" -Kind "file" -Purpose "Windows-to-validation-router attached-page bridge helper used just before the catalog quickstart."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Kind "file" -Purpose "Windows-first attached-page catalog quickstart helper guarded by this surface check."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_change_area_quickstart.ps1" -Kind "file" -Purpose "Attached-html change-area quickstart helper that keeps the attached-html branch visible before the Windows-first catalog route narrows deeper into replay-side and top-level helpers."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1" -Kind "file" -Purpose "Replay-side attached-page quickstart helper kept visible beside the Windows-first catalog helper."),
     (New-ValidationReference -Path "scripts/windows/show_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Broader attached-page flow helper reopened when the current pages no longer stay on the narrower catalog route."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Dedicated Google-shaped attached-page flow helper reopened when the current pages still need the issue #3 follow-up lane."),
@@ -123,5 +125,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host ("Missing {0} Windows full-use attached HTML catalog quickstart path(s)." -f $missing.Count)
-Write-Host "Repair the missing route note, catalog quickstart helper, companion top-level or suite-catalog bridge, Google-shaped fallback, bundle re-entry helper, or safe-route return script before trusting this narrower attached-page ladder."
+Write-Host "Repair the missing route note, attached-html change-area bridge, catalog quickstart helper, companion top-level or suite-catalog bridge, Google-shaped fallback, bundle re-entry helper, or safe-route return script before trusting this narrower attached-page ladder."
 exit 1
