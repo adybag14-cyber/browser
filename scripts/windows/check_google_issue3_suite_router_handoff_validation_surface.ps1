@@ -51,7 +51,9 @@ $resolvedRepoRoot = if ($RepoRoot) {
 }
 
 $references = @(
+    (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Kind "file" -Purpose "Compact Windows replay quickstart note that should keep the suite-router handoff helper and its written companion note visible from the higher-level replay route."),
     (New-ValidationReference -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Kind "file" -Purpose "Top-level replay discovery note that should stay aligned with the suite-router handoff surface."),
+    (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_HANDOFF.md" -Kind "file" -Purpose "Written suite-router handoff note that should stay aligned with the compact handoff helper it documents."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_SHORTCUT_BRIDGE.md" -Kind "file" -Purpose "Primary compact suite-router bridge note referenced by the handoff helper."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Suite-router attached-html quickstart note that should remain visible from the handoff surface."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md" -Kind "file" -Purpose "Suite-catalog guide note that the handoff helper prints beside the newer bridge surfaces."),
@@ -88,6 +90,14 @@ $references = @(
 )
 
 $contentExpectations = @(
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_handoff_validation_surface.ps1' -Purpose "Windows replay quickstart keeps the compact handoff fail-fast checker visible before the replay narrows into the smaller suite-router bridge."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_handoff.ps1' -Purpose "Windows replay quickstart keeps the compact handoff helper visible after the smaller suite-router bridge is reopened."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet '- `docs/ISSUE3_SUITE_ROUTER_HANDOFF.md`' -Purpose "Windows replay quickstart keeps the written suite-router handoff note visible as a companion reference."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_handoff_validation_surface.ps1' -Purpose "Replay discovery handoff keeps the compact handoff fail-fast checker visible before the replay narrows into the smaller suite-router bridge."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_handoff.ps1' -Purpose "Replay discovery handoff keeps the compact handoff helper visible after the smaller suite-router bridge is reopened."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md" -Snippet '- `docs/ISSUE3_SUITE_ROUTER_HANDOFF.md`' -Purpose "Replay discovery handoff keeps the written suite-router handoff note visible as a companion reference."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_SUITE_ROUTER_HANDOFF.md" -Snippet 'This note matches `show_google_issue3_suite_router_handoff.ps1`.' -Purpose "Written suite-router handoff note still declares the helper it documents."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_SUITE_ROUTER_HANDOFF.md" -Snippet '- `check_google_issue3_suite_router_handoff_validation_surface.ps1`' -Purpose "Written suite-router handoff note keeps its compact fail-fast checker visible among the narrowed follow-ups."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_handoff.ps1" -Snippet 'suite_router_surface_check = $handoffSurfaceCheckCommand' -Purpose "Helper command maps keep the suite-router surface checker wired into the handoff helper."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_handoff.ps1" -Snippet 'google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand' -Purpose "Helper command maps keep the issue-specific Google attached-html surface checker visible from the handoff helper."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_suite_router_handoff.ps1" -Snippet 'google_attached_html_flow = $googleAttachedHtmlFlowCommand' -Purpose "Helper command maps keep the dedicated Google attached-html flow helper visible from the handoff helper."),
@@ -199,5 +209,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} suite-router handoff path or source contract check(s).") -f $missing.Count)
-Write-Host "Repair the suite-router note, top-level attached-html helper, issue-specific Google attached-html checker, Google attached-html flow, Google attached-html helper, replay-route shortcut, or later-stage fallback before trusting the issue #3 suite-router handoff surface."
+Write-Host "Repair the written suite-router handoff note, the Windows replay or replay-discovery companion notes, the compact handoff helper, the top-level attached-html helper, the issue-specific Google attached-html checker, the Google attached-html flow helper, the Google attached-html bridge, the replay-route shortcut, or the later-stage fallback before trusting the issue #3 suite-router handoff surface."
 exit 1
