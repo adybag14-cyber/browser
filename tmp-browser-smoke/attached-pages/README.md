@@ -6,10 +6,12 @@ catalog. The current preferred entrypoints are:
 
 - `tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py`
 - `scripts/windows/start_attached_pages_catalog.ps1`
+- `tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py`
+- `scripts/windows/show_attached_pages_preflight_report.ps1`
 
 Together they wrap fixture discovery, manifest printing, sidecar preflight
-checks, broader asset audits, staged-route persistence, and the lower-level
-server helper in one place.
+checks, broader asset audits, staged-route persistence, launch-readiness
+summaries, and the lower-level server helper in one place.
 
 ## Preferred launchers
 
@@ -26,6 +28,64 @@ On Windows, the matching wrapper keeps the same flow available from PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1
+```
+
+Use the preflight report when you want one readiness summary before deciding
+whether to restore missing bundles, restore missing assets, print the manifest,
+or start the localhost catalog.
+
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_pages_preflight_report.ps1
+```
+
+The preflight report prints:
+
+- `ready_for_launch`
+- the recommended next step
+- the preferred Google-style routes when Google-style ranking is enabled
+- the selected fixture summary from the current attached-pages input set
+
+Prefer the strongest Google-like fixture first in the same combined report:
+
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py \
+  --google-style
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_pages_preflight_report.ps1 \
+  -GoogleStyle
+```
+
+Keep going with a success exit code even when the current bundle is missing
+sidecars or local assets:
+
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py \
+  --allow-missing-sidecars \
+  --allow-missing-assets
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_pages_preflight_report.ps1 \
+  -AllowMissingSidecars \
+  -AllowMissingAssets
+```
+
+Print the structured JSON form for automation:
+
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py \
+  --json
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_pages_preflight_report.ps1 \
+  -Json
 ```
 
 Pin the catalog to explicit files or folders:
