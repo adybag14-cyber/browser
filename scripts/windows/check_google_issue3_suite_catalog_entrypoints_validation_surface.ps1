@@ -42,6 +42,7 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Replay-side attached-html quickstart note used by the suite-catalog ladder."),
     (New-ValidationReference -Path "docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Validation-router attached-html quickstart note kept visible from the suite-catalog route."),
     (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md" -Kind "file" -Purpose "Attached-html change-area quickstart note surfaced before the route narrows further."),
+    (New-ValidationReference -Path "docs/ISSUE3_ATTACHED_HTML_CONTEXT_SURFACE.md" -Kind "file" -Purpose "Attached-html context-surface note that keeps the broader attached-page lane, the Google-shaped lane, and the pinned bundle lane visible together from the suite-catalog route."),
     (New-ValidationReference -Path "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md" -Kind "file" -Purpose "Dedicated Google attached-html flow guide that the suite-catalog route now keeps visible before replay narrows into the shorter attached-page helpers."),
     (New-ValidationReference -Path "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md" -Kind "file" -Purpose "Issue-specific Google attached-html entrypoint note that the suite-catalog surface should keep available beside the dedicated Google attached-page flow."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Kind "file" -Purpose "Suite-catalog-to-top-level attached-html catalog quickstart note used by the suite-catalog helper chain."),
@@ -69,6 +70,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1" -Kind "file" -Purpose "Replay-side attached-html quickstart helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_router_attached_html_quickstart.ps1" -Kind "file" -Purpose "Validation-router attached-html quickstart helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_change_area_quickstart.ps1" -Kind "file" -Purpose "Attached-html change-area quickstart helper surfaced from the suite-catalog chain."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_context_surface.ps1" -Kind "file" -Purpose "Dedicated attached-html context-surface helper surfaced from the suite-catalog chain when replay context already matters."),
     (New-ValidationReference -Path "scripts/windows/show_google_attached_html_validation_flow.ps1" -Kind "file" -Purpose "Dedicated Google attached-html flow helper that the suite-catalog route keeps visible before replay narrows into shorter attached-page helpers."),
     (New-ValidationReference -Path "scripts/windows/run_google_attached_html_validation.ps1" -Kind "file" -Purpose "Dedicated Google attached-html runner paired with the narrower helper chain surfaced by the suite-catalog route."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1" -Kind "file" -Purpose "Suite-catalog-to-top-level attached-html catalog quickstart helper surfaced from the suite-catalog chain."),
@@ -150,5 +152,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} issue #3 suite-catalog path(s).") -f $missing.Count)
-Write-Host "Repair the missing note, helper, replay-route shortcut, or pinned bundle follow-up surface before trusting the issue #3 suite-catalog entrypoint route."
+Write-Host "Repair the missing note, helper, context-surface bridge, replay-route shortcut, or pinned bundle follow-up surface before trusting the issue #3 suite-catalog entrypoint route."
 exit 1
