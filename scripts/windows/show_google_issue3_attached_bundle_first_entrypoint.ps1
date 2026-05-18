@@ -258,19 +258,9 @@ if ($BrowserExe) {
     $googleAttachedHtmlSuiteRouterArguments['BrowserExe'] = $BrowserExe
 }
 
-$bundleSuiteRouterArguments = [ordered]@{
-    ChangeArea = 'attached-html-target-bundle'
-}
-if ($InputPath) {
-    $bundleSuiteRouterArguments['InputPath'] = @($InputPath)
-}
-if ($BrowserExe) {
-    $bundleSuiteRouterArguments['BrowserExe'] = $BrowserExe
-}
-
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached bundle first entrypoint'
-    purpose = 'Print the pinned three-page compatibility bundle route first while keeping the replay-side attached-html quickstart, the top-level attached-page quickstart, the issue-specific attached-page shortcut, the broader attached-page flow helper, the narrower Google-shaped attached-page flow guide, and the reusable fixed-list proof path visible as the narrow re-entry ladder immediately before and after the bundle-only branch.'
+    purpose = 'Print the pinned three-page compatibility bundle route first while keeping the replay-side attached-html quickstart, the top-level attached-page quickstart, the issue-specific attached-page shortcut, the broader attached-page flow helper, the narrower Google-shaped attached-page flow guide, the written proof note, the proof-entrypoint surface checker, and the reusable fixed-list proof path visible as the narrow re-entry ladder immediately before and after the bundle-only branch.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
@@ -284,9 +274,11 @@ $entrypoint = [ordered]@{
     google_attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
     bundle_surface_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
     bundle_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle.ps1' -Arguments $bundleCheckerArguments
-    suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $bundleSuiteRouterArguments -RepoRootOverride $RepoRoot
+    suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlTargetBundleSuiteArguments -RepoRootOverride $RepoRoot
     bundle_flow_command = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
     bundle_runner_command = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleArguments -Switches @('Wait')
+    bundle_proof_surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
+    bundle_proof_entrypoint_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $reentryArguments
     local_html_fixture_surface_check_command = Format-HelperCommand -ScriptName 'check_local_html_fixture_validation_surface.ps1' -Arguments $localHtmlFixtureSurfaceArguments
     local_html_fixture_probe_command = Format-PowerShellFileCommand -RelativePath 'tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1' -Arguments $localHtmlFixtureProbeArguments
     replay_shortcuts_command = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $replayShortcutsArguments
@@ -298,10 +290,11 @@ $entrypoint = [ordered]@{
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     attached_html_target_bundle_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md'
+    attached_html_target_bundle_proof_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
     attached_html_target_bundle_checklist_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     notes = @(
-        'Use this helper when the current saved or attached pages are still the known three-page compatibility bundle and you want the narrower replay-side attached-html quickstart, the top-level attached-page quickstart, the issue-specific attached-page shortcut, the broader attached-page flow helper, the narrower Google-shaped attached-page flow guide, and the reusable fixed-list proof path kept visible just long enough to confirm the replay should stay pinned to that bundle.',
+        'Use this helper when the current saved or attached pages are still the known three-page compatibility bundle and you want the narrower replay-side attached-html quickstart, the top-level attached-page quickstart, the issue-specific attached-page shortcut, the broader attached-page flow helper, the narrower Google-shaped attached-page flow guide, the written proof note, the proof-entrypoint surface checker, and the reusable fixed-list proof path kept visible just long enough to confirm the replay should stay pinned to that bundle.',
         'Use broader_attached_html_suite_router_command first when the next replay is still being chosen from the wider attached-page router and you want the generic attached-page branch visible before the replay narrows back into the pinned bundle-only lane.',
         'Use google_attached_html_suite_router_command next when the current replay should keep the Google-shaped attached-page route visible beside the broader attached-page branch before the bundle-only branch takes over.',
         'Use windows_replay_attached_html_quickstart_command first when the replay reopened from the broader Windows replay route and you want the newer attached-html ladder visible before you commit to the bundle-only branch.',
@@ -309,16 +302,17 @@ $entrypoint = [ordered]@{
         'Use attached_html_shortcut_command next when the route is already clearly inside the shorter attached-page helper chain and you want explicit bundle inputs preserved before the replay narrows into the bundle-only branch.',
         'Use attached_html_flow_command when you want the broader attached-page localhost helper reprinted beside the replay-side and top-level quickstarts before the route narrows into the pinned bundle branch.',
         'Use google_attached_html_flow_command when the current bundle still includes a Google-like attached page and you want the dedicated Google-shaped attached-page guide reprinted beside the broader attached-page helper before the replay commits to the bundle-only branch.',
-        'Start with bundle_surface_check_command so the pinned bundle reference note, bundle quickstart, pinned manual checklist, checker, helper, runner, and delegated attached-html surfaces fail fast before localhost replay.',
+        'Start with bundle_surface_check_command so the pinned bundle reference note, bundle quickstart, written proof note, pinned manual checklist, checker, helper, runner, and delegated attached-html surfaces fail fast before localhost replay.',
         'Run bundle_check_command next when you want the current saved-page set revalidated as the same three-page compatibility bundle before you trust the printed flow helper or runner.',
-        'Use suite_router_command when you want the attached-html-target-bundle suite surface reprinted beside the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the bundle checker, and the bundle flow helper before the delegated localhost runner.',
+        'Use suite_router_command when you want the attached-html-target-bundle suite surface reprinted beside the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the bundle checker, the proof-note surface, and the bundle flow helper before the delegated localhost runner.',
+        'After the bundle runner turns green, reopen bundle_proof_surface_check_command and bundle_proof_entrypoint_command so the written proof note, the proof-only helper, and the reusable fixed-list screenshot-and-title proof stay pinned to the same bundle inputs before the route widens back out.',
         'After the bundle runner turns green, reopen local_html_fixture_surface_check_command and local_html_fixture_probe_command so the same pinned bundle can pass through the reusable screenshot-and-title proof path before the route widens back into the larger issue #3 helper chain.',
         'Pass -BrowserExe when the replay should stay pinned to a non-default Windows headed build through the broader attached-page suite routers, the top-level attached-page quickstart, the Google-shaped flow helper, the bundle flow helper, and the delegated bundle runner instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
-        'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the bundle check, the broader attached-page flow helper, the Google-shaped attached-page flow guide, the flow, runner, local fixture proof command, replay-shortcuts helper, and safe-route return command instead of relying on auto-discovery.',
-        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
+        'Pass -InputPath when you want to keep an explicit bundle path or fixed file list pinned through the bundle check, the broader attached-page flow helper, the Google-shaped attached-page flow guide, the proof-entrypoint helper, the flow, runner, local fixture proof command, replay-shortcuts helper, and safe-route return command instead of relying on auto-discovery.',
+        'Pass -RepoRoot and -SummaryPath when the replay is running from a non-default checkout and you want the replay-side attached-html quickstart, the top-level quickstart, the attached-page shortcut, the broader attached-page suite routers, the broader attached-page flow helper, the dedicated Google-shaped attached-page guide, the proof-entrypoint helper, the replay-shortcuts helper, and the safe-route return commands to preserve that same context.',
         'Use replay_shortcuts_command after the bundle replay when you want the broader issue #3 discovery bridge, attached-bundle branch, and safe-route shortcuts printed together before choosing whether to stay broad or narrow next.',
         'Return to the broader issue #3 safe-route helper only after the bundle replay or the reusable fixed-list proof path makes the next Google-style input or submit failure state clear.',
-        'Keep the Windows replay note, the replay-side attached-html quickstart note, the top-level attached-page quickstart note, the attached-page shortcut note, the Google attached-page flow note, the attached-html target-bundle reference note, the attached-html target-bundle quickstart note, the pinned manual checklist note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows replay note, the replay-side attached-html quickstart note, the top-level attached-page quickstart note, the attached-page shortcut note, the Google attached-page flow note, the attached-html target-bundle reference note, the attached-html target-bundle quickstart note, the written proof note, the pinned manual checklist note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -359,6 +353,8 @@ Write-Host ("  Flow helper:   {0}" -f $entrypoint.bundle_flow_command)
 Write-Host ("  Runner:        {0}" -f $entrypoint.bundle_runner_command)
 Write-Host ''
 Write-Host 'Proof after bundle replay:'
+Write-Host ("  Proof surface:       {0}" -f $entrypoint.bundle_proof_surface_check_command)
+Write-Host ("  Proof entrypoint:    {0}" -f $entrypoint.bundle_proof_entrypoint_command)
 Write-Host ("  Local fixture surface: {0}" -f $entrypoint.local_html_fixture_surface_check_command)
 Write-Host ("  Fixed-list proof:     {0}" -f $entrypoint.local_html_fixture_probe_command)
 Write-Host ''
@@ -373,6 +369,7 @@ Write-Host ("Attached shortcut note:       {0}" -f $entrypoint.attached_html_sho
 Write-Host ("Google flow note:             {0}" -f $entrypoint.google_attached_html_validation_flow_note_path)
 Write-Host ("Bundle reference note:        {0}" -f $entrypoint.attached_html_target_bundle_reference_note_path)
 Write-Host ("Bundle quickstart note:       {0}" -f $entrypoint.attached_html_target_bundle_quickstart_note_path)
+Write-Host ("Proof note:                   {0}" -f $entrypoint.attached_html_target_bundle_proof_note_path)
 Write-Host ("Pinned checklist note:        {0}" -f $entrypoint.attached_html_target_bundle_checklist_note_path)
 Write-Host ("Validation chain note:        {0}" -f $entrypoint.validation_chain_note_path)
 Write-Host ''
