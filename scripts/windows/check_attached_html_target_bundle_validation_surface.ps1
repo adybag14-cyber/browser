@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -63,7 +80,13 @@ $references = @(
     (New-ValidationReference -Path "tmp-browser-smoke/local-html-fixtures/chrome-local-html-fixture-probe.ps1" -Kind "file" -Purpose "Reusable fixed-list screenshot-and-title probe for the same saved compatibility pages.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_attached_html_target_bundle_suite_surface.ps1" -Snippet "bundle_proof = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'" -Purpose "Bundle-suite helper keeps the read-first proof note in its printed nearby-note surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_attached_html_target_bundle_suite_surface.ps1" -Snippet 'Write-Host (("Bundle proof note:          {0}") -f $surface.note_paths.bundle_proof)' -Purpose "Bundle-suite helper prints the proof note beside the other bundle companions so the written proof route stays visible with the executable proof entrypoint."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Snippet '- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`' -Purpose "Bundle-suite note keeps the proof note in the nearby companion list for the same pinned route.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -72,6 +95,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -79,15 +103,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "attached-html-target-bundle"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -102,18 +160,28 @@ Write-Host ""
 Write-Host ("Repo root: {0}" -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host ("[{0}] {1}" -f $status, $result.Path)
     Write-Host ("  {0}" -f $result.Purpose)
 }
 
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host ("[{0}] {1}" -f $status, $result.Path)
+        Write-Host ("  {0}" -f $result.Purpose)
+    }
+}
+
 Write-Host ""
 if ($missing.Count -eq 0) {
-    Write-Host "Attached HTML target-bundle validation surface is intact, including the bundle reference note, the bundle quickstart, the proof-entry note, the compact bundle suite-surface note and helper, the bundle-first helper, the bundle proof entrypoint, the Google attached-page companion note, the issue #3 next-step matrix and replay-shortcuts follow-up helpers, the pinned manual checklist, and the reusable local fixture probe."
+    Write-Host "Attached HTML target-bundle validation surface is intact, including the bundle reference note, the bundle quickstart, the proof-entry note, the compact bundle suite-surface note and helper, the bundle-first helper, the bundle proof entrypoint, the Google attached-page companion note, the issue #3 next-step matrix and replay-shortcuts follow-up helpers, the pinned manual checklist, the reusable local fixture probe, and the proof-note surfacing contract on the bundle-suite helper."
     exit 0
 }
 
-Write-Host ("Missing {0} attached HTML target-bundle validation path(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, reference note, quickstart, proof-entry note, compact suite-surface note or helper, bundle-first helper, bundle proof entrypoint, Google attached-page companion note, issue #3 next-step or replay-shortcuts helper, checklist, reusable fixture probe surface, or delegated attached-HTML validation path before trusting the bundle-pinned localhost route."
+Write-Host ("Missing {0} attached HTML target-bundle validation path or source-contract check(s)." -f $missing.Count)
+Write-Host "Repair the missing guide, reference note, quickstart, proof-entry note, compact suite-surface note or helper, bundle-first helper, bundle proof entrypoint, Google attached-page companion note, issue #3 next-step or replay-shortcuts helper, checklist, reusable fixture probe surface, or bundle-suite proof-note surfacing contract before trusting the bundle-pinned localhost route."
 exit 1
