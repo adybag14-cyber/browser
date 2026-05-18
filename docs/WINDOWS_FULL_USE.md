@@ -90,7 +90,7 @@ What exists today:
 - bounded localhost input probes under `tmp-browser-smoke\form-controls\`
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
 - the first-line navigation, stop-loading, and form-control probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
-- an attached-pages localhost catalog and asset-audit helper under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
+- an attached-pages localhost catalog, sidecar audit, and broader asset-audit helper surface under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
 
 Treat the validation router output as the source of truth for the currently
 committed helper surface on this branch.
@@ -123,8 +123,13 @@ pinned bundle route is the next intended replay path.
 
 The preferred localhost path on this branch is the attached-pages catalog
 helper, not a hand-built `python -m http.server` session. It gives the saved
-HTML bundle short stable routes, a generated manifest, and an asset audit that
-can fail fast before the browser is involved.
+HTML bundle short stable routes, a generated manifest, a sidecar audit that
+answers whether the export is missing its sibling `_files` directory, and a
+broader asset audit that can fail fast before the browser is involved.
+
+Use the sidecar audit first. A missing `_files` directory means the export
+itself is incomplete, so the next replay result is already degraded before it
+says anything about the headed runtime.
 
 When you need to validate a non-default browser build, keep that same binary
 pinned at every helper hop instead of letting the route drift back to
@@ -141,9 +146,12 @@ default build location, so rerun the validation router with `-BrowserExe`
 before switching between the general attached-html route and the pinned bundle
 route.
 
-For a concrete saved page or bundle root, use the Windows wrapper first:
+For a concrete saved page or bundle root, use the Windows wrapper first and run
+the same pinned input set through the sidecar check before the broader asset
+audit:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditAssets
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -Port 8235
@@ -154,15 +162,27 @@ attached pages and keep the strongest Google-like page first when one is
 available:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -AuditAssets
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -Port 8235
 ```
 
-If you want to bypass the wrapper and run the Python helper directly from the
-repo root, use the same audit-first order:
+For non-Windows or scheduled runs, the matching Python launcher exposes the same
+pinned-input flow and preflight modes without going through PowerShell:
 
 ```powershell
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --audit-sidecars
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --audit-assets
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --print-manifest
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --port 8235
+```
+
+If you want to bypass the launchers and run the lower-level Python helper
+directly from the repo root, keep the same sidecar-first, asset-second order:
+
+```powershell
+python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root "<saved-html-or-folder>"
 python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root "<saved-html-or-folder>" --audit-assets
 python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root "<saved-html-or-folder>" --print-manifest
 python .\tmp-browser-smoke\attached-pages\attached_pages_server.py --root "<saved-html-or-folder>" --port 8235
@@ -183,9 +203,12 @@ Use this flow to verify:
 - text fields keep focus and accept typing
 - Enter-driven submit or button activation still behaves as expected
 
-If the asset audit reports missing local sidecars, fix the saved bundle first or
-rerun with the explicit allow-missing path only when you want a best-effort
-replay and are ready to treat the result as a narrower signal.
+If the sidecar audit reports a missing `_files` directory, restore that export
+bundle first or consciously accept a degraded replay before blaming the browser.
+If the sidecar audit passes but the asset audit still reports missing local
+files, fix the saved bundle first or rerun with the explicit allow-missing path
+only when you want a best-effort replay and are ready to treat the result as a
+narrower signal.
 
 The router's first-line navigation, stop-loading, and form-control probes now
 resolve the repo root from the current checkout automatically. Older deeper
