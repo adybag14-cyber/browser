@@ -215,6 +215,7 @@ $helper = [ordered]@{
     attached_bundle_quickstart_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md'
     attached_bundle_checklist_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md'
     attached_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
+    attached_bundle_proof_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
     top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_top_level_attached_html_catalog_quickstart_note_path = 'docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md'
     suite_catalog_entrypoints_note_path = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
@@ -289,7 +290,7 @@ $helper = [ordered]@{
         'Use attached_bundle_change_area, then attached_bundle_suite_surface, then attached_bundle_proof_entrypoint, and only then attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only helper chain.',
         'Use safe_route_entrypoints only after the route has already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
         'Pass -BrowserExe when the shorter issue #3 attached-page ladder should stay pinned to a non-default Windows headed build through the broader Google-shaped flow helper, the bundle-suite surface, the bundle-first bridge, and the delegated bundle route instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
-        'Keep the Windows full-use attached-html route note, the attached-html change-area quickstart note, the validation-router attached-page quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the Google-style attached HTML flow note, the Google-style attached HTML entrypoint note, the attached bundle reference note, the attached bundle quickstart note, the attached bundle checklist note, the attached bundle suite-surface note, the top-level shortcut-first note, the top-level shortcut bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-catalog guide note, the top-level attached-page companion note, the suite-router attached-page quickstart note, the Windows replay quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows full-use attached-html route note, the attached-html change-area quickstart note, the validation-router attached-page quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the Google-style attached HTML flow note, the Google-style attached HTML entrypoint note, the attached bundle reference note, the attached bundle quickstart note, the attached bundle checklist note, the attached bundle suite-surface note, the attached bundle proof note, the top-level shortcut-first note, the top-level shortcut bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-catalog guide note, the top-level attached-page companion note, the suite-router attached-page quickstart note, the Windows replay quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -384,6 +385,7 @@ Write-Host (("Bundle reference note:      {0}") -f (' ' + $helper.attached_bundl
 Write-Host (("Bundle quickstart note:     {0}") -f (' ' + $helper.attached_bundle_quickstart_note_path))
 Write-Host (("Bundle checklist note:      {0}") -f (' ' + $helper.attached_bundle_checklist_note_path))
 Write-Host (("Bundle suite note:          {0}") -f (' ' + $helper.attached_bundle_suite_surface_note_path))
+Write-Host (("Bundle proof note:          {0}") -f (' ' + $helper.attached_bundle_proof_note_path))
 Write-Host (("Shortcut-first note:        {0}") -f (' ' + $helper.top_level_shortcut_first_entrypoint_note_path))
 Write-Host (("Shortcut bridge note:       {0}") -f (' ' + $helper.top_level_shortcut_bridge_note_path))
 Write-Host (("Catalog quickstart note:    {0}") -f (' ' + $helper.top_level_attached_html_catalog_quickstart_note_path))
