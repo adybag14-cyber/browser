@@ -27,6 +27,8 @@ Keep these companion notes nearby when the replay needs more detail:
 - `docs/ISSUE3_RUNNER_PATCH_DECISION_TABLE.md`
 - `docs/ISSUE3_RUNNER_OUTPUT_PATCH_RULES.md`
 - `docs/ISSUE3_REPO_ROOT_SAFE_REPLAY.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`
 
 ## Read-first discovery
 
@@ -62,9 +64,35 @@ If you still want the exact top-level suite-router commands surfaced directly fr
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -SuiteName google-recommended
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-input
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html
+.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
 ```
 
 Use `-ChangeArea attached-html` when the current replay is already centered on the attached localhost compatibility pages and you want the main validation catalog to print that broader attached-page branch before you drop into the issue-specific replay-side attached-page quickstart, the top-level attached-page notes, the suite-catalog-to-top-level attached-html catalog quickstart, the suite-catalog bridge, the attached-page shortcut, the replay shortcuts, the next-step matrix, or the pinned bundle-first route.
+
+Use `-ChangeArea google-attached-html` when the current replay is already centered on the Google-shaped attached localhost branch and you want the broader dedicated Google attached-page route, the sidecar-bundle audit, the broader Google surface check, and the narrower issue-specific entrypoint check surfaced before the route collapses into the shorter issue `#3` bridge.
+
+If the replay is already centered on the Google-shaped attached localhost branch from the broader validation router and you want the sidecar-first Google lane reopened in the same higher-level Windows-first order, use:
+
+```powershell
+.\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1
+```
+
+If the replay is running from a non-default checkout, preserve that same repo root on the fail-fast checks before you narrow into the issue-specific Google attached-page bridge:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<attached-html-or-folder>'
+```
+
+Keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` and `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md` nearby when you want the written Google-shaped attached-page lane beside this narrower replay branch.
 
 If the replay is already centered on the attached localhost branch from the broader validation router and you want the shortest bridge into the newer top-level attached-page quickstarts without reopening the wider issue-specific helper chain, use:
 
