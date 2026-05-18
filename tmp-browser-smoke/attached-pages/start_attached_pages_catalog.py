@@ -265,6 +265,17 @@ def render_strict_sidecar_failure(report: str) -> str:
     )
 
 
+def find_manifest_entry_for_path(
+    manifest: list[dict[str, str]], preferred_path: Path
+) -> dict[str, str] | None:
+    preferred_leaf = preferred_path.name
+    for entry in manifest:
+        entry_file = entry.get("file", "")
+        if entry_file == preferred_leaf or entry_file.endswith(f"/{preferred_leaf}"):
+            return entry
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Start or inspect the attached-pages localhost catalog using auto-discovery or explicit pinned inputs."
@@ -400,6 +411,14 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     server_module = load_server_module(repo_root)
+    preferred_manifest_entry = None
+    preferred_fixture_path = selected_files[0] if args.google_style and selected_files else None
+    if preferred_fixture_path is not None:
+        preferred_manifest_entry = find_manifest_entry_for_path(
+            server_module.build_manifest(selected_files=selected_files),
+            preferred_fixture_path,
+        )
+
     _, sidecar_audit = ensure_sidecar_audit()
     audit = server_module.build_asset_audit(selected_files=selected_files)
     print("Attached pages catalog")
@@ -412,6 +431,18 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Inputs pinned: {len(selected_files)}")
     print(f"Bind: http://{args.bind}:{args.port}/")
     print("Routes: /, /manifest.json, /audit.json, /audit.txt, /pages/<n>, /named/<slug>, /raw/...")
+    if args.require_complete_sidecars:
+        print("Strict sidecar gate: enabled")
+    if preferred_fixture_path is not None:
+        print(f"Preferred Google-style page: {preferred_fixture_path}")
+    if preferred_manifest_entry is not None:
+        print(f"Preferred route: http://{args.bind}:{args.port}{preferred_manifest_entry['route']}/")
+        print(
+            f"Preferred alias route: http://{args.bind}:{args.port}{preferred_manifest_entry['alias_route']}/"
+        )
+        print(
+            f"Preferred named route: http://{args.bind}:{args.port}{preferred_manifest_entry['slug_route']}/"
+        )
     print("")
     for line in describe_fixture_selection(
         selected_files, repo_root=repo_root, google_style=args.google_style
