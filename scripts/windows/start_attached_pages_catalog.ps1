@@ -10,7 +10,10 @@ param(
     [switch]$PrintManifest,
     [switch]$AuditAssets,
     [switch]$AuditAssetsJson,
-    [switch]$AllowMissingAssets
+    [switch]$AllowMissingAssets,
+    [switch]$AuditSidecars,
+    [switch]$AuditSidecarsJson,
+    [switch]$AllowMissingSidecars
 )
 
 Set-StrictMode -Version Latest
@@ -131,14 +134,23 @@ function Move-PreferredInputPathToFront {
     return @($orderedInputs)
 }
 
-if ($PrintManifest -and $AuditAssets) {
-    throw "Choose either -PrintManifest or -AuditAssets. The attached-pages helper cannot print the manifest and run the asset audit in the same invocation."
+if ($PrintManifest -and ($AuditAssets -or $AuditSidecars)) {
+    throw "Choose either -PrintManifest, -AuditAssets, or -AuditSidecars. The attached-pages helper cannot combine manifest and audit modes in the same invocation."
+}
+if ($AuditAssets -and $AuditSidecars) {
+    throw "Choose either -AuditAssets or -AuditSidecars. The attached-pages helper can only run one audit mode per invocation."
 }
 if ($AuditAssetsJson -and -not $AuditAssets) {
     throw "-AuditAssetsJson requires -AuditAssets."
 }
 if ($AllowMissingAssets -and -not $AuditAssets) {
     throw "-AllowMissingAssets is only supported with -AuditAssets."
+}
+if ($AuditSidecarsJson -and -not $AuditSidecars) {
+    throw "-AuditSidecarsJson requires -AuditSidecars."
+}
+if ($AllowMissingSidecars -and -not $AuditSidecars) {
+    throw "-AllowMissingSidecars is only supported with -AuditSidecars."
 }
 
 $resolvedRepoRoot = if ($RepoRoot) {
@@ -171,7 +183,7 @@ if ($resolvedPreferredInitialPage) {
     $resolvedInputPath = @(Move-PreferredInputPathToFront -SelectedInputs $resolvedInputPath -PreferredPath $resolvedPreferredInitialPage)
 }
 $preferredManifestEntry = $null
-if ($resolvedPreferredInitialPage -and -not $PrintManifest -and -not $AuditAssets) {
+if ($resolvedPreferredInitialPage -and -not $PrintManifest -and -not $AuditAssets -and -not $AuditSidecars) {
     $manifest = Get-AttachedPagesManifest -PythonExePath $resolvedPython -ServerPath $serverPath -SelectedInputs $resolvedInputPath
     $preferredManifestEntry = Find-ManifestEntryForPath -Manifest $manifest -PreferredPath $resolvedPreferredInitialPage
 }
@@ -191,11 +203,19 @@ if ($PrintManifest) {
     if ($AllowMissingAssets) {
         $serverArgs += "--allow-missing-assets"
     }
+} elseif ($AuditSidecars) {
+    $serverArgs += "--audit-sidecars"
+    if ($AuditSidecarsJson) {
+        $serverArgs += "--audit-sidecars-json"
+    }
+    if ($AllowMissingSidecars) {
+        $serverArgs += "--allow-missing-sidecars"
+    }
 } else {
     $serverArgs += @("--bind", $Bind, "--port", "$Port")
 }
 
-if (-not $PrintManifest -and -not $AuditAssets) {
+if (-not $PrintManifest -and -not $AuditAssets -and -not $AuditSidecars) {
     $attachedAssetAudit = Get-AttachedPagesAssetAudit -PythonExePath $resolvedPython -ServerPath $serverPath -SelectedInputs $resolvedInputPath
 
     Write-Host "Attached pages catalog"
