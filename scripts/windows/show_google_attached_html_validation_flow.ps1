@@ -61,6 +61,47 @@ function Get-AssetClosureCommand {
     }
 }
 
+function Get-SidecarAuditCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterSetName,
+        [string]$ResolvedPageRoot,
+        [string[]]$ResolvedInputPath,
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [bool]$AllowMissingLocalAssets
+    )
+
+    $scriptPath = Join-Path $RepoRoot "tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py"
+    $base = "python " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $scriptPath)
+    if ($AllowMissingLocalAssets) {
+        $base += " --allow-missing-sidecars"
+    }
+
+    switch ($ParameterSetName) {
+        "PageRoot" {
+            if ([string]::IsNullOrWhiteSpace($ResolvedPageRoot)) {
+                return $base
+            }
+
+            return ($base + " --root " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot))
+        }
+        default {
+            if (-not $ResolvedInputPath -or $ResolvedInputPath.Count -eq 0) {
+                return $base
+            }
+
+            $quotedInputs = @(
+                $ResolvedInputPath | ForEach-Object {
+                    "--input " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $_)
+                }
+            )
+            return ($base + " " + ($quotedInputs -join " "))
+        }
+    }
+}
+
 function Get-GoogleAttachedHtmlHandoffCommands {
     param(
         [Parameter(Mandatory = $true)]
@@ -158,6 +199,8 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [Parameter(Mandatory = $true)]
         [object[]]$MissingAssetAudit,
         [Parameter(Mandatory = $true)]
+        [string]$SidecarAuditCommand,
+        [Parameter(Mandatory = $true)]
         [string]$SurfaceCheckCommand,
         [string]$AssetClosureCommand,
         [Parameter(Mandatory = $true)]
@@ -207,6 +250,7 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         leave_open = $LeaveOpen
         port = $Port
         surface_check_command = $SurfaceCheckCommand
+        sidecar_audit_command = $SidecarAuditCommand
         asset_closure_command = $AssetClosureCommand
         helper_command = $HelperCommand
         runner_command = $RunnerCommand
@@ -254,6 +298,7 @@ $resolvedPreferredInitialPage = if ($PreferredInitialPage) {
     Select-GoogleStyleInitialPage -ResolvedInputPath $resolvedInputPath
 }
 $assetClosureCommand = Get-AssetClosureCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedInputPath $resolvedInputPath -RepoRoot $resolvedRepoRoot -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
+$sidecarAuditCommand = Get-SidecarAuditCommand -ParameterSetName $PSCmdlet.ParameterSetName -ResolvedPageRoot $resolvedPageRoot -ResolvedInputPath $resolvedInputPath -RepoRoot $resolvedRepoRoot -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
 $handoffCommands = Get-GoogleAttachedHtmlHandoffCommands `
     -ParameterSetName $PSCmdlet.ParameterSetName `
     -ResolvedRepoRoot $resolvedRepoRoot `
@@ -314,6 +359,7 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -LeaveOpen ([bool]$LeaveOpen) `
     -Port $Port `
     -MissingAssetAudit $attachedAssetAudit `
+    -SidecarAuditCommand $sidecarAuditCommand `
     -SurfaceCheckCommand $surfaceCheckCommand `
     -AssetClosureCommand $assetClosureCommand `
     -HelperCommand $handoffCommands.helper_command `
@@ -349,12 +395,14 @@ if (-not $Json) {
     }
     Write-Host ""
     if ($assetClosureCommand) {
-        Write-Host "Start with the dedicated surface check and deep asset-closure audit before the printed flow or runner:"
+        Write-Host "Start with the dedicated surface check, sidecar-bundle audit, and deep asset-closure audit before the printed flow or runner:"
         Write-Host ("- {0}" -f $surfaceCheckCommand)
+        Write-Host ("- {0}" -f $sidecarAuditCommand)
         Write-Host ("- {0}" -f $assetClosureCommand)
     } else {
-        Write-Host "Start with the dedicated surface check before the printed flow or runner:"
+        Write-Host "Start with the dedicated surface check and sidecar-bundle audit before the printed flow or runner:"
         Write-Host ("- {0}" -f $surfaceCheckCommand)
+        Write-Host ("- {0}" -f $sidecarAuditCommand)
         Write-Host "- Deep asset-closure audit is skipped in explicit page-root mode."
     }
     Write-Host ""
