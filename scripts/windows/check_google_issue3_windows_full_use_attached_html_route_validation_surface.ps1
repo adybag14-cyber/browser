@@ -53,6 +53,7 @@ $resolvedRepoRoot = if ($RepoRoot) {
 $references = @(
     (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that points into the issue #3 attached-HTML route.") )
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Kind "file" -Purpose "Compact Windows full-use note for the issue #3 attached localhost route.") )
+    (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Kind "file" -Purpose "Windows-first attached-page catalog quickstart note that keeps the wrapper-first, sidecar-first ladder visible beside the broader route.") )
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_BUNDLE_BRIDGE.md" -Kind "file" -Purpose "Windows-first pinned three-page bundle bridge note kept beside the broader Windows full-use route when replay stays on the attached bundle path.") )
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_FULL_USE_VALIDATION_ROUTER_ATTACHED_HTML_BRIDGE.md" -Kind "file" -Purpose "Windows-to-validation-router attached-page bridge note used by the route helper.") )
     (New-ValidationReference -Path "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Replay-side attached-page quickstart note kept beside the broader Windows full-use route.") )
@@ -78,7 +79,7 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1" -Kind "file" -Purpose "Windows full-use attached-HTML route helper for issue #3.") )
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1" -Kind "file" -Purpose "Windows-to-validation-router attached-page bridge helper referenced by the route helper.") )
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Kind "file" -Purpose "Windows-first attached-page catalog quickstart helper referenced by the route note family.") )
-    (New-ValidationReference -Path "scripts/windows/check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast checker for the Windows-first attached-page catalog quickstart so the narrower attached-page ladder is verified before it is trusted.") )
+    (New-ValidationReference -Path "scripts/windows/check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast checker for the Windows-first attached-page catalog quickstart so the narrower wrapper-first, sidecar-first ladder is verified before it is trusted.") )
     (New-ValidationReference -Path "scripts/windows/check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast checker for the pinned three-page Windows full-use attached bundle bridge so the narrower bundle branch is verified before it is trusted.") )
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1" -Kind "file" -Purpose "Replay-side attached-page quickstart helper referenced by the newer Windows replay route notes.") )
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_validation_router_attached_html_quickstart.ps1" -Kind "file" -Purpose "Validation-router attached-page quickstart helper referenced by the broader attached-page route notes.") )
@@ -116,7 +117,12 @@ $contentExpectations = @(
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1' -Purpose "Route note keeps the attached-html change-area bridge visible before the issue-specific helper chain narrows further."),
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --input ''<attached-html-root>'' --audit-sidecars' -Purpose "Route note keeps the attached-pages sidecar audit surfaced in the current attached-html follow-up ladder."),
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose "Route note keeps the compact attached-bundle suite surface visible before the replay narrows into the locked three-page branch."),
-    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose "Route note keeps the bundle-first helper visible once the route is pinned to the known three-page compatibility set.")
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose "Route note keeps the bundle-first helper visible once the route is pinned to the known three-page compatibility set."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars' -Purpose "Catalog quickstart note keeps the wrapper-backed sidecar audit visible as the default attached-pages preflight."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -RepoRoot ''<repo-root>'' -InputPath ''<bundle-html-or-folder>'' -AuditSidecars' -Purpose "Catalog quickstart note keeps the repo-root-preserving wrapper-backed sidecar audit visible for pinned bundle inputs."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Purpose "Catalog quickstart note keeps the replay-side fail-fast checker visible before the narrower replay ladder is trusted."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Snippet 'attached_pages_sidecar_audit = $attachedPagesSidecarAuditCommand' -Purpose "Catalog helper keeps the wrapper-backed sidecar audit wired into its helper command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Snippet 'recommended_next_key = ''attached_pages_sidecar_audit''' -Purpose "Catalog helper keeps the wrapper-backed sidecar audit as the default next step after the Windows-first route is reprinted.")
 )
 
 $referenceResults = foreach ($reference in $references) {
@@ -211,10 +217,10 @@ if ($contentResults.Count -gt 0) {
 
 Write-Host ""
 if ($missing.Count -eq 0) {
-    Write-Host "Google issue #3 Windows full-use attached HTML route surface is intact, including the narrower catalog ladder, the replay-side attached-page quickstart, the sidecar-audit preflight, and the pinned bundle branch." 
+    Write-Host "Google issue #3 Windows full-use attached HTML route surface is intact, including the newer catalog quickstart note and its wrapper-first, sidecar-first helper contract."
     exit 0
 }
 
 Write-Host ("Missing {0} Windows full-use attached HTML route path or source contract check(s)." -f $missing.Count)
-Write-Host "Repair the missing route note, helper, sidecar-audit preflight, pinned bundle bridge, or attached-page quickstart contract before trusting the Windows full-use issue #3 attached localhost route."
+Write-Host "Repair the missing route note, catalog quickstart note, helper, sidecar-audit preflight, pinned bundle bridge, or attached-page quickstart contract before trusting the Windows full-use issue #3 attached localhost route."
 exit 1
