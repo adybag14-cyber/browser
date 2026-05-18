@@ -1,0 +1,163 @@
+import contextlib
+import io
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+import attached_pages_sidecar_reference_audit as sidecar_audit
+
+
+class AttachedPagesSidecarReferenceAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.root = Path(self.tempdir.name)
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def test_detects_direct_helper_and_wrapper_sidecar_references(self):
+        docs_dir = self.root / "docs"
+        docs_dir.mkdir()
+        replay_note = docs_dir / "ISSUE3_REPLAY_DISCOVERY_HANDOFF.md"
+        replay_note.write_text(
+            "\n".join(
+                [
+                    "python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'",
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        audit = sidecar_audit.build_reference_audit(self.root)
+        self.assertEqual(1, audit["files_with_direct_sidecar_helper"])
+        self.assertEqual(1, audit["direct_sidecar_helper_reference_count"])
+        self.assertEqual(1, audit["wrapper_sidecar_reference_count"])
+        self.assertEqual(1, audit["google_wrapper_sidecar_reference_count"])
+        self.assertEqual(0, audit["allow_missing_wrapper_sidecar_reference_count"])
+
+    def test_selected_files_mode_reports_relative_display_paths(self):
+        docs_dir = self.root / "docs"
+        docs_dir.mkdir()
+        first = docs_dir / "a.md"
+        second = docs_dir / "b.md"
+        first.write_text(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars -AllowMissingSidecars\n",
+            encoding="utf-8",
+        )
+        second.write_text(
+            "python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'\n",
+            encoding="utf-8",
+        )
+
+        audit = sidecar_audit.build_reference_audit(selected_files=[first, second])
+        display_paths = {entry["display_path"] for entry in audit["files"]}
+        self.assertIn("a.md", display_paths)
+        self.assertIn("b.md", display_paths)
+        self.assertEqual(1, audit["direct_sidecar_helper_reference_count"])
+        self.assertEqual(1, audit["wrapper_sidecar_reference_count"])
+        self.assertEqual(1, audit["allow_missing_wrapper_sidecar_reference_count"])
+
+    def test_text_report_surfaces_wrapper_counts(self):
+        note = self.root / "ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"
+        note.write_text(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars -AllowMissingSidecars\n",
+            encoding="utf-8",
+        )
+
+        audit = sidecar_audit.build_reference_audit(self.root)
+        report = sidecar_audit.render_text_report(audit)
+        self.assertIn("Attached Pages Sidecar Reference Audit", report)
+        self.assertIn("Wrapper sidecar references: 1", report)
+        self.assertIn("Google-style wrapper sidecar references: 1", report)
+        self.assertIn("Wrapper allow-missing-sidecars references: 1", report)
+        self.assertIn("ISSUE3_WINDOWS_REPLAY_QUICKSTART.md", report)
+
+    def test_cli_json_output_reports_failure_reasons(self):
+        note = self.root / "ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"
+        note.write_text(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars\n",
+            encoding="utf-8",
+        )
+
+        original_argv = sys.argv[:]
+        buffer = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(sidecar_audit.__file__)),
+                "--root",
+                str(self.root),
+                "--json",
+                "--require-google-wrapper-sidecar",
+            ]
+            with contextlib.redirect_stdout(buffer):
+                exit_code = sidecar_audit.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(buffer.getvalue())
+        self.assertEqual(0, payload["direct_sidecar_helper_reference_count"])
+        self.assertEqual(
+            ["no Google-style wrapper-backed sidecar audit references were found"],
+            payload["failure_reasons"],
+        )
+
+    def test_cli_requirement_switches_gate_success(self):
+        note = self.root / "ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"
+        note.write_text(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars\n",
+            encoding="utf-8",
+        )
+
+        original_argv = sys.argv[:]
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(sidecar_audit.__file__)),
+                "--root",
+                str(self.root),
+                "--require-wrapper-sidecar",
+                "--require-google-wrapper-sidecar",
+            ]
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                exit_code = sidecar_audit.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual("", stderr.getvalue())
+
+    def test_cli_allow_direct_helper_still_requires_wrapper_when_requested(self):
+        note = self.root / "ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"
+        note.write_text(
+            "python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'\n",
+            encoding="utf-8",
+        )
+
+        original_argv = sys.argv[:]
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(sidecar_audit.__file__)),
+                "--root",
+                str(self.root),
+                "--allow-direct-sidecar-helper",
+                "--require-wrapper-sidecar",
+            ]
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                exit_code = sidecar_audit.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        self.assertIn("FAIL: no wrapper-backed sidecar audit references were found", stderr.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()
