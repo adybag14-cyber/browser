@@ -2,11 +2,18 @@ import argparse
 import json
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import unquote, urlsplit
 
 
 HTML_EXPORT_EXTENSIONS = {".html", ".htm"}
 QUOTED_VALUE_PATTERN = re.compile(r'["\']([^"\']+)["\']')
+REFERENCE_PATTERNS = (
+    re.compile(r"\b(?:src|href|poster)\s*=\s*['\"]([^'\"]+)['\"]", re.IGNORECASE),
+    re.compile(r"\bsrcset\s*=\s*['\"]([^'\"]+)['\"]", re.IGNORECASE),
+    re.compile(r"@import\s+(?:url\()?['\"]?([^\"')\s;]+)", re.IGNORECASE),
+    re.compile(r"url\(\s*['\"]?([^\"')]+)['\"]?\s*\)", re.IGNORECASE),
+)
 
 
 def normalize_inputs(root: Path | None = None, selected_files: list[Path] | None = None) -> tuple[Path, list[Path]]:
@@ -46,6 +53,78 @@ def normalize_inputs(root: Path | None = None, selected_files: list[Path] | None
     raise FileNotFoundError(f"bundle root does not exist: {resolved_root}")
 
 
+def extract_reference_candidates(text: str) -> list[str]:
+    candidates: list[str] = []
+    seen: set[str] = set()
+
+    def add_candidate(value: str) -> None:
+        stripped = value.strip()
+        if not stripped or stripped in seen:
+            return
+        seen.add(stripped)
+        candidates.append(stripped)
+
+    for pattern in REFERENCE_PATTERNS:
+        for match in pattern.finditer(text):
+            value = match.group(1)
+            if "srcset" in pattern.pattern:
+                for entry in value.split(","):
+                    candidate = entry.strip().split()[0] if entry.strip() else ""
+                    if candidate:
+                        add_candidate(candidate)
+            else:
+                add_candidate(value)
+
+    for raw_reference in QUOTED_VALUE_PATTERN.findall(text):
+        # Keep a generic quoted-string fallback for unexpected export markup,
+        # but avoid whole srcset-style payloads that contain multiple assets.
+        if "," in raw_reference:
+            continue
+        add_candidate(raw_reference)
+
+    return candidates
+
+
+def parse_sidecar_reference(reference: str) -> tuple[PurePosixPath, str, PurePosixPath] | None:
+    stripped = reference.strip()
+    if not stripped or "_files/" not in stripped:
+        return None
+    if stripped.startswith(("data:", "javascript:", "mailto:", "tel:", "#")):
+        return None
+
+    parts = urlsplit(stripped)
+    if parts.scheme or parts.netloc:
+        return None
+
+    raw_path = unquote(parts.path.strip())
+    if not raw_path or "_files/" not in raw_path:
+        return None
+
+    candidate_path = PurePosixPath(raw_path.lstrip("/")) if raw_path.startswith("/") else PurePosixPath(raw_path)
+    segments = [segment for segment in candidate_path.parts if segment not in ("", ".")]
+    for index, segment in enumerate(segments):
+        if segment == "..":
+            continue
+        if not segment.endswith("_files"):
+            continue
+        asset_segments = [part for part in segments[index + 1 :] if part not in ("", ".", "..")]
+        if not asset_segments:
+            return None
+        reference_dir = PurePosixPath(*segments[: index + 1])
+        return reference_dir, segment, PurePosixPath(*asset_segments)
+    return None
+
+
+def resolve_expected_sidecar_dir(bundle_root: Path, html_path: Path, reference_dir: PurePosixPath, reference: str) -> Path:
+    parsed = urlsplit(reference.strip())
+    raw_path = unquote(parsed.path.strip())
+    if raw_path.startswith("/"):
+        resolved_dir = (bundle_root / reference_dir.as_posix()).resolve(strict=False)
+    else:
+        resolved_dir = (html_path.parent / reference_dir.as_posix()).resolve(strict=False)
+    return resolved_dir
+
+
 def build_sidecar_audit(root: Path | None = None, *, selected_files: list[Path] | None = None) -> dict[str, object]:
     bundle_root, html_files = normalize_inputs(root, selected_files)
     fixture_results: list[dict[str, object]] = []
@@ -54,26 +133,34 @@ def build_sidecar_audit(root: Path | None = None, *, selected_files: list[Path] 
     for html_path in html_files:
         text = html_path.read_text(encoding="utf-8", errors="ignore")
         rel_path = html_path.relative_to(bundle_root).as_posix()
-        references_by_dir: dict[str, set[str]] = {}
-        for raw_reference in QUOTED_VALUE_PATTERN.findall(text):
-            if "_files/" not in raw_reference:
+        references_by_dir: dict[str, dict[str, object]] = {}
+        for raw_reference in extract_reference_candidates(text):
+            parsed_reference = parse_sidecar_reference(raw_reference)
+            if parsed_reference is None:
                 continue
-            normalized = raw_reference.lstrip("./")
-            if "/" not in normalized:
-                continue
-            sidecar_dir, remainder = normalized.split("/", 1)
-            if not sidecar_dir.endswith("_files") or not remainder:
-                continue
-            references_by_dir.setdefault(sidecar_dir, set()).add(remainder)
+            reference_dir, sidecar_dir, asset_path = parsed_reference
+            key = reference_dir.as_posix()
+            bucket = references_by_dir.setdefault(
+                key,
+                {
+                    "sidecar_dir": sidecar_dir,
+                    "reference_dir": key,
+                    "assets": set(),
+                    "expected_path": resolve_expected_sidecar_dir(bundle_root, html_path, reference_dir, raw_reference),
+                },
+            )
+            bucket["assets"].add(asset_path.as_posix())
 
         sidecar_entries: list[dict[str, object]] = []
-        for sidecar_dir in sorted(references_by_dir):
-            expected_dir = html_path.parent / sidecar_dir
-            referenced_assets = sorted(references_by_dir[sidecar_dir])
+        for reference_dir in sorted(references_by_dir):
+            entry = references_by_dir[reference_dir]
+            expected_dir = entry["expected_path"]
+            referenced_assets = sorted(entry["assets"])
             exists = expected_dir.is_dir()
             sidecar_entries.append(
                 {
-                    "sidecar_dir": sidecar_dir,
+                    "sidecar_dir": entry["sidecar_dir"],
+                    "reference_dir": reference_dir,
                     "expected_path": expected_dir.as_posix(),
                     "exists": exists,
                     "referenced_asset_count": len(referenced_assets),
