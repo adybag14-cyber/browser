@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -256,6 +257,14 @@ def load_sidecar_module(repo_root: Path) -> ModuleType:
     return module
 
 
+def render_strict_sidecar_failure(report: str) -> str:
+    return (
+        report.rstrip()
+        + "\n\n"
+        + "Refusing to continue because the selected attached HTML bundle is missing required sibling _files directories.\n"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Start or inspect the attached-pages localhost catalog using auto-discovery or explicit pinned inputs."
@@ -309,6 +318,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Return success from --audit-sidecars even when the bundle has missing sidecar directories.",
     )
+    parser.add_argument(
+        "--require-complete-sidecars",
+        action="store_true",
+        help="Fail before printing a manifest or starting the server when the selected bundle is missing sibling _files directories.",
+    )
     args = parser.parse_args(argv)
 
     if args.audit_assets_json and not args.audit_assets:
@@ -329,7 +343,27 @@ def main(argv: list[str] | None = None) -> int:
         google_style=args.google_style,
     )
 
+    sidecar_module: ModuleType | None = None
+    sidecar_audit: dict[str, object] | None = None
+
+    def ensure_sidecar_audit() -> tuple[ModuleType, dict[str, object]]:
+        nonlocal sidecar_module, sidecar_audit
+        if sidecar_module is None:
+            sidecar_module = load_sidecar_module(repo_root)
+        if sidecar_audit is None:
+            sidecar_audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
+        return sidecar_module, sidecar_audit
+
     if args.print_manifest:
+        if args.require_complete_sidecars:
+            sidecar_module, sidecar_audit = ensure_sidecar_audit()
+            if sidecar_audit["fixtures_with_missing_sidecars"] > 0:
+                print(
+                    render_strict_sidecar_failure(sidecar_module.render_text_report(sidecar_audit)),
+                    end="",
+                    file=sys.stderr,
+                )
+                return 1
         server_module = load_server_module(repo_root)
         print(json.dumps(server_module.build_manifest(selected_files=selected_files), indent=2))
         return 0
@@ -346,20 +380,28 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.audit_sidecars:
-        sidecar_module = load_sidecar_module(repo_root)
-        audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
+        sidecar_module, sidecar_audit = ensure_sidecar_audit()
         if args.audit_sidecars_json:
-            print(json.dumps(audit, indent=2))
+            print(json.dumps(sidecar_audit, indent=2))
         else:
-            print(sidecar_module.render_text_report(audit), end="")
-        if audit["fixtures_with_missing_sidecars"] > 0 and not args.allow_missing_sidecars:
+            print(sidecar_module.render_text_report(sidecar_audit), end="")
+        if sidecar_audit["fixtures_with_missing_sidecars"] > 0 and not args.allow_missing_sidecars:
             return 1
         return 0
 
+    if args.require_complete_sidecars:
+        sidecar_module, sidecar_audit = ensure_sidecar_audit()
+        if sidecar_audit["fixtures_with_missing_sidecars"] > 0:
+            print(
+                render_strict_sidecar_failure(sidecar_module.render_text_report(sidecar_audit)),
+                end="",
+                file=sys.stderr,
+            )
+            return 1
+
     server_module = load_server_module(repo_root)
-    sidecar_module = load_sidecar_module(repo_root)
+    _, sidecar_audit = ensure_sidecar_audit()
     audit = server_module.build_asset_audit(selected_files=selected_files)
-    sidecar_audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
     print("Attached pages catalog")
     print("")
     print(
