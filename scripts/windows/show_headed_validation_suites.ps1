@@ -2,7 +2,7 @@
 param(
     [ValidateSet("", "google-form-controls-enter-order", "google-recommended")]
     [string]$SuiteName = "",
-    [ValidateSet("", "attached-html", "attached-html-target-bundle", "google-attached-html", "google-form-controls-enter-order", "google-input", "input", "manual-html", "navigation", "network", "rendering", "stop-loading")]
+    [ValidateSet("", "attached-html", "attached-html-target-bundle", "browser-shell", "google-attached-html", "google-form-controls-enter-order", "google-input", "input", "manual-html", "navigation", "network", "popup", "rendering", "stop-loading")]
     [string]$ChangeArea = "",
     [string]$RepoRoot = "",
     [string]$BrowserExe = "",
@@ -229,6 +229,33 @@ function Get-NetworkRouteNotes {
     )
 }
 
+function Get-BrowserShellRouteCommands {
+    return @(
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\tabs\chrome-tabs-probe.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\settings\chrome-settings-home-probe.ps1"
+    )
+}
+
+function Get-BrowserShellRouteNotes {
+    return @(
+        "Use these when the change touched tabs, reopen flows, chrome keyboard shortcuts, settings persistence, or other browser-shell surfaces on the real headed window.",
+        "These first-line browser-shell probes already auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; use the validation matrix before widening into older deeper helpers."
+    )
+}
+
+function Get-PopupRouteCommands {
+    return @(
+        "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-anchor-probe.ps1"
+    )
+}
+
+function Get-PopupRouteNotes {
+    return @(
+        "Use this when the change touched popup creation, named-target navigation, or popup policy on the real headed window.",
+        "Keep deeper popup follow-up on the validation matrix for now because several older popup helpers still carry fixed checkout assumptions."
+    )
+}
+
 $issue3AttachedHtmlArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name SummaryPath -Value $SummaryPath
@@ -361,6 +388,8 @@ function Show-DefaultRoutes {
     Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes (Get-GoogleFormControlsEnterOrderNotes)
     Write-Route -Name "rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
     Write-Route -Name "network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
+    Write-Route -Name "browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)
+    Write-Route -Name "popup" -Commands (Get-PopupRouteCommands) -Notes (Get-PopupRouteNotes)
 
     $attachedCommands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath
     Write-Route -Name "attached-html" -Commands $attachedCommands -Notes (Get-AttachedHtmlNotes)
@@ -526,6 +555,22 @@ switch ($true) {
         Write-Route -Name "bounded-network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
         Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath) -Notes (Get-AttachedHtmlNotes)
         Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
+        break
+    }
+    { $ChangeArea -eq "browser-shell" } {
+        Write-Section "browser-shell"
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+        Write-Route -Name "bounded-browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)
+        break
+    }
+    { $ChangeArea -eq "popup" } {
+        Write-Section "popup"
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+        Write-Route -Name "bounded-popup" -Commands (Get-PopupRouteCommands) -Notes (Get-PopupRouteNotes)
         break
     }
     { $ChangeArea -eq "attached-html" -or $ChangeArea -eq "attached-html-target-bundle" -or $ChangeArea -eq "google-attached-html" -or $ChangeArea -eq "manual-html" } {
