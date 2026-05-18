@@ -1,14 +1,23 @@
-$script:Repo = "C:\Users\adyba\src\lightpanda-browser"
-$script:Root = Join-Path $script:Repo "tmp-browser-smoke\indexeddb-persistence"
-$script:BrowserExe = if ($env:LIGHTPANDA_BROWSER_EXE) { $env:LIGHTPANDA_BROWSER_EXE } else { Join-Path $script:Repo "zig-out\bin\lightpanda.exe" }
+[CmdletBinding()]
+param()
 
-. "$script:Repo\tmp-browser-smoke\common\Win32Input.ps1"
-. "$script:Repo\tmp-browser-smoke\tabs\TabProbeCommon.ps1"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
+
+$script:Root = $PSScriptRoot
+$script:Repo = Resolve-LightpandaRepoRoot $script:Root
+$script:BrowserExe = Resolve-LightpandaBrowserExe $script:Repo $null
 
 function Reset-IndexedDbProfile([string]$ProfileRoot) {
   $appDataRoot = Join-Path $ProfileRoot "lightpanda"
   $downloadsDir = Join-Path $appDataRoot "downloads"
-  cmd /c "rmdir /s /q `"$ProfileRoot`"" | Out-Null
+  if (Test-Path -LiteralPath $ProfileRoot) {
+    Remove-Item -LiteralPath $ProfileRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
   New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
   $env:APPDATA = $ProfileRoot
   $env:LOCALAPPDATA = $ProfileRoot
@@ -40,23 +49,17 @@ function Get-FreeIndexedDbPort() {
   }
 }
 
-function Wait-IndexedDbServer([int]$Port, [int]$Attempts = 30) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port/seed.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { return $true }
-    } catch {}
-  }
-  return $false
+function Wait-IndexedDbServer([int]$Port, [int]$TimeoutSeconds = 15, [int]$PollMilliseconds = 250) {
+  return Wait-LightpandaHttpReady -Url "http://127.0.0.1:$Port/seed.html" -TimeoutSeconds $TimeoutSeconds -PollMilliseconds $PollMilliseconds
 }
 
 function Start-IndexedDbServer([int]$Port, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath "python" -ArgumentList (Join-Path $script:Root "indexeddb_server.py"),"$Port" -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  $python = Resolve-LightpandaPythonCommand
+  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $script:Root "indexeddb_server.py"),"$Port")) -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Start-IndexedDbBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath $script:BrowserExe -ArgumentList @("browse","--browser_mode","headed",$StartupUrl,"--window_width","960","--window_height","640") -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  return Start-Process -FilePath $script:BrowserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640",$StartupUrl) -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Invoke-IndexedDbAddressCommit([IntPtr]$Hwnd, [string]$Url) {
