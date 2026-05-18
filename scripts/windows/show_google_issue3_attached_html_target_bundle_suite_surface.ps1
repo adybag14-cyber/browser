@@ -14,7 +14,7 @@ function ConvertTo-PowerShellSingleQuotedLiteral {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Value
-    )
+    }
 
     return "'" + ($Value -replace "'", "''") + "'"
 }
@@ -180,6 +180,36 @@ if ($BrowserExe) {
     $googleAttachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
 }
 
+$attachedHtmlTargetBundleSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedHtmlTargetBundleSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlTargetBundleSuiteArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedHtmlSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedHtmlSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+
+$googleAttachedHtmlSuiteArguments = [ordered]@{
+    ChangeArea = 'google-attached-html'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $googleAttachedHtmlSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+
 $surface = [ordered]@{
     issue = 'Google issue #3 attached-html target-bundle suite surface'
     purpose = 'Print the compact suite-level route for the known three-page attached HTML compatibility bundle while keeping the broader attached-page lane, the full Google-shaped attached-page validation route, the pinned bundle checker, and the proof-entry follow-up visible beside the attached-html-target-bundle change-area output.'
@@ -188,9 +218,9 @@ $surface = [ordered]@{
     browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     suite_commands = [ordered]@{
-        attached_html_target_bundle = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html-target-bundle' }) -RepoRootOverride $RepoRoot
-        attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html' }) -RepoRootOverride $RepoRoot
-        google_attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'google-attached-html' }) -RepoRootOverride $RepoRoot
+        attached_html_target_bundle = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlTargetBundleSuiteArguments -RepoRootOverride $RepoRoot
+        attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
+        google_attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
