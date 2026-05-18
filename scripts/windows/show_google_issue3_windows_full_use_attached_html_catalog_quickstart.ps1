@@ -178,6 +178,7 @@ Add-SharedArgument -Arguments $attachedPagesLauncherArguments -Name RepoRoot -Va
 Add-SharedPathArrayArgument -Arguments $attachedPagesLauncherArguments -Name InputPath -Values $InputPath
 
 $attachedPagesSidecarAuditCommand = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $attachedPagesLauncherArguments -Switches @('AuditSidecars')
+$attachedPagesGoogleSidecarAuditCommand = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $attachedPagesLauncherArguments -Switches @('GoogleStyle', 'AuditSidecars')
 $attachedPagesAssetAuditCommand = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $attachedPagesLauncherArguments -Switches @('AuditAssets')
 $attachedPagesManifestPrintCommand = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $attachedPagesLauncherArguments -Switches @('PrintManifest')
 $attachedPagesStrictLaunchCommand = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $attachedPagesLauncherArguments -Switches @('RequireCompleteSidecars')
@@ -190,7 +191,7 @@ $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -Sc
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 Windows full-use attached HTML catalog quickstart'
-    purpose = 'Keep the broader Windows full-use attached-page route, the route-level and catalog-level fail-fast surface checks, the broader attached-page flow helper, the launcher-backed attached-pages preflight ladder (sidecar audit, asset audit, manifest print, and strict sidecar-gated launch), the dedicated Google-shaped attached-page fail-fast surface check, the dedicated Google-shaped attached-page flow helper, the newer top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the newer top-level shortcut bridge, the replay-route shortcut bridge, and the compact attached-bundle suite surface visible on one compact helper before the replay narrows into the suite-catalog attached-page bridge, the shorter attached-page shortcut, the pinned bundle-first path, or the wrapper-heavy safe-route map.'
+    purpose = 'Keep the broader Windows full-use attached-page route, the route-level and catalog-level fail-fast surface checks, the broader attached-page flow helper, the launcher-backed attached-pages preflight ladder (sidecar audit, Google-style sidecar audit, asset audit, manifest print, and strict sidecar-gated launch), the dedicated Google-shaped attached-page fail-fast surface check, the dedicated Google-shaped attached-page flow helper, the newer top-level attached-page catalog quickstart, the suite-catalog-to-top-level attached-page catalog quickstart, the newer top-level shortcut bridge, the replay-route shortcut bridge, and the compact attached-bundle suite surface visible on one compact helper before the replay narrows into the suite-catalog attached-page bridge, the shorter attached-page shortcut, the pinned bundle-first path, or the wrapper-heavy safe-route map.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -226,6 +227,7 @@ $entrypoint = [ordered]@{
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $bundleArguments
         google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
+        attached_pages_google_sidecar_audit = $attachedPagesGoogleSidecarAuditCommand
         google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand
         google_attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
@@ -265,6 +267,7 @@ $entrypoint = [ordered]@{
         'Use top_level_shortcut_first_entrypoint when you want the newer top-level shortcut bridge reprinted beside the catalog quickstart before the route collapses into the shorter attached-page shortcut surface.',
         'Use replay_route_shortcut_entrypoint when you want the replay-route shortcut bridge reprinted beside the catalog quickstart before the route widens back into replay shortcuts, the next-step matrix, contextual flow, the bundle-first branch, or the safe-route map.',
         'Use suite_catalog_attached_html_entrypoint after the top-level catalog quickstart when the suite-catalog-side attached-page bridge should stay visible before the replay narrows again.',
+        'Use attached_pages_google_sidecar_audit when the current attached inputs are already Google-shaped and you want the same cheaper wrapper-backed sibling _files preflight to run before the dedicated Google surface check or the dedicated Google flow helper takes over.',
         'Use google_attached_html_validation_flow when the current attached inputs are already Google-shaped and you want the dedicated attached-page flow helper visible beside the broader Windows and top-level attached-page ladders before the route narrows back into the shorter issue #3 helper chain.',
         'Use attached_bundle_suite_surface when the current attached or saved pages are still close to the known three-page compatibility bundle and you want that compact suite surface visible before the route commits to the bundle-first branch.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that bundle-first branch should stay visible before widening back into the broader issue #3 helper chain.',
@@ -321,15 +324,16 @@ Write-Host ((" 20. Replay-route shortcut: {0}") -f $entrypoint.helper_commands.r
 Write-Host ((" 21. Router quickstart:     {0}") -f $entrypoint.helper_commands.suite_router_attached_html_quickstart)
 Write-Host ((" 22. Catalog bridge:        {0}") -f $entrypoint.helper_commands.suite_catalog_attached_html_entrypoint)
 Write-Host ((" 23. Google attached:       {0}") -f $entrypoint.helper_commands.google_attached_html_entrypoint)
-Write-Host ((" 24. Google surface check:  {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
-Write-Host ((" 25. Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)
-Write-Host ((" 26. Bundle suite surface:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)
-Write-Host ((" 27. Attached shortcut:     {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
-Write-Host ((" 28. Replay shortcuts:      {0}") -f $entrypoint.helper_commands.replay_shortcuts)
-Write-Host ((" 29. Next-step matrix:      {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
-Write-Host ((" 30. Contextual flow:       {0}") -f $entrypoint.helper_commands.contextual_flow)
-Write-Host ((" 31. Bundle first:          {0}") -f $entrypoint.helper_commands.attached_bundle_first)
-Write-Host ((" 32. Safe-route map:        {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
+Write-Host ((" 24. Google sidecars:       {0}") -f $entrypoint.helper_commands.attached_pages_google_sidecar_audit)
+Write-Host ((" 25. Google surface check:  {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
+Write-Host ((" 26. Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)
+Write-Host ((" 27. Bundle suite surface:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)
+Write-Host ((" 28. Attached shortcut:     {0}") -f $entrypoint.helper_commands.attached_html_shortcut)
+Write-Host ((" 29. Replay shortcuts:      {0}") -f $entrypoint.helper_commands.replay_shortcuts)
+Write-Host ((" 30. Next-step matrix:      {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
+Write-Host ((" 31. Contextual flow:       {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host ((" 32. Bundle first:          {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host ((" 33. Safe-route map:        {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
 Write-Host ''
 Write-Host (("Windows runbook:            {0}") -f $entrypoint.windows_runbook_note_path)
 Write-Host (("Windows attached route:     {0}") -f $entrypoint.windows_full_use_attached_html_route_note_path)
