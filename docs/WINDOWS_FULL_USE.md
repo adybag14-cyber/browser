@@ -131,6 +131,11 @@ Use the sidecar audit first. A missing `_files` directory means the export
 itself is incomplete, so the next replay result is already degraded before it
 says anything about the headed runtime.
 
+When you want the manifest or localhost catalog launch itself to stop on that
+same condition, add `-RequireCompleteSidecars` to the Windows wrapper. That
+keeps a later shell from quietly reopening the bundle after the audit already
+proved the export is incomplete.
+
 When you need to validate a non-default browser build, keep that same binary
 pinned at every helper hop instead of letting the route drift back to
 `.\zig-out\bin\lightpanda.exe`:
@@ -156,7 +161,9 @@ audit:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditAssets
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -Port 8235
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars -Port 8235
 ```
 
 For the current issue `#3` style replay, let the wrapper auto-discover the
@@ -167,7 +174,9 @@ available:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -AuditAssets
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -RequireCompleteSidecars -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -Port 8235
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -RequireCompleteSidecars -Port 8235
 ```
 
 For non-Windows or scheduled runs, the matching Python launcher exposes the same
@@ -177,7 +186,9 @@ pinned-input flow and preflight modes without going through PowerShell:
 python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --audit-sidecars
 python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --audit-assets
 python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --print-manifest
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --require-complete-sidecars --print-manifest
 python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --port 8235
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --google-style --require-complete-sidecars --port 8235
 ```
 
 If you want to bypass the launchers and run the lower-level Python helper
