@@ -12,7 +12,7 @@ Use that helper when you want one read-first command surface that:
 
 - reuses the current attached HTML pages instead of a separately prepared saved-page export
 - fails fast on missing sibling sidecar bundles and on the Google-style attached-page validation surface before launch
-- runs the lighter sidecar-bundle audit first, then the deep local asset-closure audit for the same attached-page set
+- runs the launcher-backed sidecar-bundle audit first, then the deep local asset-closure audit for the same attached-page set
 - keeps the Google-like page first when one is available in the current attached-page inputs
 - hands off into the saved-page Google validation helper and its runner with the same locked inputs
 
@@ -42,7 +42,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the current attached-page set, run the sidecar-bundle audit plus the Google-style fail-fast checks first, keep the broader attached-page entrypoints visible long enough to confirm the right route, keep the Windows-first attached-html catalog quickstart visible when the replay is reopening from the broader Windows runbook, keep the newer suite-router and top-level attached-page ladders visible when the replay has already narrowed to attached localhost follow-up, then let `show_google_attached_html_validation_flow.ps1` print and hand off the same locked inputs into the saved-page Google validation flow before you widen back into replay shortcuts, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
+Start from the current attached-page set, run the launcher-backed sidecar-bundle audit plus the Google-style fail-fast checks first, keep the broader attached-page entrypoints visible long enough to confirm the right route, keep the Windows-first attached-html catalog quickstart visible when the replay is reopening from the broader Windows runbook, keep the newer suite-router and top-level attached-page ladders visible when the replay has already narrowed to attached localhost follow-up, then let `show_google_attached_html_validation_flow.ps1` print and hand off the same locked inputs into the saved-page Google validation flow before you widen back into replay shortcuts, the compact bundle-suite re-entry, bundle-first reuse, or the safe-route stack.
 
 ## Top-level re-entry points
 
@@ -141,7 +141,7 @@ Keep `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md` nearby when you want the 
 Use this route when auto-discovery should choose the current attached HTML inputs:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
@@ -153,7 +153,7 @@ Use that route when:
 - the current attached-page set should be discovered automatically from the workspace
 - one Google-like page should stay first if the current attached inputs include one
 - the replay still needs the Google-style saved-page flow printed before launch
-- you want to prove the sibling `_files` sidecar bundle is present before the deeper local asset crawl begins
+- you want the launcher-backed sibling `_files` sidecar bundle audit to prove the export is intact before the deeper local asset crawl begins
 - you want the same attached-page set reused by the surface checker, sidecar audit, asset-closure audit, helper, and runner
 
 ## Preserve replay context
@@ -161,7 +161,7 @@ Use that route when:
 If the replay already carries a non-default repo root, a preferred starting page, an explicit browser binary, or pinned attached-page inputs, keep that same context attached to the helper chain:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --repo-root '<repo-root>' --audit-sidecars --input '<attached-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>' -PreferredInitialPage '<preferred-page>' -BrowserExe '<browser-exe>'
@@ -191,7 +191,7 @@ Use that route when the replay is already organized around a single local host d
 If the current replay must continue even though some local sibling assets are known to be missing, allow that explicitly and treat the result as a narrower signal:
 
 ```powershell
-python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>' --allow-missing-sidecars
+python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --audit-sidecars --allow-missing-sidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_local_asset_closure.ps1 -GoogleStyle -AllowMissingAssets
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -AllowMissingLocalAssets
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -AllowMissingLocalAssets -Wait
@@ -218,7 +218,7 @@ Use `-InputPath` or `-PageRoot` when the Google-style replay is still the right 
 
 Use this first when branch state may have moved and you want the Google-style attached-page guide, helper, and downstream runner surface checked before the replay starts.
 
-2. `python .\tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py --root '<attached-html-root>'`
+2. `python .\tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py --audit-sidecars`
 
 Use this next when the current export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the deeper local asset crawl begins.
 
@@ -280,4 +280,4 @@ Use this when the current inputs are still the known three-page compatibility bu
 
 ## Practical rule
 
-Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard, the Windows-to-validation-router bridge, and the Windows-first attached-html catalog quickstart first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route, the compact bundle-suite re-entry, the pinned bundle route, and the neighboring top-level or suite-router attached-page ladders printed together before picking the next replay branch. Reopen the suite-router and top-level attached-page helpers first when the replay is already narrowed to attached localhost follow-up but you still want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the shorter issue `#3` bridges surfaced together before this guide takes over. Keep the replay-route helper family nearby when you want the broader attached-page fallback, the compact bundle-specific re-entry, and the pinned bundle-first branch surfaced together before this guide narrows the route. Run the sidecar-bundle audit before the deeper asset-closure crawl when a saved export might simply be missing its sibling `_files` directory, then treat the deeper asset crawl as the next step only after the bundle itself is present. Keep the broader attached-page router nearby when the route is still ambiguous, keep the compact bundle-suite helper and bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, sidecar audit, asset audit, helper output, or runner makes the next failure state clear.
+Prefer the Google-style attached-page flow when the current attached HTML inputs already contain a Google-like page and the next useful replay should stay aligned with the issue `#3` localhost-first helper chain. If the replay is reopening from `docs/WINDOWS_FULL_USE.md`, rerun the broader Windows-full-use attached-page route guard, the Windows-to-validation-router bridge, and the Windows-first attached-html catalog quickstart first so the higher-level branch stays visible before this narrower note takes over. Reopen the suite-catalog surfaces first when you want the narrower Google-shaped route, the compact bundle-suite re-entry, the pinned bundle route, and the neighboring top-level or suite-router attached-page ladders printed together before picking the next replay branch. Reopen the suite-router and top-level attached-page helpers first when the replay is already narrowed to attached localhost follow-up but you still want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the shorter issue `#3` bridges surfaced together before this guide takes over. Keep the replay-route helper family nearby when you want the broader attached-page fallback, the compact bundle-specific re-entry, and the pinned bundle-first branch surfaced together before this guide narrows the route. Run the launcher-backed sidecar-bundle audit before the deeper asset-closure crawl when a saved export might simply be missing its sibling `_files` directory, then treat the deeper asset crawl as the next step only after the bundle itself is present. Keep the broader attached-page router nearby when the route is still ambiguous, keep the compact bundle-suite helper and bundle-first route nearby when the inputs are still the known compatibility bundle, and only widen back into replay shortcuts or the safe-route stack after the Google-style surface check, sidecar audit, asset audit, helper output, or runner makes the next failure state clear.
