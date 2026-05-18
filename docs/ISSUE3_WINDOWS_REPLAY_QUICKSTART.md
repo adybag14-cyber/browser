@@ -69,13 +69,13 @@ If you still want the exact top-level suite-router commands surfaced directly fr
 
 Use `-ChangeArea attached-html` when the current replay is already centered on the attached localhost compatibility pages and you want the main validation catalog to print that broader attached-page branch before you drop into the issue-specific replay-side attached-page quickstart, the top-level attached-page notes, the suite-catalog-to-top-level attached-html catalog quickstart, the suite-catalog bridge, the attached-page shortcut, the replay shortcuts, the next-step matrix, or the pinned bundle-first route.
 
-Use `-ChangeArea google-attached-html` when the current replay is already centered on the Google-shaped attached localhost branch and you want the broader dedicated Google attached-page route, the sidecar-bundle audit, the broader Google surface check, and the narrower issue-specific entrypoint check surfaced before the route collapses into the shorter issue `#3` bridge.
+Use `-ChangeArea google-attached-html` when the current replay is already centered on the Google-shaped attached localhost branch and you want the broader dedicated Google attached-page route, the sidecar-first launcher audit, the broader Google surface check, and the narrower issue-specific entrypoint check surfaced before the route collapses into the shorter issue `#3` bridge.
 
 If the replay is already centered on the Google-shaped attached localhost branch from the broader validation router and you want the sidecar-first Google lane reopened in the same higher-level Windows-first order, use:
 
 ```powershell
 .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
-python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py --root '<attached-html-root>'
+python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --input '<attached-html-root>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
@@ -83,9 +83,10 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1
 ```
 
-If the replay is running from a non-default checkout, preserve that same repo root on the fail-fast checks before you narrow into the issue-specific Google attached-page bridge:
+If the replay is running from a non-default checkout, preserve that same repo root on the sidecar audit and fail-fast checks before you narrow into the issue-specific Google attached-page bridge:
 
 ```powershell
+python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --repo-root '<repo-root>' --input '<attached-html-or-folder>' --google-style --audit-sidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
