@@ -13,6 +13,12 @@ TARGET_DOCS = (
 )
 RAW_LAUNCHER_NEEDLE = "start_attached_pages_catalog.py"
 WRAPPER_LAUNCHER_NEEDLE = r"scripts\windows\start_attached_pages_catalog.ps1"
+LAUNCHER_COMPANION_NEEDLE = (
+    r"scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1"
+)
+LAUNCHER_COMPANION_SURFACE_CHECK_NEEDLE = (
+    r"scripts\windows\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1"
+)
 SIDECAR_SWITCH_NEEDLE = "AuditSidecars"
 GOOGLE_STYLE_NEEDLE = "GoogleStyle"
 
@@ -44,6 +50,8 @@ def build_replay_doc_audit(repo_root: Path) -> dict[str, object]:
     wrapper_reference_count = 0
     wrapper_sidecar_reference_count = 0
     google_wrapper_sidecar_reference_count = 0
+    launcher_companion_reference_count = 0
+    launcher_companion_surface_check_reference_count = 0
 
     for relative_path in TARGET_DOCS:
         path = resolved_root / relative_path
@@ -52,6 +60,8 @@ def build_replay_doc_audit(repo_root: Path) -> dict[str, object]:
 
         raw_lines: list[dict[str, object]] = []
         wrapper_lines: list[dict[str, object]] = []
+        launcher_companion_lines: list[dict[str, object]] = []
+        launcher_companion_surface_check_lines: list[dict[str, object]] = []
 
         text = path.read_text(encoding="utf-8", errors="ignore")
         for line_number, line in enumerate(text.splitlines(), start=1):
@@ -65,6 +75,14 @@ def build_replay_doc_audit(repo_root: Path) -> dict[str, object]:
                     "mentions_google_style": GOOGLE_STYLE_NEEDLE in line,
                 }
                 wrapper_lines.append(wrapper_line)
+            if LAUNCHER_COMPANION_NEEDLE in line:
+                launcher_companion_lines.append(
+                    {"line_number": line_number, "line": line.rstrip()}
+                )
+            if LAUNCHER_COMPANION_SURFACE_CHECK_NEEDLE in line:
+                launcher_companion_surface_check_lines.append(
+                    {"line_number": line_number, "line": line.rstrip()}
+                )
 
         file_wrapper_sidecar_reference_count = sum(
             1 for line in wrapper_lines if line["mentions_sidecars"]
@@ -81,6 +99,10 @@ def build_replay_doc_audit(repo_root: Path) -> dict[str, object]:
         google_wrapper_sidecar_reference_count += (
             file_google_wrapper_sidecar_reference_count
         )
+        launcher_companion_reference_count += len(launcher_companion_lines)
+        launcher_companion_surface_check_reference_count += len(
+            launcher_companion_surface_check_lines
+        )
 
         file_results.append(
             {
@@ -93,6 +115,14 @@ def build_replay_doc_audit(repo_root: Path) -> dict[str, object]:
                 "wrapper_sidecar_reference_count": file_wrapper_sidecar_reference_count,
                 "google_wrapper_sidecar_reference_count": (
                     file_google_wrapper_sidecar_reference_count
+                ),
+                "launcher_companion_references": launcher_companion_lines[:20],
+                "launcher_companion_reference_count": len(launcher_companion_lines),
+                "launcher_companion_surface_check_references": (
+                    launcher_companion_surface_check_lines[:20]
+                ),
+                "launcher_companion_surface_check_reference_count": len(
+                    launcher_companion_surface_check_lines
                 ),
             }
         )
@@ -107,6 +137,10 @@ def build_replay_doc_audit(repo_root: Path) -> dict[str, object]:
         "google_wrapper_sidecar_reference_count": (
             google_wrapper_sidecar_reference_count
         ),
+        "launcher_companion_reference_count": launcher_companion_reference_count,
+        "launcher_companion_surface_check_reference_count": (
+            launcher_companion_surface_check_reference_count
+        ),
         "files": file_results,
     }
 
@@ -117,6 +151,8 @@ def collect_failure_reasons(
     allow_raw_launcher: bool,
     require_wrapper_sidecar: bool,
     require_google_wrapper_sidecar: bool,
+    require_launcher_companion: bool,
+    require_launcher_companion_surface_check: bool,
 ) -> list[str]:
     failure_reasons: list[str] = []
     if audit["raw_python_reference_count"] > 0 and not allow_raw_launcher:
@@ -131,6 +167,20 @@ def collect_failure_reasons(
     ):
         failure_reasons.append(
             "no Google-style wrapper-backed sidecar audit references were found in the replay notes"
+        )
+    if (
+        require_launcher_companion
+        and audit["launcher_companion_reference_count"] == 0
+    ):
+        failure_reasons.append(
+            "no launcher companion helper references were found in the replay notes"
+        )
+    if (
+        require_launcher_companion_surface_check
+        and audit["launcher_companion_surface_check_reference_count"] == 0
+    ):
+        failure_reasons.append(
+            "no launcher companion surface-check references were found in the replay notes"
         )
     return failure_reasons
 
@@ -147,6 +197,14 @@ def render_text_report(audit: dict[str, object]) -> str:
         (
             "Google-style wrapper sidecar references: "
             f"{audit['google_wrapper_sidecar_reference_count']}"
+        ),
+        (
+            "Launcher companion references: "
+            f"{audit['launcher_companion_reference_count']}"
+        ),
+        (
+            "Launcher companion surface-check references: "
+            f"{audit['launcher_companion_surface_check_reference_count']}"
         ),
         "",
     ]
@@ -166,6 +224,14 @@ def render_text_report(audit: dict[str, object]) -> str:
             "Google-style wrapper sidecar references: "
             f"{file_result['google_wrapper_sidecar_reference_count']}"
         )
+        lines.append(
+            "Launcher companion references: "
+            f"{file_result['launcher_companion_reference_count']}"
+        )
+        lines.append(
+            "Launcher companion surface-check references: "
+            f"{file_result['launcher_companion_surface_check_reference_count']}"
+        )
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"
@@ -175,7 +241,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Audit the issue #3 replay docs for stale raw-Python attached-pages "
-            "launcher references and wrapper-backed sidecar coverage."
+            "launcher references, wrapper-backed sidecar coverage, and launcher-"
+            "companion surfacing."
         )
     )
     parser.add_argument("--repo-root", help="Override the Lightpanda repo root.")
@@ -195,6 +262,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Require at least one Google-style wrapper-backed sidecar audit reference.",
     )
+    parser.add_argument(
+        "--require-launcher-companion",
+        action="store_true",
+        help="Require at least one launcher companion helper reference.",
+    )
+    parser.add_argument(
+        "--require-launcher-companion-surface-check",
+        action="store_true",
+        help="Require at least one launcher companion surface-check reference.",
+    )
     args = parser.parse_args(argv)
 
     repo_root = (
@@ -208,6 +285,10 @@ def main(argv: list[str] | None = None) -> int:
         allow_raw_launcher=args.allow_raw_launcher,
         require_wrapper_sidecar=args.require_wrapper_sidecar,
         require_google_wrapper_sidecar=args.require_google_wrapper_sidecar,
+        require_launcher_companion=args.require_launcher_companion,
+        require_launcher_companion_surface_check=(
+            args.require_launcher_companion_surface_check
+        ),
     )
 
     if args.json:
