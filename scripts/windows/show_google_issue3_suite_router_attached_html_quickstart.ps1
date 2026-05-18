@@ -153,10 +153,14 @@ function Format-HelperCommandWithRepoRootEnv {
 
 function Format-AttachedPagesSidecarAuditCommand {
     param(
+        [string]$RepoRoot,
         [string[]]$InputPath
     )
 
-    $command = 'python .\\tmp-browser-smoke\\attached-pages\\attached_pages_sidecar_audit.py'
+    $command = 'python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py --audit-sidecars'
+    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        $command += ' --repo-root ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot)
+    }
     if ($InputPath -and $InputPath.Count -gt 0) {
         foreach ($value in $InputPath) {
             if ([string]::IsNullOrWhiteSpace($value)) {
@@ -165,10 +169,9 @@ function Format-AttachedPagesSidecarAuditCommand {
 
             $command += ' --input ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $value)
         }
-        return $command
     }
 
-    return $command + " --root '<attached-html-root>'"
+    return $command
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -185,7 +188,7 @@ if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
 
-$attachedPagesSidecarAuditCommand = Format-AttachedPagesSidecarAuditCommand -InputPath $InputPath
+$attachedPagesSidecarAuditCommand = Format-AttachedPagesSidecarAuditCommand -RepoRoot $RepoRoot -InputPath $InputPath
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $googleIssue3AttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $suiteRouterAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_router_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
