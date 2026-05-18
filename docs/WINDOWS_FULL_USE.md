@@ -126,6 +126,21 @@ helper, not a hand-built `python -m http.server` session. It gives the saved
 HTML bundle short stable routes, a generated manifest, and an asset audit that
 can fail fast before the browser is involved.
 
+When you need to validate a non-default browser build, keep that same binary
+pinned at every helper hop instead of letting the route drift back to
+`.\zig-out\bin\lightpanda.exe`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -BrowserExe "C:\path\to\lightpanda.exe" -InputPath "<saved-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -BrowserExe "C:\path\to\lightpanda.exe" -InputPath "<saved-html-or-folder>"
+```
+
+The broader Google-shaped attached-page flow already preserves `-BrowserExe`.
+Some of the shorter issue `#3` attached-page quickstarts still assume the
+default build location, so rerun the validation router with `-BrowserExe`
+before switching between the general attached-html route and the pinned bundle
+route.
+
 For a concrete saved page or bundle root, use the Windows wrapper first:
 
 ```powershell
