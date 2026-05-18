@@ -290,6 +290,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
     parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
     parser.add_argument(
+        "--staging-root",
+        help="Directory where staged route copies should be written. Defaults to a temporary staging tree that is cleaned up when the server stops.",
+    )
+    parser.add_argument(
         "--google-style",
         action="store_true",
         help="Prefer the strongest Google-like attached page first when auto-discovering fixtures.",
@@ -353,6 +357,7 @@ def main(argv: list[str] | None = None) -> int:
         explicit_inputs=args.explicit_inputs,
         google_style=args.google_style,
     )
+    staging_root = Path(args.staging_root).expanduser().resolve() if args.staging_root else None
 
     sidecar_module: ModuleType | None = None
     sidecar_audit: dict[str, object] | None = None
@@ -433,6 +438,8 @@ def main(argv: list[str] | None = None) -> int:
     print("Routes: /, /manifest.json, /audit.json, /audit.txt, /pages/<n>, /named/<slug>, /raw/...")
     if args.require_complete_sidecars:
         print("Strict sidecar gate: enabled")
+    if staging_root is not None:
+        print(f"Requested staging root: {staging_root}")
     if preferred_fixture_path is not None:
         print(f"Preferred Google-style page: {preferred_fixture_path}")
     if preferred_manifest_entry is not None:
@@ -466,7 +473,9 @@ def main(argv: list[str] | None = None) -> int:
         bind=args.bind,
         port=args.port,
         selected_files=selected_files,
+        staging_root=staging_root,
     )
+    print(f"Staging route copies under: {server.stage_root}")
     print(f"Serving attached pages bundle with {len(manifest)} page(s)")
     try:
         server.serve_forever()
