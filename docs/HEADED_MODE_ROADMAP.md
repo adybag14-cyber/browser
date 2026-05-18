@@ -31,6 +31,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea navigation
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"
 ```
@@ -40,6 +41,7 @@ Current validation truth on this branch:
 - bounded localhost navigation probes exist under `tmp-browser-smoke/wrapped-link/`
 - bounded localhost stop/reload probes exist under `tmp-browser-smoke/stop-loading/`
 - bounded localhost input probes exist under `tmp-browser-smoke/form-controls/`
+- the router now surfaces a dedicated `google-form-controls-enter-order` gate for the smallest issue #3 shared Enter-submit checkpoint on the real headed surface
 - the first-line navigation, stop-loading, and form-control probes auto-resolve the repo root and built browser path from the current checkout
 - `scripts/windows/show_headed_validation_suites.ps1` is the truthful router
   for current small Windows headed checks
