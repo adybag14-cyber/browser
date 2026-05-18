@@ -125,6 +125,24 @@ class StartAttachedPagesCatalogTests(unittest.TestCase):
 
         self.assertEqual(11, module.VALUE)
 
+    def test_find_manifest_entry_for_path_matches_leaf_name(self):
+        manifest = [
+            {
+                "file": "nested/google-home.html",
+                "route": "/pages/1",
+                "alias_route": "/pages/1-google-home",
+                "slug_route": "/named/google-home",
+            }
+        ]
+
+        entry = helper.find_manifest_entry_for_path(
+            manifest,
+            Path("/tmp/bundle/google-home.html"),
+        )
+
+        self.assertIsNotNone(entry)
+        self.assertEqual("/pages/1", entry["route"])
+
     def test_main_print_manifest_uses_repo_server_module(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
         attached_pages_dir.mkdir(parents=True)
@@ -316,6 +334,88 @@ def render_text_report(audit):
         self.assertEqual("", stdout.getvalue())
         self.assertIn("Attached Pages Sidecar Audit", stderr.getvalue())
         self.assertIn("Refusing to continue", stderr.getvalue())
+
+    def test_main_server_mode_prints_preferred_routes_and_strict_gate(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(
+            self.workspace_root / "agent_files" / "google-search.html",
+            "Google Search Home",
+            '<form action="/search"><input name="q" aria-label="search the web"></form>',
+        )
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            """def build_sidecar_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_sidecars": 0,
+        "fixtures": [],
+    }
+
+def render_text_report(audit):
+    return "Attached Pages Sidecar Audit\\n"
+""",
+            encoding="utf-8",
+        )
+        (attached_pages_dir / "attached_pages_server.py").write_text(
+            """from pathlib import Path
+
+def build_manifest(root=None, selected_files=None):
+    return [{
+        "file": Path(selected_files[0]).name,
+        "route": "/pages/1",
+        "alias_route": "/pages/1-google-search-home",
+        "slug_route": "/named/google-search-home",
+    }]
+
+def build_asset_audit(root=None, selected_files=None):
+    return {
+        "fixtures_with_missing_assets": 0,
+    }
+
+def render_asset_audit_text(audit):
+    return "audit\\n"
+
+class FakeServer:
+    server_address = ("127.0.0.1", 8235)
+
+    def serve_forever(self):
+        raise KeyboardInterrupt()
+
+    def server_close(self):
+        return None
+
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
+    return FakeServer(), build_manifest(root=root, selected_files=selected_files)
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--google-style",
+                    "--require-complete-sidecars",
+                ]
+            )
+
+        output = stdout.getvalue()
+        self.assertEqual(0, exit_code)
+        self.assertIn("Strict sidecar gate: enabled", output)
+        self.assertIn("Preferred Google-style page:", output)
+        self.assertIn("Preferred route: http://127.0.0.1:8235/pages/1/", output)
+        self.assertIn(
+            "Preferred alias route: http://127.0.0.1:8235/pages/1-google-search-home/",
+            output,
+        )
+        self.assertIn(
+            "Preferred named route: http://127.0.0.1:8235/named/google-search-home/",
+            output,
+        )
 
     def test_repo_override_takes_precedence_over_environment(self):
         other_repo = self.workspace_root / "other-browser"
