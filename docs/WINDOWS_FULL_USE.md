@@ -106,6 +106,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
 ```
 
+Before starting the localhost catalog server or blaming headed replay, reuse
+the Windows wrapper-backed launcher preflight from the same branch surface:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditSidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -RequireCompleteSidecars
+```
+
+Run the sidecar audit first so missing sibling `_files` directories fail fast
+before deeper replay diagnosis, run the asset audit second so broader local
+export drift stays visible before the browser is blamed, use the manifest
+command when you want the pinned localhost routes printed without starting the
+server, and add `-RequireCompleteSidecars` when the manifest or localhost launch
+should stop on incomplete saved-page bundles.
+
 When the current replay should stay pinned to the known three-page compatibility
 bundle, use the compact Windows-first bundle bridge before widening back into
 the broader attached-page ladders:
