@@ -242,6 +242,7 @@ $entrypoint = [ordered]@{
     attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
     attached_pages_launcher_readme_path = 'tmp-browser-smoke/attached-pages/README.md'
     attached_pages_launcher_wrapper_path = 'scripts/windows/start_attached_pages_catalog.ps1'
+    attached_pages_launcher_entrypoint_path = 'tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py'
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     notes = @(
         'Use this helper when docs/WINDOWS_FULL_USE.md has already narrowed the next replay to attached localhost follow-up and you want the route-level surface check, the catalog-level surface check, the Windows-to-validation-router bridge, the broader attached-page flow helper, the launcher-backed sidecar audit, and the replay-side attached-page quickstart reprinted beside the newer top-level attached-page catalog quickstart.',
@@ -259,7 +260,7 @@ $entrypoint = [ordered]@{
         'Use attached_bundle_suite_surface when the current attached or saved pages are still close to the known three-page compatibility bundle and you want that compact suite surface visible before the route commits to the bundle-first branch.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and that bundle-first branch should stay visible before widening back into the broader issue #3 helper chain.',
         'Use contextual_flow when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between the suite-catalog attached-page bridge, replay shortcuts, the next-step matrix, the bundle-first branch, or the safe-route map.',
-        'Keep the Windows runbook, the Windows full-use attached-page route note, the Windows validation-router attached-page bridge note, the Windows replay attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the Google attached-page validation-flow note, the replay-route shortcut bridge note, the bundle-suite surface note, the attached-pages launcher README, the Windows launcher wrapper, and the Windows replay quickstart nearby when you want the written route beside these commands.'
+        'Keep the Windows runbook, the Windows full-use attached-page route note, the Windows validation-router attached-page bridge note, the Windows replay attached-page quickstart note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-catalog attached-page bridge note, the Google attached-page validation-flow note, the replay-route shortcut bridge note, the bundle-suite surface note, the attached-pages launcher README, the Windows launcher wrapper, the lower-level attached-pages launcher entrypoint, and the Windows replay quickstart nearby when you want the written route beside these commands.'
     )
 }
 
@@ -330,6 +331,7 @@ Write-Host (("Replay-route shortcut note: {0}") -f $entrypoint.replay_route_shor
 Write-Host (("Bundle suite note:          {0}") -f $entrypoint.attached_html_target_bundle_suite_surface_note_path)
 Write-Host (("Attached-pages guide:       {0}") -f $entrypoint.attached_pages_launcher_readme_path)
 Write-Host (("Attached-pages wrapper:     {0}") -f $entrypoint.attached_pages_launcher_wrapper_path)
+Write-Host (("Attached-pages launcher:    {0}") -f $entrypoint.attached_pages_launcher_entrypoint_path)
 Write-Host (("Replay quickstart note:     {0}") -f $entrypoint.windows_replay_quickstart_note_path)
 Write-Host ''
 Write-Host 'Notes:'
