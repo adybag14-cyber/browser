@@ -42,6 +42,56 @@ function Get-AttachedPagesManifest {
     return $manifestJson | ConvertFrom-Json
 }
 
+function Get-AttachedPagesAssetAudit {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PythonExePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ServerPath,
+        [Parameter(Mandatory = $true)]
+        [string[]]$SelectedInputs
+    )
+
+    $auditArgs = @($ServerPath)
+    foreach ($path in $SelectedInputs) {
+        $auditArgs += @("--input", $path)
+    }
+    $auditArgs += @("--audit-assets", "--audit-assets-json", "--allow-missing-assets")
+
+    $auditJson = & $PythonExePath @auditArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "attached pages catalog asset audit failed with exit code $LASTEXITCODE"
+    }
+
+    return $auditJson | ConvertFrom-Json -Depth 12
+}
+
+function Show-AttachedPagesAssetWarnings {
+    param(
+        [Parameter(Mandatory = $true)]
+        $AssetAudit,
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    if (-not $AssetAudit -or [int]$AssetAudit.fixtures_with_missing_assets -le 0) {
+        return
+    }
+
+    Write-Warning "Some attached HTML files still have missing local sidecars in the catalog audit. Headed localhost replay may render or behave differently until those files are restored."
+    foreach ($fixture in @($AssetAudit.fixtures | Where-Object { [int]$_.missing_asset_count -gt 0 })) {
+        Write-Host ("Missing assets: {0}" -f (Convert-ToDisplayPath -Path $fixture.path -RepoRoot $RepoRoot))
+        Write-Host ("  Count: {0}" -f $fixture.missing_asset_count)
+        foreach ($asset in @($fixture.missing_assets | Select-Object -First 5)) {
+            Write-Host ("  - {0}" -f $asset)
+        }
+        if ([int]$fixture.missing_asset_count -gt 5) {
+            Write-Host ("  - ... {0} more" -f ([int]$fixture.missing_asset_count - 5))
+        }
+    }
+    Write-Host ""
+}
+
 function Find-ManifestEntryForPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -122,7 +172,7 @@ if ($PrintManifest) {
 }
 
 if (-not $PrintManifest -and -not $AuditAssets) {
-    $attachedAssetAudit = @(Get-MissingLocalFixtureAssetAudit -FixturePaths $resolvedInputPath)
+    $attachedAssetAudit = Get-AttachedPagesAssetAudit -PythonExePath $resolvedPython -ServerPath $serverPath -SelectedInputs $resolvedInputPath
 
     Write-Host "Attached pages catalog"
     Write-Host ""
@@ -141,7 +191,7 @@ if (-not $PrintManifest -and -not $AuditAssets) {
     Write-Host ""
     Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $resolvedRepoRoot -GoogleStyle:$GoogleStyle
     Write-Host ""
-    Show-MissingLocalFixtureAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $resolvedRepoRoot
+    Show-AttachedPagesAssetWarnings -AssetAudit $attachedAssetAudit -RepoRoot $resolvedRepoRoot
 }
 
 & $resolvedPython @serverArgs
