@@ -241,6 +241,7 @@ $surface = [ordered]@{
     note_paths = [ordered]@{
         bundle_reference = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
         bundle_quickstart = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md'
+        bundle_proof = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
         bundle_checklist = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_CHECKLIST.md'
         top_level_attached_html_bridge = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
         bundle_first_bridge = 'docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md'
@@ -324,6 +325,7 @@ Write-Host (("  Replay shortcuts:{0}") -f (" $($surface.helper_commands.replay_s
 Write-Host ''
 Write-Host (("Bundle reference note:      {0}") -f $surface.note_paths.bundle_reference)
 Write-Host (("Bundle quickstart note:     {0}") -f $surface.note_paths.bundle_quickstart)
+Write-Host (("Bundle proof note:          {0}") -f $surface.note_paths.bundle_proof)
 Write-Host (("Bundle checklist note:      {0}") -f $surface.note_paths.bundle_checklist)
 Write-Host (("Top-level bridge note:      {0}") -f $surface.note_paths.top_level_attached_html_bridge)
 Write-Host (("Bundle-first bridge note:   {0}") -f $surface.note_paths.bundle_first_bridge)
