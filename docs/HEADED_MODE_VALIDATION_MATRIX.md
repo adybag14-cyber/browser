@@ -11,7 +11,7 @@ Read this together with:
 
 - Start with the smallest bounded localhost probe that touches the shared path you changed.
 - Widen into manual `browse --headed` replay only after the bounded probe is green.
-- Prefer `scripts\windows\show_headed_validation_suites.ps1` first for the change areas it already routes directly: `navigation`, `stop-loading`, `input`, `google-form-controls-enter-order`, `rendering`, `network`, `attached-html`, `attached-html-target-bundle`, `google-input`, and `google-attached-html`.
+- Prefer `scripts\windows\show_headed_validation_suites.ps1` first for the change areas it already routes directly: `navigation`, `stop-loading`, `input`, `google-form-controls-enter-order`, `rendering`, `network`, `browser-shell`, `popup`, `attached-html`, `attached-html-target-bundle`, `google-input`, and `google-attached-html`.
 - For probe families that are not yet first-class router change areas, use the direct PowerShell entrypoints below.
 - Older deeper probe families can still carry fixed checkout assumptions. If a helper fails before browser behavior is exercised, normalize the local repo-root or browser-exe path first.
 
@@ -25,6 +25,8 @@ Read this together with:
 | Google form-controls Enter submit timing on the real headed surface | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input` | Use this when issue #3 is already narrowed to the smallest shared gate that proves submit still waits until keypress before widening back to manual Google or saved-page replay. |
 | Shared layout, paint, screenshot timing, or visible headed surface behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-screenshot-load-complete-probe.ps1` | Start here before widening into attached-page replay for rendering or screenshot issues. |
 | Shared subresource loading, authenticated asset fetches, or browser-managed request credentials | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\fetch-credentials\chrome-fetch-credentials-probe.ps1` | Start here before widening into attached-page replay for network, credential, or asset-loading changes. |
+| Browser shell tabs, settings, and related chrome behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\tabs\chrome-tabs-probe.ps1` | Use this for tab strip, duplicate/reopen, settings persistence, and shell keyboard-shortcut changes before widening into older deeper helpers. |
+| Popup creation, named-target flows, or popup policy | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-anchor-probe.ps1` | Start here for the checkout-portable first popup proof, then use the direct popup probes below if you need deeper form-submit or script-open coverage. |
 | Saved HTML compatibility bundle or attached exported pages | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"` | Use this for exported saved-page replays, bundle asset auditing, and the first router pass before bundle-specific narrowing. |
 | Pinned three-page compatibility bundle | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath "<bundle-html-or-folder>"` | Use this when the replay should stay on the known three-page compatibility set and you want the compact bundle-specific helper chain surfaced immediately. |
 
@@ -73,10 +75,10 @@ Use this route when:
 
 | Subsystem | First probe | Follow-up probes |
 | --- | --- | --- |
-| Popup creation and named-target flows | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-anchor-probe.ps1` | `chrome-popup-named-anchor-probe.ps1`, `chrome-popup-script-named-probe.ps1` |
+| Popup creation and named-target flows | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-named-anchor-probe.ps1` |
 | Popup form submit and script-open policy | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-form-enter-probe.ps1` | `chrome-popup-form-post-probe.ps1`, `chrome-popup-script-policy-probe.ps1`, `chrome-popup-script-policy-block-probe.ps1` |
-| Tab strip, duplicate, reopen, session restore | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\tabs\chrome-tabs-probe.ps1` | `chrome-duplicate-tab-probe.ps1`, `chrome-reopen-closed-probe.ps1`, `chrome-session-restore-probe.ps1` |
-| Settings shell and restore policy | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\settings\chrome-settings-home-probe.ps1` | `chrome-settings-restore-off-probe.ps1` |
+| Tab strip, duplicate, reopen, session restore | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\tabs\chrome-duplicate-tab-probe.ps1` |
+| Settings shell and restore policy | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\settings\chrome-settings-restore-off-probe.ps1` |
 
 ### Storage, Network, and Web Platform
 
