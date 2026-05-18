@@ -2,20 +2,29 @@
 
 This folder hosts the attached-page replay helpers used to stage saved `.html`
 exports and optional sibling `*_files` directories behind a small localhost
-catalog. The current preferred entrypoint is `start_attached_pages_catalog.py`.
-It wraps fixture discovery, manifest printing, sidecar preflight checks, asset
-audits, and the lower-level server helper in one place.
+catalog. The current preferred entrypoints are:
 
-## Preferred launcher
+- `tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py`
+- `scripts/windows/start_attached_pages_catalog.ps1`
 
-Use the catalog launcher when you want the helper to discover attached pages for
-you or when you want one command surface for both preflight checks and server
-startup.
+Together they wrap fixture discovery, manifest printing, sidecar preflight
+checks, broader asset audits, and the lower-level server helper in one place.
+
+## Preferred launchers
+
+Use the catalog launchers when you want one command surface for both preflight
+checks and localhost server startup.
 
 Auto-discover saved pages from repo or workspace `agent_files` / `user_files`:
 
 ```bash
 python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py
+```
+
+On Windows, the matching wrapper keeps the same flow available from PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1
 ```
 
 Pin the catalog to explicit files or folders:
@@ -24,6 +33,11 @@ Pin the catalog to explicit files or folders:
 python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --input /path/to/page-one.html \
   --input /path/to/saved-pages-dir
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\page-one.html","C:\path\to\saved-pages-dir"
 ```
 
 Prefer the strongest Google-like fixture first and print the generated manifest
@@ -35,6 +49,12 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --print-manifest
 ```
 
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -GoogleStyle \
+  -PrintManifest
+```
+
 If the repo is not the default checkout, preserve that context directly:
 
 ```bash
@@ -43,11 +63,18 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --input /path/to/saved-pages-dir
 ```
 
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -RepoRoot "C:\path\to\browser" \
+  -InputPath "C:\path\to\saved-pages-dir"
+```
+
 ## Sidecar-first preflight
 
 Before treating a replay failure as a browser regression, first rule out the
 simpler case where the saved export is missing its whole sibling `*_files`
-bundle.
+bundle. The intended order is sidecars first, broader asset audit second,
+manifest or server startup last.
 
 Text report:
 
@@ -55,6 +82,12 @@ Text report:
 python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --input /path/to/saved-pages-dir \
   --audit-sidecars
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -AuditSidecars
 ```
 
 JSON report for automation:
@@ -66,6 +99,13 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --audit-sidecars-json
 ```
 
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -AuditSidecars \
+  -AuditSidecarsJson
+```
+
 Keep going even when sidecars are missing:
 
 ```bash
@@ -73,6 +113,22 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --input /path/to/saved-pages-dir \
   --audit-sidecars \
   --allow-missing-sidecars
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -AuditSidecars \
+  -AllowMissingSidecars
+```
+
+Refuse to print a manifest or start the catalog when sidecars are missing:
+
+```bash
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
+  --input /path/to/saved-pages-dir \
+  --require-complete-sidecars \
+  --print-manifest
 ```
 
 ## Asset audit
@@ -87,6 +143,12 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --audit-assets
 ```
 
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -AuditAssets
+```
+
 JSON output is also available:
 
 ```bash
@@ -94,6 +156,13 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --input /path/to/saved-pages-dir \
   --audit-assets \
   --audit-assets-json
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\saved-pages-dir" \
+  -AuditAssets \
+  -AuditAssetsJson
 ```
 
 ## Start the localhost catalog
@@ -107,7 +176,30 @@ python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
   --input /path/to/page-three.html
 ```
 
-The launcher prints:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 \
+  -InputPath "C:\path\to\page-one.html","C:\path\to\page-two.html","C:\path\to\page-three.html"
+```
+
+For an issue `#3` style replay where you want the strongest Google-like page
+first, keep the same sidecar-first order:
+
+```bash
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py --google-style --audit-sidecars
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py --google-style --audit-assets
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py --google-style --print-manifest
+python tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py --google-style --port 8235
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -AuditSidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -AuditAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -GoogleStyle -Port 8235
+```
+
+The launchers print:
+
 - selected fixture paths
 - the bound catalog URL
 - warning text when sidecars or local assets are missing
@@ -116,9 +208,9 @@ The launcher prints:
 
 ## Typical headed workflow
 
-1. Run `--audit-sidecars` first for the current saved-page set.
-2. Run `--audit-assets` only after the sidecar bundle exists.
-3. Start the catalog launcher for the same pinned inputs.
+1. Run the sidecar audit first for the current saved-page set.
+2. Run the broader asset audit only after the sidecar bundle exists.
+3. Print the manifest or start the catalog launcher for the same pinned inputs.
 4. Open one of the printed localhost routes in headed mode.
 5. Reuse the same pinned inputs while collecting screenshots, traces, or probe
    notes.
@@ -126,7 +218,7 @@ The launcher prints:
 ## Lower-level helpers
 
 Use these when you intentionally want the narrower building blocks instead of
-`start_attached_pages_catalog.py`.
+`start_attached_pages_catalog.py` or `start_attached_pages_catalog.ps1`.
 
 Run the sidecar audit directly:
 
@@ -139,15 +231,31 @@ Run the server directly:
 
 ```bash
 python tmp-browser-smoke/attached-pages/attached_pages_server.py \
-  /path/to/page-one.html \
-  /path/to/page-two.html
+  --input /path/to/page-one.html \
+  --input /path/to/page-two.html
 ```
 
 The direct server helper still supports directory input:
 
 ```bash
 python tmp-browser-smoke/attached-pages/attached_pages_server.py \
-  /path/to/saved-pages-dir
+  --root /path/to/saved-pages-dir
+```
+
+Keep the same sidecar-first order when you bypass the wrappers:
+
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_sidecar_audit.py \
+  --root /path/to/saved-pages-dir
+python tmp-browser-smoke/attached-pages/attached_pages_server.py \
+  --root /path/to/saved-pages-dir \
+  --audit-assets
+python tmp-browser-smoke/attached-pages/attached_pages_server.py \
+  --root /path/to/saved-pages-dir \
+  --print-manifest
+python tmp-browser-smoke/attached-pages/attached_pages_server.py \
+  --root /path/to/saved-pages-dir \
+  --port 8235
 ```
 
 ## Notes
