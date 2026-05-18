@@ -110,8 +110,15 @@ with your concrete input path:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html -InputPath "<saved-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -InputPath "<saved-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
 ```
+
+Use the broader `attached-html` route first when the saved bundle is not yet
+obviously on the Google-like replay lane, use `google-attached-html` when the
+replay still matches the Google-shaped flow but is not yet pinned to the exact
+three-page compatibility bundle, and switch to `attached-html-target-bundle`
+once the current pages are already confirmed to be that known three-page set.
 
 Before starting the localhost catalog server or blaming headed replay, reuse
 the Windows wrapper-backed launcher preflight from the same branch surface:
@@ -140,6 +147,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_wi
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -InputPath "<saved-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath "<bundle-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_bundle_first_bridge.ps1 -InputPath "<bundle-html-or-folder>"
@@ -147,7 +155,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 ```
 
 Use the bundle-bridge surface checker first so renamed notes or helper scripts
-fail fast after branch moves, then reopen the bundle-bridge helper when the
-Windows-first runbook already narrowed the replay to the exact three-page
-compatibility set and you want that pinned route printed before the validation
-router narrows further.
+fail fast after branch moves, reopen `google-attached-html` when the replay is
+still clearly Google-like but the exact three-page compatibility set is not yet
+confirmed, and then continue into the pinned bundle route once the current
+inputs really do stay on that narrower branch.
