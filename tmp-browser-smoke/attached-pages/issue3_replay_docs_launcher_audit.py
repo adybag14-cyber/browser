@@ -8,6 +8,8 @@ from pathlib import Path
 TARGET_DOCS = (
     "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md",
     "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+    "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+    "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md",
 )
 RAW_LAUNCHER_NEEDLE = "start_attached_pages_catalog.py"
 WRAPPER_LAUNCHER_NEEDLE = r"scripts\windows\start_attached_pages_catalog.ps1"
