@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 
@@ -79,12 +80,15 @@ def build_reference_audit(root: Path | None = None, *, selected_files: list[Path
                 }
                 wrapper_lines.append(wrapper_line)
 
-        raw_reference_count += len(raw_lines)
-        wrapper_reference_count += len(wrapper_lines)
-        wrapper_sidecar_reference_count += sum(1 for line in wrapper_lines if line["mentions_sidecars"])
-        google_wrapper_sidecar_reference_count += sum(
+        file_wrapper_sidecar_reference_count = sum(1 for line in wrapper_lines if line["mentions_sidecars"])
+        file_google_wrapper_sidecar_reference_count = sum(
             1 for line in wrapper_lines if line["mentions_sidecars"] and line["mentions_google_style"]
         )
+
+        raw_reference_count += len(raw_lines)
+        wrapper_reference_count += len(wrapper_lines)
+        wrapper_sidecar_reference_count += file_wrapper_sidecar_reference_count
+        google_wrapper_sidecar_reference_count += file_google_wrapper_sidecar_reference_count
 
         if raw_lines:
             files_with_raw_launcher += 1
@@ -97,6 +101,8 @@ def build_reference_audit(root: Path | None = None, *, selected_files: list[Path
                 "raw_python_reference_count": len(raw_lines),
                 "wrapper_references": wrapper_lines[:20],
                 "wrapper_reference_count": len(wrapper_lines),
+                "wrapper_sidecar_reference_count": file_wrapper_sidecar_reference_count,
+                "google_wrapper_sidecar_reference_count": file_google_wrapper_sidecar_reference_count,
             }
         )
 
@@ -138,11 +144,33 @@ def render_text_report(audit: dict[str, object]) -> str:
             lines.append("Raw Python references: 0")
         if file_result["wrapper_reference_count"]:
             lines.append(f"Wrapper references: {file_result['wrapper_reference_count']}")
+            lines.append(f"Wrapper sidecar references: {file_result['wrapper_sidecar_reference_count']}")
+            lines.append(
+                "Google-style wrapper sidecar references: "
+                f"{file_result['google_wrapper_sidecar_reference_count']}"
+            )
         else:
             lines.append("Wrapper references: 0")
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"
+
+
+def collect_failure_reasons(
+    audit: dict[str, object],
+    *,
+    allow_raw_launcher: bool,
+    require_wrapper_sidecar: bool,
+    require_google_wrapper_sidecar: bool,
+) -> list[str]:
+    failure_reasons: list[str] = []
+    if audit["raw_python_reference_count"] > 0 and not allow_raw_launcher:
+        failure_reasons.append("raw Python attached-pages launcher references remain")
+    if require_wrapper_sidecar and audit["wrapper_sidecar_reference_count"] == 0:
+        failure_reasons.append("no wrapper-backed sidecar audit references were found")
+    if require_google_wrapper_sidecar and audit["google_wrapper_sidecar_reference_count"] == 0:
+        failure_reasons.append("no Google-style wrapper-backed sidecar audit references were found")
+    return failure_reasons
 
 
 def main() -> int:
@@ -163,18 +191,38 @@ def main() -> int:
         action="store_true",
         help="Return success even when raw Python launcher references remain.",
     )
+    parser.add_argument(
+        "--require-wrapper-sidecar",
+        action="store_true",
+        help="Return failure unless at least one wrapper-backed sidecar audit reference is present.",
+    )
+    parser.add_argument(
+        "--require-google-wrapper-sidecar",
+        action="store_true",
+        help="Return failure unless at least one Google-style wrapper-backed sidecar audit reference is present.",
+    )
     args = parser.parse_args()
 
     selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
     root = Path(args.root) if args.root else None
     audit = build_reference_audit(root, selected_files=selected_files)
+    failure_reasons = collect_failure_reasons(
+        audit,
+        allow_raw_launcher=args.allow_raw_launcher,
+        require_wrapper_sidecar=args.require_wrapper_sidecar,
+        require_google_wrapper_sidecar=args.require_google_wrapper_sidecar,
+    )
 
     if args.json:
-        print(json.dumps(audit, indent=2))
+        payload = dict(audit)
+        payload["failure_reasons"] = failure_reasons
+        print(json.dumps(payload, indent=2))
     else:
         print(render_text_report(audit), end="")
+        for reason in failure_reasons:
+            print(f"FAIL: {reason}", file=sys.stderr)
 
-    if audit["raw_python_reference_count"] > 0 and not args.allow_raw_launcher:
+    if failure_reasons:
         return 1
     return 0
 
