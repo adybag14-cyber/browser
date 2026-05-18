@@ -74,8 +74,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea navigation
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
 ```
+
+Use the dedicated Google form-controls Enter-order route after the shared input
+probes when issue #3 is already narrowed to the smallest real-surface
+Enter-submit checkpoint.
 
 For the broader subsystem-to-probe map across the existing `tmp-browser-smoke`
 families, read `docs/HEADED_MODE_VALIDATION_MATRIX.md` after the router output.
@@ -88,6 +93,7 @@ What exists today:
 - bounded localhost navigation probes under `tmp-browser-smoke\wrapped-link\`
 - bounded localhost stop/reload coverage under `tmp-browser-smoke\stop-loading\`
 - bounded localhost input probes under `tmp-browser-smoke\form-controls\`
+- a dedicated Google form-controls Enter-order gate surfaced through `scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order` and `scripts\windows\run_google_form_controls_enter_order_validation.ps1`
 - a checkout-portable first-line canvas screenshot probe at `tmp-browser-smoke\canvas-smoke\chrome-canvas-render-probe.ps1`
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
 - the first-line navigation, stop-loading, and form-control probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
