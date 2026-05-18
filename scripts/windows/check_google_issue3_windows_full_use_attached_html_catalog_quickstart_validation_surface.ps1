@@ -27,6 +27,23 @@ function New-ValidationReference {
     }
 }
 
+function New-ValidationContentExpectation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Snippet,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose
+    )
+
+    return [pscustomobject]@{
+        Path = $Path
+        Snippet = $Snippet
+        Purpose = $Purpose
+    }
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -76,7 +93,18 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_safe_route_entrypoints.ps1" -Kind "file" -Purpose "Wrapper-heavy safe-route map reopened only after the Windows-first attached-page catalog route is known good.")
 )
 
-$results = foreach ($reference in $references) {
+$contentExpectations = @(
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars' -Purpose "Catalog quickstart note keeps the Windows wrapper-backed sidecar audit visible as the default attached-pages preflight."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -RepoRoot ''<repo-root>'' -InputPath ''<bundle-html-or-folder>'' -AuditSidecars' -Purpose "Catalog quickstart note keeps the repo-root-preserving Windows wrapper-backed sidecar audit visible for pinned bundle inputs."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Snippet '- `scripts/windows/start_attached_pages_catalog.ps1`' -Purpose "Catalog quickstart note keeps the Windows wrapper surfaced as a first-class companion path beside the lower-level launcher guide."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Snippet "recommended_next_key = 'attached_pages_sidecar_audit'" -Purpose "Windows-first catalog helper keeps the wrapper-backed sidecar audit as its default next step."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Snippet 'attached_pages_sidecar_audit = $attachedPagesSidecarAuditCommand' -Purpose "Windows-first catalog helper keeps the wrapper-backed sidecar audit wired into the helper command map."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Snippet 'attached_pages_launcher_wrapper_path = ''scripts/windows/start_attached_pages_catalog.ps1''' -Purpose "Windows-first catalog helper keeps the wrapper path surfaced beside the attached-pages README."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Snippet 'Write-Host ((" 10. Sidecar audit:         {0}") -f $entrypoint.helper_commands.attached_pages_sidecar_audit)' -Purpose "Windows-first catalog helper keeps the printed sidecar audit command aligned with the wrapper-backed launcher surface."),
+    (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1" -Snippet 'Write-Host (("Attached-pages wrapper:     {0}") -f $entrypoint.attached_pages_launcher_wrapper_path)' -Purpose "Windows-first catalog helper keeps the printed wrapper companion path visible beside the launcher guide.")
+)
+
+$referenceResults = foreach ($reference in $references) {
     $fullPath = Join-Path $resolvedRepoRoot $reference.Path
     $exists = if ($reference.Kind -eq "directory") {
         Test-Path -LiteralPath $fullPath -PathType Container
@@ -85,6 +113,7 @@ $results = foreach ($reference in $references) {
     }
 
     [pscustomobject]@{
+        CheckType = "reference"
         Path = $reference.Path
         Kind = $reference.Kind
         Purpose = $reference.Purpose
@@ -92,15 +121,49 @@ $results = foreach ($reference in $references) {
     }
 }
 
-$missing = @($results | Where-Object { -not $_.Exists })
+$contentCache = @{}
+$contentResults = foreach ($expectation in $contentExpectations) {
+    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        [pscustomobject]@{
+            CheckType = "content"
+            Path = $expectation.Path
+            Kind = "content-snippet"
+            Purpose = $expectation.Purpose
+            Exists = $false
+            Snippet = $expectation.Snippet
+        }
+        continue
+    }
+
+    if (-not $contentCache.ContainsKey($fullPath)) {
+        $contentCache[$fullPath] = Get-Content -LiteralPath $fullPath -Raw
+    }
+
+    [pscustomobject]@{
+        CheckType = "content"
+        Path = $expectation.Path
+        Kind = "content-snippet"
+        Purpose = $expectation.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
+        Snippet = $expectation.Snippet
+    }
+}
+
+$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
+$missingContent = @($contentResults | Where-Object { -not $_.Exists })
+$missing = @($missingReferences + $missingContent)
 
 if ($Json) {
     [ordered]@{
         profile = "google-issue3-windows-full-use-attached-html-catalog-quickstart"
         repo_root = $resolvedRepoRoot
-        checked_count = @($results).Count
+        checked_count = @($referenceResults).Count + @($contentResults).Count
+        reference_count = @($referenceResults).Count
+        content_check_count = @($contentResults).Count
         missing_count = @($missing).Count
-        references = @($results)
+        references = @($referenceResults)
+        content_checks = @($contentResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -115,10 +178,20 @@ Write-Host ""
 Write-Host ("Repo root: {0}" -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $results) {
+foreach ($result in $referenceResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
     Write-Host ("[{0}] {1}" -f $status, $result.Path)
     Write-Host ("  {0}" -f $result.Purpose)
+}
+
+if ($contentResults.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Helper source expectations:"
+    foreach ($result in $contentResults) {
+        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+        Write-Host ("[{0}] {1}" -f $status, $result.Path)
+        Write-Host ("  {0}" -f $result.Purpose)
+    }
 }
 
 Write-Host ""
@@ -127,6 +200,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host ("Missing {0} Windows full-use attached HTML catalog quickstart path(s)." -f $missing.Count)
-Write-Host "Repair the missing route note, launcher guide, launcher entrypoint, Windows wrapper, attached-html change-area bridge, catalog quickstart helper, companion top-level or suite-catalog bridge, Google-shaped fallback, bundle re-entry helper, or safe-route return script before trusting this narrower attached-page ladder."
+Write-Host ("Missing {0} Windows full-use attached HTML catalog quickstart path or source contract check(s)." -f $missing.Count)
+Write-Host "Repair the missing route note, launcher guide, launcher entrypoint, Windows wrapper, wrapper-backed sidecar audit contract, attached-html change-area bridge, catalog quickstart helper, companion top-level or suite-catalog bridge, Google-shaped fallback, bundle re-entry helper, or safe-route return script before trusting this narrower attached-page ladder."
 exit 1
