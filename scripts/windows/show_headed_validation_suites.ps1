@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("", "google-form-controls-enter-order", "google-recommended")]
+    [ValidateSet("", "attached-html-target-bundle", "google-attached-html", "google-form-controls-enter-order", "google-recommended")]
     [string]$SuiteName = "",
     [ValidateSet("", "attached-html", "attached-html-target-bundle", "browser-shell", "google-attached-html", "google-form-controls-enter-order", "google-input", "input", "manual-html", "navigation", "network", "popup", "rendering", "stop-loading")]
     [string]$ChangeArea = "",
@@ -423,6 +423,22 @@ function Show-DefaultRoutes {
 }
 
 switch ($true) {
+    { $SuiteName -eq "google-attached-html" -or $SuiteName -eq "attached-html-target-bundle" } {
+        Write-Section $SuiteName
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+        $useGoogleStyleCatalog = $SuiteName -eq "google-attached-html"
+        $bundleFocused = $SuiteName -eq "attached-html-target-bundle"
+        $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -GoogleStyle:$useGoogleStyleCatalog
+        $notes = Get-AttachedHtmlNotes
+        if ($useGoogleStyleCatalog) {
+            $notes += "Google-style auto-discovery keeps the strongest Google-like saved page first when -InputPath is omitted."
+        }
+        Write-Route -Name $SuiteName -Commands $commands -Notes $notes
+        Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes -BundleFocused:$bundleFocused)
+        break
+    }
     { $SuiteName -eq "google-form-controls-enter-order" } {
         Write-Section "google-form-controls-enter-order"
         if ($isCustomBrowserExe) {
