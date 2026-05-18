@@ -122,6 +122,48 @@ class Issue3ReplayDocsLauncherAuditTests(unittest.TestCase):
             payload["failure_reasons"],
         )
 
+    def test_json_output_reports_quickstart_specific_raw_launcher_failure(self):
+        wrapper_line = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
+            "-InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars\n"
+        )
+        raw_quickstart_line = (
+            "python .\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py "
+            "--input '<attached-html-root>' --google-style --audit-sidecars\n"
+        )
+        self.write_docs(
+            wrapper_line,
+            raw_quickstart_line,
+            wrapper_line,
+            wrapper_line,
+        )
+
+        stdout = io.StringIO()
+        original_argv = sys.argv[:]
+        try:
+            sys.argv = [
+                str(MODULE_PATH),
+                "--repo-root",
+                str(self.root),
+                "--json",
+            ]
+            with contextlib.redirect_stdout(stdout):
+                exit_code = AUDIT.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertIn(
+            "raw Python attached-pages launcher references remain",
+            payload["failure_reasons"],
+        )
+        self.assertIn(
+            "Windows replay quickstart still carries raw Python attached-pages launcher references",
+            payload["failure_reasons"],
+        )
+
     def test_requirement_switches_succeed_for_wrapper_and_companion_coverage(self):
         wrapper_line = (
             "powershell -ExecutionPolicy Bypass -File "
