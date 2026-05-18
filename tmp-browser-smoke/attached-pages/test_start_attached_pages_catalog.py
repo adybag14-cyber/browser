@@ -527,22 +527,75 @@ def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None, s
         self.assertIn(f"Requested staging root: {requested_staging_root}", output)
         self.assertIn(f"Staging route copies under: {requested_staging_root}", output)
 
-    def test_repo_override_takes_precedence_over_environment(self):
+    def test_main_repo_root_override_takes_precedence_over_environment(self):
         other_repo = self.workspace_root / "other-browser"
         other_repo.mkdir()
         (other_repo / "build.zig").write_text("// other\n", encoding="utf-8")
 
+        repo_attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        repo_attached_pages_dir.mkdir(parents=True)
+        other_attached_pages_dir = other_repo / "tmp-browser-smoke" / "attached-pages"
+        other_attached_pages_dir.mkdir(parents=True)
+
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (repo_attached_pages_dir / "attached_pages_server.py").write_text(
+            """from pathlib import Path
+
+def build_manifest(root=None, selected_files=None):
+    return [{"file": Path(selected_files[0]).name, "route": "/pages/1"}]
+
+def build_asset_audit(root=None, selected_files=None):
+    return {"fixtures_with_missing_assets": 0}
+
+def render_asset_audit_text(audit):
+    return "audit\\n"
+
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
+    raise AssertionError("server launch should not happen during --print-manifest")
+""",
+            encoding="utf-8",
+        )
+        (other_attached_pages_dir / "attached_pages_server.py").write_text(
+            """from pathlib import Path
+
+def build_manifest(root=None, selected_files=None):
+    return [{"file": Path(selected_files[0]).name, "route": "/wrong"}]
+
+def build_asset_audit(root=None, selected_files=None):
+    return {"fixtures_with_missing_assets": 0}
+
+def render_asset_audit_text(audit):
+    return "audit\\n"
+
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None):
+    raise AssertionError("server launch should not happen during --print-manifest")
+""",
+            encoding="utf-8",
+        )
+
         original = os.environ.get("LIGHTPANDA_REPO_ROOT")
         os.environ["LIGHTPANDA_REPO_ROOT"] = str(other_repo)
+        stdout = io.StringIO()
         try:
-            resolved = helper.resolve_repo_root(self.repo_root / "tmp-browser-smoke")
+            with contextlib.redirect_stdout(stdout):
+                exit_code = helper.main(
+                    [
+                        "--repo-root",
+                        str(self.repo_root),
+                        "--input",
+                        str(fixture),
+                        "--print-manifest",
+                    ]
+                )
         finally:
             if original is None:
                 os.environ.pop("LIGHTPANDA_REPO_ROOT", None)
             else:
                 os.environ["LIGHTPANDA_REPO_ROOT"] = original
 
-        self.assertEqual(other_repo.resolve(), resolved)
+        self.assertEqual(0, exit_code)
+        self.assertIn('"route": "/pages/1"', stdout.getvalue())
+        self.assertNotIn('"route": "/wrong"', stdout.getvalue())
 
 
 if __name__ == "__main__":
