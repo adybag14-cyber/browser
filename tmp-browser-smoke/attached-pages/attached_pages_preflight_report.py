@@ -64,13 +64,11 @@ def assemble_preflight_report(
     sidecar_audit = sidecar_module.build_sidecar_audit(selected_files=selected_files)
     asset_audit = server_module.build_asset_audit(selected_files=selected_files)
 
-    preferred_manifest_entry = None
-    if google_style:
-        preferred_manifest_entry = choose_preferred_manifest_entry(
-            manifest,
-            selected_files=selected_files,
-            launcher_module=launcher_module,
-        )
+    preferred_manifest_entry = choose_preferred_manifest_entry(
+        manifest,
+        selected_files=selected_files,
+        launcher_module=launcher_module,
+    )
 
     missing_sidecars = int(sidecar_audit["fixtures_with_missing_sidecars"])
     missing_assets = int(asset_audit["fixtures_with_missing_assets"])
