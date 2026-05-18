@@ -83,7 +83,10 @@ $references = @(
 $contentExpectations = @(
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_attached_html_target_bundle_suite_surface.ps1" -Snippet "bundle_proof = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'" -Purpose "Bundle-suite helper keeps the read-first proof note in its printed nearby-note surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_attached_html_target_bundle_suite_surface.ps1" -Snippet 'Write-Host (("Bundle proof note:          {0}") -f $surface.note_paths.bundle_proof)' -Purpose "Bundle-suite helper prints the proof note beside the other bundle companions so the written proof route stays visible with the executable proof entrypoint."),
-    (New-ValidationContentExpectation -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Snippet '- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`' -Purpose "Bundle-suite note keeps the proof note in the nearby companion list for the same pinned route.")
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md" -Snippet '- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`' -Purpose "Bundle-suite note keeps the proof note in the nearby companion list for the same pinned route."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md" -Snippet '- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`' -Purpose "Bundle quickstart keeps the proof note in its nearby companion list for the same pinned route."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Purpose "Bundle quickstart keeps the proof-entrypoint surface checker visible before the narrower proof bridge is trusted."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Purpose "Bundle quickstart keeps the proof-only helper visible beside the delegated bundle runner and the written proof note.")
 )
 
 $referenceResults = foreach ($reference in $references) {
@@ -178,10 +181,10 @@ if ($contentResults.Count -gt 0) {
 
 Write-Host ""
 if ($missing.Count -eq 0) {
-    Write-Host "Attached HTML target-bundle validation surface is intact, including the bundle reference note, the bundle quickstart, the proof-entry note, the compact bundle suite-surface note and helper, the bundle-first helper, the bundle proof entrypoint, the Google attached-page companion note, the issue #3 next-step matrix and replay-shortcuts follow-up helpers, the pinned manual checklist, the reusable local fixture probe, and the proof-note surfacing contract on the bundle-suite helper."
+    Write-Host "Attached HTML target-bundle validation surface is intact, including the bundle reference note, the bundle quickstart, the proof-entry note, the compact bundle suite-surface note and helper, the bundle-first helper, the bundle proof entrypoint, the Google attached-page companion note, the issue #3 next-step matrix and replay-shortcuts follow-up helpers, the pinned manual checklist, the reusable local fixture probe, and the proof-note surfacing contract on the bundle suite and quickstart surfaces."
     exit 0
 }
 
 Write-Host ("Missing {0} attached HTML target-bundle validation path or source-contract check(s)." -f $missing.Count)
-Write-Host "Repair the missing guide, reference note, quickstart, proof-entry note, compact suite-surface note or helper, bundle-first helper, bundle proof entrypoint, Google attached-page companion note, issue #3 next-step or replay-shortcuts helper, checklist, reusable fixture probe surface, or bundle-suite proof-note surfacing contract before trusting the bundle-pinned localhost route."
+Write-Host "Repair the missing guide, reference note, quickstart, proof-entry note, compact suite-surface note or helper, bundle-first helper, bundle proof entrypoint, Google attached-page companion note, issue #3 next-step or replay-shortcuts helper, checklist, reusable fixture probe surface, or bundle proof-note surfacing contract before trusting the bundle-pinned localhost route."
 exit 1
