@@ -238,6 +238,16 @@ if ($BrowserExe) {
     $googleAttachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
 }
 
+$attachedHtmlTargetBundleSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($InputPath) {
+    $attachedHtmlTargetBundleSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlTargetBundleSuiteArguments['BrowserExe'] = $BrowserExe
+}
+
 $broaderAttachedHtmlSuiteRouterArguments = [ordered]@{
     ChangeArea = 'attached-html'
 }
