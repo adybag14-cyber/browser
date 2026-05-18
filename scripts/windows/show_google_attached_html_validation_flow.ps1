@@ -208,7 +208,11 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         [Parameter(Mandatory = $true)]
         [string]$RunnerCommand,
         [Parameter(Mandatory = $true)]
-        [bool]$AllowMissingLocalAssets
+        [bool]$AllowMissingLocalAssets,
+        [Parameter(Mandatory = $true)]
+        [string]$GuideDocPath,
+        [Parameter(Mandatory = $true)]
+        [string]$WindowsRunbookPath
     )
 
     $parameterMode = switch ($ParameterSetName) {
@@ -249,6 +253,8 @@ function Get-GoogleAttachedHtmlFlowMetadata {
         allow_missing_local_assets = $AllowMissingLocalAssets
         leave_open = $LeaveOpen
         port = $Port
+        guide_doc = $GuideDocPath
+        windows_runbook_doc = $WindowsRunbookPath
         surface_check_command = $SurfaceCheckCommand
         sidecar_audit_command = $SidecarAuditCommand
         asset_closure_command = $AssetClosureCommand
@@ -266,6 +272,8 @@ $resolvedRepoRoot = if ($RepoRoot) {
 }
 $helper = Join-Path $PSScriptRoot "show_saved_page_google_validation_flow.ps1"
 $surfaceCheck = '.\\scripts\\windows\\check_google_attached_html_validation_surface.ps1'
+$guideDocPath = "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md"
+$windowsRunbookPath = "docs/WINDOWS_FULL_USE.md"
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $resolvedRepoRoot
 $surfaceCheckCommand = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $surfaceCheck, $(if ($surfaceCheckArgs.Count -gt 0) { " " + ($surfaceCheckArgs -join " ") } else { "" }))
@@ -364,7 +372,9 @@ $googleAttachedHtmlMetadata = Get-GoogleAttachedHtmlFlowMetadata `
     -AssetClosureCommand $assetClosureCommand `
     -HelperCommand $handoffCommands.helper_command `
     -RunnerCommand $handoffCommands.runner_command `
-    -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets)
+    -AllowMissingLocalAssets ([bool]$AllowMissingLocalAssets) `
+    -GuideDocPath $guideDocPath `
+    -WindowsRunbookPath $windowsRunbookPath
 $googleAttachedHtmlMetadata.broader_attached_html_route = [ordered]@{
     suite_router_command = $attachedHtmlSuiteRouterCommand
     flow_command = $attachedHtmlFlowCommand
@@ -375,6 +385,8 @@ if (-not $Json) {
     Write-Host "Google-style attached HTML validation flow"
     Write-Host ""
     Write-Host "Mode: attached HTML auto-discovery with the Google-style localhost follow-up"
+    Write-Host ("Guide: {0}" -f $guideDocPath)
+    Write-Host ("Windows runbook: {0}" -f $windowsRunbookPath)
     Write-Host ("Host: {0}" -f $Host)
     switch ($PSCmdlet.ParameterSetName) {
         "PageRoot" {
@@ -410,6 +422,9 @@ if (-not $Json) {
     Write-Host ("- {0}" -f $attachedHtmlSuiteRouterCommand)
     Write-Host ("- {0}" -f $attachedHtmlFlowCommand)
     Write-Host ("- {0}" -f $attachedHtmlBundleSuiteRouterCommand)
+    Write-Host "Companion docs:"
+    Write-Host ("- {0}" -f $guideDocPath)
+    Write-Host ("- {0}" -f $windowsRunbookPath)
     if ($resolvedInputPath.Count -gt 0) {
         Write-Host ""
         Show-FixtureSelectionSummary -FixturePaths $resolvedInputPath -RepoRoot $resolvedRepoRoot
