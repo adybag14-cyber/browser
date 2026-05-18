@@ -1,11 +1,24 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8166,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$ScreenshotReadyAttempts = 80,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\canvas-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+
+$root = $PSScriptRoot
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $root }
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $serverScript = Join-Path $root "canvas_server.py"
-$port = 8166
-$pageUrl = "http://127.0.0.1:$port/index.html"
+$pageUrl = "http://$Host`:$Port/index.html"
 $outPng = Join-Path $root "canvas-render.png"
 $browserOut = Join-Path $root "canvas-render.browser.stdout.txt"
 $browserErr = Join-Path $root "canvas-render.browser.stderr.txt"
@@ -15,8 +28,17 @@ $profileRoot = Join-Path $root "profile-canvas-render"
 $appDataRoot = Join-Path $profileRoot "lightpanda"
 
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+if (Test-Path -LiteralPath $profileRoot) {
+  Remove-Item -LiteralPath $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
+
+if (-not (Test-Path -LiteralPath $browserExe)) {
+  throw "headed browser binary not found: $browserExe"
+}
+if (-not (Test-Path -LiteralPath $serverScript)) {
+  throw "canvas smoke server script not found: $serverScript"
+}
 
 @"
 lightpanda-browse-settings-v1
@@ -25,24 +47,6 @@ allow_script_popups	0
 default_zoom_percent	100
 homepage_url	
 "@ | Set-Content -Path (Join-Path $appDataRoot "browse-settings-v1.txt") -NoNewline
-
-function Get-ProcessCommandLine($TargetPid) {
-  $meta = Get-CimInstance Win32_Process -Filter "ProcessId=$TargetPid" -ErrorAction SilentlyContinue |
-    Select-Object Name,ProcessId,CommandLine,CreationDate
-  if ($meta) { return [string]$meta.CommandLine }
-  return ""
-}
-
-function Stop-VerifiedProcess($TargetPid) {
-  $cmd = Get-ProcessCommandLine $TargetPid
-  if ($cmd -and $cmd -notmatch "codex\.js|@openai/codex") {
-    try {
-      Stop-Process -Id $TargetPid -Force -ErrorAction Stop
-    } catch {
-      if (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue) { throw }
-    }
-  }
-}
 
 function Read-Pixel($Bitmap, [int]$X, [int]$Y) {
   $c = $Bitmap.GetPixel($X, $Y)
@@ -113,17 +117,13 @@ function Find-BlueBounds($Path) {
   }
 }
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$python = Resolve-LightpandaPythonCommand
+$server = $null
+$browser = $null
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, "$Port")) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
-  $ready = $false
-  for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri $pageUrl -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  $ready = Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "canvas smoke server did not become ready" }
 
   $env:APPDATA = $profileRoot
@@ -131,14 +131,7 @@ try {
   $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","420","--window_height","360","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
   try {
-    $pngReady = $false
-    for ($i = 0; $i -lt 80; $i++) {
-      Start-Sleep -Milliseconds 250
-      if ((Test-Path $outPng) -and ((Get-Item $outPng).Length -gt 0)) {
-        $pngReady = $true
-        break
-      }
-    }
+    $pngReady = Wait-LightpandaFileReady -Path $outPng -Attempts $ScreenshotReadyAttempts -PollMilliseconds $PollMilliseconds
     if (-not $pngReady) { throw "canvas screenshot did not become ready" }
 
     $bounds = Find-BlueBounds $outPng
@@ -151,17 +144,21 @@ try {
     $bounds | ConvertTo-Json -Depth 6
   }
   finally {
-    Stop-VerifiedProcess $browser.Id
-    for ($i = 0; $i -lt 20; $i++) {
-      if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
-      Start-Sleep -Milliseconds 100
+    if ($browser) {
+      [void](Stop-LightpandaOwnedProbeProcess $browser)
+      for ($i = 0; $i -lt 20; $i++) {
+        if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
+        Start-Sleep -Milliseconds 100
+      }
     }
   }
 }
 finally {
-  Stop-VerifiedProcess $server.Id
-  for ($i = 0; $i -lt 20; $i++) {
-    if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
-    Start-Sleep -Milliseconds 100
+  if ($server) {
+    [void](Stop-LightpandaOwnedProbeProcess $server)
+    for ($i = 0; $i -lt 20; $i++) {
+      if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
+      Start-Sleep -Milliseconds 100
+    }
   }
 }
