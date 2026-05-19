@@ -47,6 +47,7 @@ The preflight report prints:
 - `ready_for_launch`
 - the recommended next step
 - the preferred Google-style routes when Google-style ranking is enabled
+- direct sidecar and broader asset audit route URLs for the same pinned localhost catalog
 - the selected fixture summary from the current attached-pages input set
 
 Prefer the strongest Google-like fixture first in the same combined report:
