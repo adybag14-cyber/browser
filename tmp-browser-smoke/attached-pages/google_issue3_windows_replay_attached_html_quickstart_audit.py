@@ -81,6 +81,11 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "purpose": "The replay-route shortcut bridge note keeps the compact replay-route helper visible before the replay narrows into the shorter bridge-only follow-up.",
+    },
+    {
+        "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
         "purpose": "The replay-route shortcut bridge note keeps the replay-shortcuts-to-Windows-replay bridge visible before the route narrows again.",
     },
