@@ -24,6 +24,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
@@ -50,6 +51,7 @@ Write-Host (("  Surface checker:          {0}") -f $route.helper_commands.window
 Write-Host (("  2. Validation bridge:     {0}") -f $route.helper_commands.windows_full_use_validation_router_attached_html_bridge)
 Write-Host (("  4. Windows catalog qk:    {0}") -f $route.helper_commands.windows_full_use_attached_html_catalog_quickstart)
 Write-Host (("  5. Replay attached qk:    {0}") -f $route.helper_commands.windows_replay_attached_html_quickstart)
+Write-Host (("  8. Attached flow:         {0}") -f $route.helper_commands.attached_html_flow)
 Write-Host ((" 10. Google flow:           {0}") -f $route.helper_commands.google_attached_html_flow)
 Write-Host ((" 13. Bundle suite surface:  {0}") -f $route.helper_commands.attached_bundle_suite_surface)
 Write-Host ((" 22. Google bridge:         {0}") -f $route.helper_commands.google_attached_html_entrypoint)
@@ -140,6 +142,23 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
             failing_snippets,
         )
 
+    def test_build_audit_reports_missing_attached_flow_note(self) -> None:
+        self.write_contract_files(
+            route_doc_text=ROUTE_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1",
+            failing_snippets,
+        )
+
     def test_build_audit_reports_missing_google_flow_note(self) -> None:
         self.write_contract_files(
             route_doc_text=ROUTE_DOC_SNIPPET.replace(
@@ -175,6 +194,34 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         self.write_contract_files(
             route_helper_text=ROUTE_HELPER_SNIPPET.replace(
                 'Write-Host (("  5. Replay attached qk:    {0}") -f $route.helper_commands.windows_replay_attached_html_quickstart)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1", failing_paths)
+
+    def test_build_audit_reports_missing_attached_flow_wiring(self) -> None:
+        self.write_contract_files(
+            route_helper_text=ROUTE_HELPER_SNIPPET.replace(
+                "        attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot\n",
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1", failing_paths)
+
+    def test_build_audit_reports_missing_attached_flow_output(self) -> None:
+        self.write_contract_files(
+            route_helper_text=ROUTE_HELPER_SNIPPET.replace(
+                'Write-Host (("  8. Attached flow:         {0}") -f $route.helper_commands.attached_html_flow)\n',
                 "",
             )
         )
