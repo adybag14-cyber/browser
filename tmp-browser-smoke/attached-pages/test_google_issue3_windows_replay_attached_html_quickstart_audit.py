@@ -660,6 +660,40 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", failing_paths)
 
+    def test_build_audit_reports_missing_launcher_companion_proof_surface_check_wiring(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "        proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $surfaceCheckArguments\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_launcher_companion_proof_bridge_guidance(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.",
+                "drifted proof bridge note",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.",
+            failing_snippets,
+        )
+
     def test_build_audit_reports_missing_launcher_companion_proof_bridge(self) -> None:
         self.write_contract_files(
             launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
