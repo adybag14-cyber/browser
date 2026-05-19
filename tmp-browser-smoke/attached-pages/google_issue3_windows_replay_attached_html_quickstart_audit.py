@@ -11,16 +11,6 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
-        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1",
-        "purpose": "The replay-attached quickstart keeps the proof-entrypoint surface checker visible before the proof-only follow-up is trusted.",
-    },
-    {
-        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
-        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1",
-        "purpose": "The replay-attached quickstart keeps the proof-entrypoint helper visible beside the compact bundle route.",
-    },
-    {
-        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "purpose": "The replay-attached quickstart keeps the launcher companion surface checker visible before the sidecar-first route is reused.",
     },
@@ -38,6 +28,21 @@ EXPECTATIONS = (
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
         "purpose": "The replay-attached quickstart keeps the issue-specific Google attached-html entrypoint visible before the bundle suite and narrower shortcuts take over.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1",
+        "purpose": "The replay-attached quickstart keeps the proof-entrypoint surface checker visible before the proof-only follow-up is trusted.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1",
+        "purpose": "The replay-attached quickstart keeps the proof-entrypoint helper visible beside the compact bundle route.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the suite-catalog helper wired into its command map.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
@@ -71,6 +76,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)',
+        "purpose": "The replay-attached helper prints the suite-catalog helper on the surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)',
         "purpose": "The replay-attached helper prints the issue-specific Google attached-html entrypoint in its attached-page ladder output.",
     },
@@ -98,6 +108,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
         "purpose": "The replay-attached helper prints the launcher companion helper in its attached-page ladder output.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.",
+        "purpose": "The replay-attached helper notes preserve when to widen back into the suite-catalog route.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
@@ -159,7 +174,9 @@ def build_replay_attached_quickstart_audit(repo_root: Path) -> dict[str, object]
         if not full_path.is_file():
             exists = False
         else:
-            exists = expectation["snippet"] in full_path.read_text(encoding="utf-8", errors="ignore")
+            exists = expectation["snippet"] in full_path.read_text(
+                encoding="utf-8", errors="ignore"
+            )
 
         if not exists:
             missing_count += 1
@@ -201,10 +218,18 @@ def render_text_report(audit: dict[str, object]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Audit the replay-attached quickstart note and helpers for launcher-companion, Google-entrypoint, and bundle-proof route drift."
+        description=(
+            "Audit the replay-attached quickstart note and helpers for suite-catalog, "
+            "Google-entrypoint, launcher-companion, and bundle-proof route drift."
+        )
     )
-    parser.add_argument("--repo-root", help="Lightpanda repo root to inspect. Defaults to the current directory.")
-    parser.add_argument("--json", action="store_true", help="Print structured JSON instead of text.")
+    parser.add_argument(
+        "--repo-root",
+        help="Lightpanda repo root to inspect. Defaults to the current directory.",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Print structured JSON instead of text."
+    )
     args = parser.parse_args(argv)
 
     repo_root = resolve_repo_root(args.repo_root)
