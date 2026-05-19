@@ -40,6 +40,26 @@ EXPECTATIONS = (
         "purpose": "The replay-attached quickstart keeps the proof-entrypoint helper visible beside the compact bundle route.",
     },
     {
+        "path": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars",
+        "purpose": "The narrower Google entrypoint note keeps the wrapper-backed sidecar audit visible before the deeper Google-only checks.",
+    },
+    {
+        "path": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1",
+        "purpose": "The narrower Google entrypoint note keeps the broader Google attached-html surface checker visible before the route narrows.",
+    },
+    {
+        "path": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle",
+        "purpose": "The narrower Google entrypoint note keeps the deeper asset-closure audit visible before shortcut follow-up begins.",
+    },
+    {
+        "path": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1",
+        "purpose": "The narrower Google entrypoint note keeps the issue-specific surface checker visible before the compact helper chain is trusted.",
+    },
+    {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the suite-catalog helper wired into its command map.",
@@ -128,6 +148,86 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.",
         "purpose": "The replay-attached helper notes preserve when to prefer the proof-entrypoint helper beside the pinned bundle route.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "google_attached_html_sidecar_audit = $googleAttachedHtmlSidecarAuditCommand",
+        "purpose": "The narrower Google entrypoint helper keeps the wrapper-backed sidecar audit wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "broader_google_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_attached_html_validation_surface.ps1' -Arguments $googleAttachedHtmlSurfaceCheckArguments",
+        "purpose": "The narrower Google entrypoint helper keeps the broader Google attached-html surface checker wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')",
+        "purpose": "The narrower Google entrypoint helper keeps the deeper asset-closure audit wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot",
+        "purpose": "The narrower Google entrypoint helper keeps the issue-specific surface checker wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "google_attached_html_validation_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments",
+        "purpose": "The narrower Google entrypoint helper keeps the broader Google attached-html flow helper wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments",
+        "purpose": "The narrower Google entrypoint helper keeps the compact bundle-suite helper wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
+        "purpose": "The narrower Google entrypoint helper prints the wrapper-backed sidecar audit on its surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  7. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)',
+        "purpose": "The narrower Google entrypoint helper prints the broader Google attached-html surface checker on its surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)',
+        "purpose": "The narrower Google entrypoint helper prints the deeper asset-closure audit on its surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)',
+        "purpose": "The narrower Google entrypoint helper prints the issue-specific surface checker on its surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  Sidecar audit:         {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
+        "purpose": "The narrower Google entrypoint helper prints the wrapper-backed sidecar audit in its companion helper section.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  Broader surface check: {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)',
+        "purpose": "The narrower Google entrypoint helper prints the broader Google attached-html surface checker in its companion helper section.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  Asset closure audit:   {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)',
+        "purpose": "The narrower Google entrypoint helper prints the deeper asset-closure audit in its companion helper section.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "Use google_attached_html_sidecar_audit when the current saved export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the broader surface check or the deeper asset audit.",
+        "purpose": "The narrower Google entrypoint helper notes preserve when to rerun the wrapper-backed sidecar audit first.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.",
+        "purpose": "The narrower Google entrypoint helper notes preserve when to rerun the broader Google attached-html surface checker before the route narrows.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.",
+        "purpose": "The narrower Google entrypoint helper notes preserve when to rerun the deeper asset-closure audit before shortcut follow-up.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
@@ -219,8 +319,8 @@ def render_text_report(audit: dict[str, object]) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Audit the replay-attached quickstart note and helpers for suite-catalog, "
-            "Google-entrypoint, launcher-companion, and bundle-proof route drift."
+            "Audit the replay-attached quickstart note plus the downstream Google-entrypoint, "
+            "launcher-companion, and bundle-proof helper contracts for drift."
         )
     )
     parser.add_argument(
