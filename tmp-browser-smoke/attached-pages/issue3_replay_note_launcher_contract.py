@@ -43,6 +43,10 @@ VALIDATION_ROUTER_ATTACHED_HTML_HELPER = (
 )
 ATTACHED_HTML_CHANGE_AREA_NOTE = "docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md"
 ATTACHED_HTML_CHANGE_AREA_HELPER = "show_google_issue3_attached_html_change_area_quickstart.ps1"
+ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART_NOTE = (
+    "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md"
+)
+ATTACHED_BUNDLE_FIRST_HELPER = "show_google_issue3_attached_bundle_first_entrypoint.ps1"
 
 REPLAY_ROUTE_SHORTCUT_NOTE = "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md"
 REPLAY_ROUTE_SHORTCUT_SURFACE_CHECK = (
@@ -92,6 +96,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "validation_router_attached_html_helper_count": 0,
         "attached_html_change_area_note_count": 0,
         "attached_html_change_area_helper_count": 0,
+        "attached_html_target_bundle_quickstart_note_count": 0,
+        "attached_bundle_first_helper_count": 0,
         "replay_route_shortcut_note_count": 0,
         "replay_route_shortcut_surface_check_count": 0,
         "replay_route_shortcut_helper_count": 0,
@@ -120,6 +126,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "validation_router_attached_html_helpers": [],
             "attached_html_change_area_note_references": [],
             "attached_html_change_area_helpers": [],
+            "attached_html_target_bundle_quickstart_note_references": [],
+            "attached_bundle_first_helpers": [],
             "replay_route_shortcut_note_references": [],
             "replay_route_shortcut_surface_checks": [],
             "replay_route_shortcut_helpers": [],
@@ -178,6 +186,14 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["attached_html_change_area_helpers"].append(
                     {"line_number": line_number, "line": stripped}
                 )
+            if ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART_NOTE in line:
+                hits["attached_html_target_bundle_quickstart_note_references"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if ATTACHED_BUNDLE_FIRST_HELPER in line:
+                hits["attached_bundle_first_helpers"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
             if REPLAY_ROUTE_SHORTCUT_NOTE in line:
                 hits["replay_route_shortcut_note_references"].append({"line_number": line_number, "line": stripped})
             if REPLAY_ROUTE_SHORTCUT_SURFACE_CHECK in line:
@@ -227,6 +243,12 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         )
         counts["attached_html_change_area_helper_count"] += len(
             hits["attached_html_change_area_helpers"]
+        )
+        counts["attached_html_target_bundle_quickstart_note_count"] += len(
+            hits["attached_html_target_bundle_quickstart_note_references"]
+        )
+        counts["attached_bundle_first_helper_count"] += len(
+            hits["attached_bundle_first_helpers"]
         )
         counts["replay_route_shortcut_note_count"] += len(hits["replay_route_shortcut_note_references"])
         counts["replay_route_shortcut_surface_check_count"] += len(
@@ -292,6 +314,10 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the attached-html change-area quickstart note visible")
     if audit["attached_html_change_area_helper_count"] == 0:
         reasons.append("replay notes do not keep the attached-html change-area quickstart helper visible")
+    if audit["attached_html_target_bundle_quickstart_note_count"] == 0:
+        reasons.append("replay notes do not keep the attached-html target-bundle quickstart note visible")
+    if audit["attached_bundle_first_helper_count"] == 0:
+        reasons.append("replay notes do not keep the bundle-first attached-html helper visible")
     if audit["replay_route_shortcut_note_count"] == 0:
         reasons.append("replay notes do not keep the replay-route shortcut bridge note visible")
     if audit["replay_route_shortcut_surface_check_count"] == 0:
@@ -315,6 +341,8 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Validation-router quickstart helper references: {audit['validation_router_attached_html_helper_count']}",
         f"Change-area quickstart note references: {audit['attached_html_change_area_note_count']}",
         f"Change-area quickstart helper references: {audit['attached_html_change_area_helper_count']}",
+        f"Target-bundle quickstart note references: {audit['attached_html_target_bundle_quickstart_note_count']}",
+        f"Bundle-first helper references: {audit['attached_bundle_first_helper_count']}",
         "",
     ]
     for reason in reasons:
@@ -329,8 +357,8 @@ def main() -> int:
             "the replay-side and Windows-side route checks, the pinned proof route, the "
             "dedicated Google attached-html replay surface, the issue-specific Google "
             "attached-html entrypoint note and checker, the validation-router and change-area "
-            "attached-html quickstarts, the narrower replay-route shortcut companion, or the "
-            "replay-shortcuts Windows replay bridge."
+            "attached-html quickstarts, the bundle-first target-bundle handoff, the narrower "
+            "replay-route shortcut companion, or the replay-shortcuts Windows replay bridge."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
