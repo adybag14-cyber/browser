@@ -109,6 +109,9 @@ $contentExpectations = @(
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1' -Purpose "Replay quickstart keeps the suite-router next-step checker visible before the executable matrix is reused."),
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet '- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`' -Purpose "Replay quickstart keeps the compact attached-bundle suite note visible as a companion reference."),
     (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Purpose "Replay quickstart keeps the compact attached-bundle suite helper visible before the bundle-first branch is chosen."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet '- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`' -Purpose "Replay quickstart keeps the pinned proof-entrypoint companion note visible beside the compact attached-bundle route."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Purpose "Replay quickstart keeps the proof-entrypoint surface checker visible before the compact bundle route drops into proof-only follow-up."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Purpose "Replay quickstart keeps the proof-entrypoint helper visible beside the compact attached-bundle route before narrowing further."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1" -Snippet "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments `$sharedArguments" -Purpose "Helper output keeps the suite-catalog entrypoint helper wired into the compact replay surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1" -Snippet "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments `$routeSurfaceArguments" -Purpose "Helper output keeps the replay-side attached-html surface checker wired into the compact replay surface."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1" -Snippet "attached_pages_launcher_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments `$routeSurfaceArguments" -Purpose "Helper output keeps the launcher companion surface checker wired into the compact replay surface."),
@@ -211,10 +214,10 @@ if ($contentResults.Count -gt 0) {
 
 Write-Host ""
 if ($missing.Count -eq 0) {
-    Write-Host "Google issue #3 Windows replay quickstart surface is intact."
+    Write-Host "Google issue #3 Windows replay quickstart surface is intact, including the compact attached-bundle suite route and the proof-entrypoint companion follow-up it should keep visible."
     exit 0
 }
 
 Write-Host (("Missing {0} Windows replay quickstart path or source contract check(s).") -f $missing.Count)
-Write-Host "Repair the replay quickstart note, the compact suite-catalog or suite-router surfaces, the replay-side attached-html ladder, the bundle-aware helper surface, or the narrower helper contracts before trusting the issue #3 Windows replay quickstart route."
+Write-Host "Repair the replay quickstart note, the compact suite-catalog or suite-router surfaces, the replay-side attached-html ladder, the bundle-aware helper surface, the proof-entrypoint companion route, or the narrower helper contracts before trusting the issue #3 Windows replay quickstart route."
 exit 1
