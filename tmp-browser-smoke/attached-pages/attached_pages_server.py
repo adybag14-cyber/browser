@@ -1,5 +1,6 @@
 import argparse
 import html
+import importlib.util
 import json
 import mimetypes
 import os
@@ -17,6 +18,17 @@ HTML_EXPORT_EXTENSIONS = {".html", ".htm"}
 
 def is_html_export(path: Path) -> bool:
     return path.suffix.lower() in HTML_EXPORT_EXTENSIONS
+
+
+def load_sidecar_audit_module():
+    sidecar_path = Path(__file__).with_name("attached_pages_sidecar_audit.py")
+    spec = importlib.util.spec_from_file_location("attached_pages_sidecar_audit", sidecar_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"could not load attached pages sidecar audit module from {sidecar_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def slugify(name: str) -> str:
@@ -163,7 +175,7 @@ def build_manifest(root: Path | None = None, *, selected_files: list[Path] | Non
     return entries
 
 
-def render_index(manifest: list[dict[str, str]], audit: dict[str, object]) -> bytes:
+def render_index(manifest: list[dict[str, str]], audit: dict[str, object], sidecar_audit: dict[str, object]) -> bytes:
     rows = []
     for entry in manifest:
         rows.append(
@@ -220,10 +232,12 @@ def render_index(manifest: list[dict[str, str]], audit: dict[str, object]) -> by
       CSS, images, and scripts keep working for exported bundles.
     </p>
     <p>
-      Current asset audit:
+      Current replay audit:
+      missing sidecar bundles: <strong>{sidecar_audit["fixtures_with_missing_sidecars"]}</strong>,
       missing local assets: <strong>{audit["fixtures_with_missing_assets"]}</strong>,
       external dependencies: <strong>{audit["fixtures_with_external_assets"]}</strong>.
-      See <code>/audit.json</code> or <code>/audit.txt</code> for the full asset audit.
+      See <code>/sidecars.json</code>, <code>/sidecars.txt</code>, <code>/audit.json</code>, or
+      <code>/audit.txt</code> for the full localhost replay audit output.
     </p>
     <ul>
       {body}
@@ -499,15 +513,30 @@ def stage_manifest_entries(
     return stage_root, staged_entry_dirs, cleanup_context
 
 
-def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes, dict[str, object], bytes]:
+def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes, dict[str, object], bytes, dict[str, object], bytes, bytes]:
     bundle_root, _ = resolve_bundle_inputs(root, selected_files)
     manifest = build_manifest(root, selected_files=selected_files)
     route_lookup = build_route_lookup(manifest)
+    sidecar_module = load_sidecar_audit_module()
+    sidecar_audit = sidecar_module.build_sidecar_audit(root, selected_files=selected_files)
     audit = build_asset_audit(root, selected_files=selected_files)
-    index_bytes = render_index(manifest, audit)
+    index_bytes = render_index(manifest, audit, sidecar_audit)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
     audit_text_bytes = render_asset_audit_text(audit).encode("utf-8")
-    return bundle_root, manifest, route_lookup, index_bytes, manifest_bytes, audit, audit_text_bytes
+    sidecar_json_bytes = json.dumps(sidecar_audit, indent=2).encode("utf-8")
+    sidecar_text_bytes = sidecar_module.render_text_report(sidecar_audit).encode("utf-8")
+    return (
+        bundle_root,
+        manifest,
+        route_lookup,
+        index_bytes,
+        manifest_bytes,
+        audit,
+        audit_text_bytes,
+        sidecar_audit,
+        sidecar_json_bytes,
+        sidecar_text_bytes,
+    )
 
 
 class ReuseServer(ThreadingHTTPServer):
@@ -529,9 +558,18 @@ def create_server(
     selected_files: list[Path] | None = None,
     staging_root: Path | None = None,
 ) -> tuple[ReuseServer, list[dict[str, str]]]:
-    bundle_root, manifest, route_lookup, index_bytes, manifest_bytes, audit, audit_text_bytes = build_bundle_state(
-        root, selected_files=selected_files
-    )
+    (
+        bundle_root,
+        manifest,
+        route_lookup,
+        index_bytes,
+        manifest_bytes,
+        audit,
+        audit_text_bytes,
+        sidecar_audit,
+        sidecar_json_bytes,
+        sidecar_text_bytes,
+    ) = build_bundle_state(root, selected_files=selected_files)
     audit_json_bytes = json.dumps(audit, indent=2).encode("utf-8")
     stage_root, staged_entry_dirs, cleanup_context = stage_manifest_entries(
         bundle_root, manifest, staging_root=staging_root
@@ -594,6 +632,12 @@ def create_server(
                 return
             if request_path == "/manifest.json":
                 self.send_bytes(manifest_bytes, "application/json; charset=utf-8", head_only=head_only)
+                return
+            if request_path == "/sidecars.json":
+                self.send_bytes(sidecar_json_bytes, "application/json; charset=utf-8", head_only=head_only)
+                return
+            if request_path == "/sidecars.txt":
+                self.send_bytes(sidecar_text_bytes, "text/plain; charset=utf-8", head_only=head_only)
                 return
             if request_path == "/audit.json":
                 self.send_bytes(audit_json_bytes, "application/json; charset=utf-8", head_only=head_only)
