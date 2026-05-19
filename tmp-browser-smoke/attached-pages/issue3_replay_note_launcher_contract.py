@@ -17,6 +17,7 @@ DEFAULT_RELATIVE_PATHS = (
 REPLAY_QUICKSTART_SURFACE_CHECK = (
     "check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1"
 )
+REPLAY_QUICKSTART_HELPER = "show_google_issue3_windows_replay_attached_html_quickstart.ps1"
 WINDOWS_ROUTE_SURFACE_CHECK = (
     "check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1"
 )
@@ -121,6 +122,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "wrapper_sidecar_reference_count": 0,
         "google_wrapper_sidecar_reference_count": 0,
         "replay_quickstart_surface_check_count": 0,
+        "replay_quickstart_helper_count": 0,
         "windows_route_surface_check_count": 0,
         "windows_validation_router_helper_count": 0,
         "windows_attached_html_catalog_helper_count": 0,
@@ -173,6 +175,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "raw_python_references": [],
             "wrapper_references": [],
             "replay_quickstart_surface_checks": [],
+            "replay_quickstart_helpers": [],
             "windows_route_surface_checks": [],
             "windows_validation_router_helpers": [],
             "windows_attached_html_catalog_helpers": [],
@@ -227,6 +230,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 )
             if REPLAY_QUICKSTART_SURFACE_CHECK in line:
                 hits["replay_quickstart_surface_checks"].append({"line_number": line_number, "line": stripped})
+            if REPLAY_QUICKSTART_HELPER in line:
+                hits["replay_quickstart_helpers"].append({"line_number": line_number, "line": stripped})
             if WINDOWS_ROUTE_SURFACE_CHECK in line:
                 hits["windows_route_surface_checks"].append({"line_number": line_number, "line": stripped})
             if WINDOWS_VALIDATION_ROUTER_HELPER in line:
@@ -349,6 +354,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             if hit["mentions_sidecars"] and hit["mentions_google_style"]
         )
         counts["replay_quickstart_surface_check_count"] += len(hits["replay_quickstart_surface_checks"])
+        counts["replay_quickstart_helper_count"] += len(hits["replay_quickstart_helpers"])
         counts["windows_route_surface_check_count"] += len(hits["windows_route_surface_checks"])
         counts["windows_validation_router_helper_count"] += len(hits["windows_validation_router_helpers"])
         counts["windows_attached_html_catalog_helper_count"] += len(hits["windows_attached_html_catalog_helpers"])
@@ -449,6 +455,8 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the Google-style wrapper-backed sidecar audit visible")
     if audit["replay_quickstart_surface_check_count"] == 0:
         reasons.append("replay notes do not keep the replay attached-html quickstart surface check visible")
+    if audit["replay_quickstart_helper_count"] == 0:
+        reasons.append("replay notes do not keep the Windows replay attached-html quickstart helper visible")
     if audit["windows_route_surface_check_count"] == 0:
         reasons.append("replay notes do not keep the broader Windows attached-html route surface check visible")
     if audit["windows_validation_router_helper_count"] == 0:
@@ -537,6 +545,8 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Repo root: {audit['repo_root']}",
         f"Files scanned: {audit['file_count']}",
         f"Google asset-closure audit references: {audit['google_asset_closure_audit_count']}",
+        f"Replay quickstart surface-check references: {audit['replay_quickstart_surface_check_count']}",
+        f"Replay quickstart helper references: {audit['replay_quickstart_helper_count']}",
         f"Windows route surface-check references: {audit['windows_route_surface_check_count']}",
         f"Windows validation-router bridge helper references: {audit['windows_validation_router_helper_count']}",
         f"Windows catalog quickstart helper references: {audit['windows_attached_html_catalog_helper_count']}",
@@ -571,7 +581,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
-            "the replay-side and Windows-side route checks, the broader Windows validation-router bridge and Windows catalog quickstart helpers, "
+            "the replay-side quickstart surface checker and quickstart helper, the replay-side and Windows-side route checks, the broader Windows validation-router bridge and Windows catalog quickstart helpers, "
             "the broader replay-route helper, the context-preserving replay helper, "
             "the pinned bundle proof route, the dedicated Google attached-html replay surface, the issue-specific Google "
             "attached-html entrypoint note and checker, the deeper Google attached-html asset-closure audit, the validation-router quickstart note and surface checker, the validation-router "
