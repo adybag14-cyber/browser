@@ -99,6 +99,44 @@ def normalize_explicit_input_paths(input_paths: list[str]) -> list[Path]:
     return dedupe_paths(selected)
 
 
+def move_preferred_path_first(selected: list[Path], preferred_page: str | None) -> list[Path]:
+    if not selected or preferred_page is None or not preferred_page.strip():
+        return selected
+
+    preferred_token = preferred_page.strip()
+    normalized_preferred_token = preferred_token.casefold()
+    preferred_candidate_path = Path(preferred_token).expanduser()
+    resolved_preferred_path: Path | None = None
+    if preferred_candidate_path.exists():
+        resolved_preferred_path = preferred_candidate_path.resolve()
+
+    preferred_match: Path | None = None
+    for candidate in selected:
+        if resolved_preferred_path is not None and candidate == resolved_preferred_path:
+            preferred_match = candidate
+            break
+
+        candidate_text = str(candidate)
+        candidate_leaf = candidate.name
+        if (
+            candidate_leaf.casefold() == normalized_preferred_token
+            or candidate_text.casefold().endswith(normalized_preferred_token)
+        ):
+            preferred_match = candidate
+            break
+
+    if preferred_match is None:
+        available_names = ", ".join(path.name for path in selected)
+        raise ValueError(
+            f"preferred initial page '{preferred_token}' did not match any selected attached HTML file. "
+            f"Available files: {available_names}"
+        )
+
+    reordered = [preferred_match]
+    reordered.extend(path for path in selected if path != preferred_match)
+    return reordered
+
+
 def discover_attached_html_candidates(repo_root: Path, *, cwd: Path | None = None) -> list[Path]:
     candidates: list[Path] = []
     for root in get_attached_html_search_roots(repo_root, cwd=cwd):
@@ -192,6 +230,7 @@ def select_attached_html_inputs(
     *,
     explicit_inputs: list[str] | None = None,
     google_style: bool = False,
+    preferred_initial_page: str | None = None,
     cwd: Path | None = None,
 ) -> list[Path]:
     if explicit_inputs:
@@ -211,7 +250,7 @@ def select_attached_html_inputs(
             key=lambda path: (-int(google_style_fixture_summary(path)["score"]), str(path)),
         )
 
-    return selected
+    return move_preferred_path_first(selected, preferred_initial_page)
 
 
 def convert_to_display_path(path: Path, repo_root: Path) -> str:
@@ -328,6 +367,10 @@ def main(argv: list[str] | None = None) -> int:
         dest="explicit_inputs",
         help="Explicit HTML file or directory to include. Repeat to pin the manifest to selected inputs.",
     )
+    parser.add_argument(
+        "--preferred-initial-page",
+        help="Pin one selected attached HTML file first by full path, leaf name, or suffix match before printing the manifest or starting the server.",
+    )
     parser.add_argument("--repo-root", help="Override the Lightpanda repo root.")
     parser.add_argument("--bind", default="127.0.0.1", help="Address to bind. Defaults to 127.0.0.1.")
     parser.add_argument("--port", type=int, default=8235, help="TCP port to listen on. Defaults to 8235.")
@@ -408,6 +451,7 @@ def main(argv: list[str] | None = None) -> int:
         repo_root,
         explicit_inputs=args.explicit_inputs,
         google_style=args.google_style,
+        preferred_initial_page=args.preferred_initial_page,
     )
     staging_root = Path(args.staging_root).expanduser().resolve() if args.staging_root else None
 
@@ -509,8 +553,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     preferred_manifest_entry = None
-    preferred_fixture_path = selected_files[0] if args.google_style and selected_files else None
-    if preferred_fixture_path is not None:
+    preferred_fixture_path = None
+    if selected_files and (args.google_style or args.preferred_initial_page):
+        preferred_fixture_path = selected_files[0]
         _, selected_manifest = ensure_manifest()
         preferred_manifest_entry = find_manifest_entry_for_path(
             selected_manifest,
@@ -537,7 +582,8 @@ def main(argv: list[str] | None = None) -> int:
     if staging_root is not None:
         print(f"Requested staging root: {staging_root}")
     if preferred_fixture_path is not None:
-        print(f"Preferred Google-style page: {preferred_fixture_path}")
+        preferred_label = "Preferred initial page" if args.preferred_initial_page else "Preferred Google-style page"
+        print(f"{preferred_label}: {preferred_fixture_path}")
     if preferred_manifest_entry is not None:
         print(f"Preferred route: http://{args.bind}:{args.port}{preferred_manifest_entry['route']}/")
         print(
