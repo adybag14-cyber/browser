@@ -164,6 +164,36 @@ $bundleOnlyArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleOnlyArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleOnlyArguments -Name InputPath -Values $InputPath
 
+$attachedHtmlChangeAreaArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($SummaryPath) {
+    $attachedHtmlChangeAreaArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $attachedHtmlChangeAreaArguments['InputPath'] = @($InputPath)
+}
+
+$googleAttachedHtmlChangeAreaArguments = [ordered]@{
+    ChangeArea = 'google-attached-html'
+}
+if ($SummaryPath) {
+    $googleAttachedHtmlChangeAreaArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $googleAttachedHtmlChangeAreaArguments['InputPath'] = @($InputPath)
+}
+
+$attachedBundleChangeAreaArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($SummaryPath) {
+    $attachedBundleChangeAreaArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $attachedBundleChangeAreaArguments['InputPath'] = @($InputPath)
+}
+
 $recommendedKey = if ($InputPath -and @($InputPath).Count -gt 0) {
     'bundle_suite_surface'
 } else {
@@ -195,9 +225,9 @@ $bridge = [ordered]@{
         windows_full_use_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
         windows_validation_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
         windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments
-        broader_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html' }) -RepoRootOverride $RepoRoot
-        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'google-attached-html' }) -RepoRootOverride $RepoRoot
-        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{ ChangeArea = 'attached-html-target-bundle' }) -RepoRootOverride $RepoRoot
+        broader_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
+        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
+        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleChangeAreaArguments -RepoRootOverride $RepoRoot
         broader_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments ([ordered]@{ InputPath = @($InputPath) }) -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments ([ordered]@{ InputPath = @($InputPath) }) -RepoRootOverride $RepoRoot
         bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments
@@ -209,7 +239,7 @@ $bridge = [ordered]@{
     }
     notes = @(
         'Use windows_full_use_route first when docs/WINDOWS_FULL_USE.md or the broader Windows-first attached-page route was the last surface you reopened and no explicit bundle inputs are pinned yet.',
-        'Use bundle_suite_surface first when the current attached pages are already the known three-page compatibility bundle and you want the compact suite-level bundle surface before the narrower bundle-first helper takes over.',
+        'Use bundle_suite_surface first when the current attached pages are already the known three-page compatibility bundle and you want the compact suite-level bundle surface before the narrower bundle-first helper.',
         'Keep windows_validation_bridge and windows_replay_quickstart nearby when the route should stay on the Windows-first ladder before it narrows again.',
         'Reopen broader_attached_html_change_area, google_attached_html_change_area, broader_attached_html_flow, and google_attached_html_flow only when the replay no longer obviously belongs on the pinned three-page bundle branch.',
         'Use replay_route_bundle_first when the replay is already inside the replay-route helper family and you want the pinned bundle route plus the broader return path printed together before choosing the next narrower helper.',
@@ -217,6 +247,13 @@ $bridge = [ordered]@{
         'Run bundle_surface_check before the delegated bundle runner after branch moves or helper renames so the pinned bundle path fails fast.',
         'Use bundle_flow and then bundle_runner when the bundle checks are green and the pinned three-page route should execute directly.'
     )
+}
+
+if ($bridge.explicit_input_path_count -gt 0) {
+    $bridge.notes += 'The printed attached-html, google-attached-html, and attached-html-target-bundle router commands preserve the explicit InputPath values through the top-level validation router so the same pinned bundle stays visible after the Windows full-use handoff.'
+}
+if ($bridge.summary_path) {
+    $bridge.notes += 'The printed router commands preserve -SummaryPath through the top-level validation router so saved replay context can be reopened without manual re-entry.'
 }
 
 $bridge.recommended_next_key = $recommendedKey
