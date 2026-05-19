@@ -90,6 +90,7 @@ function Format-PythonLauncherCommand {
     param(
         [string]$RepoRootOverride,
         [string[]]$InputValues,
+        [string]$PreferredInitialPage,
         [string[]]$Flags = @()
     )
 
@@ -109,6 +110,11 @@ function Format-PythonLauncherCommand {
             $parts.Add('--input')
             $parts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $value))
         }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
+        $parts.Add('--preferred-initial-page')
+        $parts.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $PreferredInitialPage))
     }
 
     foreach ($flag in $Flags) {
@@ -159,17 +165,17 @@ $helper = [ordered]@{
         wrapper_google_launch = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle')
         proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $surfaceCheckArguments
         proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $wrapperArguments
-        python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--audit-sidecars')
-        python_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--audit-assets')
-        python_print_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--print-manifest')
-        python_strict_launch = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--require-complete-sidecars')
-        python_strict_assets = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--require-complete-assets')
-        python_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--require-complete-sidecars', '--require-complete-assets')
-        python_google_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--audit-sidecars')
-        python_google_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--audit-assets')
-        python_google_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--print-manifest')
-        python_google_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--require-complete-sidecars', '--require-complete-assets')
-        python_google_launch = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style')
+        python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-sidecars')
+        python_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-assets')
+        python_print_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--print-manifest')
+        python_strict_launch = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--require-complete-sidecars')
+        python_strict_assets = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--require-complete-assets')
+        python_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--require-complete-sidecars', '--require-complete-assets')
+        python_google_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--google-style', '--audit-sidecars')
+        python_google_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--google-style', '--audit-assets')
+        python_google_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--google-style', '--print-manifest')
+        python_google_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--google-style', '--require-complete-sidecars', '--require-complete-assets')
+        python_google_launch = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--google-style')
     }
     companion_paths = [ordered]@{
         launcher_companion_surface_check = 'scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1'
@@ -197,7 +203,7 @@ $helper.recommended_next_command = $helper.helper_commands[$helper.recommended_n
 if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
     $helper.notes += "Current preferred initial page: $PreferredInitialPage"
     $helper.notes += 'The wrapper-backed launcher ladder now preserves -PreferredInitialPage through the sidecar audit, asset audit, manifest print, strict gates, and Google-style launch variants so the known bundle can stay pinned to one first page without hand-editing each command.'
-    $helper.notes += 'The lower-level Python launcher ladder shown here still does not carry a preferred-first-page override, so keep using the wrapper-backed commands when replay order must stay pinned.'
+    $helper.notes += 'The lower-level Python launcher ladder shown here now preserves the same preferred-first-page override, so cross-platform reruns can keep the pinned bundle order without hand-editing each command.'
 }
 
 if ($Json) {
