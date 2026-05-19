@@ -140,12 +140,13 @@ $flow = [ordered]@{
         "Use the trace guide when you need a quick read on whether the failure stayed before focus, before typed text became visible, or before keypress reached submit.",
         "Keep SharedInputText aligned with the broader issue #3 shared probes so the dedicated form-controls gate reports the same expected query string.",
         "Port 8157 is shared on purpose with the broader Enter-order helpers, so one override keeps the dedicated gate and the wider stack in sync.",
+        "The printed next-step commands now preserve the current repo root, browser path, host, shared input text, shared Enter-order port, and timing settings where those later helpers support them.",
         "Use the raw probe command only when you need the direct script surface; otherwise prefer the dedicated wrapper so the runbook and issue comments stay consistent."
     )
     next_steps = @(
-        "Use .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1 when you want the dedicated probe markers translated into quick failure stages before widening again.",
-        "Use .\scripts\windows\run_google_form_controls_enter_order_validation.ps1 when you want to execute the dedicated gate directly after the surface check passes.",
-        "Use .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1 when the dedicated gate is green and you want the reduced homepage, localhost wrapper, and shared Enter-order ladder printed together.",
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the dedicated probe markers translated into quick failure stages before widening again." -f $traceGuide, $(if ($traceGuideArgs.Count -gt 0) { " " + ($traceGuideArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want to execute the dedicated gate directly after the surface check passes." -f $runner, $(if ($runnerArgs.Count -gt 0) { " " + ($runnerArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when the dedicated gate is green and you want the reduced homepage, localhost wrapper, and shared Enter-order ladder printed together with the same repo-root, browser, host, shared input, port, and timing context." -f $broaderStack, $(if ($broaderStackArgs.Count -gt 0) { " " + ($broaderStackArgs -join " ") } else { "" })),
         "Move on to the smallest live Google manual pass only after the dedicated form-controls gate and the broader shared Enter-order stack stay green together."
     )
 }
