@@ -11,6 +11,7 @@ import google_issue3_windows_replay_attached_html_quickstart_surface_audit as he
 DOC_SNIPPET = """# Issue #3 Windows Replay Attached HTML Quickstart
 
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
+- `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1
@@ -21,9 +22,11 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 """
 
 CHECKER_SNIPPET = """(New-ValidationReference -Path \"docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md\" -Kind \"file\" -Purpose \"Proof note\")
+(New-ValidationReference -Path \"docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md\" -Kind \"file\" -Purpose \"Bundle-first bridge note\")
 (New-ValidationReference -Path \"scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1\" -Kind \"file\" -Purpose \"Launcher checker\")
 (New-ValidationReference -Path \"scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1\" -Kind \"file\" -Purpose \"Launcher helper\")
 (New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md\" -Snippet 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md' -Purpose \"Proof note check\")
+(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md\" -Snippet 'docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md' -Purpose \"Bundle-first bridge note check\")
 (New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -InputPath ''<attached-html-root>''' -Purpose \"Launcher helper route\")
 (New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Purpose \"Proof helper route\")
 """
@@ -37,10 +40,10 @@ HELPER_SNIPPET = """$helper = [ordered]@{
     }
 }
 
-Write-Host ((\"  Launcher surface check:   {0}\") -f $helper.commands.attached_pages_launcher_companion_surface_check)
-Write-Host ((\"  Launcher companion:       {0}\") -f $helper.commands.attached_pages_launcher_companion)
-Write-Host ((\"  Bundle proof check:       {0}\") -f $helper.commands.attached_bundle_proof_surface_check)
-Write-Host ((\"  Bundle proof helper:      {0}\") -f $helper.commands.attached_bundle_proof_entrypoint)
+Write-Host ((\\"  Launcher surface check:   {0}\\") -f $helper.commands.attached_pages_launcher_companion_surface_check)
+Write-Host ((\\"  Launcher companion:       {0}\\") -f $helper.commands.attached_pages_launcher_companion)
+Write-Host ((\\"  Bundle proof check:       {0}\\") -f $helper.commands.attached_bundle_proof_surface_check)
+Write-Host ((\\"  Bundle proof helper:      {0}\\") -f $helper.commands.attached_bundle_proof_entrypoint)
 """
 
 
@@ -94,6 +97,15 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartSurfaceAuditTests(unittest.
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", failing_paths)
 
+    def test_build_surface_audit_reports_missing_bundle_first_bridge_note(self) -> None:
+        self.write_contract_files(doc_text=DOC_SNIPPET.replace("- `docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md`\n", ""))
+
+        audit = helper.build_surface_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", failing_paths)
+
     def test_build_surface_audit_reports_missing_checker_reference(self) -> None:
         self.write_contract_files(
             checker_text=CHECKER_SNIPPET.replace(
@@ -114,7 +126,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartSurfaceAuditTests(unittest.
     def test_build_surface_audit_reports_missing_helper_output(self) -> None:
         self.write_contract_files(
             helper_text=HELPER_SNIPPET.replace(
-                'Write-Host ((\\"  Bundle proof helper:      {0}\\") -f $helper.commands.attached_bundle_proof_entrypoint)\n',
+                "Bundle proof helper:",
                 "",
             )
         )
