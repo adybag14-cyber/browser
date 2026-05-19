@@ -36,6 +36,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "attached_bundle_proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "purpose": "The replay-attached helper keeps the proof-entrypoint surface checker wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the proof-entrypoint helper wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "attached_pages_launcher_companion_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $routeSurfaceArguments",
         "purpose": "The replay-attached helper keeps the launcher companion surface checker wired into its command map.",
     },
@@ -46,23 +56,38 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Bundle suite surface:     {0}\") -f $helper.commands.attached_bundle_suite_surface)",
+        "snippet": 'Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
         "purpose": "The replay-attached helper prints the compact bundle-suite surface before the route narrows into bundle-first follow-up.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Launcher surface check:   {0}\") -f $helper.commands.attached_pages_launcher_companion_surface_check)",
+        "snippet": 'Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)',
+        "purpose": "The replay-attached helper prints the proof-entrypoint surface checker in its attached-page ladder output.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)',
+        "purpose": "The replay-attached helper prints the proof-entrypoint helper in its attached-page ladder output.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pages_launcher_companion_surface_check)',
         "purpose": "The replay-attached helper prints the launcher companion surface checker in its attached-page ladder output.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Launcher companion:       {0}\") -f $helper.commands.attached_pages_launcher_companion)",
+        "snippet": 'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
         "purpose": "The replay-attached helper prints the launcher companion helper in its attached-page ladder output.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.",
         "purpose": "The replay-attached helper notes preserve when to prefer the compact bundle-suite surface before the narrower bundle-first branch.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Use attached_bundle_proof_surface_check and attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the executable proof-only checker and helper pair reprinted before or after the narrower bundle-first follow-up.",
+        "purpose": "The replay-attached helper notes preserve when to prefer the proof-entrypoint checker and helper pair beside the pinned bundle route.",
     },
 )
 
