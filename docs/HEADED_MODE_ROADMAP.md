@@ -32,9 +32,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -InputPath "<saved-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
 ```
@@ -45,10 +50,14 @@ Current validation truth on this branch:
 - bounded localhost stop/reload probes exist under `tmp-browser-smoke/stop-loading/`
 - bounded localhost input probes exist under `tmp-browser-smoke/form-controls/`
 - the router now surfaces a dedicated `google-form-controls-enter-order` gate for the smallest issue #3 shared Enter-submit checkpoint on the real headed surface
+- the router now surfaces a broader `google-shared-enter-order` gate when issue #3 replay should stay on the reusable shared Enter-order ladder before widening back out to live Google or attached-page follow-up
+- the router now surfaces first-line `rendering` probes for shared layout, screenshot timing, and visible headed surface checks before attached-page replay
+- the router now surfaces first-line `network` probes for authenticated stylesheet and fetch-credentials regressions before attached-page replay
 - the router now surfaces checkout-portable `browser-shell` first-line probes for tabs and settings behavior on the real headed window
 - the router now surfaces a checkout-portable `popup` first-line probe for popup creation and named-target behavior on the real headed window
 - the router now surfaces dedicated `google-attached-html` and `attached-html-target-bundle` routes for issue #3 attached-page replay, including the pinned three-page compatibility-bundle path
-- the first-line navigation, stop-loading, input, browser-shell, and popup probes auto-resolve the repo root and built browser path from the current checkout
+- the router now exposes suite-level `google-attached-html` and `attached-html-target-bundle` surfaces when the narrower attached-page helper lane should be reprinted without widening back out to the rest of the catalog first
+- the first-line navigation, stop-loading, input, rendering, network, browser-shell, and popup probes auto-resolve the repo root and built browser path from the current checkout
 - `scripts/windows/show_headed_validation_suites.ps1` is the truthful router
   for current small Windows headed checks
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` is the read-first companion when the replay should keep one Google-like attached page first through the localhost route
@@ -56,6 +65,8 @@ Current validation truth on this branch:
 - saved or attached HTML follow-up currently expands to a manual localhost
   replay path instead of the larger wrapper-heavy helper chain referenced by
   some older notes
+
+Use `rendering` before attached-page replay when the current change touched layout, paint, screenshot timing, or other visible headed-surface behavior. Use `network` before attached-page replay when the current change touched shared subresource loading, authenticated asset fetches, or browser-managed request credentials.
 
 See `docs/WINDOWS_FULL_USE.md` for the current Windows-first runbook, and use
 `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` plus
