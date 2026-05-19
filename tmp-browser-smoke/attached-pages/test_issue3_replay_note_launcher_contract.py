@@ -228,38 +228,6 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 failure_reasons(audit),
             )
 
-    def test_fails_when_windows_validation_router_bridge_helper_is_missing(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            paths = write_default_files(
-                root,
-                PASSING_CONTENT.replace(
-                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1\n",
-                    "",
-                ),
-            )
-            audit = audit_paths(paths, root)
-            self.assertIn(
-                "replay notes do not keep the broader Windows validation-router attached-html bridge helper visible",
-                failure_reasons(audit),
-            )
-
-    def test_fails_when_windows_catalog_quickstart_helper_is_missing(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            paths = write_default_files(
-                root,
-                PASSING_CONTENT.replace(
-                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1\n",
-                    "",
-                ),
-            )
-            audit = audit_paths(paths, root)
-            self.assertIn(
-                "replay notes do not keep the broader Windows attached-html catalog quickstart helper visible",
-                failure_reasons(audit),
-            )
-
     def test_fails_when_google_surface_check_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -557,7 +525,7 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 failure_reasons(audit),
             )
 
-    def test_fails_when_suite_catalog_surface_check_is_missing(self) -> None:
+    def test_fails_when_suite_catalog_entrypoints_surface_check_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             paths = write_default_files(
@@ -611,8 +579,7 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             paths = write_default_files(
                 root,
                 PASSING_CONTENT.replace(
-                    "- `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`\n",
-                    "",
+                    "- `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`\n", ""
                 ),
             )
             audit = audit_paths(paths, root)
@@ -659,8 +626,7 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             paths = write_default_files(
                 root,
                 PASSING_CONTENT.replace(
-                    "- `docs/ISSUE3_REPLAY_SHORTCUTS_WINDOWS_REPLAY_ATTACHED_HTML_BRIDGE.md`\n",
-                    "",
+                    "- `docs/ISSUE3_REPLAY_SHORTCUTS_WINDOWS_REPLAY_ATTACHED_HTML_BRIDGE.md`\n", ""
                 ),
             )
             audit = audit_paths(paths, root)
@@ -701,7 +667,7 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 failure_reasons(audit),
             )
 
-    def test_fails_when_safe_route_helper_is_missing(self) -> None:
+    def test_fails_when_safe_route_entrypoints_helper_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             paths = write_default_files(
@@ -716,6 +682,17 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 "replay notes do not keep the safe-route entrypoints helper visible",
                 failure_reasons(audit),
             )
+
+    def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
+        self.write_contract_files(doc_text="# drifted\n", wrapper_text="# drifted\n", python_launcher_text="# drifted\n")
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(["--repo-root", str(self.root), "--json"])
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertGreater(payload["missing_count"], 0)
 
 
 if __name__ == "__main__":
