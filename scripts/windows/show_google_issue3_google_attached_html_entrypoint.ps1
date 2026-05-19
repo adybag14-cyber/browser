@@ -133,24 +133,16 @@ function Format-SidecarAuditCommand {
         [string[]]$InputPathOverride
     )
 
-    $scriptPath = if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
-        '.\\tmp-browser-smoke\\attached-pages\\start_attached_pages_catalog.py'
-    } else {
-        Join-Path $RepoRootOverride 'tmp-browser-smoke\attached-pages\start_attached_pages_catalog.py'
-    }
-
-    $command = "python " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $scriptPath)
-    $command += ' --google-style --audit-sidecars'
-    if (-not [string]::IsNullOrWhiteSpace($RepoRootOverride)) {
-        $command += ' --repo-root ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRootOverride)
-    }
+    $wrapperArguments = [System.Collections.Generic.List[string]]::new()
+    Add-SharedArgument -Arguments $wrapperArguments -Name RepoRoot -Value $RepoRootOverride
     if ($InputPathOverride -and $InputPathOverride.Count -gt 0) {
-        foreach ($value in $InputPathOverride) {
-            $command += " --input " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $value)
-        }
+        Add-SharedPathArrayArgument -Arguments $wrapperArguments -Name InputPath -Values $InputPathOverride
+    } else {
+        $wrapperArguments.Add('-InputPath')
+        $wrapperArguments.Add("'<attached-html-root>'")
     }
 
-    return $command
+    return Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle', 'AuditSidecars')
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
