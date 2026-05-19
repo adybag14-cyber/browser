@@ -2,6 +2,7 @@
 param(
   [switch]$DeferredEnter,
   [switch]$GoogleEnterOrder,
+  [switch]$ClickFocus,
   [string]$RepoRoot,
   [string]$BrowserExe,
   [string]$Host = "127.0.0.1",
@@ -18,6 +19,10 @@ $ErrorActionPreference = "Stop"
 
 if ($DeferredEnter -and $GoogleEnterOrder) {
   throw "Choose at most one specialized enter-submit mode."
+}
+
+if ($ClickFocus -and -not $GoogleEnterOrder) {
+  throw "ClickFocus currently supports only -GoogleEnterOrder."
 }
 
 function Resolve-RepoRoot([string]$StartPath) {
@@ -130,10 +135,11 @@ $serverSubmitPattern = switch ($probeMode) {
   default { "FORM_SUBMIT /submitted\.html\?name=$([regex]::Escape($InputText))" }
 }
 $googleServerPattern = if ($probeMode -eq "google-enter-order") {
-  "GOOGLE_ENTER_SUBMIT q=$([regex]::Escape($InputText)) phase=([^ ]*) events=(.*)"
+  "GOOGLE_ENTER_SUBMIT q=$([regex]::Escape($InputText)) phase=([^ ]*) active_name=([^ ]*) active_id=([^ ]*) selection=([^ ]*) events=(.*)"
 } else {
   $null
 }
+$expectedGoogleSelection = "{0}-{0}" -f $InputText.Length
 
 cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
 New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
@@ -158,6 +164,9 @@ $pendingWorked = $false
 $submittedWorked = $false
 $serverSawSubmit = $false
 $googleSubmitPhase = $null
+$googleActiveName = $null
+$googleActiveId = $null
+$googleSelection = $null
 $googleEventLog = $null
 $failure = $null
 
@@ -178,10 +187,19 @@ try {
   $titleBefore = Get-SmokeWindowTitle $hwnd
 
   if ($focusTitleNeedle) {
-    Send-SmokeTab
+    if ($ClickFocus) {
+      [void](Invoke-SmokeClientClick -Hwnd $hwnd -X 170 -Y 82)
+    } else {
+      Send-SmokeTab
+    }
     $titleAfterFocus = Wait-TabTitle -ProcessId $browser.Id -Needle $focusTitleNeedle -Attempts $TitleWaitAttempts
     $focusWorked = $null -ne $titleAfterFocus
-    if (-not $focusWorked) { throw "google enter-order page did not focus the query input" }
+    if (-not $focusWorked) {
+      if ($ClickFocus) {
+        throw "google enter-order page did not focus the query input after the click-first repro step"
+      }
+      throw "google enter-order page did not focus the query input"
+    }
   }
 
   Send-SmokeText $InputText
@@ -200,7 +218,10 @@ try {
     $serverSawSubmit = $serverLog -match $serverSubmitPattern
     if ($googleServerPattern -and $serverLog -match $googleServerPattern) {
       $googleSubmitPhase = $Matches[1]
-      $googleEventLog = $Matches[2]
+      $googleActiveName = $Matches[2]
+      $googleActiveId = $Matches[3]
+      $googleSelection = $Matches[4]
+      $googleEventLog = $Matches[5]
     }
   }
   $submittedWorked = ($null -ne $titleAfterSubmit) -or $serverSawSubmit
@@ -215,6 +236,15 @@ try {
     }
     if ($googleSubmitPhase -ne "keypress") {
       throw "google enter-order probe observed submit phase '$googleSubmitPhase' instead of keypress"
+    }
+    if ([string]::IsNullOrWhiteSpace($googleActiveName) -or $googleActiveName -eq "-") {
+      throw "google enter-order probe did not capture the active field name at submit time"
+    }
+    if ($googleActiveName -ne "q" -and $googleActiveId -ne "q") {
+      throw "google enter-order probe lost the query input as the active submit target"
+    }
+    if ([string]::IsNullOrWhiteSpace($googleSelection) -or $googleSelection -eq "-" -or $googleSelection -ne $expectedGoogleSelection) {
+      throw "google enter-order probe did not preserve the expected caret position at submit time"
     }
     if ([string]::IsNullOrWhiteSpace($googleEventLog) -or $googleEventLog -notlike "*KP:Enter:$InputText*" -or $googleEventLog -notlike "*SUBMIT:$InputText*") {
       throw "google enter-order probe did not capture the expected Enter event trail"
@@ -233,6 +263,7 @@ try {
 
   [ordered]@{
     mode = $probeMode
+    click_focus = $ClickFocus
     repo_root = $repo
     browser_exe = $browserExe
     host = $Host
@@ -258,6 +289,9 @@ try {
     submitted_worked = $submittedWorked
     server_saw_submit = $serverSawSubmit
     google_submit_phase = $googleSubmitPhase
+    google_active_name = $googleActiveName
+    google_active_id = $googleActiveId
+    google_selection = $googleSelection
     google_event_log = $googleEventLog
     error = $failure
     server_meta = $serverMeta
