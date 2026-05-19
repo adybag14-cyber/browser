@@ -48,6 +48,8 @@ When replay context is already pinned, reopen `show_google_issue3_attached_html_
 
 Treat the broader attached-page flow helper printed by `show_headed_validation_suites.ps1` as the normal widen-back-out step from this note. Reopen `check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1` plus `show_google_issue3_attached_pages_launcher_companion.ps1` when the next honest question is whether missing sibling `_files` bundles, missing local assets, or stale launcher guidance is the real blocker before replay spends time inside the narrower Google-shaped checks. Reopen `check_google_attached_html_validation_surface.ps1` plus `show_google_attached_html_validation_flow.ps1` whenever the replay still needs the Google-shaped attached-page route to fail fast after that lighter launcher preflight. When the current pages are still the pinned three-page compatibility bundle, reopen `show_google_issue3_attached_html_target_bundle_suite_surface.ps1` before `show_google_issue3_attached_bundle_first_entrypoint.ps1` so the compact bundle route stays visible while the change-area helper hands off into the pinned bundle lane.
 
+When one exported page should stay first across attached-page preflight, reopen `show_google_issue3_attached_pages_launcher_companion.ps1 -PreferredInitialPage '<page-name-fragment>'` before widening into the Google-shaped lane. That helper now keeps the same preferred-first-page override attached to both the wrapper-backed and lower-level Python launcher ladders, so the sidecar audit, asset audit, manifest print, strict gates, and Google-style launch variants all keep the same page ordering without hand-editing each command.
+
 ## Default read-first sequence
 
 Use this compact sequence when no explicit bundle inputs, non-default repo root, or saved summary state need to take precedence first:
@@ -139,7 +141,7 @@ Then reopen the compact context surface before choosing the narrower follow-up t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_context_surface.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1 -RepoRoot '<repo-root>'
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -PreferredInitialPage '<page-name-fragment>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_validation_router_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -162,6 +164,7 @@ Use that context-preserving form when:
 - `LIGHTPANDA_REPO_ROOT` must stay attached to later helpers
 - a saved `SummaryPath` already points at current replay outputs
 - explicit `InputPath` values are already pinned to the known three-page compatibility bundle
+- one exported page should stay first while the launcher companion, wrapper, and lower-level Python launchers keep the same bundle ordering through preflight
 
 ## Pick the next helper quickly
 
@@ -186,9 +189,10 @@ Use this when you want the broader attached-page localhost flow helper visible f
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -PreferredInitialPage '<page-name-fragment>'
 ```
 
-Use these when the next honest question is whether the current attached export is missing sibling `_files` bundles, still missing local assets, or simply using a stale launcher path before replay goes deeper into the Google-shaped helper lane. `tmp-browser-smoke/attached-pages/README.md` is the matching guide for the wrapper and cross-platform launcher flow.
+Use these when the next honest question is whether the current attached export is missing sibling `_files` bundles, still missing local assets, or simply using a stale launcher path before replay goes deeper into the Google-shaped helper lane. Use the `-PreferredInitialPage` form when the known three-page compatibility bundle should keep one page first across the wrapper-backed and lower-level Python preflight ladders without re-editing each surfaced command. `tmp-browser-smoke/attached-pages/README.md` is the matching guide for the wrapper and cross-platform launcher flow.
 
 4. Google attached HTML surface check
 
@@ -279,4 +283,5 @@ Once `show_headed_validation_suites.ps1 -ChangeArea attached-html` has already m
 - no pinned bundle inputs and no saved replay state yet: go from `-ChangeArea attached-html` to the attached-html change-area quickstart, then the broader attached-page flow helper, then the launcher companion surface check and helper, then the dedicated Google attached-page surface checker, then the dedicated Google attached-page flow guide, then the validation-router quickstart, then the compact top-level quickstart, then the top-level catalog quickstart, then replay shortcuts, then the safe-route map
 - explicit bundle paths already pinned: reopen `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`, then `show_google_issue3_attached_html_target_bundle_suite_surface.ps1`, then stay on the bundle-first helper after the attached-html change-area quickstart and the top-level catalog quickstart so the known three-page compatibility set stays fixed before widening back into the broader Google-only path
 - saved summary or repo-root override already present: reopen `show_google_issue3_attached_html_context_surface.ps1` early so the broader attached-page lane, the Google-specific lane, and the pinned bundle lane stay visible with the same replay context before choosing a narrower follow-up
+- pinned bundle order already matters: reopen `show_google_issue3_attached_pages_launcher_companion.ps1 -PreferredInitialPage '<page-name-fragment>'` before the Google-shaped checks so the wrapper-backed and lower-level Python launch ladders keep the same first page across sidecar audit, asset audit, manifest print, strict gates, and Google-style launch variants
 - replay reopened from `docs/WINDOWS_FULL_USE.md`: go from the Windows full-use attached-page route to its fail-fast surface check, then the Windows full-use validation-router bridge, then the Windows full-use catalog quickstart, then `-ChangeArea attached-html`, then the attached-html change-area quickstart, then the broader attached-page flow helper, then the launcher companion surface check and helper, then both Google-shaped checks, then the validation-router quickstart, then the top-level quickstarts before narrowing again
