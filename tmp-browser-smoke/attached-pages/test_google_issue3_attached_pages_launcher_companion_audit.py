@@ -214,7 +214,7 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
     def test_build_audit_reports_missing_full_use_route_checker_sidecar_guard(self) -> None:
         self.write_contract_files(
             full_use_route_checker_text=FULL_USE_ROUTE_CHECKER_SNIPPET.replace(
-                """(New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars' -Purpose 'The Windows full-use route checker keeps guarding the wrapper-backed sidecar audit on the broader route note.'),\n""",
+                """(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars' -Purpose 'The Windows full-use route checker keeps guarding the wrapper-backed sidecar audit on the broader route note.'),\n""",
                 "",
             )
         )
@@ -231,7 +231,7 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
     def test_build_audit_reports_missing_full_use_route_checker_guard(self) -> None:
         self.write_contract_files(
             full_use_route_checker_text=FULL_USE_ROUTE_CHECKER_SNIPPET.replace(
-                """(New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Purpose 'The Windows full-use route checker keeps guarding the replay-attached quickstart handoff on the broader route note.'),\n""",
+                """(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Purpose 'The Windows full-use route checker keeps guarding the replay-attached quickstart handoff on the broader route note.'),\n""",
                 "",
             )
         )
@@ -248,7 +248,7 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
     def test_build_audit_reports_missing_full_use_route_checker_bundle_suite_guard(self) -> None:
         self.write_contract_files(
             full_use_route_checker_text=FULL_USE_ROUTE_CHECKER_SNIPPET.replace(
-                """(New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose 'The Windows full-use route checker keeps guarding the compact bundle-suite handoff on the broader route note.'),\n""",
+                """(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose 'The Windows full-use route checker keeps guarding the compact bundle-suite handoff on the broader route note.'),\n""",
                 "",
             )
         )
@@ -293,6 +293,40 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
             "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_launcher_replay_route_note_path(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "        replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'\n",
+                "",
+            )
+        )
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_launcher_replay_route_note_output(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                'Write-Host (("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
             failing_paths,
         )
 
