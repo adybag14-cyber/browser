@@ -70,12 +70,13 @@
 <body>
   <center>
     <div class="logo">G</div>
-    <form id="legacy-search-form">
+    <form id="legacy-search-form" action="/legacy-table.html" method="get">
       <table cellpadding="0" cellspacing="0">
         <tr valign="top">
           <td width="25%">&nbsp;</td>
           <td align="center" nowrap>
             <div class="search-shell"><input id="legacy-query" name="q" value=""></div>
+            <input id="legacy-trace" name="trace" type="hidden" value="">
             <br>
             <span class="ds"><span class="lsbb"><input class="lsb" value="Google Search" type="submit"></span></span>
             <span class="ds"><span class="lsbb"><input class="lsb" value="I'm Feeling Lucky" type="submit"></span></span>
@@ -91,13 +92,31 @@
     (function () {
       const form = document.getElementById('legacy-search-form');
       const input = document.getElementById('legacy-query');
+      const traceInput = document.getElementById('legacy-trace');
+      const params = new URLSearchParams(window.location.search);
+      const submittedValue = params.get('q');
+      const submittedTrace = params.get('trace');
+      const traceParts = [];
 
       function mark(value) {
         document.title = value;
       }
 
-      if (!form || !input) {
+      function pushTrace(label) {
+        traceParts.push(label);
+        traceInput.value = traceParts.join(',');
+        return traceInput.value;
+      }
+
+      if (!form || !input || !traceInput) {
         mark('NOQ');
+        return;
+      }
+
+      if (submittedValue !== null) {
+        input.value = submittedValue;
+        traceInput.value = submittedTrace || '';
+        mark('SUBMITTED:' + submittedValue + ':' + traceInput.value);
         return;
       }
 
@@ -111,13 +130,18 @@
 
       input.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' || event.keyCode === 13 || event.which === 13) {
-          mark('KEYDOWN:' + input.value + ':' + event.keyCode + ':' + event.which);
+          mark('KEYDOWN:' + input.value + ':' + pushTrace('KEYDOWN') + ':' + event.keyCode + ':' + event.which);
         }
       });
 
-      form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        mark('SUBMIT:' + input.value);
+      input.addEventListener('keypress', function (event) {
+        if (event.key === 'Enter' || event.keyCode === 13 || event.which === 13) {
+          mark('KEYPRESS:' + input.value + ':' + pushTrace('KEYPRESS') + ':' + event.keyCode + ':' + event.which);
+        }
+      });
+
+      form.addEventListener('submit', function () {
+        mark('SUBMIT:' + input.value + ':' + pushTrace('SUBMIT'));
       });
 
       mark('BOUND');
