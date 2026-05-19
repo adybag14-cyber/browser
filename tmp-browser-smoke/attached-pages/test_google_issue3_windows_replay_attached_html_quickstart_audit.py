@@ -31,13 +31,13 @@ SCRIPT_SNIPPET = """$helper = [ordered]@{
     }
     notes = @(
         'Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.',
-        'Use attached_bundle_proof_surface_check and attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the executable proof-only checker and helper pair reprinted before or after the narrower bundle-first follow-up.'
+        'Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.'
     )
 }
 
 Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)
 Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)
-Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
+Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
 Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pages_launcher_companion_surface_check)
 Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)
 """
@@ -84,7 +84,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
     def test_build_audit_reports_missing_proof_helper_output(self) -> None:
         self.write_contract_files(script_text=SCRIPT_SNIPPET.replace(
-            'Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)\n',
+            'Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)\n',
             "",
         ))
 
