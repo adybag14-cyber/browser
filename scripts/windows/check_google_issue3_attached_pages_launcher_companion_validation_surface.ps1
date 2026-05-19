@@ -54,9 +54,12 @@ $references = @(
     (New-ValidationReference -Path 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md' -Kind 'file' -Purpose 'Replay-side attached HTML quickstart note that now surfaces the launcher companion checker and helper.'),
     (New-ValidationReference -Path 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md' -Kind 'file' -Purpose 'Broader Google attached HTML flow note that stays adjacent to the launcher companion route.'),
     (New-ValidationReference -Path 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md' -Kind 'file' -Purpose 'Issue-specific Google attached HTML entrypoint note that stays nearby after the launcher companion route.'),
+    (New-ValidationReference -Path 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md' -Kind 'file' -Purpose 'Pinned bundle proof note that should stay reachable from the launcher companion route once replay is already locked to the three-page compatibility set.'),
     (New-ValidationReference -Path 'scripts/windows/HeadedValidationHelpers.ps1' -Kind 'file' -Purpose 'Shared repo-root helper surface used by the launcher companion helper and this checker.'),
     (New-ValidationReference -Path 'scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Kind 'file' -Purpose 'Fail-fast checker for the issue 3 attached-pages launcher companion surface.'),
     (New-ValidationReference -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Kind 'file' -Purpose 'Attached-pages launcher companion helper that this checker validates.'),
+    (New-ValidationReference -Path 'scripts/windows/check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Kind 'file' -Purpose 'Pinned bundle proof surface checker that should stay reachable from the launcher companion route.'),
+    (New-ValidationReference -Path 'scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Kind 'file' -Purpose 'Pinned bundle proof helper that should stay reachable from the launcher companion route.'),
     (New-ValidationReference -Path 'scripts/windows/start_attached_pages_catalog.ps1' -Kind 'file' -Purpose 'Windows wrapper-backed attached-pages launcher surfaced by the companion helper.'),
     (New-ValidationReference -Path 'tmp-browser-smoke/attached-pages/README.md' -Kind 'file' -Purpose 'Attached-pages launcher README surfaced as a companion path by the helper.'),
     (New-ValidationReference -Path 'tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py' -Kind 'file' -Purpose 'Cross-platform attached-pages launcher surfaced by the companion helper.')
@@ -180,10 +183,10 @@ if ($contentResults.Count -gt 0) {
 
 Write-Host ''
 if ($missing.Count -eq 0) {
-    Write-Host 'Google issue #3 attached-pages launcher companion surface is intact.'
+    Write-Host 'Google issue #3 attached-pages launcher companion surface is intact, including the strict sidecar-plus-asset launch gates and the pinned proof-route bridge back into the three-page compatibility bundle.'
     exit 0
 }
 
 Write-Host (("Missing {0} attached-pages launcher companion path or source contract check(s).") -f $missing.Count)
-Write-Host 'Repair the replay note, launcher companion helper, wrapper-backed launcher paths, or cross-platform launcher references before trusting the attached-pages launcher companion route.'
+Write-Host 'Repair the replay note, launcher companion helper, proof-route bridge, wrapper-backed launcher paths, or cross-platform launcher references before trusting the attached-pages launcher companion route.'
 exit 1
