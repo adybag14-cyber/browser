@@ -34,6 +34,11 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 - `docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md`
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route.ps1
@@ -254,6 +259,85 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             audit = audit_paths(paths, root)
             self.assertIn(
                 "replay notes do not keep the attached-html target-bundle quickstart note visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_target_bundle_suite_surface_note_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`\n", ""
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the attached-html target-bundle suite-surface note visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_target_bundle_suite_surface_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the attached-html target-bundle suite-surface helper visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_target_bundle_surface_check_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_target_bundle_validation_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the attached-html target-bundle surface check visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_target_bundle_flow_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_target_bundle_validation_flow.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the attached-html target-bundle flow helper visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_target_bundle_runner_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the attached-html target-bundle delegated runner visible",
                 failure_reasons(audit),
             )
 
