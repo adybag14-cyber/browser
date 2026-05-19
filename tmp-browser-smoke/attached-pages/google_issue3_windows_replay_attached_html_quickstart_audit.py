@@ -35,6 +35,16 @@ EXPECTATIONS = (
         "purpose": "The replay-attached quickstart keeps the launcher companion helper visible when repo-root-preserving replay context is already pinned.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
+        "purpose": "The replay-attached quickstart keeps the issue-specific Google attached-html entrypoint visible before the bundle suite and narrower shortcuts take over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the issue-specific Google attached-html entrypoint wired into its command map.",
+    },
+    {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the compact bundle-suite surface wired into its command map.",
@@ -61,6 +71,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)',
+        "purpose": "The replay-attached helper prints the issue-specific Google attached-html entrypoint in its attached-page ladder output.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
         "purpose": "The replay-attached helper prints the compact bundle-suite surface before the route narrows into bundle-first follow-up.",
     },
@@ -83,6 +98,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
         "purpose": "The replay-attached helper prints the launcher companion helper in its attached-page ladder output.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Use google_attached_html_entrypoint when the replay already needs the issue-specific Google attached-html bridge kept visible after the dedicated Google attached-page flow and before the compact bundle suite or the narrower shortcuts take over.",
+        "purpose": "The replay-attached helper notes preserve when to prefer the issue-specific Google attached-html bridge before bundle-only or shortcut follow-up.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
@@ -181,7 +201,7 @@ def render_text_report(audit: dict[str, object]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Audit the replay-attached quickstart note and helpers for launcher-companion and bundle-proof route drift."
+        description="Audit the replay-attached quickstart note and helpers for launcher-companion, Google-entrypoint, and bundle-proof route drift."
     )
     parser.add_argument("--repo-root", help="Lightpanda repo root to inspect. Defaults to the current directory.")
     parser.add_argument("--json", action="store_true", help="Print structured JSON instead of text.")
