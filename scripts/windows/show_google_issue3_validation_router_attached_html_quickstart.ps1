@@ -276,6 +276,7 @@ $helper = [ordered]@{
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        suite_catalog_entrypoints_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1' -RepoRootOverride $RepoRoot
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleArguments
         suite_catalog_top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1' -Arguments $bundleArguments
         suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $bundleArguments
@@ -305,6 +306,7 @@ $helper = [ordered]@{
         'Use attached_html_flow when you want the broader attached-page localhost flow helper printed directly from the validation-router bridge before the replay narrows into the compact top-level attached-page quickstart, the top-level shortcut-first bridge, or the suite-router attached-page branch.',
         'Use google_attached_html_surface_check when the replay is about to rely on the dedicated Google-shaped attached-page follow-up and you want that narrower surface checked before this validation-router bridge reopens the Google flow helper.',
         'Use google_attached_html_flow when the current attached-page set already includes a Google-like page and you want the dedicated Google-style attached-page flow helper printed directly from the validation-router bridge before the replay narrows into the compact top-level attached-page quickstart, the Google-shaped attached-page bridge, or the suite-router attached-page branch.',
+        'Use suite_catalog_entrypoints_surface_check when RepoRoot, SummaryPath, or pinned InputPath values already matter and you want the suite-catalog surface to fail fast before this validation-router bridge hands control over to the broader issue #3 context-preserving route.',
         'Use suite_catalog_entrypoints when RepoRoot, SummaryPath, or pinned InputPath values already matter and you want the broader issue #3 helper bridge to preserve that replay state before narrowing again.',
         'Use suite_catalog_top_level_attached_html_catalog_quickstart when the suite-catalog surface is already open and you want the replay-side attached-html ladder plus the top-level attached-page catalog quickstart visible together before the route narrows into the suite-catalog attached-page bridge, the top-level attached-page quickstart, or the shorter attached-page shortcut.',
         'Use suite_router_quickstart when the top-level suite router already made issue #3 obvious and you want the shortest router-side bridge before you reopen the compact top-level attached-page quickstarts.',
@@ -384,6 +386,7 @@ Write-Host (("  Replay surface checker:      {0}") -f $helper.commands.windows_r
 Write-Host (("  Windows replay quickstart:   {0}") -f $helper.commands.windows_replay_attached_html_quickstart)
 Write-Host ''
 Write-Host 'Issue #3 bridge helpers:'
+Write-Host (("  Suite catalog surface:       {0}") -f $helper.commands.suite_catalog_entrypoints_surface_check)
 Write-Host (("  Suite catalog:               {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Catalog handoff quickstart:  {0}") -f $helper.commands.suite_catalog_top_level_attached_html_catalog_quickstart)
 Write-Host (("  Suite router quickstart:     {0}") -f $helper.commands.suite_router_quickstart)
