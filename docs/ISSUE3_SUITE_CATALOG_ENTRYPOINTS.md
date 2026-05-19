@@ -52,6 +52,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md`
+- `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md`
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_FIRST_ENTRYPOINT.md`
 - `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md`
@@ -88,13 +89,14 @@ proof-entry handoff, the validation-router attached-page quickstart, the
 suite-catalog-to-top-level attached-page catalog quickstart, the suite-catalog
 attached-page bridge, the suite-router quickstart, the suite-router
 attached-page quickstart, the top-level attached-page quickstart, the top-level
-attached-page catalog quickstart, the top-level shortcut-first bridge, the
-broader top-level attached-page bridge, the issue-specific attached-page
-bridge, the attached-page shortcut, replay shortcuts, the next-step matrix,
-contextual flow, the suite-router handoff surface check, the suite-router
-handoff, the replay route, the replay-route shortcut, the replay-route
-bundle-first bridge, and the bundle-first branch before the replay widens back
-into the wrapper-heavy safe route.
+attached-page catalog quickstart, the top-level attached-page companion notes,
+the top-level shortcut-first bridge, the broader top-level attached-page
+bridge, the issue-specific attached-page bridge, the attached-page shortcut,
+replay shortcuts, the next-step matrix, contextual flow, the suite-router
+handoff surface check, the suite-router handoff, the replay route, the
+replay-route shortcut, the replay-route bundle-first bridge, and the
+bundle-first branch before the replay widens back into the wrapper-heavy safe
+route.
 
 ## Top-level suite-catalog entrypoints
 
@@ -191,7 +193,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
@@ -220,8 +221,8 @@ attached-page surface check, the dedicated Google attached-page flow helper,
 the validation-router quickstart, the suite-catalog-to-top-level attached-page
 catalog quickstart, the suite-catalog attached-page bridge, the suite-router
 quickstart, the suite-router attached-page quickstart, the top-level
-attached-page quickstarts, the top-level shortcut-first bridge, the broader
-top-level attached-page bridge, the current Google flow helper, the
+attached-page quickstarts, the top-level attached-page companion notes, the
+broader top-level attached-page bridge, the current Google flow helper, the
 issue-specific attached-page bridge, the attached-page shortcut, replay
 shortcuts, the next-step matrix, contextual flow, the suite-router handoff, the
 suite-router handoff surface check, the replay route, the replay-route
@@ -255,8 +256,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_ENTRYPOINT.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
@@ -272,8 +272,8 @@ broader attached-page flow helper, the dedicated Google attached-page surface
 check, the dedicated Google attached-page flow helper, the validation-router
 quickstart, the suite-catalog-to-top-level catalog quickstart, the
 suite-catalog attached-page bridge, the suite-router attached-page quickstart,
-the top-level attached-page quickstarts, the top-level shortcut-first bridge,
-the compact bundle suite-surface helper, the bundle surface checker, the
+the top-level attached-page quickstarts, the top-level attached-page companion
+notes, the compact bundle suite-surface helper, the bundle surface checker, the
 bundle-aware flow helper, the shorter bundle-first helper, and the pinned
 proof-entry handoff printed before the replay falls back into the narrower
 attached-page helper chain.
@@ -393,7 +393,7 @@ Use this when the route is already clearly inside the top-level attached-page
 lane and you want the shortest top-level attached-page bridge kept visible
 before the broader top-level and shortcut helpers.
 
-10. `show_google_issue3_top_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.ps1`
+10. `show_google_issue3_top_level_attached_html_catalog_quickstart.ps1`
 
 Use this when you want the compact top-level attached-page plus suite-catalog-side
 bridge visible before you decide whether to widen again.
@@ -498,8 +498,8 @@ attached-page surface check, the dedicated Google attached-page flow helper,
 the validation-router attached-page quickstart, the suite-catalog-to-top-level
 attached-page catalog quickstart, the suite-catalog attached-page bridge, the
 suite-router attached-page quickstart, the top-level attached-page quickstarts,
-the top-level shortcut-first bridge, the top-level shortcut companion notes,
-the broader top-level attached-page bridge, the issue-specific attached-page
+the top-level attached-page companion notes, the top-level shortcut companion
+notes, the broader top-level attached-page bridge, the issue-specific attached-page
 bridge, the attached-page shortcut, replay shortcuts, the next-step matrix,
 contextual flow, the suite-router handoff, the suite-router handoff surface
 check, the replay route, the replay-route shortcut, the bundle change-area
