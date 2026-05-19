@@ -134,6 +134,34 @@ Timeout budgets:
 - warm rebuild: about 5 minutes
 - cold/fresh-cache build: 15 to 20 minutes
 
+## Offline Linux/WSL Dependency Staging Rule
+
+Before treating a Linux or WSL `zig build` failure as a browser source
+regression, inspect `build.zig.zon` and stage the non-network dependencies
+first.
+
+What the branch expects today:
+- `v8` resolves from the sibling path `../zig-v8-fork`
+- `boringssl-zig` resolves from the sibling path `../boringssl-zig`
+- `brotli`, `zlib`, `nghttp2`, and `curl` still resolve from GitHub URLs unless
+  the checkout is given an already-satisfied offline cache or a temporary local
+  path rewrite in a throwaway build tree
+
+Practical rule:
+1. Keep the browser checkout, `zig-v8-fork`, and `boringssl-zig` under one
+   shared parent directory so the sibling-path dependencies resolve without
+   editing the repo.
+2. If the run is using the saved dependency archives, extract the
+   `boringssl-zig` bundle into `../boringssl-zig`, extract the V8 bundle so
+   `../zig-v8-fork` exists, and keep the bundled `brotli`/`zlib`/`nghttp2`/
+   `curl` tarballs nearby for the offline cache or throwaway path-rewrite step
+   before invoking Zig.
+3. Treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl` as an
+   offline dependency-staging problem first, not as proof that headed-mode
+   source changes regressed.
+4. Only start code debugging after the sibling-path dependencies exist and the
+   build has been retried with explicit cache dirs.
+
 ## Definite Execution Order
 
 Do the remaining work in this order. Do not jump ahead to packaging before the
@@ -191,7 +219,7 @@ Acceptance:
 - `tmp-browser-smoke/inline-flow`
 - `tmp-browser-smoke/flow-layout`
 - `tmp-browser-smoke/rendered-link-dom`
-- `tmp-browser-smoke/multi-image`
+- `tmp-browser-smoke/showcase`
 
 Exit criteria:
 - pages no longer depend on dummy layout/presentation behavior to remain usable
@@ -375,7 +403,7 @@ Acceptance:
 - `tmp-browser-smoke/settings`
 - `tmp-browser-smoke/popup`
 - `tmp-browser-smoke/file-upload`
-- `tmp-browser-smoke/bookmarks`
+- `tmp-browser-smoke/manual-user`
 
 Exit criteria:
 - a user can browse, close, reopen, recover, download, and manage settings over
@@ -438,9 +466,7 @@ mode on the release candidate build:
 - shell and navigation
   - `tmp-browser-smoke/tabs`
   - `tmp-browser-smoke/browser-pages`
-  - `tmp-browser-smoke/bookmarks`
   - `tmp-browser-smoke/settings`
-  - `tmp-browser-smoke/stop-loading`
   - `tmp-browser-smoke/wrapped-link`
   - `tmp-browser-smoke/popup`
 - rendering and layout
