@@ -4,6 +4,7 @@ param(
     [string]$SummaryPath,
     [string[]]$InputPath,
     [string]$BrowserExe,
+    [string]$PreferredInitialPage,
     [switch]$Json
 )
 
@@ -164,12 +165,14 @@ $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $bundleArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
 $browserAwareBundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $browserAwareBundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $browserAwareBundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedArgument -Arguments $browserAwareBundleArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $browserAwareBundleArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $browserAwareBundleArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
@@ -183,6 +186,7 @@ $googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::ne
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
 $attachedHtmlChangeAreaArguments = [ordered]@{
     ChangeArea = 'attached-html'
@@ -220,6 +224,7 @@ $route = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
+    preferred_initial_page = $PreferredInitialPage
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     top_level_commands = [ordered]@{
         attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
@@ -280,7 +285,7 @@ $route = [ordered]@{
         'Start with attached_html_change_area when the next replay should stay on the generic attached-page route before choosing the narrower issue-specific helpers.',
         'Follow attached_html_change_area with attached_html_change_area_quickstart when the validation-router bridge already reopened the broader attached-page route and no pinned bundle inputs, saved summary, or repo-root override need to take precedence first.',
         'Use attached_html_flow when you want the broader attached-page localhost helper printed directly from this Windows-first route before choosing between the validation-router quickstart, the compact top-level quickstart, the broader top-level bridge, the suite-catalog-to-top-level catalog quickstart, or the attached-page shortcut chain. Preserve the current repo root here too so non-default checkout replay stays aligned, and keep the same attached-page set when explicit InputPath values are already pinned instead of reopening auto-discovery.',
-        'Use google_attached_html_flow when the current replay should keep the narrower Google-shaped attached-page helper visible from this same Windows-first route before dropping into the validation-router quickstart, the compact top-level quickstart, the broader top-level bridge, or the shorter attached-page shortcut chain. Preserve RepoRoot and explicit InputPath context here, but do not reintroduce SummaryPath because show_google_attached_html_validation_flow.ps1 does not accept it.',
+        'Use google_attached_html_flow when the current replay should keep the narrower Google-shaped attached-page helper visible from this same Windows-first route before dropping into the validation-router quickstart, the compact top-level quickstart, the broader top-level bridge, or the shorter attached-page shortcut chain. Preserve RepoRoot, explicit InputPath context, and PreferredInitialPage here so the handoff stays on the intended first saved page.',
         'Start with google_attached_html_change_area when the next replay should still keep the Google-shaped attached-page route visible before narrowing again.',
         'Use suite_router_quickstart when the broader Windows runbook or the top-level validation router already narrowed the replay to issue #3, but not yet all the way to the attached-html branch, and you want the shortest bridge back into the current replay helper stack before deciding whether to widen into the attached-page chain, replay shortcuts, or the safe-route map.',
         'Use windows_full_use_validation_router_attached_html_bridge as the default next helper because it keeps the broader Windows full-use route, the Windows-first catalog surface check, the Windows-first catalog step, the replay-side attached-html quickstart, and the validation-router attached-html quickstart aligned before the route narrows back into the shorter change-area bridge or the compact top-level attached-page quickstarts.',
@@ -333,6 +338,9 @@ if ($route.summary_path) {
 }
 if ($route.browser_exe) {
     Write-Host (("Browser exe: {0}") -f $route.browser_exe)
+}
+if ($route.preferred_initial_page) {
+    Write-Host (("Preferred initial page: {0}") -f $route.preferred_initial_page)
 }
 if ($route.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $route.explicit_input_path_count)
