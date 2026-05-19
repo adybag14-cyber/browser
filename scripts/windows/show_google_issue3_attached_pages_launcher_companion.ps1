@@ -2,6 +2,7 @@
 param(
     [string]$RepoRoot,
     [string[]]$InputPath,
+    [string]$PreferredInitialPage,
     [switch]$Json
 )
 
@@ -129,15 +130,17 @@ $resolvedRepoRoot = if ($RepoRoot) {
 $wrapperArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $wrapperArguments -Name RepoRoot -Value $resolvedRepoRoot
 Add-SharedPathArrayArgument -Arguments $wrapperArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $wrapperArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
 $surfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArguments -Name RepoRoot -Value $resolvedRepoRoot
 
 $helper = [ordered]@{
     issue = 'Google issue #3 attached-pages launcher companion'
-    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving, and the pinned proof-entrypoint checker/helper pair when replay is already locked to the known three-page bundle.'
+    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving, the preferred-first-page wrapper handoff for the pinned three-page compatibility bundle, and the pinned proof-entrypoint checker/helper pair when replay is already locked to the known three-page bundle.'
     repo_root = $resolvedRepoRoot
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    preferred_initial_page = $PreferredInitialPage
     recommended_next_key = 'wrapper_sidecar_audit'
     recommended_next_reason = 'The wrapper-backed sidecar audit is the cheapest honest preflight for issue #3 attached-page replay, so it should run before the broader asset audit, manifest print, strict-launch gates, or the narrower proof-only bundle follow-up.'
     surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments
@@ -191,6 +194,11 @@ $helper = [ordered]@{
 }
 
 $helper.recommended_next_command = $helper.helper_commands[$helper.recommended_next_key]
+if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
+    $helper.notes += "Current preferred initial page: $PreferredInitialPage"
+    $helper.notes += 'The wrapper-backed launcher ladder now preserves -PreferredInitialPage through the sidecar audit, asset audit, manifest print, strict gates, and Google-style launch variants so the known bundle can stay pinned to one first page without hand-editing each command.'
+    $helper.notes += 'The lower-level Python launcher ladder shown here still does not carry a preferred-first-page override, so keep using the wrapper-backed commands when replay order must stay pinned.'
+}
 
 if ($Json) {
     $helper | ConvertTo-Json -Depth 5
@@ -204,6 +212,9 @@ if ($helper.repo_root) {
 }
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
+}
+if (-not [string]::IsNullOrWhiteSpace($helper.preferred_initial_page)) {
+    Write-Host (("Preferred page: {0}") -f $helper.preferred_initial_page)
 }
 Write-Host (("Surface check:         {0}") -f $helper.surface_check_command)
 Write-Host (("Guard reason:          {0}") -f $helper.surface_check_reason)
