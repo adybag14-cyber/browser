@@ -30,11 +30,12 @@ def make_red_png() -> bytes:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: layout_server.py <port>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print("usage: layout_server.py <port> [host]", file=sys.stderr)
         return 2
 
     port = int(sys.argv[1])
+    host = sys.argv[2] if len(sys.argv) == 3 else "127.0.0.1"
     root = Path(__file__).resolve().parent
     red_png = make_red_png()
 
@@ -56,7 +57,7 @@ def main() -> int:
     class ReuseServer(socketserver.ThreadingTCPServer):
         allow_reuse_address = True
 
-    with ReuseServer(("127.0.0.1", port), LayoutHandler) as httpd:
+    with ReuseServer((host, port), LayoutHandler) as httpd:
         httpd.serve_forever()
 
 
