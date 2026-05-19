@@ -165,6 +165,56 @@ EXPECTATIONS = (
         "purpose": "The launcher companion helper keeps the cross-platform preferred-first-page support visible after the Python ladder gains parity with the wrapper.",
     },
     {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": '(New-ValidationContentExpectation -Path \'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1\' -Snippet \'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)\'',
+        "purpose": "The Windows checker keeps guarding the proof surface-check output on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": '(New-ValidationContentExpectation -Path \'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1\' -Snippet \'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)\'',
+        "purpose": "The Windows checker keeps guarding the proof entrypoint output on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle",
+        "purpose": "The Windows checker keeps guarding the proof follow-up guidance on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments\"",
+        "purpose": "The Windows checker keeps guarding the replay quickstart helper wiring on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments\"",
+        "purpose": "The Windows checker keeps guarding the replay-route helper wiring on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": '(New-ValidationContentExpectation -Path \'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1\' -Snippet "Write-Host \'Replay re-entry helpers:\'"',
+        "purpose": "The Windows checker keeps guarding the replay re-entry section header on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": '(New-ValidationContentExpectation -Path \'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1\' -Snippet \'Write-Host (("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart)\'',
+        "purpose": "The Windows checker keeps guarding the replay quickstart output on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": '(New-ValidationContentExpectation -Path \'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1\' -Snippet \'Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut)\'',
+        "purpose": "The Windows checker keeps guarding the replay-route output on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use windows_replay_quickstart after launcher-side sidecar, asset, or proof preflight",
+        "purpose": "The Windows checker keeps guarding the replay quickstart guidance on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use replay_route_shortcut when the preflight already narrowed the problem",
+        "purpose": "The Windows checker keeps guarding the replay-route guidance on the helper surface.",
+    },
+    {
         "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1",
         "purpose": "The replay-route bridge note keeps its dedicated fail-fast checker visible.",
@@ -186,7 +236,7 @@ EXPECTATIONS = (
     },
     {
         "path": "tmp-browser-smoke/attached-pages/README.md",
-        "snippet": "--require-complete-sidecars \\\\n  --require-complete-assets",
+        "snippet": "--require-complete-sidecars \\\n  --require-complete-assets",
         "purpose": "The attached-pages README keeps the strict sidecar-plus-asset mode visible.",
     },
     {
@@ -301,3 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         print(render_text_report(audit), end="")
 
     return 1 if audit["missing_count"] else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
