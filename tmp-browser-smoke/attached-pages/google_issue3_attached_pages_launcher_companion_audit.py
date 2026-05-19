@@ -116,6 +116,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/start_attached_pages_catalog.ps1",
+        "snippet": '$launcherArgs += "--require-complete-sidecars"',
+        "purpose": "The Windows wrapper still forwards the strict sidecar gate.",
+    },
+    {
+        "path": "scripts/windows/start_attached_pages_catalog.ps1",
         "snippet": '$launcherArgs += "--require-complete-assets"',
         "purpose": "The Windows wrapper still forwards the strict asset gate.",
     },
