@@ -27,7 +27,7 @@ charset: [41]u8 = default_charset,
 charset_len: usize = default_charset_len,
 
 /// String "UTF-8" continued by null characters.
-const default_charset = .{ 'U', 'T', 'F', '-', '8' } ++ .{0} * *36;
+const default_charset = .{ 'U', 'T', 'F', '-', '8' } ++ .{0}**36;
 const default_charset_len = 5;
 
 /// Mime with unknown Content-Type, empty params and empty charset.
