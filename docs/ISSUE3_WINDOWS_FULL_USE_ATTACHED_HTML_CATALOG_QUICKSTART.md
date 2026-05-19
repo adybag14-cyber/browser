@@ -36,7 +36,7 @@ Start from the broader Windows full-use attached-page route, rerun the route and
 3. strict asset-gated manifest print
 4. replay-side attached-page quickstart
 
-When the current inputs still look Google-shaped, keep the dedicated Google attached-page surface check and flow helper nearby. When the current inputs are already the pinned three-page bundle, keep the bundle suite surface and bundle-first entrypoint nearby.
+When the current inputs still look Google-shaped, keep the wrapper-backed Google-style sidecar audit, the dedicated Google attached-page surface check, the issue-specific Google attached-page entrypoint, and the flow helper nearby. When the current inputs are already the pinned three-page bundle, keep the bundle suite surface and bundle-first entrypoint nearby.
 
 ## Default read-first sequence
 
@@ -56,8 +56,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -RequireCompleteAssets -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
@@ -72,7 +74,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1
 ```
 
-Use that route when the attached localhost lane is already obvious and you want the export-integrity checks, the stricter local-asset manifest gate, the replay-side quickstart, the Google-shaped fallback, and the bundle re-entry helpers all visible before the route narrows further.
+Use that route when the attached localhost lane is already obvious and you want the export-integrity checks, the stricter local-asset manifest gate, the replay-side quickstart, the Google-shaped wrapper-backed sidecar preflight, the dedicated Google-shaped fallback, and the bundle re-entry helpers all visible before the route narrows further.
 
 ## Google-shaped variant
 
@@ -141,8 +143,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -RequireCompleteAssets -PrintManifest
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
@@ -159,4 +163,4 @@ Use that context-preserving form when:
 
 ## Practical rule
 
-Once `docs/WINDOWS_FULL_USE.md` or `show_google_issue3_windows_full_use_attached_html_route.ps1` has already made the attached localhost branch obvious, rerun the route and catalog surface checks, reopen the attached-page ladders, then prefer the wrapper-backed sidecar audit, the wrapper-backed asset audit, and the strict asset manifest gate before trusting the replay-side quickstart. Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path or after the bundle and Google-shaped follow-up helpers have clarified the next failure state.
+Once `docs/WINDOWS_FULL_USE.md` or `show_google_issue3_windows_full_use_attached_html_route.ps1` has already made the attached localhost branch obvious, rerun the route and catalog surface checks, reopen the attached-page ladders, then prefer the wrapper-backed sidecar audit, the wrapper-backed asset audit, and the strict asset manifest gate before trusting the replay-side quickstart. When the inputs still look Google-shaped, keep the wrapper-backed Google-style sidecar audit, the dedicated Google surface check, the dedicated Google flow helper, and the issue-specific Google entrypoint visible before narrowing into the shorter issue `#3` helper chain. Only reopen the longer validation-chain notes after the route has narrowed into the wrapper-heavy safe path or after the bundle and Google-shaped follow-up helpers have clarified the next failure state.
