@@ -321,6 +321,54 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 failure_reasons(audit),
             )
 
+    def test_fails_when_replay_route_shortcut_note_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "- `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the replay-route shortcut bridge note visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_replay_route_shortcut_surface_check_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the replay-route shortcut surface checker visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_replay_route_shortcut_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the replay-route shortcut helper visible",
+                failure_reasons(audit),
+            )
+
     def test_fails_when_windows_replay_bridge_note_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
