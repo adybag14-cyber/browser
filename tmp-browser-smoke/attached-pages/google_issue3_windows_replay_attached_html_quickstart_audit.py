@@ -94,6 +94,31 @@ EXPECTATIONS = (
         "snippet": "Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.",
         "purpose": "The replay-attached helper notes preserve when to prefer the proof-entrypoint helper beside the pinned bundle route.",
     },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $surfaceCheckArguments",
+        "purpose": "The launcher companion helper keeps the pinned proof-entrypoint surface checker wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $wrapperArguments",
+        "purpose": "The launcher companion helper keeps the pinned proof-entrypoint helper wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)',
+        "purpose": "The launcher companion helper prints the pinned proof-entrypoint surface checker once sidecar and asset preflight finishes.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)',
+        "purpose": "The launcher companion helper prints the pinned proof-entrypoint helper once sidecar and asset preflight finishes.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.",
+        "purpose": "The launcher companion helper notes preserve when to bridge directly from launcher preflight into the pinned proof route.",
+    },
 )
 
 
@@ -156,7 +181,7 @@ def render_text_report(audit: dict[str, object]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Audit the replay-attached quickstart note and helper for launcher-companion and bundle-proof route drift."
+        description="Audit the replay-attached quickstart note and helpers for launcher-companion and bundle-proof route drift."
     )
     parser.add_argument("--repo-root", help="Lightpanda repo root to inspect. Defaults to the current directory.")
     parser.add_argument("--json", action="store_true", help="Print structured JSON instead of text.")
