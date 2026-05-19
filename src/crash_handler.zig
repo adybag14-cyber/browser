@@ -54,7 +54,7 @@ pub noinline fn crash(
                     writer.writeByte('\n') catch abort();
                 }
 
-                std.debug.dumpCurrentStackTraceToWriter(begin_addr, writer) catch abort();
+                std.debug.writeCurrentStackTrace(.{ .first_address = begin_addr }, .{ .writer = writer, .mode = .no_color }) catch abort();
             }
 
             report(reason, begin_addr, args) catch {};
@@ -108,7 +108,7 @@ fn report(reason: []const u8, begin_addr: usize, args: anytype) !void {
             writer.writeByte('\n') catch {};
         }
 
-        std.debug.dumpCurrentStackTraceToWriter(begin_addr, &writer) catch {};
+        std.debug.writeCurrentStackTrace(.{ .first_address = begin_addr }, .{ .writer = &writer, .mode = .no_color }) catch {};
         const written = writer.buffered();
         if (written.len == 0) {
             break :blk "???";
