@@ -207,6 +207,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "replay_to_windows_bridge_check_companion_output",
+        "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        'Write-Host (("  Replay bridge check:  {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_surface_check)',
+        "",
+    ),
+    (
+        "replay_to_windows_quickstart_companion_output",
+        "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        'Write-Host (("  Windows replay quick: {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)',
+        "",
+    ),
+    (
         "google_entrypoint_note_command",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
