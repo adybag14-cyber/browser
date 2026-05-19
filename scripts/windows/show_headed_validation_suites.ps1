@@ -316,6 +316,7 @@ function Get-Issue3AttachedHtmlFollowUpCommands {
     return @(
         (Format-HelperCommand -ScriptName 'check_google_issue3_validation_router_attached_html_quickstart_surface.ps1' -Arguments $issue3AttachedHtmlSurfaceCheckArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
+        (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
         (Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments),
         (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
         (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
@@ -331,13 +332,14 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
     if ($BundleFocused) {
         $notes = @(
             "Use the compact bundle-suite surface first when the top-level router is already narrowed to the known three-page compatibility bundle.",
-            "Keep the broader attached-page flow and the dedicated Google-shaped attached-page flow visible until the current pages are clearly still the pinned bundle.",
-            "Only drop into the bundle-first helper after the suite surface and broader attached-page flows are visible, so the pinned bundle route stays easy to reopen."
+            "Keep the broader attached-page flow, the dedicated Google-shaped attached-page flow, and the top-level attached-page quickstart visible until the current pages are clearly still the pinned bundle.",
+            "Only drop into the bundle-first helper after the suite surface, broader attached-page flows, and the top-level quickstart are visible, so the pinned bundle route stays easy to reopen."
         )
     } else {
         $notes = @(
             "Use the attached-html change-area quickstart when you want the shorter issue #3 attached-page helper ladder visible after the broader attached-pages catalog route.",
-            "Keep the broader attached-page flow visible when the replay may still widen back out beyond the shorter issue #3 helper ladder.",
+            "Use the top-level attached-page quickstart when the next replay should stay inside that shorter issue #3 attached-page ladder before you drop into the bundle-only or shortcut-first helpers.",
+            "Keep the broader attached-page flow visible when the replay may still widen back out beyond the shorter issue #3 attached-page ladder.",
             "Keep the dedicated Google-shaped attached-page flow visible when the replay still looks Google-like before you narrow into the bundle-only or shortcut-first helpers.",
             "Use the compact bundle-suite surface before the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
         )
@@ -497,7 +499,7 @@ switch ($true) {
     { $SuiteName -eq "google-form-controls-enter-order" } {
         Write-Section "google-form-controls-enter-order"
         if ($isCustomBrowserExe) {
-            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+            Write-Host ("Browser exe: {0}") -f $BrowserExe)
         }
 
         Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes (Get-GoogleFormControlsEnterOrderNotes)
