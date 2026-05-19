@@ -268,3 +268,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 ```
 
 If you already know you want the narrower shortcut helper right away, preserve that same context directly in:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+```
+
+Use that narrower shortcut helper when the replay route is already understood and you want the smallest command surface that still keeps replay shortcuts, attached-page follow-up, bundle-first routing, and safe-route return visible from the same saved context.
