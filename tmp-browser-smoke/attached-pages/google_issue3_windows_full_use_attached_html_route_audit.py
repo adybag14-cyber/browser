@@ -31,6 +31,16 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
+        "purpose": "The Windows full-use attached HTML route note keeps the broader Google attached-page flow visible before the route drops to narrower issue-specific helpers.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
+        "purpose": "The Windows full-use attached HTML route note keeps the issue-specific Google attached-page bridge visible before the shorter attached-page shortcut chain takes over.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'",
         "purpose": "The Windows full-use attached HTML route note keeps the compact attached-bundle suite surface visible before the replay narrows into the locked three-page branch.",
     },
@@ -48,6 +58,16 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
         "snippet": "windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments",
         "purpose": "The route helper keeps the replay-attached quickstart wired into its helper map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": "google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments",
+        "purpose": "The route helper keeps the broader Google attached-page flow wired into its helper map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": "google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments",
+        "purpose": "The route helper keeps the issue-specific Google attached-page bridge wired into its helper map.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
@@ -76,8 +96,18 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": 'Write-Host ((" 10. Google flow:           {0}") -f $route.helper_commands.google_attached_html_flow)',
+        "purpose": "The route helper prints the broader Google attached-page flow before the route narrows again.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
         "snippet": 'Write-Host ((" 13. Bundle suite surface:  {0}") -f $route.helper_commands.attached_bundle_suite_surface)',
         "purpose": "The route helper prints the compact attached-bundle suite surface in its route ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": 'Write-Host ((" 22. Google bridge:         {0}") -f $route.helper_commands.google_attached_html_entrypoint)',
+        "purpose": "The route helper prints the issue-specific Google attached-page bridge before the shorter attached-page shortcut chain takes over.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
