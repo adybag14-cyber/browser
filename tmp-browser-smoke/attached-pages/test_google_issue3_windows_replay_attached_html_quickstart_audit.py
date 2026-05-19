@@ -109,7 +109,8 @@ GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET = """$entrypoint = [ordered]@{
     notes = @(
         'Use google_attached_html_sidecar_audit when the current saved export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the broader surface check or the deeper asset audit.',
         'Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.',
-        'Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.'
+        'Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.',
+        'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.'
     )
 }
 
@@ -117,9 +118,11 @@ Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.go
 Write-Host (("  7. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)
 Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)
 Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
+Write-Host ((" 10. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)
 Write-Host (("  Sidecar audit:         {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)
 Write-Host (("  Broader surface check: {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)
 Write-Host (("  Asset closure audit:   {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)
+Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)
 """
 
 
@@ -133,7 +136,7 @@ TOP_LEVEL_SHORTCUT_SCRIPT_SNIPPET = """$entrypoint = [ordered]@{
 
 Write-Host (("  11. Shortcut entry:            {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
 Write-Host (("  12. Windows replay quick:      {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
-Write-Host (("  Companion helpers:")) 
+Write-Host (("  Companion helpers:"))
 Write-Host (("  Shortcut entrypoint:    {0}") -f $entrypoint.helper_commands.suite_router_shortcut_entrypoint)
 Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
 Write-Host (("  Replay route:           {0}") -f $entrypoint.helper_commands.replay_route_shortcut)
@@ -260,40 +263,6 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             failing_snippets,
         )
 
-    def test_build_audit_reports_missing_top_level_shortcut_note_reference(self) -> None:
-        self.write_contract_files(
-            doc_text=DOC_SNIPPET.replace(
-                "- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`\n",
-                "",
-            )
-        )
-
-        audit = helper.build_replay_attached_quickstart_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_top_level_shortcut_command(self) -> None:
-        self.write_contract_files(
-            doc_text=DOC_SNIPPET.replace(
-                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1\n",
-                "",
-            )
-        )
-
-        audit = helper.build_replay_attached_quickstart_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
-            failing_snippets,
-        )
-
     def test_build_audit_reports_missing_route_surface_check_output(self) -> None:
         self.write_contract_files(
             replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
@@ -309,40 +278,6 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.assertIn(
             "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
             failing_paths,
-        )
-
-    def test_build_audit_reports_missing_top_level_shortcut_output(self) -> None:
-        self.write_contract_files(
-            replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
-                'Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_shortcut_first)\n',
-                "",
-            )
-        )
-
-        audit = helper.build_replay_attached_quickstart_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-            failing_paths,
-        )
-
-    def test_build_audit_reports_missing_top_level_shortcut_guidance(self) -> None:
-        self.write_contract_files(
-            replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
-                "Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.",
-                "drifted top-level shortcut note",
-            )
-        )
-
-        audit = helper.build_replay_attached_quickstart_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.",
-            failing_snippets,
         )
 
     def test_build_audit_reports_missing_suite_catalog_guidance(self) -> None:
@@ -447,27 +382,10 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             failing_snippets,
         )
 
-    def test_build_audit_reports_missing_top_level_shortcut_bridge_note_route(self) -> None:
+    def test_build_audit_reports_missing_google_entrypoint_ladder_flow_output(self) -> None:
         self.write_contract_files(
-            top_level_shortcut_doc_text=TOP_LEVEL_SHORTCUT_DOC_SNIPPET.replace(
-                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1\n",
-                "",
-            )
-        )
-
-        audit = helper.build_replay_attached_quickstart_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_top_level_shortcut_bridge_helper_output(self) -> None:
-        self.write_contract_files(
-            top_level_shortcut_script_text=TOP_LEVEL_SHORTCUT_SCRIPT_SNIPPET.replace(
-                'Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)\n',
+            google_entrypoint_script_text=GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET.replace(
+                'Write-Host ((" 10. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)\n',
                 "",
             )
         )
@@ -477,8 +395,42 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
-            "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+            "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
             failing_paths,
+        )
+
+    def test_build_audit_reports_missing_google_entrypoint_companion_flow_output(self) -> None:
+        self.write_contract_files(
+            google_entrypoint_script_text=GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET.replace(
+                'Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_google_entrypoint_flow_guidance(self) -> None:
+        self.write_contract_files(
+            google_entrypoint_script_text=GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET.replace(
+                "Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.",
+                "drifted flow note",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.",
+            failing_snippets,
         )
 
     def test_build_audit_reports_missing_replay_route_shortcut_surface_check_command(self) -> None:
@@ -518,7 +470,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
     def test_build_audit_reports_missing_replay_to_windows_output(self) -> None:
         self.write_contract_files(
             replay_route_shortcut_script_text=REPLAY_ROUTE_SHORTCUT_SCRIPT_SNIPPET.replace(
-                'Write-Host (("  8. Replay-to-Windows: {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)\n',
+                'Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)\n',
                 "",
             )
         )
@@ -584,7 +536,6 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.write_contract_files(
             replay_script_text="# drifted\n",
             google_entrypoint_script_text="# drifted\n",
-            top_level_shortcut_script_text="# drifted\n",
             replay_route_shortcut_script_text="# drifted\n",
             launcher_companion_text="# drifted\n",
         )
@@ -606,7 +557,6 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             top_level_shortcut_doc_text="# drifted\n",
             shortcut_bridge_doc_text="# drifted\n",
             google_entrypoint_script_text="# drifted\n",
-            top_level_shortcut_script_text="# drifted\n",
             replay_route_shortcut_script_text="# drifted\n",
             launcher_companion_text="# drifted\n",
         )
