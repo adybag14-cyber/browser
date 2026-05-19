@@ -342,6 +342,34 @@ The launchers print:
 7. Reuse the same pinned inputs while collecting screenshots, traces, or probe
    notes.
 
+## Issue #3 Google-style follow-up
+
+When the attached-pages harness is being used to narrow the headed Google input
+issue, start with the same preflight surface but keep Google-style ranking
+enabled so the strongest Google-like export stays first while the bundle is
+checked.
+
+```bash
+python tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py \
+  --google-style
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_pages_preflight_report.ps1 \
+  -GoogleStyle
+```
+
+Then keep these companion surfaces nearby before widening back into the broader
+attached-page ladders:
+
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
+- `docs/WINDOWS_FULL_USE.md`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1`
+
+Use the preflight report first to confirm the selected bundle is intact, reuse
+the same pinned inputs for sidecar and asset audits, and only then hand off to
+the narrower issue-specific Google replay helper.
+
 ## Lower-level helpers
 
 Use these when you intentionally want the narrower building blocks instead of
