@@ -1,4 +1,4 @@
-[CmdletBinding()]
+[CmdletBinding()
 param(
     [string]$RepoRoot,
     [string]$SummaryPath,
@@ -321,5 +321,5 @@ Write-Host (("Replay quickstart note:     {0}") -f (' ' + $helper.windows_replay
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
-    Write-Host (("- {0}") -f $helper.notes)
+    Write-Host (("- {0}") -f $note)
 }
