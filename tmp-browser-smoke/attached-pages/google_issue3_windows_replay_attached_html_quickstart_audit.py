@@ -21,6 +21,11 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`",
+        "purpose": "The replay-attached quickstart keeps the top-level shortcut bridge note visible before the route narrows into shortcut-only follow-up.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "purpose": "The replay-attached quickstart keeps the launcher companion surface checker visible before the sidecar-first route is reused.",
     },
@@ -51,6 +56,11 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "purpose": "The replay-attached quickstart keeps the top-level shortcut bridge helper visible before the replay-route shortcut and shorter replay follow-up.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
         "purpose": "The replay-attached quickstart keeps the narrower replay-route shortcut bridge visible before the helper chain collapses into shorter replay follow-up.",
     },
@@ -73,6 +83,21 @@ EXPECTATIONS = (
         "path": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1",
         "purpose": "The narrower Google entrypoint note keeps the issue-specific surface checker visible before the compact helper chain is trusted.",
+    },
+    {
+        "path": "docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "purpose": "The top-level shortcut bridge note keeps the replay-attached quickstart visible before the shortcut-first helper takes over.",
+    },
+    {
+        "path": "docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "purpose": "The top-level shortcut bridge note keeps the shortcut-first helper visible once replay narrows into the top-level shortcut handoff.",
+    },
+    {
+        "path": "docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "purpose": "The top-level shortcut bridge note keeps the replay-route shortcut bridge visible after the top-level shortcut helper.",
     },
     {
         "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
@@ -111,6 +136,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the top-level shortcut bridge wired into its command map before the replay-route shortcut takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the compact bundle-suite surface wired into its command map.",
     },
@@ -141,52 +171,57 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Replay surface check:    {0}") -f $helper.commands.windows_replay_attached_html_surface_check)',
+        "snippet": "Write-Host ((\"  Replay surface check:    {0}\") -f $helper.commands.windows_replay_attached_html_surface_check)",
         "purpose": "The replay-attached helper prints the replay-side surface checker on the surfaced route guard.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Route surface check:     {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
+        "snippet": "Write-Host ((\"  Route surface check:     {0}\") -f $helper.commands.windows_full_use_attached_html_route_surface_check)",
         "purpose": "The replay-attached helper prints the broader Windows route-level surface checker on the surfaced route guard.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)',
+        "snippet": "Write-Host ((\"  Suite-catalog guide:      {0}\") -f $helper.commands.suite_catalog_entrypoints)",
         "purpose": "The replay-attached helper prints the suite-catalog helper on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)',
+        "snippet": "Write-Host ((\"  Google issue bridge:      {0}\") -f $helper.commands.google_attached_html_entrypoint)",
         "purpose": "The replay-attached helper prints the issue-specific Google attached-html entrypoint in its attached-page ladder output.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
+        "snippet": "Write-Host ((\"  Top-level shortcut:       {0}\") -f $helper.commands.top_level_shortcut_first)",
+        "purpose": "The replay-attached helper prints the top-level shortcut bridge before the replay-route shortcut and attached-page shortcut branch.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Write-Host ((\"  Bundle suite surface:     {0}\") -f $helper.commands.attached_bundle_suite_surface)",
         "purpose": "The replay-attached helper prints the compact bundle-suite surface before the route narrows into bundle-first follow-up.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)',
+        "snippet": "Write-Host ((\"  Bundle proof check:       {0}\") -f $helper.commands.attached_bundle_proof_surface_check)",
         "purpose": "The replay-attached helper prints the proof-entrypoint surface checker in its attached-page ladder output.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)',
+        "snippet": "Write-Host ((\"  Bundle proof entry:      {0}\") -f $helper.commands.attached_bundle_proof_entrypoint)",
         "purpose": "The replay-attached helper prints the proof-entrypoint helper in its attached-page ladder output.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pages_launcher_companion_surface_check)',
+        "snippet": "Write-Host ((\"  Launcher surface check:   {0}\") -f $helper.commands.attached_pages_launcher_companion_surface_check)",
         "purpose": "The replay-attached helper prints the launcher companion surface checker in its attached-page ladder output.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
+        "snippet": "Write-Host ((\"  Launcher companion:       {0}\") -f $helper.commands.attached_pages_launcher_companion)",
         "purpose": "The replay-attached helper prints the launcher companion helper in its attached-page ladder output.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)',
+        "snippet": "Write-Host ((\"  Replay-route shortcut:    {0}\") -f $helper.commands.replay_route_shortcut)",
         "purpose": "The replay-attached helper prints the replay-route shortcut bridge before the route narrows into replay-only follow-up.",
     },
     {
@@ -198,6 +233,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "Use google_attached_html_entrypoint when the replay already needs the issue-specific Google attached-html bridge kept visible after the dedicated Google attached-page flow and before the compact bundle suite or the narrower shortcuts take over.",
         "purpose": "The replay-attached helper notes preserve when to prefer the issue-specific Google attached-html bridge before bundle-only or shortcut follow-up.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.",
+        "purpose": "The replay-attached helper notes preserve when to reopen the top-level shortcut bridge from the attached-page ladder before the replay-route shortcut takes over.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
@@ -213,6 +253,16 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surfaced before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
         "purpose": "The replay-attached helper notes preserve when to reopen the narrower replay-route shortcut bridge from the attached-page ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "snippet": "windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments",
+        "purpose": "The top-level shortcut helper keeps the replay-attached quickstart wired into its helper map before the shortcut-first route narrows further.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "snippet": "Write-Host ((\"  Windows replay quick:   {0}\") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)",
+        "purpose": "The top-level shortcut helper prints the replay-attached quickstart in its companion helper output so the replay-side ladder stays visible.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
@@ -246,37 +296,37 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        "snippet": 'Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
+        "snippet": "Write-Host ((\"  6. Sidecar audit:        {0}\") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)",
         "purpose": "The narrower Google entrypoint helper prints the wrapper-backed sidecar audit on its surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        "snippet": 'Write-Host (("  7. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)',
+        "snippet": "Write-Host ((\"  7. Broader surface:      {0}\") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)",
         "purpose": "The narrower Google entrypoint helper prints the broader Google attached-html surface checker on its surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        "snippet": 'Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)',
+        "snippet": "Write-Host ((\"  8. Asset closure:        {0}\") -f $entrypoint.helper_commands.google_attached_html_asset_closure)",
         "purpose": "The narrower Google entrypoint helper prints the deeper asset-closure audit on its surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        "snippet": 'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)',
+        "snippet": "Write-Host ((\"  9. Issue-specific check: {0}\") -f $entrypoint.helper_commands.google_attached_html_surface_check)",
         "purpose": "The narrower Google entrypoint helper prints the issue-specific surface checker on its surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        "snippet": 'Write-Host (("  Sidecar audit:         {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
+        "snippet": "Write-Host ((\"  Sidecar audit:         {0}\") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)",
         "purpose": "The narrower Google entrypoint helper prints the wrapper-backed sidecar audit in its companion helper section.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        "snippet": 'Write-Host (("  Broader surface check: {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)',
+        "snippet": "Write-Host ((\"  Broader surface check: {0}\") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)",
         "purpose": "The narrower Google entrypoint helper prints the broader Google attached-html surface checker in its companion helper section.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        "snippet": 'Write-Host (("  Asset closure audit:   {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)',
+        "snippet": "Write-Host ((\"  Asset closure audit:   {0}\") -f $entrypoint.helper_commands.google_attached_html_asset_closure)",
         "purpose": "The narrower Google entrypoint helper prints the deeper asset-closure audit in its companion helper section.",
     },
     {
@@ -306,12 +356,12 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": 'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)',
+        "snippet": "Write-Host ((\"  Surface check:      {0}\") -f $helper.helper_commands.proof_surface_check)",
         "purpose": "The launcher companion helper prints the pinned proof-entrypoint surface checker once sidecar and asset preflight finishes.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": 'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)',
+        "snippet": "Write-Host ((\"  Proof entrypoint:   {0}\") -f $helper.helper_commands.proof_entrypoint)",
         "purpose": "The launcher companion helper prints the pinned proof-entrypoint helper once sidecar and asset preflight finishes.",
     },
     {
@@ -326,7 +376,12 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
-        "snippet": 'Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)',
+        "snippet": "Write-Host ((\"  8. Replay-to-Windows: {0}\") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)",
+        "purpose": "The replay-route shortcut helper prints the numbered replay-shortcuts-to-Windows-replay bridge in its compact ladder output.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "snippet": "Write-Host ((\"  Replay-to-Windows:    {0}\") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)",
         "purpose": "The replay-route shortcut helper prints the replay-shortcuts-to-Windows-replay bridge before it narrows back into shorter replay follow-up.",
     },
     {
@@ -400,7 +455,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Audit the replay-attached quickstart note plus the downstream Google-entrypoint, "
-            "replay-route shortcut bridge, launcher-companion, and bundle-proof helper contracts for drift."
+            "top-level shortcut bridge, replay-route shortcut bridge, launcher-companion, "
+            "and bundle-proof helper contracts for drift."
         )
     )
     parser.add_argument(
