@@ -60,6 +60,7 @@ Current validation truth on this branch:
 - the first-line navigation, stop-loading, input, rendering, network, browser-shell, and popup probes auto-resolve the repo root and built browser path from the current checkout
 - `scripts/windows/show_headed_validation_suites.ps1` is the truthful router for current small Windows headed checks
 - `scripts/windows/start_attached_pages_catalog.ps1` is the wrapper-backed localhost entrypoint for issue #3 attached-page replay, including sidecar audits, broader asset audits, manifest printing, and strict completeness gates before the browser is blamed
+- that same attached-page helper lane now also preserves a caller-supplied preferred first page and auto-discovers nested `agent_files/` HTML inputs before the broader localhost replay handoff is staged
 - `scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1` and `scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1` are the compact issue #3 launcher-companion surfaces when the replay should stay on the narrower attached-page helper lane
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` is the read-first companion when the replay should keep one Google-like attached page first through the localhost route
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` is the smaller bridge when the replay is already narrowed to the issue #3 attached localhost ladder and needs the next helper chain surfaced quickly
@@ -84,7 +85,9 @@ saved-page bundle before the browser is blamed.
 
 When the current replay is already on the known three-page compatibility route,
 keep this exact file set together from the start and prefer the Google Safety
-Centre export as the initial page:
+Centre export as the initial page. That preferred-first-page choice now stays
+intact through the narrower attached-page helper chain before the broader
+localhost replay handoff opens the full bundle:
 
 - `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html`
 - `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html`
