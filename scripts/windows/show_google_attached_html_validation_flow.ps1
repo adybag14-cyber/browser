@@ -73,33 +73,37 @@ function Get-SidecarAuditCommand {
         [bool]$AllowMissingLocalAssets
     )
 
-    $scriptPath = Join-Path $RepoRoot "tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py"
-    $base = "python " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $scriptPath)
+    if ($ParameterSetName -eq "PageRoot") {
+        $scriptPath = Join-Path $RepoRoot "tmp-browser-smoke\attached-pages\attached_pages_sidecar_audit.py"
+        $base = "python " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $scriptPath)
+        if ($AllowMissingLocalAssets) {
+            $base += " --allow-missing-sidecars"
+        }
+        if ([string]::IsNullOrWhiteSpace($ResolvedPageRoot)) {
+            return $base
+        }
+
+        return ($base + " --root " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot))
+    }
+
+    $base = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -GoogleStyle -AuditSidecars"
+    if ($RepoRoot) {
+        $quotedRepoRoot = ConvertTo-PowerShellSingleQuotedLiteral -Value $RepoRoot
+        $base += " -RepoRoot $quotedRepoRoot"
+    }
     if ($AllowMissingLocalAssets) {
-        $base += " --allow-missing-sidecars"
+        $base += " -AllowMissingSidecars"
+    }
+    if (-not $ResolvedInputPath -or $ResolvedInputPath.Count -eq 0) {
+        return $base
     }
 
-    switch ($ParameterSetName) {
-        "PageRoot" {
-            if ([string]::IsNullOrWhiteSpace($ResolvedPageRoot)) {
-                return $base
-            }
-
-            return ($base + " --root " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $ResolvedPageRoot))
+    $quotedInputArgs = @(
+        $ResolvedInputPath | ForEach-Object {
+            "'" + ($_.Replace("'", "''")) + "'"
         }
-        default {
-            if (-not $ResolvedInputPath -or $ResolvedInputPath.Count -eq 0) {
-                return $base
-            }
-
-            $quotedInputs = @(
-                $ResolvedInputPath | ForEach-Object {
-                    "--input " + (ConvertTo-PowerShellSingleQuotedLiteral -Value $_)
-                }
-            )
-            return ($base + " " + ($quotedInputs -join " "))
-        }
-    }
+    )
+    return ($base + " -InputPath " + ($quotedInputArgs -join " "))
 }
 
 function Get-GoogleAttachedHtmlHandoffCommands {
