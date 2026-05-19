@@ -111,6 +111,36 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "top_level_shortcut_bridge_note_reference",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`",
+        "",
+    ),
+    (
+        "top_level_shortcut_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "top_level_shortcut_guidance",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.",
+        "drifted note",
+    ),
+    (
+        "attached_bundle_suite_surface_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "attached_bundle_suite_surface_guidance",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.",
+        "drifted note",
+    ),
+    (
         "replay_route_shortcut_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)',
