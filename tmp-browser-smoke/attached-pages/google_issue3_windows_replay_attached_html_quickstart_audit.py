@@ -176,6 +176,21 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "attached_html_change_area = $attachedHtmlChangeAreaCommand",
+        "purpose": "The replay-attached helper keeps the generic attached-html re-entry point wired into its top-level helper map before the narrower replay ladder takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "google_attached_html_change_area = $googleAttachedHtmlChangeAreaCommand",
+        "purpose": "The replay-attached helper keeps the Google-shaped attached-html re-entry point wired into its top-level helper map before the narrower replay ladder takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "attached_bundle_change_area = $attachedBundleChangeAreaCommand",
+        "purpose": "The replay-attached helper keeps the pinned bundle re-entry point wired into its top-level helper map before the narrower replay ladder takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the suite-catalog helper wired into its command map.",
     },
@@ -253,6 +268,21 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Route surface check:     {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
         "purpose": "The replay-attached helper prints the broader Windows route-level surface checker on the surfaced route guard.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Attached HTML:          {0}") -f $helper.top_level_commands.attached_html_change_area)',
+        "purpose": "The replay-attached helper prints the generic attached-html re-entry point before the narrower replay ladder takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Google attached HTML:   {0}") -f $helper.top_level_commands.google_attached_html_change_area)',
+        "purpose": "The replay-attached helper prints the Google-shaped attached-html re-entry point before the narrower replay ladder takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Attached bundle:        {0}") -f $helper.top_level_commands.attached_bundle_change_area)',
+        "purpose": "The replay-attached helper prints the pinned bundle re-entry point before the narrower replay ladder takes over.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
