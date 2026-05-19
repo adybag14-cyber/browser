@@ -308,6 +308,44 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_replay_to_windows_wiring(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1"
+        snippet = (
+            "replay_shortcuts_windows_replay_attached_html_bridge = "
+            "$replayShortcutsWindowsReplayAttachedHtmlBridgeCommand"
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_replay_to_windows_summary_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1"
+        snippet = 'Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_replay_to_windows_guidance(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1"
+        snippet = (
+            "Use replay_shortcuts_windows_replay_attached_html_bridge when the replay-route "
+            "shortcut still needs the replay-side surface check, the Windows replay attached-page "
+            "quickstart, and the broader Windows-first bridge kept visible before the route "
+            "collapses back to the shorter attached-page helper chain."
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "drifted note")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(
             {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
@@ -317,3 +355,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.assertIn("Google Issue #3 Windows Replay Attached HTML Quickstart Audit", report)
         self.assertIn("Missing expectations:", report)
         self.assertIn("[FAIL] docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", report)
+
+
+if __name__ == "__main__":
+    unittest.main()
