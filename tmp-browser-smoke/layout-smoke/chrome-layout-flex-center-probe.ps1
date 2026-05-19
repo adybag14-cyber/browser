@@ -1,14 +1,25 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8177,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$root = $PSScriptRoot
-$repo = (Resolve-Path (Join-Path $root "..\..")).Path
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$root = Join-Path $repo "tmp-browser-smoke\layout-smoke"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $serverScript = Join-Path $root "layout_server.py"
 $common = Join-Path $root "LayoutProbeCommon.ps1"
 . $common
 
-$port = 8177
-$pageUrl = "http://127.0.0.1:$port/flex-center.html"
+$pageUrl = "http://$Host`:$Port/flex-center.html"
 $outPng = Join-Path $root "flex-center.png"
 $browserOut = Join-Path $root "flex-center.browser.stdout.txt"
 $browserErr = Join-Path $root "flex-center.browser.stderr.txt"
@@ -19,10 +30,18 @@ $profileRoot = Join-Path $root "profile-flex-center"
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 Reset-ProfileRoot $profileRoot
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$server = $null
+$browser = $null
 
 try {
-  if (-not (Wait-HttpReady $pageUrl)) { throw "layout smoke server did not become ready" }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+  if (-not (Test-Path -LiteralPath $serverScript)) { throw "layout smoke server script not found: $serverScript" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  if (-not (Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds)) {
+    throw "layout smoke server did not become ready"
+  }
 
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
@@ -43,28 +62,27 @@ try {
       blue_center_x = $blueCenterX
       red_center_y = $redCenterY
       blue_center_y = $blueCenterY
-      flex_center_worked = ([math]::Abs($redCenterX - 480) -le 80) -and
-                           ([math]::Abs($blueCenterX - 480) -le 80) -and
-                           ($redCenterY -gt 120) -and
-                           ($blueCenterY -gt ($redCenterY + 40))
+      centered_horizontally = ([math]::Abs($redCenterX - $blueCenterX) -le 12)
+      vertically_stacked = ($blue.top -gt $red.bottom)
     }
-    if (-not $result.flex_center_worked) {
-      throw "flex center probe did not observe centered hero blocks"
+    $result.layout_probe_worked = $result.centered_horizontally -and $result.vertically_stacked
+    if (-not $result.layout_probe_worked) {
+      throw "flex layout probe did not keep items centered and vertically stacked"
     }
     $result | ConvertTo-Json -Depth 6
   }
   finally {
-    Stop-VerifiedProcess $browser.Id
+    $null = Stop-LightpandaOwnedProbeProcess $browser
     for ($i = 0; $i -lt 20; $i++) {
-      if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
+      if (-not $browser -or -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
       Start-Sleep -Milliseconds 100
     }
   }
 }
 finally {
-  Stop-VerifiedProcess $server.Id
+  $null = Stop-LightpandaOwnedProbeProcess $server
   for ($i = 0; $i -lt 20; $i++) {
-    if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
+    if (-not $server -or -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
     Start-Sleep -Milliseconds 100
   }
 }
