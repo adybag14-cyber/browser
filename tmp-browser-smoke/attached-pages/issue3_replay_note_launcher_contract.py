@@ -38,6 +38,9 @@ GOOGLE_ENTRYPOINT_HELPER = "show_google_issue3_google_attached_html_entrypoint.p
 VALIDATION_ROUTER_ATTACHED_HTML_NOTE = (
     "docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md"
 )
+VALIDATION_ROUTER_ATTACHED_HTML_SURFACE_CHECK = (
+    "check_google_issue3_validation_router_attached_html_quickstart_surface.ps1"
+)
 VALIDATION_ROUTER_ATTACHED_HTML_HELPER = (
     "show_google_issue3_validation_router_attached_html_quickstart.ps1"
 )
@@ -95,6 +98,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "google_entrypoint_surface_check_count": 0,
         "google_entrypoint_helper_count": 0,
         "validation_router_attached_html_note_count": 0,
+        "validation_router_attached_html_surface_check_count": 0,
         "validation_router_attached_html_helper_count": 0,
         "attached_html_change_area_note_count": 0,
         "attached_html_change_area_helper_count": 0,
@@ -127,6 +131,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "google_entrypoint_surface_checks": [],
             "google_entrypoint_helpers": [],
             "validation_router_attached_html_note_references": [],
+            "validation_router_attached_html_surface_checks": [],
             "validation_router_attached_html_helpers": [],
             "attached_html_change_area_note_references": [],
             "attached_html_change_area_helpers": [],
@@ -178,6 +183,10 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["google_entrypoint_helpers"].append({"line_number": line_number, "line": stripped})
             if VALIDATION_ROUTER_ATTACHED_HTML_NOTE in line:
                 hits["validation_router_attached_html_note_references"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if VALIDATION_ROUTER_ATTACHED_HTML_SURFACE_CHECK in line:
+                hits["validation_router_attached_html_surface_checks"].append(
                     {"line_number": line_number, "line": stripped}
                 )
             if VALIDATION_ROUTER_ATTACHED_HTML_HELPER in line:
@@ -244,6 +253,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         counts["google_entrypoint_helper_count"] += len(hits["google_entrypoint_helpers"])
         counts["validation_router_attached_html_note_count"] += len(
             hits["validation_router_attached_html_note_references"]
+        )
+        counts["validation_router_attached_html_surface_check_count"] += len(
+            hits["validation_router_attached_html_surface_checks"]
         )
         counts["validation_router_attached_html_helper_count"] += len(
             hits["validation_router_attached_html_helpers"]
@@ -320,6 +332,8 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the issue-specific Google attached-html entrypoint visible")
     if audit["validation_router_attached_html_note_count"] == 0:
         reasons.append("replay notes do not keep the validation-router attached-html quickstart note visible")
+    if audit["validation_router_attached_html_surface_check_count"] == 0:
+        reasons.append("replay notes do not keep the validation-router attached-html surface checker visible")
     if audit["validation_router_attached_html_helper_count"] == 0:
         reasons.append("replay notes do not keep the validation-router attached-html quickstart helper visible")
     if audit["attached_html_change_area_note_count"] == 0:
@@ -354,6 +368,7 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Repo root: {audit['repo_root']}",
         f"Files scanned: {audit['file_count']}",
         f"Validation-router quickstart note references: {audit['validation_router_attached_html_note_count']}",
+        f"Validation-router surface-check references: {audit['validation_router_attached_html_surface_check_count']}",
         f"Validation-router quickstart helper references: {audit['validation_router_attached_html_helper_count']}",
         f"Change-area quickstart note references: {audit['attached_html_change_area_note_count']}",
         f"Change-area quickstart helper references: {audit['attached_html_change_area_helper_count']}",
@@ -374,8 +389,9 @@ def main() -> int:
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
             "the replay-side and Windows-side route checks, the pinned proof route, the "
             "dedicated Google attached-html replay surface, the issue-specific Google "
-            "attached-html entrypoint note and checker, the validation-router and change-area "
-            "attached-html quickstarts, the bundle-first target-bundle handoff, the replay-route "
+            "attached-html entrypoint note and checker, the validation-router quickstart "
+            "note and surface checker, the validation-router and change-area attached-html "
+            "quickstart helpers, the bundle-first target-bundle handoff, the replay-route "
             "shortcut companion, the replay-shortcuts helpers, or the safe-route entrypoints helper."
         )
     )
