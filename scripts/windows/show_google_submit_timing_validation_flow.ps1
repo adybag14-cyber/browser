@@ -50,6 +50,7 @@ $directProbe = '.\\tmp-browser-smoke\\layout-smoke\\chrome-google-submit-timing-
 $homePhaseRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
 $sharedEnterOrderFlow = '.\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1'
 $traceFlow = '.\\scripts\\windows\\show_google_trace_validation_flow.ps1'
+$replayShortcuts = '.\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1'
 
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
@@ -86,6 +87,9 @@ Add-SharedArgument -Arguments $traceFlowArgs -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $traceFlowArgs -Name BrowserExe -Value $BrowserExe
 Add-SharedArgument -Arguments $traceFlowArgs -Name InputText -Value $InputText
 
+$replayShortcutsArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $replayShortcutsArgs -Name RepoRoot -Value $RepoRoot
+
 $flow = [ordered]@{
     issue = "Headed Windows Google submit-timing validation flow"
     focus = "Bounded Google-shaped keydown, keypress, and submit ordering on the real headed surface before the broader shared Enter-order or live Google passes."
@@ -109,14 +113,16 @@ $flow = [ordered]@{
     next_steps = @(
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} before this wrapper when you want the reduced headed homepage pass first." -f $homePhaseRunner, $(if ($homePhaseArgs.Count -gt 0) { " " + ($homePhaseArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} after this wrapper is green when you want the stricter shared Enter-order stack printed with the same repo-root, browser, host, and input context." -f $sharedEnterOrderFlow, $(if ($sharedEnterOrderFlowArgs.Count -gt 0) { " " + ($sharedEnterOrderFlowArgs -join " ") } else { "" })),
-        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when this bounded timing slice is green but the live Google homepage still diverges." -f $traceFlow, $(if ($traceFlowArgs.Count -gt 0) { " " + ($traceFlowArgs -join " ") } else { "" }))
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when this bounded timing slice is green but the live Google homepage still diverges." -f $traceFlow, $(if ($traceFlowArgs.Count -gt 0) { " " + ($traceFlowArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the compact issue #3 replay helper map reopened from this bounded timing slice before switching into attached-page, Windows replay, or safe-route follow-up." -f $replayShortcuts, $(if ($replayShortcutsArgs.Count -gt 0) { " " + ($replayShortcutsArgs -join " ") } else { "" }))
     )
     notes = @(
         "Start with the surface check when you want the bounded submit-timing slice to fail fast on missing guide, helper, wrapper, or raw-probe drift before the broader issue #3 ladder.",
         "Start with the wrapper unless you already know you need the direct probe output files from tmp-browser-smoke/layout-smoke.",
         "Keep the same host, port, and input text here when you want the submit-timing slice aligned with the broader issue #3 flow.",
         "Treat this as the bounded bridge between the reduced homepage pass and the stricter shared Enter-order stack.",
-        "The printed handoff commands now preserve the current repo root, custom browser path, host, and input text so the next replay step stays on the same headed-run context."
+        "The printed handoff commands now preserve the current repo root, custom browser path, host, and input text so the next replay step stays on the same headed-run context.",
+        "The printed handoff commands now also preserve the current repo root for the compact replay-shortcuts surface when you need to widen beyond submit timing without rebuilding the issue #3 route by hand."
     )
 }
 
