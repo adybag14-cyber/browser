@@ -17,6 +17,9 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 """
 
@@ -151,7 +154,7 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
     def test_build_audit_reports_missing_replay_route_shortcut_helper_output(self) -> None:
         self.write_contract_files(
             helper_text=HELPER_SNIPPET.replace(
-                'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)\n',
+                'Write-Host ((\"  Route shortcut:            {0}\") -f $helper.commands.replay_route_shortcut_entrypoint)\n',
                 "",
             )
         )
@@ -161,6 +164,57 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("scripts/windows/show_google_issue3_windows_replay_quickstart.ps1", failing_paths)
+
+    def test_build_audit_reports_missing_proof_note_reference(self) -> None:
+        self.write_contract_files(
+            replay_doc_text=REPLAY_DOC_SNIPPET.replace(
+                "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_proof_surface_checker(self) -> None:
+        self.write_contract_files(
+            replay_doc_text=REPLAY_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_proof_helper(self) -> None:
+        self.write_contract_files(
+            replay_doc_text=REPLAY_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1",
+            failing_snippets,
+        )
 
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(helper_text="# drifted\n")
