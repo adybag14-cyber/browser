@@ -580,6 +580,22 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 failure_reasons(audit),
             )
 
+    def test_fails_when_suite_catalog_entrypoints_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the suite-catalog entrypoints helper visible",
+                failure_reasons(audit),
+            )
+
     def test_fails_when_replay_route_helper_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -656,6 +672,21 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             audit = audit_paths(paths, root)
             self.assertIn(
                 "replay notes do not keep the replay-route shortcut helper visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_replay_quickstart_shortcut_note_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "- `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md`\n", ""
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the replay-quickstart shortcut bridge note visible",
                 failure_reasons(audit),
             )
 
