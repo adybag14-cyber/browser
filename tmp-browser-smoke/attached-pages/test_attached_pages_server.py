@@ -78,7 +78,7 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertNotEqual(self.manifest[0]["alias_route"], self.manifest[1]["alias_route"])
         self.assertEqual("/raw/nested/beta.html", self.manifest[1]["raw_path"])
 
-    def test_catalog_manifest_and_audit_routes_respond(self):
+    def test_catalog_manifest_and_sidecar_and_asset_routes_respond(self):
         status, _, body = self.request("GET", "/")
         self.assertEqual(200, status)
         text = body.decode("utf-8")
@@ -86,8 +86,9 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertIn("/pages/1", text)
         self.assertIn("/pages/2-alpha-landing", text)
         self.assertIn("/named/alpha-landing-beta", text)
+        self.assertIn("/sidecars.json", text)
         self.assertIn("/audit.json", text)
-        self.assertIn("asset audit", text)
+        self.assertIn("Current replay audit", text)
 
         status, headers, body = self.request("GET", "/manifest.json")
         self.assertEqual(200, status)
@@ -95,6 +96,19 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertEqual("no-store", header_map.get("Cache-Control"))
         manifest = json.loads(body.decode("utf-8"))
         self.assertEqual(self.manifest, manifest)
+
+        status, headers, body = self.request("GET", "/sidecars.json")
+        self.assertEqual(200, status)
+        self.assertEqual("no-store", dict(headers).get("Cache-Control"))
+        sidecar_audit = json.loads(body.decode("utf-8"))
+        self.assertEqual(2, sidecar_audit["fixture_count"])
+        self.assertEqual(0, sidecar_audit["fixtures_with_missing_sidecars"])
+
+        status, _, body = self.request("GET", "/sidecars.txt")
+        self.assertEqual(200, status)
+        sidecar_text = body.decode("utf-8")
+        self.assertIn("Attached Pages Sidecar Audit", sidecar_text)
+        self.assertIn("Fixtures with missing sidecars: 0", sidecar_text)
 
         status, headers, body = self.request("GET", "/audit.json")
         self.assertEqual(200, status)
@@ -139,6 +153,11 @@ class AttachedPagesServerTests(unittest.TestCase):
 
     def test_head_and_raw_routes_work(self):
         status, headers, body = self.request("HEAD", "/manifest.json")
+        self.assertEqual(200, status)
+        self.assertEqual(b"", body)
+        self.assertEqual("no-store", dict(headers).get("Cache-Control"))
+
+        status, headers, body = self.request("HEAD", "/sidecars.json")
         self.assertEqual(200, status)
         self.assertEqual(b"", body)
         self.assertEqual("no-store", dict(headers).get("Cache-Control"))
@@ -499,6 +518,48 @@ class AttachedPagesServerTests(unittest.TestCase):
         rendered = server_module.render_asset_audit_text(audit)
         self.assertIn("Fixtures with external assets: 1", rendered)
         self.assertIn("External assets: 3", rendered)
+
+    def test_sidecar_routes_surface_missing_sidecar_counts(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=5)
+
+        (self.root / "nested" / "beta.html").write_text(
+            """<!doctype html>
+<html>
+  <head>
+    <title>Alpha Landing</title>
+    <link rel="stylesheet" href="./beta_files/theme.css">
+  </head>
+  <body>beta</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+
+        self.server, self.manifest = server_module.create_server(self.root, bind="127.0.0.1", port=0)
+        self.port = self.server.server_address[1]
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+        status, _, body = self.request("GET", "/sidecars.json")
+        self.assertEqual(200, status)
+        sidecar_audit = json.loads(body.decode("utf-8"))
+        beta_entry = next(entry for entry in sidecar_audit["fixtures"] if entry["display_path"] == "nested/beta.html")
+        self.assertEqual(1, sidecar_audit["fixtures_with_missing_sidecars"])
+        self.assertEqual(1, beta_entry["missing_sidecar_directory_count"])
+        self.assertEqual("beta_files", beta_entry["missing_sidecar_directories"][0]["sidecar_dir"])
+
+        status, _, body = self.request("GET", "/sidecars.txt")
+        self.assertEqual(200, status)
+        sidecar_text = body.decode("utf-8")
+        self.assertIn("Fixtures with missing sidecars: 1", sidecar_text)
+        self.assertIn("beta_files (missing", sidecar_text)
+
+        status, _, body = self.request("GET", "/")
+        self.assertEqual(200, status)
+        text = body.decode("utf-8")
+        self.assertIn("missing sidecar bundles: <strong>1</strong>", text)
 
     def test_audit_routes_surface_missing_and_external_dependency_counts(self):
         self.server.shutdown()
