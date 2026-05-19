@@ -499,7 +499,7 @@ switch ($true) {
     { $SuiteName -eq "google-form-controls-enter-order" } {
         Write-Section "google-form-controls-enter-order"
         if ($isCustomBrowserExe) {
-            Write-Host ("Browser exe: {0}") -f $BrowserExe)
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
         }
 
         Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes (Get-GoogleFormControlsEnterOrderNotes)
