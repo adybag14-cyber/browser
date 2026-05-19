@@ -36,6 +36,16 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1",
+        "purpose": "The replay-attached quickstart keeps the dedicated Google attached-html surface checker visible before the route narrows into the issue-specific bridge or shortcut ladder.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
+        "purpose": "The replay-attached quickstart keeps the dedicated Google attached-html flow helper visible before the route narrows into the issue-specific bridge or shortcut ladder.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`",
         "purpose": "The replay-attached quickstart keeps the pinned bundle proof companion note visible.",
     },
@@ -196,6 +206,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot",
+        "purpose": "The replay-attached helper keeps the dedicated Google attached-html surface checker wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "google_attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
+        "purpose": "The replay-attached helper keeps the dedicated Google attached-html flow helper wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the issue-specific Google attached-html entrypoint wired into its command map.",
     },
@@ -311,6 +331,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Google attached check:    {0}") -f $helper.commands.google_attached_html_surface_check)',
+        "purpose": "The replay-attached helper prints the dedicated Google attached-html surface checker on its surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Google attached flow:     {0}") -f $helper.commands.google_attached_html_validation_flow)',
+        "purpose": "The replay-attached helper prints the dedicated Google attached-html flow helper on its surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)',
         "purpose": "The replay-attached helper prints the issue-specific Google attached-html entrypoint in its attached-page ladder output.",
     },
@@ -353,6 +383,16 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.",
         "purpose": "The replay-attached helper notes preserve when to widen back into the suite-catalog route.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Use google_attached_html_surface_check when branch state may have moved and the replay should fail fast on the dedicated Google-shaped attached-page lane before reopening the narrower Google helper from this same replay ladder.",
+        "purpose": "The replay-attached helper notes preserve when to rerun the dedicated Google attached-html surface checker before reopening narrower Google follow-up.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Use google_attached_html_validation_flow when the current attached inputs are already Google-shaped and you want the dedicated attached-page asset-closure and preferred-initial-page helper visible after the dedicated Google-shaped attached-page surface check and before the route narrows back into the suite-router sidecar or the shorter attached-page shortcut.",
+        "purpose": "The replay-attached helper notes preserve when to keep the dedicated Google attached-html flow visible before the route narrows again.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
