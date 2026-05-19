@@ -313,7 +313,7 @@ pub fn CDPT(comptime TypeProvider: type) type {
         }
 
         fn presentHeadedPage(self: *Self) !void {
-            if (self.browser.app.display.requested_mode != .headed) {
+            if (self.browser.app.display.runtime_mode != .headed) {
                 return;
             }
             const bc = &(self.browser_context orelse return);
@@ -1082,4 +1082,27 @@ test "cdp: headed presenter populates presentation state for the current page" {
         "http://127.0.0.1:9582/src/browser/tests/page/centered_inline_heading_layout.html",
         bc.presentation_state.committed_surface.url,
     );
+}
+
+test "cdp: headed presenter follows the active runtime mode" {
+    var ctx = testing.context();
+    defer ctx.deinit();
+
+    const cdp = ctx.cdp();
+    const bc = try ctx.loadBrowserContext(.{
+        .url = "page/centered_inline_heading_layout.html",
+    });
+
+    cdp.browser.app.display.requested_mode = .headed;
+    cdp.browser.app.display.runtime_mode = .headless;
+    try cdp.presentHeadedPage();
+    try testing.expect(bc.presentation_state.last_presented_hash == 0);
+    try testing.expect(bc.presentation_state.committed_surface.hash == 0);
+    try testing.expect(bc.presentation_state.committed_surface.display_list == null);
+
+    cdp.browser.app.display.runtime_mode = .headed;
+    try cdp.presentHeadedPage();
+    try testing.expect(bc.presentation_state.last_presented_hash != 0);
+    try testing.expect(bc.presentation_state.committed_surface.hash != 0);
+    try testing.expect(bc.presentation_state.committed_surface.display_list != null);
 }
