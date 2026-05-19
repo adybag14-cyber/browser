@@ -10,6 +10,12 @@ DEFAULT_FILES = (
     "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
 )
 
+PASSING_CONTENT = """powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
+"""
+
 
 def write_default_files(root: Path, contents: str) -> list[Path]:
     paths: list[Path] = []
@@ -52,17 +58,52 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 reasons,
             )
 
-    def test_passes_with_google_wrapper_sidecar_contract(self) -> None:
+    def test_fails_when_proof_note_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             paths = write_default_files(
                 root,
-                (
-                    "powershell -ExecutionPolicy Bypass -File "
-                    ".\\scripts\\windows\\start_attached_pages_catalog.ps1 "
-                    "-InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars"
-                ),
+                """powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
+""",
             )
+            audit = audit_paths(paths, root)
+            reasons = failure_reasons(audit)
+            self.assertIn("replay notes do not keep the pinned bundle proof note visible", reasons)
+
+    def test_fails_when_proof_checker_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                """powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
+""",
+            )
+            audit = audit_paths(paths, root)
+            reasons = failure_reasons(audit)
+            self.assertIn("replay notes do not keep the pinned bundle proof surface checker visible", reasons)
+
+    def test_fails_when_proof_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                """powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
+- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
+""",
+            )
+            audit = audit_paths(paths, root)
+            reasons = failure_reasons(audit)
+            self.assertIn("replay notes do not keep the pinned bundle proof helper visible", reasons)
+
+    def test_passes_with_google_wrapper_sidecar_and_proof_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(root, PASSING_CONTENT)
             audit = audit_paths(paths, root)
             self.assertEqual([], failure_reasons(audit))
 
