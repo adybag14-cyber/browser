@@ -48,6 +48,7 @@ $references = @(
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Kind "file" -Purpose "Suite-catalog-to-top-level attached-html catalog quickstart note used by the suite-catalog helper chain."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_CATALOG_ATTACHED_HTML_BRIDGE.md" -Kind "file" -Purpose "Suite-catalog attached-html bridge note reopened before the route collapses into shortcuts."),
     (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Suite-router attached-html quickstart note kept nearby when the route widens back toward the suite-router surface."),
+    (New-ValidationReference -Path "docs/ISSUE3_SUITE_ROUTER_HANDOFF.md" -Kind "file" -Purpose "Written suite-router handoff note that should stay aligned with the wider compact route the suite-catalog helper can reopen before replay-route follow-up."),
     (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_QUICKSTART.md" -Kind "file" -Purpose "Compact top-level attached-html quickstart note used by the suite-catalog route."),
     (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_CATALOG_QUICKSTART.md" -Kind "file" -Purpose "Top-level attached-html catalog quickstart note surfaced from the suite-catalog route."),
     (New-ValidationReference -Path "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md" -Kind "file" -Purpose "Broader top-level attached-html bridge note reused by the suite-catalog helper chain."),
@@ -78,6 +79,8 @@ $references = @(
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_catalog_attached_html_entrypoint.ps1" -Kind "file" -Purpose "Suite-catalog attached-html bridge helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_quickstart.ps1" -Kind "file" -Purpose "Compact suite-router bridge helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1" -Kind "file" -Purpose "Suite-router attached-html quickstart helper surfaced from the suite-catalog chain."),
+    (New-ValidationReference -Path "scripts/windows/check_google_issue3_suite_router_handoff_validation_surface.ps1" -Kind "file" -Purpose "Fail-fast checker for the wider suite-router handoff surface that the suite-catalog route can reopen before replay-route follow-up."),
+    (New-ValidationReference -Path "scripts/windows/show_google_issue3_suite_router_handoff.ps1" -Kind "file" -Purpose "Suite-router handoff helper surfaced from the suite-catalog chain before replay-route and safe-route follow-up."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_quickstart.ps1" -Kind "file" -Purpose "Compact top-level attached-html quickstart helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_attached_html_catalog_quickstart.ps1" -Kind "file" -Purpose "Top-level attached-html catalog quickstart helper surfaced from the suite-catalog chain."),
     (New-ValidationReference -Path "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1" -Kind "file" -Purpose "Top-level shortcut-first helper surfaced from the suite-catalog chain."),
@@ -156,5 +159,5 @@ if ($missing.Count -eq 0) {
 }
 
 Write-Host (("Missing {0} issue #3 suite-catalog path(s).") -f $missing.Count)
-Write-Host "Repair the missing note, helper, context-surface bridge, replay-route shortcut, or pinned bundle follow-up surface before trusting the issue #3 suite-catalog entrypoint route."
+Write-Host "Repair the missing suite-router handoff note or checker, the wider suite-router handoff helper, the suite-catalog note, helper, context-surface bridge, replay-route shortcut, or pinned bundle follow-up surface before trusting the issue #3 suite-catalog entrypoint route."
 exit 1
