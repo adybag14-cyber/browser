@@ -1,9 +1,11 @@
 import contextlib
 import io
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from issue3_replay_note_launcher_contract import audit_paths, failure_reasons, resolve_paths
 
@@ -44,11 +46,13 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\run_attached_html_target_bundle_validation.ps1 -Wait
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_contextual_flow.ps1
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1
+- `docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md`
 - `docs/ISSUE3_REPLAY_SHORTCUTS_WINDOWS_REPLAY_ATTACHED_HTML_BRIDGE.md`
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts.ps1
@@ -719,15 +723,30 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             )
 
     def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
-        self.write_contract_files(doc_text="# drifted\n", wrapper_text="# drifted\n", python_launcher_text="# drifted\n")
-
-        stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout):
-            exit_code = helper.main(["--repo-root", str(self.root), "--json"])
-
-        self.assertEqual(1, exit_code)
-        payload = json.loads(stdout.getvalue())
-        self.assertGreater(payload["missing_count"], 0)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_safe_route_entrypoints.ps1\n",
+                    "",
+                ),
+            )
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout), mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "issue3_replay_note_launcher_contract.py",
+                    "--repo-root",
+                    str(root),
+                    "--json",
+                ],
+            ):
+                exit_code = __import__("issue3_replay_note_launcher_contract").main()
+            self.assertEqual(1, exit_code)
+            payload = json.loads(stdout.getvalue())
+            self.assertGreater(len(payload["failure_reasons"]), 0)
 
 
 if __name__ == "__main__":
