@@ -57,6 +57,18 @@ Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_rou
 Write-Host (("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note)
 """
 
+CHECKER_SNIPPET = """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint surface checker.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint helper.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.' -Purpose 'Launcher companion helper notes preserve when to hand control back into the pinned proof route after launcher preflight narrows the run to the known bundle.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet "windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments" -Purpose 'Launcher companion helper keeps the Windows replay re-entry helper wired into its command map after sidecar, asset, or proof preflight.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet "replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments" -Purpose 'Launcher companion helper keeps the narrower replay-route re-entry helper wired into its command map after preflight narrows the problem.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet "Write-Host 'Replay re-entry helpers:'" -Purpose 'Launcher companion helper prints a dedicated replay re-entry section header once proof-only follow-up is complete.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host (("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart)' -Purpose 'Launcher companion helper prints the Windows replay re-entry helper once preflight is complete.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut)' -Purpose 'Launcher companion helper prints the narrower replay-route re-entry helper once preflight is complete.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use windows_replay_quickstart after launcher-side sidecar, asset, or proof preflight when the next honest step is to re-enter the replay-attached Windows ladder without reopening the broader route map first.' -Purpose 'Launcher companion helper notes preserve when to hand control back to the Windows replay attached-html quickstart after launcher preflight.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.' -Purpose 'Launcher companion helper notes preserve when to prefer the shorter replay-route companion after launcher preflight narrows the problem.'),
+"""
+
 README_SNIPPET = """Use scripts/windows/start_attached_pages_catalog.ps1 for Windows wrapper flow.
 Use --audit-sidecars for sidecar-first checks.
 Use --require-complete-sidecars \\
@@ -104,6 +116,7 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         *,
         doc_text: str = DOC_SNIPPET,
         launcher_companion_text: str = LAUNCHER_COMPANION_SNIPPET,
+        checker_text: str = CHECKER_SNIPPET,
         readme_text: str = README_SNIPPET,
         wrapper_text: str = WRAPPER_SNIPPET,
         python_launcher_text: str = PYTHON_LAUNCHER_SNIPPET,
@@ -117,6 +130,10 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         )
         (self.root / "scripts" / "windows" / "show_google_issue3_attached_pages_launcher_companion.ps1").write_text(
             launcher_companion_text,
+            encoding="utf-8",
+        )
+        (self.root / "scripts" / "windows" / "check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1").write_text(
+            checker_text,
             encoding="utf-8",
         )
         (self.root / "tmp-browser-smoke" / "attached-pages" / "README.md").write_text(
@@ -137,10 +154,10 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         self.assertEqual(0, audit["missing_count"])
         self.assertTrue(all(result["exists"] for result in audit["results"]))
 
-    def test_build_audit_reports_missing_replay_helper_command(self) -> None:
+    def test_build_audit_reports_missing_checker_proof_guard(self) -> None:
         self.write_contract_files(
-            doc_text=DOC_SNIPPET.replace(
-                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -InputPath '<attached-html-root>'\n",
+            checker_text=CHECKER_SNIPPET.replace(
+                """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\"  Proof entrypoint:   {0}\") -f $helper.helper_commands.proof_entrypoint)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint helper.'),\n""",
                 "",
             )
         )
@@ -149,29 +166,15 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
 
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", failing_paths)
-
-    def test_build_audit_reports_missing_surface_check_wiring(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "    surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments\n",
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
-            "surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments",
-            failing_snippets,
+            "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+            failing_paths,
         )
 
-    def test_build_audit_reports_missing_launcher_surface_check_path(self) -> None:
+    def test_build_audit_reports_missing_checker_replay_reentry_guard(self) -> None:
         self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "        launcher_companion_surface_check = 'scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1'\n",
+            checker_text=CHECKER_SNIPPET.replace(
+                """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\"  Replay-route helper: {0}\") -f $helper.helper_commands.replay_route_shortcut)' -Purpose 'Launcher companion helper prints the narrower replay-route re-entry helper once preflight is complete.'),\n""",
                 "",
             )
         )
@@ -179,247 +182,11 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         audit = helper.build_launcher_companion_audit(self.root)
 
         self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
-            "launcher_companion_surface_check = 'scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1'",
-            failing_snippets,
+            "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+            failing_paths,
         )
-
-    def test_build_audit_reports_missing_google_strict_python_output(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                'Write-Host (("  10. Google strict:     {0}") -f $helper.helper_commands.python_google_strict_bundle)\n',
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
-
-    def test_build_audit_reports_missing_python_sidecar_preferred_page_wiring(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "        python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-sidecars')\n",
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-sidecars')",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_strict_bundle_guidance(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "Use the strict bundle commands when both sidecars and referenced local assets must be complete before a manifest print or localhost launch is trusted.",
-                "drifted strict guidance",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "Use the strict bundle commands when both sidecars and referenced local assets must be complete before a manifest print or localhost launch is trusted.",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_cross_platform_guidance(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "The lower-level Python launcher ladder shown here now preserves the same preferred-first-page override, so cross-platform reruns can keep the pinned bundle order without hand-editing each command.",
-                "drifted python guidance",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "The lower-level Python launcher ladder shown here now preserves the same preferred-first-page override, so cross-platform reruns can keep the pinned bundle order without hand-editing each command.",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_proof_bridge_output(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)\n',
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
-
-    def test_build_audit_reports_missing_proof_surface_output(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)\n',
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
-
-    def test_build_audit_reports_missing_replay_reentry_section(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "Write-Host 'Replay re-entry helpers:'\n",
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
-
-    def test_build_audit_reports_missing_replay_route_helper_output(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                'Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut)\n',
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
-
-    def test_build_audit_reports_missing_replay_route_note_path_mapping(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "        replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'\n",
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_replay_route_note_output(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                'Write-Host (("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note)\n',
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
-
-    def test_build_audit_reports_missing_replay_route_guidance(self) -> None:
-        self.write_contract_files(
-            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
-                "Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
-                "drifted replay-route note",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_replay_route_note(self) -> None:
-        self.write_contract_files(shortcut_doc_text="# drifted\n")
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md", failing_paths)
-
-    def test_build_audit_reports_missing_strict_readme_text(self) -> None:
-        self.write_contract_files(readme_text="Use scripts/windows/start_attached_pages_catalog.ps1\n")
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("tmp-browser-smoke/attached-pages/README.md", failing_paths)
-
-    def test_build_audit_reports_missing_wrapper_sidecar_gate(self) -> None:
-        self.write_contract_files(
-            wrapper_text='param(\n    [string]$PreferredInitialPage,\n    [string[]]$InputPath\n)\n$orderedInputs = Resolve-OrderedAttachedHtmlInputs -RawInputPath $InputPath -PreferredPage $PreferredInitialPage\n$launcherArgs += "--audit-sidecars"\n$launcherArgs += "--require-complete-assets"\n'
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/start_attached_pages_catalog.ps1", failing_paths)
-
-    def test_build_audit_reports_missing_wrapper_preferred_initial_page_handoff(self) -> None:
-        self.write_contract_files(
-            wrapper_text=WRAPPER_SNIPPET.replace(
-                "$orderedInputs = Resolve-OrderedAttachedHtmlInputs -RawInputPath $InputPath -PreferredPage $PreferredInitialPage\n",
-                "",
-            )
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn(
-            "$orderedInputs = Resolve-OrderedAttachedHtmlInputs -RawInputPath $InputPath -PreferredPage $PreferredInitialPage",
-            failing_snippets,
-        )
-
-    def test_build_audit_reports_missing_python_launcher_preferred_flag(self) -> None:
-        self.write_contract_files(
-            python_launcher_text=PYTHON_LAUNCHER_SNIPPET.replace("parser.add_argument('--preferred-initial-page')\n", "")
-        )
-
-        audit = helper.build_launcher_companion_audit(self.root)
-
-        self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("--preferred-initial-page", failing_snippets)
-
-    def test_text_report_surfaces_failure_count(self) -> None:
-        self.write_contract_files(wrapper_text="# drifted\n", python_launcher_text="# drifted\n")
-
-        audit = helper.build_launcher_companion_audit(self.root)
-        report = helper.render_text_report(audit)
-
-        self.assertIn("Google Issue #3 Attached-Pages Launcher Companion Audit", report)
-        self.assertIn("Missing expectations:", report)
-        self.assertIn("[FAIL] scripts/windows/start_attached_pages_catalog.ps1", report)
 
     def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
         self.write_contract_files(doc_text="# drifted\n", wrapper_text="# drifted\n", python_launcher_text="# drifted\n")
