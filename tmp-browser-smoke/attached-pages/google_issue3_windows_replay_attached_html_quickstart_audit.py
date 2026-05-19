@@ -30,6 +30,11 @@ EXPECTATIONS = (
         "purpose": "The replay-attached quickstart keeps the launcher companion helper visible with an attached-page input path.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'",
+        "purpose": "The replay-attached quickstart keeps the launcher companion helper visible when repo-root-preserving replay context is already pinned.",
+    },
+    {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the compact bundle-suite surface wired into its command map.",
