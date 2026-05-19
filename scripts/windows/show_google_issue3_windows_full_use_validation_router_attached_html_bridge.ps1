@@ -293,15 +293,16 @@ Write-Host ''
 Write-Host 'Windows-to-validation route:'
 Write-Host (("  1. Windows route:          {0}") -f $helper.commands.windows_full_use_attached_html_route)
 Write-Host (("  2. Attached HTML route:    {0}") -f $helper.commands.attached_html_change_area)
-Write-Host (("  3. Validation quickstart:  {0}") -f $helper.commands.validation_router_attached_html_quickstart)
-Write-Host (("  4. Change-area quickstart: {0}") -f $helper.commands.attached_html_change_area_quickstart)
-Write-Host (("  5. Attached flow helper:   {0}") -f $helper.commands.attached_html_flow)
-Write-Host (("  6. Google attached flow:   {0}") -f $helper.commands.google_attached_html_flow)
-Write-Host (("  7. Top-level quickstart:   {0}") -f $helper.commands.top_level_attached_html_quickstart)
-Write-Host (("  8. Catalog quickstart:     {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
-Write-Host (("  9. Router quickstart:      {0}") -f $helper.commands.suite_router_attached_html_quickstart)
-Write-Host ((" 10. Attached shortcut:      {0}") -f $helper.commands.attached_html_shortcut)
-Write-Host ((" 11. Replay shortcuts:       {0}") -f $helper.commands.replay_shortcuts)
+Write-Host (("  3. Validation surface:     {0}") -f $helper.commands.validation_router_surface_check)
+Write-Host (("  4. Validation quickstart:  {0}") -f $helper.commands.validation_router_attached_html_quickstart)
+Write-Host (("  5. Change-area quickstart: {0}") -f $helper.commands.attached_html_change_area_quickstart)
+Write-Host (("  6. Attached flow helper:   {0}") -f $helper.commands.attached_html_flow)
+Write-Host (("  7. Google attached flow:   {0}") -f $helper.commands.google_attached_html_flow)
+Write-Host (("  8. Top-level quickstart:   {0}") -f $helper.commands.top_level_attached_html_quickstart)
+Write-Host (("  9. Catalog quickstart:     {0}") -f $helper.commands.top_level_attached_html_catalog_quickstart)
+Write-Host ((" 10. Router quickstart:      {0}") -f $helper.commands.suite_router_attached_html_quickstart)
+Write-Host ((" 11. Attached shortcut:      {0}") -f $helper.commands.attached_html_shortcut)
+Write-Host ((" 12. Replay shortcuts:       {0}") -f $helper.commands.replay_shortcuts)
 Write-Host ''
 Write-Host 'Context-preserving follow-up:'
 Write-Host (("  Contextual flow:           {0}") -f $helper.commands.contextual_flow)
@@ -320,5 +321,5 @@ Write-Host (("Replay quickstart note:     {0}") -f (' ' + $helper.windows_replay
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
-    Write-Host (("- {0}") -f $note)
+    Write-Host (("- {0}") -f $helper.notes)
 }
