@@ -267,6 +267,24 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_entrypoint_sidecar_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
+        "",
+    ),
+    (
+        "google_entrypoint_broader_surface_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host (("  7. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)',
+        "",
+    ),
+    (
+        "google_entrypoint_asset_closure_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)',
+        "",
+    ),
+    (
         "google_entrypoint_issue_specific_output",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)',
