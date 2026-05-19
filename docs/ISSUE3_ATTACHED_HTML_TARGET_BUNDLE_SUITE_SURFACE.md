@@ -54,6 +54,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_t
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
@@ -64,7 +65,7 @@ Use that route when:
 - you want the fail-fast Google attached-page surface and asset-closure checks visible before the broader attached-page flow helper, the dedicated Google-shaped attached-page flow helper, and the delegated Google-shaped attached-page runner take over
 - you want the broader attached-page flow helper plus the full Google-shaped attached-page validation route kept in view before the replay locks onto the delegated bundle validation runner
 - you want the bundle surface checker and the pinned three-page bundle checker kept visible together so the current saved-page set can be revalidated before the delegated bundle runner starts
-- you want the pinned proof note, checklist, and proof-entrypoint handoff visible immediately after the delegated bundle runner instead of rediscovering them later from the broader helper stack
+- you want the pinned proof note, the proof-entrypoint surface checker, the checklist, and the proof-entrypoint handoff visible immediately after the delegated bundle runner instead of rediscovering them later from the broader helper stack
 
 ## Validation-catalog re-entry
 
@@ -83,6 +84,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_attached_html_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
@@ -91,7 +93,7 @@ Use that route when:
 - the higher-level validation catalog or roadmap still needs to stay visible before the replay narrows into the pinned bundle lane
 - you want the broader attached-page and Google-shaped attached-page routes surfaced beside the compact bundle-focused suite helper rather than rediscovered later
 - you want the fail-fast Google attached-page surface and asset-closure checks carried forward before the narrower bundle-first helper takes over
-- you want the top-level attached-page bridge, the dedicated suite-surface helper, the bundle-first helper, the replay-route helpers, the delegated Google-shaped runner, and the proof-entrypoint handoff aligned with the same broader catalog-first route that the surrounding bundle-reference, proof-entry, and roadmap notes already describe
+- you want the top-level attached-page bridge, the dedicated suite-surface helper, the bundle-first helper, the replay-route helpers, the delegated Google-shaped runner, the proof-entrypoint surface checker, and the proof-entrypoint handoff aligned with the same broader catalog-first route that the surrounding bundle-reference, proof-entry, and roadmap notes already describe
 
 ## Suite-catalog re-entry
 
@@ -103,13 +105,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_s
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_catalog_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
 Use that route when:
 
 - the suite-catalog surface still matters more than the narrower bundle-first route
-- you want the suite-catalog guide, the suite-catalog attached-page bridge, the dedicated bundle suite-surface helper, the proof note, and the proof-entrypoint handoff printed in one truthful order before bundle-only execution begins
+- you want the suite-catalog guide, the suite-catalog attached-page bridge, the dedicated bundle suite-surface helper, the proof note, the proof-entrypoint surface checker, and the proof-entrypoint handoff printed in one truthful order before bundle-only execution begins
 - the replay may still widen back into the broader attached-page or Google-shaped attached-page ladders if the pinned three-page bundle is no longer the right next branch
 
 ## Top-level attached-html re-entry
@@ -122,13 +125,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_to
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 ```
 
 Use that route when:
 
 - the replay already narrowed through the top-level attached-html quickstart or bridge
-- you want the bundle quickstart, the compact top-level route, the broader top-level bridge, the proof note, and the proof-entrypoint handoff kept visible beside the dedicated bundle suite surface before the replay collapses into the narrower bundle-first helper
+- you want the bundle quickstart, the compact top-level route, the broader top-level bridge, the proof note, the proof-entrypoint surface checker, and the proof-entrypoint handoff kept visible beside the dedicated bundle suite surface before the replay collapses into the narrower bundle-first helper
 - explicit bundle paths are already pinned and should stay attached to the top-level helper chain while the replay decides whether to stay on the bundle lane or widen back into the broader attached-page flow helpers
 
 ## Use the dedicated helper first
@@ -155,6 +159,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 ```
 
@@ -173,6 +178,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_at
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_shortcuts.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 
@@ -180,7 +186,7 @@ Use that context-preserving form when:
 
 - `LIGHTPANDA_REPO_ROOT` already points at a non-default checkout
 - `SummaryPath` already captures the current replay outputs
-- explicit `InputPath` values should stay pinned through the top-level re-entry, the suite-catalog side re-entry, the dedicated bundle suite surface, the narrower bundle-first helper, the replay-route helpers, the proof-entrypoint handoff, and the proof note without relying on auto-discovery
+- explicit `InputPath` values should stay pinned through the top-level re-entry, the suite-catalog side re-entry, the dedicated bundle suite surface, the narrower bundle-first helper, the replay-route helpers, the proof-entrypoint surface checker, the proof-entrypoint handoff, and the proof note without relying on auto-discovery
 
 ## Practical rule
 
