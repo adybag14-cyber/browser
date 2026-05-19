@@ -212,7 +212,7 @@ if ($BrowserExe) {
 
 $surface = [ordered]@{
     issue = 'Google issue #3 attached-html target-bundle suite surface'
-    purpose = 'Print the compact suite-level route for the known three-page attached HTML compatibility bundle while keeping the broader attached-page lane, the full Google-shaped attached-page validation route, the pinned bundle checker, and the proof-entry follow-up visible beside the attached-html-target-bundle change-area output.'
+    purpose = 'Print the compact suite-level route for the known three-page attached HTML compatibility bundle while keeping the broader attached-page lane, the full Google-shaped attached-page validation route, the narrower issue-specific Google attached-page checker and entrypoint, the pinned bundle checker, and the proof-entry follow-up visible beside the attached-html-target-bundle change-area output.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
@@ -228,6 +228,8 @@ $surface = [ordered]@{
         broader_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_runner = Format-HelperCommandWithRepoRootEnv -ScriptName 'run_google_attached_html_validation.ps1' -Arguments $googleAttachedHtmlFlowArguments -Switches @('Wait') -RepoRootOverride $RepoRoot
+        google_issue3_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
+        google_issue3_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $reentryArguments
         bundle_surface_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
         bundle_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle.ps1' -Arguments $bundleCheckerArguments
         bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleRouteArguments
@@ -246,15 +248,17 @@ $surface = [ordered]@{
         top_level_attached_html_bridge = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
         bundle_first_bridge = 'docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md'
         google_attached_html_flow = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
+        google_issue3_attached_html_entrypoint = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
         windows_replay_attached_html_quickstart = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
         validation_chain = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     }
     notes = @(
-        'Use this helper when you want the attached-html-target-bundle suite surface printed with the broader attached-page lane, the full Google-shaped attached-page follow-up route, the bundle checker, and the proof-entry follow-up still visible beside it.',
+        'Use this helper when you want the attached-html-target-bundle suite surface printed with the broader attached-page lane, the full Google-shaped attached-page follow-up route, the narrower issue-specific Google attached-page checker and entrypoint, the bundle checker, and the proof-entry follow-up still visible beside it.',
         'Start with the attached_html_target_bundle suite command when the current attached pages are already the likely three-page compatibility bundle and you want the compact suite surface first.',
         'Keep the attached_html suite command nearby when the replay may still need the broader attached-page fallback before it locks onto the pinned bundle branch.',
-        'Keep the google_attached_html suite command nearby when the current inputs include a Google-like attached page and the narrower Google-shaped helper chain still matters before bundle-first replay.',
+        'Keep the google_attached_html suite command nearby when the current inputs include a Google-like attached page and the narrower issue-specific Google attached-page chain still matters before bundle-first replay.',
         'Run google_attached_html_surface_check, google_attached_html_asset_closure, broader_attached_html_flow, google_attached_html_flow, and google_attached_html_runner before the bundle-only route when the next decision still depends on seeing the broader attached-page lane and the full Google-shaped attached-page chain beside the pinned bundle lane.',
+        'Run google_issue3_attached_html_surface_check and google_issue3_attached_html_entrypoint after the broader Google-shaped attached-page surface looks right when the replay should stay on the narrower issue-specific Google lane before narrowing into the bundle-only route.',
         'Run bundle_surface_check before trusting the bundle-only replay after branch moves or helper renames.',
         'Run bundle_check right after bundle_surface_check when you want the current saved-page set revalidated as the same known three-page compatibility bundle before the delegated runner takes over.',
         'Pass -BrowserExe when the bundle-specific route should stay pinned to a non-default Windows headed build through the suite surface, bundle-first entrypoint, printed bundle flow, and delegated bundle runner.',
@@ -311,6 +315,8 @@ Write-Host (("  Google assets:   {0}") -f $surface.helper_commands.google_attach
 Write-Host (("  Broader flow:    {0}") -f $surface.helper_commands.broader_attached_html_flow)
 Write-Host (("  Google flow:     {0}") -f $surface.helper_commands.google_attached_html_flow)
 Write-Host (("  Google runner:   {0}") -f $surface.helper_commands.google_attached_html_runner)
+Write-Host (("  Issue #3 Google: {0}") -f $surface.helper_commands.google_issue3_attached_html_surface_check)
+Write-Host (("  Issue #3 helper: {0}") -f $surface.helper_commands.google_issue3_attached_html_entrypoint)
 Write-Host (("  Surface check:   {0}") -f $surface.helper_commands.bundle_surface_check)
 Write-Host (("  Bundle check:    {0}") -f $surface.helper_commands.bundle_check)
 Write-Host (("  Bundle flow:     {0}") -f $surface.helper_commands.bundle_flow)
@@ -330,6 +336,7 @@ Write-Host (("Bundle checklist note:      {0}") -f $surface.note_paths.bundle_ch
 Write-Host (("Top-level bridge note:      {0}") -f $surface.note_paths.top_level_attached_html_bridge)
 Write-Host (("Bundle-first bridge note:   {0}") -f $surface.note_paths.bundle_first_bridge)
 Write-Host (("Google attached-flow note:  {0}") -f $surface.note_paths.google_attached_html_flow)
+Write-Host (("Issue #3 Google note:       {0}") -f $surface.note_paths.google_issue3_attached_html_entrypoint)
 Write-Host (("Replay quickstart note:     {0}") -f $surface.note_paths.windows_replay_attached_html_quickstart)
 Write-Host (("Validation chain note:      {0}") -f $surface.note_paths.validation_chain)
 Write-Host ''
