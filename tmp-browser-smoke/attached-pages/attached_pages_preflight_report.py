@@ -161,6 +161,8 @@ def assemble_preflight_report(
         "port": port,
         "catalog_url": build_route_url(bind, port, "/"),
         "manifest_url": build_route_url(bind, port, "/manifest.json"),
+        "sidecar_json_url": build_route_url(bind, port, "/sidecars.json"),
+        "sidecar_text_url": build_route_url(bind, port, "/sidecars.txt"),
         "audit_json_url": build_route_url(bind, port, "/audit.json"),
         "audit_text_url": build_route_url(bind, port, "/audit.txt"),
         "input_count": len(selected_files),
@@ -250,6 +252,8 @@ def render_text_report(report: dict[str, object]) -> str:
         f"Recommended command: {report['recommended_command']}",
         f"Catalog URL: {report['catalog_url']}",
         f"Manifest URL: {report['manifest_url']}",
+        f"Sidecar JSON URL: {report['sidecar_json_url']}",
+        f"Sidecar text URL: {report['sidecar_text_url']}",
         f"Audit JSON URL: {report['audit_json_url']}",
         f"Audit text URL: {report['audit_text_url']}",
     ]
