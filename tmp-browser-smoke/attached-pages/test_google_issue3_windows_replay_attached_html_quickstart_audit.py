@@ -327,6 +327,40 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             failing_paths,
         )
 
+    def test_build_audit_reports_missing_validation_bridge_wiring(self) -> None:
+        self.write_contract_files(
+            replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
+                "        windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $browserAwareSharedArguments\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_validation_bridge_output(self) -> None:
+        self.write_contract_files(
+            replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
+                'Write-Host (("  Validation bridge:        {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+            failing_paths,
+        )
+
     def test_build_audit_reports_missing_suite_catalog_guidance(self) -> None:
         self.write_contract_files(
             replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
