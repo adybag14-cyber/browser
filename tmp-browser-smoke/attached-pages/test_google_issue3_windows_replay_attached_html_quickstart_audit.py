@@ -179,6 +179,42 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_bundle_proof_note_reference(self) -> None:
+        contract_map = build_contract_map()
+        path = "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
+        snippet = "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`"
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_bundle_proof_surface_check_note_command(self) -> None:
+        contract_map = build_contract_map()
+        path = "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
+        snippet = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1"
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_bundle_proof_entrypoint_note_command(self) -> None:
+        contract_map = build_contract_map()
+        path = "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
+        snippet = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1"
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_build_audit_reports_missing_top_level_shortcut_output(self) -> None:
         contract_map = build_contract_map()
         path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
