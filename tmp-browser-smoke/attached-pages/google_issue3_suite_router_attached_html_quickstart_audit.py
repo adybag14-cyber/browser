@@ -35,6 +35,16 @@ EXPECTATIONS = (
         "purpose": "The suite-router attached HTML quickstart keeps the suite-catalog guide visible before the route narrows again.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`",
+        "purpose": "The replay-attached quickstart keeps the suite-router attached HTML note visible before the route narrows back into the sidecar-first branch.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1",
+        "purpose": "The replay-attached quickstart keeps the suite-router attached HTML helper visible before the route narrows back into the sidecar-first branch.",
+    },
+    {
         "path": "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1",
         "snippet": "$command = 'python .\\\\tmp-browser-smoke\\\\attached-pages\\\\start_attached_pages_catalog.py --audit-sidecars'",
         "purpose": "The helper keeps the attached-pages sidecar audit command builder wired into the compact surface.",
@@ -63,6 +73,16 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1",
         "snippet": "google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments",
         "purpose": "The helper keeps the issue-specific Google attached HTML bridge visible from the compact route.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the suite-router attached HTML helper wired into its command map before the route narrows again.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)',
+        "purpose": "The replay-attached helper prints the suite-router attached HTML helper before the route narrows back into the sidecar-first branch.",
     },
     {
         "path": "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1",
