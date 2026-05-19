@@ -20,6 +20,15 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 ```
 """
 
+REPLAY_NOTE_SNIPPET = """# Issue #3 Windows Replay Attached HTML Quickstart
+
+Keep these companion notes nearby:
+- `docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md`
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1
+```
+"""
 
 HELPER_SNIPPET = """function Format-AttachedPagesSidecarAuditCommand {
     $command = 'python .\\\\tmp-browser-smoke\\\\attached-pages\\\\start_attached_pages_catalog.py --audit-sidecars'
@@ -40,6 +49,15 @@ Write-Host (("  Issue-specific Google check: {0}") -f $helper.commands.google_is
 Write-Host (("  Google attached bridge:       {0}") -f $helper.commands.google_attached_html_entrypoint)
 """
 
+REPLAY_HELPER_SNIPPET = """$helper = [ordered]@{
+    commands = [ordered]@{
+        suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
+    }
+}
+
+Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)
+"""
+
 
 class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -55,14 +73,24 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
         self,
         *,
         doc_text: str = DOC_SNIPPET,
+        replay_note_text: str = REPLAY_NOTE_SNIPPET,
         helper_text: str = HELPER_SNIPPET,
+        replay_helper_text: str = REPLAY_HELPER_SNIPPET,
     ) -> None:
         (self.root / "docs" / "ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md").write_text(
             doc_text,
             encoding="utf-8",
         )
+        (self.root / "docs" / "ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md").write_text(
+            replay_note_text,
+            encoding="utf-8",
+        )
         (self.root / "scripts" / "windows" / "show_google_issue3_suite_router_attached_html_quickstart.ps1").write_text(
             helper_text,
+            encoding="utf-8",
+        )
+        (self.root / "scripts" / "windows" / "show_google_issue3_windows_replay_attached_html_quickstart.ps1").write_text(
+            replay_helper_text,
             encoding="utf-8",
         )
 
@@ -104,6 +132,37 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1", failing_paths)
+
+    def test_build_audit_reports_missing_replay_note_bridge(self) -> None:
+        self.write_contract_files(
+            replay_note_text=REPLAY_NOTE_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_attached_html_quickstart.ps1",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_replay_helper_output(self) -> None:
+        self.write_contract_files(
+            replay_helper_text=REPLAY_HELPER_SNIPPET.replace(
+                'Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1", failing_paths)
 
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(helper_text="# drifted\n")
