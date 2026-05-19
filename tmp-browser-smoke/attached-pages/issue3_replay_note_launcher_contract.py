@@ -12,6 +12,12 @@ DEFAULT_RELATIVE_PATHS = (
     "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
 )
 
+PROOF_NOTE = "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md"
+PROOF_SURFACE_CHECK = (
+    "check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1"
+)
+PROOF_HELPER_MARKER = "show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1"
+
 
 def resolve_paths(repo_root: Path, explicit_paths: list[str] | None) -> list[Path]:
     selected = explicit_paths or list(DEFAULT_RELATIVE_PATHS)
@@ -31,25 +37,38 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
     wrapper_count = 0
     wrapper_sidecar_count = 0
     google_wrapper_sidecar_count = 0
+    proof_note_count = 0
+    proof_surface_check_count = 0
+    proof_helper_count = 0
 
     for path in paths:
         text = path.read_text(encoding="utf-8", errors="ignore")
         relative_path = path.relative_to(repo_root).as_posix()
         raw_hits: list[dict[str, object]] = []
         wrapper_hits: list[dict[str, object]] = []
+        proof_note_hits: list[dict[str, object]] = []
+        proof_surface_hits: list[dict[str, object]] = []
+        proof_helper_hits: list[dict[str, object]] = []
 
         for line_number, line in enumerate(text.splitlines(), start=1):
+            stripped = line.rstrip()
             if RAW_LAUNCHER in line:
-                raw_hits.append({"line_number": line_number, "line": line.rstrip()})
+                raw_hits.append({"line_number": line_number, "line": stripped})
             if WRAPPER_LAUNCHER in line:
                 wrapper_hits.append(
                     {
                         "line_number": line_number,
-                        "line": line.rstrip(),
+                        "line": stripped,
                         "mentions_sidecars": SIDECAR_FLAG in line,
                         "mentions_google_style": GOOGLE_FLAG in line,
                     }
                 )
+            if PROOF_NOTE in line:
+                proof_note_hits.append({"line_number": line_number, "line": stripped})
+            if PROOF_SURFACE_CHECK in line:
+                proof_surface_hits.append({"line_number": line_number, "line": stripped})
+            if PROOF_HELPER_MARKER in line:
+                proof_helper_hits.append({"line_number": line_number, "line": stripped})
 
         raw_count += len(raw_hits)
         wrapper_count += len(wrapper_hits)
@@ -57,6 +76,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         google_wrapper_sidecar_count += sum(
             1 for hit in wrapper_hits if hit["mentions_sidecars"] and hit["mentions_google_style"]
         )
+        proof_note_count += len(proof_note_hits)
+        proof_surface_check_count += len(proof_surface_hits)
+        proof_helper_count += len(proof_helper_hits)
 
         file_results.append(
             {
@@ -66,6 +88,12 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 "raw_python_references": raw_hits,
                 "wrapper_reference_count": len(wrapper_hits),
                 "wrapper_references": wrapper_hits,
+                "proof_note_reference_count": len(proof_note_hits),
+                "proof_note_references": proof_note_hits,
+                "proof_surface_check_count": len(proof_surface_hits),
+                "proof_surface_checks": proof_surface_hits,
+                "proof_helper_count": len(proof_helper_hits),
+                "proof_helpers": proof_helper_hits,
             }
         )
 
@@ -76,6 +104,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "wrapper_reference_count": wrapper_count,
         "wrapper_sidecar_reference_count": wrapper_sidecar_count,
         "google_wrapper_sidecar_reference_count": google_wrapper_sidecar_count,
+        "proof_note_reference_count": proof_note_count,
+        "proof_surface_check_count": proof_surface_check_count,
+        "proof_helper_count": proof_helper_count,
         "files": file_results,
     }
 
@@ -90,6 +121,12 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the wrapper-backed sidecar audit visible")
     if audit["google_wrapper_sidecar_reference_count"] == 0:
         reasons.append("replay notes do not keep the Google-style wrapper-backed sidecar audit visible")
+    if audit["proof_note_reference_count"] == 0:
+        reasons.append("replay notes do not keep the pinned bundle proof note visible")
+    if audit["proof_surface_check_count"] == 0:
+        reasons.append("replay notes do not keep the pinned bundle proof surface checker visible")
+    if audit["proof_helper_count"] == 0:
+        reasons.append("replay notes do not keep the pinned bundle proof helper visible")
     return reasons
 
 
@@ -103,6 +140,9 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Wrapper references: {audit['wrapper_reference_count']}",
         f"Wrapper sidecar references: {audit['wrapper_sidecar_reference_count']}",
         f"Google-style wrapper sidecar references: {audit['google_wrapper_sidecar_reference_count']}",
+        f"Pinned proof note references: {audit['proof_note_reference_count']}",
+        f"Pinned proof checker references: {audit['proof_surface_check_count']}",
+        f"Pinned proof helper references: {audit['proof_helper_count']}",
         "",
     ]
 
@@ -110,10 +150,19 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         lines.append(f"File: {file_result['display_path']}")
         lines.append(f"  Raw Python references: {file_result['raw_python_reference_count']}")
         lines.append(f"  Wrapper references: {file_result['wrapper_reference_count']}")
+        lines.append(f"  Pinned proof note references: {file_result['proof_note_reference_count']}")
+        lines.append(f"  Pinned proof checker references: {file_result['proof_surface_check_count']}")
+        lines.append(f"  Pinned proof helper references: {file_result['proof_helper_count']}")
         for hit in file_result["raw_python_references"][:5]:
             lines.append(f"  Raw line {hit['line_number']}: {hit['line']}")
         for hit in file_result["wrapper_references"][:5]:
             lines.append(f"  Wrapper line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["proof_note_references"][:3]:
+            lines.append(f"  Proof note line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["proof_surface_checks"][:3]:
+            lines.append(f"  Proof check line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["proof_helpers"][:3]:
+            lines.append(f"  Proof helper line {hit['line_number']}: {hit['line']}")
         lines.append("")
 
     for reason in reasons:
@@ -123,7 +172,7 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Fail if the issue #3 replay notes drift back to raw attached-pages launcher commands."
+        description="Fail if the issue #3 replay notes drift away from the wrapper-backed launcher or pinned proof route."
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
     parser.add_argument(
