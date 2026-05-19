@@ -111,6 +111,30 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "suite_catalog_entrypoints_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "top_level_attached_quickstart_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $browserAwareSharedArguments",
+        "",
+    ),
+    (
+        "top_level_attached_surface_check_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "top_level_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_top_level_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot",
+        "",
+    ),
+    (
+        "top_level_attached_entrypoint_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $browserAwareSharedArguments",
+        "",
+    ),
+    (
         "top_level_shortcut_bridge_note_reference",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`",
