@@ -25,6 +25,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 
 REPLAY_SCRIPT_SNIPPET = """$helper = [ordered]@{
     commands = [ordered]@{
+        suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments
         google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments
         attached_bundle_proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $routeSurfaceArguments
@@ -33,12 +34,14 @@ REPLAY_SCRIPT_SNIPPET = """$helper = [ordered]@{
         attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments
     }
     notes = @(
+        'Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.',
         'Use google_attached_html_entrypoint when the replay already needs the issue-specific Google attached-html bridge kept visible after the dedicated Google attached-page flow and before the compact bundle suite or the narrower shortcuts take over.',
         'Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.',
         'Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.'
     )
 }
 
+Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)
 Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)
 Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)
@@ -58,7 +61,6 @@ LAUNCHER_COMPANION_SNIPPET = """$helper = [ordered]@{
     )
 }
 
-Write-Host 'Pinned bundle proof follow-up:'
 Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)
 Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)
 """
@@ -84,14 +86,18 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         (self.root / "docs" / "ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md").write_text(
             doc_text, encoding="utf-8"
         )
-        (self.root / "scripts" / "windows" / "show_google_issue3_windows_replay_attached_html_quickstart.ps1").write_text(
-            replay_script_text,
-            encoding="utf-8",
-        )
-        (self.root / "scripts" / "windows" / "show_google_issue3_attached_pages_launcher_companion.ps1").write_text(
-            launcher_companion_text,
-            encoding="utf-8",
-        )
+        (
+            self.root
+            / "scripts"
+            / "windows"
+            / "show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        ).write_text(replay_script_text, encoding="utf-8")
+        (
+            self.root
+            / "scripts"
+            / "windows"
+            / "show_google_issue3_attached_pages_launcher_companion.ps1"
+        ).write_text(launcher_companion_text, encoding="utf-8")
 
     def test_build_audit_passes_when_contract_is_present(self) -> None:
         self.write_contract_files()
@@ -100,6 +106,23 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         self.assertEqual(0, audit["missing_count"])
         self.assertTrue(all(result["exists"] for result in audit["results"]))
+
+    def test_build_audit_reports_missing_suite_catalog_guidance(self) -> None:
+        self.write_contract_files(
+            replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
+                "Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.",
+                "drifted suite note",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.",
+            failing_snippets,
+        )
 
     def test_build_audit_reports_missing_google_entrypoint_command(self) -> None:
         self.write_contract_files(
@@ -118,7 +141,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             failing_snippets,
         )
 
-    def test_build_audit_reports_missing_helper_google_bridge_output(self) -> None:
+    def test_build_audit_reports_missing_google_bridge_output(self) -> None:
         self.write_contract_files(
             replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
                 'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)\n',
@@ -130,12 +153,15 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1", failing_paths)
+        self.assertIn(
+            "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+            failing_paths,
+        )
 
-    def test_build_audit_reports_missing_proof_helper_output(self) -> None:
+    def test_build_audit_reports_missing_proof_companion_note(self) -> None:
         self.write_contract_files(
-            replay_script_text=REPLAY_SCRIPT_SNIPPET.replace(
-                'Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)\n',
+            doc_text=DOC_SNIPPET.replace(
+                "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`\n",
                 "",
             )
         )
@@ -144,7 +170,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1", failing_paths)
+        self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", failing_paths)
 
     def test_build_audit_reports_missing_launcher_companion_proof_bridge(self) -> None:
         self.write_contract_files(
@@ -158,7 +184,10 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
+        self.assertIn(
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+            failing_paths,
+        )
 
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(replay_script_text="# drifted\n", launcher_companion_text="# drifted\n")
@@ -168,7 +197,10 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         self.assertIn("Google Issue #3 Windows Replay Attached HTML Quickstart Audit", report)
         self.assertIn("Missing expectations:", report)
-        self.assertIn("[FAIL] scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1", report)
+        self.assertIn(
+            "[FAIL] scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+            report,
+        )
 
     def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
         self.write_contract_files(doc_text="# drifted\n", launcher_companion_text="# drifted\n")
