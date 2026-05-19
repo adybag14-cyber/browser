@@ -57,25 +57,25 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "replay_route_bundle_first_bridge_note_reference",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md",
+        "",
+    ),
+    (
+        "replay_route_shortcut_checker_bundle_proof_note",
+        "scripts/windows/check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+        "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md",
+        "",
+    ),
+    (
+        "replay_route_shortcut_checker_replay_to_windows_bridge",
+        "scripts/windows/check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+        "show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "",
+    ),
+    (
         "launcher_surface_check_output",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pages_launcher_companion_surface_check)',
-        "",
-    ),
-    (
-        "launcher_companion_wiring",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments",
-        "",
-    ),
-    (
-        "launcher_companion_output",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
-        "",
-    ),
-    (
-        "launcher_proof_surface_output",
         "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)',
         "",
@@ -127,6 +127,18 @@ DRIFT_CASES = (
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.",
         "drifted note",
+    ),
+    (
+        "top_level_shortcut_windows_replay_wiring",
+        "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments",
+        "",
+    ),
+    (
+        "top_level_shortcut_windows_replay_output",
+        "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        'Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)',
+        "",
     ),
     (
         "attached_bundle_suite_surface_wiring",
