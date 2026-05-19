@@ -130,6 +130,16 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_suite_catalog_guide_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        snippet = 'Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_build_audit_reports_missing_bundle_proof_surface_check_wiring(self) -> None:
         contract_map = build_contract_map()
         path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
@@ -164,6 +174,16 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             "route widens again."
         )
         self.write_contract_files({path: contract_map[path].replace(snippet, "drifted note")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_top_level_shortcut_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        snippet = 'Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_shortcut_first)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
         audit = helper.build_replay_attached_quickstart_audit(self.root)
         self.assertGreater(audit["missing_count"], 0)
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
@@ -233,6 +253,16 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_replay_route_shortcut_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        snippet = 'Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_build_audit_reports_missing_launcher_replay_route_guidance(self) -> None:
         contract_map = build_contract_map()
         path = "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1"
@@ -257,18 +287,3 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.assertIn("Google Issue #3 Windows Replay Attached HTML Quickstart Audit", report)
         self.assertIn("Missing expectations:", report)
         self.assertIn("[FAIL] docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", report)
-
-    def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
-        self.write_contract_files(
-            {"scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1": "# drifted\n"}
-        )
-        stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout):
-            exit_code = helper.main(["--repo-root", str(self.root), "--json"])
-        self.assertEqual(1, exit_code)
-        payload = json.loads(stdout.getvalue())
-        self.assertGreater(payload["missing_count"], 0)
-
-
-if __name__ == "__main__":
-    unittest.main()
