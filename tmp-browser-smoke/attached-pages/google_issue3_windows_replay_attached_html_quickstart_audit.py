@@ -115,6 +115,16 @@ EXPECTATIONS = (
         "purpose": "The replay-route shortcut bridge note keeps the replay-shortcuts-to-Windows-replay bridge visible before the route narrows again.",
     },
     {
+        "path": "scripts/windows/check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+        "snippet": "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md",
+        "purpose": "The replay-route shortcut checker keeps the pinned bundle proof note in scope when the compact replay branch is still validating bundle-aware follow-up.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+        "snippet": "show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "purpose": "The replay-route shortcut checker keeps the replay-to-Windows bridge in scope when the compact replay branch still needs the replay-side ladder reopened.",
+    },
+    {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments",
         "purpose": "The replay-attached helper keeps the replay-side surface checker wired into its command map.",
@@ -168,6 +178,31 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the replay-route shortcut bridge wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "snippet": "windows_replay_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "purpose": "The replay-to-Windows bridge keeps the replay-side surface checker wired into its command map before the shorter route hands off to the Windows replay ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "snippet": "windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-to-Windows bridge keeps the Windows replay attached-html quickstart wired into its command map before the shorter route hands off to the replay-side ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "snippet": 'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)',
+        "purpose": "The replay-to-Windows bridge prints the replay-side surface checker before the handoff narrows into the Windows replay ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "snippet": 'Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)',
+        "purpose": "The replay-to-Windows bridge prints the Windows replay quickstart before the shorter route collapses back into the replay-side ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "snippet": "Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.",
+        "purpose": "The replay-to-Windows bridge notes preserve when the default handoff should jump straight into the Windows replay attached-html quickstart.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
@@ -470,7 +505,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Audit the replay-attached quickstart note plus the downstream Google-entrypoint, "
-            "top-level shortcut bridge, replay-route shortcut bridge, launcher-companion, and bundle-proof helper contracts for drift."
+            "top-level shortcut bridge, replay-route shortcut bridge, launcher-companion, "
+            "replay-route checker, replay-to-Windows bridge helper, and bundle-proof helper contracts for drift."
         )
     )
     parser.add_argument(
