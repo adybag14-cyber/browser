@@ -14,6 +14,7 @@ DEFAULT_FILES = (
     "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md",
     "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
     "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+    "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
 )
 VALIDATION_ROUTER_SURFACE_CHECK = (
     "scripts/windows/check_google_issue3_validation_router_attached_html_quickstart_surface.ps1"
@@ -28,6 +29,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`
@@ -90,7 +92,7 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             root = Path(temp_dir)
             write_default_files(root, "placeholder")
             resolved = resolve_paths(root, None)
-            self.assertEqual(3, len(resolved))
+            self.assertEqual(4, len(resolved))
 
     def test_passes_with_full_bridge_contract(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -280,6 +282,22 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             audit = audit_paths(paths, root)
             self.assertIn(
                 "replay notes do not keep the Google attached-html surface check visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_google_asset_closure_audit_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the Google attached-html asset-closure audit visible",
                 failure_reasons(audit),
             )
 
