@@ -67,11 +67,19 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
         self.assertEqual("http://127.0.0.1:9123/pages/1/", report["preferred_url"])
         self.assertTrue(report["preferred_alias_url"].startswith("http://127.0.0.1:9123/pages/1-google-search-home"))
         self.assertEqual("http://127.0.0.1:9123/named/google-search-home/", report["preferred_named_url"])
+        self.assertEqual(report["command_hints"]["manifest_command"], report["recommended_command"])
+        self.assertIn("--google-style", report["command_hints"]["preflight_report_command"])
+        self.assertIn("--input", report["command_hints"]["preflight_report_command"])
+        self.assertIn("google-search.html", report["command_hints"]["preflight_report_command"])
+        self.assertIn("--port 9123", report["command_hints"]["launch_command"])
 
         rendered = preflight_module.render_text_report(report)
         self.assertIn("Catalog URL: http://127.0.0.1:9123/", rendered)
         self.assertIn("Preferred URL: http://127.0.0.1:9123/pages/1/", rendered)
         self.assertIn("Preferred named URL: http://127.0.0.1:9123/named/google-search-home/", rendered)
+        self.assertIn("Recommended command:", rendered)
+        self.assertIn("Command hints:", rendered)
+        self.assertIn("launch catalog:", rendered)
 
     def test_preflight_recommends_restoring_missing_local_assets_before_launch(self):
         self.write_file(
@@ -107,12 +115,45 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
         self.assertEqual(0, report["missing_sidecar_fixture_count"])
         self.assertEqual(1, report["missing_asset_fixture_count"])
         self.assertEqual("restore-missing-local-assets", report["recommended_next_step"])
+        self.assertEqual(report["command_hints"]["asset_audit_command"], report["recommended_command"])
         self.assertEqual(1, preflight_module.exit_code_for_report(report))
         self.assertEqual(0, preflight_module.exit_code_for_report(report, allow_missing_assets=True))
 
         rendered = preflight_module.render_text_report(report)
         self.assertIn("Recommended next step: restore-missing-local-assets", rendered)
+        self.assertIn("Recommended command:", rendered)
         self.assertIn("Catalog URL: http://0.0.0.0:8235/", rendered)
+
+    def test_preflight_prefers_sidecar_audit_when_sidecar_bundle_is_missing(self):
+        self.write_file(
+            "google-search.html",
+            """<!doctype html>
+<html>
+  <head>
+    <title>Google Search Home</title>
+    <link rel="stylesheet" href="./google-search_files/theme.css">
+  </head>
+  <body>
+    <form action="/search">
+      <input name="q" aria-label="Search">
+    </form>
+  </body>
+</html>
+""",
+        )
+
+        report = preflight_module.build_preflight_report(
+            self.repo_root,
+            explicit_inputs=[str(self.bundle_root)],
+            google_style=True,
+            bind="127.0.0.1",
+            port=8235,
+        )
+
+        self.assertFalse(report["ready_for_launch"])
+        self.assertEqual(1, report["missing_sidecar_fixture_count"])
+        self.assertEqual("restore-missing-sidecar-bundles", report["recommended_next_step"])
+        self.assertEqual(report["command_hints"]["sidecar_audit_command"], report["recommended_command"])
 
     def test_main_json_output_includes_route_urls(self):
         page_path = self.write_file(
@@ -153,6 +194,7 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
         self.assertEqual("http://127.0.0.1:9001/", payload["catalog_url"])
         self.assertEqual("http://127.0.0.1:9001/pages/1/", payload["preferred_url"])
         self.assertEqual("http://127.0.0.1:9001/named/google-search-home/", payload["preferred_named_url"])
+        self.assertEqual(payload["command_hints"]["manifest_command"], payload["recommended_command"])
 
 
 if __name__ == "__main__":
