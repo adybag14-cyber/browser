@@ -50,6 +50,11 @@ EXPECTATIONS = (
         "purpose": "The replay-attached quickstart keeps the proof-entrypoint helper visible beside the compact bundle route.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "purpose": "The replay-attached quickstart keeps the narrower replay-route shortcut bridge visible before the helper chain collapses into shorter replay follow-up.",
+    },
+    {
         "path": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars",
         "purpose": "The narrower Google entrypoint note keeps the wrapper-backed sidecar audit visible before the deeper Google-only checks.",
@@ -68,6 +73,16 @@ EXPECTATIONS = (
         "path": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1",
         "purpose": "The narrower Google entrypoint note keeps the issue-specific surface checker visible before the compact helper chain is trusted.",
+    },
+    {
+        "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+        "purpose": "The replay-route shortcut bridge note keeps its own fail-fast checker visible before the compact replay route is trusted.",
+    },
+    {
+        "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "purpose": "The replay-route shortcut bridge note keeps the replay-shortcuts-to-Windows-replay bridge visible before the route narrows again.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
@@ -116,6 +131,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the replay-route shortcut bridge wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Replay surface check:    {0}") -f $helper.commands.windows_replay_attached_html_surface_check)',
         "purpose": "The replay-attached helper prints the replay-side surface checker on the surfaced route guard.",
     },
@@ -161,6 +181,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)',
+        "purpose": "The replay-attached helper prints the replay-route shortcut bridge before the route narrows into replay-only follow-up.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.",
         "purpose": "The replay-attached helper notes preserve when to widen back into the suite-catalog route.",
     },
@@ -178,6 +203,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.",
         "purpose": "The replay-attached helper notes preserve when to prefer the proof-entrypoint helper beside the pinned bundle route.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surfaced before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
+        "purpose": "The replay-attached helper notes preserve when to reopen the narrower replay-route shortcut bridge from the attached-page ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
@@ -284,6 +314,21 @@ EXPECTATIONS = (
         "snippet": "Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.",
         "purpose": "The launcher companion helper notes preserve when to bridge directly from launcher preflight into the pinned proof route.",
     },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "snippet": "replay_shortcuts_windows_replay_attached_html_bridge = $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand",
+        "purpose": "The replay-route shortcut helper keeps the replay-shortcuts-to-Windows-replay bridge wired into its compact command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "snippet": 'Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)',
+        "purpose": "The replay-route shortcut helper prints the replay-shortcuts-to-Windows-replay bridge before it narrows back into shorter replay follow-up.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "snippet": "Use replay_shortcuts_windows_replay_attached_html_bridge when the replay-route shortcut still needs the replay-side surface check, the Windows replay attached-page quickstart, and the broader Windows-first bridge kept visible before the route collapses back to the shorter attached-page helper chain.",
+        "purpose": "The replay-route shortcut helper notes preserve when to widen into the replay-shortcuts-to-Windows-replay bridge from the compact replay route.",
+    },
 )
 
 
@@ -350,7 +395,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Audit the replay-attached quickstart note plus the downstream Google-entrypoint, "
-            "launcher-companion, and bundle-proof helper contracts for drift."
+            "replay-route shortcut bridge, launcher-companion, and bundle-proof helper contracts for drift."
         )
     )
     parser.add_argument(
