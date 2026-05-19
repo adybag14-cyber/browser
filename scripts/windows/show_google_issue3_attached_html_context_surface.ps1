@@ -178,7 +178,7 @@ Add-SharedPathArrayArgument -Arguments $googleAttachedArguments -Name InputPath 
 
 $surface = [ordered]@{
     issue = 'Google issue #3 attached-html context surface'
-    purpose = 'Keep the attached-html change-area router, the Google-shaped attached-page helper chain, and the pinned three-page bundle route on one context-preserving command surface before replay narrows further.'
+    purpose = 'Keep the broader attached-page lane, the broader Google-shaped attached-page lane, the narrower issue-specific Google attached-page lane, and the pinned three-page bundle lane on one context-preserving command surface before replay narrows further.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -199,6 +199,8 @@ $surface = [ordered]@{
         broader_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedArguments
+        google_issue3_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
+        google_issue3_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $googleAttachedArguments
         bundle_surface_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceArguments
         bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleArguments
         bundle_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $reentryArguments
@@ -208,14 +210,17 @@ $surface = [ordered]@{
         suite_catalog_entrypoints = 'docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md'
         top_level_attached_html_bridge = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md'
         google_attached_html_flow = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
+        google_issue3_attached_html_entrypoint = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
         bundle_suite_surface = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
         bundle_reference = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     }
     notes = @(
-        'Use this helper when attached localhost replay already matters, but you still want the broader attached-page lane, the Google-shaped attached-page lane, and the pinned bundle lane printed with the same repo-root and input-path context.',
+        'Use this helper when attached localhost replay already matters, but you still want the broader attached-page lane, the broader Google-shaped lane, the narrower issue-specific Google attached-page lane, and the pinned bundle lane printed with the same repo-root and input-path context.',
         'Start with suite_catalog_entrypoints when the route is still reopening from the broader validation catalog.',
         'Start with top_level_attached_html_entrypoint when the route is already narrowed to the issue #3 attached-page branch and you only need the shorter bridge reprinted first.',
-        'Run google_attached_html_surface_check before trusting the narrower Google-shaped attached-page chain after a branch move.',
+        'Run google_attached_html_surface_check before trusting the broader Google-shaped attached-page chain after a branch move.',
+        'Run google_issue3_attached_html_surface_check before trusting the narrower issue-specific Google attached-page lane after the broader Google-shaped surface looks right.',
+        'Use google_issue3_attached_html_entrypoint when the replay is already narrowed to the issue-specific Google attached-page route and you want that dedicated helper surface reprinted with the same repo-root and input-path context.',
         'Run bundle_surface_check before delegating into the pinned three-page bundle flow or runner.',
         'Use bundle_first_entrypoint when explicit bundle inputs are already pinned and the replay should stay locked to that same three-page set.'
     )
@@ -232,7 +237,7 @@ $surface.recommended_next_command = $surface.helper_commands[$surface.recommende
 $surface.recommended_next_reason = switch ($surface.recommended_next_key) {
     'bundle_first_entrypoint' { 'Explicit attached-page inputs are already pinned, so keep the replay on that same bundle-aware branch before the broader flow widens again.' }
     'suite_catalog_entrypoints' { 'A non-default repo root or saved summary is already in play, so reopen the broader issue #3 catalog with that same context preserved.' }
-    default { 'No saved replay context is pinned yet, so fail fast on the Google-shaped attached-page helper surface before choosing the broader or bundle-first branch.' }
+    default { 'No saved replay context is pinned yet, so fail fast on the broader Google-shaped attached-page surface before choosing the narrower issue-specific lane or the bundle-first branch.' }
 }
 
 if ($Json) {
@@ -261,12 +266,27 @@ Write-Host (('  Google attached HTML: {0}') -f $surface.suite_commands.google_at
 Write-Host (('  Bundle route:         {0}') -f $surface.suite_commands.attached_html_target_bundle)
 Write-Host ''
 Write-Host 'Companion helpers:'
-Write-Host (('  Suite catalog:        {0}') -f $surface.helper_commands.suite_catalog_entrypoints)
-Write-Host (('  Top-level bridge:     {0}') -f $surface.helper_commands.top_level_attached_html_entrypoint)
-Write-Host (('  Broader flow:         {0}') -f $surface.helper_commands.broader_attached_html_flow)
-Write-Host (('  Google surface check: {0}') -f $surface.helper_commands.google_attached_html_surface_check)
-Write-Host (('  Google flow:          {0}') -f $surface.helper_commands.google_attached_html_flow)
-Write-Host (('  Bundle surface check: {0}') -f $surface.helper_commands.bundle_surface_check)
-Write-Host (('  Bundle flow:          {0}') -f $surface.helper_commands.bundle_flow)
-Write-Host (('  Bundle-first helper:  {0}') -f $surface.helper_commands.bundle_first_entrypoint)
-Write-Host (('  Bundle runner:        {0}') -f $surface.helper_commands.bundle_runner)
+Write-Host (('  Suite catalog:               {0}') -f $surface.helper_commands.suite_catalog_entrypoints)
+Write-Host (('  Top-level bridge:            {0}') -f $surface.helper_commands.top_level_attached_html_entrypoint)
+Write-Host (('  Broader flow:                {0}') -f $surface.helper_commands.broader_attached_html_flow)
+Write-Host (('  Google surface check:        {0}') -f $surface.helper_commands.google_attached_html_surface_check)
+Write-Host (('  Google flow:                 {0}') -f $surface.helper_commands.google_attached_html_flow)
+Write-Host (('  Issue #3 Google check:       {0}') -f $surface.helper_commands.google_issue3_attached_html_surface_check)
+Write-Host (('  Issue #3 Google helper:      {0}') -f $surface.helper_commands.google_issue3_attached_html_entrypoint)
+Write-Host (('  Bundle surface check:        {0}') -f $surface.helper_commands.bundle_surface_check)
+Write-Host (('  Bundle flow:                 {0}') -f $surface.helper_commands.bundle_flow)
+Write-Host (('  Bundle-first helper:         {0}') -f $surface.helper_commands.bundle_first_entrypoint)
+Write-Host (('  Bundle runner:               {0}') -f $surface.helper_commands.bundle_runner)
+Write-Host ''
+Write-Host 'Companion notes:'
+Write-Host (('  Suite catalog:               {0}') -f $surface.note_paths.suite_catalog_entrypoints)
+Write-Host (('  Top-level bridge:            {0}') -f $surface.note_paths.top_level_attached_html_bridge)
+Write-Host (('  Google attached-html flow:   {0}') -f $surface.note_paths.google_attached_html_flow)
+Write-Host (('  Issue #3 Google entrypoint:  {0}') -f $surface.note_paths.google_issue3_attached_html_entrypoint)
+Write-Host (('  Bundle suite surface:        {0}') -f $surface.note_paths.bundle_suite_surface)
+Write-Host (('  Bundle reference:            {0}') -f $surface.note_paths.bundle_reference)
+Write-Host ''
+Write-Host 'Notes:'
+foreach ($note in $surface.notes) {
+    Write-Host (("- {0}") -f $note)
+}
