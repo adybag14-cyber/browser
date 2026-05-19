@@ -127,6 +127,22 @@ replay still matches the Google-shaped flow but is not yet pinned to the exact
 three-page compatibility bundle, and switch to `attached-html-target-bundle`
 once the current pages are already confirmed to be that known three-page set.
 
+When the current replay is still the known three-page compatibility bundle,
+keep this exact file set together from the start:
+
+- `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html`
+- `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html`
+- `Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html`
+
+Prefer the Google Safety Centre export as `-PreferredInitialPage` when the
+replay should keep one Google-like page first while staying on the same bundle.
+For the shortest written route into that Google-first replay, read
+`docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`. When the run is
+re-entering from the broader validation router and still needs the attached-html
+helper ladder visible before narrowing again, read
+`docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md` alongside the same
+router output.
+
 Before starting the localhost catalog server or blaming headed replay, reuse
 the Windows wrapper-backed launcher preflight from the same branch surface:
 
