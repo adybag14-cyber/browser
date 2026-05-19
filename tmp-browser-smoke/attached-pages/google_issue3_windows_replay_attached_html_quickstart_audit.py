@@ -66,7 +66,7 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": 'Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)',
+        "snippet": 'Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)',
         "purpose": "The replay-attached helper prints the proof-entrypoint helper in its attached-page ladder output.",
     },
     {
@@ -86,8 +86,8 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "snippet": "Use attached_bundle_proof_surface_check and attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the executable proof-only checker and helper pair reprinted before or after the narrower bundle-first follow-up.",
-        "purpose": "The replay-attached helper notes preserve when to prefer the proof-entrypoint checker and helper pair beside the pinned bundle route.",
+        "snippet": "Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.",
+        "purpose": "The replay-attached helper notes preserve when to prefer the proof-entrypoint helper beside the pinned bundle route.",
     },
 )
 
