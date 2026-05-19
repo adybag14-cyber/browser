@@ -351,6 +351,66 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         )
 
+    def test_build_audit_reports_missing_helper_replay_header_output(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "Write-Host 'Replay re-entry helpers:'\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
+    def test_build_audit_reports_missing_helper_replay_quick_output(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                'Write-Host ((("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart))\n',
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
+    def test_build_audit_reports_missing_helper_replay_route_output(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                'Write-Host ((("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut))\n',
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
+    def test_build_audit_reports_missing_helper_replay_quick_guidance(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "        'Use windows_replay_quickstart after launcher-side sidecar, asset, or proof preflight when the next honest step is to re-enter the replay-attached Windows ladder without reopening the broader route map first.',\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
+    def test_build_audit_reports_missing_helper_replay_route_guidance(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "        'Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.',\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
     def test_build_audit_reports_missing_checker_replay_reentry_guard(self) -> None:
         self.write_contract_files(
             checker_text=CHECKER_SNIPPET.replace(
