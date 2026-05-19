@@ -157,6 +157,26 @@ Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.repla
 """
 
 
+REPLAY_ROUTE_SHORTCUT_CHECKER_SNIPPET = """docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md
+show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1
+"""
+
+
+REPLAY_SHORTCUTS_WINDOWS_REPLAY_BRIDGE_SNIPPET = """$bridge = [ordered]@{
+    commands = [ordered]@{
+        windows_replay_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments
+        windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments
+    }
+    notes = @(
+        'Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.'
+    )
+}
+
+Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)
+Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)
+"""
+
+
 LAUNCHER_COMPANION_SNIPPET = """$helper = [ordered]@{
     helper_commands = [ordered]@{
         proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $surfaceCheckArguments
@@ -193,6 +213,8 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         google_entrypoint_script_text: str = GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET,
         top_level_shortcut_script_text: str = TOP_LEVEL_SHORTCUT_SCRIPT_SNIPPET,
         replay_route_shortcut_script_text: str = REPLAY_ROUTE_SHORTCUT_SCRIPT_SNIPPET,
+        replay_route_shortcut_checker_text: str = REPLAY_ROUTE_SHORTCUT_CHECKER_SNIPPET,
+        replay_shortcuts_windows_replay_bridge_text: str = REPLAY_SHORTCUTS_WINDOWS_REPLAY_BRIDGE_SNIPPET,
         launcher_companion_text: str = LAUNCHER_COMPANION_SNIPPET,
     ) -> None:
         (self.root / "docs" / "ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md").write_text(
@@ -231,6 +253,18 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             / "windows"
             / "show_google_issue3_replay_route_shortcut_entrypoint.ps1"
         ).write_text(replay_route_shortcut_script_text, encoding="utf-8")
+        (
+            self.root
+            / "scripts"
+            / "windows"
+            / "check_google_issue3_replay_route_shortcut_validation_surface.ps1"
+        ).write_text(replay_route_shortcut_checker_text, encoding="utf-8")
+        (
+            self.root
+            / "scripts"
+            / "windows"
+            / "show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
+        ).write_text(replay_shortcuts_windows_replay_bridge_text, encoding="utf-8")
         (
             self.root
             / "scripts"
@@ -501,6 +535,74 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             failing_snippets,
         )
 
+    def test_build_audit_reports_missing_replay_route_checker_proof_note_reference(self) -> None:
+        self.write_contract_files(
+            replay_route_shortcut_checker_text=REPLAY_ROUTE_SHORTCUT_CHECKER_SNIPPET.replace(
+                "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_replay_route_checker_bridge_reference(self) -> None:
+        self.write_contract_files(
+            replay_route_shortcut_checker_text=REPLAY_ROUTE_SHORTCUT_CHECKER_SNIPPET.replace(
+                "show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_replay_bridge_windows_quickstart_output(self) -> None:
+        self.write_contract_files(
+            replay_shortcuts_windows_replay_bridge_text=REPLAY_SHORTCUTS_WINDOWS_REPLAY_BRIDGE_SNIPPET.replace(
+                'Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_replay_bridge_default_handoff_guidance(self) -> None:
+        self.write_contract_files(
+            replay_shortcuts_windows_replay_bridge_text=REPLAY_SHORTCUTS_WINDOWS_REPLAY_BRIDGE_SNIPPET.replace(
+                "Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.",
+                "drifted bridge note",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.",
+            failing_snippets,
+        )
+
     def test_build_audit_reports_missing_proof_companion_note(self) -> None:
         self.write_contract_files(
             doc_text=DOC_SNIPPET.replace(
@@ -537,6 +639,8 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             replay_script_text="# drifted\n",
             google_entrypoint_script_text="# drifted\n",
             replay_route_shortcut_script_text="# drifted\n",
+            replay_route_shortcut_checker_text="# drifted\n",
+            replay_shortcuts_windows_replay_bridge_text="# drifted\n",
             launcher_companion_text="# drifted\n",
         )
 
@@ -558,6 +662,8 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             shortcut_bridge_doc_text="# drifted\n",
             google_entrypoint_script_text="# drifted\n",
             replay_route_shortcut_script_text="# drifted\n",
+            replay_route_shortcut_checker_text="# drifted\n",
+            replay_shortcuts_windows_replay_bridge_text="# drifted\n",
             launcher_companion_text="# drifted\n",
         )
 
