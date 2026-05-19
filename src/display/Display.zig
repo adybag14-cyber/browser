@@ -190,6 +190,14 @@ browse_screenshot_png_attempted: bool = false,
 browse_navigation_state_seen: bool = false,
 browse_is_loading: bool = true,
 
+fn runtimeSupportsHeaded() bool {
+    return build_config.target_class == .bare_metal or builtin.os.tag == .windows;
+}
+
+fn headedFallbackActive(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) bool {
+    return requested_mode == .headed and runtime_mode == .headless;
+}
+
 fn initBackend(
     allocator: std.mem.Allocator,
     requested_mode: Config.BrowserMode,
@@ -217,10 +225,10 @@ pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) D
 
     const runtime_mode: Config.BrowserMode = switch (requested_mode) {
         .headless => .headless,
-        .headed => if (build_config.target_class == .bare_metal or builtin.os.tag == .windows) .headed else .headless,
+        .headed => if (runtimeSupportsHeaded()) .headed else .headless,
     };
 
-    return .{
+    const display: Display = .{
         .requested_mode = requested_mode,
         .runtime_mode = runtime_mode,
         .backend = initBackend(allocator, requested_mode, runtime_mode, host, default_viewport),
@@ -235,6 +243,17 @@ pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) D
             else => null,
         },
     };
+
+    if (headedFallbackActive(requested_mode, runtime_mode)) {
+        log.warn(.app, "headed fallback mode", .{
+            .requested_mode = requested_mode,
+            .runtime_mode = runtime_mode,
+            .os = builtin.os.tag,
+            .target_class = build_config.target_class,
+        });
+    }
+
+    return display;
 }
 
 pub fn onPageCreated(self: *Display) void {
@@ -704,6 +723,9 @@ test "initBackend keeps headed fallbacks on the headless backend" {
         .device_pixel_ratio = 1.0,
     });
 
+    try std.testing.expect(headedFallbackActive(.headed, .headless));
+    try std.testing.expect(!headedFallbackActive(.headless, .headless));
+    try std.testing.expect(!headedFallbackActive(.headed, .headed));
     try std.testing.expectEqual(Display.Backend.Tag.headless, std.meta.activeTag(headed_fallback));
     try std.testing.expectEqual(Display.Backend.Tag.headless, std.meta.activeTag(backend));
 }
@@ -763,6 +785,8 @@ test "unsupported headed fallback uses headless backend" {
     var display = Display.init(std.testing.allocator, &config, null);
     defer display.deinit();
 
+    try std.testing.expect(!runtimeSupportsHeaded());
+    try std.testing.expect(headedFallbackActive(display.requested_mode, display.runtime_mode));
     try std.testing.expectEqual(Config.BrowserMode.headless, display.runtime_mode);
     switch (display.backend) {
         .headless => |backend| try std.testing.expectEqual(@as(u32, 0), backend.page_count),
