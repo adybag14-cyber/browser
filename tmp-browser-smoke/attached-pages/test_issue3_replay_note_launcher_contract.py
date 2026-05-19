@@ -10,6 +10,9 @@ DEFAULT_FILES = (
     "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
     "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
 )
+VALIDATION_ROUTER_SURFACE_CHECK = (
+    "scripts/windows/check_google_issue3_validation_router_attached_html_quickstart_surface.ps1"
+)
 
 PASSING_CONTENT = """powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1
@@ -45,13 +48,27 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 """
 
 
-def write_default_files(root: Path, contents: str) -> list[Path]:
+def write_validation_router_surface_check(root: Path) -> Path:
+    path = root / VALIDATION_ROUTER_SURFACE_CHECK
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("# validation-router surface check placeholder\n", encoding="utf-8")
+    return path
+
+
+def write_default_files(
+    root: Path,
+    contents: str,
+    *,
+    include_validation_router_surface_check: bool = True,
+) -> list[Path]:
     paths: list[Path] = []
     for relative_path in DEFAULT_FILES:
         path = root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(contents, encoding="utf-8")
         paths.append(path)
+    if include_validation_router_surface_check:
+        write_validation_router_surface_check(root)
     return paths
 
 
@@ -145,6 +162,20 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             audit = audit_paths(paths, root)
             self.assertIn(
                 "replay notes do not keep the validation-router attached-html quickstart note visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_validation_router_surface_check_file_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT,
+                include_validation_router_surface_check=False,
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "validation-router attached-html surface checker is missing from scripts/windows",
                 failure_reasons(audit),
             )
 
