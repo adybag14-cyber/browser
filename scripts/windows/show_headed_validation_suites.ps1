@@ -7,7 +7,8 @@ param(
     [string]$RepoRoot = "",
     [string]$BrowserExe = "",
     [string]$SummaryPath = "",
-    [string]$InputPath = ""
+    [string]$InputPath = "",
+    [string]$PreferredInitialPage = ""
 )
 
 Set-StrictMode -Version Latest
@@ -97,6 +98,12 @@ function Get-AttachedHtmlNotes {
         $notes += "Pass -InputPath to pin the audit, manifest, strict manifest, and catalog commands to a specific saved page or bundle folder."
     }
 
+    if ($PreferredInitialPage) {
+        $notes += "The commands below reuse the provided -PreferredInitialPage across the catalog launch and Google-shaped attached-page helper routes."
+    } else {
+        $notes += "Pass -PreferredInitialPage when one saved page should stay first across the catalog launch and Google-shaped attached-page helper routes."
+    }
+
     if ($isCustomBrowserExe) {
         $notes += "Current browser override: $BrowserExe"
     }
@@ -165,6 +172,7 @@ function Format-HelperCommand {
 function Get-AttachedHtmlCatalogCommand {
     param(
         [string]$TargetInputPath,
+        [string]$TargetPreferredInitialPage,
         [switch]$GoogleStyle,
         [string[]]$ExtraSwitches = @()
     )
@@ -175,6 +183,9 @@ function Get-AttachedHtmlCatalogCommand {
     }
     if ($TargetInputPath) {
         Add-SharedPathArrayArgument -Arguments $arguments -Name InputPath -Values @($TargetInputPath)
+    }
+    if ($TargetPreferredInitialPage) {
+        Add-SharedArgument -Arguments $arguments -Name PreferredInitialPage -Value $TargetPreferredInitialPage
     }
     foreach ($switchName in $ExtraSwitches) {
         if ([string]::IsNullOrWhiteSpace($switchName)) {
@@ -189,20 +200,21 @@ function Get-AttachedHtmlCatalogCommand {
 function Get-AttachedHtmlRouteCommands {
     param(
         [string]$TargetInputPath,
+        [string]$TargetPreferredInitialPage,
         [switch]$GoogleStyle
     )
 
     return @(
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditSidecars')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditAssets')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('PrintManifest')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars', 'PrintManifest')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteAssets', 'PrintManifest')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars', 'RequireCompleteAssets', 'PrintManifest')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteAssets')),
-        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars', 'RequireCompleteAssets')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditSidecars')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('AuditAssets')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('PrintManifest')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars', 'PrintManifest')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteAssets', 'PrintManifest')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars', 'RequireCompleteAssets', 'PrintManifest')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteAssets')),
+        (Get-AttachedHtmlCatalogCommand -TargetInputPath $TargetInputPath -TargetPreferredInitialPage $TargetPreferredInitialPage -GoogleStyle:$GoogleStyle -ExtraSwitches @('RequireCompleteSidecars', 'RequireCompleteAssets')),
         "& `"$BrowserExe`" browse --headed --window_width 1366 --window_height 900 `"http://127.0.0.1:8235/`""
     )
 }
@@ -292,6 +304,7 @@ Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name BrowserExe 
 if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values @($InputPath)
 }
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
 $googleFormControlsEnterOrderArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $googleFormControlsEnterOrderArguments -Name RepoRoot -Value $RepoRoot
@@ -335,6 +348,11 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
     if ($SummaryPath) {
         $notes += "Current saved summary: $SummaryPath"
         $notes += "The printed issue #3 follow-up commands now preserve -SummaryPath through the router handoff, so saved validation state can be reopened without manual re-entry."
+    }
+
+    if ($PreferredInitialPage) {
+        $notes += "Current preferred initial page: $PreferredInitialPage"
+        $notes += "The printed issue #3 follow-up commands now preserve -PreferredInitialPage through the validation-router catalog route and the dedicated Google-shaped attached-page helper."
     }
 
     if ($isCustomBrowserExe) {
@@ -430,7 +448,7 @@ function Show-DefaultRoutes {
     Write-Route -Name "browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)
     Write-Route -Name "popup" -Commands (Get-PopupRouteCommands) -Notes (Get-PopupRouteNotes)
 
-    $attachedCommands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath
+    $attachedCommands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -TargetPreferredInitialPage $PreferredInitialPage
     Write-Route -Name "attached-html" -Commands $attachedCommands -Notes (Get-AttachedHtmlNotes)
     Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
 
@@ -438,6 +456,9 @@ function Show-DefaultRoutes {
         "Use the bounded input probe first, then the dedicated Google form-controls Enter-order gate, then live Google, then the broader attached-page localhost flow and dedicated Google-shaped attached-page flow before the shorter issue #3 helper surface or bundle-first replay.",
         "Pass -InputPath when you already want the attached-page helpers, top-level attached-page quickstart, or bundle-first helper pinned to a saved page or the current three-page compatibility bundle."
     )
+    if ($PreferredInitialPage) {
+        $googleRecommendedNotes += "Keep the same preferred starting page pinned by rerunning this router with -PreferredInitialPage before switching to the Google-shaped attached-page helper route."
+    }
     if ($SummaryPath) {
         $googleRecommendedNotes += "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder."
     }
@@ -464,7 +485,7 @@ switch ($true) {
         }
         $useGoogleStyleCatalog = $SuiteName -eq "google-attached-html"
         $bundleFocused = $SuiteName -eq "attached-html-target-bundle"
-        $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -GoogleStyle:$useGoogleStyleCatalog
+        $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -TargetPreferredInitialPage $PreferredInitialPage -GoogleStyle:$useGoogleStyleCatalog
         $notes = Get-AttachedHtmlNotes
         if ($useGoogleStyleCatalog) {
             $notes += "Google-style auto-discovery keeps the strongest Google-like saved page first when -InputPath is omitted."
@@ -511,6 +532,9 @@ switch ($true) {
             "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
             "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
         )
+        if ($PreferredInitialPage) {
+            $issue3FollowUpNotes += "Keep the same preferred starting page pinned by rerunning this router with -PreferredInitialPage before switching to the Google-shaped attached-page helper route."
+        }
         if ($SummaryPath) {
             $issue3FollowUpNotes += "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder."
         }
@@ -553,6 +577,9 @@ switch ($true) {
                 "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
                 "Use the bundle-first helper when the replay should stay pinned to the known three-page compatibility set or when -InputPath already fixes the bundle inputs."
             )
+            if ($PreferredInitialPage) {
+                $googleInputFollowUpNotes += "Keep the same preferred starting page pinned by rerunning this router with -PreferredInitialPage before switching to the Google-shaped attached-page helper route."
+            }
             if ($SummaryPath) {
                 $googleInputFollowUpNotes += "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder."
             }
@@ -630,14 +657,14 @@ switch ($true) {
     { $ChangeArea -eq "rendering" } {
         Write-Section "rendering"
         Write-Route -Name "bounded-rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
-        Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath) -Notes (Get-AttachedHtmlNotes)
+        Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -TargetPreferredInitialPage $PreferredInitialPage) -Notes (Get-AttachedHtmlNotes)
         Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
         break
     }
     { $ChangeArea -eq "network" } {
         Write-Section "network"
         Write-Route -Name "bounded-network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
-        Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath) -Notes (Get-AttachedHtmlNotes)
+        Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -TargetPreferredInitialPage $PreferredInitialPage) -Notes (Get-AttachedHtmlNotes)
         Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)
         break
     }
@@ -663,7 +690,7 @@ switch ($true) {
             Write-Host ("Browser exe: {0}" -f $BrowserExe)
         }
         $useGoogleStyleCatalog = $ChangeArea -eq "google-attached-html"
-        $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -GoogleStyle:$useGoogleStyleCatalog
+        $commands = Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -TargetPreferredInitialPage $PreferredInitialPage -GoogleStyle:$useGoogleStyleCatalog
         $notes = Get-AttachedHtmlNotes
         if ($useGoogleStyleCatalog) {
             $notes += "Google-style auto-discovery keeps the strongest Google-like saved page first when -InputPath is omitted."
