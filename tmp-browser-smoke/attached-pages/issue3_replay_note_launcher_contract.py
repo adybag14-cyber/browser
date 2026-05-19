@@ -60,6 +60,8 @@ REPLAY_SHORTCUTS_WINDOWS_REPLAY_NOTE = (
 REPLAY_SHORTCUTS_WINDOWS_REPLAY_HELPER = (
     "show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
 )
+REPLAY_SHORTCUTS_HELPER = "show_google_issue3_replay_shortcuts.ps1"
+SAFE_ROUTE_ENTRYPOINTS_HELPER = "show_google_issue3_safe_route_entrypoints.ps1"
 
 
 def resolve_paths(repo_root: Path, explicit_paths: list[str] | None) -> list[Path]:
@@ -103,6 +105,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "replay_route_shortcut_helper_count": 0,
         "replay_shortcuts_windows_replay_note_count": 0,
         "replay_shortcuts_windows_replay_helper_count": 0,
+        "replay_shortcuts_helper_count": 0,
+        "safe_route_entrypoints_helper_count": 0,
     }
 
     for path in paths:
@@ -133,6 +137,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "replay_route_shortcut_helpers": [],
             "replay_shortcuts_windows_replay_note_references": [],
             "replay_shortcuts_windows_replay_helpers": [],
+            "replay_shortcuts_helpers": [],
+            "safe_route_entrypoints_helpers": [],
         }
 
         for line_number, line in enumerate(text.splitlines(), start=1):
@@ -208,6 +214,10 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["replay_shortcuts_windows_replay_helpers"].append(
                     {"line_number": line_number, "line": stripped}
                 )
+            if REPLAY_SHORTCUTS_HELPER in line:
+                hits["replay_shortcuts_helpers"].append({"line_number": line_number, "line": stripped})
+            if SAFE_ROUTE_ENTRYPOINTS_HELPER in line:
+                hits["safe_route_entrypoints_helpers"].append({"line_number": line_number, "line": stripped})
 
         counts["raw_python_reference_count"] += len(hits["raw_python_references"])
         counts["wrapper_reference_count"] += len(hits["wrapper_references"])
@@ -261,6 +271,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         counts["replay_shortcuts_windows_replay_helper_count"] += len(
             hits["replay_shortcuts_windows_replay_helpers"]
         )
+        counts["replay_shortcuts_helper_count"] += len(hits["replay_shortcuts_helpers"])
+        counts["safe_route_entrypoints_helper_count"] += len(hits["safe_route_entrypoints_helpers"])
 
         file_results.append(
             {
@@ -328,6 +340,10 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the replay-shortcuts Windows replay bridge note visible")
     if audit["replay_shortcuts_windows_replay_helper_count"] == 0:
         reasons.append("replay notes do not keep the replay-shortcuts Windows replay bridge helper visible")
+    if audit["replay_shortcuts_helper_count"] == 0:
+        reasons.append("replay notes do not keep the replay-shortcuts helper visible")
+    if audit["safe_route_entrypoints_helper_count"] == 0:
+        reasons.append("replay notes do not keep the safe-route entrypoints helper visible")
     return reasons
 
 
@@ -343,6 +359,8 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Change-area quickstart helper references: {audit['attached_html_change_area_helper_count']}",
         f"Target-bundle quickstart note references: {audit['attached_html_target_bundle_quickstart_note_count']}",
         f"Bundle-first helper references: {audit['attached_bundle_first_helper_count']}",
+        f"Replay-shortcuts helper references: {audit['replay_shortcuts_helper_count']}",
+        f"Safe-route helper references: {audit['safe_route_entrypoints_helper_count']}",
         "",
     ]
     for reason in reasons:
@@ -357,8 +375,8 @@ def main() -> int:
             "the replay-side and Windows-side route checks, the pinned proof route, the "
             "dedicated Google attached-html replay surface, the issue-specific Google "
             "attached-html entrypoint note and checker, the validation-router and change-area "
-            "attached-html quickstarts, the bundle-first target-bundle handoff, the narrower "
-            "replay-route shortcut companion, or the replay-shortcuts Windows replay bridge."
+            "attached-html quickstarts, the bundle-first target-bundle handoff, the replay-route "
+            "shortcut companion, the replay-shortcuts helpers, or the safe-route entrypoints helper."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
