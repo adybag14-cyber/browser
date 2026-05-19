@@ -270,6 +270,11 @@ EXPECTATIONS = (
         "purpose": "The replay-route bridge note keeps its compact replay helper visible.",
     },
     {
+        "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'",
+        "purpose": "The replay-route bridge note keeps the preserved-context replay helper visible for non-default repo roots, saved summaries, and pinned bundle inputs.",
+    },
+    {
         "path": "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
         "snippet": "(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars'",
         "purpose": "The Windows full-use route checker keeps guarding the wrapper-backed sidecar audit on the broader route note.",
