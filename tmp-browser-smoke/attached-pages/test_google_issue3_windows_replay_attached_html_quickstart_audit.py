@@ -159,6 +159,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "top_level_shortcut_bridge_helper_note",
+        "docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "",
+    ),
+    (
+        "top_level_shortcut_bridge_replay_route_note",
+        "docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "",
+    ),
+    (
         "top_level_shortcut_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments",
@@ -258,6 +270,18 @@ DRIFT_CASES = (
         "replay_route_shortcut_surface_check_note",
         "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+        "",
+    ),
+    (
+        "replay_route_shortcut_helper_note",
+        "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "",
+    ),
+    (
+        "replay_route_shortcut_replay_to_windows_note",
+        "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
         "",
     ),
     (
