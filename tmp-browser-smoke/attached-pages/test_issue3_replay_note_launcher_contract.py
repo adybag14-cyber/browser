@@ -20,6 +20,8 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
+- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1
 - `docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md`
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1
@@ -53,6 +55,37 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             paths = write_default_files(root, PASSING_CONTENT)
             audit = audit_paths(paths, root)
             self.assertEqual([], failure_reasons(audit))
+
+    def test_fails_when_google_entrypoint_note_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "- `docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md`\n", ""
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the issue-specific Google attached-html entrypoint note visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_google_entrypoint_surface_check_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the issue-specific Google attached-html entrypoint surface checker visible",
+                failure_reasons(audit),
+            )
 
     def test_fails_when_windows_replay_bridge_note_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
