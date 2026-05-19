@@ -36,6 +36,31 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+        "purpose": "The replay-attached quickstart keeps the broader Windows full-use route checker visible before the replay ladder is trusted.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+        "purpose": "The replay-attached quickstart keeps the Windows full-use validation-router bridge visible before the route narrows further.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1",
+        "purpose": "The replay-attached quickstart keeps the Windows full-use attached-html catalog quickstart visible between the broader route and the narrower replay helper.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1",
+        "purpose": "The replay-attached quickstart keeps the validation-router attached-html checker visible before its quickstart helper is trusted.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1",
+        "purpose": "The replay-attached quickstart keeps the validation-router attached-html quickstart visible in the narrowed replay ladder.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "purpose": "The replay-attached quickstart keeps the launcher-companion checker visible before the helper is trusted.",
     },
@@ -53,6 +78,26 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "snippet": "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments",
         "purpose": "The replay quickstart helper wires the replay-attached fail-fast checker into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "purpose": "The replay quickstart helper wires the broader Windows full-use route checker into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay quickstart helper wires the Windows full-use validation-router bridge into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay quickstart helper wires the Windows full-use attached-html catalog quickstart into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay quickstart helper wires the validation-router attached-html quickstart into the command map.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
@@ -91,13 +136,23 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Use suite_router_shortcut_first after attached_html_shortcut when you want the narrower suite-router shortcut bridge reprinted before the route collapses into replay_shortcuts.",
-        "purpose": "The replay quickstart helper explains when to reopen the suite-router shortcut bridge from the attached-page ladder.",
+        "snippet": 'Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
+        "purpose": "The replay quickstart helper prints the broader Windows full-use route checker on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Use replay_route and replay_route_shortcut_entrypoint when you want the broader issue #3 route or the narrower replay-route follow-up printed beside the shortcut helpers.",
-        "purpose": "The replay quickstart helper explains when to reopen the replay-route shortcut follow-up from the shortcut ladder.",
+        "snippet": 'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "purpose": "The replay quickstart helper prints the Windows full-use validation-router bridge on the surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": 'Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        "purpose": "The replay quickstart helper prints the Windows full-use attached-html catalog quickstart on the surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": 'Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
+        "purpose": "The replay quickstart helper prints the validation-router attached-html quickstart on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
@@ -122,7 +177,7 @@ EXPECTATIONS = (
 )
 
 
-def resolve_repo_root(root: str |None) -> Path:
+def resolve_repo_root(root: str | None) -> Path:
     candidate = Path.cwd() if root is None else Path(root)
     resolved = candidate.expanduser().resolve()
     if not resolved.is_dir():
