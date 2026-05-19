@@ -193,6 +193,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_input_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_google_attached_html_entrypoint.ps1
@@ -222,15 +223,15 @@ the validation-router quickstart, the suite-catalog-to-top-level attached-page
 catalog quickstart, the suite-catalog attached-page bridge, the suite-router
 quickstart, the suite-router attached-page quickstart, the top-level
 attached-page quickstarts, the top-level attached-page companion notes, the
-broader top-level attached-page bridge, the current Google flow helper, the
-issue-specific attached-page bridge, the attached-page shortcut, replay
-shortcuts, the next-step matrix, contextual flow, the suite-router handoff, the
-suite-router handoff surface check, the replay route, the replay-route
-shortcut, the bundle change-area output, the compact bundle suite-surface
-helper, the bundle surface checker, the bundle-aware flow helper, the
-replay-route bundle-first bridge, the bundle-first branch, the delegated bundle
-runner, the pinned proof-entry handoff, and the safe-route map all visible
-before the replay narrows further.
+top-level shortcut-first bridge, the broader top-level attached-page bridge,
+the current Google flow helper, the issue-specific attached-page bridge, the
+attached-page shortcut, replay shortcuts, the next-step matrix, contextual
+flow, the suite-router handoff, the suite-router handoff surface check, the
+replay route, the replay-route shortcut, the bundle change-area output, the
+compact bundle suite-surface helper, the bundle surface checker, the
+bundle-aware flow helper, the replay-route bundle-first bridge, the bundle-first
+branch, the delegated bundle runner, the pinned proof-entry handoff, and the
+safe-route map all visible before the replay narrows further.
 
 ## Windows-first re-entry
 
@@ -256,7 +257,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_catalog_quickstart.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_ENTRYPOINT.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_attached_html_target_bundle_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
@@ -273,10 +275,10 @@ check, the dedicated Google attached-page flow helper, the validation-router
 quickstart, the suite-catalog-to-top-level catalog quickstart, the
 suite-catalog attached-page bridge, the suite-router attached-page quickstart,
 the top-level attached-page quickstarts, the top-level attached-page companion
-notes, the compact bundle suite-surface helper, the bundle surface checker, the
-bundle-aware flow helper, the shorter bundle-first helper, and the pinned
-proof-entry handoff printed before the replay falls back into the narrower
-attached-page helper chain.
+notes, the top-level shortcut-first bridge, the compact bundle suite-surface
+helper, the bundle surface checker, the bundle-aware flow helper, the shorter
+bundle-first helper, and the pinned proof-entry handoff printed before the
+replay falls back into the narrower attached-page helper chain.
 
 ## Preserve replay context
 
