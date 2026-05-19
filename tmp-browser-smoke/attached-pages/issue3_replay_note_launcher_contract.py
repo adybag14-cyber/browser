@@ -49,6 +49,9 @@ VALIDATION_ROUTER_ATTACHED_HTML_NOTE = (
 VALIDATION_ROUTER_ATTACHED_HTML_SURFACE_CHECK = (
     "check_google_issue3_validation_router_attached_html_quickstart_surface.ps1"
 )
+VALIDATION_ROUTER_ATTACHED_HTML_SURFACE_CHECK_RELATIVE_PATH = (
+    f"scripts/windows/{VALIDATION_ROUTER_ATTACHED_HTML_SURFACE_CHECK}"
+)
 VALIDATION_ROUTER_ATTACHED_HTML_HELPER = (
     "show_google_issue3_validation_router_attached_html_quickstart.ps1"
 )
@@ -92,6 +95,9 @@ def resolve_paths(repo_root: Path, explicit_paths: list[str] | None) -> list[Pat
 
 def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
     file_results: list[dict[str, object]] = []
+    validation_router_attached_html_surface_check_path = (
+        repo_root / VALIDATION_ROUTER_ATTACHED_HTML_SURFACE_CHECK_RELATIVE_PATH
+    ).resolve()
     counts = {
         "raw_python_reference_count": 0,
         "wrapper_reference_count": 0,
@@ -114,6 +120,12 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "google_entrypoint_helper_count": 0,
         "validation_router_attached_html_note_count": 0,
         "validation_router_attached_html_surface_check_count": 0,
+        "validation_router_attached_html_surface_check_exists": (
+            validation_router_attached_html_surface_check_path.is_file()
+        ),
+        "validation_router_attached_html_surface_check_path": str(
+            validation_router_attached_html_surface_check_path
+        ),
         "validation_router_attached_html_helper_count": 0,
         "attached_html_change_area_note_count": 0,
         "attached_html_change_area_helper_count": 0,
@@ -380,7 +392,11 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the issue-specific Google attached-html entrypoint visible")
     if audit["validation_router_attached_html_note_count"] == 0:
         reasons.append("replay notes do not keep the validation-router attached-html quickstart note visible")
-    if audit["validation_router_attached_html_surface_check_count"] == 0:
+    if not audit["validation_router_attached_html_surface_check_exists"]:
+        reasons.append(
+            "validation-router attached-html surface checker is missing from scripts/windows"
+        )
+    elif audit["validation_router_attached_html_surface_check_count"] == 0:
         reasons.append("replay notes do not keep the validation-router attached-html surface checker visible")
     if audit["validation_router_attached_html_helper_count"] == 0:
         reasons.append("replay notes do not keep the validation-router attached-html quickstart helper visible")
@@ -423,6 +439,7 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Replay-route helper references: {audit['replay_route_helper_count']}",
         f"Contextual-flow helper references: {audit['contextual_flow_helper_count']}",
         f"Validation-router quickstart note references: {audit['validation_router_attached_html_note_count']}",
+        f"Validation-router surface-check file present: {audit['validation_router_attached_html_surface_check_exists']}",
         f"Validation-router surface-check references: {audit['validation_router_attached_html_surface_check_count']}",
         f"Validation-router quickstart helper references: {audit['validation_router_attached_html_helper_count']}",
         f"Change-area quickstart note references: {audit['attached_html_change_area_note_count']}",
@@ -447,7 +464,7 @@ def main() -> int:
             "the broader replay-route helper, the context-preserving replay helper, "
             "the pinned proof route, the dedicated Google attached-html replay surface, the issue-specific Google "
             "attached-html entrypoint note and checker, the validation-router quickstart note and surface checker, the validation-router "
-            "and change-area attached-html quickstart helpers, the bundle-first target-bundle handoff, "
+            "surface-check file itself, the validation-router and change-area attached-html quickstart helpers, the bundle-first target-bundle handoff, "
             "the suite-catalog entrypoints surface checker, the replay-route shortcut companion, the replay-shortcuts helpers, "
             "or the safe-route entrypoints helper."
         )
