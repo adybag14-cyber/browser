@@ -135,11 +135,11 @@ Add-SharedArgument -Arguments $surfaceCheckArguments -Name RepoRoot -Value $reso
 
 $helper = [ordered]@{
     issue = 'Google issue #3 attached-pages launcher companion'
-    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving.'
+    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving, and the pinned proof-entrypoint checker/helper pair when replay is already locked to the known three-page bundle.'
     repo_root = $resolvedRepoRoot
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     recommended_next_key = 'wrapper_sidecar_audit'
-    recommended_next_reason = 'The wrapper-backed sidecar audit is the cheapest honest preflight for issue #3 attached-page replay, so it should run before the broader asset audit, manifest print, or strict-launch gates.'
+    recommended_next_reason = 'The wrapper-backed sidecar audit is the cheapest honest preflight for issue #3 attached-page replay, so it should run before the broader asset audit, manifest print, strict-launch gates, or the narrower proof-only bundle follow-up.'
     surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments
     surface_check_reason = 'Use this first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted.'
     helper_commands = [ordered]@{
@@ -154,6 +154,8 @@ $helper = [ordered]@{
         wrapper_google_manifest = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle', 'PrintManifest')
         wrapper_google_strict_bundle = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle', 'RequireCompleteSidecars', 'RequireCompleteAssets')
         wrapper_google_launch = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle')
+        proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $surfaceCheckArguments
+        proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $wrapperArguments
         python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--audit-sidecars')
         python_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--audit-assets')
         python_print_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--print-manifest')
@@ -171,6 +173,7 @@ $helper = [ordered]@{
         attached_pages_launcher_readme = 'tmp-browser-smoke/attached-pages/README.md'
         attached_pages_launcher_wrapper = 'scripts/windows/start_attached_pages_catalog.ps1'
         attached_pages_launcher_entrypoint = 'tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py'
+        attached_html_target_bundle_proof_entrypoint_note = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
         google_attached_html_validation_flow_note = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
         google_attached_html_entrypoint_note = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
         windows_full_use_attached_html_catalog_quickstart_note = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md'
@@ -182,6 +185,7 @@ $helper = [ordered]@{
         'Prefer wrapper_sidecar_audit first, then wrapper_asset_audit, then wrapper_print_manifest, wrapper_strict_launch, wrapper_strict_assets, or wrapper_strict_bundle. That keeps missing sibling _files bundles or still-missing local assets from being mistaken for headed-browser regressions.',
         'Use the strict bundle commands when both sidecars and referenced local assets must be complete before a manifest print or localhost launch is trusted.',
         'Prefer the GoogleStyle variants when the current attached-page set should keep the strongest Google-like page first while replay narrows back into the issue-specific helper chain.',
+        'Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.',
         'Keep the attached-pages README, the Windows wrapper, and the lower-level Python launcher visible beside the issue #3 Google attached HTML flow and entrypoint notes so the preflight order stays aligned across Windows and cross-platform replay.'
     )
 }
@@ -220,6 +224,10 @@ Write-Host (("  9. Google manifest:    {0}") -f $helper.helper_commands.wrapper_
 Write-Host (("  10. Google strict:     {0}") -f $helper.helper_commands.wrapper_google_strict_bundle)
 Write-Host (("  11. Google launch:     {0}") -f $helper.helper_commands.wrapper_google_launch)
 Write-Host ''
+Write-Host 'Pinned bundle proof follow-up:'
+Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)
+Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)
+Write-Host ''
 Write-Host 'Cross-platform launcher ladder:'
 Write-Host (("  1. Sidecar audit:      {0}") -f $helper.helper_commands.python_sidecar_audit)
 Write-Host (("  2. Asset audit:        {0}") -f $helper.helper_commands.python_asset_audit)
@@ -237,6 +245,7 @@ Write-Host (("Launcher surface check: {0}") -f $helper.companion_paths.launcher_
 Write-Host (("Attached-pages guide:    {0}") -f $helper.companion_paths.attached_pages_launcher_readme)
 Write-Host (("Windows wrapper:         {0}") -f $helper.companion_paths.attached_pages_launcher_wrapper)
 Write-Host (("Python launcher:         {0}") -f $helper.companion_paths.attached_pages_launcher_entrypoint)
+Write-Host (("Bundle proof note:       {0}") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)
 Write-Host (("Google flow note:        {0}") -f $helper.companion_paths.google_attached_html_validation_flow_note)
 Write-Host (("Google entrypoint note:  {0}") -f $helper.companion_paths.google_attached_html_entrypoint_note)
 Write-Host (("Windows catalog note:    {0}") -f $helper.companion_paths.windows_full_use_attached_html_catalog_quickstart_note)
