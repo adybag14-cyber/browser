@@ -26,6 +26,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "launcher_companion_surface_check = 'scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1'",
+        "purpose": "The launcher companion helper keeps the checker path visible in its companion paths map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "wrapper_strict_bundle = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('RequireCompleteSidecars', 'RequireCompleteAssets')",
         "purpose": "The launcher companion helper surfaces the strict sidecar-plus-asset wrapper path.",
     },
@@ -56,13 +61,23 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "python_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--require-complete-sidecars', '--require-complete-assets')",
-        "purpose": "The launcher companion helper surfaces the strict sidecar-plus-asset Python path.",
+        "snippet": "python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-sidecars')",
+        "purpose": "The launcher companion helper preserves the preferred first page through the Python sidecar audit path.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "python_google_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--require-complete-sidecars', '--require-complete-assets')",
-        "purpose": "The launcher companion helper surfaces the strict Google-style Python path.",
+        "snippet": "python_google_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--google-style', '--audit-sidecars')",
+        "purpose": "The launcher companion helper preserves the preferred first page through the Google-style Python sidecar audit path.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "python_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--require-complete-sidecars', '--require-complete-assets')",
+        "purpose": "The launcher companion helper surfaces the strict sidecar-plus-asset Python path while preserving the preferred first page.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "python_google_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--google-style', '--require-complete-sidecars', '--require-complete-assets')",
+        "purpose": "The launcher companion helper surfaces the strict Google-style Python path while preserving the preferred first page.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
@@ -98,6 +113,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": 'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)',
         "purpose": "The launcher companion helper prints the pinned proof-entrypoint helper.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("Launcher surface check: {0}") -f $helper.companion_paths.launcher_companion_surface_check)',
+        "purpose": "The launcher companion helper prints the checker path again with the companion paths.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
@@ -140,6 +160,11 @@ EXPECTATIONS = (
         "purpose": "The launcher companion helper explains when to re-enter the shorter replay-route companion directly from preflight.",
     },
     {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "The lower-level Python launcher ladder shown here now preserves the same preferred-first-page override, so cross-platform reruns can keep the pinned bundle order without hand-editing each command.",
+        "purpose": "The launcher companion helper keeps the cross-platform preferred-first-page support visible after the Python ladder gains parity with the wrapper.",
+    },
+    {
         "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1",
         "purpose": "The replay-route bridge note keeps its dedicated fail-fast checker visible.",
@@ -161,7 +186,7 @@ EXPECTATIONS = (
     },
     {
         "path": "tmp-browser-smoke/attached-pages/README.md",
-        "snippet": "--require-complete-sidecars \\\n  --require-complete-assets",
+        "snippet": "--require-complete-sidecars \\\\n  --require-complete-assets",
         "purpose": "The attached-pages README keeps the strict sidecar-plus-asset mode visible.",
     },
     {
@@ -178,6 +203,26 @@ EXPECTATIONS = (
         "path": "scripts/windows/start_attached_pages_catalog.ps1",
         "snippet": '$launcherArgs += "--require-complete-assets"',
         "purpose": "The Windows wrapper still forwards the strict asset gate.",
+    },
+    {
+        "path": "scripts/windows/start_attached_pages_catalog.ps1",
+        "snippet": "[string]$PreferredInitialPage,",
+        "purpose": "The Windows wrapper still accepts the preferred-first-page override that the launcher companion promises across its surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/start_attached_pages_catalog.ps1",
+        "snippet": "$orderedInputs = Resolve-OrderedAttachedHtmlInputs -RawInputPath $InputPath -PreferredPage $PreferredInitialPage",
+        "purpose": "The Windows wrapper still reorders explicit attached-page inputs through the preferred-first-page helper before printing the manifest or starting localhost replay.",
+    },
+    {
+        "path": "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
+        "snippet": "--preferred-initial-page",
+        "purpose": "The cross-platform attached-pages launcher still accepts the preferred-first-page override that the launcher companion promises for Linux reruns.",
+    },
+    {
+        "path": "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
+        "snippet": "preferred_initial_page=args.preferred_initial_page,",
+        "purpose": "The cross-platform attached-pages launcher still threads the preferred-first-page override into fixture selection before manifest generation and localhost startup.",
     },
 )
 
@@ -256,7 +301,3 @@ def main(argv: list[str] | None = None) -> int:
         print(render_text_report(audit), end="")
 
     return 1 if audit["missing_count"] else 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
