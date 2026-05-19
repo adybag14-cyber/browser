@@ -115,6 +115,25 @@ window. Use the suite-level `google-attached-html` and
 attached-page helper surface reprinted without widening back out to the rest of
 the router catalog first.
 
+When you need the tightest issue #3 Enter-submit ladder without going back
+through the router first, run the shared form-controls probe directly in the
+mode that matches the current failure boundary:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1 -DeferredEnter
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1 -GoogleEnterOrder
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus
+```
+
+Use the default mode to confirm the simple autofocus, type, and Enter-submit
+path. Use `-DeferredEnter` after changes that touch the delayed submit route.
+Use `-GoogleEnterOrder` when the shared Google-shaped field must prove that
+submit still waits until the keypress phase. Use `-GoogleEnterOrder -ClickFocus`
+when reproducing the real click-first path from issue #3. Treat those four runs
+as a narrowing ladder and only widen back out to attached pages or live Google
+once you know which rung is the first one to fail.
+
 For the broader subsystem-to-probe map across the existing `tmp-browser-smoke`
 families, read `docs/HEADED_MODE_VALIDATION_MATRIX.md` after the router output.
 Use that matrix when the change lands outside the router's currently named
