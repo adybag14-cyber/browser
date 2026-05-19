@@ -51,6 +51,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "attached_html_target_bundle_proof_entrypoint_note = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'",
+        "purpose": "The launcher companion helper keeps the pinned bundle proof note visible in its companion paths map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments",
         "purpose": "The launcher companion helper keeps the replay-attached Windows quickstart wired into its command map for direct re-entry after preflight.",
     },
@@ -106,6 +111,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "Write-Host 'Pinned bundle proof follow-up:'",
+        "purpose": "The launcher companion helper prints a dedicated proof follow-up section header before the proof-only helper pair.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "Write-Host ((\"  Surface check:      {0}\") -f $helper.helper_commands.proof_surface_check)",
         "purpose": "The launcher companion helper prints the pinned proof-entrypoint surface checker.",
     },
@@ -118,6 +128,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "Write-Host ((\"Launcher surface check: {0}\") -f $helper.companion_paths.launcher_companion_surface_check)",
         "purpose": "The launcher companion helper prints the checker path again with the companion paths.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "Write-Host ((\"Bundle proof note:       {0}\") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)",
+        "purpose": "The launcher companion helper prints the pinned bundle proof note beside the companion paths.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
@@ -171,6 +186,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"Write-Host 'Pinned bundle proof follow-up:'\"",
+        "purpose": "The Windows checker keeps guarding the proof follow-up section header on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Surface check:      {0}\\\") -f $helper.helper_commands.proof_surface_check)'",
         "purpose": "The Windows checker keeps guarding the proof surface-check output on the helper surface.",
     },
@@ -178,6 +198,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Proof entrypoint:   {0}\\\") -f $helper.helper_commands.proof_entrypoint)'",
         "purpose": "The Windows checker keeps guarding the proof entrypoint output on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"Bundle proof note:       {0}\\\") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)'",
+        "purpose": "The Windows checker keeps guarding the pinned bundle proof note output on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
