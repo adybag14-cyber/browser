@@ -23,6 +23,17 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 """
 
 
+GOOGLE_ENTRYPOINT_DOC_SNIPPET = """# Issue #3 Google Attached HTML Entrypoint
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
+```
+"""
+
+
 REPLAY_SCRIPT_SNIPPET = """$helper = [ordered]@{
     commands = [ordered]@{
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments
@@ -48,6 +59,32 @@ Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bun
 Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
 Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pages_launcher_companion_surface_check)
 Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)
+"""
+
+
+GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET = """$entrypoint = [ordered]@{
+    helper_commands = [ordered]@{
+        google_attached_html_sidecar_audit = $googleAttachedHtmlSidecarAuditCommand
+        broader_google_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_attached_html_validation_surface.ps1' -Arguments $googleAttachedHtmlSurfaceCheckArguments
+        google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')
+        google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
+        google_attached_html_validation_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
+        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
+    }
+    notes = @(
+        'Use google_attached_html_sidecar_audit when the current saved export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the broader surface check or the deeper asset audit.',
+        'Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.',
+        'Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.'
+    )
+}
+
+Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)
+Write-Host (("  7. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)
+Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)
+Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)
+Write-Host (("  Sidecar audit:         {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)
+Write-Host (("  Broader surface check: {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)
+Write-Host (("  Asset closure audit:   {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)
 """
 
 
@@ -80,11 +117,16 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self,
         *,
         doc_text: str = DOC_SNIPPET,
+        google_entrypoint_doc_text: str = GOOGLE_ENTRYPOINT_DOC_SNIPPET,
         replay_script_text: str = REPLAY_SCRIPT_SNIPPET,
+        google_entrypoint_script_text: str = GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET,
         launcher_companion_text: str = LAUNCHER_COMPANION_SNIPPET,
     ) -> None:
         (self.root / "docs" / "ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md").write_text(
             doc_text, encoding="utf-8"
+        )
+        (self.root / "docs" / "ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md").write_text(
+            google_entrypoint_doc_text, encoding="utf-8"
         )
         (
             self.root
@@ -92,6 +134,12 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             / "windows"
             / "show_google_issue3_windows_replay_attached_html_quickstart.ps1"
         ).write_text(replay_script_text, encoding="utf-8")
+        (
+            self.root
+            / "scripts"
+            / "windows"
+            / "show_google_issue3_google_attached_html_entrypoint.ps1"
+        ).write_text(google_entrypoint_script_text, encoding="utf-8")
         (
             self.root
             / "scripts"
@@ -158,6 +206,57 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             failing_paths,
         )
 
+    def test_build_audit_reports_missing_google_entrypoint_sidecar_audit_command(self) -> None:
+        self.write_contract_files(
+            google_entrypoint_doc_text=GOOGLE_ENTRYPOINT_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_google_entrypoint_asset_audit_wiring(self) -> None:
+        self.write_contract_files(
+            google_entrypoint_script_text=GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET.replace(
+                "        google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_google_entrypoint_broader_surface_note(self) -> None:
+        self.write_contract_files(
+            google_entrypoint_script_text=GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET.replace(
+                "Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.",
+                "drifted broader surface note",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.",
+            failing_snippets,
+        )
+
     def test_build_audit_reports_missing_proof_companion_note(self) -> None:
         self.write_contract_files(
             doc_text=DOC_SNIPPET.replace(
@@ -190,7 +289,11 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         )
 
     def test_text_report_surfaces_failure_count(self) -> None:
-        self.write_contract_files(replay_script_text="# drifted\n", launcher_companion_text="# drifted\n")
+        self.write_contract_files(
+            replay_script_text="# drifted\n",
+            google_entrypoint_script_text="# drifted\n",
+            launcher_companion_text="# drifted\n",
+        )
 
         audit = helper.build_replay_attached_quickstart_audit(self.root)
         report = helper.render_text_report(audit)
@@ -203,7 +306,12 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         )
 
     def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
-        self.write_contract_files(doc_text="# drifted\n", launcher_companion_text="# drifted\n")
+        self.write_contract_files(
+            doc_text="# drifted\n",
+            google_entrypoint_doc_text="# drifted\n",
+            google_entrypoint_script_text="# drifted\n",
+            launcher_companion_text="# drifted\n",
+        )
 
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
