@@ -42,6 +42,7 @@ var google_wait_trace_lock: std.Thread.Mutex = .{};
 
 fn googleWaitTraceEnabled(url: []const u8) bool {
     return std.mem.indexOf(u8, url, "google-home-") != null or
+        std.mem.indexOf(u8, url, "google_home_title_probe.html") != null or
         std.mem.indexOf(u8, url, "google.com") != null;
 }
 
@@ -947,4 +948,12 @@ fn canSuspendCurrentPage(self: *Session, page: *Page) bool {
 fn destroyPage(self: *Session, page: *Page, abort_http: bool) void {
     page.deinit(abort_http);
     self.destroyAllocPage(page);
+}
+
+test "google wait trace gate includes the saved localhost google probe" {
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/src/browser/tests/page/google_home_title_probe.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled("https://www.google.com/"));
+    try std.testing.expect(!googleWaitTraceEnabled("http://127.0.0.1:8000/tmp-browser-smoke/form-controls/index.html"));
 }
