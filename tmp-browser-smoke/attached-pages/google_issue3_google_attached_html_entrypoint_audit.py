@@ -111,6 +111,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.",
+        "purpose": "The helper explains when to keep the broader surface check visible before narrowing again.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": "Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.",
+        "purpose": "The helper explains when to keep the deeper asset audit visible before narrowing again.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         "snippet": "Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.",
         "purpose": "The helper explains when to keep the pinned bundle branch visible.",
     },
