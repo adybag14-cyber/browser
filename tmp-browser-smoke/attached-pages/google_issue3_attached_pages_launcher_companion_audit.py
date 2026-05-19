@@ -336,8 +336,7 @@ EXPECTATIONS = (
     },
     {
         "path": "tmp-browser-smoke/attached-pages/README.md",
-        "snippet": "--require-complete-sidecars \\
-  --require-complete-assets",
+        "snippet": "--require-complete-sidecars \\\n  --require-complete-assets",
         "purpose": "The attached-pages README keeps the strict sidecar-plus-asset mode visible.",
     },
     {
@@ -386,6 +385,28 @@ def resolve_repo_root(root: str | None) -> Path:
     return resolved
 
 
+def summarize_missing_paths(results: list[dict[str, object]]) -> list[dict[str, object]]:
+    missing_by_path: dict[str, list[str]] = {}
+
+    for result in results:
+        if result["exists"]:
+            continue
+        missing_by_path.setdefault(result["path"], []).append(result["purpose"])
+
+    summary: list[dict[str, object]] = []
+    for path in sorted(missing_by_path):
+        purposes = missing_by_path[path]
+        summary.append(
+            {
+                "path": path,
+                "missing_expectation_count": len(purposes),
+                "first_missing_purpose": purposes[0],
+            }
+        )
+
+    return summary
+
+
 def build_launcher_companion_audit(repo_root: Path) -> dict[str, object]:
     results: list[dict[str, object]] = []
     missing_count = 0
@@ -409,10 +430,13 @@ def build_launcher_companion_audit(repo_root: Path) -> dict[str, object]:
             }
         )
 
+    missing_paths = summarize_missing_paths(results)
     return {
         "repo_root": str(repo_root),
         "expectation_count": len(results),
         "missing_count": missing_count,
+        "missing_path_count": len(missing_paths),
+        "missing_paths": missing_paths,
         "results": results,
     }
 
@@ -431,6 +455,16 @@ def render_text_report(audit: dict[str, object]) -> str:
         status = "PASS" if result["exists"] else "FAIL"
         lines.append(f"[{status}] {result['path']}")
         lines.append(f"  {result['purpose']}")
+
+    missing_paths = audit.get("missing_paths", [])
+    if missing_paths:
+        lines.append("")
+        lines.append("Missing path summary:")
+        for entry in missing_paths:
+            lines.append(
+                f"- {entry['path']}: {entry['missing_expectation_count']} missing expectation(s)"
+            )
+            lines.append(f"  first gap: {entry['first_missing_purpose']}")
 
     return "\n".join(lines).rstrip() + "\n"
 
