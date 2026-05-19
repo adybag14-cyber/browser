@@ -13,6 +13,13 @@ DEFAULT_RELATIVE_PATHS = (
     "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
 )
 
+REPLAY_QUICKSTART_SURFACE_CHECK = (
+    "check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1"
+)
+WINDOWS_ROUTE_SURFACE_CHECK = (
+    "check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1"
+)
+
 PROOF_NOTE = "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md"
 PROOF_SURFACE_CHECK = (
     "check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1"
@@ -43,6 +50,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
     wrapper_count = 0
     wrapper_sidecar_count = 0
     google_wrapper_sidecar_count = 0
+    replay_quickstart_surface_check_count = 0
+    windows_route_surface_check_count = 0
     proof_note_count = 0
     proof_surface_check_count = 0
     proof_helper_count = 0
@@ -56,6 +65,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         relative_path = path.relative_to(repo_root).as_posix()
         raw_hits: list[dict[str, object]] = []
         wrapper_hits: list[dict[str, object]] = []
+        replay_quickstart_surface_hits: list[dict[str, object]] = []
+        windows_route_surface_hits: list[dict[str, object]] = []
         proof_note_hits: list[dict[str, object]] = []
         proof_surface_hits: list[dict[str, object]] = []
         proof_helper_hits: list[dict[str, object]] = []
@@ -77,6 +88,10 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                         "mentions_google_style": GOOGLE_FLAG in line,
                     }
                 )
+            if REPLAY_QUICKSTART_SURFACE_CHECK in line:
+                replay_quickstart_surface_hits.append({"line_number": line_number, "line": stripped})
+            if WINDOWS_ROUTE_SURFACE_CHECK in line:
+                windows_route_surface_hits.append({"line_number": line_number, "line": stripped})
             if PROOF_NOTE in line:
                 proof_note_hits.append({"line_number": line_number, "line": stripped})
             if PROOF_SURFACE_CHECK in line:
@@ -98,6 +113,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         google_wrapper_sidecar_count += sum(
             1 for hit in wrapper_hits if hit["mentions_sidecars"] and hit["mentions_google_style"]
         )
+        replay_quickstart_surface_check_count += len(replay_quickstart_surface_hits)
+        windows_route_surface_check_count += len(windows_route_surface_hits)
         proof_note_count += len(proof_note_hits)
         proof_surface_check_count += len(proof_surface_hits)
         proof_helper_count += len(proof_helper_hits)
@@ -114,6 +131,10 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 "raw_python_references": raw_hits,
                 "wrapper_reference_count": len(wrapper_hits),
                 "wrapper_references": wrapper_hits,
+                "replay_quickstart_surface_check_count": len(replay_quickstart_surface_hits),
+                "replay_quickstart_surface_checks": replay_quickstart_surface_hits,
+                "windows_route_surface_check_count": len(windows_route_surface_hits),
+                "windows_route_surface_checks": windows_route_surface_hits,
                 "proof_note_reference_count": len(proof_note_hits),
                 "proof_note_references": proof_note_hits,
                 "proof_surface_check_count": len(proof_surface_hits),
@@ -138,6 +159,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "wrapper_reference_count": wrapper_count,
         "wrapper_sidecar_reference_count": wrapper_sidecar_count,
         "google_wrapper_sidecar_reference_count": google_wrapper_sidecar_count,
+        "replay_quickstart_surface_check_count": replay_quickstart_surface_check_count,
+        "windows_route_surface_check_count": windows_route_surface_check_count,
         "proof_note_reference_count": proof_note_count,
         "proof_surface_check_count": proof_surface_check_count,
         "proof_helper_count": proof_helper_count,
@@ -159,6 +182,10 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the wrapper-backed sidecar audit visible")
     if audit["google_wrapper_sidecar_reference_count"] == 0:
         reasons.append("replay notes do not keep the Google-style wrapper-backed sidecar audit visible")
+    if audit["replay_quickstart_surface_check_count"] == 0:
+        reasons.append("replay notes do not keep the replay attached-html quickstart surface check visible")
+    if audit["windows_route_surface_check_count"] == 0:
+        reasons.append("replay notes do not keep the broader Windows attached-html route surface check visible")
     if audit["proof_note_reference_count"] == 0:
         reasons.append("replay notes do not keep the pinned bundle proof note visible")
     if audit["proof_surface_check_count"] == 0:
@@ -186,6 +213,8 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Wrapper references: {audit['wrapper_reference_count']}",
         f"Wrapper sidecar references: {audit['wrapper_sidecar_reference_count']}",
         f"Google-style wrapper sidecar references: {audit['google_wrapper_sidecar_reference_count']}",
+        f"Replay quickstart surface-check references: {audit['replay_quickstart_surface_check_count']}",
+        f"Windows route surface-check references: {audit['windows_route_surface_check_count']}",
         f"Pinned proof note references: {audit['proof_note_reference_count']}",
         f"Pinned proof checker references: {audit['proof_surface_check_count']}",
         f"Pinned proof helper references: {audit['proof_helper_count']}",
@@ -200,6 +229,12 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         lines.append(f"File: {file_result['display_path']}")
         lines.append(f"  Raw Python references: {file_result['raw_python_reference_count']}")
         lines.append(f"  Wrapper references: {file_result['wrapper_reference_count']}")
+        lines.append(
+            f"  Replay quickstart surface-check references: {file_result['replay_quickstart_surface_check_count']}"
+        )
+        lines.append(
+            f"  Windows route surface-check references: {file_result['windows_route_surface_check_count']}"
+        )
         lines.append(f"  Pinned proof note references: {file_result['proof_note_reference_count']}")
         lines.append(f"  Pinned proof checker references: {file_result['proof_surface_check_count']}")
         lines.append(f"  Pinned proof helper references: {file_result['proof_helper_count']}")
@@ -211,6 +246,10 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
             lines.append(f"  Raw line {hit['line_number']}: {hit['line']}")
         for hit in file_result["wrapper_references"][:5]:
             lines.append(f"  Wrapper line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["replay_quickstart_surface_checks"][:3]:
+            lines.append(f"  Replay check line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["windows_route_surface_checks"][:3]:
+            lines.append(f"  Route check line {hit['line_number']}: {hit['line']}")
         for hit in file_result["proof_note_references"][:3]:
             lines.append(f"  Proof note line {hit['line_number']}: {hit['line']}")
         for hit in file_result["proof_surface_checks"][:3]:
@@ -236,7 +275,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
-            "the pinned proof route, or the dedicated Google attached-html replay surface."
+            "the replay-side and Windows-side route checks, the pinned proof route, or the "
+            "dedicated Google attached-html replay surface."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
