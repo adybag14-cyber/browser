@@ -271,7 +271,7 @@ $helper = [ordered]@{
         'Use attached_html_validation_flow when the replay should keep the broader attached-page helper visible before the ladder narrows into the Google-shaped route or the shorter issue #3 helpers.',
         'Use google_attached_html_surface_check when branch state may have moved and the replay should fail fast on the dedicated Google-shaped attached-page lane before reopening the narrower Google helper from this same replay ladder.',
         'Use google_attached_html_validation_flow when the current attached inputs are already Google-shaped and you want the dedicated attached-page asset-closure and preferred-initial-page helper visible after the dedicated Google-shaped attached-page surface check and before the route narrows back into the suite-router sidecar or the shorter attached-page shortcut.',
-        'Use google_attached_html_entrypoint when the replay already needs the issue-specific Google attached-html bridge kept visible after the dedicated Google attached-page flow and before the compact bundle suite or the narrower shortcuts take over.',
+        'Use google_attached_html_entrypoint when the replay still needs the issue-specific Google attached-page bridge kept visible after the dedicated Google attached-page flow and before the compact bundle-suite surface, the proof-only bundle follow-up, the top-level shortcut bridge, replay-route shortcut, attached-page shortcut, or replay shortcuts.',
         'Keep suite_router_attached_html_quickstart nearby as the sidecar helper when the route needs to widen back toward the suite-router surface instead of narrowing directly into the shorter attached-page bridge or the attached-page shortcut.',
         'Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.',
         'Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surface reprinted before the route widens into the next-step matrix, bundle-first helper, or safe-route map.',
@@ -360,7 +360,7 @@ Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route
 Write-Host (("  Attached shortcut:        {0}") -f $helper.commands.attached_html_shortcut)
 Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)
 Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)
-Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
+Write-Host (("  Bundle proof entry:       {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
 Write-Host (("  Replay shortcuts:         {0}") -f $helper.commands.replay_shortcuts)
 Write-Host (("  Contextual flow:          {0}") -f $helper.commands.contextual_flow)
 Write-Host (("  Bundle-first helper:      {0}") -f $helper.commands.attached_bundle_first)
@@ -388,7 +388,6 @@ Write-Host (("Replay-route shortcut note:  {0}") -f (' ' + $helper.replay_route_
 Write-Host (("Bundle reference note:       {0}") -f (' ' + $helper.attached_html_target_bundle_reference_note_path))
 Write-Host (("Bundle suite note:           {0}") -f (' ' + $helper.attached_html_target_bundle_suite_surface_note_path))
 Write-Host (("Bundle proof note:           {0}") -f (' ' + $helper.attached_html_target_bundle_proof_entrypoint_note_path))
-Write-Host (("Validation chain note:       {0}") -f (' ' + $helper.validation_chain_note_path))
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
