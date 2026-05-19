@@ -141,6 +141,30 @@ DRIFT_CASES = (
         "drifted note",
     ),
     (
+        "replay_windows_bridge_check_output",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)',
+        "",
+    ),
+    (
+        "replay_windows_bridge_quickstart_output",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        'Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)',
+        "",
+    ),
+    (
+        "replay_windows_bridge_default_handoff_guidance",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.",
+        "drifted note",
+    ),
+    (
+        "replay_to_windows_numbered_output",
+        "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        'Write-Host (("  8. Replay-to-Windows: {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)',
+        "",
+    ),
+    (
         "google_entrypoint_note_command",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
