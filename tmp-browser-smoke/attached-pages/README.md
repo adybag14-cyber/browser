@@ -370,6 +370,23 @@ Use the preflight report first to confirm the selected bundle is intact, reuse
 the same pinned inputs for sidecar and asset audits, and only then hand off to
 the narrower issue-specific Google replay helper.
 
+If you want the same launcher-backed sidecar-first ladder, strict asset gates,
+and pinned proof follow-up reprinted from one guarded Windows surface before
+dropping into the narrower Google helper, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -InputPath "C:\path\to\saved-pages-dir"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot "C:\path\to\browser" -InputPath "C:\path\to\saved-pages-dir"
+```
+
+Use the guard first when the launcher companion itself or its note pointers may
+have drifted. The companion helper keeps the wrapper-side sidecar audit, the
+broader asset audit, the strict sidecar gate, the strict asset gate, the strict
+bundle gate, the Google-style launcher variants, and the pinned proof checker
+plus proof entrypoint together on one smaller surface while the replay is still
+being narrowed.
+
 ## Lower-level helpers
 
 Use these when you intentionally want the narrower building blocks instead of
