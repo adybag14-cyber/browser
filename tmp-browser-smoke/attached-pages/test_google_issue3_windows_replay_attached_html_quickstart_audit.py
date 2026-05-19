@@ -24,15 +24,20 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3
 SCRIPT_SNIPPET = """$helper = [ordered]@{
     commands = [ordered]@{
         attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments
+        attached_bundle_proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $routeSurfaceArguments
+        attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $sharedArguments
         attached_pages_launcher_companion_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $routeSurfaceArguments
         attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments
     }
     notes = @(
-        'Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.'
+        'Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.',
+        'Use attached_bundle_proof_surface_check and attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the executable proof-only checker and helper pair reprinted before or after the narrower bundle-first follow-up.'
     )
 }
 
 Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)
+Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)
+Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
 Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pages_launcher_companion_surface_check)
 Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)
 """
@@ -76,6 +81,18 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", failing_paths)
+
+    def test_build_audit_reports_missing_proof_helper_output(self) -> None:
+        self.write_contract_files(script_text=SCRIPT_SNIPPET.replace(
+            'Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)\n',
+            "",
+        ))
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1", failing_paths)
 
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(script_text="# drifted\n")
