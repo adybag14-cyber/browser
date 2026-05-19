@@ -42,6 +42,7 @@ LAUNCHER_COMPANION_SNIPPET = """$helper = [ordered]@{
     }
     companion_paths = [ordered]@{
         launcher_companion_surface_check = 'scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1'
+        attached_html_target_bundle_proof_entrypoint_note = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
         windows_full_use_attached_html_catalog_quickstart_note = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md'
         replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
     }
@@ -56,11 +57,13 @@ LAUNCHER_COMPANION_SNIPPET = """$helper = [ordered]@{
 
 Write-Host ((("  6. Strict bundle:      {0}") -f $helper.helper_commands.wrapper_strict_bundle))
 Write-Host ((("  10. Google strict:     {0}") -f $helper.helper_commands.wrapper_google_strict_bundle))
-Write-Host ((("  6. Strict bundle:      {0}") -f $helper.helper_commands.python_strict_bundle))
-Write-Host ((("  10. Google strict:     {0}") -f $helper.helper_commands.python_google_strict_bundle))
+Write-Host 'Pinned bundle proof follow-up:'
 Write-Host ((("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check))
 Write-Host ((("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint))
+Write-Host ((("  6. Strict bundle:      {0}") -f $helper.helper_commands.python_strict_bundle))
+Write-Host ((("  10. Google strict:     {0}") -f $helper.helper_commands.python_google_strict_bundle))
 Write-Host ((("Launcher surface check: {0}") -f $helper.companion_paths.launcher_companion_surface_check))
+Write-Host ((("Bundle proof note:       {0}") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note))
 Write-Host 'Replay re-entry helpers:'
 Write-Host ((("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart))
 Write-Host ((("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut))
@@ -68,14 +71,16 @@ Write-Host ((("Windows catalog note:    {0}") -f $helper.companion_paths.windows
 Write-Host ((("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note))
 """
 
-CHECKER_SNIPPET = """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\"  Surface check:      {0}\\") -f $helper.helper_commands.proof_surface_check)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint surface checker.'),
-(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\"  Proof entrypoint:   {0}\\") -f $helper.helper_commands.proof_entrypoint)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint helper.'),
+CHECKER_SNIPPET = """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"Write-Host 'Pinned bundle proof follow-up:'\" -Purpose 'Launcher companion helper prints a dedicated proof follow-up section header.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Surface check:      {0}\\\") -f $helper.helper_commands.proof_surface_check)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint surface checker.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Proof entrypoint:   {0}\\\") -f $helper.helper_commands.proof_entrypoint)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint helper.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"Bundle proof note:       {0}\\\") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)' -Purpose 'Launcher companion helper prints the pinned bundle proof note beside the companion paths.'),
 (New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.' -Purpose 'Launcher companion helper notes preserve when to hand control back into the pinned proof route after launcher preflight narrows the run to the known bundle.'),
 (New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments\\\" -Purpose 'Launcher companion helper keeps the Windows replay re-entry helper wired into its command map after sidecar, asset, or proof preflight.'),
 (New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments\\\" -Purpose 'Launcher companion helper keeps the narrower replay-route re-entry helper wired into its command map after preflight narrows the problem.'),
 (New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"Write-Host 'Replay re-entry helpers:'\\\" -Purpose 'Launcher companion helper prints a dedicated replay re-entry section header once proof-only follow-up is complete.'),
-(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\"  Windows replay quick: {0}\\") -f $helper.helper_commands.windows_replay_quickstart)' -Purpose 'Launcher companion helper prints the Windows replay re-entry helper once preflight is complete.'),
-(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\"  Replay-route helper: {0}\\") -f $helper.helper_commands.replay_route_shortcut)' -Purpose 'Launcher companion helper prints the narrower replay-route re-entry helper once preflight is complete.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Windows replay quick: {0}\\\") -f $helper.helper_commands.windows_replay_quickstart)' -Purpose 'Launcher companion helper prints the Windows replay re-entry helper once preflight is complete.'),
+(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Replay-route helper: {0}\\\") -f $helper.helper_commands.replay_route_shortcut)' -Purpose 'Launcher companion helper prints the narrower replay-route re-entry helper once preflight is complete.'),
 (New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use windows_replay_quickstart after launcher-side sidecar, asset, or proof preflight when the next honest step is to re-enter the replay-attached Windows ladder without reopening the broader route map first.' -Purpose 'Launcher companion helper notes preserve when to hand control back to the Windows replay attached-html quickstart after launcher preflight.'),
 (New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.' -Purpose 'Launcher companion helper notes preserve when to prefer the shorter replay-route companion after launcher preflight narrows the problem.'),
 """
@@ -225,6 +230,18 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         )
 
+    def test_build_audit_reports_missing_helper_proof_header_output(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "Write-Host 'Pinned bundle proof follow-up:'\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
     def test_build_audit_reports_missing_helper_proof_surface_output(self) -> None:
         self.write_contract_files(
             launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
@@ -249,6 +266,42 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         )
 
+    def test_build_audit_reports_missing_helper_bundle_proof_note_path(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "        attached_html_target_bundle_proof_entrypoint_note = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
+    def test_build_audit_reports_missing_helper_bundle_proof_note_output(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                'Write-Host ((("Bundle proof note:       {0}") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note))\n',
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
+    def test_build_audit_reports_missing_checker_proof_header_guard(self) -> None:
+        self.write_contract_files(
+            checker_text=CHECKER_SNIPPET.replace(
+                """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"Write-Host 'Pinned bundle proof follow-up:'\" -Purpose 'Launcher companion helper prints a dedicated proof follow-up section header.'),\n""",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        )
+
     def test_build_audit_reports_missing_checker_proof_guard(self) -> None:
         self.write_contract_files(
             checker_text=CHECKER_SNIPPET.replace(
@@ -265,6 +318,18 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         self.write_contract_files(
             checker_text=CHECKER_SNIPPET.replace(
                 """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Surface check:      {0}\\\") -f $helper.helper_commands.proof_surface_check)' -Purpose 'Launcher companion helper prints the pinned proof-entrypoint surface checker.'),\n""",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        )
+
+    def test_build_audit_reports_missing_checker_bundle_proof_note_guard(self) -> None:
+        self.write_contract_files(
+            checker_text=CHECKER_SNIPPET.replace(
+                """(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"Bundle proof note:       {0}\\\") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)' -Purpose 'Launcher companion helper prints the pinned bundle proof note beside the companion paths.'),\n""",
                 "",
             )
         )
