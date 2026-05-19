@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("", "attached-html-target-bundle", "google-attached-html", "google-form-controls-enter-order", "google-recommended")]
+    [ValidateSet("", "attached-html-target-bundle", "google-attached-html", "google-form-controls-enter-order", "google-recommended", "google-shared-enter-order")]
     [string]$SuiteName = "",
-    [ValidateSet("", "attached-html", "attached-html-target-bundle", "browser-shell", "google-attached-html", "google-form-controls-enter-order", "google-input", "input", "manual-html", "navigation", "network", "popup", "rendering", "stop-loading")]
+    [ValidateSet("", "attached-html", "attached-html-target-bundle", "browser-shell", "google-attached-html", "google-form-controls-enter-order", "google-input", "google-shared-enter-order", "input", "manual-html", "navigation", "network", "popup", "rendering", "stop-loading")]
     [string]$ChangeArea = "",
     [string]$RepoRoot = "",
     [string]$BrowserExe = "",
@@ -360,6 +360,30 @@ function Get-GoogleFormControlsEnterOrderNotes {
     return $notes
 }
 
+function Get-GoogleSharedEnterOrderCommands {
+    return @(
+        (Format-HelperCommand -ScriptName 'check_google_shared_enter_order_validation_surface.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+        (Format-HelperCommand -ScriptName 'show_google_shared_enter_order_validation_flow.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+        (Format-HelperCommand -ScriptName 'run_google_shared_enter_order_validation.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+        (Format-HelperCommand -ScriptName 'show_google_form_controls_enter_order_validation_flow.ps1' -Arguments $googleFormControlsEnterOrderArguments),
+        (Format-HelperCommand -ScriptName 'show_google_form_controls_enter_order_trace_guide.ps1' -Arguments $googleFormControlsEnterOrderArguments)
+    )
+}
+
+function Get-GoogleSharedEnterOrderNotes {
+    $notes = @(
+        "Use this when issue #3 is already narrowed to the reusable shared Enter-order ladder between the smaller bounded input probes and the later live Google pass.",
+        "Run the shared surface checker first so missing docs, shared wrappers, or reduced localhost probes fail before you trust the wider Enter-order ladder.",
+        "Keep the dedicated form-controls flow and trace guide nearby so the last shared keypress-before-submit gate stays easy to reopen without widening all the way back out."
+    )
+
+    if ($isCustomBrowserExe) {
+        $notes += "Current browser override: $BrowserExe"
+    }
+
+    return $notes
+}
+
 function Show-DefaultRoutes {
     Write-Section "Headed Validation Suites"
     Write-Host "Use the smallest bounded check first, then widen into manual headed follow-up."
@@ -392,6 +416,7 @@ function Show-DefaultRoutes {
     )
 
     Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes (Get-GoogleFormControlsEnterOrderNotes)
+    Write-Route -Name "google-shared-enter-order" -Commands (Get-GoogleSharedEnterOrderCommands) -Notes (Get-GoogleSharedEnterOrderNotes)
     Write-Route -Name "rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
     Write-Route -Name "network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
     Write-Route -Name "browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)
@@ -451,6 +476,18 @@ switch ($true) {
             (Format-HelperCommand -ScriptName 'run_google_shared_enter_order_validation.ps1' -Arguments $googleFormControlsEnterOrderArguments)
         ) -Notes @(
             "Use these after the dedicated form-controls Enter-order gate is green and you want the broader shared Enter-order ladder back on one surface."
+        )
+        break
+    }
+    { $SuiteName -eq "google-shared-enter-order" } {
+        Write-Section "google-shared-enter-order"
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+
+        Write-Route -Name "google-shared-enter-order" -Commands (Get-GoogleSharedEnterOrderCommands) -Notes (Get-GoogleSharedEnterOrderNotes)
+        Write-Route -Name "dedicated-form-controls-follow-up" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes @(
+            "Use these when the shared Enter-order ladder is already narrowed and you want the last shared form-controls keypress-before-submit gate reopened on its own surface."
         )
         break
     }
@@ -541,6 +578,18 @@ switch ($true) {
             (Format-HelperCommand -ScriptName 'run_google_shared_enter_order_validation.ps1' -Arguments $googleFormControlsEnterOrderArguments)
         ) -Notes @(
             "Use these after the dedicated form-controls Enter-order gate is green and you want the broader shared Enter-order ladder back on one surface."
+        )
+        break
+    }
+    { $ChangeArea -eq "google-shared-enter-order" } {
+        Write-Section "google-shared-enter-order"
+        if ($isCustomBrowserExe) {
+            Write-Host ("Browser exe: {0}" -f $BrowserExe)
+        }
+
+        Write-Route -Name "google-shared-enter-order" -Commands (Get-GoogleSharedEnterOrderCommands) -Notes (Get-GoogleSharedEnterOrderNotes)
+        Write-Route -Name "dedicated-form-controls-follow-up" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes @(
+            "Use these after the shared Enter-order ladder when you want the last shared form-controls keypress-before-submit gate isolated again."
         )
         break
     }
