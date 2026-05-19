@@ -115,6 +115,28 @@ window. Use the suite-level `google-attached-html` and
 attached-page helper surface reprinted without widening back out to the rest of
 the router catalog first.
 
+For browser-shell work, keep this direct headed probe ladder nearby once the
+router points you at `browser-shell`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-start-shell-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-tabs-recovery-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-home-restore-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-title-fidelity-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\tabs\chrome-session-restore-probe.ps1
+```
+
+Use `chrome-browser-pages-start-shell-probe.ps1` after homepage routing,
+`Alt+Home`, or internal browser-page link changes. Use
+`chrome-browser-pages-tabs-recovery-probe.ps1` when work touched
+`browser://tabs/*`, reload, close, or reopen-closed flows. Use
+`chrome-browser-pages-home-restore-probe.ps1` when startup restore or persisted
+homepage behavior changed. Use
+`chrome-browser-pages-title-fidelity-probe.ps1` when browser pages or title
+propagation might drift across reopen or restart. Finish with
+`chrome-session-restore-probe.ps1` when the same shell change could leak out of
+`browser-pages` and into the wider tab/session restore path.
+
 When you need the tightest issue #3 Enter-submit ladder without going back
 through the router first, run the shared form-controls probe directly in the
 mode that matches the current failure boundary:
