@@ -51,6 +51,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "launcher_companion_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "launcher_companion_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
+        "",
+    ),
+    (
         "launcher_windows_replay_wiring",
         "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments",
@@ -61,6 +73,18 @@ DRIFT_CASES = (
         "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
         "drifted note",
+    ),
+    (
+        "windows_catalog_quickstart_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "windows_catalog_quickstart_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Catalog quickstart:       {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        "",
     ),
     (
         "replay_route_shortcut_output",
