@@ -31,6 +31,11 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1",
+        "purpose": "The Windows full-use attached HTML route note keeps the broader attached-page localhost flow visible before the route narrows into the dedicated Google flow or smaller attached-page follow-up.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -AuditSidecars",
         "purpose": "The Windows full-use attached HTML route note keeps the wrapper-backed sidecar audit surfaced in the attached-page follow-up ladder.",
     },
@@ -71,6 +76,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": "attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
+        "purpose": "The route helper keeps the broader attached-page localhost flow wired into its helper map before the dedicated Google flow or smaller attached-page follow-up takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
         "snippet": "google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments",
         "purpose": "The route helper keeps the broader Google attached-page flow wired into its helper map.",
     },
@@ -108,6 +118,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
         "snippet": 'Write-Host (("  5. Replay attached qk:    {0}") -f $route.helper_commands.windows_replay_attached_html_quickstart)',
         "purpose": "The route helper prints the replay-attached quickstart in its route ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": 'Write-Host (("  8. Attached flow:         {0}") -f $route.helper_commands.attached_html_flow)',
+        "purpose": "The route helper prints the broader attached-page localhost flow in its route ladder before the dedicated Google flow or smaller attached-page follow-up takes over.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
