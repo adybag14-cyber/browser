@@ -225,6 +225,24 @@ DRIFT_CASES = (
         "drifted note",
     ),
     (
+        "suite_router_sidecar_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "suite_router_sidecar_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)',
+        "",
+    ),
+    (
+        "suite_router_sidecar_guidance",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Keep suite_router_attached_html_quickstart nearby as the sidecar helper when the route needs to widen back toward the suite-router surface instead of narrowing directly into the shorter attached-page bridge or the attached-page shortcut.",
+        "drifted note",
+    ),
+    (
         "replay_route_shortcut_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)',
