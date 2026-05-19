@@ -53,14 +53,14 @@ HELPER_SNIPPET = """$helper = [ordered]@{
     )
 }
 
-Write-Host ((("  Route surface check:       {0}")) -f $helper.commands.windows_full_use_attached_html_route_surface_check)
-Write-Host ((("  Windows validation bridge: {0}")) -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)
-Write-Host ((("  Windows catalog quick:     {0}")) -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)
-Write-Host ((("  Validation-router quick:   {0}")) -f $helper.commands.validation_router_attached_html_quickstart)
-Write-Host ((("  Launcher surface check:    {0}")) -f $helper.commands.attached_pages_launcher_surface_check)
-Write-Host ((("  Launcher companion:        {0}")) -f $helper.commands.attached_pages_launcher_companion)
-Write-Host ((("  Router shortcut:           {0}")) -f $helper.commands.suite_router_shortcut_first)
-Write-Host ((("  Route shortcut:            {0}")) -f $helper.commands.replay_route_shortcut_entrypoint)
+Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)
+Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)
+Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)
+Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)
+Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)
+Write-Host (("  Launcher companion:        {0}") -f $helper.commands.attached_pages_launcher_companion)
+Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)
+Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)
 """
 
 
@@ -142,7 +142,7 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
     def test_build_audit_reports_missing_windows_validation_bridge_output(self) -> None:
         self.write_contract_files(
             helper_text=HELPER_SNIPPET.replace(
-                'Write-Host ((("  Windows validation bridge: {0}")) -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)\n',
+                'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)\n',
                 "",
             )
         )
