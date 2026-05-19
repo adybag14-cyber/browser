@@ -1,92 +1,113 @@
-$ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\font-smoke"
-$profileRoot = Join-Path $root "profile-font-auth"
-$appDataRoot = Join-Path $profileRoot "lightpanda"
-$port = 8162
-$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
-$serverScript = Join-Path $root "font_server.py"
-$browserOut = Join-Path $root "font-auth.browser.stdout.txt"
-$browserErr = Join-Path $root "font-auth.browser.stderr.txt"
-$serverOut = Join-Path $root "font-auth.server.stdout.txt"
-$serverErr = Join-Path $root "font-auth.server.stderr.txt"
-$requestLog = Join-Path $root "font.requests.jsonl"
-$pageUrl = "http://fontuser:p%40ss@127.0.0.1:$port/auth-font-page.html"
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [int]$Port = 8162,
+  [int]$ServerReadyTimeoutSeconds = 10,
+  [int]$RequestReadyAttempts = 80,
+  [int]$PollMilliseconds = 250
+)
 
-Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$requestLog -Force -ErrorAction SilentlyContinue
-cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
-New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
-$env:APPDATA = $profileRoot
-$env:LOCALAPPDATA = $profileRoot
-@"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'common\ProbeRuntime.ps1')
+
+$repo = if ([string]::IsNullOrWhiteSpace($RepoRoot)) { Resolve-LightpandaRepoRoot $PSScriptRoot } else { $RepoRoot }
+$root = Join-Path $repo 'tmp-browser-smoke\font-smoke'
+$profileRoot = Join-Path $root 'profile-font-auth'
+$appDataRoot = Join-Path $profileRoot 'lightpanda'
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+$serverScript = Join-Path $root 'font_server.py'
+$browserOut = Join-Path $root 'font-auth.browser.stdout.txt'
+$browserErr = Join-Path $root 'font-auth.browser.stderr.txt'
+$serverOut = Join-Path $root 'font-auth.server.stdout.txt'
+$serverErr = Join-Path $root 'font-auth.server.stderr.txt'
+$requestLog = Join-Path $root 'font.requests.jsonl'
+$pageUrl = "http://fontuser:p%40ss@127.0.0.1:$Port/auth-font-page.html"
+$server = $null
+$browser = $null
+$ready = $false
+$fontEntry = $null
+$loadedEntry = $null
+$failure = $null
+
+try {
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$requestLog -Force -ErrorAction SilentlyContinue
+  cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+  New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
+  @"
 lightpanda-browse-settings-v1
 restore_previous_session	0
 allow_script_popups	0
 default_zoom_percent	100
 homepage_url	
-"@ | Set-Content -Path (Join-Path $appDataRoot "browse-settings-v1.txt") -NoNewline
+"@ | Set-Content -Path (Join-Path $appDataRoot 'browse-settings-v1.txt') -NoNewline
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-$ready = $false
-for ($i = 0; $i -lt 40; $i++) {
-  Start-Sleep -Milliseconds 250
-  try {
-    $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/auth-font-page.html" -TimeoutSec 2
-    if ($resp.StatusCode -eq 200) { $ready = $true; break }
-  } catch {}
-}
-if (-not $ready) { throw "localhost font auth server did not become ready" }
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript,$Port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url "http://127.0.0.1:$Port/auth-font-page.html" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
+  if (-not $ready) { throw 'localhost font auth server did not become ready' }
 
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $env:APPDATA = $profileRoot
+  $env:LOCALAPPDATA = $profileRoot
+  $browser = Start-Process -FilePath $browserExe -ArgumentList 'browse',$pageUrl -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
-$fontEntry = $null
-$loadedEntry = $null
-for ($i = 0; $i -lt 80; $i++) {
-  Start-Sleep -Milliseconds 250
-  if (Test-Path $requestLog) {
-    $entries = Get-Content $requestLog | Where-Object { $_.Trim().Length -gt 0 } | ForEach-Object { $_ | ConvertFrom-Json }
-    $fontEntries = @($entries | Where-Object { $_.path -eq "/private-font.woff2" })
-    $loadedEntries = @($entries | Where-Object { $_.path -eq "/loaded" })
-    if ($fontEntries.Count -gt 0) { $fontEntry = $fontEntries[-1] }
-    if ($loadedEntries.Count -gt 0) { $loadedEntry = $loadedEntries[-1] }
-    if ($fontEntry -and $loadedEntry) { break }
+  for ($i = 0; $i -lt $RequestReadyAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    if (Test-Path -LiteralPath $requestLog) {
+      $entries = Get-Content -LiteralPath $requestLog | Where-Object { $_.Trim().Length -gt 0 } | ForEach-Object { $_ | ConvertFrom-Json }
+      $fontEntries = @($entries | Where-Object { $_.path -eq '/private-font.woff2' })
+      $loadedEntries = @($entries | Where-Object { $_.path -eq '/loaded' })
+      if ($fontEntries.Count -gt 0) { $fontEntry = $fontEntries[-1] }
+      if ($loadedEntries.Count -gt 0) { $loadedEntry = $loadedEntries[-1] }
+      if ($fontEntry -and $loadedEntry) { break }
+    }
+  }
+
+  if (-not $fontEntry) { throw 'font auth probe did not capture the font request' }
+  if (-not $loadedEntry) { throw 'font auth probe did not capture the load completion signal' }
+} catch {
+  $failure = $_.Exception.Message
+} finally {
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
+  Start-Sleep -Milliseconds 200
+
+  $result = [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    port = $Port
+    ready = $ready
+    server_pid = if ($server) { $server.Id } else { 0 }
+    browser_pid = if ($browser) { $browser.Id } else { 0 }
+    font_allowed = if ($fontEntry) { [bool]$fontEntry.allowed } else { $false }
+    font_user_agent = if ($fontEntry) { [string]$fontEntry.user_agent } else { '' }
+    font_cookie = if ($fontEntry) { [string]$fontEntry.cookie } else { '' }
+    font_referer = if ($fontEntry) { [string]$fontEntry.referer } else { '' }
+    font_authorization = if ($fontEntry) { [string]$fontEntry.authorization } else { '' }
+    font_accept = if ($fontEntry) { [string]$fontEntry.accept } else { '' }
+    loaded_allowed = if ($loadedEntry) { [bool]$loadedEntry.allowed } else { $false }
+    loaded_size = if ($loadedEntry) { [string]$loadedEntry.size } else { '' }
+    loaded_status = if ($loadedEntry) { [string]$loadedEntry.status } else { '' }
+    loaded_check = if ($loadedEntry) { [string]$loadedEntry.check } else { '' }
+    loaded_count = if ($loadedEntry) { [string]$loadedEntry.loadCount } else { '' }
+    loaded_family = if ($loadedEntry) { [string]$loadedEntry.family } else { '' }
+    loaded_sheet = if ($loadedEntry) { [string]$loadedEntry.sheet } else { '' }
+    loaded_rules = if ($loadedEntry) { [string]$loadedEntry.rules } else { '' }
+    browser_gone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
+    server_gone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
+    error = if ($failure) { $failure } else { '' }
+    browser_stderr = if (Test-Path -LiteralPath $browserErr) { (Get-Content -LiteralPath $browserErr -Raw) -replace "`r","\\r" -replace "`n","\\n" } else { '' }
+    server_stderr = if (Test-Path -LiteralPath $serverErr) { (Get-Content -LiteralPath $serverErr -Raw) -replace "`r","\\r" -replace "`n","\\n" } else { '' }
+    browser_meta = $browserMeta
+    server_meta = $serverMeta
+  }
+  $result | ConvertTo-Json -Depth 6
+
+  if ($failure -or -not $ready -or -not $fontEntry -or -not $loadedEntry) {
+    exit 1
   }
 }
-
-$serverMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate
-$browserMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate
-if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force }
-if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\.js|@openai/codex") { Stop-Process -Id $server.Id -Force }
-for ($i = 0; $i -lt 20; $i++) {
-  if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
-  Start-Sleep -Milliseconds 100
-}
-for ($i = 0; $i -lt 20; $i++) {
-  if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
-  Start-Sleep -Milliseconds 100
-}
-$browserGone = -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)
-$serverGone = -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)
-
-[ordered]@{
-  server_pid = $server.Id
-  browser_pid = $browser.Id
-  ready = $ready
-  font_allowed = if ($fontEntry) { [bool]$fontEntry.allowed } else { $false }
-  font_user_agent = if ($fontEntry) { [string]$fontEntry.user_agent } else { "" }
-  font_cookie = if ($fontEntry) { [string]$fontEntry.cookie } else { "" }
-  font_referer = if ($fontEntry) { [string]$fontEntry.referer } else { "" }
-  font_authorization = if ($fontEntry) { [string]$fontEntry.authorization } else { "" }
-  font_accept = if ($fontEntry) { [string]$fontEntry.accept } else { "" }
-  loaded_allowed = if ($loadedEntry) { [bool]$loadedEntry.allowed } else { $false }
-  loaded_size = if ($loadedEntry) { [string]$loadedEntry.size } else { "" }
-  loaded_status = if ($loadedEntry) { [string]$loadedEntry.status } else { "" }
-  loaded_check = if ($loadedEntry) { [string]$loadedEntry.check } else { "" }
-  loaded_count = if ($loadedEntry) { [string]$loadedEntry.loadCount } else { "" }
-  loaded_family = if ($loadedEntry) { [string]$loadedEntry.family } else { "" }
-  loaded_sheet = if ($loadedEntry) { [string]$loadedEntry.sheet } else { "" }
-  loaded_rules = if ($loadedEntry) { [string]$loadedEntry.rules } else { "" }
-  browser_meta = $browserMeta
-  server_meta = $serverMeta
-  browser_gone = $browserGone
-  server_gone = $serverGone
-} | ConvertTo-Json -Depth 6
