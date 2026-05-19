@@ -92,6 +92,142 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             audit = audit_paths(paths, root)
             self.assertEqual([], failure_reasons(audit))
 
+    def test_fails_when_raw_python_launcher_reference_remains(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT
+                + "python .\\scripts\\windows\\start_attached_pages_catalog.py --input-path '<attached-html-root>'\n",
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "raw Python attached-pages launcher references remain in replay notes",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_wrapper_launcher_reference_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not mention the wrapper-backed attached-pages launcher",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_wrapper_sidecar_audit_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(" -AuditSidecars", ""),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the wrapper-backed sidecar audit visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_google_wrapper_sidecar_audit_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace("-GoogleStyle ", ""),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the Google-style wrapper-backed sidecar audit visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_replay_quickstart_surface_check_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the replay attached-html quickstart surface check visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_windows_route_surface_check_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the broader Windows attached-html route surface check visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_proof_note_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the pinned bundle proof note visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_proof_surface_check_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the pinned bundle proof surface checker visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_proof_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the pinned bundle proof helper visible",
+                failure_reasons(audit),
+            )
+
     def test_fails_when_windows_validation_router_bridge_helper_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
