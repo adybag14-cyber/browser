@@ -75,17 +75,32 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-recommended
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle
 ```
 
 Use the dedicated Google form-controls Enter-order route after the shared input
 probes when issue #3 is already narrowed to the smallest real-surface
-Enter-submit checkpoint. Use `browser-shell` when the change touched tabs,
-settings persistence, chrome keyboard shortcuts, or related shell behavior. Use
-`popup` when the change touched popup creation, named-target flows, or popup
-policy on the real headed window.
+Enter-submit checkpoint. Use the broader `google-shared-enter-order` route when
+issue #3 replay should stay on the reusable shared Enter-order ladder before
+widening back out to live Google or attached-page follow-up. Use `rendering`
+before attached-page replay when the change touched layout, paint, screenshot
+timing, or other visible headed-surface behavior. Use `network` before
+attached-page replay when the change touched shared subresource loading,
+authenticated asset fetches, or browser-managed request credentials. Use
+`browser-shell` when the change touched tabs, settings persistence, chrome
+keyboard shortcuts, or related shell behavior. Use `popup` when the change
+touched popup creation, named-target flows, or popup policy on the real headed
+window. Use the suite-level `google-attached-html` and
+`attached-html-target-bundle` views when you want the narrower issue #3
+attached-page helper surface reprinted without widening back out to the rest of
+the router catalog first.
 
 For the broader subsystem-to-probe map across the existing `tmp-browser-smoke`
 families, read `docs/HEADED_MODE_VALIDATION_MATRIX.md` after the router output.
@@ -99,12 +114,16 @@ What exists today:
 - bounded localhost stop/reload coverage under `tmp-browser-smoke\stop-loading\`
 - bounded localhost input probes under `tmp-browser-smoke\form-controls\`
 - a dedicated Google form-controls Enter-order gate surfaced through `scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order` and `scripts\windows\run_google_form_controls_enter_order_validation.ps1`
+- a broader shared Enter-order ladder surfaced through `scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order` when issue #3 replay should stay on the reusable shared keypress-before-submit path before widening back out
+- checkout-portable first-line rendering probes surfaced through `scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering` for shared layout, screenshot timing, and visible headed-surface checks before attached-page replay
+- checkout-portable first-line network probes surfaced through `scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network` for authenticated stylesheet and fetch-credentials regressions before attached-page replay
 - checkout-portable first-line browser-shell probes under `tmp-browser-smoke\tabs\` and `tmp-browser-smoke\settings\`, surfaced through `scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell`
 - a checkout-portable first-line popup probe under `tmp-browser-smoke\popup\`, surfaced through `scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup`
 - a checkout-portable first-line canvas screenshot probe at `tmp-browser-smoke\canvas-smoke\chrome-canvas-render-probe.ps1`
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
-- the first-line navigation, stop-loading, input, browser-shell, and popup probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
+- the first-line navigation, stop-loading, input, rendering, network, browser-shell, and popup probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
 - an attached-pages localhost catalog, sidecar audit, broader asset-audit helper, and strict completeness launch surface under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
+- dedicated suite-level `google-attached-html` and `attached-html-target-bundle` router surfaces when the issue #3 replay should stay on the narrower attached-page helper lane without reopening the rest of the catalog first
 - a Windows-first attached-bundle bridge surface under `scripts\windows\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1` plus the fail-fast checker `scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1`
 
 Treat the validation router output as the source of truth for the currently
@@ -120,6 +139,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1 -InputPath "<saved-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -InputPath "<saved-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle
 ```
 
 Use the broader `attached-html` route first when the saved bundle is not yet
@@ -127,6 +148,9 @@ obviously on the Google-like replay lane, use `google-attached-html` when the
 replay still matches the Google-shaped flow but is not yet pinned to the exact
 three-page compatibility bundle, and switch to `attached-html-target-bundle`
 once the current pages are already confirmed to be that known three-page set.
+Use the suite-level `google-attached-html` and `attached-html-target-bundle`
+views when you want the same narrower attached-page helper surface reprinted
+without widening back out to the rest of the router catalog first.
 
 When the current replay should stay pinned to the known three-page compatibility
 bundle, keep this exact file set together from the start:
