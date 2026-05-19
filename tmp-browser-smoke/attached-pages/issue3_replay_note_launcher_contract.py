@@ -60,6 +60,19 @@ ATTACHED_HTML_CHANGE_AREA_HELPER = "show_google_issue3_attached_html_change_area
 ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART_NOTE = (
     "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md"
 )
+ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE_NOTE = (
+    "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md"
+)
+ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE_HELPER = (
+    "show_google_issue3_attached_html_target_bundle_suite_surface.ps1"
+)
+ATTACHED_HTML_TARGET_BUNDLE_SURFACE_CHECK = (
+    "check_attached_html_target_bundle_validation_surface.ps1"
+)
+ATTACHED_HTML_TARGET_BUNDLE_FLOW_HELPER = (
+    "show_attached_html_target_bundle_validation_flow.ps1"
+)
+ATTACHED_HTML_TARGET_BUNDLE_RUNNER = "run_attached_html_target_bundle_validation.ps1"
 ATTACHED_BUNDLE_FIRST_HELPER = "show_google_issue3_attached_bundle_first_entrypoint.ps1"
 SUITE_CATALOG_ENTRYPOINTS_SURFACE_CHECK = (
     "check_google_issue3_suite_catalog_entrypoints_validation_surface.ps1"
@@ -130,6 +143,11 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "attached_html_change_area_note_count": 0,
         "attached_html_change_area_helper_count": 0,
         "attached_html_target_bundle_quickstart_note_count": 0,
+        "attached_html_target_bundle_suite_surface_note_count": 0,
+        "attached_html_target_bundle_suite_surface_helper_count": 0,
+        "attached_html_target_bundle_surface_check_count": 0,
+        "attached_html_target_bundle_flow_helper_count": 0,
+        "attached_html_target_bundle_runner_count": 0,
         "attached_bundle_first_helper_count": 0,
         "suite_catalog_entrypoints_surface_check_count": 0,
         "replay_route_shortcut_note_count": 0,
@@ -168,6 +186,11 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "attached_html_change_area_note_references": [],
             "attached_html_change_area_helpers": [],
             "attached_html_target_bundle_quickstart_note_references": [],
+            "attached_html_target_bundle_suite_surface_note_references": [],
+            "attached_html_target_bundle_suite_surface_helpers": [],
+            "attached_html_target_bundle_surface_checks": [],
+            "attached_html_target_bundle_flow_helpers": [],
+            "attached_html_target_bundle_runners": [],
             "attached_bundle_first_helpers": [],
             "suite_catalog_entrypoints_surface_checks": [],
             "replay_route_shortcut_note_references": [],
@@ -246,6 +269,26 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["attached_html_target_bundle_quickstart_note_references"].append(
                     {"line_number": line_number, "line": stripped}
                 )
+            if ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE_NOTE in line:
+                hits["attached_html_target_bundle_suite_surface_note_references"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE_HELPER in line:
+                hits["attached_html_target_bundle_suite_surface_helpers"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if ATTACHED_HTML_TARGET_BUNDLE_SURFACE_CHECK in line:
+                hits["attached_html_target_bundle_surface_checks"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if ATTACHED_HTML_TARGET_BUNDLE_FLOW_HELPER in line:
+                hits["attached_html_target_bundle_flow_helpers"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if ATTACHED_HTML_TARGET_BUNDLE_RUNNER in line:
+                hits["attached_html_target_bundle_runners"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
             if ATTACHED_BUNDLE_FIRST_HELPER in line:
                 hits["attached_bundle_first_helpers"].append(
                     {"line_number": line_number, "line": stripped}
@@ -317,6 +360,21 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         )
         counts["attached_html_target_bundle_quickstart_note_count"] += len(
             hits["attached_html_target_bundle_quickstart_note_references"]
+        )
+        counts["attached_html_target_bundle_suite_surface_note_count"] += len(
+            hits["attached_html_target_bundle_suite_surface_note_references"]
+        )
+        counts["attached_html_target_bundle_suite_surface_helper_count"] += len(
+            hits["attached_html_target_bundle_suite_surface_helpers"]
+        )
+        counts["attached_html_target_bundle_surface_check_count"] += len(
+            hits["attached_html_target_bundle_surface_checks"]
+        )
+        counts["attached_html_target_bundle_flow_helper_count"] += len(
+            hits["attached_html_target_bundle_flow_helpers"]
+        )
+        counts["attached_html_target_bundle_runner_count"] += len(
+            hits["attached_html_target_bundle_runners"]
         )
         counts["attached_bundle_first_helper_count"] += len(
             hits["attached_bundle_first_helpers"]
@@ -406,6 +464,16 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the attached-html change-area quickstart helper visible")
     if audit["attached_html_target_bundle_quickstart_note_count"] == 0:
         reasons.append("replay notes do not keep the attached-html target-bundle quickstart note visible")
+    if audit["attached_html_target_bundle_suite_surface_note_count"] == 0:
+        reasons.append("replay notes do not keep the attached-html target-bundle suite-surface note visible")
+    if audit["attached_html_target_bundle_suite_surface_helper_count"] == 0:
+        reasons.append("replay notes do not keep the attached-html target-bundle suite-surface helper visible")
+    if audit["attached_html_target_bundle_surface_check_count"] == 0:
+        reasons.append("replay notes do not keep the attached-html target-bundle surface check visible")
+    if audit["attached_html_target_bundle_flow_helper_count"] == 0:
+        reasons.append("replay notes do not keep the attached-html target-bundle flow helper visible")
+    if audit["attached_html_target_bundle_runner_count"] == 0:
+        reasons.append("replay notes do not keep the attached-html target-bundle delegated runner visible")
     if audit["attached_bundle_first_helper_count"] == 0:
         reasons.append("replay notes do not keep the bundle-first attached-html helper visible")
     if audit["suite_catalog_entrypoints_surface_check_count"] == 0:
@@ -445,6 +513,11 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Change-area quickstart note references: {audit['attached_html_change_area_note_count']}",
         f"Change-area quickstart helper references: {audit['attached_html_change_area_helper_count']}",
         f"Target-bundle quickstart note references: {audit['attached_html_target_bundle_quickstart_note_count']}",
+        f"Target-bundle suite-surface note references: {audit['attached_html_target_bundle_suite_surface_note_count']}",
+        f"Target-bundle suite-surface helper references: {audit['attached_html_target_bundle_suite_surface_helper_count']}",
+        f"Target-bundle surface-check references: {audit['attached_html_target_bundle_surface_check_count']}",
+        f"Target-bundle flow helper references: {audit['attached_html_target_bundle_flow_helper_count']}",
+        f"Target-bundle runner references: {audit['attached_html_target_bundle_runner_count']}",
         f"Bundle-first helper references: {audit['attached_bundle_first_helper_count']}",
         f"Suite-catalog surface-check references: {audit['suite_catalog_entrypoints_surface_check_count']}",
         f"Replay-shortcuts helper references: {audit['replay_shortcuts_helper_count']}",
@@ -462,9 +535,10 @@ def main() -> int:
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
             "the replay-side and Windows-side route checks, the broader Windows validation-router bridge and Windows catalog quickstart helpers, "
             "the broader replay-route helper, the context-preserving replay helper, "
-            "the pinned proof route, the dedicated Google attached-html replay surface, the issue-specific Google "
+            "the pinned bundle proof route, the dedicated Google attached-html replay surface, the issue-specific Google "
             "attached-html entrypoint note and checker, the validation-router quickstart note and surface checker, the validation-router "
-            "surface-check file itself, the validation-router and change-area attached-html quickstart helpers, the bundle-first target-bundle handoff, "
+            "surface-check file itself, the validation-router and change-area attached-html quickstart helpers, the pinned bundle suite surface, "
+            "bundle surface check, bundle flow helper, delegated bundle runner, the bundle-first target-bundle handoff, "
             "the suite-catalog entrypoints surface checker, the replay-route shortcut companion, the replay-shortcuts helpers, "
             "or the safe-route entrypoints helper."
         )
