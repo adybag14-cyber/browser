@@ -16,6 +16,11 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+        "purpose": "The Windows full-use attached HTML route note keeps the Windows-to-validation-router bridge visible before the route narrows into the shorter attached-page helpers.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1",
         "purpose": "The Windows full-use attached HTML route note keeps the catalog checker visible before the narrower Windows-first ladder is trusted.",
     },
@@ -51,6 +56,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $browserAwareBundleArguments",
+        "purpose": "The route helper keeps the Windows-to-validation-router bridge wired into its helper map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
         "snippet": "windows_full_use_attached_html_catalog_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_full_use_attached_html_catalog_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot",
         "purpose": "The route helper keeps the catalog-level fail-fast checker wired into its helper map.",
     },
@@ -83,6 +93,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
         "snippet": 'Write-Host (("  Surface checker:          {0}") -f $route.helper_commands.windows_full_use_attached_html_route_surface_check)',
         "purpose": "The route helper prints the route-level fail-fast checker in its summary output.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "snippet": 'Write-Host (("  2. Validation bridge:     {0}") -f $route.helper_commands.windows_full_use_validation_router_attached_html_bridge)',
+        "purpose": "The route helper prints the Windows-to-validation-router bridge in its route ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
