@@ -19,6 +19,7 @@ PROOF_SURFACE_CHECK = (
 )
 PROOF_HELPER_MARKER = "show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1"
 
+GOOGLE_SURFACE_CHECK = "check_google_attached_html_validation_surface.ps1"
 GOOGLE_FLOW_NOTE = "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md"
 GOOGLE_FLOW_HELPER = "show_google_attached_html_validation_flow.ps1"
 GOOGLE_ENTRYPOINT_HELPER = "show_google_issue3_google_attached_html_entrypoint.ps1"
@@ -45,6 +46,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
     proof_note_count = 0
     proof_surface_check_count = 0
     proof_helper_count = 0
+    google_surface_check_count = 0
     google_flow_note_count = 0
     google_flow_helper_count = 0
     google_entrypoint_helper_count = 0
@@ -57,6 +59,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         proof_note_hits: list[dict[str, object]] = []
         proof_surface_hits: list[dict[str, object]] = []
         proof_helper_hits: list[dict[str, object]] = []
+        google_surface_hits: list[dict[str, object]] = []
         google_flow_note_hits: list[dict[str, object]] = []
         google_flow_helper_hits: list[dict[str, object]] = []
         google_entrypoint_hits: list[dict[str, object]] = []
@@ -80,6 +83,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 proof_surface_hits.append({"line_number": line_number, "line": stripped})
             if PROOF_HELPER_MARKER in line:
                 proof_helper_hits.append({"line_number": line_number, "line": stripped})
+            if GOOGLE_SURFACE_CHECK in line:
+                google_surface_hits.append({"line_number": line_number, "line": stripped})
             if GOOGLE_FLOW_NOTE in line:
                 google_flow_note_hits.append({"line_number": line_number, "line": stripped})
             if GOOGLE_FLOW_HELPER in line:
@@ -96,6 +101,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         proof_note_count += len(proof_note_hits)
         proof_surface_check_count += len(proof_surface_hits)
         proof_helper_count += len(proof_helper_hits)
+        google_surface_check_count += len(google_surface_hits)
         google_flow_note_count += len(google_flow_note_hits)
         google_flow_helper_count += len(google_flow_helper_hits)
         google_entrypoint_helper_count += len(google_entrypoint_hits)
@@ -114,6 +120,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 "proof_surface_checks": proof_surface_hits,
                 "proof_helper_count": len(proof_helper_hits),
                 "proof_helpers": proof_helper_hits,
+                "google_surface_check_count": len(google_surface_hits),
+                "google_surface_checks": google_surface_hits,
                 "google_flow_note_reference_count": len(google_flow_note_hits),
                 "google_flow_note_references": google_flow_note_hits,
                 "google_flow_helper_count": len(google_flow_helper_hits),
@@ -133,6 +141,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "proof_note_reference_count": proof_note_count,
         "proof_surface_check_count": proof_surface_check_count,
         "proof_helper_count": proof_helper_count,
+        "google_surface_check_count": google_surface_check_count,
         "google_flow_note_reference_count": google_flow_note_count,
         "google_flow_helper_count": google_flow_helper_count,
         "google_entrypoint_helper_count": google_entrypoint_helper_count,
@@ -156,6 +165,8 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the pinned bundle proof surface checker visible")
     if audit["proof_helper_count"] == 0:
         reasons.append("replay notes do not keep the pinned bundle proof helper visible")
+    if audit["google_surface_check_count"] == 0:
+        reasons.append("replay notes do not keep the Google attached-html surface check visible")
     if audit["google_flow_note_reference_count"] == 0:
         reasons.append("replay notes do not keep the Google attached-html flow note visible")
     if audit["google_flow_helper_count"] == 0:
@@ -178,6 +189,7 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Pinned proof note references: {audit['proof_note_reference_count']}",
         f"Pinned proof checker references: {audit['proof_surface_check_count']}",
         f"Pinned proof helper references: {audit['proof_helper_count']}",
+        f"Google surface-check references: {audit['google_surface_check_count']}",
         f"Google flow note references: {audit['google_flow_note_reference_count']}",
         f"Google flow helper references: {audit['google_flow_helper_count']}",
         f"Google entrypoint references: {audit['google_entrypoint_helper_count']}",
@@ -191,6 +203,7 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         lines.append(f"  Pinned proof note references: {file_result['proof_note_reference_count']}")
         lines.append(f"  Pinned proof checker references: {file_result['proof_surface_check_count']}")
         lines.append(f"  Pinned proof helper references: {file_result['proof_helper_count']}")
+        lines.append(f"  Google surface-check references: {file_result['google_surface_check_count']}")
         lines.append(f"  Google flow note references: {file_result['google_flow_note_reference_count']}")
         lines.append(f"  Google flow helper references: {file_result['google_flow_helper_count']}")
         lines.append(f"  Google entrypoint references: {file_result['google_entrypoint_helper_count']}")
@@ -204,6 +217,8 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
             lines.append(f"  Proof check line {hit['line_number']}: {hit['line']}")
         for hit in file_result["proof_helpers"][:3]:
             lines.append(f"  Proof helper line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["google_surface_checks"][:3]:
+            lines.append(f"  Google check line {hit['line_number']}: {hit['line']}")
         for hit in file_result["google_flow_note_references"][:3]:
             lines.append(f"  Google note line {hit['line_number']}: {hit['line']}")
         for hit in file_result["google_flow_helpers"][:3]:
