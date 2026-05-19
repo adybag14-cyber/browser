@@ -1,6 +1,6 @@
 # Issue #3 Replay-Route Shortcut Entrypoint
 
-Use this note when issue `#3` replay is already inside `show_google_issue3_replay_route.ps1` and you want the shortest written handoff into the narrower attached-page shortcut, the broader attached-page localhost flow, the narrower Google-shaped attached-page flow, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay-shortcuts, bundle-first, or safe-route helpers.
+Use this note when issue `#3` replay is already inside `show_google_issue3_replay_route.ps1` and you want the shortest written handoff into the narrower attached-page shortcut, the broader attached-page localhost flow, the narrower Google-shaped attached-page flow, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay-shortcuts, bundle-first, the proof-only bundle follow-up, or safe-route helpers.
 
 If you want the matching helper first, run:
 
@@ -39,7 +39,7 @@ Keep these companion notes nearby:
 
 ## Goal
 
-Start from the broader replay-route helper, rerun `check_google_issue3_replay_route_shortcut_validation_surface.ps1` when the compact branch needs a fail-fast sanity check, then reopen the shortest attached-page and replay-shortcut surfaces without losing the current repo-root, saved-summary, or pinned bundle-input context. Keep the broader attached-page localhost flow, the narrower Google-shaped attached-page flow, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, the attached-page shortcut, the suite-router shortcut bridge, the compact replay-shortcuts helper, the pinned three-page bundle reference, the compact bundle suite surface, the proof-entry companion note, the bundle-first branch, and the safe-route map aligned before the route widens again.
+Start from the broader replay-route helper, rerun `check_google_issue3_replay_route_shortcut_validation_surface.ps1` when the compact branch needs a fail-fast sanity check, then reopen the shortest attached-page and replay-shortcut surfaces without losing the current repo-root, saved-summary, or pinned bundle-input context. Keep the broader attached-page localhost flow, the narrower Google-shaped attached-page flow, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, the attached-page shortcut, the suite-router shortcut bridge, the compact replay-shortcuts helper, the pinned three-page bundle reference, the compact bundle suite surface, the proof-entry companion note, the bundle-first branch, the fixed-list fixture proof, and the safe-route map aligned before the route widens again.
 
 ## Default read-first route
 
@@ -67,7 +67,7 @@ Use that route when:
 - the broader replay-route helper already made issue `#3` obvious
 - the next step should stay on the shorter attached-page shortcut surface, but the broader attached-page localhost flow or the narrower Google-shaped attached-page flow may still need to be reopened first
 - you still want the dedicated replay-route shortcut surface check, the replay-shortcuts Windows replay attached-page bridge, the replay-side quick check, and the Windows replay attached-page quickstart visible before the route widens again
-- the next branch may still need to bounce through replay shortcuts, the next-step matrix, bundle-first, or the safe-route map after the replay-side attached-page ladder is clear
+- the next branch may still need to bounce through replay shortcuts, the next-step matrix, bundle-first, the proof-only bundle follow-up, or the safe-route map after the replay-side attached-page ladder is clear
 
 ## Bundle-first alternate route
 
@@ -80,9 +80,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_re
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_target_bundle_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_attached_html_target_bundle_validation.ps1 -Wait
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -FixturePaths '<bundle-html-or-folder>'
 ```
 
-Use that route when the next useful choice depends on whether the known three-page compatibility bundle still reproduces the current headed issue `#3` state.
+Use that route when the next useful choice depends on whether the known three-page compatibility bundle still reproduces the current headed issue `#3` state and you want the proof-only follow-up kept on the same shortest replay-route branch once the delegated bundle runner turns green.
 
 ## Preserve replay context
 
@@ -113,6 +117,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_contextual_flow.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_safe_route_entrypoints.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_local_html_fixture_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\local-html-fixtures\chrome-local-html-fixture-probe.ps1 -RepoRoot '<repo-root>' -FixturePaths '<bundle-html-or-folder>'
 ```
 
 Use that context-preserving form when:
@@ -155,7 +162,7 @@ Use this when the replay-route shortcut already confirmed attached-page follow-u
 
 8. `show_google_issue3_replay_shortcuts.ps1`
 
-Use this when issue `#3` is already clearly narrowed and you want the tightest compact helper surface before choosing between the next-step matrix, contextual flow, bundle-first, or the safe-route map.
+Use this when issue `#3` is already clearly narrowed and you want the tightest compact helper surface before choosing between the next-step matrix, contextual flow, bundle-first, the proof-only bundle follow-up, or the safe-route map.
 
 9. `show_google_issue3_suite_router_next_steps.ps1`
 
@@ -173,13 +180,21 @@ Use this when explicit bundle paths are already pinned or when the replay should
 
 Use this only after the broader attached-page flow, replay-side Windows bridge, attached-page shortcut, and replay-shortcuts surfaces have already clarified that the wrapper-heavy safe route is the next useful layer.
 
+13. `show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1`
+
+Use this immediately after the delegated bundle runner when you want the shorter proof-only bundle handoff visible before the fixed-list local fixture check and screenshot-and-title probe take over.
+
+14. `chrome-local-html-fixture-probe.ps1`
+
+Use this after the proof entrypoint is open when you want tighter screenshot-and-title evidence for the same pinned bundle inputs before widening back into broader issue `#3` helpers.
+
 ## Practical rule
 
 Only use this shortcut note after `show_google_issue3_replay_route.ps1` is already the current helper surface.
 
-- no pinned bundle inputs and no saved replay state yet: jump from the replay-route helper into `check_google_issue3_replay_route_shortcut_validation_surface.ps1` first, then the replay-route shortcut surface, then the broader attached-page localhost flow or the narrower Google-shaped attached-page flow if they still need to be reopened, then the attached-page shortcut surface, then keep the replay-shortcuts Windows replay attached-page bridge, the replay-side quick check, the Windows replay quickstart, replay shortcuts, and the next-step matrix nearby
-- broader suite-router shortcut bridge still matters: keep the suite-router shortcut entrypoint visible beside the broader attached-page flow or the shorter attached-page shortcut before replay shortcuts or the safe-route map
+- no pinned bundle inputs and no saved replay state yet: jump from the replay-route helper into `check_google_issue3_replay_route_shortcut_validation_surface.ps1` first, then the replay-route shortcut surface, then the broader attached-page localhost flow or the narrower Google-shaped attached-page flow if they still need to be reopened, then the attached-page shortcut surface, then keep the replay-shortcuts Windows replay attached-page bridge, the replay-side quick check, the Windows replay quickstart, replay shortcuts, the next-step matrix, the proof-only bundle handoff, and the fixed-list local fixture proof nearby
+- broader suite-router shortcut bridge still matters: keep the suite-router shortcut entrypoint visible beside the broader attached-page flow or the shorter attached-page shortcut before replay shortcuts, the proof-only bundle handoff, or the safe-route map
 - saved summary or repo-root override already present: reopen this note with that same context first, rerun the replay-route shortcut surface check against the same checkout when branch drift is a concern, then choose the narrower follow-up that preserves the same replay state
-- explicit bundle paths already pinned: stay on the bundle-first helper before widening back into the broader Google-only path
+- explicit bundle paths already pinned: stay on the bundle-first helper, then the proof entrypoint helper, then the fixed-list local fixture proof before widening back into the broader Google-only path
 
 Only reopen the longer validation-chain notes after the route has narrowed as far as it can go through the shortcut-first helper family.
