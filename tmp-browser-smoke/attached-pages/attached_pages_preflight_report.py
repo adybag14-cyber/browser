@@ -5,6 +5,10 @@ from pathlib import Path
 from types import ModuleType
 
 
+DEFAULT_BIND = "127.0.0.1"
+DEFAULT_PORT = 8235
+
+
 def load_launcher_module(repo_root: Path) -> ModuleType:
     launcher_path = repo_root / "tmp-browser-smoke" / "attached-pages" / "start_attached_pages_catalog.py"
     if not launcher_path.is_file():
@@ -51,11 +55,19 @@ def choose_preferred_manifest_entry(
     )
 
 
+def build_route_url(bind: str, port: int, route: str) -> str:
+    if not route.startswith("/"):
+        route = f"/{route}"
+    return f"http://{bind}:{port}{route}"
+
+
 def assemble_preflight_report(
     repo_root: Path,
     *,
     selected_files: list[Path],
     google_style: bool,
+    bind: str,
+    port: int,
     launcher_module: ModuleType,
     sidecar_module: ModuleType,
     server_module: ModuleType,
@@ -88,6 +100,12 @@ def assemble_preflight_report(
     return {
         "repo_root": str(repo_root),
         "google_style": google_style,
+        "bind": bind,
+        "port": port,
+        "catalog_url": build_route_url(bind, port, "/"),
+        "manifest_url": build_route_url(bind, port, "/manifest.json"),
+        "audit_json_url": build_route_url(bind, port, "/audit.json"),
+        "audit_text_url": build_route_url(bind, port, "/audit.txt"),
         "input_count": len(selected_files),
         "selected_fixtures": [str(path) for path in selected_files],
         "selected_fixture_lines": selected_fixture_lines,
@@ -97,6 +115,15 @@ def assemble_preflight_report(
         "preferred_route": preferred_manifest_entry["route"] if preferred_manifest_entry else None,
         "preferred_alias_route": preferred_manifest_entry["alias_route"] if preferred_manifest_entry else None,
         "preferred_named_route": preferred_manifest_entry["slug_route"] if preferred_manifest_entry else None,
+        "preferred_url": build_route_url(bind, port, f"{preferred_manifest_entry['route']}/")
+        if preferred_manifest_entry
+        else None,
+        "preferred_alias_url": build_route_url(bind, port, f"{preferred_manifest_entry['alias_route']}/")
+        if preferred_manifest_entry
+        else None,
+        "preferred_named_url": build_route_url(bind, port, f"{preferred_manifest_entry['slug_route']}/")
+        if preferred_manifest_entry
+        else None,
         "missing_sidecar_fixture_count": missing_sidecars,
         "missing_asset_fixture_count": missing_assets,
         "fixtures_with_external_assets": int(asset_audit["fixtures_with_external_assets"]),
@@ -113,6 +140,8 @@ def build_preflight_report(
     *,
     explicit_inputs: list[str] | None = None,
     google_style: bool = False,
+    bind: str = DEFAULT_BIND,
+    port: int = DEFAULT_PORT,
 ) -> dict[str, object]:
     launcher_module, selected_files = select_inputs(
         repo_root,
@@ -125,6 +154,8 @@ def build_preflight_report(
         repo_root,
         selected_files=selected_files,
         google_style=google_style,
+        bind=bind,
+        port=port,
         launcher_module=launcher_module,
         sidecar_module=sidecar_module,
         server_module=server_module,
@@ -157,6 +188,10 @@ def render_text_report(report: dict[str, object]) -> str:
         f"Fixtures with external assets: {report['fixtures_with_external_assets']}",
         f"Ready for launch: {'yes' if report['ready_for_launch'] else 'no'}",
         f"Recommended next step: {report['recommended_next_step']}",
+        f"Catalog URL: {report['catalog_url']}",
+        f"Manifest URL: {report['manifest_url']}",
+        f"Audit JSON URL: {report['audit_json_url']}",
+        f"Audit text URL: {report['audit_text_url']}",
     ]
     if report["preferred_route"] is not None:
         lines.append(f"Preferred fixture: {report['preferred_display_path']}")
@@ -164,6 +199,9 @@ def render_text_report(report: dict[str, object]) -> str:
         lines.append(f"Preferred route: {report['preferred_route']}/")
         lines.append(f"Preferred alias route: {report['preferred_alias_route']}/")
         lines.append(f"Preferred named route: {report['preferred_named_route']}/")
+        lines.append(f"Preferred URL: {report['preferred_url']}")
+        lines.append(f"Preferred alias URL: {report['preferred_alias_url']}")
+        lines.append(f"Preferred named URL: {report['preferred_named_url']}")
     lines.append("")
     lines.extend(report["selected_fixture_lines"])
     return "\n".join(lines).rstrip() + "\n"
@@ -180,6 +218,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Explicit HTML file or directory to include. Repeat to pin the report to selected inputs.",
     )
     parser.add_argument("--repo-root", help="Override the Lightpanda repo root.")
+    parser.add_argument("--bind", default=DEFAULT_BIND, help="Address that the localhost catalog will bind to. Defaults to 127.0.0.1.")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="TCP port that the localhost catalog will use. Defaults to 8235.")
     parser.add_argument(
         "--google-style",
         action="store_true",
@@ -207,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
         repo_root,
         explicit_inputs=args.explicit_inputs,
         google_style=args.google_style,
+        bind=args.bind,
+        port=args.port,
     )
 
     if args.json:
