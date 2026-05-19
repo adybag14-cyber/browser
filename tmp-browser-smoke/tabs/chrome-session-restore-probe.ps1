@@ -91,7 +91,9 @@ try {
   $activeRestoreWorked = [bool]$titles.run2_active
   if (-not $activeRestoreWorked) { throw "restore probe did not reopen the last active tab" }
 
-  Send-SmokeCtrlShiftTab
+  $otherTabPoint = Get-TabClientPoint 0 -TabCount 2
+  [void](Invoke-SmokeClientClick $hwnd2 $otherTabPoint.X $otherTabPoint.Y)
+  Start-Sleep -Milliseconds 150
   $titles.run2_other = Wait-TabTitle -ProcessId $browser2.Id -Needle "Tab One" -Attempts 40 -PollMilliseconds $PollMilliseconds
   $otherTabWorked = [bool]$titles.run2_other
   if (-not $otherTabWorked) { throw "restore probe did not restore the other saved tab" }
