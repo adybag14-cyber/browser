@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -160,9 +161,83 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$browserAwareArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $browserAwareArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $browserAwareArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $browserAwareArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedPathArrayArgument -Arguments $browserAwareArguments -Name InputPath -Values $InputPath
+
+$googleRecommendedArguments = [ordered]@{
+    SuiteName = 'google-recommended'
+}
+if ($SummaryPath) {
+    $googleRecommendedArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $googleRecommendedArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleRecommendedArguments['BrowserExe'] = $BrowserExe
+}
+
+$googleInputArguments = [ordered]@{
+    ChangeArea = 'google-input'
+}
+if ($SummaryPath) {
+    $googleInputArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $googleInputArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleInputArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedHtmlArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($SummaryPath) {
+    $attachedHtmlArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $attachedHtmlArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlArguments['BrowserExe'] = $BrowserExe
+}
+
+$googleAttachedHtmlArguments = [ordered]@{
+    ChangeArea = 'google-attached-html'
+}
+if ($SummaryPath) {
+    $googleAttachedHtmlArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $googleAttachedHtmlArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedBundleTargetArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($SummaryPath) {
+    $attachedBundleTargetArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $attachedBundleTargetArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedBundleTargetArguments['BrowserExe'] = $BrowserExe
+}
+
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
 }
 
 $helper = [ordered]@{
@@ -170,6 +245,7 @@ $helper = [ordered]@{
     purpose = 'Print the shortest bridge from the broader headed validation router into the newer suite-catalog-to-top-level attached-page catalog quickstart and top-level attached-page quickstarts for issue #3, while also surfacing the validation-router surface check, the attached-html change-area quickstart, the broader attached-page flow helper, the dedicated Google attached-page surface check, the dedicated Google-style attached-page flow helper, the top-level attached-page surface check, the top-level shortcut-first bridge, the Google-shaped attached-page bridge, the suite-router shortcut-first helper, the Windows-facing companion note, the pinned bundle-reference note, the pinned bundle branch, and the Windows full-use attached-page route when those broader reopening surfaces still matter.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
@@ -186,21 +262,11 @@ $helper = [ordered]@{
     google_attached_html_validation_flow_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
     attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
     commands = [ordered]@{
-        google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            SuiteName = 'google-recommended'
-        }) -RepoRootOverride $RepoRoot
-        google_input = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'google-input'
-        }) -RepoRootOverride $RepoRoot
-        attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html'
-        }) -RepoRootOverride $RepoRoot
-        google_attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'google-attached-html'
-        }) -RepoRootOverride $RepoRoot
-        attached_bundle_target = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html-target-bundle'
-        }) -RepoRootOverride $RepoRoot
+        google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleRecommendedArguments -RepoRootOverride $RepoRoot
+        google_input = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleInputArguments -RepoRootOverride $RepoRoot
+        attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlArguments -RepoRootOverride $RepoRoot
+        google_attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlArguments -RepoRootOverride $RepoRoot
+        attached_bundle_target = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleTargetArguments -RepoRootOverride $RepoRoot
         validation_router_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_validation_router_attached_html_quickstart_surface.ps1' -RepoRootOverride $RepoRoot
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
@@ -210,10 +276,10 @@ $helper = [ordered]@{
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $bundleArguments
         suite_catalog_top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_top_level_attached_html_catalog_quickstart.ps1' -Arguments $bundleArguments
         suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $bundleArguments
-        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
+        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $browserAwareArguments
         top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $bundleArguments
         top_level_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_top_level_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
-        top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
+        top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $browserAwareArguments
         top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
         suite_router_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
@@ -221,7 +287,7 @@ $helper = [ordered]@{
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
-        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
+        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $browserAwareArguments
     }
     notes = @(
         'Start with google_recommended or google_input when you are re-entering issue #3 from the broader headed validation router and want that higher-level surface visible before you narrow into the attached localhost branch.',
@@ -247,6 +313,7 @@ $helper = [ordered]@{
         'Use google_attached_html_entrypoint when the replay still needs the issue-specific Google-shaped attached-page bridge kept visible after the dedicated Google surface check and flow helper and before the smaller attached-page shortcut helper.',
         'Use attached_html_shortcut or replay_shortcuts only after the compact top-level attached-page route is already in view and the replay is ready to stay inside the narrower issue #3 helper chain.',
         'Use attached_bundle_first when explicit input paths are already pinned or when the replay should stay on the known three-page compatibility bundle, and reopen docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md first before widening back into the broader issue #3 helper chain.',
+        'Pass -BrowserExe when the validation-router handoff should stay pinned to a non-default headed binary through the broader validation-router entrypoints, the broader attached-page flow helper, the dedicated Google-style attached-page flow helper, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, and the bundle-first helper instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
         'Keep the Windows replay quickstart note, the Windows full-use attached-page route note, the validation-router attached-html quickstart note, the Windows-facing validation-router quickstart note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the top-level attached-page bridge note, the top-level shortcut-first note, the suite-catalog top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the suite-router shortcut-first note, the Google attached-page validation-flow note, and the attached-html target bundle reference note nearby when you want the written route beside these commands.'
     )
 }
@@ -279,6 +346,9 @@ if ($helper.repo_root) {
 }
 if ($helper.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($helper.summary_path)"))
+}
+if ($helper.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $helper.browser_exe)
 }
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
