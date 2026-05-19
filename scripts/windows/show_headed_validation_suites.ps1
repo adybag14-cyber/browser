@@ -352,7 +352,7 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
 
     if ($PreferredInitialPage) {
         $notes += "Current preferred initial page: $PreferredInitialPage"
-        $notes += "The printed issue #3 follow-up commands now preserve -PreferredInitialPage through the validation-router catalog route and the dedicated Google-shaped attached-page helper."
+        $notes += "The top-level attached-pages catalog route and the dedicated Google-shaped attached-page helper preserve -PreferredInitialPage. If you switch into the narrower issue #3 quickstarts, rerun this router or the Google-shaped helper to keep the same first page pinned."
     }
 
     if ($isCustomBrowserExe) {
