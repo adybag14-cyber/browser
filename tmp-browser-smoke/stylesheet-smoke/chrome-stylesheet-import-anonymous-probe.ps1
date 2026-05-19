@@ -1,17 +1,31 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [int]$Port = 8160,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$ProbeAttempts = 80,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$root = $PSScriptRoot
-$repo = (Resolve-Path (Join-Path $root "..\..")).Path
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$root = Join-Path $repo "tmp-browser-smoke\stylesheet-smoke"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $profileRoot = Join-Path $root "profile-stylesheet-import-anonymous"
 $appDataRoot = Join-Path $profileRoot "lightpanda"
-$port = 8160
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $serverScript = Join-Path $root "stylesheet_server.py"
 $browserOut = Join-Path $root "stylesheet-import-anonymous.browser.stdout.txt"
 $browserErr = Join-Path $root "stylesheet-import-anonymous.browser.stderr.txt"
 $serverOut = Join-Path $root "stylesheet-import-anonymous.server.stdout.txt"
 $serverErr = Join-Path $root "stylesheet-import-anonymous.server.stderr.txt"
 $requestLog = Join-Path $root "stylesheet.requests.jsonl"
-$pageUrl = "http://css%20user:p%40ss@127.0.0.1:$port/auth-stylesheet-import-anonymous-page.html"
+$pageUrl = "http://css%20user:p%40ss@127.0.0.1:$Port/auth-stylesheet-import-anonymous-page.html"
+$readyUrl = "http://127.0.0.1:$Port/auth-stylesheet-import-anonymous-page.html"
 
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr,$requestLog -Force -ErrorAction SilentlyContinue
 cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
@@ -26,27 +40,33 @@ default_zoom_percent	100
 homepage_url	
 "@ | Set-Content -Path (Join-Path $appDataRoot "browse-settings-v1.txt") -NoNewline
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$server = $null
+$browser = $null
 $ready = $false
-for ($i = 0; $i -lt 40; $i++) {
-  Start-Sleep -Milliseconds 250
-  try {
-    $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/auth-stylesheet-import-anonymous-page.html" -TimeoutSec 2
-    if ($resp.StatusCode -eq 200) { $ready = $true; break }
-  } catch {}
-}
-if (-not $ready) { throw "localhost stylesheet import anonymous server did not become ready" }
-
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-
 $loaded = $false
+$failure = $null
 $rootEntry = $null
 $childEntry = $null
 $loadedEntry = $null
-for ($i = 0; $i -lt 80; $i++) {
-  Start-Sleep -Milliseconds 250
-  if (Test-Path $requestLog) {
-    $entries = Get-Content $requestLog | Where-Object { $_.Trim().Length -gt 0 } | ForEach-Object { $_ | ConvertFrom-Json }
+
+try {
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+  if (-not (Test-Path -LiteralPath $serverScript)) { throw "stylesheet server script not found: $serverScript" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url $readyUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
+  if (-not $ready) { throw "localhost stylesheet import anonymous server did not become ready" }
+
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "960", "--window_height", "640", $pageUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+
+  for ($i = 0; $i -lt $ProbeAttempts; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    if (-not (Test-Path -LiteralPath $requestLog)) {
+      continue
+    }
+
+    $entries = Get-Content -LiteralPath $requestLog | Where-Object { $_.Trim().Length -gt 0 } | ForEach-Object { $_ | ConvertFrom-Json }
     $rootEntries = @($entries | Where-Object { $_.path -eq "/private-import-anonymous-root.css" })
     $childEntries = @($entries | Where-Object { $_.path -eq "/private-import-anonymous-child.css" })
     $loadedEntries = @($entries | Where-Object { $_.path -eq "/loaded-import-anon" })
@@ -58,35 +78,45 @@ for ($i = 0; $i -lt 80; $i++) {
       break
     }
   }
+
+  if (-not $loaded) { throw "stylesheet import anonymous probe did not observe root, child, and loaded beacons" }
+} catch {
+  $failure = $_.Exception.Message
+} finally {
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
+  Start-Sleep -Milliseconds 200
+  $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
+  $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
+
+  [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    port = $Port
+    page_url = $pageUrl
+    server_pid = if ($server) { $server.Id } else { 0 }
+    browser_pid = if ($browser) { $browser.Id } else { 0 }
+    ready = $ready
+    loaded = $loaded
+    root_allowed = if ($rootEntry) { [bool]$rootEntry.allowed } else { $false }
+    root_cookie = if ($rootEntry) { [string]$rootEntry.cookie } else { "" }
+    root_referer = if ($rootEntry) { [string]$rootEntry.referer } else { "" }
+    root_authorization = if ($rootEntry) { [string]$rootEntry.authorization } else { "" }
+    child_allowed = if ($childEntry) { [bool]$childEntry.allowed } else { $false }
+    child_cookie = if ($childEntry) { [string]$childEntry.cookie } else { "" }
+    child_referer = if ($childEntry) { [string]$childEntry.referer } else { "" }
+    child_authorization = if ($childEntry) { [string]$childEntry.authorization } else { "" }
+    loaded_applied = if ($loadedEntry) { [string]$loadedEntry.applied } else { "" }
+    loaded_bg = if ($loadedEntry) { [string]$loadedEntry.bg } else { "" }
+    loaded_allowed = if ($loadedEntry) { [bool]$loadedEntry.allowed } else { $false }
+    error = $failure
+    server_meta = $serverMeta
+    browser_meta = $browserMeta
+    browser_gone = $browserGone
+    server_gone = $serverGone
+  } | ConvertTo-Json -Depth 7
 }
 
-$serverMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate
-$browserMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate
-if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force }
-if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\.js|@openai/codex") { Stop-Process -Id $server.Id -Force }
-for ($i = 0; $i -lt 20; $i++) { if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }; Start-Sleep -Milliseconds 100 }
-for ($i = 0; $i -lt 20; $i++) { if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }; Start-Sleep -Milliseconds 100 }
-$browserGone = -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)
-$serverGone = -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)
-
-[ordered]@{
-  server_pid = $server.Id
-  browser_pid = $browser.Id
-  ready = $ready
-  loaded = $loaded
-  root_allowed = if ($rootEntry) { [bool]$rootEntry.allowed } else { $false }
-  root_cookie = if ($rootEntry) { [string]$rootEntry.cookie } else { "" }
-  root_referer = if ($rootEntry) { [string]$rootEntry.referer } else { "" }
-  root_authorization = if ($rootEntry) { [string]$rootEntry.authorization } else { "" }
-  child_allowed = if ($childEntry) { [bool]$childEntry.allowed } else { $false }
-  child_cookie = if ($childEntry) { [string]$childEntry.cookie } else { "" }
-  child_referer = if ($childEntry) { [string]$childEntry.referer } else { "" }
-  child_authorization = if ($childEntry) { [string]$childEntry.authorization } else { "" }
-  loaded_applied = if ($loadedEntry) { [string]$loadedEntry.applied } else { "" }
-  loaded_bg = if ($loadedEntry) { [string]$loadedEntry.bg } else { "" }
-  loaded_allowed = if ($loadedEntry) { [bool]$loadedEntry.allowed } else { $false }
-  browser_meta = $browserMeta
-  server_meta = $serverMeta
-  browser_gone = $browserGone
-  server_gone = $serverGone
-} | ConvertTo-Json -Depth 6
+if ($failure) {
+  exit 1
+}
