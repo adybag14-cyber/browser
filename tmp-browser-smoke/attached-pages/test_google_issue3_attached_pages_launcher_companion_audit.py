@@ -130,6 +130,7 @@ SHORTCUT_DOC_SNIPPET = """# Issue #3 Replay Route Shortcut Bridge
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'
 ```
 """
 
@@ -582,6 +583,18 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         self.write_contract_files(
             shortcut_doc_text=SHORTCUT_DOC_SNIPPET.replace(
                 "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        )
+
+    def test_build_audit_reports_missing_replay_route_bridge_preserved_context_helper(self) -> None:
+        self.write_contract_files(
+            shortcut_doc_text=SHORTCUT_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1 -RepoRoot '<repo-root>' -SummaryPath '<saved-summary-path>' -InputPath '<bundle-html-or-folder>'\n",
                 "",
             )
         )
