@@ -31,6 +31,11 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1",
+        "purpose": "The replay-attached quickstart keeps the validation-router attached-html quickstart visible before the route narrows into the change-area and top-level helper ladder.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`",
         "purpose": "The replay-attached quickstart keeps the pinned bundle proof companion note visible.",
     },
@@ -166,6 +171,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the validation-router attached-html quickstart wired into its command map before the change-area and top-level helper ladder takes over.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the suite-catalog helper wired into its command map.",
     },
@@ -258,6 +268,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Catalog quickstart:       {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
         "purpose": "The replay-attached helper prints the Windows-first attached-html catalog quickstart on the surfaced bridge section.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Validation-router quick:  {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
+        "purpose": "The replay-attached helper prints the validation-router attached-html quickstart before the route narrows into the change-area and top-level helper ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
