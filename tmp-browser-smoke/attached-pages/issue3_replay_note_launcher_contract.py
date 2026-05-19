@@ -31,6 +31,12 @@ GOOGLE_FLOW_NOTE = "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md"
 GOOGLE_FLOW_HELPER = "show_google_attached_html_validation_flow.ps1"
 GOOGLE_ENTRYPOINT_HELPER = "show_google_issue3_google_attached_html_entrypoint.ps1"
 
+REPLAY_ROUTE_SHORTCUT_NOTE = "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md"
+REPLAY_ROUTE_SHORTCUT_SURFACE_CHECK = (
+    "check_google_issue3_replay_route_shortcut_validation_surface.ps1"
+)
+REPLAY_ROUTE_SHORTCUT_HELPER = "show_google_issue3_replay_route_shortcut_entrypoint.ps1"
+
 
 def resolve_paths(repo_root: Path, explicit_paths: list[str] | None) -> list[Path]:
     selected = explicit_paths or list(DEFAULT_RELATIVE_PATHS)
@@ -59,6 +65,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
     google_flow_note_count = 0
     google_flow_helper_count = 0
     google_entrypoint_helper_count = 0
+    replay_route_shortcut_note_count = 0
+    replay_route_shortcut_surface_check_count = 0
+    replay_route_shortcut_helper_count = 0
 
     for path in paths:
         text = path.read_text(encoding="utf-8", errors="ignore")
@@ -74,6 +83,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         google_flow_note_hits: list[dict[str, object]] = []
         google_flow_helper_hits: list[dict[str, object]] = []
         google_entrypoint_hits: list[dict[str, object]] = []
+        replay_route_shortcut_note_hits: list[dict[str, object]] = []
+        replay_route_shortcut_surface_hits: list[dict[str, object]] = []
+        replay_route_shortcut_helper_hits: list[dict[str, object]] = []
 
         for line_number, line in enumerate(text.splitlines(), start=1):
             stripped = line.rstrip()
@@ -106,6 +118,12 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 google_flow_helper_hits.append({"line_number": line_number, "line": stripped})
             if GOOGLE_ENTRYPOINT_HELPER in line:
                 google_entrypoint_hits.append({"line_number": line_number, "line": stripped})
+            if REPLAY_ROUTE_SHORTCUT_NOTE in line:
+                replay_route_shortcut_note_hits.append({"line_number": line_number, "line": stripped})
+            if REPLAY_ROUTE_SHORTCUT_SURFACE_CHECK in line:
+                replay_route_shortcut_surface_hits.append({"line_number": line_number, "line": stripped})
+            if REPLAY_ROUTE_SHORTCUT_HELPER in line:
+                replay_route_shortcut_helper_hits.append({"line_number": line_number, "line": stripped})
 
         raw_count += len(raw_hits)
         wrapper_count += len(wrapper_hits)
@@ -122,6 +140,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         google_flow_note_count += len(google_flow_note_hits)
         google_flow_helper_count += len(google_flow_helper_hits)
         google_entrypoint_helper_count += len(google_entrypoint_hits)
+        replay_route_shortcut_note_count += len(replay_route_shortcut_note_hits)
+        replay_route_shortcut_surface_check_count += len(replay_route_shortcut_surface_hits)
+        replay_route_shortcut_helper_count += len(replay_route_shortcut_helper_hits)
 
         file_results.append(
             {
@@ -149,6 +170,12 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 "google_flow_helpers": google_flow_helper_hits,
                 "google_entrypoint_helper_count": len(google_entrypoint_hits),
                 "google_entrypoint_helpers": google_entrypoint_hits,
+                "replay_route_shortcut_note_count": len(replay_route_shortcut_note_hits),
+                "replay_route_shortcut_note_references": replay_route_shortcut_note_hits,
+                "replay_route_shortcut_surface_check_count": len(replay_route_shortcut_surface_hits),
+                "replay_route_shortcut_surface_checks": replay_route_shortcut_surface_hits,
+                "replay_route_shortcut_helper_count": len(replay_route_shortcut_helper_hits),
+                "replay_route_shortcut_helpers": replay_route_shortcut_helper_hits,
             }
         )
 
@@ -168,6 +195,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "google_flow_note_reference_count": google_flow_note_count,
         "google_flow_helper_count": google_flow_helper_count,
         "google_entrypoint_helper_count": google_entrypoint_helper_count,
+        "replay_route_shortcut_note_count": replay_route_shortcut_note_count,
+        "replay_route_shortcut_surface_check_count": replay_route_shortcut_surface_check_count,
+        "replay_route_shortcut_helper_count": replay_route_shortcut_helper_count,
         "files": file_results,
     }
 
@@ -200,6 +230,12 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the Google attached-html flow helper visible")
     if audit["google_entrypoint_helper_count"] == 0:
         reasons.append("replay notes do not keep the issue-specific Google attached-html entrypoint visible")
+    if audit["replay_route_shortcut_note_count"] == 0:
+        reasons.append("replay notes do not keep the replay-route shortcut bridge note visible")
+    if audit["replay_route_shortcut_surface_check_count"] == 0:
+        reasons.append("replay notes do not keep the replay-route shortcut surface checker visible")
+    if audit["replay_route_shortcut_helper_count"] == 0:
+        reasons.append("replay notes do not keep the replay-route shortcut helper visible")
     return reasons
 
 
@@ -222,6 +258,9 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Google flow note references: {audit['google_flow_note_reference_count']}",
         f"Google flow helper references: {audit['google_flow_helper_count']}",
         f"Google entrypoint references: {audit['google_entrypoint_helper_count']}",
+        f"Replay-route shortcut note references: {audit['replay_route_shortcut_note_count']}",
+        f"Replay-route shortcut surface-check references: {audit['replay_route_shortcut_surface_check_count']}",
+        f"Replay-route shortcut helper references: {audit['replay_route_shortcut_helper_count']}",
         "",
     ]
 
@@ -242,6 +281,16 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         lines.append(f"  Google flow note references: {file_result['google_flow_note_reference_count']}")
         lines.append(f"  Google flow helper references: {file_result['google_flow_helper_count']}")
         lines.append(f"  Google entrypoint references: {file_result['google_entrypoint_helper_count']}")
+        lines.append(
+            f"  Replay-route shortcut note references: {file_result['replay_route_shortcut_note_count']}"
+        )
+        lines.append(
+            "  Replay-route shortcut surface-check references: "
+            f"{file_result['replay_route_shortcut_surface_check_count']}"
+        )
+        lines.append(
+            f"  Replay-route shortcut helper references: {file_result['replay_route_shortcut_helper_count']}"
+        )
         for hit in file_result["raw_python_references"][:5]:
             lines.append(f"  Raw line {hit['line_number']}: {hit['line']}")
         for hit in file_result["wrapper_references"][:5]:
@@ -264,6 +313,12 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
             lines.append(f"  Google flow line {hit['line_number']}: {hit['line']}")
         for hit in file_result["google_entrypoint_helpers"][:3]:
             lines.append(f"  Google entry line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["replay_route_shortcut_note_references"][:3]:
+            lines.append(f"  Replay-route note line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["replay_route_shortcut_surface_checks"][:3]:
+            lines.append(f"  Replay-route check line {hit['line_number']}: {hit['line']}")
+        for hit in file_result["replay_route_shortcut_helpers"][:3]:
+            lines.append(f"  Replay-route helper line {hit['line_number']}: {hit['line']}")
         lines.append("")
 
     for reason in reasons:
@@ -275,8 +330,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
-            "the replay-side and Windows-side route checks, the pinned proof route, or the "
-            "dedicated Google attached-html replay surface."
+            "the replay-side and Windows-side route checks, the pinned proof route, the "
+            "dedicated Google attached-html replay surface, or the narrower replay-route "
+            "shortcut companion."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
