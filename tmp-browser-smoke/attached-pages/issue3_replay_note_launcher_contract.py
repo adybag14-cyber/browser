@@ -84,6 +84,7 @@ REPLAY_ROUTE_SHORTCUT_SURFACE_CHECK = (
     "check_google_issue3_replay_route_shortcut_validation_surface.ps1"
 )
 REPLAY_ROUTE_SHORTCUT_HELPER = "show_google_issue3_replay_route_shortcut_entrypoint.ps1"
+REPLAY_QUICKSTART_SHORTCUT_NOTE = "docs/ISSUE3_REPLAY_QUICKSTART_SHORTCUT_BRIDGE.md"
 
 REPLAY_SHORTCUTS_WINDOWS_REPLAY_NOTE = (
     "docs/ISSUE3_REPLAY_SHORTCUTS_WINDOWS_REPLAY_ATTACHED_HTML_BRIDGE.md"
@@ -155,6 +156,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "replay_route_shortcut_note_count": 0,
         "replay_route_shortcut_surface_check_count": 0,
         "replay_route_shortcut_helper_count": 0,
+        "replay_quickstart_shortcut_note_count": 0,
         "replay_shortcuts_windows_replay_note_count": 0,
         "replay_shortcuts_windows_replay_helper_count": 0,
         "replay_shortcuts_helper_count": 0,
@@ -199,6 +201,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "replay_route_shortcut_note_references": [],
             "replay_route_shortcut_surface_checks": [],
             "replay_route_shortcut_helpers": [],
+            "replay_quickstart_shortcut_note_references": [],
             "replay_shortcuts_windows_replay_note_references": [],
             "replay_shortcuts_windows_replay_helpers": [],
             "replay_shortcuts_helpers": [],
@@ -310,6 +313,10 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["replay_route_shortcut_surface_checks"].append({"line_number": line_number, "line": stripped})
             if REPLAY_ROUTE_SHORTCUT_HELPER in line:
                 hits["replay_route_shortcut_helpers"].append({"line_number": line_number, "line": stripped})
+            if REPLAY_QUICKSTART_SHORTCUT_NOTE in line:
+                hits["replay_quickstart_shortcut_note_references"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
             if REPLAY_SHORTCUTS_WINDOWS_REPLAY_NOTE in line:
                 hits["replay_shortcuts_windows_replay_note_references"].append(
                     {"line_number": line_number, "line": stripped}
@@ -397,6 +404,9 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             hits["replay_route_shortcut_surface_checks"]
         )
         counts["replay_route_shortcut_helper_count"] += len(hits["replay_route_shortcut_helpers"])
+        counts["replay_quickstart_shortcut_note_count"] += len(
+            hits["replay_quickstart_shortcut_note_references"]
+        )
         counts["replay_shortcuts_windows_replay_note_count"] += len(
             hits["replay_shortcuts_windows_replay_note_references"]
         )
@@ -496,6 +506,8 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the replay-route shortcut surface checker visible")
     if audit["replay_route_shortcut_helper_count"] == 0:
         reasons.append("replay notes do not keep the replay-route shortcut helper visible")
+    if audit["replay_quickstart_shortcut_note_count"] == 0:
+        reasons.append("replay notes do not keep the replay-quickstart shortcut bridge note visible")
     if audit["replay_shortcuts_windows_replay_note_count"] == 0:
         reasons.append("replay notes do not keep the replay-shortcuts Windows replay bridge note visible")
     if audit["replay_shortcuts_windows_replay_helper_count"] == 0:
@@ -533,6 +545,7 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         f"Bundle-first helper references: {audit['attached_bundle_first_helper_count']}",
         f"Suite-catalog surface-check references: {audit['suite_catalog_entrypoints_surface_check_count']}",
         f"Suite-catalog entrypoints helper references: {audit['suite_catalog_entrypoints_helper_count']}",
+        f"Replay-quickstart shortcut note references: {audit['replay_quickstart_shortcut_note_count']}",
         f"Replay-shortcuts helper references: {audit['replay_shortcuts_helper_count']}",
         f"Safe-route helper references: {audit['safe_route_entrypoints_helper_count']}",
         "",
@@ -552,8 +565,8 @@ def main() -> int:
             "attached-html entrypoint note and checker, the validation-router quickstart note and surface checker, the validation-router "
             "surface-check file itself, the validation-router and change-area attached-html quickstart helpers, the pinned bundle suite surface, "
             "bundle surface check, bundle flow helper, delegated bundle runner, the bundle-first target-bundle handoff, "
-            "the suite-catalog entrypoints surface checker and helper, the replay-route shortcut companion, the replay-shortcuts helpers, "
-            "or the safe-route entrypoints helper."
+            "the suite-catalog entrypoints surface checker and helper, the replay-route shortcut companion, the replay-quickstart shortcut note, "
+            "the replay-shortcuts helpers, or the safe-route entrypoints helper."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
