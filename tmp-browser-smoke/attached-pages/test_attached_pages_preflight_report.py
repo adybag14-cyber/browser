@@ -58,7 +58,7 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
         )
 
         self.assertTrue(report["ready_for_launch"])
-        self.assertEqual("print-manifest-or-start-server", report["recommended_next_step"])
+        self.assertEqual("start-localhost-catalog", report["recommended_next_step"])
         self.assertEqual("google-search.html", report["preferred_display_path"])
         self.assertEqual("http://127.0.0.1:9123/", report["catalog_url"])
         self.assertEqual("http://127.0.0.1:9123/manifest.json", report["manifest_url"])
@@ -67,7 +67,7 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
         self.assertEqual("http://127.0.0.1:9123/pages/1/", report["preferred_url"])
         self.assertTrue(report["preferred_alias_url"].startswith("http://127.0.0.1:9123/pages/1-google-search-home"))
         self.assertEqual("http://127.0.0.1:9123/named/google-search-home/", report["preferred_named_url"])
-        self.assertEqual(report["command_hints"]["manifest_command"], report["recommended_command"])
+        self.assertEqual(report["command_hints"]["launch_command"], report["recommended_command"])
         self.assertIn("--google-style", report["command_hints"]["preflight_report_command"])
         self.assertIn("--input", report["command_hints"]["preflight_report_command"])
         self.assertIn("google-search.html", report["command_hints"]["preflight_report_command"])
@@ -194,7 +194,7 @@ class AttachedPagesPreflightReportTests(unittest.TestCase):
         self.assertEqual("http://127.0.0.1:9001/", payload["catalog_url"])
         self.assertEqual("http://127.0.0.1:9001/pages/1/", payload["preferred_url"])
         self.assertEqual("http://127.0.0.1:9001/named/google-search-home/", payload["preferred_named_url"])
-        self.assertEqual(payload["command_hints"]["manifest_command"], payload["recommended_command"])
+        self.assertEqual(payload["command_hints"]["launch_command"], payload["recommended_command"])
 
 
 if __name__ == "__main__":
