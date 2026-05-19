@@ -190,7 +190,7 @@ $attachedBundleChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptNa
 
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay attached HTML quickstart'
-    purpose = 'Print the narrow attached-localhost ladder that matches the current Windows replay route for issue #3, while keeping the replay-side fail-fast checker, the broader attached-page flow helper, the dedicated Google-shaped attached-page surface check, the top-level attached-html, Google-attached-html, and bundle-aware re-entry points, the Windows full-use route-level surface check, the Windows-to-validation-router bridge, the Windows-first attached-html catalog step, the broader top-level companion-note map, the wider suite-catalog guide, the suite-catalog-to-top-level attached-html catalog quickstart, the newer top-level shortcut bridge, the compact bundle-suite surface helper, the pinned bundle proof-route checker and helper, and the replay-route shortcut bridge visible before the route narrows back into the compact attached-page helpers.'
+    purpose = 'Print the narrow attached-localhost ladder that matches the current Windows replay route for issue #3, while keeping the replay-side fail-fast checker, the broader attached-page flow helper, the dedicated Google-shaped attached-page surface check, the issue-specific Google attached-page bridge, the top-level attached-html, Google-attached-html, and bundle-aware re-entry points, the Windows full-use route-level surface check, the Windows-to-validation-router bridge, the Windows-first attached-html catalog step, the broader top-level companion-note map, the wider suite-catalog guide, the suite-catalog-to-top-level attached-html catalog quickstart, the newer top-level shortcut bridge, the compact bundle-suite surface helper, the pinned bundle proof-route checker and helper, and the replay-route shortcut bridge visible before the route narrows back into the compact attached-page helpers.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
@@ -241,6 +241,7 @@ $helper = [ordered]@{
         attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
         google_attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         top_level_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
         replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments
@@ -270,6 +271,7 @@ $helper = [ordered]@{
         'Use attached_html_validation_flow when the replay should keep the broader attached-page helper visible before the ladder narrows into the Google-shaped route or the shorter issue #3 helpers.',
         'Use google_attached_html_surface_check when branch state may have moved and the replay should fail fast on the dedicated Google-shaped attached-page lane before reopening the narrower Google helper from this same replay ladder.',
         'Use google_attached_html_validation_flow when the current attached inputs are already Google-shaped and you want the dedicated attached-page asset-closure and preferred-initial-page helper visible after the dedicated Google-shaped attached-page surface check and before the route narrows back into the suite-router sidecar or the shorter attached-page shortcut.',
+        'Use google_attached_html_entrypoint when the replay already needs the issue-specific Google attached-html bridge kept visible after the dedicated Google attached-page flow and before the compact bundle suite or the narrower shortcuts take over.',
         'Keep suite_router_attached_html_quickstart nearby as the sidecar helper when the route needs to widen back toward the suite-router surface instead of narrowing directly into the shorter attached-page bridge or the attached-page shortcut.',
         'Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.',
         'Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surface reprinted before the route widens into the next-step matrix, bundle-first helper, or safe-route map.',
@@ -351,6 +353,7 @@ Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pag
 Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)
 Write-Host (("  Google attached check:    {0}") -f $helper.commands.google_attached_html_surface_check)
 Write-Host (("  Google attached flow:     {0}") -f $helper.commands.google_attached_html_validation_flow)
+Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)
 Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)
 Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_shortcut_first)
 Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)
