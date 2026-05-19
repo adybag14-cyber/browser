@@ -42,7 +42,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -InputPath "<saved-html-or-folder>"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -InputPath "<saved-html-or-folder>"
 ```
+
+When the replay is already narrowed to the attached-localhost lane, run the
+replay quickstart surface check first and then the replay quickstart helper so
+the launcher companion, the broader Google-shaped attached-page route, the
+compact bundle-suite surface, and the pinned proof-route follow-up stay visible
+on one smaller surface before the route widens again.
 
 Current validation truth on this branch:
 
