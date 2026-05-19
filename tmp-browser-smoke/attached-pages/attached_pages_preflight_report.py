@@ -104,6 +104,8 @@ def choose_recommended_command(
         return command_hints["sidecar_audit_command"]
     if recommended_next_step == "restore-missing-local-assets":
         return command_hints["asset_audit_command"]
+    if recommended_next_step == "start-localhost-catalog":
+        return command_hints["launch_command"]
     return command_hints["manifest_command"]
 
 
@@ -141,7 +143,7 @@ def assemble_preflight_report(
     elif missing_assets > 0:
         recommended_next_step = "restore-missing-local-assets"
     else:
-        recommended_next_step = "print-manifest-or-start-server"
+        recommended_next_step = "start-localhost-catalog"
 
     command_hints = build_command_hints(
         repo_root,
