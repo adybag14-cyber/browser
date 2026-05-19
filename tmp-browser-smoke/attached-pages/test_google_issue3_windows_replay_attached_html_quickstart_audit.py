@@ -110,6 +110,45 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_bundle_proof_surface_check_wiring(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        snippet = (
+            "attached_bundle_proof_surface_check = Format-HelperCommand -ScriptName "
+            "'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' "
+            "-Arguments $routeSurfaceArguments"
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_bundle_proof_entry_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        snippet = 'Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_bundle_proof_guidance(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        snippet = (
+            "Use attached_bundle_proof_entrypoint when the replay is already pinned "
+            "to the known three-page compatibility bundle and you want the proof-only "
+            "follow-up helper kept visible beside the proof surface checker before the "
+            "route widens again."
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "drifted note")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(
             {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
