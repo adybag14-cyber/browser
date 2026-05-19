@@ -19,6 +19,12 @@ REPLAY_QUICKSTART_SURFACE_CHECK = (
 WINDOWS_ROUTE_SURFACE_CHECK = (
     "check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1"
 )
+WINDOWS_VALIDATION_ROUTER_HELPER = (
+    "show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1"
+)
+WINDOWS_ATTACHED_HTML_CATALOG_HELPER = (
+    "show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1"
+)
 REPLAY_ROUTE_HELPER = "show_google_issue3_replay_route.ps1"
 CONTEXTUAL_FLOW_HELPER = "show_google_issue3_contextual_flow.ps1"
 
@@ -93,6 +99,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "google_wrapper_sidecar_reference_count": 0,
         "replay_quickstart_surface_check_count": 0,
         "windows_route_surface_check_count": 0,
+        "windows_validation_router_helper_count": 0,
+        "windows_attached_html_catalog_helper_count": 0,
         "replay_route_helper_count": 0,
         "contextual_flow_helper_count": 0,
         "proof_note_reference_count": 0,
@@ -129,6 +137,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "wrapper_references": [],
             "replay_quickstart_surface_checks": [],
             "windows_route_surface_checks": [],
+            "windows_validation_router_helpers": [],
+            "windows_attached_html_catalog_helpers": [],
             "replay_route_helpers": [],
             "contextual_flow_helpers": [],
             "proof_note_references": [],
@@ -174,6 +184,10 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["replay_quickstart_surface_checks"].append({"line_number": line_number, "line": stripped})
             if WINDOWS_ROUTE_SURFACE_CHECK in line:
                 hits["windows_route_surface_checks"].append({"line_number": line_number, "line": stripped})
+            if WINDOWS_VALIDATION_ROUTER_HELPER in line:
+                hits["windows_validation_router_helpers"].append({"line_number": line_number, "line": stripped})
+            if WINDOWS_ATTACHED_HTML_CATALOG_HELPER in line:
+                hits["windows_attached_html_catalog_helpers"].append({"line_number": line_number, "line": stripped})
             if REPLAY_ROUTE_HELPER in line:
                 hits["replay_route_helpers"].append({"line_number": line_number, "line": stripped})
             if CONTEXTUAL_FLOW_HELPER in line:
@@ -259,6 +273,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         )
         counts["replay_quickstart_surface_check_count"] += len(hits["replay_quickstart_surface_checks"])
         counts["windows_route_surface_check_count"] += len(hits["windows_route_surface_checks"])
+        counts["windows_validation_router_helper_count"] += len(hits["windows_validation_router_helpers"])
+        counts["windows_attached_html_catalog_helper_count"] += len(hits["windows_attached_html_catalog_helpers"])
         counts["replay_route_helper_count"] += len(hits["replay_route_helpers"])
         counts["contextual_flow_helper_count"] += len(hits["contextual_flow_helpers"])
         counts["proof_note_reference_count"] += len(hits["proof_note_references"])
@@ -336,6 +352,10 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the replay attached-html quickstart surface check visible")
     if audit["windows_route_surface_check_count"] == 0:
         reasons.append("replay notes do not keep the broader Windows attached-html route surface check visible")
+    if audit["windows_validation_router_helper_count"] == 0:
+        reasons.append("replay notes do not keep the broader Windows validation-router attached-html bridge helper visible")
+    if audit["windows_attached_html_catalog_helper_count"] == 0:
+        reasons.append("replay notes do not keep the broader Windows attached-html catalog quickstart helper visible")
     if audit["replay_route_helper_count"] == 0:
         reasons.append("replay notes do not keep the broader replay-route helper visible")
     if audit["contextual_flow_helper_count"] == 0:
@@ -397,6 +417,9 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         "",
         f"Repo root: {audit['repo_root']}",
         f"Files scanned: {audit['file_count']}",
+        f"Windows route surface-check references: {audit['windows_route_surface_check_count']}",
+        f"Windows validation-router bridge helper references: {audit['windows_validation_router_helper_count']}",
+        f"Windows catalog quickstart helper references: {audit['windows_attached_html_catalog_helper_count']}",
         f"Replay-route helper references: {audit['replay_route_helper_count']}",
         f"Contextual-flow helper references: {audit['contextual_flow_helper_count']}",
         f"Validation-router quickstart note references: {audit['validation_router_attached_html_note_count']}",
@@ -420,10 +443,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
-            "the replay-side and Windows-side route checks, the broader replay-route helper, "
-            "the context-preserving replay helper, the pinned proof route, the dedicated Google "
-            "attached-html replay surface, the issue-specific Google attached-html entrypoint note "
-            "and checker, the validation-router quickstart note and surface checker, the validation-router "
+            "the replay-side and Windows-side route checks, the broader Windows validation-router bridge and Windows catalog quickstart helpers, "
+            "the broader replay-route helper, the context-preserving replay helper, "
+            "the pinned proof route, the dedicated Google attached-html replay surface, the issue-specific Google "
+            "attached-html entrypoint note and checker, the validation-router quickstart note and surface checker, the validation-router "
             "and change-area attached-html quickstart helpers, the bundle-first target-bundle handoff, "
             "the suite-catalog entrypoints surface checker, the replay-route shortcut companion, the replay-shortcuts helpers, "
             "or the safe-route entrypoints helper."
