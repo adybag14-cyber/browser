@@ -301,7 +301,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
     def test_build_audit_reports_missing_google_entrypoint_asset_audit_wiring(self) -> None:
         self.write_contract_files(
             google_entrypoint_script_text=GOOGLE_ENTRYPOINT_SCRIPT_SNIPPET.replace(
-                "        google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')\n',
+                "        google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')\n",
                 "",
             )
         )
@@ -403,7 +403,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
     def test_build_audit_reports_missing_proof_companion_note(self) -> None:
         self.write_contract_files(
             doc_text=DOC_SNIPPET.replace(
-                "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`\n',
+                "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`\n",
                 "",
             )
         )
