@@ -25,6 +25,16 @@ EXPECTATIONS = (
         "purpose": "The replay quickstart keeps the launcher-companion helper visible when the route needs the smaller wrapper-backed preflight surface.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1",
+        "purpose": "The replay quickstart keeps the suite-router shortcut bridge visible before the route collapses into replay shortcuts.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "purpose": "The replay quickstart keeps the replay-route shortcut bridge visible when the narrower replay follow-up is the next likely handoff.",
+    },
+    {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "purpose": "The replay-attached quickstart keeps the launcher-companion checker visible before the helper is trusted.",
@@ -61,6 +71,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "suite_router_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay quickstart helper wires the suite-router shortcut bridge into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "replay_route_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay quickstart helper wires the replay-route shortcut bridge into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "snippet": "Treat replay_attached_html_note_path as the read-first written companion to windows_replay_attached_html_quickstart",
         "purpose": "The replay quickstart helper keeps the narrowed replay-attached note paired with its helper surface.",
     },
@@ -71,18 +91,38 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Launcher surface check:    {0}\") -f $helper.commands.attached_pages_launcher_surface_check)",
+        "snippet": "Use suite_router_shortcut_first after attached_html_shortcut when you want the narrower suite-router shortcut bridge reprinted before the route collapses into replay_shortcuts.",
+        "purpose": "The replay quickstart helper explains when to reopen the suite-router shortcut bridge from the attached-page ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "Use replay_route and replay_route_shortcut_entrypoint when you want the broader issue #3 route or the narrower replay-route follow-up printed beside the shortcut helpers.",
+        "purpose": "The replay quickstart helper explains when to reopen the replay-route shortcut follow-up from the shortcut ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": 'Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)',
         "purpose": "The replay quickstart helper prints the launcher-companion checker on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Launcher companion:        {0}\") -f $helper.commands.attached_pages_launcher_companion)",
+        "snippet": 'Write-Host (("  Launcher companion:        {0}") -f $helper.commands.attached_pages_launcher_companion)',
         "purpose": "The replay quickstart helper prints the launcher-companion helper on the surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": 'Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)',
+        "purpose": "The replay quickstart helper prints the suite-router shortcut bridge on the surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": 'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)',
+        "purpose": "The replay quickstart helper prints the replay-route shortcut bridge on the replay follow-up surface.",
     },
 )
 
 
-def resolve_repo_root(root: str | None) -> Path:
+def resolve_repo_root(root: str |None) -> Path:
     candidate = Path.cwd() if root is None else Path(root)
     resolved = candidate.expanduser().resolve()
     if not resolved.is_dir():
