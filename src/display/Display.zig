@@ -170,19 +170,12 @@ const BareMetalBackend = if (build_config.target_class == .bare_metal) @import("
 
 pub const Backend = union(enum) {
     headless: HeadlessBackend,
-    headed_stub: HeadedStubBackend,
     bare_metal: BareMetalBackend,
     headed_windows: Win32Backend,
 };
 
 pub const HeadlessBackend = struct {
     page_count: u32 = 0,
-};
-
-pub const HeadedStubBackend = struct {
-    page_count: u32 = 0,
-    window_open: bool = false,
-    last_resize_seq: u64 = 0,
 };
 
 requested_mode: Config.BrowserMode,
@@ -197,7 +190,13 @@ browse_screenshot_png_attempted: bool = false,
 browse_navigation_state_seen: bool = false,
 browse_is_loading: bool = true,
 
-fn initBackend(allocator: std.mem.Allocator, runtime_mode: Config.BrowserMode, host: ?*Host, viewport: Viewport) Backend {
+fn initBackend(
+    allocator: std.mem.Allocator,
+    requested_mode: Config.BrowserMode,
+    runtime_mode: Config.BrowserMode,
+    host: ?*Host,
+    viewport: Viewport,
+) Backend {
     if (runtime_mode == .headless) {
         return .{ .headless = .{} };
     }
@@ -223,7 +222,7 @@ pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) D
     return .{
         .requested_mode = requested_mode,
         .runtime_mode = runtime_mode,
-        .backend = initBackend(allocator, runtime_mode, host, default_viewport),
+        .backend = initBackend(allocator, requested_mode, runtime_mode, host, default_viewport),
         .default_viewport = default_viewport,
         .viewport = default_viewport,
         .browse_screenshot_bmp_path = switch (config.mode) {
@@ -240,18 +239,6 @@ pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) D
 pub fn onPageCreated(self: *Display) void {
     switch (self.backend) {
         .headless => |*backend| backend.page_count += 1,
-        .headed_stub => |*backend| {
-            backend.page_count += 1;
-            if (!backend.window_open) {
-                backend.window_open = true;
-                log.info(.app, "headed stub window", .{
-                    .event = "open",
-                    .width = self.viewport.width,
-                    .height = self.viewport.height,
-                    .dpr = self.viewport.device_pixel_ratio,
-                });
-            }
-        },
         .bare_metal => |*backend| {
             if (backend.onPageCreated()) {
                 log.info(.app, "bare metal backend window", .{
@@ -282,13 +269,6 @@ pub fn onPageRemoved(self: *Display) void {
                 backend.page_count -= 1;
             }
         },
-        .headed_stub => |*backend| {
-            if (backend.page_count > 0) backend.page_count -= 1;
-            if (backend.page_count == 0 and backend.window_open) {
-                backend.window_open = false;
-                log.info(.app, "headed stub window", .{ .event = "close" });
-            }
-        },
         .bare_metal => |*backend| {
             if (backend.onPageRemoved()) {
                 log.info(.app, "bare metal backend window", .{ .event = "close" });
@@ -310,7 +290,6 @@ pub fn setViewport(self: *Display, width: u32, height: u32, device_pixel_ratio: 
     };
     switch (self.backend) {
         .headless => {},
-        .headed_stub => |*backend| backend.last_resize_seq += 1,
         .bare_metal => |*backend| backend.onViewportChanged(self.viewport.width, self.viewport.height),
         .headed_windows => |*backend| backend.onViewportChanged(self.viewport.width, self.viewport.height),
     }
@@ -710,6 +689,22 @@ test "browseScreenshotReady allows dense text-only presentation commands" {
     });
 
     try std.testing.expect(browseScreenshotReady(true, false, "real body", &list));
+}
+
+test "initBackend keeps headed fallbacks on the headless backend" {
+    const headed_fallback = initBackend(std.testing.allocator, .headed, .headless, null, .{
+        .width = 1280,
+        .height = 720,
+        .device_pixel_ratio = 1.0,
+    });
+    const backend = initBackend(std.testing.allocator, .headless, .headless, null, .{
+        .width = 1280,
+        .height = 720,
+        .device_pixel_ratio = 1.0,
+    });
+
+    try std.testing.expectEqual(Display.Backend.Tag.headless, std.meta.activeTag(headed_fallback));
+    try std.testing.expectEqual(Display.Backend.Tag.headless, std.meta.activeTag(backend));
 }
 
 pub fn chooseFiles(self: *Display, accept: []const u8, multiple: bool) ?ChosenFiles {
