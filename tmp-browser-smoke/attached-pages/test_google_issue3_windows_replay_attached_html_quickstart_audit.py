@@ -39,6 +39,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "bundle_proof_surface_check_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_bundle_proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "",
+    ),
+    (
+        "bundle_proof_surface_check_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)',
+        "",
+    ),
+    (
         "bundle_proof_entry_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)',
@@ -61,6 +73,18 @@ DRIFT_CASES = (
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
         "",
+    ),
+    (
+        "launcher_proof_surface_output",
+        "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)',
+        "",
+    ),
+    (
+        "launcher_proof_surface_guidance",
+        "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.",
+        "drifted note",
     ),
     (
         "launcher_windows_replay_wiring",
