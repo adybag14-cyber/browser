@@ -219,7 +219,7 @@ Acceptance:
 - `tmp-browser-smoke/inline-flow`
 - `tmp-browser-smoke/flow-layout`
 - `tmp-browser-smoke/rendered-link-dom`
-- `tmp-browser-smoke/showcase`
+- `tmp-browser-smoke/multi-image`
 
 Exit criteria:
 - pages no longer depend on dummy layout/presentation behavior to remain usable
@@ -403,7 +403,7 @@ Acceptance:
 - `tmp-browser-smoke/settings`
 - `tmp-browser-smoke/popup`
 - `tmp-browser-smoke/file-upload`
-- `tmp-browser-smoke/manual-user`
+- `tmp-browser-smoke/bookmarks`
 
 Exit criteria:
 - a user can browse, close, reopen, recover, download, and manage settings over
@@ -466,7 +466,9 @@ mode on the release candidate build:
 - shell and navigation
   - `tmp-browser-smoke/tabs`
   - `tmp-browser-smoke/browser-pages`
+  - `tmp-browser-smoke/bookmarks`
   - `tmp-browser-smoke/settings`
+  - `tmp-browser-smoke/stop-loading`
   - `tmp-browser-smoke/wrapped-link`
   - `tmp-browser-smoke/popup`
 - rendering and layout
