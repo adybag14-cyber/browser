@@ -405,6 +405,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_entrypoint_broader_surface_note",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1",
+        "",
+    ),
+    (
+        "google_entrypoint_issue_specific_surface_note",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1",
+        "",
+    ),
+    (
         "google_entrypoint_sidecar_output",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         'Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
