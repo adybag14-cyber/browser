@@ -143,7 +143,7 @@ Add-SharedArgument -Arguments $surfaceCheckArguments -Name RepoRoot -Value $reso
 
 $helper = [ordered]@{
     issue = 'Google issue #3 attached-pages launcher companion'
-    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving, the preferred-first-page wrapper handoff for the pinned three-page compatibility bundle, and the pinned proof-entrypoint checker/helper pair when replay is already locked to the known three-page bundle.'
+    purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving, the preferred-first-page wrapper handoff for the pinned three-page compatibility bundle, the pinned proof-entrypoint checker/helper pair when replay is already locked to the known three-page bundle, and the shorter replay re-entry helpers that hand control back into the replay-attached quickstart or the narrower replay-route shortcut without reopening the full route map first.'
     repo_root = $resolvedRepoRoot
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     preferred_initial_page = $PreferredInitialPage
@@ -165,6 +165,8 @@ $helper = [ordered]@{
         wrapper_google_launch = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle')
         proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $surfaceCheckArguments
         proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $wrapperArguments
+        windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments
+        replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments
         python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-sidecars')
         python_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-assets')
         python_print_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--print-manifest')
@@ -187,6 +189,7 @@ $helper = [ordered]@{
         google_attached_html_entrypoint_note = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
         windows_full_use_attached_html_catalog_quickstart_note = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md'
         windows_replay_attached_html_quickstart_note = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
+        replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'
     }
     notes = @(
         'Run the surface check first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted.',
@@ -195,6 +198,8 @@ $helper = [ordered]@{
         'Use the strict bundle commands when both sidecars and referenced local assets must be complete before a manifest print or localhost launch is trusted.',
         'Prefer the GoogleStyle variants when the current attached-page set should keep the strongest Google-like page first while replay narrows back into the issue-specific helper chain.',
         'Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.',
+        'Use windows_replay_quickstart after launcher-side sidecar, asset, or proof preflight when the next honest step is to re-enter the replay-attached Windows ladder without reopening the broader route map first.',
+        'Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.',
         'Keep the attached-pages README, the Windows wrapper, and the lower-level Python launcher visible beside the issue #3 Google attached HTML flow and entrypoint notes so the preflight order stays aligned across Windows and cross-platform replay.'
     )
 }
@@ -245,6 +250,10 @@ Write-Host 'Pinned bundle proof follow-up:'
 Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)
 Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)
 Write-Host ''
+Write-Host 'Replay re-entry helpers:'
+Write-Host (("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart)
+Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut)
+Write-Host ''
 Write-Host 'Cross-platform launcher ladder:'
 Write-Host (("  1. Sidecar audit:      {0}") -f $helper.helper_commands.python_sidecar_audit)
 Write-Host (("  2. Asset audit:        {0}") -f $helper.helper_commands.python_asset_audit)
@@ -267,6 +276,7 @@ Write-Host (("Google flow note:        {0}") -f $helper.companion_paths.google_a
 Write-Host (("Google entrypoint note:  {0}") -f $helper.companion_paths.google_attached_html_entrypoint_note)
 Write-Host (("Windows catalog note:    {0}") -f $helper.companion_paths.windows_full_use_attached_html_catalog_quickstart_note)
 Write-Host (("Windows replay note:     {0}") -f $helper.companion_paths.windows_replay_attached_html_quickstart_note)
+Write-Host (("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note)
 Write-Host ''
 Write-Host 'Notes:'
 foreach ($note in $helper.notes) {
