@@ -197,6 +197,7 @@ fn initBackend(
     host: ?*Host,
     viewport: Viewport,
 ) Backend {
+    _ = requested_mode;
     if (runtime_mode == .headless) {
         return .{ .headless = .{} };
     }
