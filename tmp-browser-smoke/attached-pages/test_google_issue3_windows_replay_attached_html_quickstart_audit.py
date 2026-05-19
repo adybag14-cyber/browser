@@ -346,6 +346,41 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_google_entrypoint_issue_specific_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1"
+        snippet = 'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_google_entrypoint_flow_guidance(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1"
+        snippet = (
+            "Use google_attached_html_validation_flow when the broader Google-style attached-page "
+            "flow helper still needs to stay visible after the sidecar audit, broader surface check, "
+            "asset audit, and dedicated entrypoint surface check and before the route narrows into "
+            "the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches."
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "drifted note")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_google_entrypoint_companion_flow_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1"
+        snippet = 'Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(
             {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
