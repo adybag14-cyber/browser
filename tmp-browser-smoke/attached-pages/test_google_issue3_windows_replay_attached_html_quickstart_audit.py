@@ -15,6 +15,12 @@ def build_contract_map() -> dict[str, str]:
 
 DRIFT_CASES = (
     (
+        "replay_surface_check_note",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+        "",
+    ),
+    (
         "validation_router_quickstart_note",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1",
@@ -36,6 +42,12 @@ DRIFT_CASES = (
         "validation_bridge_note",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+        "",
+    ),
+    (
+        "replay_surface_check_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments",
         "",
     ),
     (
@@ -264,6 +276,12 @@ DRIFT_CASES = (
         "replay_route_shortcut_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)',
+        "",
+    ),
+    (
+        "replay_surface_check_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Replay surface check:    {0}") -f $helper.commands.windows_replay_attached_html_surface_check)',
         "",
     ),
     (
