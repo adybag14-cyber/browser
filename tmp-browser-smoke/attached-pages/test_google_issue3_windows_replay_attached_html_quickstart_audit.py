@@ -203,6 +203,16 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_launcher_proof_surface_check_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1"
+        snippet = 'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_build_audit_reports_missing_launcher_proof_entry_output(self) -> None:
         contract_map = build_contract_map()
         path = "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1"
@@ -229,6 +239,16 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_launcher_proof_note_reference(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1"
+        snippet = "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md"
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_build_audit_reports_missing_launcher_windows_replay_wiring(self) -> None:
         contract_map = build_contract_map()
         path = "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1"
@@ -237,6 +257,16 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             "'show_google_issue3_windows_replay_attached_html_quickstart.ps1' "
             "-Arguments $wrapperArguments"
         )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_launcher_windows_replay_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1"
+        snippet = 'Write-Host (("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart)'
         self.write_contract_files({path: contract_map[path].replace(snippet, "")})
         audit = helper.build_replay_attached_quickstart_audit(self.root)
         self.assertGreater(audit["missing_count"], 0)
