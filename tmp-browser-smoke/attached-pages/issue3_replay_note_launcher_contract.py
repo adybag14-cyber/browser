@@ -11,6 +11,7 @@ DEFAULT_RELATIVE_PATHS = (
     "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md",
     "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
     "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+    "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
 )
 
 REPLAY_QUICKSTART_SURFACE_CHECK = (
@@ -35,6 +36,7 @@ PROOF_SURFACE_CHECK = (
 PROOF_HELPER_MARKER = "show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1"
 
 GOOGLE_SURFACE_CHECK = "check_google_attached_html_validation_surface.ps1"
+GOOGLE_ASSET_CLOSURE_AUDIT = "check_attached_html_local_asset_closure.ps1"
 GOOGLE_FLOW_NOTE = "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md"
 GOOGLE_FLOW_HELPER = "show_google_attached_html_validation_flow.ps1"
 GOOGLE_ENTRYPOINT_NOTE = "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md"
@@ -128,6 +130,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "proof_surface_check_count": 0,
         "proof_helper_count": 0,
         "google_surface_check_count": 0,
+        "google_asset_closure_audit_count": 0,
         "google_flow_note_reference_count": 0,
         "google_flow_helper_count": 0,
         "google_entrypoint_note_count": 0,
@@ -179,6 +182,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "proof_surface_checks": [],
             "proof_helpers": [],
             "google_surface_checks": [],
+            "google_asset_closure_audits": [],
             "google_flow_note_references": [],
             "google_flow_helpers": [],
             "google_entrypoint_note_references": [],
@@ -241,6 +245,10 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["proof_helpers"].append({"line_number": line_number, "line": stripped})
             if GOOGLE_SURFACE_CHECK in line:
                 hits["google_surface_checks"].append({"line_number": line_number, "line": stripped})
+            if GOOGLE_ASSET_CLOSURE_AUDIT in line and GOOGLE_FLAG in line:
+                hits["google_asset_closure_audits"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
             if GOOGLE_FLOW_NOTE in line:
                 hits["google_flow_note_references"].append({"line_number": line_number, "line": stripped})
             if GOOGLE_FLOW_HELPER in line:
@@ -350,6 +358,7 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         counts["proof_surface_check_count"] += len(hits["proof_surface_checks"])
         counts["proof_helper_count"] += len(hits["proof_helpers"])
         counts["google_surface_check_count"] += len(hits["google_surface_checks"])
+        counts["google_asset_closure_audit_count"] += len(hits["google_asset_closure_audits"])
         counts["google_flow_note_reference_count"] += len(hits["google_flow_note_references"])
         counts["google_flow_helper_count"] += len(hits["google_flow_helpers"])
         counts["google_entrypoint_note_count"] += len(hits["google_entrypoint_note_references"])
@@ -458,6 +467,8 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the pinned bundle proof helper visible")
     if audit["google_surface_check_count"] == 0:
         reasons.append("replay notes do not keep the Google attached-html surface check visible")
+    if audit["google_asset_closure_audit_count"] == 0:
+        reasons.append("replay notes do not keep the Google attached-html asset-closure audit visible")
     if audit["google_flow_note_reference_count"] == 0:
         reasons.append("replay notes do not keep the Google attached-html flow note visible")
     if audit["google_flow_helper_count"] == 0:
@@ -525,6 +536,7 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         "",
         f"Repo root: {audit['repo_root']}",
         f"Files scanned: {audit['file_count']}",
+        f"Google asset-closure audit references: {audit['google_asset_closure_audit_count']}",
         f"Windows route surface-check references: {audit['windows_route_surface_check_count']}",
         f"Windows validation-router bridge helper references: {audit['windows_validation_router_helper_count']}",
         f"Windows catalog quickstart helper references: {audit['windows_attached_html_catalog_helper_count']}",
@@ -562,7 +574,7 @@ def main() -> int:
             "the replay-side and Windows-side route checks, the broader Windows validation-router bridge and Windows catalog quickstart helpers, "
             "the broader replay-route helper, the context-preserving replay helper, "
             "the pinned bundle proof route, the dedicated Google attached-html replay surface, the issue-specific Google "
-            "attached-html entrypoint note and checker, the validation-router quickstart note and surface checker, the validation-router "
+            "attached-html entrypoint note and checker, the deeper Google attached-html asset-closure audit, the validation-router quickstart note and surface checker, the validation-router "
             "surface-check file itself, the validation-router and change-area attached-html quickstart helpers, the pinned bundle suite surface, "
             "bundle surface check, bundle flow helper, delegated bundle runner, the bundle-first target-bundle handoff, "
             "the suite-catalog entrypoints surface checker and helper, the replay-route shortcut companion, the replay-quickstart shortcut note, "
