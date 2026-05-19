@@ -293,6 +293,68 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_replay_windows_bridge_surface_check_wiring(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
+        snippet = (
+            "windows_replay_surface_check = Format-HelperCommand -ScriptName "
+            "'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' "
+            "-Arguments $routeSurfaceArguments"
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_replay_windows_bridge_quickstart_wiring(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
+        snippet = (
+            "windows_replay_quickstart = Format-HelperCommand -ScriptName "
+            "'show_google_issue3_windows_replay_attached_html_quickstart.ps1' "
+            "-Arguments $sharedArguments"
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_replay_windows_bridge_surface_check_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
+        snippet = 'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_replay_windows_bridge_quickstart_output(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
+        snippet = 'Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)'
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_replay_windows_bridge_default_handoff_guidance(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
+        snippet = (
+            "Use windows_replay_quickstart as the default next helper whenever no "
+            "explicit bundle inputs, saved summary, or non-default repo root need to "
+            "take precedence first."
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "drifted note")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_build_audit_reports_missing_launcher_replay_route_guidance(self) -> None:
         contract_map = build_contract_map()
         path = "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1"
