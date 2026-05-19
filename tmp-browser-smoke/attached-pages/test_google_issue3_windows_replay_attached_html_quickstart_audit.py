@@ -408,11 +408,38 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(snippet, failing)
 
+    def test_build_audit_reports_missing_google_entrypoint_note_command(self) -> None:
+        contract_map = build_contract_map()
+        path = "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
+        snippet = (
+            "powershell -ExecutionPolicy Bypass -File "
+            ".\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1"
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
     def test_build_audit_reports_missing_google_entrypoint_issue_specific_output(self) -> None:
         contract_map = build_contract_map()
         path = "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1"
         snippet = 'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)'
         self.write_contract_files({path: contract_map[path].replace(snippet, "")})
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+        self.assertGreater(audit["missing_count"], 0)
+        failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(snippet, failing)
+
+    def test_build_audit_reports_missing_google_entrypoint_issue_bridge_guidance(self) -> None:
+        contract_map = build_contract_map()
+        path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        snippet = (
+            "Use google_attached_html_entrypoint when the replay already needs the issue-specific "
+            "Google attached-html bridge kept visible after the dedicated Google attached-page flow "
+            "and before the compact bundle suite or the narrower shortcuts take over."
+        )
+        self.write_contract_files({path: contract_map[path].replace(snippet, "drifted note")})
         audit = helper.build_replay_attached_quickstart_audit(self.root)
         self.assertGreater(audit["missing_count"], 0)
         failing = [result["snippet"] for result in audit["results"] if not result["exists"]]
