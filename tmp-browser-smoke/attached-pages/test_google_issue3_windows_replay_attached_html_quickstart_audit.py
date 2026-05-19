@@ -99,6 +99,24 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "launcher_companion_surface_check_note",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "",
+    ),
+    (
+        "launcher_companion_helper_note",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -InputPath '<attached-html-root>'",
+        "",
+    ),
+    (
+        "launcher_companion_context_note",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'",
+        "",
+    ),
+    (
         "launcher_surface_check_output",
         "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)',
