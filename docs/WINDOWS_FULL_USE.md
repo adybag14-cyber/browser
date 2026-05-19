@@ -123,6 +123,7 @@ What exists today:
 - a truthful validation router at `scripts\windows\show_headed_validation_suites.ps1`
 - the first-line navigation, stop-loading, input, rendering, network, browser-shell, and popup probes now auto-resolve the repo root and `zig-out\bin\lightpanda.exe` from the current checkout
 - an attached-pages localhost catalog, sidecar audit, broader asset-audit helper, and strict completeness launch surface under `tmp-browser-smoke\attached-pages\` plus the Windows wrapper `scripts\windows\start_attached_pages_catalog.ps1`
+- a guarded attached-pages launcher companion surface under `scripts\windows\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1` and `scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1`
 - dedicated suite-level `google-attached-html` and `attached-html-target-bundle` router surfaces when the issue #3 replay should stay on the narrower attached-page helper lane without reopening the rest of the catalog first
 - a Windows-first attached-bundle bridge surface under `scripts\windows\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1` plus the fail-fast checker `scripts\windows\check_google_issue3_windows_full_use_attached_bundle_bridge_validation_surface.ps1`
 
@@ -196,6 +197,25 @@ should stop on incomplete saved-page bundles, add `-RequireCompleteAssets` when
 the same route should also stop on missing local assets, and pair both require
 switches when replay should stay pinned to a fully closed saved-page bundle
 before the browser is blamed.
+
+When you want the same wrapper-backed preflight, strict bundle gates, and
+pinned proof follow-up reprinted from one compact issue `#3` surface first,
+rerun the launcher companion guard and helper before widening back into the
+broader Windows-first route:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -InputPath "<saved-html-or-folder>"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot "<repo-root>" -InputPath "<saved-html-or-folder>"
+```
+
+Use the guard first when the launcher companion itself, its note pointers, or
+the wrapper-backed attached-pages route may have drifted. Then keep the
+companion helper nearby when the replay should preserve the wrapper-side
+sidecar audit, the broader asset audit, the strict sidecar gate, the strict
+asset gate, the strict bundle gate, and the pinned proof checker plus proof
+entrypoint on one smaller surface before the broader Windows-first ladders
+reopen.
 
 When the current replay should stay pinned to the known three-page compatibility
 bundle, use the compact Windows-first bundle bridge before widening back into
