@@ -217,6 +217,12 @@ $surface = [ordered]@{
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    known_bundle_files = @(
+        'Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html'
+        'Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html'
+        'Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html'
+    )
+    preferred_initial_page_hint = 'Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html'
     suite_commands = [ordered]@{
         attached_html_target_bundle = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlTargetBundleSuiteArguments -RepoRootOverride $RepoRoot
         attached_html = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
@@ -257,6 +263,7 @@ $surface = [ordered]@{
         'Start with the attached_html_target_bundle suite command when the current attached pages are already the likely three-page compatibility bundle and you want the compact suite surface first.',
         'Keep the attached_html suite command nearby when the replay may still need the broader attached-page fallback before it locks onto the pinned bundle branch.',
         'Keep the google_attached_html suite command nearby when the current inputs include a Google-like attached page and the narrower issue-specific Google attached-page chain still matters before bundle-first replay.',
+        'When the replay should stay pinned to the known three-page compatibility bundle, use the exact saved filenames printed on this surface and prefer the Google Safety Centre export as -PreferredInitialPage when one Google-like page should stay first.',
         'Run google_attached_html_surface_check, google_attached_html_asset_closure, broader_attached_html_flow, google_attached_html_flow, and google_attached_html_runner before the bundle-only route when the next decision still depends on seeing the broader attached-page lane and the full Google-shaped attached-page chain beside the pinned bundle lane.',
         'Run google_issue3_attached_html_surface_check and google_issue3_attached_html_entrypoint after the broader Google-shaped attached-page surface looks right when the replay should stay on the narrower issue-specific Google lane before narrowing into the bundle-only route.',
         'Run bundle_surface_check before trusting the bundle-only replay after branch moves or helper renames.',
@@ -300,6 +307,12 @@ if ($surface.browser_exe) {
 if ($surface.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $surface.explicit_input_path_count)
 }
+Write-Host ''
+Write-Host 'Pinned compatibility bundle:'
+foreach ($bundleFile in $surface.known_bundle_files) {
+    Write-Host (("  - {0}") -f $bundleFile)
+}
+Write-Host (("  Preferred initial page hint: {0}") -f $surface.preferred_initial_page_hint)
 Write-Host ''
 Write-Host (("Recommended next helper: {0}") -f $surface.recommended_next_command)
 Write-Host (("Why:                    {0}") -f $surface.recommended_next_reason)
