@@ -15,6 +15,8 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1
 ```
 """
 
@@ -34,15 +36,21 @@ HELPER_SNIPPET = """$helper = [ordered]@{
         windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments
         attached_pages_launcher_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $routeSurfaceArguments
         attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments
+        suite_router_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments
+        replay_route_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments
     }
     notes = @(
         'Treat replay_attached_html_note_path as the read-first written companion to windows_replay_attached_html_quickstart once the main replay quickstart narrows into the attached localhost branch, so the helper command and note stay paired on the same surface.',
-        'Use attached_pages_launcher_surface_check and attached_pages_launcher_companion when the replay has already narrowed into attached localhost follow-up and you want the wrapper-backed sidecar, asset, manifest, and strict-launch ladder printed on one smaller surface before reopening the broader Google-shaped, top-level, or bundle-first branches.'
+        'Use attached_pages_launcher_surface_check and attached_pages_launcher_companion when the replay has already narrowed into attached localhost follow-up and you want the wrapper-backed sidecar, asset, manifest, and strict-launch ladder printed on one smaller surface before reopening the broader Google-shaped, top-level, or bundle-first branches.',
+        'Use suite_router_shortcut_first after attached_html_shortcut when you want the narrower suite-router shortcut bridge reprinted before the route collapses into replay_shortcuts.',
+        'Use replay_route and replay_route_shortcut_entrypoint when you want the broader issue #3 route or the narrower replay-route follow-up printed beside the shortcut helpers.'
     )
 }
 
-Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)
-Write-Host (("  Launcher companion:        {0}") -f $helper.commands.attached_pages_launcher_companion)
+Write-Host ((\"  Launcher surface check:    {0}\") -f $helper.commands.attached_pages_launcher_surface_check)
+Write-Host ((\"  Launcher companion:        {0}\") -f $helper.commands.attached_pages_launcher_companion)
+Write-Host ((\"  Router shortcut:           {0}\") -f $helper.commands.suite_router_shortcut_first)
+Write-Host ((\"  Route shortcut:            {0}\") -f $helper.commands.replay_route_shortcut_entrypoint)
 """
 
 
@@ -113,6 +121,37 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.write_contract_files(
             helper_text=HELPER_SNIPPET.replace(
                 "        attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("scripts/windows/show_google_issue3_windows_replay_quickstart.ps1", failing_paths)
+
+    def test_build_audit_reports_missing_suite_router_shortcut_doc_command(self) -> None:
+        self.write_contract_files(
+            replay_doc_text=REPLAY_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_replay_route_shortcut_helper_output(self) -> None:
+        self.write_contract_files(
+            helper_text=HELPER_SNIPPET.replace(
+                'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)\n',
                 "",
             )
         )
