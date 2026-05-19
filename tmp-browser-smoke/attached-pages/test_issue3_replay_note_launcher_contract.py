@@ -1,3 +1,6 @@
+import contextlib
+import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -225,6 +228,38 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
             audit = audit_paths(paths, root)
             self.assertIn(
                 "replay notes do not keep the pinned bundle proof helper visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_windows_validation_router_bridge_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the broader Windows validation-router attached-html bridge helper visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_windows_catalog_quickstart_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the broader Windows attached-html catalog quickstart helper visible",
                 failure_reasons(audit),
             )
 
