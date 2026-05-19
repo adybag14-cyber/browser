@@ -16,6 +16,21 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1",
+        "purpose": "The replay-attached quickstart keeps the broader Windows full-use attached-html route helper visible before the narrower attached-page helpers take over.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+        "purpose": "The replay-attached quickstart keeps the Windows-to-validation-router bridge helper visible before the narrower attached-page helpers take over.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1",
+        "purpose": "The replay-attached quickstart keeps the Windows-first attached-html catalog quickstart visible before the validation-router helper chain narrows again.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`",
         "purpose": "The replay-attached quickstart keeps the pinned bundle proof companion note visible.",
     },
@@ -136,6 +151,21 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the broader Windows full-use attached-html route helper wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $browserAwareSharedArguments",
+        "purpose": "The replay-attached helper keeps the Windows-to-validation-router bridge helper wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": "windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments",
+        "purpose": "The replay-attached helper keeps the Windows-first attached-html catalog quickstart wired into its command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": "suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments",
         "purpose": "The replay-attached helper keeps the suite-catalog helper wired into its command map.",
     },
@@ -213,6 +243,21 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "snippet": 'Write-Host (("  Route surface check:     {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
         "purpose": "The replay-attached helper prints the broader Windows route-level surface checker on the surfaced route guard.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Windows full-use route:   {0}") -f $helper.commands.windows_full_use_attached_html_route)',
+        "purpose": "The replay-attached helper prints the broader Windows full-use attached-html route helper on the surfaced bridge section.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Validation bridge:        {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "purpose": "The replay-attached helper prints the Windows-to-validation-router bridge helper on the surfaced bridge section.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "snippet": 'Write-Host (("  Catalog quickstart:       {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        "purpose": "The replay-attached helper prints the Windows-first attached-html catalog quickstart on the surfaced bridge section.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
