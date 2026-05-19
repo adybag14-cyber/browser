@@ -155,6 +155,8 @@ Write-Host (("  Replay route:           {0}") -f $entrypoint.helper_commands.rep
 REPLAY_ROUTE_SHORTCUT_SCRIPT_SNIPPET = """$entrypoint = [ordered]@{
     helper_commands = [ordered]@{
         replay_shortcuts_windows_replay_attached_html_bridge = $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand
+        windows_replay_attached_html_surface_check = $windowsReplayAttachedHtmlSurfaceCheckCommand
+        windows_replay_attached_html_quickstart = $windowsReplayAttachedHtmlQuickstartCommand
     }
     notes = @(
         'Use replay_shortcuts_windows_replay_attached_html_bridge when the replay-route shortcut still needs the replay-side surface check, the Windows replay attached-page quickstart, and the broader Windows-first bridge kept visible before the route collapses back to the shorter attached-page helper chain.'
@@ -163,6 +165,8 @@ REPLAY_ROUTE_SHORTCUT_SCRIPT_SNIPPET = """$entrypoint = [ordered]@{
 
 Write-Host (("  8. Replay-to-Windows: {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)
 Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)
+Write-Host (("  Replay bridge check:  {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_surface_check)
+Write-Host (("  Windows replay quick: {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
 """
 
 
@@ -514,6 +518,40 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.write_contract_files(
             replay_route_shortcut_script_text=REPLAY_ROUTE_SHORTCUT_SCRIPT_SNIPPET.replace(
                 'Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_replay_bridge_check_output(self) -> None:
+        self.write_contract_files(
+            replay_route_shortcut_script_text=REPLAY_ROUTE_SHORTCUT_SCRIPT_SNIPPET.replace(
+                'Write-Host (("  Replay bridge check:  {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_surface_check)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_replay_bridge_windows_quick_output(self) -> None:
+        self.write_contract_files(
+            replay_route_shortcut_script_text=REPLAY_ROUTE_SHORTCUT_SCRIPT_SNIPPET.replace(
+                'Write-Host (("  Windows replay quick: {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)\n',
                 "",
             )
         )
