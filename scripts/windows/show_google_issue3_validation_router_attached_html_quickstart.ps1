@@ -248,6 +248,7 @@ $helper = [ordered]@{
     browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
+    windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
     validation_router_attached_html_quickstart_note_path = 'docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md'
     windows_validation_router_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md'
@@ -269,6 +270,8 @@ $helper = [ordered]@{
         attached_bundle_target = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleTargetArguments -RepoRootOverride $RepoRoot
         validation_router_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_validation_router_attached_html_quickstart_surface.ps1' -RepoRootOverride $RepoRoot
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $bundleArguments
+        windows_replay_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
+        windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $bundleArguments
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
@@ -292,10 +295,12 @@ $helper = [ordered]@{
     notes = @(
         'Start with google_recommended or google_input when you are re-entering issue #3 from the broader headed validation router and want that higher-level surface visible before you narrow into the attached localhost branch.',
         'Run validation_router_attached_html_surface_check after branch moves or before trusting this helper from a different checkout, because it fails fast on missing notes, helper scripts, or downstream route surfaces before the shorter attached-page bridge narrows again.',
-        'Use attached_html when the replay is already centered on the attached localhost compatibility pages and you still want the broader validation catalog branch reprinted before dropping into the issue-specific helper chain.',
+        'Use attached_html when the replay is already centered on the attached localhost compatibility pages and you still want the broader validation catalog branch reprinted before you drop into the issue-specific helper chain.',
         'Use google_attached_html when the replay still needs the broader Google-shaped attached-page branch visible before dropping into the compact top-level attached-page quickstarts.',
         'Use attached_bundle_target when the broader validation router already knows the current pages are the pinned three-page compatibility bundle and you still want docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md plus that top-level bundle branch visible before dropping into the compact helper chain.',
         'Use windows_full_use_attached_html_route when the replay is reopening from docs/WINDOWS_FULL_USE.md and you want the dedicated Windows runbook attached-page route reprinted before falling back to the shorter validation-router bridge.',
+        'Use windows_replay_attached_html_surface_check when the replay is about to reopen the narrower Windows replay attached-page ladder and you want that replay-side quickstart contract to fail fast before the route narrows away from the broader validation-router bridge.',
+        'Use windows_replay_attached_html_quickstart when the replay should drop from this broader validation-router bridge into the Windows replay attached-page ladder while keeping the replay-side surface checker, the narrower attached-page helper order, and the downstream top-level quickstarts aligned.',
         'Use attached_html_change_area_quickstart when the replay is already reopening from show_headed_validation_suites.ps1 -ChangeArea attached-html and you want the broader attached-page flow helper plus the compact top-level attached-page route surfaced together before the route narrows again.',
         'Use attached_html_flow when you want the broader attached-page localhost flow helper printed directly from the validation-router bridge before the replay narrows into the compact top-level attached-page quickstart, the top-level shortcut-first bridge, or the suite-router attached-page branch.',
         'Use google_attached_html_surface_check when the replay is about to rely on the dedicated Google-shaped attached-page follow-up and you want that narrower surface checked before this validation-router bridge reopens the Google flow helper.',
@@ -314,7 +319,7 @@ $helper = [ordered]@{
         'Use attached_html_shortcut or replay_shortcuts only after the compact top-level attached-page route is already in view and the replay is ready to stay inside the narrower issue #3 helper chain.',
         'Use attached_bundle_first when explicit input paths are already pinned or when the replay should stay on the known three-page compatibility bundle, and reopen docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md first before widening back into the broader issue #3 helper chain.',
         'Pass -BrowserExe when the validation-router handoff should stay pinned to a non-default headed binary through the broader validation-router entrypoints, the broader attached-page flow helper, the dedicated Google-style attached-page flow helper, the compact top-level attached-page quickstart, the broader top-level attached-page bridge, and the bundle-first helper instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
-        'Keep the Windows replay quickstart note, the Windows full-use attached-page route note, the validation-router attached-html quickstart note, the Windows-facing validation-router quickstart note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the top-level attached-page bridge note, the top-level shortcut-first note, the suite-catalog top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the suite-router shortcut-first note, the Google attached-page validation-flow note, and the attached-html target bundle reference note nearby when you want the written route beside these commands.'
+        'Keep the Windows replay quickstart note, the Windows replay attached-html quickstart note, the Windows full-use attached-page route note, the validation-router attached-html quickstart note, the Windows-facing validation-router quickstart note, the attached-html change-area quickstart note, the top-level attached-page quickstart note, the top-level attached-page catalog quickstart note, the top-level attached-page bridge note, the top-level shortcut-first note, the suite-catalog top-level attached-page catalog quickstart note, the suite-router attached-page quickstart note, the suite-router shortcut-first note, the Google attached-page validation-flow note, and the attached-html target bundle reference note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -374,6 +379,10 @@ Write-Host ''
 Write-Host 'Windows runbook bridge:'
 Write-Host (("  Windows full-use route:      {0}") -f $helper.commands.windows_full_use_attached_html_route)
 Write-Host ''
+Write-Host 'Replay-side re-entry:'
+Write-Host (("  Replay surface checker:      {0}") -f $helper.commands.windows_replay_attached_html_surface_check)
+Write-Host (("  Windows replay quickstart:   {0}") -f $helper.commands.windows_replay_attached_html_quickstart)
+Write-Host ''
 Write-Host 'Issue #3 bridge helpers:'
 Write-Host (("  Suite catalog:               {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Catalog handoff quickstart:  {0}") -f $helper.commands.suite_catalog_top_level_attached_html_catalog_quickstart)
@@ -392,6 +401,7 @@ Write-Host (("  Next-step matrix:            {0}") -f $helper.commands.suite_rou
 Write-Host (("  Bundle-first helper:         {0}") -f $helper.commands.attached_bundle_first)
 Write-Host ''
 Write-Host (("Windows replay note:           {0}") -f $helper.windows_replay_quickstart_note_path)
+Write-Host (("Windows replay attached note:  {0}") -f $helper.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Windows full-use note:         {0}") -f $helper.windows_full_use_attached_html_route_note_path)
 Write-Host (("Validation-router note:        {0}") -f $helper.validation_router_attached_html_quickstart_note_path)
 Write-Host (("Windows validation note:       {0}") -f $helper.windows_validation_router_attached_html_quickstart_note_path)
