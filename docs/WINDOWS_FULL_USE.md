@@ -28,6 +28,19 @@ current shell context.
 2. WSL build (recommended fallback):
 - Build and run from WSL where symlink behavior is reliable.
 - Connect automation clients from Windows host to the WSL endpoint.
+- Before blaming the browser source for Linux-side `zig build` failures, stage
+  the branch's sibling-path dependencies first:
+  - keep the repo beside `../zig-v8-fork` and `../boringssl-zig`
+  - if you are using the saved dependency bundles, extract them so both
+    sibling paths exist before running Zig
+  - keep the bundled `brotli`, `zlib`, `nghttp2`, and `curl` tarballs nearby
+    for the offline cache or throwaway path-rewrite step
+  - treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl` as
+    an offline dependency-staging miss first, because `build.zig.zon` still
+    points those packages at GitHub URLs
+  - retry with explicit cache dirs before assuming a headed-mode regression:
+    `zig build --help`
+    `zig build test --summary all --cache-dir .zig-cache-recover --global-cache-dir .zig-global-cache-recover`
 
 ## 3) Runtime usage examples
 
