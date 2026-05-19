@@ -306,6 +306,37 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
 
+    def test_build_audit_reports_missing_replay_route_note_path_mapping(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                "        replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'\n",
+                "",
+            )
+        )
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_replay_route_note_output(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                'Write-Host (("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1", failing_paths)
+
     def test_build_audit_reports_missing_replay_route_guidance(self) -> None:
         self.write_contract_files(
             launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
