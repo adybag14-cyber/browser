@@ -436,6 +436,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "snippet": 'Write-Host (("  Replay bridge check:  {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_surface_check)',
+        "purpose": "The replay-route shortcut helper prints the replay-attached quickstart checker in its companion-helper summary before replay widens back into the Windows replay ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "snippet": 'Write-Host (("  Windows replay quick: {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)',
+        "purpose": "The replay-route shortcut helper prints the Windows replay attached-html quickstart in its companion-helper summary before replay widens back into the Windows replay ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
         "snippet": "Use replay_shortcuts_windows_replay_attached_html_bridge when the replay-route shortcut still needs the replay-side surface check, the Windows replay attached-page quickstart, and the broader Windows-first bridge kept visible before the route collapses back to the shorter attached-page helper chain.",
         "purpose": "The replay-route shortcut helper notes preserve when to widen into the replay-shortcuts-to-Windows-replay bridge from the compact replay route.",
     },
@@ -506,7 +516,7 @@ def main(argv: list[str] | None = None) -> int:
         description=(
             "Audit the replay-attached quickstart note plus the downstream Google-entrypoint, "
             "top-level shortcut bridge, replay-route shortcut bridge, launcher-companion, "
-            "replay-route checker, replay-to-Windows bridge helper, and bundle-proof helper contracts for drift."
+            "replay-route checker, and replay-to-Windows bridge helper contracts for drift."
         )
     )
     parser.add_argument(
