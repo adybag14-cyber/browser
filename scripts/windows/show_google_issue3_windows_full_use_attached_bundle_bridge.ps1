@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -160,9 +161,20 @@ Add-SharedArgument -Arguments $sharedArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values $InputPath
 
+$sharedBrowserArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $sharedBrowserArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $sharedBrowserArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $sharedBrowserArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $sharedBrowserArguments -Name BrowserExe -Value $BrowserExe
+
 $bundleOnlyArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleOnlyArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $bundleOnlyArguments -Name InputPath -Values $InputPath
+
+$bundleBrowserArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $bundleBrowserArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedPathArrayArgument -Arguments $bundleBrowserArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $bundleBrowserArguments -Name BrowserExe -Value $BrowserExe
 
 $attachedHtmlChangeAreaArguments = [ordered]@{
     ChangeArea = 'attached-html'
@@ -172,6 +184,9 @@ if ($SummaryPath) {
 }
 if ($InputPath) {
     $attachedHtmlChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlChangeAreaArguments['BrowserExe'] = $BrowserExe
 }
 
 $googleAttachedHtmlChangeAreaArguments = [ordered]@{
@@ -183,6 +198,9 @@ if ($SummaryPath) {
 if ($InputPath) {
     $googleAttachedHtmlChangeAreaArguments['InputPath'] = @($InputPath)
 }
+if ($BrowserExe) {
+    $googleAttachedHtmlChangeAreaArguments['BrowserExe'] = $BrowserExe
+}
 
 $attachedBundleChangeAreaArguments = [ordered]@{
     ChangeArea = 'attached-html-target-bundle'
@@ -192,6 +210,25 @@ if ($SummaryPath) {
 }
 if ($InputPath) {
     $attachedBundleChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedBundleChangeAreaArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
+}
+
+$googleAttachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $googleAttachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
 }
 
 $recommendedKey = if ($InputPath -and @($InputPath).Count -gt 0) {
@@ -210,6 +247,7 @@ $bridge = [ordered]@{
     purpose = 'Keep the Windows-first attached-page route, the validation-router bridge, the Windows replay quickstart, the compact attached-bundle suite surface, the replay-route bundle bridge, the narrower bundle-first helper, and the delegated bundle runner on one read-first helper surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     note_paths = [ordered]@{
         windows_full_use = 'docs/WINDOWS_FULL_USE.md'
@@ -222,20 +260,20 @@ $bridge = [ordered]@{
         replay_route_bundle_first = 'docs/ISSUE3_REPLAY_ROUTE_BUNDLE_FIRST_BRIDGE.md'
     }
     commands = [ordered]@{
-        windows_full_use_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
-        windows_validation_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
-        windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments
+        windows_full_use_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedBrowserArguments
+        windows_validation_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedBrowserArguments
+        windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedBrowserArguments
         broader_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
         google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleChangeAreaArguments -RepoRootOverride $RepoRoot
-        broader_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments ([ordered]@{ InputPath = @($InputPath) }) -RepoRootOverride $RepoRoot
-        google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments ([ordered]@{ InputPath = @($InputPath) }) -RepoRootOverride $RepoRoot
-        bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments
-        replay_route_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_bundle_first_bridge.ps1' -Arguments $sharedArguments
-        bundle_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $sharedArguments
+        broader_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
+        bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedBrowserArguments
+        replay_route_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_bundle_first_bridge.ps1' -Arguments $sharedBrowserArguments
+        bundle_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $sharedBrowserArguments
         bundle_surface_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $sharedArguments
-        bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleOnlyArguments
-        bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleOnlyArguments -Switches @('Wait')
+        bundle_flow = Format-HelperCommand -ScriptName 'show_attached_html_target_bundle_validation_flow.ps1' -Arguments $bundleBrowserArguments
+        bundle_runner = Format-HelperCommand -ScriptName 'run_attached_html_target_bundle_validation.ps1' -Arguments $bundleBrowserArguments -Switches @('Wait')
     }
     notes = @(
         'Use windows_full_use_route first when docs/WINDOWS_FULL_USE.md or the broader Windows-first attached-page route was the last surface you reopened and no explicit bundle inputs are pinned yet.',
@@ -255,6 +293,9 @@ if ($bridge.explicit_input_path_count -gt 0) {
 if ($bridge.summary_path) {
     $bridge.notes += 'The printed router commands preserve -SummaryPath through the top-level validation router so saved replay context can be reopened without manual re-entry.'
 }
+if ($bridge.browser_exe) {
+    $bridge.notes += 'The printed Windows-first, router, attached-page, bundle-suite, replay-bridge, bundle-first, bundle-flow, and bundle-runner commands preserve -BrowserExe so the same headed binary stays pinned across the full attached-bundle handoff.'
+}
 
 $bridge.recommended_next_key = $recommendedKey
 $bridge.recommended_next_command = $bridge.commands[$recommendedKey]
@@ -272,6 +313,9 @@ if ($bridge.repo_root) {
 }
 if ($bridge.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($bridge.summary_path)"))
+}
+if ($bridge.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $bridge.browser_exe)
 }
 if ($bridge.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $bridge.explicit_input_path_count)
