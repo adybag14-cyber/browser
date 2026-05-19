@@ -32,6 +32,8 @@ HELPER_SNIPPET = """$entrypoint = [ordered]@{
     }
     notes = @(
         'Use google_attached_html_sidecar_audit when the current saved export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the broader surface check or the deeper asset audit.',
+        'Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.',
+        'Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.',
         'Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.'
     )
 }
@@ -95,11 +97,28 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md", failing_paths)
 
-    def test_build_audit_reports_missing_asset_closure_output(self) -> None:
+    def test_build_audit_reports_missing_issue_specific_checker_output(self) -> None:
         self.write_contract_files(
             helper_text=HELPER_SNIPPET.replace(
-                'Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)\n',
+                'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)\n',
                 "",
+            )
+        )
+
+        audit = helper.build_google_attached_entrypoint_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)',
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_broader_surface_guidance(self) -> None:
+        self.write_contract_files(
+            helper_text=HELPER_SNIPPET.replace(
+                "Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.",
+                "drifted broader-surface note",
             )
         )
 
@@ -112,11 +131,11 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
             failing_paths,
         )
 
-    def test_build_audit_reports_missing_bundle_guidance(self) -> None:
+    def test_build_audit_reports_missing_asset_closure_guidance(self) -> None:
         self.write_contract_files(
             helper_text=HELPER_SNIPPET.replace(
-                "Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.",
-                "drifted bundle guidance",
+                "Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.",
+                "drifted asset note",
             )
         )
 
