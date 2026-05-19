@@ -1,6 +1,7 @@
 import argparse
 import importlib.util
 import json
+import shlex
 from pathlib import Path
 from types import ModuleType
 
@@ -61,6 +62,51 @@ def build_route_url(bind: str, port: int, route: str) -> str:
     return f"http://{bind}:{port}{route}"
 
 
+def shell_join(parts: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def build_command_hints(
+    repo_root: Path,
+    *,
+    selected_files: list[Path],
+    google_style: bool,
+    bind: str,
+    port: int,
+) -> dict[str, str]:
+    launcher_rel = Path("tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py")
+    preflight_rel = Path("tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py")
+
+    common_flags = ["--repo-root", str(repo_root)]
+    if google_style:
+        common_flags.append("--google-style")
+    common_flags.extend(["--bind", bind, "--port", str(port)])
+    for path in selected_files:
+        common_flags.extend(["--input", str(path)])
+
+    preflight_parts = ["python", str(preflight_rel), *common_flags]
+    launch_parts = ["python", str(launcher_rel), *common_flags]
+
+    return {
+        "preflight_report_command": shell_join(preflight_parts),
+        "sidecar_audit_command": shell_join([*launch_parts, "--audit-sidecars"]),
+        "asset_audit_command": shell_join([*launch_parts, "--audit-assets"]),
+        "manifest_command": shell_join([*launch_parts, "--print-manifest"]),
+        "launch_command": shell_join(launch_parts),
+    }
+
+
+def choose_recommended_command(
+    recommended_next_step: str,
+    command_hints: dict[str, str],
+) -> str:
+    if recommended_next_step == "restore-missing-sidecar-bundles":
+        return command_hints["sidecar_audit_command"]
+    if recommended_next_step == "restore-missing-local-assets":
+        return command_hints["asset_audit_command"]
+    return command_hints["manifest_command"]
+
+
 def assemble_preflight_report(
     repo_root: Path,
     *,
@@ -97,6 +143,15 @@ def assemble_preflight_report(
     else:
         recommended_next_step = "print-manifest-or-start-server"
 
+    command_hints = build_command_hints(
+        repo_root,
+        selected_files=selected_files,
+        google_style=google_style,
+        bind=bind,
+        port=port,
+    )
+    recommended_command = choose_recommended_command(recommended_next_step, command_hints)
+
     return {
         "repo_root": str(repo_root),
         "google_style": google_style,
@@ -129,6 +184,8 @@ def assemble_preflight_report(
         "fixtures_with_external_assets": int(asset_audit["fixtures_with_external_assets"]),
         "ready_for_launch": missing_sidecars == 0 and missing_assets == 0,
         "recommended_next_step": recommended_next_step,
+        "recommended_command": recommended_command,
+        "command_hints": command_hints,
         "sidecar_audit": sidecar_audit,
         "asset_audit": asset_audit,
         "manifest": manifest,
@@ -188,6 +245,7 @@ def render_text_report(report: dict[str, object]) -> str:
         f"Fixtures with external assets: {report['fixtures_with_external_assets']}",
         f"Ready for launch: {'yes' if report['ready_for_launch'] else 'no'}",
         f"Recommended next step: {report['recommended_next_step']}",
+        f"Recommended command: {report['recommended_command']}",
         f"Catalog URL: {report['catalog_url']}",
         f"Manifest URL: {report['manifest_url']}",
         f"Audit JSON URL: {report['audit_json_url']}",
@@ -202,7 +260,18 @@ def render_text_report(report: dict[str, object]) -> str:
         lines.append(f"Preferred URL: {report['preferred_url']}")
         lines.append(f"Preferred alias URL: {report['preferred_alias_url']}")
         lines.append(f"Preferred named URL: {report['preferred_named_url']}")
-    lines.append("")
+    lines.extend(
+        [
+            "",
+            "Command hints:",
+            f"- rerun preflight: {report['command_hints']['preflight_report_command']}",
+            f"- sidecar audit: {report['command_hints']['sidecar_audit_command']}",
+            f"- asset audit: {report['command_hints']['asset_audit_command']}",
+            f"- manifest: {report['command_hints']['manifest_command']}",
+            f"- launch catalog: {report['command_hints']['launch_command']}",
+            "",
+        ]
+    )
     lines.extend(report["selected_fixture_lines"])
     return "\n".join(lines).rstrip() + "\n"
 
