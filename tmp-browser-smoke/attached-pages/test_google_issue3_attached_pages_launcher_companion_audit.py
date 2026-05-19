@@ -48,6 +48,7 @@ Use --require-complete-sidecars \\
 """
 
 WRAPPER_SNIPPET = """$launcherArgs += "--audit-sidecars"
+$launcherArgs += "--require-complete-sidecars"
 $launcherArgs += "--require-complete-assets"
 """
 
@@ -129,6 +130,15 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
         self.assertGreater(audit["missing_count"], 0)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("tmp-browser-smoke/attached-pages/README.md", failing_paths)
+
+    def test_build_audit_reports_missing_wrapper_sidecar_gate(self) -> None:
+        self.write_contract_files(wrapper_text='$launcherArgs += "--audit-sidecars"\n$launcherArgs += "--require-complete-assets"\n')
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn("scripts/windows/start_attached_pages_catalog.ps1", failing_paths)
 
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(wrapper_text="# drifted\n")
