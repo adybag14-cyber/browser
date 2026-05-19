@@ -165,10 +165,10 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("scripts/windows/show_google_issue3_windows_replay_quickstart.ps1", failing_paths)
 
-    def test_build_audit_reports_missing_proof_note_reference(self) -> None:
+    def test_build_audit_reports_missing_replay_attached_note_pairing_guidance(self) -> None:
         self.write_contract_files(
-            replay_doc_text=REPLAY_DOC_SNIPPET.replace(
-                "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`\n",
+            helper_text=HELPER_SNIPPET.replace(
+                "        'Treat replay_attached_html_note_path as the read-first written companion to windows_replay_attached_html_quickstart once the main replay quickstart narrows into the attached localhost branch, so the helper command and note stay paired on the same surface.',\n",
                 "",
             )
         )
@@ -178,14 +178,14 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.assertGreater(audit["missing_count"], 0)
         failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
-            "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`",
+            "Treat replay_attached_html_note_path as the read-first written companion to windows_replay_attached_html_quickstart",
             failing_snippets,
         )
 
-    def test_build_audit_reports_missing_proof_surface_checker(self) -> None:
+    def test_build_audit_reports_missing_launcher_surface_check_guidance(self) -> None:
         self.write_contract_files(
-            replay_doc_text=REPLAY_DOC_SNIPPET.replace(
-                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1\n",
+            helper_text=HELPER_SNIPPET.replace(
+                "        'Use attached_pages_launcher_surface_check and attached_pages_launcher_companion when the replay has already narrowed into attached localhost follow-up and you want the wrapper-backed sidecar, asset, manifest, and strict-launch ladder printed on one smaller surface before reopening the broader Google-shaped, top-level, or bundle-first branches.',\n",
                 "",
             )
         )
@@ -195,14 +195,14 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.assertGreater(audit["missing_count"], 0)
         failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
-            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1",
+            "Use attached_pages_launcher_surface_check and attached_pages_launcher_companion when the replay has already narrowed into attached localhost follow-up",
             failing_snippets,
         )
 
-    def test_build_audit_reports_missing_proof_helper(self) -> None:
+    def test_build_audit_reports_missing_launcher_surface_check_output(self) -> None:
         self.write_contract_files(
-            replay_doc_text=REPLAY_DOC_SNIPPET.replace(
-                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1\n",
+            helper_text=HELPER_SNIPPET.replace(
+                'Write-Host ((\"  Launcher surface check:    {0}\") -f $helper.commands.attached_pages_launcher_surface_check)\n',
                 "",
             )
         )
@@ -212,7 +212,7 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.assertGreater(audit["missing_count"], 0)
         failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
-            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1",
+            'Write-Host ((\"  Launcher surface check:    {0}\") -f $helper.commands.attached_pages_launcher_surface_check)',
             failing_snippets,
         )
 
