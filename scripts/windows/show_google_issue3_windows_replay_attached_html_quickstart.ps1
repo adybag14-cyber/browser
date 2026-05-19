@@ -275,7 +275,7 @@ $helper = [ordered]@{
         'Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surface reprinted before the route widens into the next-step matrix, bundle-first helper, or safe-route map.',
         'Use attached_html_shortcut only after the top-level attached-page quickstart, change-area quickstart, bridge, top-level shortcut bridge, or replay-route shortcut bridge is already in view and the replay is ready to stay inside the narrower issue #3 helper chain.',
         'Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.',
-        'Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.',
+        'Use attached_bundle_proof_surface_check and attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the executable proof-only checker and helper pair reprinted before or after the narrower bundle-first follow-up.',
         'Use replay_shortcuts after the attached-page shortcut, the replay-route shortcut bridge, or the suite-catalog bridge when you want the tightest current helper surface before widening back out.',
         'Use contextual_flow when RepoRoot, SummaryPath, or pinned InputPath values already matter and the next helper should preserve that replay context before it narrows again.',
         'Use attached_bundle_first when explicit InputPath values are already pinned to the known three-page compatibility bundle and keep docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md, docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md, and docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md nearby so the locked inputs stay visible before the route widens again.',
@@ -356,8 +356,8 @@ Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_sh
 Write-Host (("  Replay-route shortcut:    {0}") -f $helper.commands.replay_route_shortcut)
 Write-Host (("  Attached shortcut:        {0}") -f $helper.commands.attached_html_shortcut)
 Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)
-Write-Host (("  Bundle proof check:      {0}") -f $helper.commands.attached_bundle_proof_surface_check)
-Write-Host (("  Bundle proof entry:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
+Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)
+Write-Host (("  Bundle proof helper:      {0}") -f $helper.commands.attached_bundle_proof_entrypoint)
 Write-Host (("  Replay shortcuts:         {0}") -f $helper.commands.replay_shortcuts)
 Write-Host (("  Contextual flow:          {0}") -f $helper.commands.contextual_flow)
 Write-Host (("  Bundle-first helper:      {0}") -f $helper.commands.attached_bundle_first)
