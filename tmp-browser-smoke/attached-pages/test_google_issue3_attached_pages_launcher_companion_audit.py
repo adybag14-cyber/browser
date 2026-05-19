@@ -279,6 +279,23 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             failing_paths,
         )
 
+    def test_build_audit_reports_missing_replay_route_bridge_helper(self) -> None:
+        self.write_contract_files(
+            shortcut_doc_text=SHORTCUT_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+            failing_paths,
+        )
+
     def test_build_audit_reports_missing_wrapper_preferred_page_reorder(self) -> None:
         self.write_contract_files(
             wrapper_text=WRAPPER_SNIPPET.replace(
