@@ -578,6 +578,40 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             failing_paths,
         )
 
+    def test_build_audit_reports_missing_replay_bridge_surface_check_wiring(self) -> None:
+        self.write_contract_files(
+            replay_shortcuts_windows_replay_bridge_text=REPLAY_SHORTCUTS_WINDOWS_REPLAY_BRIDGE_SNIPPET.replace(
+                "windows_replay_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments\n",
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_replay_bridge_surface_check_output(self) -> None:
+        self.write_contract_files(
+            replay_shortcuts_windows_replay_bridge_text=REPLAY_SHORTCUTS_WINDOWS_REPLAY_BRIDGE_SNIPPET.replace(
+                'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+            failing_paths,
+        )
+
     def test_build_audit_reports_missing_replay_bridge_windows_quickstart_output(self) -> None:
         self.write_contract_files(
             replay_shortcuts_windows_replay_bridge_text=REPLAY_SHORTCUTS_WINDOWS_REPLAY_BRIDGE_SNIPPET.replace(
