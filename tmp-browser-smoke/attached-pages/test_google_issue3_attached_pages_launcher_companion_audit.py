@@ -590,6 +590,18 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
         )
 
+    def test_build_audit_reports_missing_replay_route_note_output_on_helper_surface(self) -> None:
+        self.write_contract_files(
+            launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
+                'Write-Host ((("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note))\n',
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        )
+
     def test_build_audit_reports_missing_wrapper_audit_sidecars_forwarding(self) -> None:
         self.write_contract_files(
             wrapper_text=WRAPPER_SNIPPET.replace('$launcherArgs += "--audit-sidecars"\n', "")
