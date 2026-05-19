@@ -211,10 +211,44 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             failing_paths,
         )
 
+    def test_build_audit_reports_missing_full_use_route_checker_sidecar_guard(self) -> None:
+        self.write_contract_files(
+            full_use_route_checker_text=FULL_USE_ROUTE_CHECKER_SNIPPET.replace(
+                """(New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars' -Purpose 'The Windows full-use route checker keeps guarding the wrapper-backed sidecar audit on the broader route note.'),\n""",
+                "",
+            )
+        )
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+            failing_paths,
+        )
+
     def test_build_audit_reports_missing_full_use_route_checker_guard(self) -> None:
         self.write_contract_files(
             full_use_route_checker_text=FULL_USE_ROUTE_CHECKER_SNIPPET.replace(
                 """(New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Purpose 'The Windows full-use route checker keeps guarding the replay-attached quickstart handoff on the broader route note.'),\n""",
+                "",
+            )
+        )
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+            failing_paths,
+        )
+
+    def test_build_audit_reports_missing_full_use_route_checker_bundle_suite_guard(self) -> None:
+        self.write_contract_files(
+            full_use_route_checker_text=FULL_USE_ROUTE_CHECKER_SNIPPET.replace(
+                """(New-ValidationContentExpectation -Path "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>''' -Purpose 'The Windows full-use route checker keeps guarding the compact bundle-suite handoff on the broader route note.'),\n""",
                 "",
             )
         )
