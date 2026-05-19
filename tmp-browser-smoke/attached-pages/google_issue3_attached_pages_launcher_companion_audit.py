@@ -46,6 +46,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments",
+        "purpose": "The launcher companion helper keeps the replay-attached Windows quickstart wired into its command map for direct re-entry after preflight.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments",
+        "purpose": "The launcher companion helper keeps the compact replay-route shortcut helper wired into its command map for direct re-entry after preflight.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "python_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--require-complete-sidecars', '--require-complete-assets')",
         "purpose": "The launcher companion helper surfaces the strict sidecar-plus-asset Python path.",
     },
@@ -53,6 +63,11 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "python_google_strict_bundle = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -Flags @('--google-style', '--require-complete-sidecars', '--require-complete-assets')",
         "purpose": "The launcher companion helper surfaces the strict Google-style Python path.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'",
+        "purpose": "The launcher companion helper keeps the replay-route bridge note visible beside the replay re-entry helpers.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
@@ -86,6 +101,26 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "Write-Host 'Replay re-entry helpers:'",
+        "purpose": "The launcher companion helper prints a dedicated replay re-entry section after proof-only follow-up.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart)',
+        "purpose": "The launcher companion helper prints the replay-attached Windows quickstart command for direct re-entry after preflight.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut)',
+        "purpose": "The launcher companion helper prints the compact replay-route shortcut command for direct re-entry after preflight.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note)',
+        "purpose": "The launcher companion helper prints the replay-route bridge note beside the other companion notes.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "Use the strict bundle commands when both sidecars and referenced local assets must be complete before a manifest print or localhost launch is trusted.",
         "purpose": "The launcher companion helper explains when to prefer the strict bundle commands.",
     },
@@ -93,6 +128,26 @@ EXPECTATIONS = (
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.",
         "purpose": "The launcher companion helper explains when to bridge from launcher preflight into the pinned proof route.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "Use windows_replay_quickstart after launcher-side sidecar, asset, or proof preflight when the next honest step is to re-enter the replay-attached Windows ladder without reopening the broader route map first.",
+        "purpose": "The launcher companion helper explains when to re-enter the replay-attached Windows quickstart directly from preflight.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
+        "purpose": "The launcher companion helper explains when to re-enter the shorter replay-route companion directly from preflight.",
+    },
+    {
+        "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+        "purpose": "The replay-route bridge note keeps its dedicated fail-fast checker visible.",
+    },
+    {
+        "path": "docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "purpose": "The replay-route bridge note keeps its compact replay helper visible.",
     },
     {
         "path": "tmp-browser-smoke/attached-pages/README.md",
