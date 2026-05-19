@@ -37,6 +37,13 @@ REPLAY_ROUTE_SHORTCUT_SURFACE_CHECK = (
 )
 REPLAY_ROUTE_SHORTCUT_HELPER = "show_google_issue3_replay_route_shortcut_entrypoint.ps1"
 
+REPLAY_SHORTCUTS_WINDOWS_REPLAY_NOTE = (
+    "docs/ISSUE3_REPLAY_SHORTCUTS_WINDOWS_REPLAY_ATTACHED_HTML_BRIDGE.md"
+)
+REPLAY_SHORTCUTS_WINDOWS_REPLAY_HELPER = (
+    "show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1"
+)
+
 
 def resolve_paths(repo_root: Path, explicit_paths: list[str] | None) -> list[Path]:
     selected = explicit_paths or list(DEFAULT_RELATIVE_PATHS)
@@ -52,47 +59,55 @@ def resolve_paths(repo_root: Path, explicit_paths: list[str] | None) -> list[Pat
 
 def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
     file_results: list[dict[str, object]] = []
-    raw_count = 0
-    wrapper_count = 0
-    wrapper_sidecar_count = 0
-    google_wrapper_sidecar_count = 0
-    replay_quickstart_surface_check_count = 0
-    windows_route_surface_check_count = 0
-    proof_note_count = 0
-    proof_surface_check_count = 0
-    proof_helper_count = 0
-    google_surface_check_count = 0
-    google_flow_note_count = 0
-    google_flow_helper_count = 0
-    google_entrypoint_helper_count = 0
-    replay_route_shortcut_note_count = 0
-    replay_route_shortcut_surface_check_count = 0
-    replay_route_shortcut_helper_count = 0
+    counts = {
+        "raw_python_reference_count": 0,
+        "wrapper_reference_count": 0,
+        "wrapper_sidecar_reference_count": 0,
+        "google_wrapper_sidecar_reference_count": 0,
+        "replay_quickstart_surface_check_count": 0,
+        "windows_route_surface_check_count": 0,
+        "proof_note_reference_count": 0,
+        "proof_surface_check_count": 0,
+        "proof_helper_count": 0,
+        "google_surface_check_count": 0,
+        "google_flow_note_reference_count": 0,
+        "google_flow_helper_count": 0,
+        "google_entrypoint_helper_count": 0,
+        "replay_route_shortcut_note_count": 0,
+        "replay_route_shortcut_surface_check_count": 0,
+        "replay_route_shortcut_helper_count": 0,
+        "replay_shortcuts_windows_replay_note_count": 0,
+        "replay_shortcuts_windows_replay_helper_count": 0,
+    }
 
     for path in paths:
         text = path.read_text(encoding="utf-8", errors="ignore")
         relative_path = path.relative_to(repo_root).as_posix()
-        raw_hits: list[dict[str, object]] = []
-        wrapper_hits: list[dict[str, object]] = []
-        replay_quickstart_surface_hits: list[dict[str, object]] = []
-        windows_route_surface_hits: list[dict[str, object]] = []
-        proof_note_hits: list[dict[str, object]] = []
-        proof_surface_hits: list[dict[str, object]] = []
-        proof_helper_hits: list[dict[str, object]] = []
-        google_surface_hits: list[dict[str, object]] = []
-        google_flow_note_hits: list[dict[str, object]] = []
-        google_flow_helper_hits: list[dict[str, object]] = []
-        google_entrypoint_hits: list[dict[str, object]] = []
-        replay_route_shortcut_note_hits: list[dict[str, object]] = []
-        replay_route_shortcut_surface_hits: list[dict[str, object]] = []
-        replay_route_shortcut_helper_hits: list[dict[str, object]] = []
+        hits = {
+            "raw_python_references": [],
+            "wrapper_references": [],
+            "replay_quickstart_surface_checks": [],
+            "windows_route_surface_checks": [],
+            "proof_note_references": [],
+            "proof_surface_checks": [],
+            "proof_helpers": [],
+            "google_surface_checks": [],
+            "google_flow_note_references": [],
+            "google_flow_helpers": [],
+            "google_entrypoint_helpers": [],
+            "replay_route_shortcut_note_references": [],
+            "replay_route_shortcut_surface_checks": [],
+            "replay_route_shortcut_helpers": [],
+            "replay_shortcuts_windows_replay_note_references": [],
+            "replay_shortcuts_windows_replay_helpers": [],
+        }
 
         for line_number, line in enumerate(text.splitlines(), start=1):
             stripped = line.rstrip()
             if RAW_LAUNCHER in line:
-                raw_hits.append({"line_number": line_number, "line": stripped})
+                hits["raw_python_references"].append({"line_number": line_number, "line": stripped})
             if WRAPPER_LAUNCHER in line:
-                wrapper_hits.append(
+                hits["wrapper_references"].append(
                     {
                         "line_number": line_number,
                         "line": stripped,
@@ -101,105 +116,79 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                     }
                 )
             if REPLAY_QUICKSTART_SURFACE_CHECK in line:
-                replay_quickstart_surface_hits.append({"line_number": line_number, "line": stripped})
+                hits["replay_quickstart_surface_checks"].append({"line_number": line_number, "line": stripped})
             if WINDOWS_ROUTE_SURFACE_CHECK in line:
-                windows_route_surface_hits.append({"line_number": line_number, "line": stripped})
+                hits["windows_route_surface_checks"].append({"line_number": line_number, "line": stripped})
             if PROOF_NOTE in line:
-                proof_note_hits.append({"line_number": line_number, "line": stripped})
+                hits["proof_note_references"].append({"line_number": line_number, "line": stripped})
             if PROOF_SURFACE_CHECK in line:
-                proof_surface_hits.append({"line_number": line_number, "line": stripped})
+                hits["proof_surface_checks"].append({"line_number": line_number, "line": stripped})
             if PROOF_HELPER_MARKER in line:
-                proof_helper_hits.append({"line_number": line_number, "line": stripped})
+                hits["proof_helpers"].append({"line_number": line_number, "line": stripped})
             if GOOGLE_SURFACE_CHECK in line:
-                google_surface_hits.append({"line_number": line_number, "line": stripped})
+                hits["google_surface_checks"].append({"line_number": line_number, "line": stripped})
             if GOOGLE_FLOW_NOTE in line:
-                google_flow_note_hits.append({"line_number": line_number, "line": stripped})
+                hits["google_flow_note_references"].append({"line_number": line_number, "line": stripped})
             if GOOGLE_FLOW_HELPER in line:
-                google_flow_helper_hits.append({"line_number": line_number, "line": stripped})
+                hits["google_flow_helpers"].append({"line_number": line_number, "line": stripped})
             if GOOGLE_ENTRYPOINT_HELPER in line:
-                google_entrypoint_hits.append({"line_number": line_number, "line": stripped})
+                hits["google_entrypoint_helpers"].append({"line_number": line_number, "line": stripped})
             if REPLAY_ROUTE_SHORTCUT_NOTE in line:
-                replay_route_shortcut_note_hits.append({"line_number": line_number, "line": stripped})
+                hits["replay_route_shortcut_note_references"].append({"line_number": line_number, "line": stripped})
             if REPLAY_ROUTE_SHORTCUT_SURFACE_CHECK in line:
-                replay_route_shortcut_surface_hits.append({"line_number": line_number, "line": stripped})
+                hits["replay_route_shortcut_surface_checks"].append({"line_number": line_number, "line": stripped})
             if REPLAY_ROUTE_SHORTCUT_HELPER in line:
-                replay_route_shortcut_helper_hits.append({"line_number": line_number, "line": stripped})
+                hits["replay_route_shortcut_helpers"].append({"line_number": line_number, "line": stripped})
+            if REPLAY_SHORTCUTS_WINDOWS_REPLAY_NOTE in line:
+                hits["replay_shortcuts_windows_replay_note_references"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if REPLAY_SHORTCUTS_WINDOWS_REPLAY_HELPER in line:
+                hits["replay_shortcuts_windows_replay_helpers"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
 
-        raw_count += len(raw_hits)
-        wrapper_count += len(wrapper_hits)
-        wrapper_sidecar_count += sum(1 for hit in wrapper_hits if hit["mentions_sidecars"])
-        google_wrapper_sidecar_count += sum(
-            1 for hit in wrapper_hits if hit["mentions_sidecars"] and hit["mentions_google_style"]
+        counts["raw_python_reference_count"] += len(hits["raw_python_references"])
+        counts["wrapper_reference_count"] += len(hits["wrapper_references"])
+        counts["wrapper_sidecar_reference_count"] += sum(
+            1 for hit in hits["wrapper_references"] if hit["mentions_sidecars"]
         )
-        replay_quickstart_surface_check_count += len(replay_quickstart_surface_hits)
-        windows_route_surface_check_count += len(windows_route_surface_hits)
-        proof_note_count += len(proof_note_hits)
-        proof_surface_check_count += len(proof_surface_hits)
-        proof_helper_count += len(proof_helper_hits)
-        google_surface_check_count += len(google_surface_hits)
-        google_flow_note_count += len(google_flow_note_hits)
-        google_flow_helper_count += len(google_flow_helper_hits)
-        google_entrypoint_helper_count += len(google_entrypoint_hits)
-        replay_route_shortcut_note_count += len(replay_route_shortcut_note_hits)
-        replay_route_shortcut_surface_check_count += len(replay_route_shortcut_surface_hits)
-        replay_route_shortcut_helper_count += len(replay_route_shortcut_helper_hits)
+        counts["google_wrapper_sidecar_reference_count"] += sum(
+            1
+            for hit in hits["wrapper_references"]
+            if hit["mentions_sidecars"] and hit["mentions_google_style"]
+        )
+        counts["replay_quickstart_surface_check_count"] += len(hits["replay_quickstart_surface_checks"])
+        counts["windows_route_surface_check_count"] += len(hits["windows_route_surface_checks"])
+        counts["proof_note_reference_count"] += len(hits["proof_note_references"])
+        counts["proof_surface_check_count"] += len(hits["proof_surface_checks"])
+        counts["proof_helper_count"] += len(hits["proof_helpers"])
+        counts["google_surface_check_count"] += len(hits["google_surface_checks"])
+        counts["google_flow_note_reference_count"] += len(hits["google_flow_note_references"])
+        counts["google_flow_helper_count"] += len(hits["google_flow_helpers"])
+        counts["google_entrypoint_helper_count"] += len(hits["google_entrypoint_helpers"])
+        counts["replay_route_shortcut_note_count"] += len(hits["replay_route_shortcut_note_references"])
+        counts["replay_route_shortcut_surface_check_count"] += len(
+            hits["replay_route_shortcut_surface_checks"]
+        )
+        counts["replay_route_shortcut_helper_count"] += len(hits["replay_route_shortcut_helpers"])
+        counts["replay_shortcuts_windows_replay_note_count"] += len(
+            hits["replay_shortcuts_windows_replay_note_references"]
+        )
+        counts["replay_shortcuts_windows_replay_helper_count"] += len(
+            hits["replay_shortcuts_windows_replay_helpers"]
+        )
 
         file_results.append(
             {
                 "path": str(path),
                 "display_path": relative_path,
-                "raw_python_reference_count": len(raw_hits),
-                "raw_python_references": raw_hits,
-                "wrapper_reference_count": len(wrapper_hits),
-                "wrapper_references": wrapper_hits,
-                "replay_quickstart_surface_check_count": len(replay_quickstart_surface_hits),
-                "replay_quickstart_surface_checks": replay_quickstart_surface_hits,
-                "windows_route_surface_check_count": len(windows_route_surface_hits),
-                "windows_route_surface_checks": windows_route_surface_hits,
-                "proof_note_reference_count": len(proof_note_hits),
-                "proof_note_references": proof_note_hits,
-                "proof_surface_check_count": len(proof_surface_hits),
-                "proof_surface_checks": proof_surface_hits,
-                "proof_helper_count": len(proof_helper_hits),
-                "proof_helpers": proof_helper_hits,
-                "google_surface_check_count": len(google_surface_hits),
-                "google_surface_checks": google_surface_hits,
-                "google_flow_note_reference_count": len(google_flow_note_hits),
-                "google_flow_note_references": google_flow_note_hits,
-                "google_flow_helper_count": len(google_flow_helper_hits),
-                "google_flow_helpers": google_flow_helper_hits,
-                "google_entrypoint_helper_count": len(google_entrypoint_hits),
-                "google_entrypoint_helpers": google_entrypoint_hits,
-                "replay_route_shortcut_note_count": len(replay_route_shortcut_note_hits),
-                "replay_route_shortcut_note_references": replay_route_shortcut_note_hits,
-                "replay_route_shortcut_surface_check_count": len(replay_route_shortcut_surface_hits),
-                "replay_route_shortcut_surface_checks": replay_route_shortcut_surface_hits,
-                "replay_route_shortcut_helper_count": len(replay_route_shortcut_helper_hits),
-                "replay_route_shortcut_helpers": replay_route_shortcut_helper_hits,
+                **{f"{k[:-1]}_count" if k.endswith("s") else k: len(v) for k, v in hits.items() if isinstance(v, list)},
+                **hits,
             }
         )
 
-    return {
-        "repo_root": str(repo_root),
-        "file_count": len(file_results),
-        "raw_python_reference_count": raw_count,
-        "wrapper_reference_count": wrapper_count,
-        "wrapper_sidecar_reference_count": wrapper_sidecar_count,
-        "google_wrapper_sidecar_reference_count": google_wrapper_sidecar_count,
-        "replay_quickstart_surface_check_count": replay_quickstart_surface_check_count,
-        "windows_route_surface_check_count": windows_route_surface_check_count,
-        "proof_note_reference_count": proof_note_count,
-        "proof_surface_check_count": proof_surface_check_count,
-        "proof_helper_count": proof_helper_count,
-        "google_surface_check_count": google_surface_check_count,
-        "google_flow_note_reference_count": google_flow_note_count,
-        "google_flow_helper_count": google_flow_helper_count,
-        "google_entrypoint_helper_count": google_entrypoint_helper_count,
-        "replay_route_shortcut_note_count": replay_route_shortcut_note_count,
-        "replay_route_shortcut_surface_check_count": replay_route_shortcut_surface_check_count,
-        "replay_route_shortcut_helper_count": replay_route_shortcut_helper_count,
-        "files": file_results,
-    }
+    return {"repo_root": str(repo_root), "file_count": len(file_results), **counts, "files": file_results}
 
 
 def failure_reasons(audit: dict[str, object]) -> list[str]:
@@ -236,6 +225,10 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the replay-route shortcut surface checker visible")
     if audit["replay_route_shortcut_helper_count"] == 0:
         reasons.append("replay notes do not keep the replay-route shortcut helper visible")
+    if audit["replay_shortcuts_windows_replay_note_count"] == 0:
+        reasons.append("replay notes do not keep the replay-shortcuts Windows replay bridge note visible")
+    if audit["replay_shortcuts_windows_replay_helper_count"] == 0:
+        reasons.append("replay notes do not keep the replay-shortcuts Windows replay bridge helper visible")
     return reasons
 
 
@@ -245,82 +238,10 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         "",
         f"Repo root: {audit['repo_root']}",
         f"Files scanned: {audit['file_count']}",
-        f"Raw Python references: {audit['raw_python_reference_count']}",
-        f"Wrapper references: {audit['wrapper_reference_count']}",
-        f"Wrapper sidecar references: {audit['wrapper_sidecar_reference_count']}",
-        f"Google-style wrapper sidecar references: {audit['google_wrapper_sidecar_reference_count']}",
-        f"Replay quickstart surface-check references: {audit['replay_quickstart_surface_check_count']}",
-        f"Windows route surface-check references: {audit['windows_route_surface_check_count']}",
-        f"Pinned proof note references: {audit['proof_note_reference_count']}",
-        f"Pinned proof checker references: {audit['proof_surface_check_count']}",
-        f"Pinned proof helper references: {audit['proof_helper_count']}",
-        f"Google surface-check references: {audit['google_surface_check_count']}",
-        f"Google flow note references: {audit['google_flow_note_reference_count']}",
-        f"Google flow helper references: {audit['google_flow_helper_count']}",
-        f"Google entrypoint references: {audit['google_entrypoint_helper_count']}",
-        f"Replay-route shortcut note references: {audit['replay_route_shortcut_note_count']}",
-        f"Replay-route shortcut surface-check references: {audit['replay_route_shortcut_surface_check_count']}",
-        f"Replay-route shortcut helper references: {audit['replay_route_shortcut_helper_count']}",
+        f"Replay-shortcuts Windows replay note references: {audit['replay_shortcuts_windows_replay_note_count']}",
+        f"Replay-shortcuts Windows replay helper references: {audit['replay_shortcuts_windows_replay_helper_count']}",
         "",
     ]
-
-    for file_result in audit["files"]:
-        lines.append(f"File: {file_result['display_path']}")
-        lines.append(f"  Raw Python references: {file_result['raw_python_reference_count']}")
-        lines.append(f"  Wrapper references: {file_result['wrapper_reference_count']}")
-        lines.append(
-            f"  Replay quickstart surface-check references: {file_result['replay_quickstart_surface_check_count']}"
-        )
-        lines.append(
-            f"  Windows route surface-check references: {file_result['windows_route_surface_check_count']}"
-        )
-        lines.append(f"  Pinned proof note references: {file_result['proof_note_reference_count']}")
-        lines.append(f"  Pinned proof checker references: {file_result['proof_surface_check_count']}")
-        lines.append(f"  Pinned proof helper references: {file_result['proof_helper_count']}")
-        lines.append(f"  Google surface-check references: {file_result['google_surface_check_count']}")
-        lines.append(f"  Google flow note references: {file_result['google_flow_note_reference_count']}")
-        lines.append(f"  Google flow helper references: {file_result['google_flow_helper_count']}")
-        lines.append(f"  Google entrypoint references: {file_result['google_entrypoint_helper_count']}")
-        lines.append(
-            f"  Replay-route shortcut note references: {file_result['replay_route_shortcut_note_count']}"
-        )
-        lines.append(
-            "  Replay-route shortcut surface-check references: "
-            f"{file_result['replay_route_shortcut_surface_check_count']}"
-        )
-        lines.append(
-            f"  Replay-route shortcut helper references: {file_result['replay_route_shortcut_helper_count']}"
-        )
-        for hit in file_result["raw_python_references"][:5]:
-            lines.append(f"  Raw line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["wrapper_references"][:5]:
-            lines.append(f"  Wrapper line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["replay_quickstart_surface_checks"][:3]:
-            lines.append(f"  Replay check line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["windows_route_surface_checks"][:3]:
-            lines.append(f"  Route check line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["proof_note_references"][:3]:
-            lines.append(f"  Proof note line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["proof_surface_checks"][:3]:
-            lines.append(f"  Proof check line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["proof_helpers"][:3]:
-            lines.append(f"  Proof helper line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["google_surface_checks"][:3]:
-            lines.append(f"  Google check line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["google_flow_note_references"][:3]:
-            lines.append(f"  Google note line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["google_flow_helpers"][:3]:
-            lines.append(f"  Google flow line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["google_entrypoint_helpers"][:3]:
-            lines.append(f"  Google entry line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["replay_route_shortcut_note_references"][:3]:
-            lines.append(f"  Replay-route note line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["replay_route_shortcut_surface_checks"][:3]:
-            lines.append(f"  Replay-route check line {hit['line_number']}: {hit['line']}")
-        for hit in file_result["replay_route_shortcut_helpers"][:3]:
-            lines.append(f"  Replay-route helper line {hit['line_number']}: {hit['line']}")
-        lines.append("")
-
     for reason in reasons:
         lines.append(f"FAIL: {reason}")
     return "\n".join(lines).rstrip() + "\n"
@@ -331,18 +252,13 @@ def main() -> int:
         description=(
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
             "the replay-side and Windows-side route checks, the pinned proof route, the "
-            "dedicated Google attached-html replay surface, or the narrower replay-route "
-            "shortcut companion."
+            "dedicated Google attached-html replay surface, the narrower replay-route "
+            "shortcut companion, or the replay-shortcuts Windows replay bridge."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
-    parser.add_argument(
-        "--path",
-        action="append",
-        dest="paths",
-        help="Explicit replay-note path to inspect. Repeat to override the default note trio.",
-    )
-    parser.add_argument("--json", action="store_true", help="Emit JSON instead of the text report.")
+    parser.add_argument("--path", action="append", dest="paths")
+    parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root).resolve()
@@ -356,7 +272,6 @@ def main() -> int:
         print(json.dumps(payload, indent=2))
     else:
         print(render_text(audit, reasons), end="")
-
     return 1 if reasons else 0
 
 
