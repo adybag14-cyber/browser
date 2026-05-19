@@ -693,6 +693,24 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             "scripts/windows/start_attached_pages_catalog.ps1",
         )
 
+    def test_build_audit_reports_missing_wrapper_strict_sidecars_forwarding(self) -> None:
+        self.write_contract_files(
+            wrapper_text=WRAPPER_SNIPPET.replace('$launcherArgs += "--require-complete-sidecars"\n', "")
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/start_attached_pages_catalog.ps1",
+        )
+
+    def test_build_audit_reports_missing_wrapper_strict_assets_forwarding(self) -> None:
+        self.write_contract_files(
+            wrapper_text=WRAPPER_SNIPPET.replace('$launcherArgs += "--require-complete-assets"\n', "")
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "scripts/windows/start_attached_pages_catalog.ps1",
+        )
+
     def test_build_audit_reports_missing_wrapper_preferred_page_parameter(self) -> None:
         self.write_contract_files(
             wrapper_text=WRAPPER_SNIPPET.replace("    [string]$PreferredInitialPage,\n", "")
