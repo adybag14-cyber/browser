@@ -11,7 +11,7 @@ Read this together with:
 
 - Start with the smallest bounded localhost probe that touches the shared path you changed.
 - Widen into manual `browse --headed` replay only after the bounded probe is green.
-- Prefer `scripts\windows\show_headed_validation_suites.ps1` first for the change areas it already routes directly: `navigation`, `stop-loading`, `input`, `google-form-controls-enter-order`, `rendering`, `network`, `browser-shell`, `popup`, `attached-html`, `attached-html-target-bundle`, `google-input`, and `google-attached-html`.
+- Prefer `scripts\windows\show_headed_validation_suites.ps1` first for the change areas it already routes directly: `navigation`, `stop-loading`, `input`, `google-form-controls-enter-order`, `google-shared-enter-order`, `rendering`, `network`, `browser-shell`, `popup`, `attached-html`, `attached-html-target-bundle`, `google-input`, and `google-attached-html`.
 - For probe families that are not yet first-class router change areas, use the direct PowerShell entrypoints below.
 - Older deeper probe families can still carry fixed checkout assumptions. If a helper fails before browser behavior is exercised, normalize the local repo-root or browser-exe path first.
 - When replay depends on saved-page exports, keep the router's strict `-RequireCompleteSidecars` and `-RequireCompleteAssets` attached-pages catalog variants in play before treating missing files as headed regressions.
@@ -23,7 +23,8 @@ Read this together with:
 | Browser chrome navigation, history, reload | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea navigation` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\wrapped-link\addressbar-probe.ps1` | Use for back, forward, reload, wrapped-link hit-testing, and address-bar driven transitions. |
 | Stop/loading lifecycle and restore-after-stop behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\wrapped-link\chrome-history-close-probe.ps1` | Use when stop, cancel, reload-after-stop, or restored page state changed. |
 | Shared text input, focus, label activation, Enter submit | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input` | Start here before any live Google or saved-page follow-up. |
-| Google form-controls Enter submit timing on the real headed surface | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input` | Use this when issue #3 is already narrowed to the smallest shared gate that proves submit still waits until keypress before widening back to manual Google or saved-page replay. |
+| Shared Google-shaped Enter submit timing before the issue #3-specific gate | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order` | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order` | Use this when the replay is already narrowed to Google-like keypress-before-submit behavior, but you still want the reusable shared ladder before the tighter issue #3 gate. |
+| Google form-controls Enter submit timing on the real headed surface | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order` | `& ".\zig-out\bin\lightpanda.exe" browse --headed "https://www.google.com/"` | Use this only after the broader `google-shared-enter-order` route is already green and you want the tightest issue #3 checkpoint before manual Google or saved-page follow-up. |
 | Shared layout, paint, screenshot timing, or visible headed surface behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-screenshot-load-complete-probe.ps1` | Start here before widening into attached-page replay for rendering or screenshot issues. |
 | Shared subresource loading, authenticated asset fetches, or browser-managed request credentials | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\fetch-credentials\chrome-fetch-credentials-probe.ps1` | Start here before widening into attached-page replay for network, credential, or asset-loading changes. |
 | Browser shell tabs, settings, and related chrome behavior | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell` | `powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\tabs\chrome-tabs-probe.ps1` | Use this for tab strip, duplicate/reopen, settings persistence, and shell keyboard-shortcut changes before widening into older deeper helpers. |
@@ -49,6 +50,23 @@ Use this route when:
 - the current saved pages are still the exact three-page compatibility bundle
 - the next check should stay bundle-first instead of reopening the wider manual attached-page discovery path
 - you want the compact suite surface, replay-route bridge, and bundle-first handoff printed together before launch
+
+## Google Issue #3 Narrowing Ladder
+
+When the current headed regression still maps to the Google search-box family,
+keep the replay ladder in this order so each step answers one question before
+you widen out again:
+
+1. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input`
+2. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-input`
+3. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order`
+4. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order`
+5. `& ".\zig-out\bin\lightpanda.exe" browse --headed "https://www.google.com/"`
+6. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html -InputPath "<saved-html-or-folder>"`
+7. `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle -InputPath "<bundle-html-or-folder>"`
+
+Use steps 1 through 2 when the failure is still broad input or focus behavior.
+Use step 3 when the replay is already narrowed to Google-like keypress-before-submit timing but should stay on the reusable shared ladder first. Use step 4 only after that shared ladder is green and you need the tightest issue #3 checkpoint on the real headed surface. Widen to steps 5 through 7 only after the bounded ladder is green or when the current evidence already proves the failure sits beyond the smaller gates.
 
 ## Probe Families
 
@@ -106,5 +124,5 @@ After the matching bounded family is green:
 1. Re-run the nearest manual headed flow with `.\zig-out\bin\lightpanda.exe browse --headed ...`.
 2. For saved HTML or exported pages, use the attached-pages catalog route instead of an ad hoc `python -m http.server` whenever the branch helper can express the replay cleanly, and reuse the router's strict `-RequireCompleteSidecars` and `-RequireCompleteAssets` variants when you want localhost replay to fail fast on incomplete exports.
 3. For the pinned three-page compatibility bundle, prefer the `attached-html-target-bundle` router output and the compact bundle-specific helper chain before dropping back to the broader attached-page discovery route.
-4. For live Google issue work, keep the sequence bounded-input probe -> google-form-controls-enter-order gate -> manual Google replay -> attached-page follow-up.
+4. For live Google issue work, keep the sequence bounded-input probe -> `google-input` route -> `google-shared-enter-order` route -> `google-form-controls-enter-order` gate -> manual Google replay -> attached-page follow-up.
 5. If a deeper helper fails because of repo-root assumptions rather than browser behavior, fix the helper pathing before treating it as a headed regression.
