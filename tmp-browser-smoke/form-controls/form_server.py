@@ -110,6 +110,10 @@ class FormHandler(http.server.BaseHTTPRequestHandler):
                 b"<form action=\"/submitted.html\" method=\"get\" name=\"f\" style=\"display:block;\">"
                 b"<input type=\"hidden\" name=\"submit_phase\" id=\"submit_phase\" value=\"idle\" />"
                 b"<input type=\"hidden\" name=\"event_log\" id=\"event_log\" value=\"\" />"
+                b"<input type=\"hidden\" name=\"active_name\" id=\"active_name\" value=\"\" />"
+                b"<input type=\"hidden\" name=\"active_id\" id=\"active_id\" value=\"\" />"
+                b"<input type=\"hidden\" name=\"selection_start\" id=\"selection_start\" value=\"\" />"
+                b"<input type=\"hidden\" name=\"selection_end\" id=\"selection_end\" value=\"\" />"
                 b"<label for=\"q\" style=\"display:block;margin:0 0 10px 0;font-size:14px;\">Search</label>"
                 b"<input id=\"q\" name=\"q\" type=\"text\" autocomplete=\"off\""
                 b" style=\"display:block;width:280px;height:40px;padding:8px 10px;border:1px solid #5f6368;\" />"
@@ -119,29 +123,24 @@ class FormHandler(http.server.BaseHTTPRequestHandler):
                 b"const input=form.q;"
                 b"const submitPhase=document.getElementById('submit_phase');"
                 b"const eventLog=document.getElementById('event_log');"
+                b"const activeName=document.getElementById('active_name');"
+                b"const activeId=document.getElementById('active_id');"
+                b"const selectionStartField=document.getElementById('selection_start');"
+                b"const selectionEndField=document.getElementById('selection_end');"
                 b"const events=[];"
-                b"function pushEvent(label){events.push(label);eventLog.value=events.join(',');}"
-                b"input.addEventListener('focus',function(){"
-                b" document.title='Google Enter Focused';"
-                b" pushEvent('FOCUS');"
-                b"},true);"
-                b"input.addEventListener('keydown',function(e){"
-                b" if(e.key==='Enter'){submitPhase.value='keydown';pushEvent('KD:Enter:'+input.value);}"
-                b"},true);"
-                b"input.addEventListener('keypress',function(e){"
-                b" if(e.key==='Enter'){submitPhase.value='keypress';pushEvent('KP:Enter:'+input.value);}"
-                b"},true);"
-                b"input.addEventListener('beforeinput',function(e){"
-                b" if(typeof e.data==='string'){pushEvent('BI:'+e.data+':'+input.value);}"
-                b"},true);"
-                b"input.addEventListener('input',function(){"
-                b" document.title='Google Enter VALUE:'+input.value;"
-                b" pushEvent('IN:'+input.value);"
-                b"},true);"
-                b"form.addEventListener('submit',function(){"
-                b" pushEvent('SUBMIT:'+input.value);"
-                b" document.title='Google Enter SUBMIT:'+input.value+'|'+submitPhase.value;"
-                b"},true);"
+                b"function currentActiveName(){ const active=document.activeElement; if(!active)return '-'; return active.getAttribute('name')||active.name||'-'; }"
+                b"function currentActiveId(){ const active=document.activeElement; if(!active)return '-'; return active.id||'-'; }"
+                b"function currentSelection(which){ try{ if(document.activeElement===input&&typeof input[which]==='number'){ return String(input[which]); } }catch(_err){} return '-'; }"
+                b"function captureState(){ activeName.value=currentActiveName(); activeId.value=currentActiveId(); selectionStartField.value=currentSelection('selectionStart'); selectionEndField.value=currentSelection('selectionEnd'); }"
+                b"function pushEvent(label){ captureState(); events.push(label+':AN='+activeName.value+':AI='+activeId.value+':SEL='+selectionStartField.value+'-'+selectionEndField.value); eventLog.value=events.join(','); }"
+                b"input.addEventListener('focus',function(){ document.title='Google Enter Focused'; pushEvent('FOCUS'); },true);"
+                b"input.addEventListener('keydown',function(e){ if(e.key==='Enter'){submitPhase.value='keydown';pushEvent('KD:Enter:'+input.value);} },true);"
+                b"input.addEventListener('keypress',function(e){ if(e.key==='Enter'){submitPhase.value='keypress';pushEvent('KP:Enter:'+input.value);} },true);"
+                b"input.addEventListener('keyup',function(e){ if(e.key==='Enter'){pushEvent('KU:Enter:'+input.value);} },true);"
+                b"input.addEventListener('beforeinput',function(e){ if(typeof e.data==='string'){pushEvent('BI:'+e.data+':'+input.value);} },true);"
+                b"input.addEventListener('input',function(){ document.title='Google Enter VALUE:'+input.value; pushEvent('IN:'+input.value); },true);"
+                b"form.addEventListener('submit',function(){ captureState(); pushEvent('SUBMIT:'+input.value); document.title='Google Enter SUBMIT:'+input.value+'|'+submitPhase.value; },true);"
+                b"captureState();"
                 b"</script>"
                 b"</main></body></html>"
             )
@@ -161,9 +160,14 @@ class FormHandler(http.server.BaseHTTPRequestHandler):
             query = params.get("q", [""])[0]
             submit_phase = params.get("submit_phase", [""])[0]
             event_log = params.get("event_log", [""])[0]
+            active_name = params.get("active_name", [""])[0] or "-"
+            active_id = params.get("active_id", [""])[0] or "-"
+            selection_start = params.get("selection_start", [""])[0] or "-"
+            selection_end = params.get("selection_end", [""])[0] or "-"
             if query or submit_phase or event_log:
                 sys.stderr.write(
-                    "GOOGLE_ENTER_SUBMIT q=%s phase=%s events=%s\n" % (query, submit_phase, event_log)
+                    "GOOGLE_ENTER_SUBMIT q=%s phase=%s active_name=%s active_id=%s selection=%s-%s events=%s\n"
+                    % (query, submit_phase, active_name, active_id, selection_start, selection_end, event_log)
                 )
                 sys.stderr.flush()
             value = name or query
