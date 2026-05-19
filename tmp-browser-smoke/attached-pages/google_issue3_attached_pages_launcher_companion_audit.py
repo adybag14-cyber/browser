@@ -20,6 +20,41 @@ EXPECTATIONS = (
         "purpose": "The replay-attached quickstart keeps the repo-root-preserving launcher companion helper visible.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1",
+        "purpose": "The replay-attached quickstart keeps the validation-router attached-html surface checker visible before the launcher companion handoff.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1",
+        "purpose": "The replay-attached quickstart keeps the validation-router attached-html helper visible before the launcher companion handoff.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md",
+        "purpose": "The replay-attached quickstart keeps the validation-router attached-html note visible beside the launcher companion route.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_change_area_quickstart.ps1",
+        "purpose": "The replay-attached quickstart keeps the attached-html change-area helper visible before the launcher companion handoff.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "docs/ISSUE3_ATTACHED_HTML_CHANGE_AREA_QUICKSTART.md",
+        "purpose": "The replay-attached quickstart keeps the attached-html change-area note visible beside the launcher companion route.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
+        "purpose": "The replay-attached quickstart keeps the issue-specific Google attached-html entrypoint helper visible after the launcher companion handoff.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "purpose": "The replay-attached quickstart keeps the issue-specific Google attached-html entrypoint note visible beside the launcher companion route.",
+    },
+    {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments",
         "purpose": "The launcher companion helper wires its dedicated fail-fast checker into the surfaced command map.",
