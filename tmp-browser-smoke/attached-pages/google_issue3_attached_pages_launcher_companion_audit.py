@@ -225,6 +225,21 @@ EXPECTATIONS = (
         "purpose": "The replay-route bridge note keeps its compact replay helper visible.",
     },
     {
+        "path": "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars'",
+        "purpose": "The Windows full-use route checker keeps guarding the wrapper-backed sidecar audit on the broader route note.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_windows_replay_attached_html_quickstart.ps1'",
+        "purpose": "The Windows full-use route checker keeps guarding the replay-attached quickstart handoff on the broader route note.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>'''",
+        "purpose": "The Windows full-use route checker keeps guarding the compact bundle-suite handoff on the broader route note.",
+    },
+    {
         "path": "tmp-browser-smoke/attached-pages/README.md",
         "snippet": "scripts/windows/start_attached_pages_catalog.ps1",
         "purpose": "The attached-pages README keeps the Windows wrapper visible.",
@@ -236,7 +251,8 @@ EXPECTATIONS = (
     },
     {
         "path": "tmp-browser-smoke/attached-pages/README.md",
-        "snippet": "--require-complete-sidecars \\\n  --require-complete-assets",
+        "snippet": "--require-complete-sidecars \\
+  --require-complete-assets",
         "purpose": "The attached-pages README keeps the strict sidecar-plus-asset mode visible.",
     },
     {
