@@ -57,6 +57,7 @@ Current validation truth on this branch:
 - the router now surfaces a checkout-portable `popup` first-line probe for popup creation and named-target behavior on the real headed window
 - the router now surfaces dedicated `google-attached-html` and `attached-html-target-bundle` routes for issue #3 attached-page replay, including the pinned three-page compatibility-bundle path
 - the router now exposes suite-level `google-attached-html` and `attached-html-target-bundle` surfaces when the narrower attached-page helper lane should be reprinted without widening back out to the rest of the catalog first
+- the router now also keeps the replay-attached fail-fast checker and shorter replay helper ladder visible through `scripts/windows/check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1` and `scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1` so the launcher-companion and pinned proof-route bridges stay surfaced before bundle-first replay takes over
 - the first-line navigation, stop-loading, input, rendering, network, browser-shell, and popup probes auto-resolve the repo root and built browser path from the current checkout
 - `scripts/windows/show_headed_validation_suites.ps1` is the truthful router for current small Windows headed checks
 - `scripts/windows/start_attached_pages_catalog.ps1` is the wrapper-backed localhost entrypoint for issue #3 attached-page replay, including sidecar audits, broader asset audits, manifest printing, and strict completeness gates before the browser is blamed
