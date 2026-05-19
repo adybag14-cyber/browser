@@ -19,6 +19,12 @@ REPLAY_QUICKSTART_SURFACE_CHECK = (
 WINDOWS_ROUTE_SURFACE_CHECK = (
     "check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1"
 )
+VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART = (
+    "show_google_issue3_validation_router_attached_html_quickstart.ps1"
+)
+ATTACHED_HTML_CHANGE_AREA_QUICKSTART = (
+    "show_google_issue3_attached_html_change_area_quickstart.ps1"
+)
 
 PROOF_NOTE = "docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md"
 PROOF_SURFACE_CHECK = (
@@ -70,6 +76,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         "google_wrapper_sidecar_reference_count": 0,
         "replay_quickstart_surface_check_count": 0,
         "windows_route_surface_check_count": 0,
+        "validation_router_attached_html_quickstart_count": 0,
+        "attached_html_change_area_quickstart_count": 0,
         "proof_note_reference_count": 0,
         "proof_surface_check_count": 0,
         "proof_helper_count": 0,
@@ -94,6 +102,8 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
             "wrapper_references": [],
             "replay_quickstart_surface_checks": [],
             "windows_route_surface_checks": [],
+            "validation_router_attached_html_quickstarts": [],
+            "attached_html_change_area_quickstarts": [],
             "proof_note_references": [],
             "proof_surface_checks": [],
             "proof_helpers": [],
@@ -127,6 +137,14 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
                 hits["replay_quickstart_surface_checks"].append({"line_number": line_number, "line": stripped})
             if WINDOWS_ROUTE_SURFACE_CHECK in line:
                 hits["windows_route_surface_checks"].append({"line_number": line_number, "line": stripped})
+            if VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART in line:
+                hits["validation_router_attached_html_quickstarts"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
+            if ATTACHED_HTML_CHANGE_AREA_QUICKSTART in line:
+                hits["attached_html_change_area_quickstarts"].append(
+                    {"line_number": line_number, "line": stripped}
+                )
             if PROOF_NOTE in line:
                 hits["proof_note_references"].append({"line_number": line_number, "line": stripped})
             if PROOF_SURFACE_CHECK in line:
@@ -172,6 +190,12 @@ def audit_paths(paths: list[Path], repo_root: Path) -> dict[str, object]:
         )
         counts["replay_quickstart_surface_check_count"] += len(hits["replay_quickstart_surface_checks"])
         counts["windows_route_surface_check_count"] += len(hits["windows_route_surface_checks"])
+        counts["validation_router_attached_html_quickstart_count"] += len(
+            hits["validation_router_attached_html_quickstarts"]
+        )
+        counts["attached_html_change_area_quickstart_count"] += len(
+            hits["attached_html_change_area_quickstarts"]
+        )
         counts["proof_note_reference_count"] += len(hits["proof_note_references"])
         counts["proof_surface_check_count"] += len(hits["proof_surface_checks"])
         counts["proof_helper_count"] += len(hits["proof_helpers"])
@@ -221,6 +245,10 @@ def failure_reasons(audit: dict[str, object]) -> list[str]:
         reasons.append("replay notes do not keep the replay attached-html quickstart surface check visible")
     if audit["windows_route_surface_check_count"] == 0:
         reasons.append("replay notes do not keep the broader Windows attached-html route surface check visible")
+    if audit["validation_router_attached_html_quickstart_count"] == 0:
+        reasons.append("replay notes do not keep the validation-router attached-html quickstart visible")
+    if audit["attached_html_change_area_quickstart_count"] == 0:
+        reasons.append("replay notes do not keep the attached-html change-area quickstart visible")
     if audit["proof_note_reference_count"] == 0:
         reasons.append("replay notes do not keep the pinned bundle proof note visible")
     if audit["proof_surface_check_count"] == 0:
@@ -258,6 +286,8 @@ def render_text(audit: dict[str, object], reasons: list[str]) -> str:
         "",
         f"Repo root: {audit['repo_root']}",
         f"Files scanned: {audit['file_count']}",
+        f"Validation-router attached-html quickstarts: {audit['validation_router_attached_html_quickstart_count']}",
+        f"Attached-html change-area quickstarts: {audit['attached_html_change_area_quickstart_count']}",
         f"Google entrypoint note references: {audit['google_entrypoint_note_count']}",
         f"Google entrypoint surface checks: {audit['google_entrypoint_surface_check_count']}",
         f"Replay-shortcuts Windows replay note references: {audit['replay_shortcuts_windows_replay_note_count']}",
@@ -273,10 +303,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Fail if the issue #3 replay notes drift away from the wrapper-backed launcher, "
-            "the replay-side and Windows-side route checks, the pinned proof route, the "
-            "dedicated Google attached-html replay surface, the issue-specific Google "
-            "attached-html entrypoint note and checker, the narrower replay-route "
-            "shortcut companion, or the replay-shortcuts Windows replay bridge."
+            "the replay-side and Windows-side route checks, the validation-router and "
+            "change-area attached-html quickstarts, the pinned proof route, the dedicated "
+            "Google attached-html replay surface, the issue-specific Google attached-html "
+            "entrypoint note and checker, the narrower replay-route shortcut companion, "
+            "or the replay-shortcuts Windows replay bridge."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repo root that contains the replay-note docs.")
