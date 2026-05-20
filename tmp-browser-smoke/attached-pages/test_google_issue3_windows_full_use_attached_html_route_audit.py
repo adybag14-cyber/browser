@@ -108,6 +108,40 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         self.assertEqual(0, audit["missing_count"])
         self.assertTrue(all(result["exists"] for result in audit["results"]))
 
+    def test_build_audit_reports_missing_windows_full_use_sidecar_audit(self) -> None:
+        self.write_contract_files(
+            windows_doc_text=WINDOWS_DOC_SNIPPET.replace(
+                'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath \"<saved-html-or-folder>\" -AuditSidecars\n',
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath \"<saved-html-or-folder>\" -AuditSidecars',
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_windows_full_use_bundle_bridge(self) -> None:
+        self.write_contract_files(
+            windows_doc_text=WINDOWS_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_bundle_bridge.ps1",
+            failing_snippets,
+        )
+
     def test_build_audit_reports_missing_validation_bridge_note(self) -> None:
         self.write_contract_files(
             route_doc_text=ROUTE_DOC_SNIPPET.replace(
@@ -122,6 +156,23 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
             "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_replay_attached_quickstart_note(self) -> None:
+        self.write_contract_files(
+            route_doc_text=ROUTE_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1",
             failing_snippets,
         )
 
@@ -173,6 +224,23 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
             "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_bundle_suite_note(self) -> None:
+        self.write_contract_files(
+            route_doc_text=ROUTE_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'\n",
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'",
             failing_snippets,
         )
 
