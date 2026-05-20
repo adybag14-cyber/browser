@@ -1257,3 +1257,26 @@ test "infer mode keeps browse after shared options before screenshot bmp" {
 
     try std.testing.expectEqual(RunMode.browse, mode);
 }
+
+test "infer mode keeps browse after headed shortcut and shared option before url" {
+    const mode = try inferModeSlice(&.{
+        "--headed",
+        "--http_timeout",
+        "30000",
+        "https://example.com/",
+    });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode keeps browse after browser mode headed and shared option before url" {
+    const mode = try inferModeSlice(&.{
+        "--browser_mode",
+        "headed",
+        "--profile_dir",
+        "/tmp/lightpanda-profile",
+        "https://example.com/",
+    });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
