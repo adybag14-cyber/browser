@@ -306,6 +306,12 @@ DRIFT_CASES = (
         "drifted note",
     ),
     (
+        "attached_bundle_suite_surface_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
+        "",
+    ),
+    (
         "attached_html_change_area_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Attached HTML:          {0}") -f $helper.top_level_commands.attached_html_change_area)',
