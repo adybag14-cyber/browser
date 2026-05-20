@@ -325,7 +325,7 @@ DRIFT_CASES = (
     ),
     (
         "top_level_shortcut_windows_replay_output",
-        "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "scripts/windows/show_google_issue3_top_level_shortCUT_FIRST_ENTRYPOINT.PS1",
         'Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)',
         "",
     ),
@@ -403,7 +403,7 @@ DRIFT_CASES = (
     ),
     (
         "suite_router_sidecar_guidance",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quICKSTART.PS1",
         "Keep suite_router_attached_html_quickstart nearby as the sidecar helper when the route needs to widen back toward the suite-router surface instead of narrowing directly into the shorter attached-page bridge or the attached-page shortcut.",
         "drifted note",
     ),
@@ -457,7 +457,7 @@ DRIFT_CASES = (
     ),
     (
         "replay_windows_bridge_check_output",
-        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attACHED_HTML_BRIDGE.PS1",
         'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)',
         "",
     ),
@@ -603,15 +603,34 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
                 self.assertEqual(1, len(failing))
                 self.assertFalse(failing[0]["exists"])
 
-    def test_main_outputs_json_and_nonzero_when_contract_drifts(self) -> None:
-        self.write_contract_files()
-        path, snippet = (
-            "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
-            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+    def test_build_audit_groups_multiple_missing_expectations_by_path(self) -> None:
+        self.write_contract_files(
+            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
         )
-        drifted = build_contract_map()
-        drifted[path] = drifted[path].replace(snippet, "")
-        self.write_contract_files(drifted)
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", summary)
+        self.assertEqual(1, audit["missing_path_count"])
+        self.assertGreater(audit["missing_count"], 1)
+        self.assertGreater(
+            summary["docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"][
+                "missing_expectation_count"
+            ],
+            1,
+        )
+        self.assertIn(
+            "replay-side surface checker visible",
+            summary["docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"][
+                "first_missing_purpose"
+            ],
+        )
+
+    def test_main_outputs_json_and_nonzero_when_contract_drifts(self) -> None:
+        self.write_contract_files(
+            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
+        )
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
@@ -619,11 +638,20 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         self.assertEqual(1, exit_code)
         payload = json.loads(output.getvalue())
-        self.assertEqual(1, payload["missing_count"])
+        self.assertGreater(payload["missing_count"], 1)
         self.assertEqual(1, payload["missing_path_count"])
-        self.assertEqual(path, payload["missing_paths"][0]["path"])
-        self.assertEqual(1, payload["missing_paths"][0]["missing_expectation_count"])
-        self.assertEqual(snippet, payload["results"][0]["snippet"])
+        self.assertEqual(
+            "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+            payload["missing_paths"][0]["path"],
+        )
+        self.assertGreater(
+            payload["missing_paths"][0]["missing_expectation_count"],
+            1,
+        )
+        self.assertIn(
+            "replay-side surface checker visible",
+            payload["missing_paths"][0]["first_missing_purpose"],
+        )
 
     def test_main_reports_missing_failures_in_text_output(self) -> None:
         self.write_contract_files()
