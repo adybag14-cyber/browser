@@ -387,7 +387,8 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
         \\                available.
         \\
         \\--browser_mode  Browser mode: headless or headed.
-        \\                Defaults to headless.
+        \\                Defaults to headless for serve, fetch, and mcp.
+        \\                Defaults to headed for browse.
         \\
         \\--headed        Shortcut for '--browser_mode headed'
         \\
@@ -1100,6 +1101,15 @@ test "browse defaults to interactive http timeout" {
     try std.testing.expectEqual(DEFAULT_INTERACTIVE_HTTP_TIMEOUT_MS, config.httpTimeout());
 }
 
+test "browse defaults to headed browser mode" {
+    var config = try Config.init(std.testing.allocator, "test", .{
+        .browse = .{ .url = "https://example.com/" },
+    });
+    defer config.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(BrowserMode.headed, config.browserMode());
+}
+
 test "headed serve defaults to interactive http timeout" {
     var config = try Config.init(std.testing.allocator, "test", .{
         .serve = .{ .common = .{ .browser_mode = .headed } },
@@ -1116,6 +1126,15 @@ test "headless serve keeps shorter default http timeout" {
     defer config.deinit(std.testing.allocator);
 
     try std.testing.expectEqual(DEFAULT_HTTP_TIMEOUT_MS, config.httpTimeout());
+}
+
+test "serve defaults to headless browser mode" {
+    var config = try Config.init(std.testing.allocator, "test", .{
+        .serve = .{},
+    });
+    defer config.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(BrowserMode.headless, config.browserMode());
 }
 
 test "explicit http timeout overrides interactive defaults" {
