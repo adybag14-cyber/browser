@@ -622,9 +622,6 @@ fn inferModeOption(opt: []const u8) bool {
     if (std.mem.eql(u8, opt, "--window_height")) {
         return true;
     }
-    if (std.mem.eql(u8, opt, "--obey_robots")) {
-        return true;
-    }
     return false;
 }
 
@@ -1153,4 +1150,16 @@ test "explicit http timeout overrides interactive defaults" {
     defer config.deinit(std.testing.allocator);
 
     try std.testing.expectEqual(@as(u31, 1234), config.httpTimeout());
+}
+
+test "infer mode keeps headed browse after obey robots flag" {
+    const mode = try inferModeSlice(&.{ "--obey_robots", "--headed", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode keeps fetch fallback after obey robots flag" {
+    const mode = try inferModeSlice(&.{ "--obey_robots", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.fetch, mode);
 }
