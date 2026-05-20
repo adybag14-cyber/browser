@@ -185,6 +185,29 @@ def resolve_repo_root(root: str | None) -> Path:
     return resolved
 
 
+def summarize_missing_paths(results: list[dict[str, object]]) -> list[dict[str, object]]:
+    missing_by_path: dict[str, list[dict[str, object]]] = {}
+
+    for result in results:
+        if result["exists"]:
+            continue
+        missing_by_path.setdefault(result["path"], []).append(result)
+
+    summary: list[dict[str, object]] = []
+    for path in sorted(missing_by_path):
+        entries = missing_by_path[path]
+        summary.append(
+            {
+                "path": path,
+                "missing_expectation_count": len(entries),
+                "first_missing_purpose": entries[0]["purpose"],
+                "first_missing_snippet": entries[0]["snippet"],
+            }
+        )
+
+    return summary
+
+
 def build_replay_quickstart_audit(repo_root: Path) -> dict[str, object]:
     results: list[dict[str, object]] = []
     missing_count = 0
@@ -208,10 +231,13 @@ def build_replay_quickstart_audit(repo_root: Path) -> dict[str, object]:
             }
         )
 
+    missing_paths = summarize_missing_paths(results)
     return {
         "repo_root": str(repo_root),
         "expectation_count": len(results),
         "missing_count": missing_count,
+        "missing_path_count": len(missing_paths),
+        "missing_paths": missing_paths,
         "results": results,
     }
 
@@ -230,6 +256,17 @@ def render_text_report(audit: dict[str, object]) -> str:
         status = "PASS" if result["exists"] else "FAIL"
         lines.append(f"[{status}] {result['path']}")
         lines.append(f"  {result['purpose']}")
+
+    missing_paths = audit.get("missing_paths", [])
+    if missing_paths:
+        lines.append("")
+        lines.append("Missing path summary:")
+        for entry in missing_paths:
+            lines.append(
+                f"- {entry['path']}: {entry['missing_expectation_count']} missing expectation(s)"
+            )
+            lines.append(f"  first gap: {entry['first_missing_purpose']}")
+            lines.append(f"  first snippet: {entry['first_missing_snippet']}")
 
     return "\n".join(lines).rstrip() + "\n"
 
