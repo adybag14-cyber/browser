@@ -216,11 +216,18 @@ Add-SharedArgument -Arguments $reentryArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $reentryArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $reentryArguments -Name InputPath -Values $InputPath
 
+$preferredInitialPageReentryArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $preferredInitialPageReentryArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $preferredInitialPageReentryArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $preferredInitialPageReentryArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+Add-SharedPathArrayArgument -Arguments $preferredInitialPageReentryArguments -Name InputPath -Values $InputPath
+
 $topLevelAttachedHtmlQuickstartArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $topLevelAttachedHtmlQuickstartArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $topLevelAttachedHtmlQuickstartArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedArgument -Arguments $topLevelAttachedHtmlQuickstartArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $topLevelAttachedHtmlQuickstartArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $topLevelAttachedHtmlQuickstartArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
 $safeRouteArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $safeRouteArguments -Name RepoRoot -Value $RepoRoot
@@ -263,6 +270,9 @@ if ($InputPath) {
 if ($BrowserExe) {
     $attachedHtmlTargetBundleSuiteArguments['BrowserExe'] = $BrowserExe
 }
+if ($PreferredInitialPage) {
+    $attachedHtmlTargetBundleSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
 
 $broaderAttachedHtmlSuiteRouterArguments = [ordered]@{
     ChangeArea = 'attached-html'
@@ -275,6 +285,9 @@ if ($InputPath) {
 }
 if ($BrowserExe) {
     $broaderAttachedHtmlSuiteRouterArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $broaderAttachedHtmlSuiteRouterArguments['PreferredInitialPage'] = $PreferredInitialPage
 }
 
 $googleAttachedHtmlSuiteRouterArguments = [ordered]@{
@@ -289,6 +302,9 @@ if ($InputPath) {
 if ($BrowserExe) {
     $googleAttachedHtmlSuiteRouterArguments['BrowserExe'] = $BrowserExe
 }
+if ($PreferredInitialPage) {
+    $googleAttachedHtmlSuiteRouterArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached bundle first entrypoint'
@@ -300,9 +316,9 @@ $entrypoint = [ordered]@{
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     broader_attached_html_suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $broaderAttachedHtmlSuiteRouterArguments -RepoRootOverride $RepoRoot
     google_attached_html_suite_router_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlSuiteRouterArguments -RepoRootOverride $RepoRoot
-    windows_replay_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $reentryArguments
+    windows_replay_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $preferredInitialPageReentryArguments
     top_level_attached_html_quickstart_command = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $topLevelAttachedHtmlQuickstartArguments
-    attached_html_shortcut_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $reentryArguments
+    attached_html_shortcut_command = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $preferredInitialPageReentryArguments
     attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
     google_attached_html_flow_command = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
     bundle_surface_check_command = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $bundleSurfaceCheckArguments
