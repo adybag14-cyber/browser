@@ -169,6 +169,23 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1", failing_paths)
 
+    def test_build_audit_reports_missing_google_attached_bridge_output(self) -> None:
+        self.write_contract_files(
+            helper_text=HELPER_SNIPPET.replace(
+                'Write-Host (("  Google attached bridge:       {0}") -f $helper.commands.google_attached_html_entrypoint)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            'Write-Host (("  Google attached bridge:       {0}") -f $helper.commands.google_attached_html_entrypoint)',
+            failing_snippets,
+        )
+
     def test_build_audit_reports_missing_replay_note_bridge(self) -> None:
         self.write_contract_files(
             replay_note_text=REPLAY_NOTE_SNIPPET.replace(
