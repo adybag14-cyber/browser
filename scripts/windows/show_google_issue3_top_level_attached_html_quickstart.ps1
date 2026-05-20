@@ -202,6 +202,54 @@ if ($PreferredInitialPage) {
     $attachedHtmlFlowArguments['PreferredInitialPage'] = $PreferredInitialPage
 }
 
+$attachedHtmlSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($SummaryPath) {
+    $attachedHtmlSuiteArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedHtmlSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $attachedHtmlSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
+$googleAttachedHtmlSuiteArguments = [ordered]@{
+    ChangeArea = 'google-attached-html'
+}
+if ($SummaryPath) {
+    $googleAttachedHtmlSuiteArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $googleAttachedHtmlSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $googleAttachedHtmlSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
+$attachedBundleSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($SummaryPath) {
+    $attachedBundleSuiteArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedBundleSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $attachedBundleSuiteArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $attachedBundleSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
 $windowsFullUseAttachedHtmlRouteCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
 $windowsFullUseValidationRouterAttachedHtmlBridgeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
 $windowsReplayAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
@@ -242,18 +290,9 @@ $helper = [ordered]@{
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     commands = [ordered]@{
-        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html'
-            PreferredInitialPage = $PreferredInitialPage
-        }) -RepoRootOverride $RepoRoot
-        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'google-attached-html'
-            PreferredInitialPage = $PreferredInitialPage
-        }) -RepoRootOverride $RepoRoot
-        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html-target-bundle'
-            PreferredInitialPage = $PreferredInitialPage
-        }) -RepoRootOverride $RepoRoot
+        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
+        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
+        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleSuiteArguments -RepoRootOverride $RepoRoot
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
         attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $preferredInitialPageSharedArguments
         top_level_attached_html_surface_check = $topLevelAttachedHtmlSurfaceCheckCommand
@@ -294,6 +333,7 @@ $helper = [ordered]@{
         'Use validation_router_attached_html_quickstart when the replay is re-entering from the broader headed validation router and you want the shorter bridge into this compact top-level attached-page route kept visible before the helper chain narrows again.',
         'Use google_attached_html_change_area when the replay still needs the broader Google-shaped attached-page route visible before narrowing again.',
         'Use windows_full_use_attached_html_route when the next replay started from docs/WINDOWS_FULL_USE.md and you want the broader Windows full-use attached-page route helper reprinted before dropping back into the compact top-level attached-page quickstart.',
+        'Use the three suite re-entry commands when the broader validation router needs to reopen without losing the current SummaryPath, BrowserExe, PreferredInitialPage, or pinned InputPath values from this compact top-level surface.',
         'Use top_level_attached_html_entrypoint as the default next helper when no pinned bundle inputs or saved summary need to take precedence, because it keeps the broader top-level attached-page bridge visible immediately after the compact quickstart before the route narrows again.',
         'Use top_level_shortcut_entrypoint when the route is already about to narrow from the broader top-level attached-page chain into the shorter attached-page shortcut, replay-route shortcut, replay shortcuts, the next-step matrix, or the safe-route map.',
         'Use top_level_attached_html_catalog_quickstart when you want the compact top-level attached-page quickstart and the suite-catalog-side bridge kept visible together before the route narrows again.',
