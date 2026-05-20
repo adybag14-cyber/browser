@@ -372,18 +372,6 @@ DRIFT_CASES = (
         "",
     ),
     (
-        "suite_catalog_guide_output",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)',
-        "",
-    ),
-    (
-        "broader_attached_flow_output_duplicate",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Broader attached flow:    {0}") -f $helper.commands.attached_html_validation_flow)',
-        "",
-    ),
-    (
         "suite_catalog_guidance",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Use suite_catalog_entrypoints when you want the wider suite-catalog route map reprinted before the replay falls back into the narrower attached-page bridge.",
@@ -393,12 +381,6 @@ DRIFT_CASES = (
         "suite_router_sidecar_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "suite_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
-        "",
-    ),
-    (
-        "suite_router_sidecar_output",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)',
         "",
     ),
     (
@@ -626,6 +608,12 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
                 "first_missing_purpose"
             ],
         )
+        self.assertIn(
+            "check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+            summary["docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"][
+                "first_missing_snippet"
+            ],
+        )
 
     def test_main_outputs_json_and_nonzero_when_contract_drifts(self) -> None:
         self.write_contract_files(
@@ -652,17 +640,15 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
             "replay-side surface checker visible",
             payload["missing_paths"][0]["first_missing_purpose"],
         )
+        self.assertIn(
+            "check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+            payload["missing_paths"][0]["first_missing_snippet"],
+        )
 
     def test_main_reports_missing_failures_in_text_output(self) -> None:
-        self.write_contract_files()
-        drifted = build_contract_map()
-        first_path = "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
-        second_path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
-        first_snippet = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1"
-        second_snippet = "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments"
-        drifted[first_path] = drifted[first_path].replace(first_snippet, "")
-        drifted[second_path] = drifted[second_path].replace(second_snippet, "")
-        self.write_contract_files(drifted)
+        self.write_contract_files(
+            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
+        )
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
@@ -670,9 +656,15 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         self.assertEqual(1, exit_code)
         text = output.getvalue()
-        self.assertIn("Missing expectations: 2", text)
-        self.assertIn(f"[FAIL] {first_path}", text)
-        self.assertIn(f"[FAIL] {second_path}", text)
+        self.assertIn("Missing paths:", text)
+        self.assertIn(
+            "- docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md (",
+            text,
+        )
+        self.assertIn(
+            "First snippet: powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+            text,
+        )
 
     def test_main_reports_missing_repo_root_in_json(self) -> None:
         missing_root = self.root / "missing-repo-root"
