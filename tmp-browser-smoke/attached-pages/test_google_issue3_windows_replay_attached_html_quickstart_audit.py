@@ -258,6 +258,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "launcher_proof_entry_output",
+        "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)',
+        "",
+    ),
+    (
         "launcher_proof_surface_guidance",
         "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.",
