@@ -525,6 +525,7 @@ pub fn inferMode(allocator: Allocator, process: *std.process.ArgIterator) ParseE
 
 fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
     var shared_opts = Config.Common{};
+    var browse_hint = false;
 
     var index: usize = 0;
     while (index < tokens.len) {
@@ -532,11 +533,11 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
         if (inferBrowseOption(token)) {
             return .browse;
         }
-        if (inferModeOption(token)) {
-            if (std.mem.eql(u8, token, "--browser_mode") and index + 1 < tokens.len) {
-                shared_opts.browser_mode = std.meta.stringToEnum(BrowserMode, tokens[index + 1]) orelse shared_opts.browser_mode;
-            }
+
+        if (std.mem.eql(u8, token, "--browser_mode")) {
+            browse_hint = true;
             if (index + 1 < tokens.len) {
+                shared_opts.browser_mode = std.meta.stringToEnum(BrowserMode, tokens[index + 1]) orelse shared_opts.browser_mode;
                 index += 2;
             } else {
                 index += 1;
@@ -545,13 +546,34 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
         }
 
         if (std.mem.eql(u8, token, "--headed")) {
+            browse_hint = true;
             shared_opts.browser_mode = .headed;
             index += 1;
             continue;
         }
         if (std.mem.eql(u8, token, "--headless")) {
+            browse_hint = true;
             shared_opts.browser_mode = .headless;
             index += 1;
+            continue;
+        }
+
+        if (std.mem.eql(u8, token, "--window_width") or std.mem.eql(u8, token, "--window_height")) {
+            browse_hint = true;
+            if (index + 1 < tokens.len) {
+                index += 2;
+            } else {
+                index += 1;
+            }
+            continue;
+        }
+
+        if (inferModeOption(token)) {
+            if (index + 1 < tokens.len) {
+                index += 2;
+            } else {
+                index += 1;
+            }
             continue;
         }
 
@@ -584,7 +606,7 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
 
         return if (std.mem.indexOfAny(u8, token, ":/") == null)
             .serve
-        else if (shared_opts.browser_mode == .headed)
+        else if (browse_hint or shared_opts.browser_mode == .headed)
             .browse
         else
             .fetch;
@@ -638,15 +660,6 @@ fn inferModeOption(opt: []const u8) bool {
         return true;
     }
     if (std.mem.eql(u8, opt, "--profile_dir")) {
-        return true;
-    }
-    if (std.mem.eql(u8, opt, "--browser_mode")) {
-        return true;
-    }
-    if (std.mem.eql(u8, opt, "--window_width")) {
-        return true;
-    }
-    if (std.mem.eql(u8, opt, "--window_height")) {
         return true;
     }
     return false;
@@ -1191,8 +1204,32 @@ test "infer mode treats headed shortcut before url as browse" {
     try std.testing.expectEqual(RunMode.browse, mode);
 }
 
+test "infer mode treats headless shortcut before url as browse" {
+    const mode = try inferModeSlice(&.{ "--headless", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
 test "infer mode treats browser mode headed before url as browse" {
     const mode = try inferModeSlice(&.{ "--browser_mode", "headed", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats browser mode headless before url as browse" {
+    const mode = try inferModeSlice(&.{ "--browser_mode", "headless", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats window width before url as browse" {
+    const mode = try inferModeSlice(&.{ "--window_width", "1280", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats window height before url as browse" {
+    const mode = try inferModeSlice(&.{ "--window_height", "720", "https://example.com/" });
 
     try std.testing.expectEqual(RunMode.browse, mode);
 }
