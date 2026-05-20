@@ -119,6 +119,90 @@ fn browseLifecycleLabel(app: *const App) []const u8 {
     return if (app.display.browse_is_loading) "loading" else "settled";
 }
 
+const BrowseTargetInfo = struct {
+    scheme: []const u8,
+    scope: []const u8,
+    host: []const u8,
+};
+
+fn browseTargetScheme(url: []const u8) []const u8 {
+    const scheme_end = std.mem.indexOf(u8, url, "://") orelse return "unknown";
+    if (scheme_end == 0) {
+        return "unknown";
+    }
+    return url[0..scheme_end];
+}
+
+fn browseTargetAuthority(url: []const u8) ?[]const u8 {
+    const scheme_end = std.mem.indexOf(u8, url, "://") orelse return null;
+    const authority_start = scheme_end + 3;
+    if (authority_start >= url.len) {
+        return null;
+    }
+    const authority_tail = url[authority_start..];
+    const authority_end = std.mem.indexOfAny(u8, authority_tail, "/?#") orelse authority_tail.len;
+    if (authority_end == 0) {
+        return null;
+    }
+    return authority_tail[0..authority_end];
+}
+
+fn browseTargetHost(authority: []const u8) []const u8 {
+    if (authority.len == 0) {
+        return authority;
+    }
+    if (authority[0] == '[') {
+        const closing = std.mem.indexOfScalar(u8, authority, ']') orelse return authority;
+        return authority[0 .. closing + 1];
+    }
+    const port_separator = std.mem.lastIndexOfScalar(u8, authority, ':') orelse return authority;
+    return authority[0..port_separator];
+}
+
+fn isLoopbackBrowseHost(host: []const u8) bool {
+    if (host.len == 0) {
+        return false;
+    }
+    return std.ascii.eqlIgnoreCase(host, "localhost") or
+        std.ascii.endsWithIgnoreCase(host, ".localhost") or
+        std.mem.eql(u8, host, "127.0.0.1") or
+        std.mem.eql(u8, host, "0.0.0.0") or
+        std.ascii.eqlIgnoreCase(host, "[::1]") or
+        std.ascii.eqlIgnoreCase(host, "[0:0:0:0:0:0:0:1]");
+}
+
+fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
+    const scheme = browseTargetScheme(url);
+    if (std.ascii.eqlIgnoreCase(scheme, "file")) {
+        return .{
+            .scheme = "file",
+            .scope = "file",
+            .host = "(none)",
+        };
+    }
+
+    const authority = browseTargetAuthority(url) orelse {
+        return .{
+            .scheme = scheme,
+            .scope = "unknown",
+            .host = "(none)",
+        };
+    };
+    const host = browseTargetHost(authority);
+    if (isLoopbackBrowseHost(host)) {
+        return .{
+            .scheme = scheme,
+            .scope = "loopback",
+            .host = host,
+        };
+    }
+    return .{
+        .scheme = scheme,
+        .scope = "remote",
+        .host = if (host.len == 0) "(none)" else host,
+    };
+}
+
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
     const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
@@ -287,6 +371,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
         },
         .browse => |opts| {
             const url = opts.url;
+            const browse_target = browseTargetInfo(url);
             log.debug(.app, "startup", .{
                 .mode = "browse",
                 .requested_browser_mode = @tagName(requested_browser_mode),
@@ -295,6 +380,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .native_surface_expected = native_headed_surface_expected,
                 .native_surface_active = headed_runtime_active,
                 .url = url,
+                .target_scheme = browse_target.scheme,
+                .target_scope = browse_target.scope,
+                .target_host = browse_target.host,
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
@@ -314,6 +402,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .native_surface_active = headed_runtime_active,
                     .target_class = @tagName(lp.build_config.target_class),
                     .os = @tagName(builtin.os.tag),
+                    .target_scheme = browse_target.scheme,
+                    .target_scope = browse_target.scope,
+                    .target_host = browse_target.host,
                     .window = "enabled",
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
@@ -336,6 +427,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .native_surface_active = headed_runtime_active,
                     .target_class = @tagName(lp.build_config.target_class),
                     .os = @tagName(builtin.os.tag),
+                    .target_scheme = browse_target.scheme,
+                    .target_scope = browse_target.scope,
+                    .target_host = browse_target.host,
                     .window = "disabled",
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
@@ -359,6 +453,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .native_surface_active = headed_runtime_active,
                     .target_class = @tagName(lp.build_config.target_class),
                     .os = @tagName(builtin.os.tag),
+                    .target_scheme = browse_target.scheme,
+                    .target_scope = browse_target.scope,
+                    .target_host = browse_target.host,
                     .window_closed = app.display.userClosed(),
                     .shutdown_requested = app.shutdown,
                     .exit_reason = commandExitReason(&app),
@@ -385,6 +482,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .native_surface_active = headed_runtime_active,
                 .target_class = @tagName(lp.build_config.target_class),
                 .os = @tagName(builtin.os.tag),
+                .target_scheme = browse_target.scheme,
+                .target_scope = browse_target.scope,
+                .target_host = browse_target.host,
                 .window_closed = app.display.userClosed(),
                 .shutdown_requested = app.shutdown,
                 .exit_reason = commandExitReason(&app),
