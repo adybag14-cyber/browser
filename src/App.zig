@@ -17,6 +17,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const builtin = @import("builtin");
+const build_config = @import("build_config");
 
 const Allocator = std.mem.Allocator;
 
@@ -48,8 +50,19 @@ app_dir_path: ?[]const u8,
 host: ?*Host = null,
 shutdown: bool = false,
 
+fn requestedProfileDirLabel(config: *const Config) []const u8 {
+    return config.profileDir() orelse "(platform default)";
+}
+
 fn resolvedProfileDirLabel(path: ?[]const u8) []const u8 {
     return path orelse "(unavailable)";
+}
+
+fn resolvedProfileDirSourceLabel(config: *const Config, path: ?[]const u8) []const u8 {
+    if (config.profileDir() != null) {
+        return if (path != null) "explicit_override" else "explicit_override_unavailable";
+    }
+    return if (path != null) "platform_default" else "unavailable";
 }
 
 fn displayBackendLabel(display: *const Display) []const u8 {
@@ -67,7 +80,11 @@ fn logDisplayRuntimeSelection(app: *const App) void {
         .runtime = @tagName(app.display.runtime_mode),
         .display_backend = displayBackendLabel(&app.display),
         .native_surface_active = runtime_active,
+        .target_class = @tagName(build_config.target_class),
+        .os = @tagName(builtin.os.tag),
+        .requested_profile_dir = requestedProfileDirLabel(app.config),
         .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+        .resolved_profile_dir_source = resolvedProfileDirSourceLabel(app.config, app.app_dir_path),
         .window_width = app.display.default_viewport.width,
         .window_height = app.display.default_viewport.height,
         .snapshot = app.snapshot.fromEmbedded(),
