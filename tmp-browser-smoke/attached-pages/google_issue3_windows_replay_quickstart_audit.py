@@ -146,57 +146,57 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Route surface check:       {0}\") -f $helper.commands.windows_full_use_attached_html_route_surface_check)",
+        "snippet": 'Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
         "purpose": "The replay quickstart helper prints the broader Windows full-use route checker on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Windows validation bridge: {0}\") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)",
+        "snippet": 'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
         "purpose": "The replay quickstart helper prints the Windows full-use validation-router bridge on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Windows catalog quick:     {0}\") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)",
+        "snippet": 'Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
         "purpose": "The replay quickstart helper prints the Windows full-use attached-html catalog quickstart on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Validation-router quick:   {0}\") -f $helper.commands.validation_router_attached_html_quickstart)",
+        "snippet": 'Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
         "purpose": "The replay quickstart helper prints the validation-router attached-html quickstart on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Launcher surface check:    {0}\") -f $helper.commands.attached_pages_launcher_surface_check)",
+        "snippet": 'Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)',
         "purpose": "The replay quickstart helper prints the launcher-companion checker on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Launcher companion:        {0}\") -f $helper.commands.attached_pages_launcher_companion)",
+        "snippet": 'Write-Host (("  Launcher companion:        {0}") -f $helper.commands.attached_pages_launcher_companion)',
         "purpose": "The replay quickstart helper prints the launcher-companion helper on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Attached-page flow:        {0}\") -f $helper.commands.attached_html_flow)",
+        "snippet": 'Write-Host (("  Attached-page flow:        {0}") -f $helper.commands.attached_html_flow)',
         "purpose": "The replay quickstart helper prints the broader attached-page flow helper on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Google attached flow:      {0}\") -f $helper.commands.google_attached_html_flow)",
+        "snippet": 'Write-Host (("  Google attached flow:      {0}") -f $helper.commands.google_attached_html_flow)',
         "purpose": "The replay quickstart helper prints the Google-shaped attached-page flow helper on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Replay attached note:      {0}\") -f $helper.replay_attached_html_note_path)",
+        "snippet": 'Write-Host (("  Replay attached note:      {0}") -f $helper.replay_attached_html_note_path)',
         "purpose": "The replay quickstart helper prints the replay-attached companion note on the surfaced ladder so the written route stays paired with the narrower helper.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Router shortcut:           {0}\") -f $helper.commands.suite_router_shortcut_first)",
+        "snippet": 'Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)',
         "purpose": "The replay quickstart helper prints the suite-router shortcut bridge on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": "Write-Host ((\"  Route shortcut:            {0}\") -f $helper.commands.replay_route_shortcut_entrypoint)",
+        "snippet": 'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)',
         "purpose": "The replay quickstart helper prints the replay-route shortcut bridge on the replay follow-up surface.",
     },
 )
