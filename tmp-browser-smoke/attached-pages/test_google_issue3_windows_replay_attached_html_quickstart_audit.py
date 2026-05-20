@@ -312,6 +312,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "launcher_replay_route_output",
+        "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        'Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut)',
+        "",
+    ),
+    (
         "launcher_replay_route_guidance",
         "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
