@@ -149,9 +149,6 @@ if ($RequireCompleteSidecars -and ($AuditAssets -or $AuditSidecars)) {
 if ($RequireCompleteAssets -and ($AuditAssets -or $AuditSidecars)) {
     throw "-RequireCompleteAssets is only supported with the catalog launch or -PrintManifest modes. Run the asset audit first, then rerun with -RequireCompleteAssets when you want the manifest or localhost server to fail fast on incomplete bundles."
 }
-if ($PreferredInitialPage -and $PSCmdlet.ParameterSetName -ne "InputPath") {
-    throw "-PreferredInitialPage requires -InputPath so the wrapper can expand and reorder the selected attached HTML bundle."
-}
 
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -173,6 +170,10 @@ if ($PSCmdlet.ParameterSetName -eq "InputPath") {
     foreach ($path in $orderedInputs) {
         $launcherArgs += @("--input", $path)
     }
+}
+
+if ($PreferredInitialPage) {
+    $launcherArgs += @("--preferred-initial-page", $PreferredInitialPage)
 }
 
 if ($GoogleStyle) {
