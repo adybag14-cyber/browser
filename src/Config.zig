@@ -677,6 +677,12 @@ fn inferSharedFlagOption(opt: []const u8) bool {
 }
 
 fn inferLocalBrowseTarget(token: []const u8) bool {
+    if (std.mem.indexOf(u8, token, "://") != null) {
+        return false;
+    }
+    if (token.len >= 6 and std.ascii.eqlIgnoreCase(token[token.len - 6 ..], ".xhtml")) {
+        return true;
+    }
     if (token.len >= 5 and std.ascii.eqlIgnoreCase(token[token.len - 5 ..], ".html")) {
         return true;
     }
@@ -1273,6 +1279,18 @@ test "infer mode treats absolute windows html path as browse" {
     try std.testing.expectEqual(RunMode.browse, mode);
 }
 
+test "infer mode treats bare xhtml filename as browse" {
+    const mode = try inferModeSlice(&.{ "attached-page.xhtml" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats relative windows xhtml path as browse" {
+    const mode = try inferModeSlice(&.{ "agent_files\\attached-page.xhtml" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
 test "infer mode keeps browse for html target after shared flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "agent_files\\attached-page.html" });
 
@@ -1283,6 +1301,18 @@ test "infer mode keeps fetch fallback after obey robots flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "https://example.com/" });
 
     try std.testing.expectEqual(RunMode.fetch, mode);
+}
+
+test "infer mode keeps fetch for remote html url without browse hint" {
+    const mode = try inferModeSlice(&.{ "https://example.com/attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.fetch, mode);
+}
+
+test "infer mode keeps browse for remote html url after headed shortcut" {
+    const mode = try inferModeSlice(&.{ "--headed", "https://example.com/attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
 }
 
 test "infer mode treats screenshot png option as browse" {
