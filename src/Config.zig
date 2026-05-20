@@ -357,7 +357,8 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
         \\--http_timeout
         \\                The maximum time, in milliseconds, the transfer is allowed
         \\                to complete. 0 means it never times out.
-        \\                Defaults to 10000.
+        \\                Defaults to 30000 for browse and headed serve.
+        \\                Defaults to 5000 for headless serve, fetch, and mcp.
         \\
         \\--http_max_response_size
         \\                Limits the acceptable response size for any request
@@ -1122,6 +1123,24 @@ test "headed serve defaults to interactive http timeout" {
 test "headless serve keeps shorter default http timeout" {
     var config = try Config.init(std.testing.allocator, "test", .{
         .serve = .{},
+    });
+    defer config.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(DEFAULT_HTTP_TIMEOUT_MS, config.httpTimeout());
+}
+
+test "fetch keeps shorter default http timeout" {
+    var config = try Config.init(std.testing.allocator, "test", .{
+        .fetch = .{ .url = "https://example.com/" },
+    });
+    defer config.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(DEFAULT_HTTP_TIMEOUT_MS, config.httpTimeout());
+}
+
+test "mcp keeps shorter default http timeout" {
+    var config = try Config.init(std.testing.allocator, "test", .{
+        .mcp = .{},
     });
     defer config.deinit(std.testing.allocator);
 
