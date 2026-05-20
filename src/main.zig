@@ -115,7 +115,21 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             sighandler.* = .{ .arena = main_arena };
             try sighandler.install();
 
-            log.debug(.app, "startup", .{ .mode = "serve", .browser_mode = @tagName(browser_mode), .snapshot = app.snapshot.fromEmbedded() });
+            log.debug(.app, "startup", .{
+                .mode = "serve",
+                .requested_browser_mode = @tagName(requested_browser_mode),
+                .browser_mode = @tagName(browser_mode),
+                .snapshot = app.snapshot.fromEmbedded(),
+            });
+            if (fallback_reason != null) {
+                log.info(.app, "serve headed fallback", .{
+                    .host = opts.host,
+                    .port = opts.port,
+                    .runtime = @tagName(browser_mode),
+                    .window = "disabled",
+                    .cdp_browser_runtime = "headless",
+                });
+            }
             const address = std.net.Address.parseIp(opts.host, opts.port) catch |err| {
                 log.fatal(.app, "invalid server address", .{ .err = err, .host = opts.host, .port = opts.port });
                 return args.printUsageAndExit(false);
@@ -138,6 +152,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             const url = opts.url;
             log.debug(.app, "startup", .{
                 .mode = "browse",
+                .requested_browser_mode = @tagName(requested_browser_mode),
                 .browser_mode = @tagName(browser_mode),
                 .url = url,
                 .snapshot = app.snapshot.fromEmbedded(),
@@ -157,7 +172,14 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
         },
         .fetch => |opts| {
             const url = opts.url;
-            log.debug(.app, "startup", .{ .mode = "fetch", .browser_mode = @tagName(browser_mode), .dump_mode = opts.dump_mode, .url = url, .snapshot = app.snapshot.fromEmbedded() });
+            log.debug(.app, "startup", .{
+                .mode = "fetch",
+                .requested_browser_mode = @tagName(requested_browser_mode),
+                .browser_mode = @tagName(browser_mode),
+                .dump_mode = opts.dump_mode,
+                .url = url,
+                .snapshot = app.snapshot.fromEmbedded(),
+            });
 
             var fetch_opts = lp.FetchOpts{
                 .wait_ms = 5000,
