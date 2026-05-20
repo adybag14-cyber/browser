@@ -118,19 +118,56 @@ def build_reference_audit(root: Path | None = None, *, selected_files: list[Path
     }
 
 
+def build_input_error_audit(
+    root: Path | None,
+    selected_files: list[Path] | None,
+    *,
+    error_type: str,
+    message: str,
+) -> dict[str, object]:
+    resolved_root = str(Path.cwd()) if root is None else str(root.expanduser())
+    return {
+        "root": resolved_root,
+        "selected_files": [str(path.expanduser()) for path in selected_files] if selected_files else [],
+        "file_count": 0,
+        "files_with_raw_python": 0,
+        "raw_python_reference_count": 0,
+        "wrapper_reference_count": 0,
+        "wrapper_sidecar_reference_count": 0,
+        "google_wrapper_sidecar_reference_count": 0,
+        "files": [],
+        "error_type": error_type,
+        "error": message,
+    }
+
+
 def render_text_report(audit: dict[str, object]) -> str:
     lines = [
         "Attached Pages Launcher Reference Audit",
         "",
         f"Root: {audit['root']}",
-        f"Files scanned: {audit['file_count']}",
-        f"Files with raw Python launcher references: {audit['files_with_raw_python']}",
-        f"Raw Python launcher references: {audit['raw_python_reference_count']}",
-        f"Wrapper references: {audit['wrapper_reference_count']}",
-        f"Wrapper sidecar references: {audit['wrapper_sidecar_reference_count']}",
-        f"Google-style wrapper sidecar references: {audit['google_wrapper_sidecar_reference_count']}",
-        "",
     ]
+
+    if audit.get("error_type"):
+        lines.extend(
+            [
+                f"Error: {audit['error']}",
+                "",
+            ]
+        )
+        return "\n".join(lines).rstrip() + "\n"
+
+    lines.extend(
+        [
+            f"Files scanned: {audit['file_count']}",
+            f"Files with raw Python launcher references: {audit['files_with_raw_python']}",
+            f"Raw Python launcher references: {audit['raw_python_reference_count']}",
+            f"Wrapper references: {audit['wrapper_reference_count']}",
+            f"Wrapper sidecar references: {audit['wrapper_sidecar_reference_count']}",
+            f"Google-style wrapper sidecar references: {audit['google_wrapper_sidecar_reference_count']}",
+            "",
+        ]
+    )
 
     for file_result in audit["files"]:
         if not file_result["raw_python_reference_count"] and not file_result["wrapper_reference_count"]:
@@ -163,6 +200,9 @@ def collect_failure_reasons(
     require_wrapper_sidecar: bool,
     require_google_wrapper_sidecar: bool,
 ) -> list[str]:
+    if audit.get("error_type"):
+        return [audit["error"]]
+
     failure_reasons: list[str] = []
     if audit["raw_python_reference_count"] > 0 and not allow_raw_launcher:
         failure_reasons.append("raw Python attached-pages launcher references remain")
@@ -173,7 +213,7 @@ def collect_failure_reasons(
     return failure_reasons
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Report stale raw-Python attached-pages launcher references and wrapper-backed sidecar coverage."
     )
@@ -201,11 +241,27 @@ def main() -> int:
         action="store_true",
         help="Return failure unless at least one Google-style wrapper-backed sidecar audit reference is present.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
     root = Path(args.root) if args.root else None
-    audit = build_reference_audit(root, selected_files=selected_files)
+    try:
+        audit = build_reference_audit(root, selected_files=selected_files)
+    except FileNotFoundError as err:
+        audit = build_input_error_audit(
+            root,
+            selected_files,
+            error_type="input_not_found",
+            message=str(err),
+        )
+    except ValueError as err:
+        audit = build_input_error_audit(
+            root,
+            selected_files,
+            error_type="invalid_input",
+            message=str(err),
+        )
+
     failure_reasons = collect_failure_reasons(
         audit,
         allow_raw_launcher=args.allow_raw_launcher,
