@@ -148,6 +148,26 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
             failing_paths,
         )
 
+    def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
+        self.write_contract_files(doc_text="# drifted\n")
+
+        audit = helper.build_google_attached_entrypoint_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        self.assertIn("docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md", summary)
+        self.assertGreater(
+            summary["docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md"][
+                "missing_expectation_count"
+            ],
+            1,
+        )
+        self.assertIn(
+            "issue-specific Google attached-html checker visible",
+            summary["docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md"][
+                "first_missing_purpose"
+            ],
+        )
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(helper_text="# drifted\n")
 
@@ -161,8 +181,10 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
             report,
         )
 
-    def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
-        self.write_contract_files(doc_text="# drifted\n", helper_text="# drifted\n")
+    def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(
+        self,
+    ) -> None:
+        self.write_contract_files(doc_text="# drifted\n")
 
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
@@ -171,6 +193,15 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
         self.assertEqual(1, exit_code)
         payload = json.loads(stdout.getvalue())
         self.assertGreater(payload["missing_count"], 0)
+        self.assertGreater(payload["missing_path_count"], 0)
+        self.assertEqual(
+            "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+            payload["missing_paths"][0]["path"],
+        )
+        self.assertGreater(
+            payload["missing_paths"][0]["missing_expectation_count"],
+            1,
+        )
 
 
 if __name__ == "__main__":
