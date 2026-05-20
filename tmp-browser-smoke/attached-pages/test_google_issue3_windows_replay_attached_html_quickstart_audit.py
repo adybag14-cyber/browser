@@ -594,9 +594,21 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_entrypoint_sidecar_note",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars",
+        "",
+    ),
+    (
         "google_entrypoint_broader_surface_note",
         "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1",
+        "",
+    ),
+    (
+        "google_entrypoint_asset_closure_note",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle",
         "",
     ),
     (
