@@ -165,6 +165,16 @@ def render_text_report(audit: dict[str, object]) -> str:
         "",
     ]
 
+    missing_paths = audit["missing_paths"]
+    if missing_paths:
+        lines.append("Missing paths:")
+        for entry in missing_paths:
+            lines.append(
+                f"- {entry['path']} ({entry['missing_expectation_count']} expectation(s))"
+            )
+            lines.append(f"  First missing purpose: {entry['first_missing_purpose']}")
+        lines.append("")
+
     for result in audit["results"]:
         status = "PASS" if result["exists"] else "FAIL"
         lines.append(f"[{status}] {result['path']}")
