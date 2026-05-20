@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$PreferredInitialPage,
     [string]$BrowserExe,
     [switch]$Json
 )
@@ -149,7 +150,7 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
-    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command ```"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command```""
 }
 
 function Format-AttachedPagesSidecarAuditCommand {
@@ -180,26 +181,43 @@ Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $Summary
 Add-SharedArgument -Arguments $sharedArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values $InputPath
 
+$preferredInitialPageSharedArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $preferredInitialPageSharedArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $preferredInitialPageSharedArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $preferredInitialPageSharedArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedPathArrayArgument -Arguments $preferredInitialPageSharedArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $preferredInitialPageSharedArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+
 $googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
+if ($PreferredInitialPage) {
+    $attachedHtmlFlowArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
 
-$attachedPagesSidecarAuditCommand = Format-AttachedPagesSidecarAuditCommand -RepoRoot $RepoRoot -InputPath $InputPath
+$windowsFullUseAttachedHtmlRouteCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
+$windowsFullUseValidationRouterAttachedHtmlBridgeCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments
+$windowsReplayAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $googleAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
 $googleIssue3AttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
+$attachedPagesSidecarAuditCommand = Format-AttachedPagesSidecarAuditCommand -RepoRoot $RepoRoot -InputPath $InputPath
+$windowsReplayAttachedHtmlQuickstartCommand = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $preferredInitialPageSharedArguments
 $topLevelAttachedHtmlSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_top_level_attached_html_quickstart_validation_surface.ps1' -RepoRootOverride $RepoRoot
+$topLevelShortcutFirstSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_top_level_shortcut_first_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot
 
 $helper = [ordered]@{
     issue = 'Google issue #3 top-level attached HTML quickstart'
     purpose = 'Print the shortest top-level attached-page-first bridge into the suite-router attached-page helper chain while also surfacing the broader attached-html change-area quickstart, attached-page flow helper, the dedicated Google-style attached-page surface check, the issue-specific Google attached-page surface check, the dedicated Google-style attached-page flow helper, the compact attached bundle suite surface helper, the attached bundle proof entrypoint, the matching top-level shortcut-first helper surface, the top-level attached-page catalog quickstart, the dedicated suite-catalog guide, and the suite-catalog-to-top-level attached-page catalog quickstart when that wider localhost route still matters.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    preferred_initial_page = $PreferredInitialPage
     browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     windows_full_use_attached_html_route_note_path = 'docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md'
@@ -226,22 +244,25 @@ $helper = [ordered]@{
     commands = [ordered]@{
         attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html'
+            PreferredInitialPage = $PreferredInitialPage
         }) -RepoRootOverride $RepoRoot
         google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'google-attached-html'
+            PreferredInitialPage = $PreferredInitialPage
         }) -RepoRootOverride $RepoRoot
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
             ChangeArea = 'attached-html-target-bundle'
+            PreferredInitialPage = $PreferredInitialPage
         }) -RepoRootOverride $RepoRoot
         windows_full_use_attached_html_route = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_route.ps1' -Arguments $sharedArguments
-        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $sharedArguments
+        attached_html_change_area_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $preferredInitialPageSharedArguments
         top_level_attached_html_surface_check = $topLevelAttachedHtmlSurfaceCheckCommand
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         attached_pages_sidecar_audit = $attachedPagesSidecarAuditCommand
         google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand
         google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand
         google_attached_html_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments
-        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments
+        attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $preferredInitialPageSharedArguments
         attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $sharedArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $sharedArguments
@@ -265,7 +286,7 @@ $helper = [ordered]@{
         'Use top_level_attached_html_surface_check before trusting the compact attached-page helper map when you want the exact quickstart surface to fail fast on missing notes, bridge helpers, or pinned-bundle companion commands.',
         'Use attached_html_change_area_quickstart when the replay is already reopening from show_headed_validation_suites.ps1 -ChangeArea attached-html and you want the broader attached-page flow helper, the dedicated Google-style attached-page surface check, the issue-specific Google attached-page surface check, and the compact top-level attached-page route surfaced together before dropping deeper into issue #3 helper surfaces.',
         'Use attached_html_flow when the replay still needs the broader attached-page localhost helper visible from that same change-area branch before narrowing into the issue-specific quickstarts or shortcut helpers.',
-        'Use google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page lane and you want the broader dedicated surface checker reprinted before the issue-specific Google checker, the broader Google-style attached-page helper, or its runner handoff.',
+        'Use google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page lane and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.',
         'Use google_issue3_attached_html_surface_check when the replay has already narrowed from the broader Google-shaped attached-page lane into the issue-specific Google attached-page bridge and you want the entrypoint-specific fail-fast checker reprinted before the narrower helper chain.',
         'Use google_attached_html_flow when the replay is already narrowed to the Google-shaped attached-page lane and you want the current attached HTML set, its asset-closure audit, and the saved-page Google runner handoff printed directly from the same compact top-level surface after the broader and issue-specific surface checks have already been reprinted.',
         'Use attached_bundle_suite_surface when the current replay is already pinned to the known three-page compatibility bundle and you want the compact suite-level bundle surface reprinted before the route narrows into the bundle-first helper or the delegated bundle runner.',
@@ -287,8 +308,9 @@ $helper = [ordered]@{
         'Use contextual_flow when RepoRoot, SummaryPath, BrowserExe, or pinned bundle inputs already matter and the next helper surface should keep that replay context aligned before narrowing again.',
         'Use attached_bundle_change_area, then attached_bundle_suite_surface, then attached_bundle_proof_entrypoint, and only then attached_bundle_first when the current replay should stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only helper chain.',
         'Use safe_route_entrypoints only after the route has already narrowed enough that the wrapper-heavy issue #3 command surface is the next useful layer.',
+        'Pass -PreferredInitialPage when the same saved page should stay first through the change-area quickstart, broader attached-page flow helper, dedicated Google-style attached-page flow helper, replay-side attached-page quickstart, and compact bundle-suite surface instead of falling back to auto-selection.',
         'Pass -BrowserExe when the shorter issue #3 attached-page ladder should stay pinned to a non-default Windows headed build through the broader Google-shaped flow helper, the bundle-suite surface, the bundle-first bridge, and the delegated bundle route instead of drifting back to .\\zig-out\\bin\\lightpanda.exe.',
-        'Keep the Windows full-use attached-html route note, the attached-html change-area quickstart note, the validation-router attached-page quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the Google-style attached HTML flow note, the Google-style attached HTML entrypoint note, the attached bundle reference note, the attached bundle quickstart note, the attached bundle checklist note, the attached bundle suite-surface note, the attached bundle proof note, the top-level shortcut-first note, the top-level shortcut bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the suite-catalog guide note, the top-level attached-page companion note, the suite-router attached-page quickstart note, the Windows replay quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
+        'Keep the Windows full-use attached-html route note, the attached-html change-area quickstart note, the validation-router attached-page quickstart note, the top-level attached-page quickstart note, the top-level attached-page bridge note, the Google-style attached HTML flow note, the Google-style attached HTML entrypoint note, the attached bundle reference note, the attached bundle quickstart note, the attached bundle checklist note, the attached bundle suite-surface note, the attached bundle proof note, the top-level shortcut-first note, the top-level shortcut bridge note, the top-level attached-page catalog quickstart note, the suite-catalog-to-top-level attached-page catalog quickstart note, the dedicated suite-catalog guide, the top-level attached-page companion note, the suite-router attached-page quickstart note, the Windows replay quickstart note, and the validation-chain note nearby when you want the written route beside these commands.'
     )
 }
 
@@ -320,6 +342,9 @@ if ($helper.repo_root) {
 }
 if ($helper.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($helper.summary_path)"))
+}
+if ($helper.preferred_initial_page) {
+    Write-Host (("Preferred first page: {0}") -f $helper.preferred_initial_page)
 }
 if ($helper.browser_exe) {
     Write-Host (("Browser exe: {0}") -f $helper.browser_exe)
