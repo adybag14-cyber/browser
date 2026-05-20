@@ -77,6 +77,11 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertEqual("/named/alpha-landing-beta", self.manifest[1]["slug_route"])
         self.assertNotEqual(self.manifest[0]["alias_route"], self.manifest[1]["alias_route"])
         self.assertEqual("/raw/nested/beta.html", self.manifest[1]["raw_path"])
+        self.assertEqual(0, self.manifest[0]["missing_asset_count"])
+        self.assertEqual(0, self.manifest[0]["missing_sidecar_directory_count"])
+        self.assertEqual(["ready"], self.manifest[0]["replay_health_tags"])
+        self.assertTrue(self.manifest[0]["replay_ready"])
+        self.assertEqual("ready for localhost replay", self.manifest[0]["replay_health"])
 
     def test_catalog_manifest_and_sidecar_and_asset_routes_respond(self):
         status, _, body = self.request("GET", "/")
@@ -89,6 +94,8 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertIn("/sidecars.json", text)
         self.assertIn("/audit.json", text)
         self.assertIn("Current replay audit", text)
+        self.assertIn("replay health:", text)
+        self.assertIn("ready for localhost replay", text)
 
         status, headers, body = self.request("GET", "/manifest.json")
         self.assertEqual(200, status)
@@ -188,6 +195,7 @@ class AttachedPagesServerTests(unittest.TestCase):
         self.assertEqual(0, exit_code)
         manifest = json.loads(buffer.getvalue())
         self.assertEqual(self.manifest, manifest)
+        self.assertEqual(["ready"], manifest[0]["replay_health_tags"])
 
     def test_single_file_root_preserves_assets_and_manifest(self):
         single_root = self.root / "nested" / "beta.html"
@@ -235,6 +243,7 @@ class AttachedPagesServerTests(unittest.TestCase):
                 payload = json.loads(response.read().decode("utf-8"))
                 self.assertEqual(1, len(payload))
                 self.assertEqual("beta.html", payload[0]["file"])
+                self.assertEqual(["ready"], payload[0]["replay_health_tags"])
             finally:
                 connection.close()
         finally:
@@ -432,6 +441,7 @@ class AttachedPagesServerTests(unittest.TestCase):
         manifest = json.loads(buffer.getvalue())
         self.assertEqual(1, len(manifest))
         self.assertEqual("beta.html", manifest[0]["file"])
+        self.assertEqual(["ready"], manifest[0]["replay_health_tags"])
 
     def test_asset_audit_detects_missing_assets_and_follows_nested_references(self):
         (self.root / "nested" / "beta.html").write_text(
@@ -561,6 +571,15 @@ class AttachedPagesServerTests(unittest.TestCase):
         text = body.decode("utf-8")
         self.assertIn("missing sidecar bundles: <strong>1</strong>", text)
 
+        status, _, body = self.request("GET", "/manifest.json")
+        self.assertEqual(200, status)
+        manifest = json.loads(body.decode("utf-8"))
+        beta_manifest = next(entry for entry in manifest if entry["file"] == "nested/beta.html")
+        self.assertEqual(1, beta_manifest["missing_sidecar_directory_count"])
+        self.assertFalse(beta_manifest["replay_ready"])
+        self.assertIn("missing-sidecars", beta_manifest["replay_health_tags"])
+        self.assertIn("missing sidecars: 1", beta_manifest["replay_health"])
+
     def test_audit_routes_surface_missing_and_external_dependency_counts(self):
         self.server.shutdown()
         self.server.server_close()
@@ -596,6 +615,18 @@ class AttachedPagesServerTests(unittest.TestCase):
         text = body.decode("utf-8")
         self.assertIn("missing local assets: <strong>1</strong>", text)
         self.assertIn("external dependencies: <strong>1</strong>", text)
+
+        status, _, body = self.request("GET", "/manifest.json")
+        self.assertEqual(200, status)
+        manifest = json.loads(body.decode("utf-8"))
+        beta_manifest = next(entry for entry in manifest if entry["file"] == "nested/beta.html")
+        self.assertEqual(1, beta_manifest["missing_asset_count"])
+        self.assertEqual(1, beta_manifest["external_asset_count"])
+        self.assertFalse(beta_manifest["replay_ready"])
+        self.assertIn("missing-assets", beta_manifest["replay_health_tags"])
+        self.assertIn("external-assets", beta_manifest["replay_health_tags"])
+        self.assertIn("missing assets: 1", beta_manifest["replay_health"])
+        self.assertIn("external assets: 1", beta_manifest["replay_health"])
 
     def test_asset_audit_cli_exit_codes_and_allow_missing_flag(self):
         (self.root / "alpha.html").write_text(
