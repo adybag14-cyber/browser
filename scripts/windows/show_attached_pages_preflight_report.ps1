@@ -2,6 +2,7 @@
 param(
     [Parameter(ParameterSetName = "InputPath")]
     [string[]]$InputPath,
+    [string]$PreferredInitialPage,
     [string]$RepoRoot,
     [string]$PythonExe = "python",
     [switch]$GoogleStyle,
@@ -42,6 +43,9 @@ if ($PSCmdlet.ParameterSetName -eq "InputPath") {
     }
 }
 
+if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
+    $reportArgs += @("--preferred-initial-page", $PreferredInitialPage)
+}
 if ($GoogleStyle) {
     $reportArgs += "--google-style"
 }
