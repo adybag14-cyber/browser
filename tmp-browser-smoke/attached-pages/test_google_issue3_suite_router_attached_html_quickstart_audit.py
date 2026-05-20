@@ -121,6 +121,40 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
             failing_snippets,
         )
 
+    def test_build_audit_reports_missing_bundle_suite_surface_line(self) -> None:
+        self.write_contract_files(
+            doc_text=DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_suite_catalog_helper_line(self) -> None:
+        self.write_contract_files(
+            doc_text=DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1\n",
+                "",
+            )
+        )
+
+        audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_catalog_entrypoints.ps1",
+            failing_snippets,
+        )
+
     def test_build_audit_reports_missing_issue_specific_google_output(self) -> None:
         self.write_contract_files(
             helper_text=HELPER_SNIPPET.replace(
