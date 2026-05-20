@@ -83,7 +83,7 @@ function Get-SubmitEventRecord([string]$LogPath, [string]$ExpectedText) {
   }
 
   $line = $matches[-1]
-  $match = [regex]::Match($line, "GOOGLE_ENTER_SUBMIT q=(?<query>[^ ]*) phase=(?<phase>[^ ]*) events=(?<events>.*)$")
+  $match = [regex]::Match($line, "GOOGLE_ENTER_SUBMIT q=(?<query>[^ ]*) phase=(?<phase>[^ ]*) active_name=(?<active_name>[^ ]*) active_id=(?<active_id>[^ ]*) selection=(?<selection>[^ ]*) events=(?<events>.*)$")
   if (-not $match.Success) {
     throw "google Enter-order probe could not parse the submit event record"
   }
@@ -92,6 +92,9 @@ function Get-SubmitEventRecord([string]$LogPath, [string]$ExpectedText) {
     Line = $line
     Query = $match.Groups["query"].Value
     Phase = $match.Groups["phase"].Value
+    ActiveName = $match.Groups["active_name"].Value
+    ActiveId = $match.Groups["active_id"].Value
+    Selection = $match.Groups["selection"].Value
     Events = $match.Groups["events"].Value
   }
 }
@@ -229,11 +232,15 @@ $typedWorked = $false
 $keydownHeldWithoutSubmit = $false
 $submittedWorked = $false
 $submitPhase = $null
+$submitActiveName = $null
+$submitActiveId = $null
+$submitSelection = $null
 $eventLog = $null
 $submitAfterKeydown = $false
 $submitAfterKeypress = $false
 $submitRecord = $null
 $submitRecordAfterKeyDown = $null
+$expectedSelection = "{0}-{0}" -f $InputText.Length
 $failure = $null
 
 try {
@@ -274,6 +281,9 @@ try {
   $submitRecord = Get-SubmitEventRecord -LogPath $serverErr -ExpectedText $InputText
   if ($submitRecord) {
     $submitPhase = $submitRecord.Phase
+    $submitActiveName = $submitRecord.ActiveName
+    $submitActiveId = $submitRecord.ActiveId
+    $submitSelection = $submitRecord.Selection
     $eventLog = $submitRecord.Events
   }
   $submittedWorked = ($null -ne $titleAfterSubmit) -and ($null -ne $submitRecord)
@@ -282,6 +292,9 @@ try {
   if ($null -eq $submitRecord) { throw "probe server did not capture the Google-style submit log" }
   if ($submitRecord.Query -ne $InputText) { throw "probe server captured the wrong submitted query text" }
   if ($submitPhase -ne "keypress") { throw "expected submit phase keypress, got '$submitPhase'" }
+  if ([string]::IsNullOrWhiteSpace($submitActiveName) -or $submitActiveName -eq "-") { throw "probe server did not capture the active field name at submit time" }
+  if ($submitActiveName -ne "q" -and $submitActiveId -ne "q") { throw "Google-style submit lost the query input as the active target" }
+  if ([string]::IsNullOrWhiteSpace($submitSelection) -or $submitSelection -eq "---" -or $submitSelection -ne $expectedSelection) { throw "Google-style submit did not preserve the expected caret position" }
   if ([string]::IsNullOrWhiteSpace($eventLog)) { throw "probe server did not capture the Enter event log" }
 
   $focusIndex = $eventLog.IndexOf("FOCUS")
@@ -332,6 +345,9 @@ try {
     keydown_held_without_submit = $keydownHeldWithoutSubmit
     submitted_worked = $submittedWorked
     submit_phase = $submitPhase
+    submit_active_name = $submitActiveName
+    submit_active_id = $submitActiveId
+    submit_selection = $submitSelection
     event_log = $eventLog
     submit_record = if ($submitRecord) { $submitRecord.Line } else { $null }
     submit_after_keydown = $submitAfterKeydown
