@@ -26,6 +26,7 @@ const Host = @import("sys/host.zig").Host;
 const Snapshot = @import("browser/js/Snapshot.zig");
 const Platform = @import("browser/js/Platform.zig");
 const Display = @import("display/Display.zig");
+const log = @import("log.zig");
 const Telemetry = @import("telemetry/telemetry.zig").Telemetry;
 const RobotStore = @import("browser/Robots.zig").RobotStore;
 
@@ -46,6 +47,39 @@ robots: RobotStore,
 app_dir_path: ?[]const u8,
 host: ?*Host = null,
 shutdown: bool = false,
+
+fn resolvedProfileDirLabel(path: ?[]const u8) []const u8 {
+    return path orelse "(unavailable)";
+}
+
+fn displayBackendLabel(display: *const Display) []const u8 {
+    return @tagName(std.meta.activeTag(display.backend));
+}
+
+fn logDisplayRuntimeSelection(app: *const App) void {
+    if (app.display.requested_mode != .headed) {
+        return;
+    }
+
+    const runtime_active = app.display.runtime_mode == .headed;
+    const payload = .{
+        .requested = @tagName(app.display.requested_mode),
+        .runtime = @tagName(app.display.runtime_mode),
+        .display_backend = displayBackendLabel(&app.display),
+        .native_surface_active = runtime_active,
+        .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+        .window_width = app.display.default_viewport.width,
+        .window_height = app.display.default_viewport.height,
+        .snapshot = app.snapshot.fromEmbedded(),
+    };
+
+    if (runtime_active) {
+        log.info(.app, "display runtime selected", payload);
+        return;
+    }
+
+    log.warn(.app, "display runtime fallback", payload);
+}
 
 pub fn init(allocator: Allocator, config: *const Config, host: ?*Host) !*App {
     const app = try allocator.create(App);
@@ -80,6 +114,7 @@ pub fn init(allocator: Allocator, config: *const Config, host: ?*Host) !*App {
     else
         HostPaths.resolveProfileDir(allocator, config.profileDir());
     app.display.setAppDataPath(app.app_dir_path);
+    logDisplayRuntimeSelection(app);
 
     app.telemetry = try Telemetry.init(app, config.mode);
     errdefer app.telemetry.deinit();
