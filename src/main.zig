@@ -228,6 +228,23 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 log.fatal(.app, "server run error", .{ .err = err });
                 return err;
             };
+            log.info(.app, "serve finished", .{
+                .host = opts.host,
+                .port = opts.port,
+                .requested = @tagName(requested_browser_mode),
+                .runtime = @tagName(browser_mode),
+                .display_backend = display_backend,
+                .native_surface_expected = native_headed_surface_expected,
+                .native_surface_active = headed_runtime_active,
+                .target_class = @tagName(lp.build_config.target_class),
+                .os = @tagName(builtin.os.tag),
+                .window_closed = app.display.userClosed(),
+                .shutdown_requested = app.shutdown,
+                .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                .window_width = args.windowWidth(),
+                .window_height = args.windowHeight(),
+                .snapshot = app.snapshot.fromEmbedded(),
+            });
         },
         .browse => |opts| {
             const url = opts.url;
@@ -290,6 +307,24 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 log.fatal(.app, "browse error", .{ .err = err, .url = url });
                 return err;
             };
+            log.info(.app, "browse finished", .{
+                .url = url,
+                .requested = @tagName(requested_browser_mode),
+                .runtime = @tagName(browser_mode),
+                .display_backend = display_backend,
+                .native_surface_expected = native_headed_surface_expected,
+                .native_surface_active = headed_runtime_active,
+                .target_class = @tagName(lp.build_config.target_class),
+                .os = @tagName(builtin.os.tag),
+                .window_closed = app.display.userClosed(),
+                .shutdown_requested = app.shutdown,
+                .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                .window_width = args.windowWidth(),
+                .window_height = args.windowHeight(),
+                .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
+                .snapshot = app.snapshot.fromEmbedded(),
+            });
         },
         .fetch => |opts| {
             const url = opts.url;
