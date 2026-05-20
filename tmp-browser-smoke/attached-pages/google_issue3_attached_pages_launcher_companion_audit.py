@@ -386,21 +386,22 @@ def resolve_repo_root(root: str | None) -> Path:
 
 
 def summarize_missing_paths(results: list[dict[str, object]]) -> list[dict[str, object]]:
-    missing_by_path: dict[str, list[str]] = {}
+    missing_by_path: dict[str, list[dict[str, object]]] = {}
 
     for result in results:
         if result["exists"]:
             continue
-        missing_by_path.setdefault(result["path"], []).append(result["purpose"])
+        missing_by_path.setdefault(result["path"], []).append(result)
 
     summary: list[dict[str, object]] = []
     for path in sorted(missing_by_path):
-        purposes = missing_by_path[path]
+        entries = missing_by_path[path]
         summary.append(
             {
                 "path": path,
-                "missing_expectation_count": len(purposes),
-                "first_missing_purpose": purposes[0],
+                "missing_expectation_count": len(entries),
+                "first_missing_purpose": entries[0]["purpose"],
+                "first_missing_snippet": entries[0]["snippet"],
             }
         )
 
@@ -465,6 +466,7 @@ def render_text_report(audit: dict[str, object]) -> str:
                 f"- {entry['path']}: {entry['missing_expectation_count']} missing expectation(s)"
             )
             lines.append(f"  first gap: {entry['first_missing_purpose']}")
+            lines.append(f"  first snippet: {entry['first_missing_snippet']}")
 
     return "\n".join(lines).rstrip() + "\n"
 
