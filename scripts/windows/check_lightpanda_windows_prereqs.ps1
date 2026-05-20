@@ -11,6 +11,26 @@ function Write-Status {
     Write-Host ("[{0}] {1} - {2}" -f $mark, $Name, $Details)
 }
 
+function Get-CommandVersion {
+    param(
+        [string]$Command,
+        [string[]]$Arguments
+    )
+
+    try {
+        $output = & $Command @Arguments 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+        if ($null -eq $output) {
+            return $null
+        }
+        return ($output | Select-Object -First 1).ToString().Trim()
+    } catch {
+        return $null
+    }
+}
+
 $allOk = $true
 
 # 1) Developer mode (enables non-admin symlink creation on many setups)
@@ -43,18 +63,30 @@ Write-Status "SymlinkCreate" $symlinkOk "Create symbolic links in current shell"
 if (-not $symlinkOk) { $allOk = $false }
 
 # 3) Zig
-$zigVersion = $null
-try {
-    $zigVersion = (zig version).Trim()
-} catch {
-    $zigVersion = $null
-}
+$zigVersion = Get-CommandVersion -Command "zig" -Arguments @("version")
 $zigOk = ($null -ne $zigVersion -and $zigVersion.Length -gt 0)
 $zigDetails = if ($zigOk) { "zig {0}" -f $zigVersion } else { "zig not found in PATH" }
 Write-Status "Zig" $zigOk $zigDetails
 if (-not $zigOk) { $allOk = $false }
 
-# 4) WSL availability (recommended fallback workflow)
+# 4) Python availability for localhost smoke probes and attached-pages replay
+$pythonVersion = Get-CommandVersion -Command "python" -Arguments @("--version")
+$pyLauncherVersion = if ($null -eq $pythonVersion) { Get-CommandVersion -Command "py" -Arguments @("-3", "--version") } else { $null }
+$python3Version = if ($null -eq $pythonVersion -and $null -eq $pyLauncherVersion) { Get-CommandVersion -Command "python3" -Arguments @("--version") } else { $null }
+$pythonOk = ($null -ne $pythonVersion -and $pythonVersion.Length -gt 0)
+$pythonDetails = if ($pythonOk) {
+    "{0} (matches the python-based localhost smoke and attached-pages scripts)" -f $pythonVersion
+} elseif ($null -ne $pyLauncherVersion -and $pyLauncherVersion.Length -gt 0) {
+    "{0} available through 'py -3', but repo smoke scripts invoke 'python'; add a PATH alias or launcher shim" -f $pyLauncherVersion
+} elseif ($null -ne $python3Version -and $python3Version.Length -gt 0) {
+    "{0} available through 'python3', but repo smoke scripts invoke 'python'; add a PATH alias or launcher shim" -f $python3Version
+} else {
+    "python not found in PATH; localhost smoke probes and attached-pages replay will fail to host their local pages"
+}
+Write-Status "Python" $pythonOk $pythonDetails
+if (-not $pythonOk) { $allOk = $false }
+
+# 5) WSL availability (recommended fallback workflow)
 $wslOk = $false
 try {
     $null = wsl.exe --status 2>$null
@@ -67,11 +99,11 @@ Write-Status "WSL" $wslOk $wslDetails
 
 if ($allOk) {
     Write-Host ""
-    Write-Host "Windows prerequisites look good for local Lightpanda development."
+    Write-Host "Windows prerequisites look good for local Lightpanda development and localhost headed validation."
     exit 0
 }
 
 Write-Host ""
 Write-Host "One or more required prerequisites failed."
-Write-Host "See docs/WINDOWS_FULL_USE.md for remediation."
+Write-Host "See docs/WINDOWS_FULL_USE.md for remediation, especially before running localhost smoke or attached-pages replay."
 exit 1
