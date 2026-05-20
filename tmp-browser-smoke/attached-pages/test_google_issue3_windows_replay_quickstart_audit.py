@@ -48,6 +48,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_windows_validation_bridge_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_windows_validation_bridge_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "",
+    ),
+    (
         "missing_launcher_companion_repo_root_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'",
