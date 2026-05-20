@@ -53,7 +53,12 @@ def normalize_inputs(root: Path | None = None, selected_files: list[Path] | None
     raise FileNotFoundError(f"bundle root does not exist: {resolved_root}")
 
 
-def build_repo_root_error_audit(root: Path | None, selected_files: list[Path] | None, error: FileNotFoundError) -> dict[str, object]:
+def build_input_error_audit(
+    root: Path | None,
+    selected_files: list[Path] | None,
+    error_type: str,
+    error: FileNotFoundError | ValueError,
+) -> dict[str, object]:
     bundle_root = ""
     if root is not None:
         bundle_root = str(Path(root).expanduser().resolve(strict=False))
@@ -66,7 +71,7 @@ def build_repo_root_error_audit(root: Path | None, selected_files: list[Path] | 
         "missing_sidecar_path_count": 0,
         "missing_sidecar_paths": [],
         "fixtures": [],
-        "error_type": "repo_root_not_found",
+        "error_type": error_type,
         "error": str(error),
     }
 
@@ -237,13 +242,13 @@ def build_sidecar_audit(root: Path | None = None, *, selected_files: list[Path] 
 
 
 def render_text_report(audit: dict[str, object]) -> str:
-    if audit.get("error_type") == "repo_root_not_found":
+    if audit.get("error_type"):
         return "\n".join(
             [
                 "Attached Pages Sidecar Audit",
                 "",
                 f"Bundle root: {audit['bundle_root']}",
-                "Error: repo_root_not_found",
+                f"Error: {audit['error_type']}",
                 str(audit["error"]),
                 "",
             ]
@@ -281,7 +286,7 @@ def render_text_report(audit: dict[str, object]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Report whether attached HTML exports still have their expected sibling _files directories."
     )
@@ -299,14 +304,16 @@ def main() -> int:
         action="store_true",
         help="Return success even when one or more expected sidecar directories are missing.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
     root = Path(args.root) if args.root else None
     try:
         audit = build_sidecar_audit(root, selected_files=selected_files)
     except FileNotFoundError as error:
-        audit = build_repo_root_error_audit(root, selected_files, error)
+        audit = build_input_error_audit(root, selected_files, "repo_root_not_found", error)
+    except ValueError as error:
+        audit = build_input_error_audit(root, selected_files, "invalid_input", error)
 
     if args.json:
         print(json.dumps(audit, indent=2))
