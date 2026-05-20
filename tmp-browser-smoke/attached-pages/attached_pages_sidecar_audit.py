@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import re
+from collections import defaultdict
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
@@ -129,6 +130,7 @@ def build_sidecar_audit(root: Path | None = None, *, selected_files: list[Path] 
     bundle_root, html_files = normalize_inputs(root, selected_files)
     fixture_results: list[dict[str, object]] = []
     fixtures_with_missing_sidecars = 0
+    missing_sidecar_summary: dict[str, dict[str, object]] = {}
 
     for html_path in html_files:
         text = html_path.read_text(encoding="utf-8", errors="ignore")
@@ -171,6 +173,18 @@ def build_sidecar_audit(root: Path | None = None, *, selected_files: list[Path] 
         missing_sidecars = [entry for entry in sidecar_entries if not entry["exists"]]
         if missing_sidecars:
             fixtures_with_missing_sidecars += 1
+            for entry in missing_sidecars:
+                summary = missing_sidecar_summary.setdefault(
+                    entry["expected_path"],
+                    {
+                        "expected_path": entry["expected_path"],
+                        "sidecar_dir": entry["sidecar_dir"],
+                        "fixtures": set(),
+                        "assets": set(),
+                    },
+                )
+                summary["fixtures"].add(rel_path)
+                summary["assets"].update(entry["sample_assets"])
 
         fixture_results.append(
             {
@@ -183,10 +197,26 @@ def build_sidecar_audit(root: Path | None = None, *, selected_files: list[Path] 
             }
         )
 
+    missing_sidecar_paths = []
+    for expected_path in sorted(missing_sidecar_summary):
+        entry = missing_sidecar_summary[expected_path]
+        fixtures = sorted(entry["fixtures"])
+        missing_sidecar_paths.append(
+            {
+                "expected_path": expected_path,
+                "sidecar_dir": entry["sidecar_dir"],
+                "missing_fixture_count": len(fixtures),
+                "first_missing_fixture": fixtures[0],
+                "sample_assets": sorted(entry["assets"])[:10],
+            }
+        )
+
     return {
         "bundle_root": str(bundle_root),
         "fixture_count": len(fixture_results),
         "fixtures_with_missing_sidecars": fixtures_with_missing_sidecars,
+        "missing_sidecar_path_count": len(missing_sidecar_paths),
+        "missing_sidecar_paths": missing_sidecar_paths,
         "fixtures": fixture_results,
     }
 
@@ -200,6 +230,14 @@ def render_text_report(audit: dict[str, object]) -> str:
         f"Fixtures with missing sidecars: {audit['fixtures_with_missing_sidecars']}",
         "",
     ]
+    if audit["missing_sidecar_paths"]:
+        lines.append("Missing sidecar paths:")
+        for entry in audit["missing_sidecar_paths"]:
+            lines.append(f"- {entry['expected_path']} ({entry['missing_fixture_count']} fixtures)")
+            lines.append(f"  first fixture: {entry['first_missing_fixture']}")
+            for sample in entry["sample_assets"][:3]:
+                lines.append(f"  sample: {sample}")
+        lines.append("")
     for fixture in audit["fixtures"]:
         lines.append(f"Fixture: {fixture['display_path']}")
         if fixture["sidecar_directory_count"] == 0:
