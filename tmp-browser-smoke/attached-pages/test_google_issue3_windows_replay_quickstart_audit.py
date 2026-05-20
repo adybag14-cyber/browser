@@ -192,6 +192,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_router_shortcut_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "Write-Host ((\"  Router shortcut:           {0}\") -f $helper.commands.suite_router_shortcut_first)",
+        "",
+    ),
+    (
         "missing_route_shortcut_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "Write-Host ((\"  Route shortcut:            {0}\") -f $helper.commands.replay_route_shortcut_entrypoint)",
