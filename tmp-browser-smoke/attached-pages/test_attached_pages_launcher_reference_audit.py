@@ -1,7 +1,6 @@
 import contextlib
 import io
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -82,20 +81,16 @@ class AttachedPagesLauncherReferenceAuditTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        original_argv = sys.argv[:]
         buffer = io.StringIO()
-        try:
-            sys.argv = [
-                str(Path(launcher_audit.__file__)),
-                "--root",
-                str(self.root),
-                "--json",
-                "--require-google-wrapper-sidecar",
-            ]
-            with contextlib.redirect_stdout(buffer):
-                exit_code = launcher_audit.main()
-        finally:
-            sys.argv = original_argv
+        with contextlib.redirect_stdout(buffer):
+            exit_code = launcher_audit.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "--json",
+                    "--require-google-wrapper-sidecar",
+                ]
+            )
 
         self.assertEqual(1, exit_code)
         payload = json.loads(buffer.getvalue())
@@ -112,21 +107,17 @@ class AttachedPagesLauncherReferenceAuditTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        original_argv = sys.argv[:]
         stdout = io.StringIO()
         stderr = io.StringIO()
-        try:
-            sys.argv = [
-                str(Path(launcher_audit.__file__)),
-                "--root",
-                str(self.root),
-                "--require-wrapper-sidecar",
-                "--require-google-wrapper-sidecar",
-            ]
-            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                exit_code = launcher_audit.main()
-        finally:
-            sys.argv = original_argv
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exit_code = launcher_audit.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "--require-wrapper-sidecar",
+                    "--require-google-wrapper-sidecar",
+                ]
+            )
 
         self.assertEqual(0, exit_code)
         self.assertEqual("", stderr.getvalue())
@@ -138,24 +129,49 @@ class AttachedPagesLauncherReferenceAuditTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        original_argv = sys.argv[:]
         stdout = io.StringIO()
         stderr = io.StringIO()
-        try:
-            sys.argv = [
-                str(Path(launcher_audit.__file__)),
-                "--root",
-                str(self.root),
-                "--allow-raw-launcher",
-                "--require-google-wrapper-sidecar",
-            ]
-            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                exit_code = launcher_audit.main()
-        finally:
-            sys.argv = original_argv
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exit_code = launcher_audit.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "--allow-raw-launcher",
+                    "--require-google-wrapper-sidecar",
+                ]
+            )
 
         self.assertEqual(1, exit_code)
         self.assertIn("FAIL: no Google-style wrapper-backed sidecar audit references were found", stderr.getvalue())
+
+    def test_cli_json_output_reports_missing_root_cleanly(self):
+        missing_root = self.root / "missing-root"
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = launcher_audit.main(["--root", str(missing_root), "--json"])
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual("input_not_found", payload["error_type"])
+        self.assertEqual(str(missing_root), payload["root"])
+        self.assertEqual([], payload["files"])
+        self.assertEqual([f"root does not exist: {missing_root.resolve()}"], payload["failure_reasons"])
+
+    def test_cli_text_output_reports_missing_root_cleanly(self):
+        missing_root = self.root / "missing-root"
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exit_code = launcher_audit.main(["--root", str(missing_root)])
+
+        self.assertEqual(1, exit_code)
+        report = stdout.getvalue()
+        self.assertIn("Attached Pages Launcher Reference Audit", report)
+        self.assertIn(f"Root: {missing_root}", report)
+        self.assertIn("Error: root does not exist:", report)
+        self.assertIn(f"FAIL: root does not exist: {missing_root.resolve()}", stderr.getvalue())
 
 
 if __name__ == "__main__":
