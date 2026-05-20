@@ -66,6 +66,48 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_replay_attached_surface_check_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "",
+    ),
+    (
+        "missing_windows_full_use_route_surface_check_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "",
+    ),
+    (
+        "missing_windows_validation_bridge_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_windows_catalog_quickstart_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_full_use_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_validation_router_quickstart_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_replay_attached_helper_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_launcher_surface_check_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "attached_pages_launcher_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "",
+    ),
+    (
         "missing_launcher_companion_wiring",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments",
