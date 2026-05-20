@@ -108,6 +108,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_surface_check_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Google surface check:     {0}") -f $helper.commands.google_attached_html_surface_check)',
+        "",
+    ),
+    (
         "google_attached_flow_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "google_attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
