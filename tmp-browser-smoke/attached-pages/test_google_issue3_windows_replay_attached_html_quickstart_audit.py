@@ -635,6 +635,24 @@ DRIFT_CASES = (
         'Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)',
         "",
     ),
+    (
+        "google_entrypoint_sidecar_companion_guidance",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "Use google_attached_html_sidecar_audit when the current saved export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the broader surface check or the deeper asset audit.",
+        "drifted note",
+    ),
+    (
+        "google_entrypoint_broader_surface_companion_guidance",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "Use broader_google_attached_html_surface_check when the replay is already narrowed to the Google-shaped attached-page route and you want the wider fail-fast helper surface reprinted after the sidecar audit but before the deeper asset audit or the narrower issue-specific checker.",
+        "drifted note",
+    ),
+    (
+        "google_entrypoint_asset_closure_companion_guidance",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.",
+        "drifted note",
+    ),
 )
 
 
