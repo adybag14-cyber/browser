@@ -174,7 +174,7 @@ def resolve_repo_root(root: str | None) -> Path:
 def build_route_audit(repo_root: Path) -> dict[str, object]:
     results: list[dict[str, object]] = []
     missing_count = 0
-    missing_by_path: dict[str, list[str]] = defaultdict(list)
+    missing_by_path: dict[str, list[dict[str, object]]] = defaultdict(list)
 
     for expectation in EXPECTATIONS:
         full_path = repo_root / expectation["path"]
@@ -183,26 +183,27 @@ def build_route_audit(repo_root: Path) -> dict[str, object]:
         else:
             exists = expectation["snippet"] in full_path.read_text(encoding="utf-8", errors="ignore")
 
+        result = {
+            "path": expectation["path"],
+            "purpose": expectation["purpose"],
+            "exists": exists,
+            "snippet": expectation["snippet"],
+        }
+        results.append(result)
+
         if not exists:
             missing_count += 1
-            missing_by_path[expectation["path"]].append(expectation["purpose"])
-
-        results.append(
-            {
-                "path": expectation["path"],
-                "purpose": expectation["purpose"],
-                "exists": exists,
-                "snippet": expectation["snippet"],
-            }
-        )
+            missing_by_path[expectation["path"]].append(result)
 
     missing_paths = [
         {
             "path": path,
-            "missing_expectation_count": len(purposes),
-            "first_missing_purpose": purposes[0],
+            "missing_expectation_count": len(entries),
+            "first_missing_purpose": entries[0]["purpose"],
+            "first_missing_snippet": entries[0]["snippet"],
+            "missing_snippets": [entry["snippet"] for entry in entries],
         }
-        for path, purposes in missing_by_path.items()
+        for path, entries in sorted(missing_by_path.items())
     ]
 
     return {
@@ -226,12 +227,13 @@ def render_text_report(audit: dict[str, object]) -> str:
     ]
 
     if audit["missing_paths"]:
-        lines.append("Missing paths:")
+        lines.append("Missing path summary:")
         for entry in audit["missing_paths"]:
             lines.append(
                 f"  - {entry['path']} ({entry['missing_expectation_count']} missing expectations)"
             )
             lines.append(f"    First missing purpose: {entry['first_missing_purpose']}")
+            lines.append(f"    First snippet: {entry['first_missing_snippet']}")
         lines.append("")
 
     for result in audit["results"]:
