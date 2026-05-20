@@ -218,6 +218,19 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
             summary["docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md"]["first_missing_purpose"],
         )
 
+    def test_text_report_surfaces_grouped_missing_paths(self) -> None:
+        self.write_contract_files(doc_text="# drifted\n")
+
+        audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
+        report = helper.render_text_report(audit)
+
+        self.assertIn("Missing paths:", report)
+        self.assertIn("docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md (", report)
+        self.assertIn(
+            "First missing purpose: The suite-router attached HTML quickstart keeps its fail-fast checker visible before the narrower route is trusted.",
+            report,
+        )
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(helper_text="# drifted\n")
 
@@ -226,6 +239,7 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
 
         self.assertIn("Google Issue #3 Suite-Router Attached HTML Quickstart Audit", report)
         self.assertIn("Missing expectations:", report)
+        self.assertIn("Missing paths:", report)
         self.assertIn("[FAIL] scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1", report)
 
     def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(self) -> None:
