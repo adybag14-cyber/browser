@@ -120,6 +120,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_issue_bridge_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
         "google_issue_bridge_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)',
