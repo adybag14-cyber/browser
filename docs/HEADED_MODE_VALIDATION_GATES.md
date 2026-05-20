@@ -167,6 +167,7 @@ localhost pages, keep these written route maps nearby before widening into the
 broader manual follow-up:
 
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
@@ -176,7 +177,11 @@ Use the Windows full-use attached HTML route note when the replay is reopening
 directly from `docs/WINDOWS_FULL_USE.md` and you want the route-level surface
 check, the Windows-to-validation-router bridge, and the Windows-first attached
 catalog quickstart visible before the narrower attached-page helper family.
-Use the target-bundle quickstart when the current inputs are still the pinned
+Use the validation-router quickstart note when the replay is reopening from the
+shared router, the Windows-first bridge, or the saved issue `#3` ladder and you
+want the router-level fail-fast checker plus the shorter attached-page helper
+order visible before the top-level quickstart takes over. Use the
+target-bundle quickstart when the current inputs are still the pinned
 three-page compatibility bundle and you want the bundle-first entrypoint,
 bundle checker, bundle flow helper, and broader attached-page fallbacks kept on
 one compact ladder. Use the Google attached-html flow note when the replay
@@ -210,6 +215,7 @@ reopen one of these notes first so the broader route stays visible beside the
 pinned three-page bundle lane:
 
 - `docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md`
+- `docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_QUICKSTART.md`
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `docs/ISSUE3_SUITE_CATALOG_ENTRYPOINTS.md`
@@ -217,10 +223,13 @@ pinned three-page bundle lane:
 
 Use the Windows full-use route note when the replay is reopening from
 `docs/WINDOWS_FULL_USE.md` and the broader Windows-first attached-page ladder
-should stay visible before the route narrows again. Use the bundle quickstart
-when the replay is already narrowed to the pinned three-page compatibility
-bundle and you want the compact bundle-suite surface, the bundle-first helper,
-the checker, the flow helper, and the broader attached-page fallbacks reprinted
+should stay visible before the route narrows again. Use the validation-router
+quickstart when the broader shared router or the Windows-first bridge is still
+the right read-first surface and you want the router-level fail-fast checker
+visible before the route drops into the pinned bundle branch. Use the bundle
+quickstart when the replay is already narrowed to the pinned three-page
+compatibility bundle and you want the compact bundle-suite surface, the
+bundle-first helper, the checker, the flow helper, and the broader attached-page fallbacks reprinted
 together. Use the Google attached-html flow note when the replay should stay on
 the dedicated Google-shaped attached-page lane, the suite-catalog guide when
 the route is reopening from `show_headed_validation_suites.ps1`, and the
