@@ -18,6 +18,12 @@ def build_contract_map() -> dict[str, str]:
 
 DRIFT_CASES = (
     (
+        "missing_replay_attached_surface_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+        "",
+    ),
+    (
         "missing_replay_attached_helper_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_replay_attached_html_quickstart.ps1",
@@ -39,6 +45,12 @@ DRIFT_CASES = (
         "missing_replay_route_shortcut_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "",
+    ),
+    (
+        "missing_windows_full_use_route_surface_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
         "",
     ),
     (
@@ -87,6 +99,18 @@ DRIFT_CASES = (
         "missing_launcher_companion_repo_root_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'",
+        "",
+    ),
+    (
+        "missing_route_surface_check_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
+        "",
+    ),
+    (
+        "missing_launcher_surface_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)',
         "",
     ),
     (
