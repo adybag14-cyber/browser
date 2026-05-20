@@ -134,6 +134,34 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
                 ]
                 self.assertIn(snippet, failing)
 
+    def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
+        self.write_contract_files(
+            {"docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md": "# drifted\n"}
+        )
+
+        audit = helper.build_replay_quickstart_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md", summary)
+        self.assertGreater(
+            summary["docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"][
+                "missing_expectation_count"
+            ],
+            1,
+        )
+        self.assertIn(
+            "replay-attached fail-fast checker visible",
+            summary["docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"][
+                "first_missing_purpose"
+            ],
+        )
+        self.assertIn(
+            "check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+            summary["docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"][
+                "first_missing_snippet"
+            ],
+        )
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(
             {"scripts/windows/show_google_issue3_windows_replay_quickstart.ps1": "# drifted\n"}
@@ -143,8 +171,10 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.assertIn("Google Issue #3 Windows Replay Quickstart Audit", report)
         self.assertIn("Missing expectations:", report)
         self.assertIn("[FAIL] scripts/windows/show_google_issue3_windows_replay_quickstart.ps1", report)
+        self.assertIn("Missing path summary:", report)
+        self.assertIn("first snippet:", report)
 
-    def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
+    def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(self) -> None:
         self.write_contract_files(
             {"docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md": "# drifted\n"}
         )
@@ -154,6 +184,19 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.assertEqual(1, exit_code)
         payload = json.loads(stdout.getvalue())
         self.assertGreater(payload["missing_count"], 0)
+        self.assertGreater(payload["missing_path_count"], 0)
+        self.assertEqual(
+            "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+            payload["missing_paths"][0]["path"],
+        )
+        self.assertGreater(
+            payload["missing_paths"][0]["missing_expectation_count"],
+            1,
+        )
+        self.assertIn(
+            "check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+            payload["missing_paths"][0]["first_missing_snippet"],
+        )
 
 
 if __name__ == "__main__":
