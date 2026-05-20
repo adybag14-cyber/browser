@@ -579,15 +579,17 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            exit_code = helper.main(["--root", str(self.root), "--json"])
+            exit_code = helper.main(["--repo-root", str(self.root), "--json"])
 
         self.assertEqual(1, exit_code)
         payload = json.loads(output.getvalue())
         self.assertEqual(1, payload["missing_count"])
-        self.assertEqual([path], payload["missing_paths"])
+        self.assertEqual(1, payload["missing_path_count"])
+        self.assertEqual(path, payload["missing_paths"][0]["path"])
+        self.assertEqual(1, payload["missing_paths"][0]["missing_expectation_count"])
         self.assertEqual(snippet, payload["results"][0]["snippet"])
 
-    def test_main_groups_missing_paths_in_text_output(self) -> None:
+    def test_main_reports_missing_failures_in_text_output(self) -> None:
         self.write_contract_files()
         drifted = build_contract_map()
         first_path = "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
@@ -600,20 +602,20 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            exit_code = helper.main(["--root", str(self.root)])
+            exit_code = helper.main(["--repo-root", str(self.root)])
 
         self.assertEqual(1, exit_code)
         text = output.getvalue()
-        self.assertIn("Missing paths:", text)
-        self.assertIn(f"- {first_path} (1 missing snippets)", text)
-        self.assertIn(f"- {second_path} (1 missing snippets)", text)
+        self.assertIn("Missing expectations: 2", text)
+        self.assertIn(f"[FAIL] {first_path}", text)
+        self.assertIn(f"[FAIL] {second_path}", text)
 
     def test_main_reports_missing_repo_root_in_json(self) -> None:
         missing_root = self.root / "missing-repo-root"
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            exit_code = helper.main(["--root", str(missing_root), "--json"])
+            exit_code = helper.main(["--repo-root", str(missing_root), "--json"])
 
         self.assertEqual(1, exit_code)
         payload = json.loads(output.getvalue())
@@ -627,7 +629,7 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            exit_code = helper.main(["--root", str(missing_root)])
+            exit_code = helper.main(["--repo-root", str(missing_root)])
 
         self.assertEqual(1, exit_code)
         text = output.getvalue()
