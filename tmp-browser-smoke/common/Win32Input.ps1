@@ -1175,6 +1175,25 @@ function Send-SmokeDelete {
 }
 
 function Send-SmokeText([string]$Text) {
+  if (Use-HeadedMailboxInput) {
+    $builder = New-Object System.Text.StringBuilder
+    foreach ($ch in $Text.ToCharArray()) {
+      $code = [int][char]$ch
+      if ($code -eq 10 -or $code -eq 13) {
+        if ($builder.Length -gt 0) {
+          [void](Write-HeadedMailboxLine ("text|{0}" -f $builder.ToString()))
+          [void]$builder.Clear()
+        }
+        Send-HeadedKeyStroke -Code 13
+      } else {
+        [void]$builder.Append($ch)
+      }
+    }
+    if ($builder.Length -gt 0) {
+      [void](Write-HeadedMailboxLine ("text|{0}" -f $builder.ToString()))
+    }
+    return
+  }
   if (Use-BareMetalInput) {
     foreach ($ch in $Text.ToCharArray()) {
       $code = [int][char]$ch
