@@ -30,6 +30,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_repo_root_route_guard_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1 -RepoRoot '<repo-root>'",
+        "",
+    ),
+    (
         "missing_launcher_companion_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1",
