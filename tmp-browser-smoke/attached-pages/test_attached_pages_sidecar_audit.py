@@ -41,6 +41,7 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
         audit = audit_module.build_sidecar_audit(page.parent)
         self.assertEqual(1, audit["fixture_count"])
         self.assertEqual(1, audit["fixtures_with_missing_sidecars"])
+        self.assertEqual(1, audit["missing_sidecar_path_count"])
 
         fixture = audit["fixtures"][0]
         self.assertEqual("google-search.html", fixture["display_path"])
@@ -53,6 +54,12 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
         missing_entry = next(entry for entry in fixture["sidecar_directories"] if entry["sidecar_dir"] == "missing-export_files")
         self.assertFalse(missing_entry["exists"])
         self.assertEqual(["logo.png"], missing_entry["sample_assets"])
+
+        summary = audit["missing_sidecar_paths"][0]
+        self.assertEqual("missing-export_files", summary["sidecar_dir"])
+        self.assertEqual(1, summary["missing_fixture_count"])
+        self.assertEqual("google-search.html", summary["first_missing_fixture"])
+        self.assertEqual(["logo.png"], summary["sample_assets"])
 
     def test_srcset_and_css_urls_expand_into_individual_assets(self):
         page = self.write_html(
@@ -119,6 +126,35 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
         self.assertEqual(1, audit["fixture_count"])
         self.assertEqual("first.html", audit["fixtures"][0]["display_path"])
 
+    def test_missing_sidecar_summary_groups_shared_root_relative_path(self):
+        self.write_html(
+            "bundle/nested/first.html",
+            """<!doctype html>
+<html>
+  <head><link rel="stylesheet" href="/shared/export_files/alpha.css"></head>
+  <body>first</body>
+</html>
+""",
+        )
+        self.write_html(
+            "bundle/deeper/second.html",
+            """<!doctype html>
+<html>
+  <body><img src="/shared/export_files/beta.png"></body>
+</html>
+""",
+        )
+
+        audit = audit_module.build_sidecar_audit(self.root / "bundle")
+        self.assertEqual(2, audit["fixtures_with_missing_sidecars"])
+        self.assertEqual(1, audit["missing_sidecar_path_count"])
+
+        summary = audit["missing_sidecar_paths"][0]
+        self.assertTrue(summary["expected_path"].endswith("/bundle/shared/export_files"))
+        self.assertEqual(2, summary["missing_fixture_count"])
+        self.assertEqual("deeper/second.html", summary["first_missing_fixture"])
+        self.assertEqual(["alpha.css", "beta.png"], summary["sample_assets"])
+
     def test_cli_json_and_allow_missing_sidecars(self):
         self.write_html(
             "bundle/export.html",
@@ -146,6 +182,9 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
         self.assertEqual(1, exit_code)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(1, payload["fixtures_with_missing_sidecars"])
+        self.assertEqual(1, payload["missing_sidecar_path_count"])
+        self.assertEqual("export.html", payload["missing_sidecar_paths"][0]["first_missing_fixture"])
+        self.assertEqual(["logo.png"], payload["missing_sidecar_paths"][0]["sample_assets"])
 
         stdout = io.StringIO()
         try:
@@ -162,6 +201,7 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
 
         self.assertEqual(0, exit_code)
         self.assertIn("Fixtures with missing sidecars: 1", stdout.getvalue())
+        self.assertIn("Missing sidecar paths:", stdout.getvalue())
 
 
 if __name__ == "__main__":
