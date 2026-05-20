@@ -130,6 +130,7 @@ const BrowseTargetInfo = struct {
     scheme: []const u8,
     scope: []const u8,
     host: []const u8,
+    port: []const u8,
 };
 
 fn browseTargetScheme(url: []const u8) []const u8 {
@@ -166,6 +167,23 @@ fn browseTargetHost(authority: []const u8) []const u8 {
     return authority[0..port_separator];
 }
 
+fn browseTargetPort(authority: []const u8) []const u8 {
+    if (authority.len == 0) {
+        return "(none)";
+    }
+    if (authority[0] == '[') {
+        const closing = std.mem.indexOfScalar(u8, authority, ']') orelse return "(default)";
+        if (closing + 1 >= authority.len or authority[closing + 1] != ':') {
+            return "(default)";
+        }
+        const port = authority[closing + 2 ..];
+        return if (port.len == 0) "(default)" else port;
+    }
+    const port_separator = std.mem.lastIndexOfScalar(u8, authority, ':') orelse return "(default)";
+    const port = authority[port_separator + 1 ..];
+    return if (port.len == 0) "(default)" else port;
+}
+
 fn isLoopbackBrowseHost(host: []const u8) bool {
     if (host.len == 0) {
         return false;
@@ -185,6 +203,7 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
             .scheme = "file",
             .scope = "file",
             .host = "(none)",
+            .port = "(none)",
         };
     }
 
@@ -193,20 +212,24 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
             .scheme = scheme,
             .scope = "unknown",
             .host = "(none)",
+            .port = "(none)",
         };
     };
     const host = browseTargetHost(authority);
+    const port = browseTargetPort(authority);
     if (isLoopbackBrowseHost(host)) {
         return .{
             .scheme = scheme,
             .scope = "loopback",
             .host = host,
+            .port = port,
         };
     }
     return .{
         .scheme = scheme,
         .scope = "remote",
         .host = if (host.len == 0) "(none)" else host,
+        .port = port,
     };
 }
 
@@ -404,6 +427,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .target_scheme = browse_target.scheme,
                 .target_scope = browse_target.scope,
                 .target_host = browse_target.host,
+                .target_port = browse_target.port,
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
@@ -428,6 +452,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .target_scheme = browse_target.scheme,
                     .target_scope = browse_target.scope,
                     .target_host = browse_target.host,
+                    .target_port = browse_target.port,
                     .window = "enabled",
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
@@ -455,6 +480,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .target_scheme = browse_target.scheme,
                     .target_scope = browse_target.scope,
                     .target_host = browse_target.host,
+                    .target_port = browse_target.port,
                     .window = "disabled",
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
@@ -483,6 +509,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .target_scheme = browse_target.scheme,
                     .target_scope = browse_target.scope,
                     .target_host = browse_target.host,
+                    .target_port = browse_target.port,
                     .window_closed = app.display.userClosed(),
                     .shutdown_requested = app.shutdown,
                     .exit_reason = commandExitReason(&app),
@@ -514,6 +541,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .target_scheme = browse_target.scheme,
                 .target_scope = browse_target.scope,
                 .target_host = browse_target.host,
+                .target_port = browse_target.port,
                 .window_closed = app.display.userClosed(),
                 .shutdown_requested = app.shutdown,
                 .exit_reason = commandExitReason(&app),
