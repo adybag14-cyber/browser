@@ -240,6 +240,42 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         )
 
+    def test_build_audit_reports_missing_validation_router_checker_on_replay_quickstart(self) -> None:
+        self.write_contract_files(
+            doc_text=DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        )
+
+    def test_build_audit_reports_missing_validation_router_helper_on_replay_quickstart(self) -> None:
+        self.write_contract_files(
+            doc_text=DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        )
+
+    def test_build_audit_reports_missing_validation_router_note_on_replay_quickstart(self) -> None:
+        self.write_contract_files(
+            doc_text=DOC_SNIPPET.replace(
+                "docs/ISSUE3_VALIDATION_ROUTER_ATTACHED_HTML_QUICKSTART.md\n",
+                "",
+            )
+        )
+        self.assert_failing_path(
+            helper.build_launcher_companion_audit(self.root),
+            "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        )
+
     def test_build_audit_reports_missing_helper_proof_header_output(self) -> None:
         self.write_contract_files(
             launcher_companion_text=LAUNCHER_COMPANION_SNIPPET.replace(
