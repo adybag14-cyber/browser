@@ -74,6 +74,11 @@ function Wait-HttpReady {
 $probeUrl = "http://$Host`:$Port$ProbePagePath"
 $python = Resolve-PythonCommand
 $server = $null
+$readyTitleMarkers = @(
+    "BOUND|",
+    "A=INPUT:q::1",
+    "FOCUSED|"
+)
 
 try {
     $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($Port, "--bind", $Host)) -WorkingDirectory $RepoRoot -PassThru -RedirectStandardOutput $serverStdout -RedirectStandardError $serverStderr
@@ -83,7 +88,8 @@ try {
         RepoRoot = $RepoRoot
         BrowserExe = $BrowserExe
         Url = $probeUrl
-        ExpectedTitleContains = "BOUND|"
+        ExpectedTitleContains = $readyTitleMarkers[0]
+        ExpectedTitleContainsAny = $readyTitleMarkers[1..($readyTitleMarkers.Count - 1)]
         TimeoutSeconds = $TimeoutSeconds
         PollMilliseconds = $PollMilliseconds
         InputText = $InputText
@@ -106,6 +112,7 @@ try {
         repo_root = $RepoRoot
         browser_exe = $BrowserExe
         probe_url = $probeUrl
+        ready_title_markers = $readyTitleMarkers
         server_stdout = $serverStdout
         server_stderr = $serverStderr
         watch_result = $watchResult
