@@ -528,7 +528,14 @@ pub fn parseArgs(allocator: Allocator, argv: std.process.Args) !Config {
     return init(allocator, exec_name, mode);
 }
 
-fn inferModeOption(opt: []const u8) ?RunMode {
+const InferModeHint = enum {
+    fetch,
+    serve,
+    browse_candidate,
+    browse_only,
+};
+
+fn inferModeOption(opt: []const u8) ?InferModeHint {
     if (std.mem.eql(u8, opt, "--dump")) {
         return .fetch;
     }
@@ -554,31 +561,31 @@ fn inferModeOption(opt: []const u8) ?RunMode {
     }
 
     if (std.mem.eql(u8, opt, "--headed")) {
-        return .browse;
+        return .browse_candidate;
     }
 
     if (std.mem.eql(u8, opt, "--headless")) {
-        return .browse;
+        return .browse_candidate;
     }
 
     if (std.mem.eql(u8, opt, "--browser_mode")) {
-        return .browse;
+        return .browse_candidate;
     }
 
     if (std.mem.eql(u8, opt, "--window_width")) {
-        return .browse;
+        return .browse_candidate;
     }
 
     if (std.mem.eql(u8, opt, "--window_height")) {
-        return .browse;
+        return .browse_candidate;
     }
 
     if (std.mem.eql(u8, opt, "--screenshot_bmp")) {
-        return .browse;
+        return .browse_only;
     }
 
     if (std.mem.eql(u8, opt, "--screenshot_png")) {
-        return .browse;
+        return .browse_only;
     }
 
     if (std.mem.eql(u8, opt, "--port")) {
@@ -601,8 +608,14 @@ fn inferMode(first_opt: []const u8, args: *const std.process.Args.Iterator) ?Run
         return .fetch;
     }
 
-    if (inferModeOption(first_opt)) |mode| {
-        return mode;
+    var browse_candidate = false;
+    if (inferModeOption(first_opt)) |hint| {
+        switch (hint) {
+            .fetch => return .fetch,
+            .serve => return .serve,
+            .browse_candidate => browse_candidate = true,
+            .browse_only => return .browse,
+        }
     }
 
     var peek_args = args.*;
@@ -610,11 +623,19 @@ fn inferMode(first_opt: []const u8, args: *const std.process.Args.Iterator) ?Run
         if (std.mem.startsWith(u8, opt, "--") == false) {
             return .fetch;
         }
-        if (inferModeOption(opt)) |mode| {
-            return mode;
+        if (inferModeOption(opt)) |hint| {
+            switch (hint) {
+                .fetch => return .fetch,
+                .serve => return .serve,
+                .browse_candidate => browse_candidate = true,
+                .browse_only => return .browse,
+            }
         }
     }
 
+    if (browse_candidate) {
+        return .browse;
+    }
     return null;
 }
 
@@ -627,19 +648,33 @@ fn inferModeSlice(first_opt: []const u8, remaining_opts: []const []const u8) ?Ru
         return .fetch;
     }
 
-    if (inferModeOption(first_opt)) |mode| {
-        return mode;
+    var browse_candidate = false;
+    if (inferModeOption(first_opt)) |hint| {
+        switch (hint) {
+            .fetch => return .fetch,
+            .serve => return .serve,
+            .browse_candidate => browse_candidate = true,
+            .browse_only => return .browse,
+        }
     }
 
     for (remaining_opts) |opt| {
         if (std.mem.startsWith(u8, opt, "--") == false) {
             return .fetch;
         }
-        if (inferModeOption(opt)) |mode| {
-            return mode;
+        if (inferModeOption(opt)) |hint| {
+            switch (hint) {
+                .fetch => return .fetch,
+                .serve => return .serve,
+                .browse_candidate => browse_candidate = true,
+                .browse_only => return .browse,
+            }
         }
     }
 
+    if (browse_candidate) {
+        return .browse;
+    }
     return null;
 }
 
@@ -1221,6 +1256,14 @@ test "infer mode scans later args for headed browse" {
 
 test "infer mode scans later args for serve" {
     try std.testing.expectEqual(RunMode.serve, inferModeSlice("--profile_dir", &.{ "tmp-profile", "--host", "127.0.0.1" }).?);
+}
+
+test "infer mode keeps headed serve when a shared browser flag comes first" {
+    try std.testing.expectEqual(RunMode.serve, inferModeSlice("--headed", &.{ "--host", "127.0.0.1" }).?);
+}
+
+test "infer mode keeps browser_mode serve when the shared browser option comes first" {
+    try std.testing.expectEqual(RunMode.serve, inferModeSlice("--browser_mode", &.{ "headed", "--host", "127.0.0.1" }).?);
 }
 
 test "infer mode falls back to fetch when a URL follows shared options" {
