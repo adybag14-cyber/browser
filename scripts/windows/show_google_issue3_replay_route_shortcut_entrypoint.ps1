@@ -178,7 +178,7 @@ $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand = Format-HelperCommand -S
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 replay-route shortcut entrypoint'
-    purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the replay-route shortcut surface check, the attached-page shortcut, the broader attached-page localhost flow helper, the narrower Google-shaped attached-page flow helper, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay shortcuts, the pinned bundle reference and proof notes, the bundle route, and the current safe-route helpers while preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the replay-route shortcut surface check, the attached-page shortcut, the broader attached-page localhost flow helper, the narrower Google-shaped attached-page flow helper, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay shortcuts, the compact bundle-suite surface helper, the pinned bundle reference and proof notes, the bundle route, and the current safe-route helpers while preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -205,6 +205,7 @@ $entrypoint = [ordered]@{
         windows_replay_attached_html_quickstart = $windowsReplayAttachedHtmlQuickstartCommand
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
         contextual_flow = $contextualFlowCommand
+        attached_html_target_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
         attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
         fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
@@ -217,6 +218,7 @@ $entrypoint = [ordered]@{
     replay_shortcuts_windows_replay_attached_html_bridge_note_path = 'docs/ISSUE3_REPLAY_SHORTCUTS_WINDOWS_REPLAY_ATTACHED_HTML_BRIDGE.md'
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
     attached_html_target_bundle_reference_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md'
+    attached_html_target_bundle_suite_surface_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md'
     attached_html_target_bundle_proof_note_path = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
     validation_chain_note_path = 'docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md'
     windows_runbook_note_path = 'docs/WINDOWS_FULL_USE.md'
@@ -235,10 +237,11 @@ $entrypoint = [ordered]@{
         'Use windows_replay_attached_html_quickstart when the replay-route shortcut already confirmed attached-page follow-up and you want the narrower Windows replay ladder visible before you widen back into the broader Windows-first bridge or safe-route map.',
         'Use suite_router_next_steps when you want the compact start-point matrix reprinted again after the replay-route shortcut bridge so you can choose between replay_route, attached_html_flow, contextual_flow, the bundle-first branch, or the runner-state follow-up.',
         'Use contextual_flow when RepoRoot, SummaryPath, or fixed InputPath values already matter and you want the next helper surface to keep that context aligned before narrowing further.',
+        'Use attached_html_target_bundle_suite_surface when the current replay is already close to the known three-page compatibility bundle and you want the compact suite-level bundle surface printed before the narrower attached_bundle_first helper or the wider safe-route map.',
         'Use attached_bundle_first whenever explicit InputPath values are already pinned or when the replay should stay on the known three-page compatibility set, and reopen docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md plus docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md first so that the pinned branch and proof path stay visible before widening back into the broader Google-only issue #3 helpers.',
         'Use safe_route_entrypoints only after the attached-page, attached_html_flow, replay-shortcuts, replay-shortcuts Windows replay attached-page bridge, or google_attached_html_flow surfaces have already clarified that the route should reopen the wrapper-heavy issue #3 chain from the same SummaryPath and InputPath state.',
         'Use fresh_safe_route_replay when current outputs may be stale or missing. Use reuse_current_outputs only when a saved SummaryPath already exists and those outputs are still trusted.',
-        'Keep the replay-discovery, replay-route shortcut bridge, suite-router bridge, suite-catalog guide, Google attached-page flow note, replay-shortcuts Windows replay attached-page bridge note, Windows replay attached-page quickstart note, attached-html target bundle reference, attached-html target bundle proof note, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
+        'Keep the replay-discovery, replay-route shortcut bridge, suite-router bridge, suite-catalog guide, Google attached-page flow note, replay-shortcuts Windows replay attached-page bridge note, Windows replay attached-page quickstart note, attached-html target bundle reference, attached-html target-bundle suite-surface note, attached-html target bundle proof note, validation-chain, and Windows runbook notes nearby when you want the written route beside these commands.'
     )
 }
 
@@ -303,6 +306,7 @@ Write-Host (("  Replay bridge check:  {0}") -f $entrypoint.helper_commands.windo
 Write-Host (("  Windows replay quick: {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)
 Write-Host (("  Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
 Write-Host (("  Contextual flow:      {0}") -f $entrypoint.helper_commands.contextual_flow)
+Write-Host (("  Bundle-suite helper:  {0}") -f $entrypoint.helper_commands.attached_html_target_bundle_suite_surface)
 Write-Host (("  Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 Write-Host (("  Safe-route map:       {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
 Write-Host (("  Fresh safe replay:    {0}") -f $entrypoint.helper_commands.fresh_safe_route_replay)
@@ -316,6 +320,7 @@ Write-Host (("Google attached note:  {0}") -f $entrypoint.google_attached_html_f
 Write-Host (("Replay-Windows note:   {0}") -f $entrypoint.replay_shortcuts_windows_replay_attached_html_bridge_note_path)
 Write-Host (("Windows replay note:   {0}") -f $entrypoint.windows_replay_attached_html_quickstart_note_path)
 Write-Host (("Bundle reference:      {0}") -f $entrypoint.attached_html_target_bundle_reference_note_path)
+Write-Host (("Bundle suite note:     {0}") -f $entrypoint.attached_html_target_bundle_suite_surface_note_path)
 Write-Host (("Bundle proof note:     {0}") -f $entrypoint.attached_html_target_bundle_proof_note_path)
 Write-Host (("Validation chain:      {0}") -f $entrypoint.validation_chain_note_path)
 Write-Host (("Windows runbook:       {0}") -f $entrypoint.windows_runbook_note_path)
