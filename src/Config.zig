@@ -533,6 +533,9 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
             return .browse;
         }
         if (inferModeOption(token)) {
+            if (std.mem.eql(u8, token, "--browser_mode") and index + 1 < tokens.len) {
+                shared_opts.browser_mode = std.meta.stringToEnum(BrowserMode, tokens[index + 1]) orelse shared_opts.browser_mode;
+            }
             if (index + 1 < tokens.len) {
                 index += 2;
             } else {
@@ -541,7 +544,13 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
             continue;
         }
 
-        if (std.mem.eql(u8, token, "--headed") or std.mem.eql(u8, token, "--headless")) {
+        if (std.mem.eql(u8, token, "--headed")) {
+            shared_opts.browser_mode = .headed;
+            index += 1;
+            continue;
+        }
+        if (std.mem.eql(u8, token, "--headless")) {
+            shared_opts.browser_mode = .headless;
             index += 1;
             continue;
         }
@@ -573,7 +582,12 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
             continue;
         }
 
-        return if (std.mem.indexOfAny(u8, token, ":/") == null) .serve else .fetch;
+        return if (std.mem.indexOfAny(u8, token, ":/") == null)
+            .serve
+        else if (shared_opts.browser_mode == .headed)
+            .browse
+        else
+            .fetch;
     }
 
     return .help;
@@ -1167,6 +1181,18 @@ test "explicit http timeout overrides interactive defaults" {
 
 test "infer mode keeps headed browse after obey robots flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "--headed", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats headed shortcut before url as browse" {
+    const mode = try inferModeSlice(&.{ "--headed", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats browser mode headed before url as browse" {
+    const mode = try inferModeSlice(&.{ "--browser_mode", "headed", "https://example.com/" });
 
     try std.testing.expectEqual(RunMode.browse, mode);
 }
