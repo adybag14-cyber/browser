@@ -325,7 +325,7 @@ DRIFT_CASES = (
     ),
     (
         "top_level_shortcut_windows_replay_output",
-        "scripts/windows/show_google_issue3_top_level_shortCUT_FIRST_ENTRYPOINT.PS1",
+        "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
         'Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)',
         "",
     ),
@@ -403,7 +403,7 @@ DRIFT_CASES = (
     ),
     (
         "suite_router_sidecar_guidance",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quICKSTART.PS1",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Keep suite_router_attached_html_quickstart nearby as the sidecar helper when the route needs to widen back toward the suite-router surface instead of narrowing directly into the shorter attached-page bridge or the attached-page shortcut.",
         "drifted note",
     ),
@@ -457,7 +457,7 @@ DRIFT_CASES = (
     ),
     (
         "replay_windows_bridge_check_output",
-        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attACHED_HTML_BRIDGE.PS1",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
         'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)',
         "",
     ),
