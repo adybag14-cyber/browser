@@ -1,5 +1,6 @@
 import argparse
 import json
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -168,6 +169,7 @@ def resolve_repo_root(root: str | None) -> Path:
 def build_route_audit(repo_root: Path) -> dict[str, object]:
     results: list[dict[str, object]] = []
     missing_count = 0
+    missing_by_path: dict[str, list[str]] = defaultdict(list)
 
     for expectation in EXPECTATIONS:
         full_path = repo_root / expectation["path"]
@@ -178,6 +180,7 @@ def build_route_audit(repo_root: Path) -> dict[str, object]:
 
         if not exists:
             missing_count += 1
+            missing_by_path[expectation["path"]].append(expectation["purpose"])
 
         results.append(
             {
@@ -188,10 +191,21 @@ def build_route_audit(repo_root: Path) -> dict[str, object]:
             }
         )
 
+    missing_paths = [
+        {
+            "path": path,
+            "missing_expectation_count": len(purposes),
+            "first_missing_purpose": purposes[0],
+        }
+        for path, purposes in missing_by_path.items()
+    ]
+
     return {
         "repo_root": str(repo_root),
         "expectation_count": len(results),
         "missing_count": missing_count,
+        "missing_path_count": len(missing_paths),
+        "missing_paths": missing_paths,
         "results": results,
     }
 
@@ -205,6 +219,15 @@ def render_text_report(audit: dict[str, object]) -> str:
         f"Missing expectations: {audit['missing_count']}",
         "",
     ]
+
+    if audit["missing_paths"]:
+        lines.append("Missing paths:")
+        for entry in audit["missing_paths"]:
+            lines.append(
+                f"  - {entry['path']} ({entry['missing_expectation_count']} missing expectations)"
+            )
+            lines.append(f"    First missing purpose: {entry['first_missing_purpose']}")
+        lines.append("")
 
     for result in audit["results"]:
         status = "PASS" if result["exists"] else "FAIL"
