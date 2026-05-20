@@ -57,6 +57,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_su
 
 Use this when the next replay is already narrowed to attached-page compatibility follow-up and you want the shorter suite-router-side attached-page bridge visible before deciding whether to widen into the top-level attached-page quickstart, the broader top-level attached-page bridge, the suite-catalog attached-page bridge, the attached-page shortcut, replay shortcuts, the next-step matrix, the replay-route helper, the replay-route shortcut, the pinned bundle-first branch, or the safe-route helper chain.
 
+Keep `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md` nearby when the route is likely to widen back into the top-level attached-page quickstart or broader top-level attached-page bridge and you want the newer companion-note map visible beside this shorter suite-router lane before the replay expands again.
+
 ## Wider compact helpers
 
 If you still want the wider compact bridge after either short entrypoint, keep these companion helpers nearby:
