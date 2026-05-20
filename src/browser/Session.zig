@@ -45,6 +45,11 @@ fn googleWaitTraceEnabled(url: []const u8) bool {
         std.mem.indexOf(u8, url, "google_home_title_probe.html") != null or
         std.mem.indexOf(u8, url, "body_onload_keyboard_input.html") != null or
         std.mem.indexOf(u8, url, "mouse_down_focus_input.html") != null or
+        std.mem.indexOf(u8, url, "Google%20Safety%20Centre") != null or
+        std.mem.indexOf(u8, url, "Google Safety Centre") != null or
+        std.mem.indexOf(u8, url, "Anthropic") != null or
+        std.mem.indexOf(u8, url, "UAP%20Encounters") != null or
+        std.mem.indexOf(u8, url, "UAP Encounters") != null or
         std.mem.indexOf(u8, url, "google.com") != null;
 }
 
@@ -952,7 +957,7 @@ fn destroyPage(self: *Session, page: *Page, abort_http: bool) void {
     self.destroyAllocPage(page);
 }
 
-test "google wait trace gate includes the saved localhost google probe and headed fixtures" {
+test "google wait trace gate includes the saved localhost google probe, attached targets, and headed fixtures" {
     try std.testing.expect(googleWaitTraceEnabled(
         "http://127.0.0.1:8000/src/browser/tests/page/google_home_title_probe.html",
     ));
@@ -961,6 +966,15 @@ test "google wait trace gate includes the saved localhost google probe and heade
     ));
     try std.testing.expect(googleWaitTraceEnabled(
         "http://127.0.0.1:8000/tmp-browser-smoke/local-html-fixtures/mouse_down_focus_input.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/Control%20your%20online%20safety%20and%20privacy%20%E2%80%93%20Google%20Safety%20Centre.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/Job%20Application%20for%20Anthropic.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/Presidential%20Unsealing%20and%20Reporting%20System%20for%20UAP%20Encounters.html",
     ));
     try std.testing.expect(googleWaitTraceEnabled("https://www.google.com/"));
     try std.testing.expect(!googleWaitTraceEnabled("http://127.0.0.1:8000/tmp-browser-smoke/form-controls/index.html"));
