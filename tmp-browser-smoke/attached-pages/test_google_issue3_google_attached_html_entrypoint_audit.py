@@ -148,6 +148,40 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
             failing_paths,
         )
 
+    def test_build_audit_reports_missing_bundle_suite_output(self) -> None:
+        self.write_contract_files(
+            helper_text=HELPER_SNIPPET.replace(
+                'Write-Host ((" 15. Bundle suite helper:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)\n',
+                "",
+            )
+        )
+
+        audit = helper.build_google_attached_entrypoint_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            'Write-Host ((" 15. Bundle suite helper:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)',
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_pinned_bundle_guidance(self) -> None:
+        self.write_contract_files(
+            helper_text=HELPER_SNIPPET.replace(
+                "Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.",
+                "drifted pinned bundle note",
+            )
+        )
+
+        audit = helper.build_google_attached_entrypoint_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+            failing_paths,
+        )
+
     def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
         self.write_contract_files(doc_text="# drifted\n")
 
