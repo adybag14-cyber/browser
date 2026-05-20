@@ -28,6 +28,27 @@ $pythonArgs.Add('--require-wrapper-sidecar')
 $pythonArgs.Add('--require-google-wrapper-sidecar')
 $pythonArgs.Add('--require-launcher-companion')
 $pythonArgs.Add('--require-launcher-companion-surface-check')
+$pythonArgs.Add('--require-replay-quickstart-surface-check')
+$pythonArgs.Add('--require-windows-route-surface-check')
+$pythonArgs.Add('--require-validation-router-note')
+$pythonArgs.Add('--require-validation-router-surface-check')
+$pythonArgs.Add('--require-validation-router-helper')
+$pythonArgs.Add('--require-attached-html-change-area-note')
+$pythonArgs.Add('--require-attached-html-change-area-helper')
+$pythonArgs.Add('--require-google-surface-check')
+$pythonArgs.Add('--require-google-flow-note')
+$pythonArgs.Add('--require-google-flow-helper')
+$pythonArgs.Add('--require-google-entrypoint-note')
+$pythonArgs.Add('--require-google-entrypoint-surface-check')
+$pythonArgs.Add('--require-google-entrypoint-helper')
+$pythonArgs.Add('--require-proof-note')
+$pythonArgs.Add('--require-proof-surface-check')
+$pythonArgs.Add('--require-proof-helper')
+$pythonArgs.Add('--require-replay-route-shortcut-note')
+$pythonArgs.Add('--require-replay-route-shortcut-surface-check')
+$pythonArgs.Add('--require-replay-route-shortcut-helper')
+$pythonArgs.Add('--require-windows-replay-bridge-note')
+$pythonArgs.Add('--require-windows-replay-bridge-helper')
 if ($Json) {
     $pythonArgs.Add('--json')
 }
@@ -53,7 +74,7 @@ if ($exitCode -eq 0) {
 
 if (-not $Json) {
     Write-Host ''
-    Write-Host 'Replay-doc launcher audit failed. Repair raw Python replay-note launcher references or missing wrapper-backed sidecar and launcher-companion surfacing before trusting the issue #3 replay docs.'
+    Write-Host 'Replay-doc launcher audit failed. Repair replay-note drift in the validation-router, Google attached-html, proof-entrypoint, replay-route shortcut, or Windows replay bridge surfaces before trusting the issue #3 replay docs.'
 }
 
 exit $exitCode
