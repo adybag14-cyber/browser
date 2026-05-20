@@ -56,6 +56,11 @@ EXPECTATIONS = (
         "purpose": "The Windows full-use attached HTML route note keeps the compact attached-bundle suite surface visible before the replay narrows into the locked three-page branch.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'",
+        "purpose": "The Windows full-use attached HTML route note keeps the bundle-first helper visible before the replay narrows into the locked three-page branch.",
+    },
+    {
         "path": "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1",
         "snippet": "windows_full_use_attached_html_route_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -RepoRootOverride $RepoRoot",
         "purpose": "The route helper keeps the route-level fail-fast checker wired into its helper map.",
