@@ -578,6 +578,36 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
         self.assertIn(f"- {first_path} (1 missing snippets)", text)
         self.assertIn(f"- {second_path} (1 missing snippets)", text)
 
+    def test_main_reports_missing_repo_root_in_json(self) -> None:
+        missing_root = self.root / "missing-repo-root"
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = helper.main(["--root", str(missing_root), "--json"])
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(output.getvalue())
+        self.assertEqual("repo_root_not_found", payload["error_type"])
+        self.assertEqual(str(missing_root), payload["repo_root"])
+        self.assertIsNone(payload["missing_count"])
+        self.assertIn("repo root does not exist:", payload["error"])
+
+    def test_main_reports_missing_repo_root_in_text(self) -> None:
+        missing_root = self.root / "missing-repo-root"
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = helper.main(["--root", str(missing_root)])
+
+        self.assertEqual(1, exit_code)
+        text = output.getvalue()
+        self.assertIn(
+            "Google Issue #3 Windows Replay Attached HTML Quickstart Audit",
+            text,
+        )
+        self.assertIn(f"Repo root: {missing_root}", text)
+        self.assertIn("Error: repo root does not exist:", text)
+
 
 if __name__ == "__main__":
     unittest.main()
