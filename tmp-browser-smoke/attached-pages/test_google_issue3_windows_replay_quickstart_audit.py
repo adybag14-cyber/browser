@@ -215,6 +215,24 @@ DRIFT_CASES = (
         'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)',
         "",
     ),
+    (
+        "missing_replay_to_windows_bridge_check_output",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)',
+        "",
+    ),
+    (
+        "missing_replay_to_windows_bridge_quickstart_output",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        'Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)',
+        "",
+    ),
+    (
+        "missing_replay_to_windows_bridge_default_handoff_guidance",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.",
+        "drifted guidance",
+    ),
 )
 
 
