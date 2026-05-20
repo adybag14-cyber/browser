@@ -55,11 +55,24 @@ const BrowserModeFallbackInfo = struct {
     support_expected: bool,
 };
 
-fn browserModeFallbackInfo(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) ?BrowserModeFallbackInfo {
+fn nativeHeadedSurfaceExpectedForEnvironment(
+    requested_mode: Config.BrowserMode,
+    target_class: @TypeOf(lp.build_config.target_class),
+    os_tag: @TypeOf(builtin.os.tag),
+) bool {
+    return requested_mode == .headed and (target_class == .bare_metal or os_tag == .windows);
+}
+
+fn browserModeFallbackInfoForEnvironment(
+    requested_mode: Config.BrowserMode,
+    runtime_mode: Config.BrowserMode,
+    target_class: @TypeOf(lp.build_config.target_class),
+    os_tag: @TypeOf(builtin.os.tag),
+) ?BrowserModeFallbackInfo {
     if (requested_mode != .headed or runtime_mode != .headless) {
         return null;
     }
-    if (lp.build_config.target_class == .bare_metal or builtin.os.tag == .windows) {
+    if (nativeHeadedSurfaceExpectedForEnvironment(requested_mode, target_class, os_tag)) {
         return .{
             .reason = "headed mode was requested on a runtime that should support a native headed surface, but startup still resolved to headless; inspect earlier startup diagnostics for the display bring-up failure",
             .support_expected = true,
@@ -69,6 +82,15 @@ fn browserModeFallbackInfo(requested_mode: Config.BrowserMode, runtime_mode: Con
         .reason = "native headed mode is currently available on Windows and bare metal only; continuing with the safe headless runtime",
         .support_expected = false,
     };
+}
+
+fn browserModeFallbackInfo(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) ?BrowserModeFallbackInfo {
+    return browserModeFallbackInfoForEnvironment(
+        requested_mode,
+        runtime_mode,
+        lp.build_config.target_class,
+        builtin.os.tag,
+    );
 }
 
 fn resolvedProfileDirLabel(path: ?[]const u8) []const u8 {
@@ -107,7 +129,7 @@ fn headedRuntimeActive(requested_mode: Config.BrowserMode, runtime_mode: Config.
 }
 
 fn nativeHeadedSurfaceExpected(requested_mode: Config.BrowserMode) bool {
-    return requested_mode == .headed and (lp.build_config.target_class == .bare_metal or builtin.os.tag == .windows);
+    return nativeHeadedSurfaceExpectedForEnvironment(requested_mode, lp.build_config.target_class, builtin.os.tag);
 }
 
 fn displayBackendLabel(app: *const App) []const u8 {
@@ -329,6 +351,33 @@ test "browser mode fallback info only appears for headed-to-headless fallback" {
             info.reason,
         );
     }
+}
+
+test "browser mode fallback info reports unsupported linux hosted fallback" {
+    const info = browserModeFallbackInfoForEnvironment(.headed, .headless, .hosted, .linux).?;
+
+    try std.testing.expect(!info.support_expected);
+    try std.testing.expectEqualStrings(
+        "native headed mode is currently available on Windows and bare metal only; continuing with the safe headless runtime",
+        info.reason,
+    );
+}
+
+test "browser mode fallback info reports unexpected windows hosted fallback" {
+    const info = browserModeFallbackInfoForEnvironment(.headed, .headless, .hosted, .windows).?;
+
+    try std.testing.expect(info.support_expected);
+    try std.testing.expectEqualStrings(
+        "headed mode was requested on a runtime that should support a native headed surface, but startup still resolved to headless; inspect earlier startup diagnostics for the display bring-up failure",
+        info.reason,
+    );
+}
+
+test "native headed surface expected matches explicit environment inputs" {
+    try std.testing.expect(nativeHeadedSurfaceExpectedForEnvironment(.headed, .hosted, .windows));
+    try std.testing.expect(nativeHeadedSurfaceExpectedForEnvironment(.headed, .bare_metal, .linux));
+    try std.testing.expect(!nativeHeadedSurfaceExpectedForEnvironment(.headless, .hosted, .windows));
+    try std.testing.expect(!nativeHeadedSurfaceExpectedForEnvironment(.headed, .hosted, .linux));
 }
 
 test "resolved startup labels keep explicit values and placeholders" {
