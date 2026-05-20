@@ -372,6 +372,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "top_level_shortcut_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Top-level shortcut:       {0}") -f $helper.commands.top_level_shortcut_first)',
+        "",
+    ),
+    (
         "top_level_shortcut_guidance",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Use top_level_shortcut_first after the suite-router sidecar or the broader top-level attached-page bridge when you want the newer top-level shortcut bridge reprinted before the route collapses into the shorter attached-page shortcut surface.",
