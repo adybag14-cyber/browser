@@ -162,6 +162,30 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "launcher_companion_surface_check_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_pages_launcher_companion_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "",
+    ),
+    (
+        "launcher_companion_helper_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "launcher_companion_surface_check_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Launcher surface check:   {0}") -f $helper.commands.attached_pages_launcher_companion_surface_check)',
+        "",
+    ),
+    (
+        "launcher_companion_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Launcher companion:       {0}") -f $helper.commands.attached_pages_launcher_companion)',
+        "",
+    ),
+    (
         "launcher_surface_check_output",
         "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)',
