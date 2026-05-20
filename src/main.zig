@@ -64,6 +64,10 @@ fn resolvedProfileDirLabel(path: ?[]const u8) []const u8 {
     return path orelse "(unavailable)";
 }
 
+fn headedRuntimeActive(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) bool {
+    return requested_mode == .headed and runtime_mode == .headed;
+}
+
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
     const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
@@ -101,6 +105,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
     defer app.deinit();
     const browser_mode = app.display.runtime_mode;
     const fallback_reason = browserModeFallbackReason(requested_browser_mode, browser_mode);
+    const headed_runtime_active = headedRuntimeActive(requested_browser_mode, browser_mode);
     if (fallback_reason) |reason| {
         log.warn(.app, "browser mode fallback", .{
             .requested = @tagName(requested_browser_mode),
@@ -131,6 +136,21 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .window_height = args.windowHeight(),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
+            if (headed_runtime_active) {
+                log.info(.app, "serve headed runtime", .{
+                    .host = opts.host,
+                    .port = opts.port,
+                    .requested = @tagName(requested_browser_mode),
+                    .runtime = @tagName(browser_mode),
+                    .target_class = @tagName(lp.build_config.target_class),
+                    .os = @tagName(builtin.os.tag),
+                    .window = "enabled",
+                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                    .window_width = args.windowWidth(),
+                    .window_height = args.windowHeight(),
+                    .snapshot = app.snapshot.fromEmbedded(),
+                });
+            }
             if (fallback_reason) |reason| {
                 log.info(.app, "serve headed fallback", .{
                     .host = opts.host,
@@ -175,6 +195,20 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .window_height = args.windowHeight(),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
+            if (headed_runtime_active) {
+                log.info(.app, "browse headed runtime", .{
+                    .url = url,
+                    .requested = @tagName(requested_browser_mode),
+                    .runtime = @tagName(browser_mode),
+                    .target_class = @tagName(lp.build_config.target_class),
+                    .os = @tagName(builtin.os.tag),
+                    .window = "enabled",
+                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                    .window_width = args.windowWidth(),
+                    .window_height = args.windowHeight(),
+                    .snapshot = app.snapshot.fromEmbedded(),
+                });
+            }
             if (fallback_reason) |reason| {
                 log.info(.app, "browse headed fallback", .{
                     .url = url,
