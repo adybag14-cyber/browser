@@ -241,7 +241,22 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             // max timeout of 1 week.
             const timeout = if (opts.timeout > 604_800) 604_800_000 else @as(u32, opts.timeout) * 1000;
             server.run(address, timeout) catch |err| {
-                log.fatal(.app, "server run error", .{ .err = err });
+                log.fatal(.app, "server run error", .{
+                    .err = err,
+                    .host = opts.host,
+                    .port = opts.port,
+                    .requested = @tagName(requested_browser_mode),
+                    .runtime = @tagName(browser_mode),
+                    .display_backend = display_backend,
+                    .native_surface_expected = native_headed_surface_expected,
+                    .native_surface_active = headed_runtime_active,
+                    .target_class = @tagName(lp.build_config.target_class),
+                    .os = @tagName(builtin.os.tag),
+                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                    .window_width = args.windowWidth(),
+                    .window_height = args.windowHeight(),
+                    .snapshot = app.snapshot.fromEmbedded(),
+                });
                 return err;
             };
             log.info(.app, "serve finished", .{
@@ -321,7 +336,29 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             }
 
             lp.browse(app, url, .{}) catch |err| {
-                log.fatal(.app, "browse error", .{ .err = err, .url = url });
+                log.fatal(.app, "browse error", .{
+                    .err = err,
+                    .url = url,
+                    .requested = @tagName(requested_browser_mode),
+                    .runtime = @tagName(browser_mode),
+                    .display_backend = display_backend,
+                    .native_surface_expected = native_headed_surface_expected,
+                    .native_surface_active = headed_runtime_active,
+                    .target_class = @tagName(lp.build_config.target_class),
+                    .os = @tagName(builtin.os.tag),
+                    .window_closed = app.display.userClosed(),
+                    .shutdown_requested = app.shutdown,
+                    .exit_reason = commandExitReason(&app),
+                    .navigation_state = browseLifecycleLabel(&app),
+                    .navigation_state_seen = app.display.browse_navigation_state_seen,
+                    .is_loading = app.display.browse_is_loading,
+                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                    .window_width = args.windowWidth(),
+                    .window_height = args.windowHeight(),
+                    .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                    .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
+                    .snapshot = app.snapshot.fromEmbedded(),
+                });
                 return err;
             };
             log.info(.app, "browse finished", .{
