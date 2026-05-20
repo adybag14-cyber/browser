@@ -319,14 +319,12 @@ pub const HttpHeaders = struct {
     }
 };
 
-pub fn printUsageAndExit(self: *const Config, success: bool) void {
-    //                                                                     MAX_HELP_LEN|
+pub fn printHelp(self: *const Config, err: ?anyerror) void {
+    if (err) |e| {
+        std.debug.print("error: {s}\n", .{@errorName(e)});
+    }
+
     const common_options =
-        \\
-        \\--insecure_disable_tls_host_verification
-        \\                Disables host verification on all HTTP requests. This is an
-        \\                advanced option which should only be set if you understand
-        \\                and accept the risk of disabling host verification.
         \\
         \\--obey_robots
         \\                Fetches and obeys the robots.txt (if available) of the web pages
@@ -430,347 +428,229 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
         \\
         \\Options:
         \\--dump          Dumps document to stdout.
-        \\                Argument must be 'html' or 'markdown'.
-        \\                Defaults to no dump.
+        \\                Optional formats: html, markdown, wpt.
+        \\                Defaults to html.
         \\
-        \\--strip_mode    Comma separated list of tag groups to remove from dump
-        \\                the dump. e.g. --strip_mode js,css
-        \\                  - "js" script and link[as=script, rel=preload]
-        \\                  - "ui" includes img, picture, video, css and svg
-        \\                  - "css" includes style and link[rel=stylesheet]
-        \\                  - "full" includes js, ui and css
+        \\--with-base     Prepends base URL to links in markdown.
+        \\                Ignored unless --dump markdown.
         \\
-        \\--with_base     Add a <base> tag in dump. Defaults to false.
+        \\--with-frames   Includes HTML for frames and iframes.
+        \\                These subtrees are excluded by default.
         \\
-        \\--with_frames   Includes the contents of iframes. Defaults to false.
+        \\--strip         Strips selected fields in the dump. Repeatable.
+        \\                Choices: script, style, noscript, comment, cdata, iframe, event, hidden, meta.
         \\
     ++ common_options ++
         \\
         \\serve command
-        \\Starts a websocket CDP server
-        \\Example: {s} serve --host 127.0.0.1 --port 9222
+        \\Runs a server exposing the HTTP/WebSocket Chrome DevTools Protocol.
+        \\Example: {s} serve
         \\
         \\Options:
-        \\--host          Host of the CDP server
-        \\                Defaults to "127.0.0.1"
+        \\--host          The host to listen on.
+        \\                Defaults to 127.0.0.1.
         \\
-        \\--port          Port of the CDP server
-        \\                Defaults to 9222
+        \\--port          The port to listen on.
+        \\                Defaults to 9222.
         \\
-        \\--timeout       Inactivity timeout in seconds before disconnecting clients
-        \\                Defaults to 10 (seconds). Limited to 604800 (1 week).
+        \\--timeout       The maximum number of seconds to wait for the browser instance
+        \\                to shut down after the last client disconnects.
+        \\                0 means it never times out.
+        \\                Defaults to 10.
         \\
         \\--cdp_max_connections
-        \\                Maximum number of simultaneous CDP connections.
+        \\                The maximum number of concurrent HTTP clients.
         \\                Defaults to 16.
         \\
         \\--cdp_max_pending_connections
-        \\                Maximum pending connections in the accept queue.
+        \\                The maximum number of pending HTTP clients.
         \\                Defaults to 128.
         \\
     ++ common_options ++
         \\
         \\mcp command
-        \\Starts an MCP (Model Context Protocol) server over stdio
+        \\Runs an MCP server over stdio.
         \\Example: {s} mcp
         \\
+        \\Options:
     ++ common_options ++
         \\
-        \\version command
-        \\Displays the version of {s}
-        \\
         \\help command
-        \\Displays this message
-        \\
+        \\Print this help and exits.
     ;
+
     std.debug.print(usage, .{ self.exec_name, self.exec_name, self.exec_name, self.exec_name, self.exec_name, self.exec_name });
-    if (success) {
-        return std.process.cleanExit();
-    }
-    std.process.exit(1);
 }
 
-pub fn parseArgs(allocator: Allocator, argv: std.process.Args) !Config {
-    var args = try std.process.Args.Iterator.initAllocator(argv, allocator);
-    defer args.deinit();
+pub fn parse(allocator: Allocator, process: std.process.ArgIterator) ParseError!Config {
+    var args = process;
 
-    const exec_name = try allocator.dupe(u8, std.fs.path.basename(args.next().?));
-
-    const mode_string = args.next() orelse "";
-    const run_mode = std.meta.stringToEnum(RunMode, mode_string) orelse blk: {
-        var peek_args = args;
-        const inferred_mode = inferMode(mode_string, &peek_args) orelse
-            return init(allocator, exec_name, .{ .help = false });
-        // "command" wasn't a command but an option. We can't reset args, but
-        // we can create a new one. Not great, but this fallback is temporary
-        // as we transition to this command mode approach.
-        args.deinit();
-
-        args = try std.process.Args.Iterator.initAllocator(argv, allocator);
-        // skip the exec_name
-        _ = args.skip();
-
-        break :blk inferred_mode;
+    const exec_name = args.next() orelse @panic("missing process name");
+    const mode = blk: {
+        const m = try inferMode(allocator, &args);
+        switch (m) {
+            .help => {
+                _ = args.next();
+                break :blk Mode{ .help = true };
+            },
+            .version => {
+                _ = args.next();
+                break :blk .version;
+            },
+            else => |mode| {
+                _ = args.next();
+                break :blk try parseMode(allocator, mode, &args);
+            },
+        }
     };
 
-    const mode: Mode = switch (run_mode) {
-        .help => .{ .help = true },
-        .browse => .{ .browse = parseBrowseArgs(allocator, &args) catch
-            return init(allocator, exec_name, .{ .help = false }) },
-        .serve => .{ .serve = parseServeArgs(allocator, &args) catch
-            return init(allocator, exec_name, .{ .help = false }) },
-        .fetch => .{ .fetch = parseFetchArgs(allocator, &args) catch
-            return init(allocator, exec_name, .{ .help = false }) },
-        .mcp => .{ .mcp = parseMcpArgs(allocator, &args) catch
-            return init(allocator, exec_name, .{ .help = false }) },
-        .version => .{ .version = {} },
-    };
-    return init(allocator, exec_name, mode);
+    return Config.init(allocator, exec_name, mode);
 }
 
-const InferModeHint = enum {
-    fetch,
-    serve,
-    browse_candidate,
-    browse_only,
-};
+pub const ParseError = error{InvalidArgument};
 
-const InferModeValue = enum {
-    none,
-    required,
-    optional,
-};
+pub fn inferMode(allocator: Allocator, process: *std.process.ArgIterator) ParseError!RunMode {
+    var args = process;
+    _ = args.next();
 
-fn inferModeOption(opt: []const u8) ?InferModeHint {
-    if (std.mem.eql(u8, opt, "--dump")) {
-        return .fetch;
+    var tokens: std.ArrayList([]const u8) = .empty;
+    defer tokens.deinit(allocator);
+
+    while (args.next()) |token| {
+        try tokens.append(allocator, token);
     }
 
-    if (std.mem.eql(u8, opt, "--noscript")) {
-        return .fetch;
-    }
-
-    if (std.mem.eql(u8, opt, "--strip_mode")) {
-        return .fetch;
-    }
-
-    if (std.mem.eql(u8, opt, "--with_base")) {
-        return .fetch;
-    }
-
-    if (std.mem.eql(u8, opt, "--with_frames")) {
-        return .fetch;
-    }
-
-    if (std.mem.eql(u8, opt, "--host")) {
-        return .serve;
-    }
-
-    if (std.mem.eql(u8, opt, "--headed")) {
-        return .browse_candidate;
-    }
-
-    if (std.mem.eql(u8, opt, "--headless")) {
-        return .browse_candidate;
-    }
-
-    if (std.mem.eql(u8, opt, "--browser_mode")) {
-        return .browse_candidate;
-    }
-
-    if (std.mem.eql(u8, opt, "--window_width")) {
-        return .browse_candidate;
-    }
-
-    if (std.mem.eql(u8, opt, "--window_height")) {
-        return .browse_candidate;
-    }
-
-    if (std.mem.eql(u8, opt, "--screenshot_bmp")) {
-        return .browse_only;
-    }
-
-    if (std.mem.eql(u8, opt, "--screenshot_png")) {
-        return .browse_only;
-    }
-
-    if (std.mem.eql(u8, opt, "--port")) {
-        return .serve;
-    }
-
-    if (std.mem.eql(u8, opt, "--timeout")) {
-        return .serve;
-    }
-
-    return null;
+    return inferModeSlice(tokens.items);
 }
 
-fn inferModeOptionValue(opt: []const u8) InferModeValue {
-    if (std.mem.eql(u8, opt, "--host") or
-        std.mem.eql(u8, opt, "--port") or
-        std.mem.eql(u8, opt, "--timeout") or
-        std.mem.eql(u8, opt, "--cdp_max_connections") or
-        std.mem.eql(u8, opt, "--cdp_max_pending_connections") or
-        std.mem.eql(u8, opt, "--http_proxy") or
-        std.mem.eql(u8, opt, "--proxy_bearer_token") or
-        std.mem.eql(u8, opt, "--http_max_concurrent") or
-        std.mem.eql(u8, opt, "--http_max_host_open") or
-        std.mem.eql(u8, opt, "--http_connect_timeout") or
-        std.mem.eql(u8, opt, "--http_timeout") or
-        std.mem.eql(u8, opt, "--http_max_response_size") or
-        std.mem.eql(u8, opt, "--log_level") or
-        std.mem.eql(u8, opt, "--log_format") or
-        std.mem.eql(u8, opt, "--user_agent_suffix") or
-        std.mem.eql(u8, opt, "--profile_dir") or
-        std.mem.eql(u8, opt, "--browser_mode") or
-        std.mem.eql(u8, opt, "--window_width") or
-        std.mem.eql(u8, opt, "--window_height") or
-        std.mem.eql(u8, opt, "--screenshot_bmp") or
-        std.mem.eql(u8, opt, "--screenshot_png") or
-        std.mem.eql(u8, opt, "--strip_mode"))
-    {
-        return .required;
+fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
+    var shared_opts = Config.Common{};
+
+    var index: usize = 0;
+    while (index < tokens.len) {
+        const token = tokens[index];
+        if (inferModeOption(token)) {
+            if (index + 1 < tokens.len) {
+                index += 2;
+            } else {
+                index += 1;
+            }
+            continue;
+        }
+
+        if (std.mem.eql(u8, token, "--headed") or std.mem.eql(u8, token, "--headless")) {
+            index += 1;
+            continue;
+        }
+
+        if (std.mem.eql(u8, token, "browse")) {
+            return .browse;
+        }
+        if (std.mem.eql(u8, token, "fetch")) {
+            return .fetch;
+        }
+        if (std.mem.eql(u8, token, "serve")) {
+            return .serve;
+        }
+        if (std.mem.eql(u8, token, "mcp")) {
+            return .mcp;
+        }
+        if (std.mem.eql(u8, token, "help")) {
+            return .help;
+        }
+        if (std.mem.eql(u8, token, "--help") or std.mem.eql(u8, token, "-h")) {
+            return .help;
+        }
+        if (std.mem.eql(u8, token, "--version")) {
+            return .version;
+        }
+
+        if (try parseCommon(allocator, token, &shared_opts, &std.process.ArgIteratorGeneral(.{}).init(tokens[index + 1 ..]))) {
+            index += 1;
+            continue;
+        }
+
+        return if (std.mem.indexOfAny(u8, token, ":/") == null) .serve else .fetch;
     }
 
+    return .help;
+}
+
+fn inferModeOption(opt: []const u8) bool {
+    if (std.mem.eql(u8, opt, "--http_proxy")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--proxy_bearer_token")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--http_max_concurrent")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--http_max_host_open")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--http_timeout")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--http_connect_timeout")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--http_max_response_size")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--log_level")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--log_format")) {
+        return true;
+    }
     if (std.mem.eql(u8, opt, "--log_filter_scopes")) {
-        return .optional;
+        return true;
     }
-
-    return .none;
+    if (std.mem.eql(u8, opt, "--user_agent_suffix")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--profile_dir")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--browser_mode")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--window_width")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--window_height")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--obey_robots")) {
+        return true;
+    }
+    return false;
 }
 
-fn inferMode(first_opt: []const u8, args: *const std.process.Args.Iterator) ?RunMode {
-    if (first_opt.len == 0) {
-        return .serve;
-    }
-
-    if (std.mem.startsWith(u8, first_opt, "--") == false) {
-        return .fetch;
-    }
-
-    var browse_candidate = false;
-    if (inferModeOption(first_opt)) |hint| {
-        switch (hint) {
-            .fetch => return .fetch,
-            .serve => return .serve,
-            .browse_candidate => browse_candidate = true,
-            .browse_only => return .browse,
-        }
-    }
-
-    var pending_value = inferModeOptionValue(first_opt);
-    var peek_args = args.*;
-    while (peek_args.next()) |opt| {
-        switch (pending_value) {
-            .required => {
-                pending_value = .none;
-                continue;
-            },
-            .optional => {
-                if (!std.mem.startsWith(u8, opt, "--")) {
-                    pending_value = .none;
-                    continue;
-                }
-                pending_value = .none;
-            },
-            .none => {},
-        }
-
-        if (std.mem.startsWith(u8, opt, "--") == false) {
-            return if (browse_candidate) .browse else .fetch;
-        }
-        if (inferModeOption(opt)) |hint| {
-            switch (hint) {
-                .fetch => return .fetch,
-                .serve => return .serve,
-                .browse_candidate => browse_candidate = true,
-                .browse_only => return .browse,
-            }
-        }
-        pending_value = inferModeOptionValue(opt);
-    }
-
-    if (browse_candidate) {
-        return .browse;
-    }
-    return null;
+pub fn parseMode(allocator: Allocator, mode: RunMode, process: *std.process.ArgIterator) ParseError!Mode {
+    return switch (mode) {
+        .browse => .{ .browse = try parseBrowse(allocator, process) },
+        .fetch => .{ .fetch = try parseFetch(allocator, process) },
+        .serve => .{ .serve = try parseServe(allocator, process) },
+        .mcp => .{ .mcp = try parseMcp(allocator, process) },
+        else => unreachable,
+    };
 }
 
-fn inferModeSlice(first_opt: []const u8, remaining_opts: []const []const u8) ?RunMode {
-    if (first_opt.len == 0) {
-        return .serve;
-    }
-
-    if (std.mem.startsWith(u8, first_opt, "--") == false) {
-        return .fetch;
-    }
-
-    var browse_candidate = false;
-    if (inferModeOption(first_opt)) |hint| {
-        switch (hint) {
-            .fetch => return .fetch,
-            .serve => return .serve,
-            .browse_candidate => browse_candidate = true,
-            .browse_only => return .browse,
-        }
-    }
-
-    var pending_value = inferModeOptionValue(first_opt);
-    for (remaining_opts) |opt| {
-        switch (pending_value) {
-            .required => {
-                pending_value = .none;
-                continue;
-            },
-            .optional => {
-                if (!std.mem.startsWith(u8, opt, "--")) {
-                    pending_value = .none;
-                    continue;
-                }
-                pending_value = .none;
-            },
-            .none => {},
-        }
-
-        if (std.mem.startsWith(u8, opt, "--") == false) {
-            return if (browse_candidate) .browse else .fetch;
-        }
-        if (inferModeOption(opt)) |hint| {
-            switch (hint) {
-                .fetch => return .fetch,
-                .serve => return .serve,
-                .browse_candidate => browse_candidate = true,
-                .browse_only => return .browse,
-            }
-        }
-        pending_value = inferModeOptionValue(opt);
-    }
-
-    if (browse_candidate) {
-        return .browse;
-    }
-    return null;
-}
-
-fn parseBrowseArgs(
-    allocator: Allocator,
-    args: *std.process.Args.Iterator,
-) !Browse {
-    var url: ?[:0]const u8 = null;
+pub fn parseBrowse(allocator: Allocator, process: *std.process.ArgIterator) ParseError!Browse {
+    var args = process;
     var common: Common = .{ .browser_mode = .headed };
     var screenshot_bmp_path: ?[:0]const u8 = null;
     var screenshot_png_path: ?[:0]const u8 = null;
 
-    while (args.next()) |opt| {
-        if (try parseCommonArg(allocator, opt, args, &common)) {
-            continue;
-        }
-
+    const url = while (args.next()) |opt| {
         if (std.mem.eql(u8, "--screenshot_bmp", opt)) {
             const str = args.next() orelse {
                 log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_bmp" });
                 return error.InvalidArgument;
             };
+
             screenshot_bmp_path = try allocator.dupeZ(u8, str);
             continue;
         }
@@ -780,40 +660,114 @@ fn parseBrowseArgs(
                 log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_png" });
                 return error.InvalidArgument;
             };
+
             screenshot_png_path = try allocator.dupeZ(u8, str);
             continue;
         }
 
-        if (std.mem.startsWith(u8, opt, "--")) {
-            log.fatal(.app, "unknown argument", .{ .mode = "browse", .arg = opt });
-            return error.UnkownOption;
+        if (try parseCommon(allocator, opt, &common, &args)) {
+            continue;
         }
 
-        if (url != null) {
-            log.fatal(.app, "duplicate browse url", .{ .help = "only 1 URL can be specified" });
-            return error.TooManyURLs;
-        }
-        url = try allocator.dupeZ(u8, opt);
-    }
-
-    if (url == null) {
-        log.fatal(.app, "missing browse url", .{ .help = "URL to browse must be provided" });
-        return error.MissingURL;
-    }
+        break opt;
+    } else {
+        log.fatal(.app, "missing URL", .{});
+        return error.InvalidArgument;
+    };
 
     return .{
-        .url = url.?,
+        .url = try allocator.dupeZ(u8, url),
         .common = common,
         .screenshot_bmp_path = screenshot_bmp_path,
         .screenshot_png_path = screenshot_png_path,
     };
 }
 
-fn parseServeArgs(
-    allocator: Allocator,
-    args: *std.process.Args.Iterator,
-) !Serve {
-    var serve: Serve = .{};
+pub fn parseFetch(allocator: Allocator, process: *std.process.ArgIterator) ParseError!Fetch {
+    var args = process;
+    var common: Common = .{};
+
+    var with_base = false;
+    var with_frames = false;
+    var dump_mode: ?DumpFormat = null;
+    var strip: dump.Opts.Strip = .{};
+
+    const url = while (args.next()) |opt| {
+        if (std.mem.eql(u8, "--dump", opt)) {
+            const str = args.next() orelse {
+                log.fatal(.app, "missing argument value", .{ .arg = "--dump" });
+                return error.InvalidArgument;
+            };
+            dump_mode = std.meta.stringToEnum(DumpFormat, str) orelse {
+                log.fatal(.app, "invalid option choice", .{ .arg = "--dump", .value = str });
+                return error.InvalidArgument;
+            };
+            continue;
+        }
+
+        if (std.mem.eql(u8, "--with-base", opt)) {
+            with_base = true;
+            continue;
+        }
+
+        if (std.mem.eql(u8, "--with-frames", opt)) {
+            with_frames = true;
+            continue;
+        }
+
+        if (std.mem.eql(u8, "--strip", opt)) {
+            const str = args.next() orelse {
+                log.fatal(.app, "missing argument value", .{ .arg = "--strip" });
+                return error.InvalidArgument;
+            };
+            if (std.mem.eql(u8, "script", str)) {
+                strip.script = true;
+            } else if (std.mem.eql(u8, "style", str)) {
+                strip.style = true;
+            } else if (std.mem.eql(u8, "noscript", str)) {
+                strip.noscript = true;
+            } else if (std.mem.eql(u8, "comment", str)) {
+                strip.comment = true;
+            } else if (std.mem.eql(u8, "cdata", str)) {
+                strip.cdata = true;
+            } else if (std.mem.eql(u8, "iframe", str)) {
+                strip.iframe = true;
+            } else if (std.mem.eql(u8, "event", str)) {
+                strip.event = true;
+            } else if (std.mem.eql(u8, "hidden", str)) {
+                strip.hidden = true;
+            } else if (std.mem.eql(u8, "meta", str)) {
+                strip.meta = true;
+            } else {
+                log.fatal(.app, "invalid option choice", .{ .arg = "--strip", .value = str });
+                return error.InvalidArgument;
+            }
+            continue;
+        }
+
+        if (try parseCommon(allocator, opt, &common, &args)) {
+            continue;
+        }
+
+        break opt;
+    } else {
+        log.fatal(.app, "missing URL", .{});
+        return error.InvalidArgument;
+    };
+
+    return .{
+        .url = try allocator.dupeZ(u8, url),
+        .dump_mode = dump_mode,
+        .common = common,
+        .with_base = with_base,
+        .with_frames = with_frames,
+        .strip = strip,
+    };
+}
+
+pub fn parseServe(allocator: Allocator, process: *std.process.ArgIterator) ParseError!Serve {
+    var args = process;
+    var serve = Serve{};
 
     while (args.next()) |opt| {
         if (std.mem.eql(u8, "--host", opt)) {
@@ -821,7 +775,7 @@ fn parseServeArgs(
                 log.fatal(.app, "missing argument value", .{ .arg = "--host" });
                 return error.InvalidArgument;
             };
-            serve.host = try allocator.dupe(u8, str);
+            serve.host = str;
             continue;
         }
 
@@ -877,149 +831,34 @@ fn parseServeArgs(
             continue;
         }
 
-        if (try parseCommonArg(allocator, opt, args, &serve.common)) {
+        if (try parseCommon(allocator, opt, &serve.common, &args)) {
             continue;
         }
 
-        log.fatal(.app, "unknown argument", .{ .mode = "serve", .arg = opt });
-        return error.UnkownOption;
+        log.fatal(.app, "unknown argument", .{ .arg = opt });
+        return error.InvalidArgument;
     }
 
     return serve;
 }
 
-fn parseMcpArgs(
-    allocator: Allocator,
-    args: *std.process.Args.Iterator,
-) !Mcp {
-    var mcp: Mcp = .{};
+pub fn parseMcp(allocator: Allocator, process: *std.process.ArgIterator) ParseError!Mcp {
+    var args = process;
+    var mcp = Mcp{};
 
     while (args.next()) |opt| {
-        if (try parseCommonArg(allocator, opt, args, &mcp.common)) {
+        if (try parseCommon(allocator, opt, &mcp.common, &args)) {
             continue;
         }
 
-        log.fatal(.mcp, "unknown argument", .{ .mode = "mcp", .arg = opt });
-        return error.UnkownOption;
+        log.fatal(.app, "unknown argument", .{ .arg = opt });
+        return error.InvalidArgument;
     }
 
     return mcp;
 }
 
-fn parseFetchArgs(
-    allocator: Allocator,
-    args: *std.process.Args.Iterator,
-) !Fetch {
-    var dump_mode: ?DumpFormat = null;
-    var with_base: bool = false;
-    var with_frames: bool = false;
-    var url: ?[:0]const u8 = null;
-    var common: Common = .{};
-    var strip: dump.Opts.Strip = .{};
-
-    while (args.next()) |opt| {
-        if (std.mem.eql(u8, "--dump", opt)) {
-            var peek_args = args.*;
-            if (peek_args.next()) |next_arg| {
-                if (std.meta.stringToEnum(DumpFormat, next_arg)) |mode| {
-                    dump_mode = mode;
-                    _ = args.next();
-                } else {
-                    dump_mode = .html;
-                }
-            } else {
-                dump_mode = .html;
-            }
-            continue;
-        }
-
-        if (std.mem.eql(u8, "--noscript", opt)) {
-            log.warn(.app, "deprecation warning", .{
-                .feature = "--noscript argument",
-                .hint = "use '--strip_mode js' instead",
-            });
-            strip.js = true;
-            continue;
-        }
-
-        if (std.mem.eql(u8, "--with_base", opt)) {
-            with_base = true;
-            continue;
-        }
-
-        if (std.mem.eql(u8, "--with_frames", opt)) {
-            with_frames = true;
-            continue;
-        }
-
-        if (std.mem.eql(u8, "--strip_mode", opt)) {
-            const str = args.next() orelse {
-                log.fatal(.app, "missing argument value", .{ .arg = "--strip_mode" });
-                return error.InvalidArgument;
-            };
-
-            var it = std.mem.splitScalar(u8, str, ',');
-            while (it.next()) |part| {
-                const trimmed = std.mem.trim(u8, part, &std.ascii.whitespace);
-                if (std.mem.eql(u8, trimmed, "js")) {
-                    strip.js = true;
-                } else if (std.mem.eql(u8, trimmed, "ui")) {
-                    strip.ui = true;
-                } else if (std.mem.eql(u8, trimmed, "css")) {
-                    strip.css = true;
-                } else if (std.mem.eql(u8, trimmed, "full")) {
-                    strip.js = true;
-                    strip.ui = true;
-                    strip.css = true;
-                } else {
-                    log.fatal(.app, "invalid option choice", .{ .arg = "--strip_mode", .value = trimmed });
-                }
-            }
-            continue;
-        }
-
-        if (try parseCommonArg(allocator, opt, args, &common)) {
-            continue;
-        }
-
-        if (std.mem.startsWith(u8, opt, "--")) {
-            log.fatal(.app, "unknown argument", .{ .mode = "fetch", .arg = opt });
-            return error.UnkownOption;
-        }
-
-        if (url != null) {
-            log.fatal(.app, "duplicate fetch url", .{ .help = "only 1 URL can be specified" });
-            return error.TooManyURLs;
-        }
-        url = try allocator.dupeZ(u8, opt);
-    }
-
-    if (url == null) {
-        log.fatal(.app, "missing fetch url", .{ .help = "URL to fetch must be provided" });
-        return error.MissingURL;
-    }
-
-    return .{
-        .url = url.?,
-        .dump_mode = dump_mode,
-        .strip = strip,
-        .common = common,
-        .with_base = with_base,
-        .with_frames = with_frames,
-    };
-}
-
-fn parseCommonArg(
-    allocator: Allocator,
-    opt: []const u8,
-    args: *std.process.Args.Iterator,
-    common: *Common,
-) !bool {
-    if (std.mem.eql(u8, "--insecure_disable_tls_host_verification", opt)) {
-        common.tls_verify_host = false;
-        return true;
-    }
-
+pub fn parseCommon(allocator: Allocator, opt: []const u8, common: *Common, args: *std.process.ArgIterator) ParseError!bool {
     if (std.mem.eql(u8, "--obey_robots", opt)) {
         common.obey_robots = true;
         return true;
@@ -1030,6 +869,7 @@ fn parseCommonArg(
             log.fatal(.app, "missing argument value", .{ .arg = "--http_proxy" });
             return error.InvalidArgument;
         };
+
         common.http_proxy = try allocator.dupeZ(u8, str);
         return true;
     }
@@ -1039,6 +879,7 @@ fn parseCommonArg(
             log.fatal(.app, "missing argument value", .{ .arg = "--proxy_bearer_token" });
             return error.InvalidArgument;
         };
+
         common.proxy_bearer_token = try allocator.dupeZ(u8, str);
         return true;
     }
@@ -1053,6 +894,10 @@ fn parseCommonArg(
             log.fatal(.app, "invalid argument value", .{ .arg = "--http_max_concurrent", .err = err });
             return error.InvalidArgument;
         };
+        if (common.http_max_concurrent.? == 0) {
+            log.fatal(.app, "invalid argument value", .{ .arg = "--http_max_concurrent", .value = str });
+            return error.InvalidArgument;
+        }
         return true;
     }
 
@@ -1066,6 +911,10 @@ fn parseCommonArg(
             log.fatal(.app, "invalid argument value", .{ .arg = "--http_max_host_open", .err = err });
             return error.InvalidArgument;
         };
+        if (common.http_max_host_open.? == 0) {
+            log.fatal(.app, "invalid argument value", .{ .arg = "--http_max_host_open", .value = str });
+            return error.InvalidArgument;
+        }
         return true;
     }
 
@@ -1255,15 +1104,6 @@ test "browse defaults to interactive http timeout" {
     try std.testing.expectEqual(DEFAULT_INTERACTIVE_HTTP_TIMEOUT_MS, config.httpTimeout());
 }
 
-test "browse defaults to headed browser mode" {
-    var config = try Config.init(std.testing.allocator, "test", .{
-        .browse = .{ .url = "https://example.com/" },
-    });
-    defer config.deinit(std.testing.allocator);
-
-    try std.testing.expectEqual(BrowserMode.headed, config.browserMode());
-}
-
 test "headed serve defaults to interactive http timeout" {
     var config = try Config.init(std.testing.allocator, "test", .{
         .serve = .{ .common = .{ .browser_mode = .headed } },
@@ -1300,15 +1140,6 @@ test "mcp keeps shorter default http timeout" {
     try std.testing.expectEqual(DEFAULT_HTTP_TIMEOUT_MS, config.httpTimeout());
 }
 
-test "serve defaults to headless browser mode" {
-    var config = try Config.init(std.testing.allocator, "test", .{
-        .serve = .{},
-    });
-    defer config.deinit(std.testing.allocator);
-
-    try std.testing.expectEqual(BrowserMode.headless, config.browserMode());
-}
-
 test "explicit http timeout overrides interactive defaults" {
     var config = try Config.init(std.testing.allocator, "test", .{
         .browse = .{
@@ -1322,32 +1153,4 @@ test "explicit http timeout overrides interactive defaults" {
     defer config.deinit(std.testing.allocator);
 
     try std.testing.expectEqual(@as(u31, 1234), config.httpTimeout());
-}
-
-test "infer mode scans later args for headed browse" {
-    try std.testing.expectEqual(RunMode.browse, inferModeSlice("--http_timeout", &.{ "30000", "--headed", "https://example.com/" }).?);
-}
-
-test "infer mode scans later args for serve" {
-    try std.testing.expectEqual(RunMode.serve, inferModeSlice("--profile_dir", &.{ "tmp-profile", "--host", "127.0.0.1" }).?);
-}
-
-test "infer mode skips optional shared values before later headed browse" {
-    try std.testing.expectEqual(RunMode.browse, inferModeSlice("--log_filter_scopes", &.{ "event", "--headed", "https://example.com/" }).?);
-}
-
-test "infer mode keeps headed browse when shared option values come first" {
-    try std.testing.expectEqual(RunMode.browse, inferModeSlice("--profile_dir", &.{ "tmp-profile", "--window_width", "1280", "https://example.com/" }).?);
-}
-
-test "infer mode keeps headed serve when a shared browser flag comes first" {
-    try std.testing.expectEqual(RunMode.serve, inferModeSlice("--headed", &.{ "--host", "127.0.0.1" }).?);
-}
-
-test "infer mode keeps browser_mode serve when the shared browser option comes first" {
-    try std.testing.expectEqual(RunMode.serve, inferModeSlice("--browser_mode", &.{ "headed", "--host", "127.0.0.1" }).?);
-}
-
-test "infer mode falls back to fetch when a URL follows shared options" {
-    try std.testing.expectEqual(RunMode.fetch, inferModeSlice("--profile_dir", &.{ "tmp-profile", "https://example.com/" }).?);
 }
