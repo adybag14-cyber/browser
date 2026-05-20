@@ -73,6 +73,7 @@ Current validation truth on this branch:
 - `scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1` and `scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1` are the compact issue #3 launcher-companion surfaces when the replay should stay on the narrower attached-page helper lane
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` is the read-first companion when the replay should keep one Google-like attached page first through the localhost route
 - `docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_BRIDGE.md` is the smaller bridge when the replay is already narrowed to the issue #3 attached localhost ladder and needs the next helper chain surfaced quickly
+- `docs/WINDOWS_FULL_USE.md` now also keeps a plain `python -m http.server 8139 --bind 127.0.0.1` fallback loop for the same three-page attached bundle, stable viewport, disposable profile root, and per-page navigation or interaction checks when a run starts from a plain checkout before the helper surfaces are reopened
 - saved or attached HTML follow-up should stay on the wrapper-backed localhost replay route in `docs/WINDOWS_FULL_USE.md`, not older wrapper-heavy note chains that predate the current router and launcher surfaces
 
 Use `rendering` before attached-page replay when the current change touched layout, paint, screenshot timing, or other visible headed-surface behavior. Use `network` before attached-page replay when the current change touched shared subresource loading, authenticated asset fetches, or browser-managed request credentials.
