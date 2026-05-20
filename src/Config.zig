@@ -498,7 +498,8 @@ pub fn parseArgs(allocator: Allocator, argv: std.process.Args) !Config {
 
     const mode_string = args.next() orelse "";
     const run_mode = std.meta.stringToEnum(RunMode, mode_string) orelse blk: {
-        const inferred_mode = inferMode(mode_string) orelse
+        var peek_args = args;
+        const inferred_mode = inferMode(mode_string, &peek_args) orelse
             return init(allocator, exec_name, .{ .help = false });
         // "command" wasn't a command but an option. We can't reset args, but
         // we can create a new one. Not great, but this fallback is temporary
@@ -527,15 +528,7 @@ pub fn parseArgs(allocator: Allocator, argv: std.process.Args) !Config {
     return init(allocator, exec_name, mode);
 }
 
-fn inferMode(opt: []const u8) ?RunMode {
-    if (opt.len == 0) {
-        return .serve;
-    }
-
-    if (std.mem.startsWith(u8, opt, "--") == false) {
-        return .fetch;
-    }
-
+fn inferModeOption(opt: []const u8) ?RunMode {
     if (std.mem.eql(u8, opt, "--dump")) {
         return .fetch;
     }
@@ -594,6 +587,57 @@ fn inferMode(opt: []const u8) ?RunMode {
 
     if (std.mem.eql(u8, opt, "--timeout")) {
         return .serve;
+    }
+
+    return null;
+}
+
+fn inferMode(first_opt: []const u8, args: *const std.process.Args.Iterator) ?RunMode {
+    if (first_opt.len == 0) {
+        return .serve;
+    }
+
+    if (std.mem.startsWith(u8, first_opt, "--") == false) {
+        return .fetch;
+    }
+
+    if (inferModeOption(first_opt)) |mode| {
+        return mode;
+    }
+
+    var peek_args = args.*;
+    while (peek_args.next()) |opt| {
+        if (std.mem.startsWith(u8, opt, "--") == false) {
+            return .fetch;
+        }
+        if (inferModeOption(opt)) |mode| {
+            return mode;
+        }
+    }
+
+    return null;
+}
+
+fn inferModeSlice(first_opt: []const u8, remaining_opts: []const []const u8) ?RunMode {
+    if (first_opt.len == 0) {
+        return .serve;
+    }
+
+    if (std.mem.startsWith(u8, first_opt, "--") == false) {
+        return .fetch;
+    }
+
+    if (inferModeOption(first_opt)) |mode| {
+        return mode;
+    }
+
+    for (remaining_opts) |opt| {
+        if (std.mem.startsWith(u8, opt, "--") == false) {
+            return .fetch;
+        }
+        if (inferModeOption(opt)) |mode| {
+            return mode;
+        }
     }
 
     return null;
@@ -1169,4 +1213,16 @@ test "explicit http timeout overrides interactive defaults" {
     defer config.deinit(std.testing.allocator);
 
     try std.testing.expectEqual(@as(u31, 1234), config.httpTimeout());
+}
+
+test "infer mode scans later args for headed browse" {
+    try std.testing.expectEqual(RunMode.browse, inferModeSlice("--http_timeout", &.{ "30000", "--headed", "https://example.com/" }).?);
+}
+
+test "infer mode scans later args for serve" {
+    try std.testing.expectEqual(RunMode.serve, inferModeSlice("--profile_dir", &.{ "tmp-profile", "--host", "127.0.0.1" }).?);
+}
+
+test "infer mode falls back to fetch when a URL follows shared options" {
+    try std.testing.expectEqual(RunMode.fetch, inferModeSlice("--profile_dir", &.{ "tmp-profile", "https://example.com/" }).?);
 }
