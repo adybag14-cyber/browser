@@ -11,8 +11,11 @@ production-ready minimalist Zig browser, see
 
 - `--browser_mode headless|headed` is now accepted.
 - `--headed` and `--headless` shortcuts are available.
+- `browse` now defaults to `headed`, while `serve`, `fetch`, and `mcp` default to `headless` unless overridden.
+- `browse` and headed `serve` now use the longer interactive HTTP timeout default (`30000` ms), while headless `serve`, `fetch`, and `mcp` keep the shorter `5000` ms default unless `--http_timeout` is set explicitly.
 - On Windows targets, `headed` now starts a native window lifecycle backend.
 - On non-Windows targets, `headed` still uses a safe headless fallback with warning.
+- Startup diagnostics now distinguish successful headed activation from headed fallback and surface the target class, OS, profile directory, window size, timeout source, and browse/serve target context needed for local headed triage.
 - `--window_width` / `--window_height` now drive window/screen/viewport values.
 - Display runtime abstraction exists with page lifecycle hooks and a Win32 thread backend.
 - CDP viewport APIs update runtime viewport (`Emulation.*Metrics*`, `Browser.setWindowBounds`).
