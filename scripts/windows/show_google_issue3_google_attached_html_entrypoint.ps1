@@ -3,6 +3,8 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$PreferredInitialPage,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -96,7 +98,11 @@ function Format-HelperCommandWithRepoRootEnv {
     if ([string]::IsNullOrWhiteSpace($RepoRootOverride)) {
         $fallbackArguments = [System.Collections.Generic.List[string]]::new()
         foreach ($entry in $Arguments.GetEnumerator()) {
-            Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            if ($entry.Value -is [System.Array]) {
+                Add-SharedPathArrayArgument -Arguments $fallbackArguments -Name $entry.Key -Values $entry.Value
+            } else {
+                Add-SharedArgument -Arguments $fallbackArguments -Name $entry.Key -Value $entry.Value
+            }
         }
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
@@ -108,6 +114,15 @@ function Format-HelperCommandWithRepoRootEnv {
             continue
         }
         if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        if ($value -is [System.Array]) {
+            $command += " -$($entry.Key)"
+            foreach ($item in $value) {
+                $escapedItem = ("$item") -replace "'", "''"
+                $command += " '$escapedItem'"
+            }
             continue
         }
 
@@ -153,10 +168,14 @@ $bundleArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $bundleArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+Add-SharedArgument -Arguments $bundleArguments -Name BrowserExe -Value $BrowserExe
 
 $googleAttachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlFlowArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+Add-SharedArgument -Arguments $googleAttachedHtmlFlowArguments -Name BrowserExe -Value $BrowserExe
 
 $googleAttachedHtmlSurfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $googleAttachedHtmlSurfaceCheckArguments -Name RepoRoot -Value $RepoRoot
@@ -167,28 +186,100 @@ Add-SharedPathArrayArgument -Arguments $googleAttachedHtmlAssetAuditArguments -N
 
 $googleAttachedHtmlSidecarAuditCommand = Format-SidecarAuditCommand -RepoRootOverride $RepoRoot -InputPathOverride $InputPath
 
+$googleAttachedHtmlChangeAreaArguments = [ordered]@{
+    ChangeArea = 'google-attached-html'
+}
+if ($SummaryPath) {
+    $googleAttachedHtmlChangeAreaArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $googleAttachedHtmlChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($PreferredInitialPage) {
+    $googleAttachedHtmlChangeAreaArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlChangeAreaArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedHtmlChangeAreaArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($SummaryPath) {
+    $attachedHtmlChangeAreaArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $attachedHtmlChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($PreferredInitialPage) {
+    $attachedHtmlChangeAreaArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+if ($BrowserExe) {
+    $attachedHtmlChangeAreaArguments['BrowserExe'] = $BrowserExe
+}
+
+$attachedBundleChangeAreaArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($SummaryPath) {
+    $attachedBundleChangeAreaArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $attachedBundleChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($PreferredInitialPage) {
+    $attachedBundleChangeAreaArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+if ($BrowserExe) {
+    $attachedBundleChangeAreaArguments['BrowserExe'] = $BrowserExe
+}
+
+$googleInputChangeAreaArguments = [ordered]@{
+    ChangeArea = 'google-input'
+}
+if ($SummaryPath) {
+    $googleInputChangeAreaArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $googleInputChangeAreaArguments['InputPath'] = @($InputPath)
+}
+if ($PreferredInitialPage) {
+    $googleInputChangeAreaArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+if ($BrowserExe) {
+    $googleInputChangeAreaArguments['BrowserExe'] = $BrowserExe
+}
+
+$googleRecommendedArguments = [ordered]@{
+    SuiteName = 'google-recommended'
+}
+if ($SummaryPath) {
+    $googleRecommendedArguments['SummaryPath'] = $SummaryPath
+}
+if ($InputPath) {
+    $googleRecommendedArguments['InputPath'] = @($InputPath)
+}
+if ($PreferredInitialPage) {
+    $googleRecommendedArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+if ($BrowserExe) {
+    $googleRecommendedArguments['BrowserExe'] = $BrowserExe
+}
+
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 attached-html entrypoint'
     purpose = 'Keep the issue-specific attached-page route visible as the shortest bridge from the top-level headed validation suite router into the lighter sidecar-bundle audit, the broader Google-shaped surface check, the deeper asset-closure audit, the broader Google attached-page validation flow, the shortcut-first route, the context-preserving route, and the bundle-aware helpers, including the compact bundle-suite surface that sits ahead of the bundle-first branch.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    preferred_initial_page = $PreferredInitialPage
+    browser_exe = $BrowserExe
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     top_level_commands = [ordered]@{
-        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'google-attached-html'
-        }) -RepoRootOverride $RepoRoot
-        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html'
-        }) -RepoRootOverride $RepoRoot
-        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html-target-bundle'
-        }) -RepoRootOverride $RepoRoot
-        google_input_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'google-input'
-        }) -RepoRootOverride $RepoRoot
-        google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            SuiteName = 'google-recommended'
-        }) -RepoRootOverride $RepoRoot
+        google_attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
+        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
+        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleChangeAreaArguments -RepoRootOverride $RepoRoot
+        google_input_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleInputChangeAreaArguments -RepoRootOverride $RepoRoot
+        google_recommended = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleRecommendedArguments -RepoRootOverride $RepoRoot
     }
     helper_commands = [ordered]@{
         google_attached_html_sidecar_audit = $googleAttachedHtmlSidecarAuditCommand
@@ -226,6 +317,7 @@ $entrypoint = [ordered]@{
         'Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.',
         'Use attached_html_change_area when the next replay still needs the broader attached-page compatibility route rather than the issue-specific Google-attached path.',
         'Use attached_bundle_change_area, attached_bundle_suite_surface, or attached_bundle_first when the current saved or attached pages are already the known three-page compatibility bundle and that pinned branch should stay visible before widening back into the broader issue #3 helpers.',
+        'Pass PreferredInitialPage or BrowserExe when the replay should keep the same first Google-like page or non-default headed binary pinned through the attached-bundle suite surface, the bundle-first helper, and the broader Google-shaped companion flow instead of dropping that context while the route narrows.',
         'Keep attached_html_target_bundle_proof_entrypoint_note_path nearby when the pinned bundle lane is already in play and the next decision depends on the fixed-list screenshot-and-title proof route staying attached to those same inputs.',
         'Use suite_router_shortcut_entrypoint as the default next helper when no saved summary, non-default repo root, or pinned bundle inputs need to take precedence first.',
         'Use contextual_flow instead when RepoRoot or SummaryPath is already in play and the next helper surface should keep that replay context aligned while you choose between replay shortcuts, replay route, the next-step matrix, the compact bundle-suite helper, the attached bundle branch, or the safe-route helpers.',
@@ -262,6 +354,12 @@ if ($entrypoint.repo_root) {
 }
 if ($entrypoint.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($entrypoint.summary_path)"))
+}
+if ($entrypoint.preferred_initial_page) {
+    Write-Host (("Preferred initial page: {0}") -f $entrypoint.preferred_initial_page)
+}
+if ($entrypoint.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $entrypoint.browser_exe)
 }
 if ($entrypoint.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $entrypoint.explicit_input_path_count)
