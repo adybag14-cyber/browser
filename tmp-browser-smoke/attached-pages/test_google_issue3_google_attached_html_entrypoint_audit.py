@@ -167,6 +167,31 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
                 "first_missing_purpose"
             ],
         )
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1",
+            summary["docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md"][
+                "missing_snippets"
+            ],
+        )
+
+    def test_missing_path_summary_keeps_helper_snippets_for_grouped_drift(self) -> None:
+        self.write_contract_files(helper_text="# drifted\n")
+
+        audit = helper.build_google_attached_entrypoint_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        helper_summary = summary[
+            "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1"
+        ]
+        self.assertGreater(helper_summary["missing_expectation_count"], 1)
+        self.assertIn(
+            "google_attached_html_sidecar_audit = $googleAttachedHtmlSidecarAuditCommand",
+            helper_summary["missing_snippets"],
+        )
+        self.assertIn(
+            'Write-Host (("  9. Issue-specific check: {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)',
+            helper_summary["missing_snippets"],
+        )
 
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(helper_text="# drifted\n")
@@ -201,6 +226,10 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
         self.assertGreater(
             payload["missing_paths"][0]["missing_expectation_count"],
             1,
+        )
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
+            payload["missing_paths"][0]["missing_snippets"],
         )
 
 
