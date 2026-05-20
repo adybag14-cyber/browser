@@ -96,6 +96,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_issue_bridge_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)',
+        "",
+    ),
+    (
         "google_surface_check_guidance",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Use google_attached_html_surface_check when branch state may have moved and the replay should fail fast on the dedicated Google-shaped attached-page lane before reopening the narrower Google helper from this same replay ladder.",
@@ -315,6 +321,12 @@ DRIFT_CASES = (
         "suite_catalog_guide_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)',
+        "",
+    ),
+    (
+        "broader_attached_flow_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Broader attached flow:    {0}") -f $helper.commands.attached_html_validation_flow)',
         "",
     ),
     (
