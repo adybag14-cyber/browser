@@ -90,6 +90,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "validation_bridge_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $browserAwareSharedArguments",
+        "",
+    ),
+    (
+        "validation_bridge_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Validation bridge:        {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "",
+    ),
+    (
         "google_surface_check_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot",
@@ -518,7 +530,7 @@ DRIFT_CASES = (
     (
         "google_entrypoint_companion_flow_output",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
-        'Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)',
+        'Write-Host ((" 10. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)',
         "",
     ),
 )
