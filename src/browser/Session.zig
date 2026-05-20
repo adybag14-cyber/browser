@@ -40,17 +40,41 @@ const Allocator = std.mem.Allocator;
 const IS_DEBUG = builtin.mode == .Debug;
 var google_wait_trace_lock: std.Thread.Mutex = .{};
 
+fn urlContainsIgnoreCase(haystack: []const u8, needle: []const u8) bool {
+    if (needle.len == 0) {
+        return true;
+    }
+    if (haystack.len < needle.len) {
+        return false;
+    }
+
+    var index: usize = 0;
+    while (index + needle.len <= haystack.len) : (index += 1) {
+        if (std.ascii.eqlIgnoreCase(haystack[index .. index + needle.len], needle)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 fn googleWaitTraceEnabled(url: []const u8) bool {
-    return std.mem.indexOf(u8, url, "google-home-") != null or
-        std.mem.indexOf(u8, url, "google_home_title_probe.html") != null or
-        std.mem.indexOf(u8, url, "body_onload_keyboard_input.html") != null or
-        std.mem.indexOf(u8, url, "mouse_down_focus_input.html") != null or
-        std.mem.indexOf(u8, url, "Google%20Safety%20Centre") != null or
-        std.mem.indexOf(u8, url, "Google Safety Centre") != null or
-        std.mem.indexOf(u8, url, "Anthropic") != null or
-        std.mem.indexOf(u8, url, "UAP%20Encounters") != null or
-        std.mem.indexOf(u8, url, "UAP Encounters") != null or
-        std.mem.indexOf(u8, url, "google.com") != null;
+    return urlContainsIgnoreCase(url, "google-home-") or
+        urlContainsIgnoreCase(url, "google_home_title_probe.html") or
+        urlContainsIgnoreCase(url, "body_onload_keyboard_input.html") or
+        urlContainsIgnoreCase(url, "mouse_down_focus_input.html") or
+        urlContainsIgnoreCase(url, "control%20your%20online%20safety%20and%20privacy") or
+        urlContainsIgnoreCase(url, "control your online safety and privacy") or
+        urlContainsIgnoreCase(url, "google%20safety%20centre") or
+        urlContainsIgnoreCase(url, "google safety centre") or
+        urlContainsIgnoreCase(url, "job%20application%20for%20anthropic.html") or
+        urlContainsIgnoreCase(url, "job application for anthropic.html") or
+        urlContainsIgnoreCase(url, "job%20application%20for%20%5bexpression%20of%20interest%5d%20research%20manager%2c%20interpretability%20at%20anthropic") or
+        urlContainsIgnoreCase(url, "job application for [expression of interest] research manager, interpretability at anthropic") or
+        urlContainsIgnoreCase(url, "presidential%20unsealing%20and%20reporting%20system%20for%20uap%20encounters.html") or
+        urlContainsIgnoreCase(url, "presidential unsealing and reporting system for uap encounters.html") or
+        urlContainsIgnoreCase(url, "u.s.%20department%20of%20war") or
+        urlContainsIgnoreCase(url, "u.s. department of war") or
+        urlContainsIgnoreCase(url, "google.com");
 }
 
 fn appendGoogleWaitTrace(stage: []const u8, url: []const u8, detail: []const u8) void {
@@ -957,7 +981,7 @@ fn destroyPage(self: *Session, page: *Page, abort_http: bool) void {
     self.destroyAllocPage(page);
 }
 
-test "google wait trace gate includes the saved localhost google probe, attached targets, and headed fixtures" {
+test "google wait trace gate includes the saved localhost google probe, exact attached bundle filenames, and headed fixtures" {
     try std.testing.expect(googleWaitTraceEnabled(
         "http://127.0.0.1:8000/src/browser/tests/page/google_home_title_probe.html",
     ));
@@ -968,13 +992,22 @@ test "google wait trace gate includes the saved localhost google probe, attached
         "http://127.0.0.1:8000/tmp-browser-smoke/local-html-fixtures/mouse_down_focus_input.html",
     ));
     try std.testing.expect(googleWaitTraceEnabled(
-        "http://127.0.0.1:8000/Control%20your%20online%20safety%20and%20privacy%20%E2%80%93%20Google%20Safety%20Centre.html",
+        "http://127.0.0.1:8000/Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html",
     ));
     try std.testing.expect(googleWaitTraceEnabled(
-        "http://127.0.0.1:8000/Job%20Application%20for%20Anthropic.html",
+        "http://127.0.0.1:8000/Control%20your%20online%20safety%20and%20privacy%20%E2%80%93%20Google%20Safety%20Centre%20%2809_05_2026%2021%EF%BC%9A23%EF%BC%9A40%29.html",
     ));
     try std.testing.expect(googleWaitTraceEnabled(
-        "http://127.0.0.1:8000/Presidential%20Unsealing%20and%20Reporting%20System%20for%20UAP%20Encounters.html",
+        "http://127.0.0.1:8000/Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/Job%20Application%20for%20%5BExpression%20of%20Interest%5D%20Research%20Manager%2C%20Interpretability%20at%20Anthropic%20%2809_05_2026%2021%EF%BC%9A25%EF%BC%9A29%29.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/Presidential%20Unsealing%20and%20Reporting%20System%20for%20UAP%20Encounters%20_%20U.S.%20Department%20of%20War.html",
     ));
     try std.testing.expect(googleWaitTraceEnabled("https://www.google.com/"));
     try std.testing.expect(!googleWaitTraceEnabled("http://127.0.0.1:8000/tmp-browser-smoke/form-controls/index.html"));
