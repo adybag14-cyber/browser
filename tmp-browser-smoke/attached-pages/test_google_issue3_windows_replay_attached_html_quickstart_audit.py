@@ -168,6 +168,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "bundle_proof_entrypoint_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
         "bundle_proof_surface_check_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Bundle proof check:       {0}") -f $helper.commands.attached_bundle_proof_surface_check)',
@@ -394,6 +400,12 @@ DRIFT_CASES = (
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Keep suite_router_attached_html_quickstart nearby as the sidecar helper when the route needs to widen back toward the suite-router surface instead of narrowing directly into the shorter attached-page bridge or the attached-page shortcut.",
         "drifted note",
+    ),
+    (
+        "replay_route_shortcut_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $sharedArguments",
+        "",
     ),
     (
         "replay_route_shortcut_output",
