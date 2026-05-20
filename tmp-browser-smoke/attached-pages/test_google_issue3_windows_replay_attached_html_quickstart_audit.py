@@ -1,3 +1,6 @@
+import contextlib
+import io
+import json
 import tempfile
 import unittest
 from collections import defaultdict
@@ -496,6 +499,55 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
                     if not result["exists"]
                 ]
                 self.assertIn(snippet, failing)
+
+    def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
+        self.write_contract_files(
+            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
+        )
+
+        audit = helper.build_replay_attached_quickstart_audit(self.root)
+
+        summary = {
+            entry["path"]: entry
+            for entry in audit["missing_paths"]
+        }
+        self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", summary)
+        self.assertGreater(
+            summary["docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"][
+                "missing_expectation_count"
+            ],
+            1,
+        )
+        self.assertIn(
+            "replay-side surface checker visible",
+            summary["docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"][
+                "first_missing_purpose"
+            ],
+        )
+
+    def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(
+        self,
+    ) -> None:
+        self.write_contract_files(
+            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(["--repo-root", str(self.root), "--json"])
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertGreater(payload["missing_count"], 0)
+        self.assertGreater(payload["missing_path_count"], 0)
+        self.assertEqual(
+            "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+            payload["missing_paths"][0]["path"],
+        )
+        self.assertGreater(
+            payload["missing_paths"][0]["missing_expectation_count"],
+            1,
+        )
 
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(
