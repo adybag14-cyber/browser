@@ -305,6 +305,54 @@ test "browse target info strips userinfo before ipv6 loopback classification" {
     try std.testing.expectEqualStrings("8080", info.port);
 }
 
+test "headed runtime helper stays active only for native headed execution" {
+    try std.testing.expect(!headedRuntimeActive(.headless, .headless));
+    try std.testing.expect(!headedRuntimeActive(.headed, .headless));
+    try std.testing.expect(headedRuntimeActive(.headed, .headed));
+}
+
+test "browser mode fallback info only appears for headed-to-headless fallback" {
+    try std.testing.expect(browserModeFallbackInfo(.headless, .headless) == null);
+    try std.testing.expect(browserModeFallbackInfo(.headed, .headed) == null);
+
+    const info = browserModeFallbackInfo(.headed, .headless) orelse return error.TestUnexpectedResult;
+    const support_expected = lp.build_config.target_class == .bare_metal or builtin.os.tag == .windows;
+    try std.testing.expectEqual(support_expected, info.support_expected);
+    if (support_expected) {
+        try std.testing.expectEqualStrings(
+            "headed mode was requested on a runtime that should support a native headed surface, but startup still resolved to headless; inspect earlier startup diagnostics for the display bring-up failure",
+            info.reason,
+        );
+    } else {
+        try std.testing.expectEqualStrings(
+            "native headed mode is currently available on Windows and bare metal only; continuing with the safe headless runtime",
+            info.reason,
+        );
+    }
+}
+
+test "resolved startup labels keep explicit values and placeholders" {
+    try std.testing.expectEqualStrings("/tmp/profile", resolvedProfileDirLabel("/tmp/profile"));
+    try std.testing.expectEqualStrings("(unavailable)", resolvedProfileDirLabel(null));
+    try std.testing.expectEqualStrings("/tmp/capture.png", resolvedOptionalPathLabel("/tmp/capture.png"));
+    try std.testing.expectEqualStrings("(disabled)", resolvedOptionalPathLabel(null));
+}
+
+test "http timeout source label distinguishes overrides from defaults" {
+    try std.testing.expectEqualStrings(
+        "interactive_default",
+        httpTimeoutSourceLabel(.{}, true),
+    );
+    try std.testing.expectEqualStrings(
+        "standard_default",
+        httpTimeoutSourceLabel(.{}, false),
+    );
+    try std.testing.expectEqualStrings(
+        "explicit_override",
+        httpTimeoutSourceLabel(.{ .http_timeout = 1234 }, true),
+    );
+}
+
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
     const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
