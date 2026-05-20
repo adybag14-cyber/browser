@@ -792,6 +792,49 @@ class GoogleIssue3AttachedPagesLauncherCompanionAuditTests(unittest.TestCase):
             "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
         )
 
+    def test_build_audit_summarizes_multiple_missing_expectations_per_path(self) -> None:
+        self.write_contract_files(doc_text="# drifted\n")
+
+        audit = helper.build_launcher_companion_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 1)
+        summary_entry = next(
+            entry
+            for entry in audit["missing_paths"]
+            if entry["path"] == "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
+        )
+        self.assertGreater(summary_entry["missing_expectation_count"], 1)
+        self.assertEqual(
+            "The replay-attached quickstart keeps the launcher companion checker visible before the helper is trusted.",
+            summary_entry["first_missing_purpose"],
+        )
+        self.assertIn(
+            "check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+            summary_entry["first_missing_snippet"],
+        )
+
+    def test_cli_json_output_includes_grouped_missing_path_summary(self) -> None:
+        self.write_contract_files(doc_text="# drifted\n")
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(["--repo-root", str(self.root), "--json"])
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertGreater(payload["missing_count"], 1)
+        self.assertGreater(payload["missing_path_count"], 0)
+        summary_entry = next(
+            entry
+            for entry in payload["missing_paths"]
+            if entry["path"] == "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
+        )
+        self.assertGreater(summary_entry["missing_expectation_count"], 1)
+        self.assertEqual(
+            "The replay-attached quickstart keeps the launcher companion checker visible before the helper is trusted.",
+            summary_entry["first_missing_purpose"],
+        )
+
     def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
         self.write_contract_files(doc_text="# drifted\n", wrapper_text="# drifted\n", python_launcher_text="# drifted\n")
 
