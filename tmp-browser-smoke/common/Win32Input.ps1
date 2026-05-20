@@ -886,89 +886,90 @@ function Invoke-SmokeClientCtrlWheel([IntPtr]$Hwnd, [int]$X, [int]$Y, [int]$Delt
   return $point
 }
 
-function Send-SmokeCtrlA {
+function Send-SmokeKeyStroke([int]$Code, [int]$Modifiers = 0) {
+  if (Use-HeadedMailboxInput) {
+    Send-HeadedKeyStroke -Code $Code -Modifiers $Modifiers
+    return $true
+  }
   if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 65 -Modifiers 2
+    Send-BareMetalKeyStroke -Code $Code -Modifiers $Modifiers
+    return $true
+  }
+  return $false
+}
+
+function Send-SmokeCtrlA {
+  if (Send-SmokeKeyStroke -Code 65 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlA()
 }
 
 function Send-SmokeCtrlF {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 70 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 70 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlF()
 }
 
 function Send-SmokeCtrlD {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 68 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 68 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlD()
 }
 
 function Send-SmokeCtrlH {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 72 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 72 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlH()
 }
 
 function Send-SmokeCtrlJ {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 74 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 74 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlJ()
 }
 
 function Send-SmokeCtrlL {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 76 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 76 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlL()
 }
 
 function Send-SmokeCtrlComma {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 44 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 44 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlComma()
 }
 
 function Send-SmokeCtrlT {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 84 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 84 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlT()
 }
 
 function Send-SmokeCtrlW {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 87 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 87 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlW()
 }
 
 function Send-SmokeCtrlTab {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 9 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 9 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlTab()
 }
 
 function Send-SmokeCtrlShiftTab {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 9 -Modifiers 3
+  if (Send-SmokeKeyStroke -Code 9 -Modifiers 3) {
     return
   }
   [SmokeProbeUser32]::SendCtrlShiftTab()
@@ -978,253 +979,202 @@ function Send-SmokeCtrlDigit([int]$Digit) {
   if ($Digit -lt 1 -or $Digit -gt 9) {
     throw "Digit must be between 1 and 9"
   }
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code (48 + $Digit) -Modifiers 2
+  if (Send-SmokeKeyStroke -Code (48 + $Digit) -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlDigit([uint16](0x30 + $Digit))
 }
 
 function Send-SmokeCtrlPlus {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 43 -Modifiers 2
+  if (Send-SmokeKeyStroke -Code 43 -Modifiers 2) {
     return
   }
   [SmokeProbeUser32]::SendCtrlPlus()
 }
 
 function Send-SmokeCtrlShiftP {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 80 -Modifiers 3
+  if (Send-SmokeKeyStroke -Code 80 -Modifiers 3) {
     return
   }
   [SmokeProbeUser32]::SendCtrlShiftP()
 }
 
 function Send-SmokeCtrlShiftA {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 65 -Modifiers 3
+  if (Send-SmokeKeyStroke -Code 65 -Modifiers 3) {
     return
   }
   [SmokeProbeUser32]::SendCtrlShiftA()
 }
 
 function Send-SmokeCtrlShiftB {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 66 -Modifiers 3
+  if (Send-SmokeKeyStroke -Code 66 -Modifiers 3) {
     return
   }
   [SmokeProbeUser32]::SendCtrlShiftB()
 }
 
 function Send-SmokeCtrlShiftT {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 84 -Modifiers 3
+  if (Send-SmokeKeyStroke -Code 84 -Modifiers 3) {
     return
   }
   [SmokeProbeUser32]::SendCtrlShiftT()
 }
 
 function Send-SmokeCtrlShiftD {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 68 -Modifiers 3
+  if (Send-SmokeKeyStroke -Code 68 -Modifiers 3) {
     return
   }
   [SmokeProbeUser32]::SendCtrlShiftD()
 }
 
 function Send-SmokeCtrlAltH {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 72 -Modifiers 6
+  if (Send-SmokeKeyStroke -Code 72 -Modifiers 6) {
     return
   }
   [SmokeProbeUser32]::SendCtrlAltH()
 }
 
 function Send-SmokeCtrlAltB {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 66 -Modifiers 6
+  if (Send-SmokeKeyStroke -Code 66 -Modifiers 6) {
     return
   }
   [SmokeProbeUser32]::SendCtrlAltB()
 }
 
 function Send-SmokeCtrlAltJ {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 74 -Modifiers 6
+  if (Send-SmokeKeyStroke -Code 74 -Modifiers 6) {
     return
   }
   [SmokeProbeUser32]::SendCtrlAltJ()
 }
 
 function Send-SmokeCtrlAltS {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 83 -Modifiers 6
+  if (Send-SmokeKeyStroke -Code 83 -Modifiers 6) {
     return
   }
   [SmokeProbeUser32]::SendCtrlAltS()
 }
 
 function Send-SmokeAltHome {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 36 -Modifiers 4
+  if (Send-SmokeKeyStroke -Code 36 -Modifiers 4) {
     return
   }
   [SmokeProbeUser32]::SendAltHome()
 }
 
 function Send-SmokeEnter {
-  if (Use-HeadedMailboxInput) {
-    Send-HeadedKeyStroke -Code 13
-    return
-  }
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 13
+  if (Send-SmokeKeyStroke -Code 13) {
     return
   }
   [SmokeProbeUser32]::SendEnter()
 }
 
 function Send-SmokeSpace {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 32
+  if (Send-SmokeKeyStroke -Code 32) {
     return
   }
   [SmokeProbeUser32]::SendSpace()
 }
 
 function Send-SmokeEscape {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 27
+  if (Send-SmokeKeyStroke -Code 27) {
     return
   }
   [SmokeProbeUser32]::SendEscape()
 }
 
 function Send-SmokeF3 {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 114
+  if (Send-SmokeKeyStroke -Code 114) {
     return
   }
   [SmokeProbeUser32]::SendF3()
 }
 
 function Send-SmokeF5 {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 116
+  if (Send-SmokeKeyStroke -Code 116) {
     return
   }
   [SmokeProbeUser32]::SendF5()
 }
 
 function Send-SmokeShiftF3 {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 114 -Modifiers 1
+  if (Send-SmokeKeyStroke -Code 114 -Modifiers 1) {
     return
   }
   [SmokeProbeUser32]::SendShiftF3()
 }
 
 function Send-SmokeTab {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 9
+  if (Send-SmokeKeyStroke -Code 9) {
     return
   }
   [SmokeProbeUser32]::SendTab()
 }
 
 function Send-SmokeUp {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 38
+  if (Send-SmokeKeyStroke -Code 38) {
     return
   }
   [SmokeProbeUser32]::SendUp()
 }
 
 function Send-SmokeDown {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 40
+  if (Send-SmokeKeyStroke -Code 40) {
     return
   }
   [SmokeProbeUser32]::SendDown()
 }
 
 function Send-SmokeLeft {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 37
+  if (Send-SmokeKeyStroke -Code 37) {
     return
   }
   [SmokeProbeUser32]::SendVirtualKey([uint16]0x25)
 }
 
 function Send-SmokeRight {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 39
+  if (Send-SmokeKeyStroke -Code 39) {
     return
   }
   [SmokeProbeUser32]::SendVirtualKey([uint16]0x27)
 }
 
 function Send-SmokeHome {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 36
+  if (Send-SmokeKeyStroke -Code 36) {
     return
   }
   [SmokeProbeUser32]::SendHome()
 }
 
 function Send-SmokeEnd {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 35
+  if (Send-SmokeKeyStroke -Code 35) {
     return
   }
   [SmokeProbeUser32]::SendEnd()
 }
 
 function Send-SmokePageUp {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 33
+  if (Send-SmokeKeyStroke -Code 33) {
     return
   }
   [SmokeProbeUser32]::SendPageUp()
 }
 
 function Send-SmokePageDown {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 34
+  if (Send-SmokeKeyStroke -Code 34) {
     return
   }
   [SmokeProbeUser32]::SendPageDown()
 }
 
 function Send-SmokeDelete {
-  if (Use-BareMetalInput) {
-    Send-BareMetalKeyStroke -Code 46
+  if (Send-SmokeKeyStroke -Code 46) {
     return
   }
   [SmokeProbeUser32]::SendDelete()
 }
 
 function Send-SmokeText([string]$Text) {
-  if (Use-HeadedMailboxInput) {
-    $builder = New-Object System.Text.StringBuilder
-    foreach ($ch in $Text.ToCharArray()) {
-      $code = [int][char]$ch
-      if ($code -eq 10 -or $code -eq 13) {
-        if ($builder.Length -gt 0) {
-          [void](Write-HeadedMailboxLine ("text|{0}" -f $builder.ToString()))
-          [void]$builder.Clear()
-        }
-        Send-HeadedKeyStroke -Code 13
-      } else {
-        [void]$builder.Append($ch)
-      }
-    }
-    if ($builder.Length -gt 0) {
-      [void](Write-HeadedMailboxLine ("text|{0}" -f $builder.ToString()))
-    }
-    return
-  }
   if (Use-BareMetalInput) {
     foreach ($ch in $Text.ToCharArray()) {
       $code = [int][char]$ch
