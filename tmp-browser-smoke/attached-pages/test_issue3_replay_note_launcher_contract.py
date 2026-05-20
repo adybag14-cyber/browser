@@ -634,6 +634,53 @@ class ReplayNoteLauncherContractTests(unittest.TestCase):
                 failure_reasons(audit),
             )
 
+    def test_fails_when_suite_router_entrypoint_guide_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "- `docs/ISSUE3_SUITE_ROUTER_ENTRYPOINT_GUIDE.md`\n", ""
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the suite-router entrypoint guide visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_suite_router_quickstart_surface_check_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_quickstart_validation_surface.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the suite-router quickstart surface checker visible",
+                failure_reasons(audit),
+            )
+
+    def test_fails_when_suite_router_quickstart_helper_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            paths = write_default_files(
+                root,
+                PASSING_CONTENT.replace(
+                    "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_quickstart.ps1\n",
+                    "",
+                ),
+            )
+            audit = audit_paths(paths, root)
+            self.assertIn(
+                "replay notes do not keep the suite-router quickstart helper visible",
+                failure_reasons(audit),
+            )
+
     def test_fails_when_replay_route_helper_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
