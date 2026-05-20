@@ -21,6 +21,11 @@ EXPECTATIONS = (
     },
     {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1 -RepoRoot '<repo-root>'",
+        "purpose": "The replay quickstart keeps the repo-root-aware validation-router attached-html checker visible when replay is already running from a non-default checkout.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "purpose": "The replay quickstart keeps the launcher-companion checker visible when the route needs the smaller wrapper-backed preflight surface.",
     },
