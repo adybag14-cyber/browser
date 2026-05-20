@@ -529,6 +529,9 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
     var index: usize = 0;
     while (index < tokens.len) {
         const token = tokens[index];
+        if (inferBrowseOption(token)) {
+            return .browse;
+        }
         if (inferModeOption(token)) {
             if (index + 1 < tokens.len) {
                 index += 2;
@@ -574,6 +577,16 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
     }
 
     return .help;
+}
+
+fn inferBrowseOption(opt: []const u8) bool {
+    if (std.mem.eql(u8, opt, "--screenshot_bmp")) {
+        return true;
+    }
+    if (std.mem.eql(u8, opt, "--screenshot_png")) {
+        return true;
+    }
+    return false;
 }
 
 fn inferModeOption(opt: []const u8) bool {
@@ -1162,4 +1175,22 @@ test "infer mode keeps fetch fallback after obey robots flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "https://example.com/" });
 
     try std.testing.expectEqual(RunMode.fetch, mode);
+}
+
+test "infer mode treats screenshot png option as browse" {
+    const mode = try inferModeSlice(&.{ "--screenshot_png", "capture.png", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode keeps browse after shared options before screenshot bmp" {
+    const mode = try inferModeSlice(&.{
+        "--profile_dir",
+        "/tmp/lightpanda-profile",
+        "--screenshot_bmp",
+        "capture.bmp",
+        "https://example.com/",
+    });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
 }
