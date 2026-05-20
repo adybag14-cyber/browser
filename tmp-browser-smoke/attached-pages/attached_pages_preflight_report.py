@@ -29,6 +29,7 @@ def select_inputs(
     *,
     explicit_inputs: list[str] | None = None,
     google_style: bool = False,
+    preferred_initial_page: str | None = None,
     launcher_module: ModuleType | None = None,
 ) -> tuple[ModuleType, list[Path]]:
     module = launcher_module or load_launcher_module(repo_root)
@@ -36,6 +37,7 @@ def select_inputs(
         repo_root,
         explicit_inputs=explicit_inputs,
         google_style=google_style,
+        preferred_initial_page=preferred_initial_page,
     )
     return module, selected_files
 
@@ -71,6 +73,7 @@ def build_command_hints(
     *,
     selected_files: list[Path],
     google_style: bool,
+    preferred_initial_page: str | None,
     bind: str,
     port: int,
 ) -> dict[str, str]:
@@ -80,6 +83,8 @@ def build_command_hints(
     common_flags = ["--repo-root", str(repo_root)]
     if google_style:
         common_flags.append("--google-style")
+    if preferred_initial_page and preferred_initial_page.strip():
+        common_flags.extend(["--preferred-initial-page", preferred_initial_page.strip()])
     common_flags.extend(["--bind", bind, "--port", str(port)])
     for path in selected_files:
         common_flags.extend(["--input", str(path)])
@@ -114,6 +119,7 @@ def assemble_preflight_report(
     *,
     selected_files: list[Path],
     google_style: bool,
+    preferred_initial_page: str | None,
     bind: str,
     port: int,
     launcher_module: ModuleType,
@@ -149,6 +155,7 @@ def assemble_preflight_report(
         repo_root,
         selected_files=selected_files,
         google_style=google_style,
+        preferred_initial_page=preferred_initial_page,
         bind=bind,
         port=port,
     )
@@ -157,6 +164,7 @@ def assemble_preflight_report(
     return {
         "repo_root": str(repo_root),
         "google_style": google_style,
+        "preferred_initial_page": preferred_initial_page,
         "bind": bind,
         "port": port,
         "catalog_url": build_route_url(bind, port, "/"),
@@ -201,6 +209,7 @@ def build_preflight_report(
     *,
     explicit_inputs: list[str] | None = None,
     google_style: bool = False,
+    preferred_initial_page: str | None = None,
     bind: str = DEFAULT_BIND,
     port: int = DEFAULT_PORT,
 ) -> dict[str, object]:
@@ -208,6 +217,7 @@ def build_preflight_report(
         repo_root,
         explicit_inputs=explicit_inputs,
         google_style=google_style,
+        preferred_initial_page=preferred_initial_page,
     )
     sidecar_module = launcher_module.load_sidecar_module(repo_root)
     server_module = launcher_module.load_server_module(repo_root)
@@ -215,6 +225,7 @@ def build_preflight_report(
         repo_root,
         selected_files=selected_files,
         google_style=google_style,
+        preferred_initial_page=preferred_initial_page,
         bind=bind,
         port=port,
         launcher_module=launcher_module,
@@ -242,6 +253,7 @@ def render_text_report(report: dict[str, object]) -> str:
         "",
         f"Repo root: {report['repo_root']}",
         f"Google-style ranking: {'enabled' if report['google_style'] else 'disabled'}",
+        f"Preferred initial page: {report['preferred_initial_page'] or 'auto'}",
         f"Inputs pinned: {report['input_count']}",
         f"Manifest pages: {report['fixture_count']}",
         f"Missing-sidecar fixtures: {report['missing_sidecar_fixture_count']}",
@@ -300,6 +312,10 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Prefer the strongest Google-like attached page first when auto-discovering fixtures.",
     )
+    parser.add_argument(
+        "--preferred-initial-page",
+        help="Prefer one selected attached HTML file first by path suffix or exact filename before rendering the report and command hints.",
+    )
     parser.add_argument("--json", action="store_true", help="Print structured JSON instead of the text summary.")
     parser.add_argument(
         "--allow-missing-sidecars",
@@ -318,10 +334,12 @@ def main(argv: list[str] | None = None) -> int:
         repo_root = explicit_repo_root.expanduser().resolve()
     else:
         repo_root = Path(__file__).resolve().parents[2]
+
     report = build_preflight_report(
         repo_root,
         explicit_inputs=args.explicit_inputs,
         google_style=args.google_style,
+        preferred_initial_page=args.preferred_initial_page,
         bind=args.bind,
         port=args.port,
     )
