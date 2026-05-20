@@ -53,6 +53,7 @@ $surfaceCheck = '.\scripts\windows\check_google_form_controls_enter_order_valida
 $traceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
 $runner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
 $rawProbe = '.\tmp-browser-smoke\form-controls\google-enter-order-probe.ps1'
+$sharedClickFocusProbe = '.\tmp-browser-smoke\form-controls\enter-submit-probe.ps1'
 $broaderStack = '.\scripts\windows\show_google_shared_enter_order_validation_flow.ps1'
 
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
@@ -104,7 +105,7 @@ Add-SharedArgument -Arguments $broaderStackArgs -Name HomePollMilliseconds -Valu
 
 $flow = [ordered]@{
     issue = "Headed Windows Google form-controls Enter-order validation flow"
-    focus = "Print the narrowest shared form-controls issue #3 command surface for confirming that Enter submit reaches the page after keypress on the headed Win32 path."
+    focus = "Print the narrowest shared form-controls issue #3 command surface for confirming that click-first Google-shaped Enter submit reaches the page after keypress on the headed Win32 path."
     shared_input_text = $SharedInputText
     shared_enter_order_port = $SharedEnterOrderPort
     host = $Host
@@ -118,6 +119,11 @@ $flow = [ordered]@{
             name = "trace-guide"
             goal = "Print the quick diagnosis guide so the dedicated Enter-order gate's focus, typed-text, keydown, keypress, and submit markers are easy to interpret before or after a rerun."
             command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $traceGuide, $(if ($traceGuideArgs.Count -gt 0) { " " + ($traceGuideArgs -join " ") } else { "" }))
+        }
+        [ordered]@{
+            name = "shared-click-focus-fallback"
+            goal = "Run the reusable shared page in click-first mode when you want the same Google-shaped focus and Enter path without leaving the generic enter-submit probe surface yet."
+            command = ("powershell -ExecutionPolicy Bypass -File {0} -GoogleEnterOrder -ClickFocus{1}" -f $sharedClickFocusProbe, $(if ($rawProbeArgs.Count -gt 0) { " " + ($rawProbeArgs -join " ") } else { "" }))
         }
         [ordered]@{
             name = "recommended"
@@ -138,16 +144,19 @@ $flow = [ordered]@{
     notes = @(
         "Run the dedicated surface check before the wrapper when you want missing docs, scripts, or raw probe drift to fail fast.",
         "Use the trace guide when you need a quick read on whether the failure stayed before focus, before typed text became visible, or before keypress reached submit.",
+        "Use the shared click-first fallback when you want to compare the reusable Google-shaped page against the dedicated gate before widening back to the broader shared Enter-order ladder.",
         "Keep SharedInputText aligned with the broader issue #3 shared probes so the dedicated form-controls gate reports the same expected query string.",
-        "Port 8157 is shared on purpose with the broader Enter-order helpers, so one override keeps the dedicated gate and the wider stack in sync.",
+        "Port 8157 is shared on purpose with the broader Enter-order helpers, so one override keeps the dedicated gate, the shared click-first fallback, and the wider stack in sync.",
+        "The shared click-first fallback reuses -GoogleEnterOrder -ClickFocus with the same repo root, browser path, host, shared input text, shared Enter-order port, and timing settings as the dedicated gate.",
         "The printed next-step commands now preserve the current repo root, browser path, host, shared input text, shared Enter-order port, and timing settings where those later helpers support them.",
         "Use the raw probe command only when you need the direct script surface; otherwise prefer the dedicated wrapper so the runbook and issue comments stay consistent."
     )
     next_steps = @(
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the dedicated probe markers translated into quick failure stages before widening again." -f $traceGuide, $(if ($traceGuideArgs.Count -gt 0) { " " + ($traceGuideArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0} -GoogleEnterOrder -ClickFocus{1} when you want the reusable shared page to replay the same click-first Google-shaped path before you commit to the dedicated form-controls gate." -f $sharedClickFocusProbe, $(if ($rawProbeArgs.Count -gt 0) { " " + ($rawProbeArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want to execute the dedicated gate directly after the surface check passes." -f $runner, $(if ($runnerArgs.Count -gt 0) { " " + ($runnerArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when the dedicated gate is green and you want the reduced homepage, localhost wrapper, and shared Enter-order ladder printed together with the same repo-root, browser, host, shared input, port, and timing context." -f $broaderStack, $(if ($broaderStackArgs.Count -gt 0) { " " + ($broaderStackArgs -join " ") } else { "" })),
-        "Move on to the smallest live Google manual pass only after the dedicated form-controls gate and the broader shared Enter-order stack stay green together."
+        "Move on to the smallest live Google manual pass only after the dedicated form-controls gate and the shared click-first fallback stay green together."
     )
 }
 
