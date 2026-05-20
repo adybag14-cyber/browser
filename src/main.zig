@@ -90,10 +90,26 @@ fn nativeHeadedSurfaceExpected(requested_mode: Config.BrowserMode) bool {
 fn displayBackendLabel(app: *const App) []const u8 {
     return switch (app.display.backend) {
         .headless => "headless",
-        .headed_stub => "headed_stub",
         .bare_metal => "bare_metal",
         .headed_windows => "headed_windows",
     };
+}
+
+fn commandExitReason(app: *const App) []const u8 {
+    if (app.display.userClosed()) {
+        return "window_closed";
+    }
+    if (app.shutdown) {
+        return "shutdown_requested";
+    }
+    return "natural_return";
+}
+
+fn browseLifecycleLabel(app: *const App) []const u8 {
+    if (!app.display.browse_navigation_state_seen) {
+        return "pre_navigation";
+    }
+    return if (app.display.browse_is_loading) "loading" else "settled";
 }
 
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
@@ -240,6 +256,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .os = @tagName(builtin.os.tag),
                 .window_closed = app.display.userClosed(),
                 .shutdown_requested = app.shutdown,
+                .exit_reason = commandExitReason(&app),
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
@@ -318,6 +335,10 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .os = @tagName(builtin.os.tag),
                 .window_closed = app.display.userClosed(),
                 .shutdown_requested = app.shutdown,
+                .exit_reason = commandExitReason(&app),
+                .navigation_state = browseLifecycleLabel(&app),
+                .navigation_state_seen = app.display.browse_navigation_state_seen,
+                .is_loading = app.display.browse_is_loading,
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
