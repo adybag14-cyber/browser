@@ -198,9 +198,21 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_launcher_companion_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Launcher companion:        {0}") -f $helper.commands.attached_pages_launcher_companion)',
+        "",
+    ),
+    (
         "missing_replay_attached_note_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         'Write-Host (("  Replay attached note:      {0}") -f $helper.replay_attached_html_note_path)',
+        "",
+    ),
+    (
+        "missing_router_shortcut_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)',
         "",
     ),
 )
