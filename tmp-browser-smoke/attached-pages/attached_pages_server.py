@@ -141,9 +141,9 @@ def resolve_bundle_inputs(root: Path | None = None, selected_files: list[Path] |
     return normalize_bundle_root(root)
 
 
-def build_manifest(root: Path | None = None, *, selected_files: list[Path] | None = None) -> list[dict[str, str]]:
+def build_manifest(root: Path | None = None, *, selected_files: list[Path] | None = None) -> list[dict[str, object]]:
     bundle_root, html_files = resolve_bundle_inputs(root, selected_files)
-    entries: list[dict[str, str]] = []
+    entries: list[dict[str, object]] = []
     used_alias_routes: set[str] = set()
     used_slug_routes: set[str] = set()
 
@@ -175,17 +175,77 @@ def build_manifest(root: Path | None = None, *, selected_files: list[Path] | Non
     return entries
 
 
-def render_index(manifest: list[dict[str, str]], audit: dict[str, object], sidecar_audit: dict[str, object]) -> bytes:
+def summarize_fixture_replay_health(entry: dict[str, object]) -> tuple[list[str], str, bool]:
+    tags: list[str] = []
+    notes: list[str] = []
+
+    missing_sidecars = int(entry.get("missing_sidecar_directory_count", 0))
+    missing_assets = int(entry.get("missing_asset_count", 0))
+    external_assets = int(entry.get("external_asset_count", 0))
+
+    if missing_sidecars > 0:
+        tags.append("missing-sidecars")
+        notes.append(f"missing sidecars: {missing_sidecars}")
+    if missing_assets > 0:
+        tags.append("missing-assets")
+        notes.append(f"missing assets: {missing_assets}")
+    if external_assets > 0:
+        tags.append("external-assets")
+        notes.append(f"external assets: {external_assets}")
+
+    replay_ready = missing_sidecars == 0 and missing_assets == 0
+    if not tags:
+        tags.append("ready")
+        return tags, "ready for localhost replay", True
+
+    return tags, ", ".join(notes), replay_ready
+
+
+def annotate_manifest_with_replay_health(
+    manifest: list[dict[str, object]],
+    audit: dict[str, object],
+    sidecar_audit: dict[str, object],
+) -> list[dict[str, object]]:
+    asset_fixtures = {
+        str(fixture["display_path"]): fixture for fixture in audit.get("fixtures", [])
+    }
+    sidecar_fixtures = {
+        str(fixture["display_path"]): fixture for fixture in sidecar_audit.get("fixtures", [])
+    }
+
+    for entry in manifest:
+        display_path = str(entry["file"])
+        asset_entry = asset_fixtures.get(display_path, {})
+        sidecar_entry = sidecar_fixtures.get(display_path, {})
+
+        entry["missing_asset_count"] = int(asset_entry.get("missing_asset_count", 0))
+        entry["external_asset_count"] = int(asset_entry.get("external_asset_count", 0))
+        entry["missing_sidecar_directory_count"] = int(sidecar_entry.get("missing_sidecar_directory_count", 0))
+        entry["inspected_file_count"] = int(asset_entry.get("inspected_file_count", 0))
+
+        tags, summary, replay_ready = summarize_fixture_replay_health(entry)
+        entry["replay_health_tags"] = tags
+        entry["replay_health"] = summary
+        entry["replay_ready"] = replay_ready
+
+    return manifest
+
+
+def render_index(manifest: list[dict[str, object]], audit: dict[str, object], sidecar_audit: dict[str, object]) -> bytes:
     rows = []
     for entry in manifest:
+        replay_health = html.escape(str(entry.get("replay_health", "ready for localhost replay")))
+        replay_tags = html.escape(", ".join(str(tag) for tag in entry.get("replay_health_tags", ["ready"])))
         rows.append(
             "<li>"
-            f"<a href=\"{html.escape(entry['route'])}/\">{html.escape(entry['title'])}</a>"
-            f"<div>short route: <code>{html.escape(entry['route'])}</code></div>"
-            f"<div>alias route: <code>{html.escape(entry['alias_route'])}</code></div>"
-            f"<div>named route: <code>{html.escape(entry['slug_route'])}</code></div>"
-            f"<div><code>{html.escape(entry['file'])}</code></div>"
-            f"<div><a href=\"{html.escape(entry['raw_path'])}\">raw file</a></div>"
+            f"<a href=\"{html.escape(str(entry['route']))}/\">{html.escape(str(entry['title']))}</a>"
+            f"<div>short route: <code>{html.escape(str(entry['route']))}</code></div>"
+            f"<div>alias route: <code>{html.escape(str(entry['alias_route']))}</code></div>"
+            f"<div>named route: <code>{html.escape(str(entry['slug_route']))}</code></div>"
+            f"<div><code>{html.escape(str(entry['file']))}</code></div>"
+            f"<div><a href=\"{html.escape(str(entry['raw_path']))}\">raw file</a></div>"
+            f"<div>replay health: <strong>{replay_health}</strong></div>"
+            f"<div>health tags: <code>{replay_tags}</code></div>"
             "</li>"
         )
     body = "\n".join(rows) if rows else "<li>No HTML files were found in the selected bundle.</li>"
@@ -248,15 +308,15 @@ def render_index(manifest: list[dict[str, str]], audit: dict[str, object], sidec
     return page.encode("utf-8")
 
 
-def build_route_lookup(manifest: list[dict[str, str]]) -> dict[str, dict[str, str]]:
-    route_lookup: dict[str, dict[str, str]] = {}
+def build_route_lookup(manifest: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    route_lookup: dict[str, dict[str, object]] = {}
     for entry in manifest:
-        for route in (entry["route"], entry["alias_route"], entry["slug_route"]):
-            route_lookup[route] = entry
+        for route_name in ("route", "alias_route", "slug_route"):
+            route_lookup[str(entry[route_name])] = entry
     return route_lookup
 
 
-def split_page_route(request_path: str, route_lookup: dict[str, dict[str, str]]) -> tuple[dict[str, str] | None, str | None]:
+def split_page_route(request_path: str, route_lookup: dict[str, dict[str, object]]) -> tuple[dict[str, object] | None, str | None]:
     for route, entry in route_lookup.items():
         if request_path == route:
             return entry, ""
@@ -481,7 +541,7 @@ def derive_export_sidecar_dir(entry_file: str) -> str:
 
 def stage_manifest_entries(
     bundle_root: Path,
-    manifest: list[dict[str, str]],
+    manifest: list[dict[str, object]],
     *,
     staging_root: Path | None = None,
 ) -> tuple[Path, dict[str, Path], tempfile.TemporaryDirectory[str] | None]:
@@ -495,31 +555,32 @@ def stage_manifest_entries(
 
     staged_entry_dirs: dict[str, Path] = {}
     for entry in manifest:
-        entry_dir = stage_root / "pages" / entry["index"]
+        entry_dir = stage_root / "pages" / str(entry["index"])
         entry_dir.mkdir(parents=True, exist_ok=True)
 
-        page_file = bundle_root / entry["file"]
+        page_file = bundle_root / str(entry["file"])
         shutil.copy2(page_file, entry_dir / "index.html")
 
-        sidecar_dir_name = derive_export_sidecar_dir(entry["file"])
+        sidecar_dir_name = derive_export_sidecar_dir(str(entry["file"]))
         original_sidecar = page_file.parent / sidecar_dir_name
         staged_sidecar = entry_dir / sidecar_dir_name
         if original_sidecar.is_dir():
             shutil.copytree(original_sidecar, staged_sidecar, dirs_exist_ok=True)
 
         for route_name in ("route", "alias_route", "slug_route"):
-            staged_entry_dirs[entry[route_name]] = entry_dir
+            staged_entry_dirs[str(entry[route_name])] = entry_dir
 
     return stage_root, staged_entry_dirs, cleanup_context
 
 
-def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, str]], dict[str, dict[str, str]], bytes, bytes, dict[str, object], bytes, dict[str, object], bytes, bytes]:
+def build_bundle_state(root: Path | None = None, *, selected_files: list[Path] | None = None) -> tuple[Path, list[dict[str, object]], dict[str, dict[str, object]], bytes, bytes, dict[str, object], bytes, dict[str, object], bytes, bytes]:
     bundle_root, _ = resolve_bundle_inputs(root, selected_files)
     manifest = build_manifest(root, selected_files=selected_files)
-    route_lookup = build_route_lookup(manifest)
     sidecar_module = load_sidecar_audit_module()
     sidecar_audit = sidecar_module.build_sidecar_audit(root, selected_files=selected_files)
     audit = build_asset_audit(root, selected_files=selected_files)
+    annotate_manifest_with_replay_health(manifest, audit, sidecar_audit)
+    route_lookup = build_route_lookup(manifest)
     index_bytes = render_index(manifest, audit, sidecar_audit)
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
     audit_text_bytes = render_asset_audit_text(audit).encode("utf-8")
@@ -557,7 +618,7 @@ def create_server(
     port: int = 8235,
     selected_files: list[Path] | None = None,
     staging_root: Path | None = None,
-) -> tuple[ReuseServer, list[dict[str, str]]]:
+) -> tuple[ReuseServer, list[dict[str, object]]]:
     (
         bundle_root,
         manifest,
@@ -596,8 +657,8 @@ def create_server(
             self.send_header("Location", location)
             self.end_headers()
 
-        def send_page_asset(self, entry: dict[str, str], asset_suffix: str, *, head_only: bool = False):
-            staged_entry_dir = staged_entry_dirs.get(entry["route"])
+        def send_page_asset(self, entry: dict[str, object], asset_suffix: str, *, head_only: bool = False):
+            staged_entry_dir = staged_entry_dirs.get(str(entry["route"]))
             staged_suffix = asset_suffix or "index.html"
             if staged_entry_dir is not None:
                 staged_asset = ensure_within_root(staged_entry_dir, staged_entry_dir / unquote(staged_suffix))
@@ -612,7 +673,7 @@ def create_server(
                     )
                     return
 
-            page_file = bundle_root / entry["file"]
+            page_file = bundle_root / str(entry["file"])
             if asset_suffix in ("", "index.html"):
                 self.send_bytes(page_file.read_bytes(), "text/html; charset=utf-8", head_only=head_only)
                 return
@@ -648,7 +709,7 @@ def create_server(
 
             entry, asset_suffix = split_page_route(request_path, route_lookup)
             if entry is not None:
-                if request_path in (entry["route"], entry["alias_route"], entry["slug_route"]):
+                if request_path in (str(entry["route"]), str(entry["alias_route"]), str(entry["slug_route"])):
                     self.send_redirect(f"{request_path}/")
                     return
                 self.send_page_asset(entry, asset_suffix or "", head_only=head_only)
@@ -718,7 +779,12 @@ def main() -> int:
         parser.error("--audit-assets-json requires --audit-assets")
 
     if args.print_manifest:
-        print(json.dumps(build_manifest(root, selected_files=selected_files), indent=2))
+        manifest = build_manifest(root, selected_files=selected_files)
+        sidecar_module = load_sidecar_audit_module()
+        sidecar_audit = sidecar_module.build_sidecar_audit(root, selected_files=selected_files)
+        audit = build_asset_audit(root, selected_files=selected_files)
+        annotate_manifest_with_replay_health(manifest, audit, sidecar_audit)
+        print(json.dumps(manifest, indent=2))
         return 0
 
     if args.audit_assets:
