@@ -79,6 +79,19 @@ fn headedRuntimeActive(requested_mode: Config.BrowserMode, runtime_mode: Config.
     return requested_mode == .headed and runtime_mode == .headed;
 }
 
+fn nativeHeadedSurfaceExpected(requested_mode: Config.BrowserMode) bool {
+    return requested_mode == .headed and (lp.build_config.target_class == .bare_metal or builtin.os.tag == .windows);
+}
+
+fn displayBackendLabel(app: *const App) []const u8 {
+    return switch (app.display.backend) {
+        .headless => "headless",
+        .headed_stub => "headed_stub",
+        .bare_metal => "bare_metal",
+        .headed_windows => "headed_windows",
+    };
+}
+
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
     const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
@@ -106,6 +119,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
     }
 
     const requested_browser_mode = args.browserMode();
+    const native_headed_surface_expected = nativeHeadedSurfaceExpected(requested_browser_mode);
 
     // _app is global to handle graceful shutdown.
     var host = Host.initForBuildClass(allocator, lp.build_config.target_class == .bare_metal);
@@ -115,14 +129,18 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
 
     defer app.deinit();
     const browser_mode = app.display.runtime_mode;
+    const display_backend = displayBackendLabel(app);
     const fallback_info = browserModeFallbackInfo(requested_browser_mode, browser_mode);
     const headed_runtime_active = headedRuntimeActive(requested_browser_mode, browser_mode);
     if (fallback_info) |info| {
         log.warn(.app, "browser mode fallback", .{
             .requested = @tagName(requested_browser_mode),
             .runtime = @tagName(browser_mode),
+            .display_backend = display_backend,
             .status = if (info.support_expected) "unexpected_supported_runtime_fallback" else "experimental_unsupported_platform",
             .support_expected = info.support_expected,
+            .native_surface_expected = native_headed_surface_expected,
+            .native_surface_active = headed_runtime_active,
             .target_class = @tagName(lp.build_config.target_class),
             .os = @tagName(builtin.os.tag),
             .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
@@ -143,6 +161,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .mode = "serve",
                 .requested_browser_mode = @tagName(requested_browser_mode),
                 .browser_mode = @tagName(browser_mode),
+                .display_backend = display_backend,
+                .native_surface_expected = native_headed_surface_expected,
+                .native_surface_active = headed_runtime_active,
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
@@ -154,6 +175,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .port = opts.port,
                     .requested = @tagName(requested_browser_mode),
                     .runtime = @tagName(browser_mode),
+                    .display_backend = display_backend,
+                    .native_surface_expected = native_headed_surface_expected,
+                    .native_surface_active = headed_runtime_active,
                     .target_class = @tagName(lp.build_config.target_class),
                     .os = @tagName(builtin.os.tag),
                     .window = "enabled",
@@ -169,7 +193,10 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .port = opts.port,
                     .requested = @tagName(requested_browser_mode),
                     .runtime = @tagName(browser_mode),
+                    .display_backend = display_backend,
                     .support_expected = info.support_expected,
+                    .native_surface_expected = native_headed_surface_expected,
+                    .native_surface_active = headed_runtime_active,
                     .target_class = @tagName(lp.build_config.target_class),
                     .os = @tagName(builtin.os.tag),
                     .window = "disabled",
@@ -204,6 +231,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .mode = "browse",
                 .requested_browser_mode = @tagName(requested_browser_mode),
                 .browser_mode = @tagName(browser_mode),
+                .display_backend = display_backend,
+                .native_surface_expected = native_headed_surface_expected,
+                .native_surface_active = headed_runtime_active,
                 .url = url,
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
@@ -215,6 +245,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .url = url,
                     .requested = @tagName(requested_browser_mode),
                     .runtime = @tagName(browser_mode),
+                    .display_backend = display_backend,
+                    .native_surface_expected = native_headed_surface_expected,
+                    .native_surface_active = headed_runtime_active,
                     .target_class = @tagName(lp.build_config.target_class),
                     .os = @tagName(builtin.os.tag),
                     .window = "enabled",
@@ -229,13 +262,16 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .url = url,
                     .requested = @tagName(requested_browser_mode),
                     .runtime = @tagName(browser_mode),
+                    .display_backend = display_backend,
                     .support_expected = info.support_expected,
+                    .native_surface_expected = native_headed_surface_expected,
+                    .native_surface_active = headed_runtime_active,
                     .target_class = @tagName(lp.build_config.target_class),
                     .os = @tagName(builtin.os.tag),
                     .window = "disabled",
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
-                    .requested_window_width = args.windowWidth(),
-                    .requested_window_height = args.windowHeight(),
+                    .window_width = args.windowWidth(),
+                    .window_height = args.windowHeight(),
                     .reason = info.reason,
                 });
             }
@@ -251,6 +287,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .mode = "fetch",
                 .requested_browser_mode = @tagName(requested_browser_mode),
                 .browser_mode = @tagName(browser_mode),
+                .display_backend = display_backend,
+                .native_surface_expected = native_headed_surface_expected,
+                .native_surface_active = headed_runtime_active,
                 .dump_mode = opts.dump_mode,
                 .url = url,
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
