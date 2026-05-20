@@ -277,6 +277,7 @@ function Get-PopupRouteNotes {
 $issue3AttachedHtmlArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $issue3AttachedHtmlArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlArguments -Name InputPath -Values @($InputPath)
 }
@@ -288,12 +289,14 @@ $issue3AttachedHtmlBrowserArguments = [System.Collections.Generic.List[string]]:
 Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $issue3AttachedHtmlBrowserArguments -Name InputPath -Values @($InputPath)
 }
 
 $attachedHtmlFlowArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $attachedHtmlFlowArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $attachedHtmlFlowArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 if ($InputPath) {
     Add-SharedPathArrayArgument -Arguments $attachedHtmlFlowArguments -Name InputPath -Values @($InputPath)
 }
@@ -354,7 +357,7 @@ function Get-Issue3AttachedHtmlFollowUpNotes {
 
     if ($PreferredInitialPage) {
         $notes += "Current preferred initial page: $PreferredInitialPage"
-        $notes += "The top-level attached-pages catalog route and the dedicated Google-shaped attached-page helper preserve -PreferredInitialPage. If you switch into the narrower issue #3 quickstarts, rerun this router or the Google-shaped helper to keep the same first page pinned."
+        $notes += "The printed issue #3 follow-up commands now preserve -PreferredInitialPage through the broader attached-page flow and the narrower issue #3 quickstarts, so the same first page stays pinned without manual re-entry."
     }
 
     if ($isCustomBrowserExe) {
