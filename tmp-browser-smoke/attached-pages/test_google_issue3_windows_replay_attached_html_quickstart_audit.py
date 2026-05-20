@@ -403,7 +403,7 @@ DRIFT_CASES = (
     ),
     (
         "top_level_shortcut_windows_replay_output",
-        "scripts/windows/show_google_issue3_top_level_shortCUT_first_entrypoint.ps1",
+        "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
         'Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)',
         "",
     ),
@@ -445,7 +445,7 @@ DRIFT_CASES = (
     ),
     (
         "attached_bundle_change_area_output",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quICKSTART.ps1",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Attached bundle:        {0}") -f $helper.top_level_commands.attached_bundle_change_area)',
         "",
     ),
