@@ -171,6 +171,20 @@ def resolve_repo_root(root: str | None) -> Path:
     return resolved
 
 
+def build_repo_root_error_audit(root: str | None, message: str) -> dict[str, object]:
+    repo_root = str(Path.cwd()) if root is None else str(Path(root).expanduser())
+    return {
+        "repo_root": repo_root,
+        "expectation_count": len(EXPECTATIONS),
+        "missing_count": None,
+        "missing_path_count": None,
+        "missing_paths": [],
+        "results": [],
+        "error_type": "repo_root_not_found",
+        "error": message,
+    }
+
+
 def build_route_audit(repo_root: Path) -> dict[str, object]:
     results: list[dict[str, object]] = []
     missing_count = 0
@@ -221,10 +235,24 @@ def render_text_report(audit: dict[str, object]) -> str:
         "Google Issue #3 Windows Full-Use Attached HTML Route Audit",
         "",
         f"Repo root: {audit['repo_root']}",
-        f"Expectations checked: {audit['expectation_count']}",
-        f"Missing expectations: {audit['missing_count']}",
-        "",
     ]
+
+    if audit.get("error_type"):
+        lines.extend(
+            [
+                f"Error: {audit['error']}",
+                "",
+            ]
+        )
+        return "\n".join(lines).rstrip() + "\n"
+
+    lines.extend(
+        [
+            f"Expectations checked: {audit['expectation_count']}",
+            f"Missing expectations: {audit['missing_count']}",
+            "",
+        ]
+    )
 
     if audit["missing_paths"]:
         lines.append("Missing path summary:")
@@ -252,13 +280,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="Print structured JSON instead of text.")
     args = parser.parse_args(argv)
 
-    repo_root = resolve_repo_root(args.repo_root)
-    audit = build_route_audit(repo_root)
+    try:
+        repo_root = resolve_repo_root(args.repo_root)
+        audit = build_route_audit(repo_root)
+    except FileNotFoundError as exc:
+        audit = build_repo_root_error_audit(args.repo_root, str(exc))
 
     if args.json:
         print(json.dumps(audit, indent=2))
     else:
         print(render_text_report(audit), end="")
+
+    if audit.get("error_type"):
+        return 1
 
     return 1 if audit["missing_count"] else 0
 
