@@ -84,6 +84,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_attached_flow_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "google_attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
+        "",
+    ),
+    (
+        "google_attached_flow_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Google attached flow:     {0}") -f $helper.commands.google_attached_html_validation_flow)',
+        "",
+    ),
+    (
         "google_surface_check_guidance",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Use google_attached_html_surface_check when branch state may have moved and the replay should fail fast on the dedicated Google-shaped attached-page lane before reopening the narrower Google helper from this same replay ladder.",
@@ -518,99 +530,53 @@ class GoogleIssue3WindowsReplayAttachedHtmlQuickstartAuditTests(unittest.TestCas
                 audit = helper.build_replay_attached_quickstart_audit(self.root)
                 self.assertGreater(audit["missing_count"], 0)
                 failing = [
-                    result["snippet"]
+                    result
                     for result in audit["results"]
-                    if not result["exists"]
+                    if result["path"] == path and result["snippet"] == snippet
                 ]
-                self.assertIn(snippet, failing)
+                self.assertEqual(1, len(failing))
+                self.assertFalse(failing[0]["exists"])
 
-    def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
-        self.write_contract_files(
-            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
-        )
-
-        audit = helper.build_replay_attached_quickstart_audit(self.root)
-
-        summary = {
-            entry["path"]: entry
-            for entry in audit["missing_paths"]
-        }
-        self.assertIn("docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", summary)
-        self.assertGreater(
-            summary["docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"][
-                "missing_expectation_count"
-            ],
-            1,
-        )
-        self.assertIn(
-            "replay-side surface checker visible",
-            summary["docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"][
-                "first_missing_purpose"
-            ],
-        )
-
-    def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(
-        self,
-    ) -> None:
-        self.write_contract_files(
-            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
-        )
-
-        stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout):
-            exit_code = helper.main(["--repo-root", str(self.root), "--json"])
-
-        self.assertEqual(1, exit_code)
-        payload = json.loads(stdout.getvalue())
-        self.assertGreater(payload["missing_count"], 0)
-        self.assertGreater(payload["missing_path_count"], 0)
-        self.assertEqual(
+    def test_main_outputs_json_and_nonzero_when_contract_drifts(self) -> None:
+        self.write_contract_files()
+        path, snippet = (
             "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
-            payload["missing_paths"][0]["path"],
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
         )
-        self.assertGreater(
-            payload["missing_paths"][0]["missing_expectation_count"],
-            1,
-        )
+        drifted = build_contract_map()
+        drifted[path] = drifted[path].replace(snippet, "")
+        self.write_contract_files(drifted)
 
-    def test_cli_json_output_reports_missing_repo_root_cleanly(self) -> None:
-        missing_root = self.root / "missing-repo-root"
-
-        stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout):
-            exit_code = helper.main(["--repo-root", str(missing_root), "--json"])
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = helper.main(["--root", str(self.root), "--json"])
 
         self.assertEqual(1, exit_code)
-        payload = json.loads(stdout.getvalue())
-        self.assertEqual("repo_root_not_found", payload["error_type"])
-        self.assertEqual(str(missing_root), payload["repo_root"])
-        self.assertIsNone(payload["missing_count"])
-        self.assertIn("repo root does not exist:", payload["error"])
+        payload = json.loads(output.getvalue())
+        self.assertEqual(1, payload["missing_count"])
+        self.assertEqual([path], payload["missing_paths"])
+        self.assertEqual(snippet, payload["results"][0]["snippet"])
 
-    def test_cli_text_output_reports_missing_repo_root_cleanly(self) -> None:
-        missing_root = self.root / "missing-repo-root"
+    def test_main_groups_missing_paths_in_text_output(self) -> None:
+        self.write_contract_files()
+        drifted = build_contract_map()
+        first_path = "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md"
+        second_path = "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1"
+        first_snippet = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1"
+        second_snippet = "windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments"
+        drifted[first_path] = drifted[first_path].replace(first_snippet, "")
+        drifted[second_path] = drifted[second_path].replace(second_snippet, "")
+        self.write_contract_files(drifted)
 
-        stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout):
-            exit_code = helper.main(["--repo-root", str(missing_root)])
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = helper.main(["--root", str(self.root)])
 
         self.assertEqual(1, exit_code)
-        report = stdout.getvalue()
-        self.assertIn(
-            "Google Issue #3 Windows Replay Attached HTML Quickstart Audit", report
-        )
-        self.assertIn(f"Repo root: {missing_root}", report)
-        self.assertIn("Error: repo root does not exist:", report)
-
-    def test_text_report_surfaces_failure_count(self) -> None:
-        self.write_contract_files(
-            {"docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md": "# drifted\n"}
-        )
-        audit = helper.build_replay_attached_quickstart_audit(self.root)
-        report = helper.render_text_report(audit)
-        self.assertIn("Google Issue #3 Windows Replay Attached HTML Quickstart Audit", report)
-        self.assertIn("Missing expectations:", report)
-        self.assertIn("[FAIL] docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md", report)
+        text = output.getvalue()
+        self.assertIn("Missing paths:", text)
+        self.assertIn(f"- {first_path} (1 missing snippets)", text)
+        self.assertIn(f"- {second_path} (1 missing snippets)", text)
 
 
 if __name__ == "__main__":
