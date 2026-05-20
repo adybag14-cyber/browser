@@ -43,6 +43,8 @@ var google_wait_trace_lock: std.Thread.Mutex = .{};
 fn googleWaitTraceEnabled(url: []const u8) bool {
     return std.mem.indexOf(u8, url, "google-home-") != null or
         std.mem.indexOf(u8, url, "google_home_title_probe.html") != null or
+        std.mem.indexOf(u8, url, "body_onload_keyboard_input.html") != null or
+        std.mem.indexOf(u8, url, "mouse_down_focus_input.html") != null or
         std.mem.indexOf(u8, url, "google.com") != null;
 }
 
@@ -950,9 +952,15 @@ fn destroyPage(self: *Session, page: *Page, abort_http: bool) void {
     self.destroyAllocPage(page);
 }
 
-test "google wait trace gate includes the saved localhost google probe" {
+test "google wait trace gate includes the saved localhost google probe and headed fixtures" {
     try std.testing.expect(googleWaitTraceEnabled(
         "http://127.0.0.1:8000/src/browser/tests/page/google_home_title_probe.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/tmp-browser-smoke/local-html-fixtures/body_onload_keyboard_input.html",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/tmp-browser-smoke/local-html-fixtures/mouse_down_focus_input.html",
     ));
     try std.testing.expect(googleWaitTraceEnabled("https://www.google.com/"));
     try std.testing.expect(!googleWaitTraceEnabled("http://127.0.0.1:8000/tmp-browser-smoke/form-controls/index.html"));
