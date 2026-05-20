@@ -63,6 +63,7 @@ $sharedRunner = '.\scripts\windows\run_google_input_validation.ps1'
 $googleTitleProbe = '.\tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1'
 $reducedHomeProbe = '.\tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1'
 $localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1'
+$sharedClickFocusProbe = '.\tmp-browser-smoke\form-controls\enter-submit-probe.ps1'
 $formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
 $formControlsFlow = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
 $formControlsTraceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
@@ -164,7 +165,7 @@ Add-SharedArgument -Arguments $traceFlowArgs -Name PollMilliseconds -Value $Home
 
 $flow = [ordered]@{
     issue = "Headed Windows Google shared Enter-order validation flow"
-    focus = "Run the shared form-controls baseline, the localhost Google title probe, the reduced Google homepage keypress probe, the localhost Enter-order wrapper, and the dedicated shared Enter-order gate in the same order before a live Google manual pass."
+    focus = "Run the shared form-controls baseline, the localhost Google title probe, the reduced Google homepage keypress probe, the reusable click-first shared page probe, the localhost Enter-order wrapper, and the dedicated shared Enter-order gate in the same order before a live Google manual pass."
     shared_input_text = $SharedInputText
     enter_mutation_suffix = $EnterMutationSuffix
     host = $Host
@@ -201,6 +202,11 @@ $flow = [ordered]@{
             command = ("powershell -ExecutionPolicy Bypass -File {0} -InputText {1} -EnterMutationSuffix {2} -Port {3}{4}" -f $localhostProbe, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), (ConvertTo-PowerShellSingleQuotedLiteral -Value $EnterMutationSuffix), $SharedEnterOrderPort, $(if ($commonProbeArgs.Count -gt 0) { " " + ($commonProbeArgs -join " ") } else { "" }))
         }
         [ordered]@{
+            name = "shared-click-focus-fallback"
+            goal = "Replay the reusable shared page in click-first mode when you want the same Google-shaped focus and Enter path available before the dedicated form-controls gate."
+            command = ("powershell -ExecutionPolicy Bypass -File {0} -GoogleEnterOrder -ClickFocus -InputText {1} -Port {2}{3}" -f $sharedClickFocusProbe, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $SharedEnterOrderPort, $(if ($commonProbeArgs.Count -gt 0) { " " + ($commonProbeArgs -join " ") } else { "" }))
+        }
+        [ordered]@{
             name = "form-controls-flow"
             goal = "Print the narrowed dedicated form-controls Enter-order ladder with the same repo-root, browser, and host context before you jump to the last shared gate."
             command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $formControlsFlow, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" }))
@@ -217,20 +223,22 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
+        ("Use powershell -ExecutionPolicy Bypass -File {0} -GoogleEnterOrder -ClickFocus -InputText {1} -Port {2}{3} when you want the reusable shared page to replay the same click-first Google-shaped path before you hand off to the dedicated form-controls ladder." -f $sharedClickFocusProbe, (ConvertTo-PowerShellSingleQuotedLiteral -Value $SharedInputText), $SharedEnterOrderPort, $(if ($commonProbeArgs.Count -gt 0) { " " + ($commonProbeArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want only the dedicated shared form-controls gate printed with the same repo-root, browser, host, shared input, and timing context before you run it." -f $formControlsFlow, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the dedicated gate markers translated into click-focus, typed-text, keypress, and submit failure stages without reconstructing the current shared Enter-order context by hand." -f $formControlsTraceGuide, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want this stack folded back into the broader localhost-first issue #3 flow with the same repo-root, browser, host, shared input, Enter mutation, and timing settings." -f $recommendedValidation, $(if ($recommendedValidationArgs.Count -gt 0) { " " + ($recommendedValidationArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the later live-trace handoff reopened with the same repo-root, browser, host, shared input, and bounded wait settings before the next real Google capture." -f $traceFlow, $(if ($traceFlowArgs.Count -gt 0) { " " + ($traceFlowArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the higher-level issue #3 next-step matrix reopened with the same repo-root context before choosing between replay shortcuts, the attached bundle branch, or the safe-route wrapper chain." -f $suiteRouterNextSteps, $(if ($suiteRouterArgs.Count -gt 0) { " " + ($suiteRouterArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the broader issue #3 replay bridge reopened with the same repo-root context before you widen back out from the shared Enter-order slice." -f $replayRoute, $(if ($replayRouteArgs.Count -gt 0) { " " + ($replayRouteArgs -join " ") } else { "" })),
-        "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, and both Enter-order probes stay green together.",
+        "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, shared click-first fallback, and both Enter-order probes stay green together.",
         "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
     )
     notes = @(
         "Run the shared Enter-order surface checker first so missing docs, wrapper scripts, or probe files fail before the narrower ladder looks trustworthy.",
         "Start with the recommended runner unless you are already narrowing a known failing step.",
-        "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
-        "The localhost wrapper and the dedicated form-controls probe both default to the shared Enter-order port on purpose so one port override keeps the pair aligned.",
+        "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, shared click-first fallback, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
+        "The localhost wrapper, the shared click-first fallback, and the dedicated form-controls probe all default to the shared Enter-order port on purpose so one port override keeps the whole Enter-order slice aligned.",
+        "Use the shared click-first fallback when you want to compare the reusable Google-shaped page against the dedicated form-controls gate before widening back to the broader shared Enter-order ladder.",
         "Use the dedicated form-controls flow helper when you only need the last shared keypress-before-submit gate without printing the wider shared Enter-order ladder.",
         "Use the form-controls trace guide when you want a quick explanation of whether the remaining failure stayed before click focus, before visible text commit, or before keypress reached submit.",
         "The printed next-step commands now preserve the current repo root, custom browser path, host, shared input, Enter mutation, and timing settings where those later helpers support them, including the live-trace handoff, and they reopen the higher-level issue #3 route helpers with the same repo-root context when you need to widen back out."
