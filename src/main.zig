@@ -60,6 +60,10 @@ fn browserModeFallbackReason(requested_mode: Config.BrowserMode, runtime_mode: C
     return "native headed mode is currently available on Windows and bare metal only; continuing with the safe headless runtime";
 }
 
+fn resolvedProfileDirLabel(path: ?[]const u8) []const u8 {
+    return path orelse "(unavailable)";
+}
+
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
     const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
@@ -104,6 +108,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             .status = "experimental",
             .target_class = @tagName(lp.build_config.target_class),
             .os = @tagName(builtin.os.tag),
+            .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+            .window_width = args.windowWidth(),
+            .window_height = args.windowHeight(),
             .reason = reason,
         });
     }
@@ -119,15 +126,23 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .mode = "serve",
                 .requested_browser_mode = @tagName(requested_browser_mode),
                 .browser_mode = @tagName(browser_mode),
+                .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                .window_width = args.windowWidth(),
+                .window_height = args.windowHeight(),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
-            if (fallback_reason != null) {
+            if (fallback_reason) |reason| {
                 log.info(.app, "serve headed fallback", .{
                     .host = opts.host,
                     .port = opts.port,
+                    .requested = @tagName(requested_browser_mode),
                     .runtime = @tagName(browser_mode),
                     .window = "disabled",
                     .cdp_browser_runtime = "headless",
+                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                    .window_width = args.windowWidth(),
+                    .window_height = args.windowHeight(),
+                    .reason = reason,
                 });
             }
             const address = std.net.Address.parseIp(opts.host, opts.port) catch |err| {
@@ -155,13 +170,21 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .requested_browser_mode = @tagName(requested_browser_mode),
                 .browser_mode = @tagName(browser_mode),
                 .url = url,
+                .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                .window_width = args.windowWidth(),
+                .window_height = args.windowHeight(),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
-            if (fallback_reason != null) {
+            if (fallback_reason) |reason| {
                 log.info(.app, "browse headed fallback", .{
                     .url = url,
+                    .requested = @tagName(requested_browser_mode),
                     .runtime = @tagName(browser_mode),
                     .window = "disabled",
+                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
+                    .requested_window_width = args.windowWidth(),
+                    .requested_window_height = args.windowHeight(),
+                    .reason = reason,
                 });
             }
 
@@ -178,6 +201,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .browser_mode = @tagName(browser_mode),
                 .dump_mode = opts.dump_mode,
                 .url = url,
+                .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
 
