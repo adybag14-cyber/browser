@@ -50,6 +50,16 @@ pub fn main(process: std.process.Init) !void {
     };
 }
 
+fn browserModeFallbackReason(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) ?[]const u8 {
+    if (requested_mode != .headed or runtime_mode != .headless) {
+        return null;
+    }
+    if (lp.build_config.target_class == .bare_metal or builtin.os.tag == .windows) {
+        return null;
+    }
+    return "native headed mode is currently available on Windows and bare metal only; continuing with the safe headless runtime";
+}
+
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
     const args = try Config.parseArgs(main_arena, argv);
     defer args.deinit(main_arena);
@@ -86,11 +96,15 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
 
     defer app.deinit();
     const browser_mode = app.display.runtime_mode;
-    if (requested_browser_mode != browser_mode) {
+    const fallback_reason = browserModeFallbackReason(requested_browser_mode, browser_mode);
+    if (fallback_reason) |reason| {
         log.warn(.app, "browser mode fallback", .{
             .requested = @tagName(requested_browser_mode),
             .runtime = @tagName(browser_mode),
             .status = "experimental",
+            .target_class = @tagName(lp.build_config.target_class),
+            .os = @tagName(builtin.os.tag),
+            .reason = reason,
         });
     }
     app.telemetry.record(.{ .run = {} });
@@ -128,6 +142,13 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .url = url,
                 .snapshot = app.snapshot.fromEmbedded(),
             });
+            if (fallback_reason != null) {
+                log.info(.app, "browse headed fallback", .{
+                    .url = url,
+                    .runtime = @tagName(browser_mode),
+                    .window = "disabled",
+                });
+            }
 
             lp.browse(app, url, .{}) catch |err| {
                 log.fatal(.app, "browse error", .{ .err = err, .url = url });
