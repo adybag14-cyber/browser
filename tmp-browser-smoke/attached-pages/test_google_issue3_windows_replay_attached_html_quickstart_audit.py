@@ -42,6 +42,24 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "attached_html_change_area_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_html_change_area = $attachedHtmlChangeAreaCommand",
+        "",
+    ),
+    (
+        "google_attached_html_change_area_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "google_attached_html_change_area = $googleAttachedHtmlChangeAreaCommand",
+        "",
+    ),
+    (
+        "attached_bundle_change_area_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_bundle_change_area = $attachedBundleChangeAreaCommand",
+        "",
+    ),
+    (
         "windows_full_use_route_note",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_route.ps1",
