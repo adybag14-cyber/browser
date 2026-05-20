@@ -594,6 +594,42 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_entrypoint_sidecar_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_sidecar_audit = $googleAttachedHtmlSidecarAuditCommand",
+        "",
+    ),
+    (
+        "google_entrypoint_broader_surface_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "broader_google_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_attached_html_validation_surface.ps1' -Arguments $googleAttachedHtmlSurfaceCheckArguments",
+        "",
+    ),
+    (
+        "google_entrypoint_asset_closure_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')",
+        "",
+    ),
+    (
+        "google_entrypoint_issue_specific_surface_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot",
+        "",
+    ),
+    (
+        "google_entrypoint_flow_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_validation_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments",
+        "",
+    ),
+    (
+        "google_entrypoint_bundle_suite_surface_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments",
+        "",
+    ),
+    (
         "google_entrypoint_sidecar_output",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         'Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
