@@ -36,6 +36,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_launcher_surface_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "",
+    ),
+    (
         "missing_launcher_companion_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1",
@@ -57,6 +63,12 @@ DRIFT_CASES = (
         "missing_windows_full_use_route_surface_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+        "",
+    ),
+    (
+        "missing_windows_validation_bridge_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
         "",
     ),
     (
@@ -144,6 +156,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_windows_catalog_quickstart_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        "",
+    ),
+    (
         "missing_launcher_surface_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         'Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)',
@@ -165,6 +183,12 @@ DRIFT_CASES = (
         "missing_suite_router_shortcut_wiring",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "suite_router_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_router_shortcut_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)',
         "",
     ),
     (
