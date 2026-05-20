@@ -28,6 +28,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'
 ```
 """
 
@@ -241,6 +242,23 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
         self.assertIn(
             "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath '<bundle-html-or-folder>'",
+            failing_snippets,
+        )
+
+    def test_build_audit_reports_missing_bundle_first_note(self) -> None:
+        self.write_contract_files(
+            route_doc_text=ROUTE_DOC_SNIPPET.replace(
+                "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'\n",
+                "",
+            )
+        )
+
+        audit = helper.build_route_audit(self.root)
+
+        self.assertGreater(audit["missing_count"], 0)
+        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'",
             failing_snippets,
         )
 
