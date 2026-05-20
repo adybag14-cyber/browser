@@ -53,6 +53,39 @@ Use this route when:
 - the next check should stay bundle-first instead of reopening the wider manual attached-page discovery path
 - you want the compact suite surface, replay-route bridge, and bundle-first handoff printed together before launch
 
+## Pinned Bundle Reference And Proof Loop
+
+When issue #3 replay should stay on the known three-page compatibility bundle,
+keep this exact file set together from the start:
+
+- `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html`
+- `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21：25：29).html`
+- `Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html`
+
+Prefer the Google Safety Centre export as `-PreferredInitialPage` when one
+Google-like page should stay first while the same bundle remains locked through
+preflight, suite surfacing, and launch.
+
+Use this page-by-page proof loop before widening back into broader issue #3
+replay:
+
+1. Google Safety Centre
+
+Confirm the title still resolves to `Control your online safety and privacy – Google Safety Centre`, the cookie bar renders, `Agree` and `No thanks` can both be activated, and one top navigation target such as `Safer by design` or `Product protections` can be focused or opened without freezing the page.
+
+2. Anthropic application
+
+Confirm the page reaches the live application form, one select-style field such as `Gender` can be opened and closed, and `Submit application` stays reachable after scrolling.
+
+3. U.S. Department of War UAP page
+
+Confirm the `Presidential Unsealing and Reporting System for UAP Encounters | U.S. Department of War` title surface renders, the search input accepts focus and typed text, one `record-row` entry opens the detail modal, `Close` returns to the list, and pagination advances without crashing the headed session.
+
+If the first page fails, stop there and keep the next replay narrow until the
+failure boundary is understood. If the Google-shaped page passes, continue in
+that listed order so the next signal separates Google-specific input regressions
+from broader combobox, modal, or pagination behavior.
+
 ## Google Issue #3 Narrowing Ladder
 
 When the current headed regression still maps to the Google search-box family,
@@ -126,6 +159,6 @@ After the matching bounded family is green:
 
 1. Re-run the nearest manual headed flow with `.\zig-out\bin\lightpanda.exe browse --headed ...`.
 2. For saved HTML or exported pages, use the attached-pages catalog route instead of an ad hoc `python -m http.server` whenever the branch helper can express the replay cleanly, and reuse the router's strict `-RequireCompleteSidecars` and `-RequireCompleteAssets` variants when you want localhost replay to fail fast on incomplete exports.
-3. For the pinned three-page compatibility bundle, prefer the `attached-html-target-bundle` router output and the compact bundle-specific helper chain before dropping back to the broader attached-page discovery route.
+3. For the pinned three-page compatibility bundle, prefer the `attached-html-target-bundle` router output, the compact bundle-specific helper chain, and the page-by-page proof loop above before dropping back to the broader attached-page discovery route.
 4. For live Google issue work, keep the sequence bounded-input probe -> `google-input` route -> `google-shared-enter-order` route -> `google-form-controls-enter-order` gate -> manual Google replay -> attached-page follow-up.
 5. If a deeper helper fails because of repo-root assumptions rather than browser behavior, fix the helper pathing before treating it as a headed regression.
