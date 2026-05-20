@@ -365,13 +365,38 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
 
         summary = {entry["path"]: entry for entry in audit["missing_paths"]}
         self.assertIn("docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md", summary)
-        self.assertGreater(
-            summary["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["missing_expectation_count"],
-            1,
-        )
+        route_summary = summary["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]
+        self.assertGreater(route_summary["missing_expectation_count"], 1)
         self.assertIn(
             "Windows-to-validation-router bridge visible",
-            summary["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["first_missing_purpose"],
+            route_summary["first_missing_purpose"],
+        )
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+            route_summary["first_missing_snippet"],
+        )
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'",
+            route_summary["missing_snippets"],
+        )
+
+    def test_missing_path_summary_keeps_helper_snippets_for_grouped_route_drift(self) -> None:
+        self.write_contract_files(route_helper_text="# drifted\n")
+
+        audit = helper.build_route_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        helper_summary = summary[
+            "scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1"
+        ]
+        self.assertGreater(helper_summary["missing_expectation_count"], 1)
+        self.assertIn(
+            "windows_full_use_attached_html_route_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -RepoRootOverride $RepoRoot",
+            helper_summary["missing_snippets"],
+        )
+        self.assertIn(
+            'Write-Host ((" 28. Bundle-first route:    {0}") -f $route.helper_commands.attached_bundle_first)',
+            helper_summary["missing_snippets"],
         )
 
     def test_text_report_surfaces_failure_count(self) -> None:
@@ -382,6 +407,8 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
 
         self.assertIn("Google Issue #3 Windows Full-Use Attached HTML Route Audit", report)
         self.assertIn("Missing expectations:", report)
+        self.assertIn("Missing path summary:", report)
+        self.assertIn("First snippet:", report)
         self.assertIn("[FAIL] scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1", report)
 
     def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(self) -> None:
@@ -404,6 +431,14 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         self.assertIn(
             "Windows-to-validation-router bridge visible",
             grouped["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["first_missing_purpose"],
+        )
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+            grouped["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["first_missing_snippet"],
+        )
+        self.assertIn(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_bundle_first_entrypoint.ps1 -InputPath '<bundle-html-or-folder>'",
+            grouped["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["missing_snippets"],
         )
 
 
