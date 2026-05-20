@@ -191,10 +191,13 @@ Tasks:
   docs by surfacing the current Google-style helper, guide, and Windows runbook
 
 Issue `#3` attached-localhost validation route:
-- use `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` as the read-first
-  note when the replay is already narrowed to the attached-page lane
-- start with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_attached_html_validation_surface.ps1`
-- then run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1`
+- use `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` as the read-first
+  note when the replay is already narrowed to the issue `#3` attached-page lane
+- keep `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` nearby when the
+  narrower replay quickstart reopens the Google-shaped attached-page helper
+  chain
+- start with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1`
+- then run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1`
 - keep `docs/WINDOWS_FULL_USE.md` nearby when the replay needs to widen back
   out to the broader Windows-first route or the plain localhost fallback loop
 
