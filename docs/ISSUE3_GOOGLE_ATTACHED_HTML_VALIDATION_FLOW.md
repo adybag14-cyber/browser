@@ -39,6 +39,7 @@ Keep these companion notes nearby:
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_REFERENCE.md`
 - `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_SUITE_SURFACE.md`
 - `docs/ISSUE3_WINDOWS_VALIDATION_CHAIN.md`
+- `tmp-browser-smoke/attached-pages/README.md`
 
 ## Goal
 
@@ -75,6 +76,19 @@ Use this ordering on purpose:
 3. The strict `-PrintManifest` call proves the exact same pinned inputs can still produce the short-route manifest while both strict gates stay green.
 
 If the strict manifest command fails, treat that as an export-bundle problem first, not a headed-browser regression. If it succeeds, keep the manifest output nearby for the next replay step so the short routes and preferred first page stay pinned all the way into the actual browser run.
+
+## Launcher companion re-entry
+
+When the current issue `#3` replay is already narrowed to attached-page localhost preflight and you want the wrapper-backed sidecar audit, broader asset audit, strict bundle gates, pinned three-page proof route, and shorter replay re-entry helpers reprinted from one compact surface before widening back out, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_pages_launcher_companion.ps1 -InputPath '<bundle-folder-or-html>' -PreferredInitialPage '<preferred-page>'
+```
+
+Use the checker first when the launcher companion itself, its note pointers, or the wrapper-backed attached-pages route may have drifted. Then use the helper when the replay still needs the sidecar-first wrapper ladder, the broader asset audit, the strict sidecar-plus-asset gates, the pinned bundle proof entrypoint, or the shorter replay re-entry helpers kept together on one surface before the narrower Google-style helper takes over.
+
+Keep `tmp-browser-smoke/attached-pages/README.md` nearby when the run may need the lower-level cross-platform launcher ladder or the direct sidecar/server helpers instead of only the Windows wrapper surface.
 
 ## Page-by-page proof loop
 
@@ -272,6 +286,10 @@ Use this first when branch state may have moved and you want the Google-style at
 
 Use this next when the current export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the deeper local asset crawl begins.
 
-3. `check_attached_html_local_asset_closure.ps1 -GoogleStyle`
+3. `check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1` and `show_google_issue3_attached_pages_launcher_companion.ps1`
+
+Use these after the sidecar-first preflight route is the main thing you need to reopen from one compact issue `#3` surface and before you widen back out to the full attached-page ladder.
+
+4. `check_attached_html_local_asset_closure.ps1 -GoogleStyle`
 
 Use this next when the attached pages should stay strict about sibling local assets after the sidecar bundle itself is confirmed present and before the helper or runner opens a browser.
