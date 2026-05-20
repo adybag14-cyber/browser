@@ -51,28 +51,28 @@ def dedupe_paths(paths: list[Path]) -> list[Path]:
     return unique
 
 
-def get_attached_html_search_roots(repo_root: Path, *, cwd: Path | None = None) -> list[Path]:
-    roots = [
-        repo_root / "user_files",
-        repo_root / "agent_files",
-    ]
+def append_search_context_roots(roots: list[Path], start: Path) -> None:
+    cursor = start.expanduser().resolve()
+    if cursor.is_file():
+        cursor = cursor.parent
 
-    repo_parent = repo_root.parent
-    if repo_parent != repo_root:
+    while True:
         roots.extend(
             [
-                repo_parent / "user_files",
-                repo_parent / "agent_files",
+                cursor / "user_files",
+                cursor / "agent_files",
             ]
         )
+        parent = cursor.parent
+        if parent == cursor:
+            break
+        cursor = parent
 
-    current_root = (cwd or Path.cwd()).expanduser().resolve()
-    roots.extend(
-        [
-            current_root / "user_files",
-            current_root / "agent_files",
-        ]
-    )
+
+def get_attached_html_search_roots(repo_root: Path, *, cwd: Path | None = None) -> list[Path]:
+    roots: list[Path] = []
+    append_search_context_roots(roots, repo_root)
+    append_search_context_roots(roots, (cwd or Path.cwd()).expanduser().resolve())
 
     unique_roots = dedupe_paths(roots)
     return [path for path in unique_roots if path.is_dir()]
