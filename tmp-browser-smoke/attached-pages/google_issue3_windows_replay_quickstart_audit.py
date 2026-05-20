@@ -25,6 +25,11 @@ EXPECTATIONS = (
         "purpose": "The replay quickstart keeps the launcher-companion helper visible when the route needs the smaller wrapper-backed preflight surface.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'",
+        "purpose": "The replay quickstart keeps the repo-root-preserving launcher-companion helper visible when pinned bundle replay needs to preserve broader context.",
+    },
+    {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_suite_router_shortcut_first_entrypoint.ps1",
         "purpose": "The replay quickstart keeps the suite-router shortcut bridge visible before the route collapses into replay shortcuts.",
@@ -58,21 +63,6 @@ EXPECTATIONS = (
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1",
         "purpose": "The replay-attached quickstart keeps the validation-router attached-html quickstart visible in the narrowed replay ladder.",
-    },
-    {
-        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
-        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "purpose": "The replay-attached quickstart keeps the launcher-companion checker visible before the helper is trusted.",
-    },
-    {
-        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
-        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -InputPath '<attached-html-root>'",
-        "purpose": "The replay-attached quickstart keeps the launcher-companion helper visible with an attached-page input path.",
-    },
-    {
-        "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
-        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_attached_pages_launcher_companion.ps1 -RepoRoot '<repo-root>' -InputPath '<bundle-html-or-folder>'",
-        "purpose": "The replay-attached quickstart keeps the repo-root-preserving launcher-companion helper visible.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
@@ -136,42 +126,42 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
+        "snippet": "Write-Host ((\"  Route surface check:       {0}\") -f $helper.commands.windows_full_use_attached_html_route_surface_check)",
         "purpose": "The replay quickstart helper prints the broader Windows full-use route checker on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "snippet": "Write-Host ((\"  Windows validation bridge: {0}\") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)",
         "purpose": "The replay quickstart helper prints the Windows full-use validation-router bridge on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        "snippet": "Write-Host ((\"  Windows catalog quick:     {0}\") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)",
         "purpose": "The replay quickstart helper prints the Windows full-use attached-html catalog quickstart on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
+        "snippet": "Write-Host ((\"  Validation-router quick:   {0}\") -f $helper.commands.validation_router_attached_html_quickstart)",
         "purpose": "The replay quickstart helper prints the validation-router attached-html quickstart on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)',
+        "snippet": "Write-Host ((\"  Launcher surface check:    {0}\") -f $helper.commands.attached_pages_launcher_surface_check)",
         "purpose": "The replay quickstart helper prints the launcher-companion checker on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Launcher companion:        {0}") -f $helper.commands.attached_pages_launcher_companion)',
+        "snippet": "Write-Host ((\"  Launcher companion:        {0}\") -f $helper.commands.attached_pages_launcher_companion)",
         "purpose": "The replay quickstart helper prints the launcher-companion helper on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)',
+        "snippet": "Write-Host ((\"  Router shortcut:           {0}\") -f $helper.commands.suite_router_shortcut_first)",
         "purpose": "The replay quickstart helper prints the suite-router shortcut bridge on the surfaced ladder.",
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "snippet": 'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)',
+        "snippet": "Write-Host ((\"  Route shortcut:            {0}\") -f $helper.commands.replay_route_shortcut_entrypoint)",
         "purpose": "The replay quickstart helper prints the replay-route shortcut bridge on the replay follow-up surface.",
     },
 )
@@ -185,8 +175,22 @@ def resolve_repo_root(root: str | None) -> Path:
     return resolved
 
 
+def build_repo_root_error_audit(root: str | None, message: str) -> dict[str, object]:
+    repo_root = str(Path.cwd()) if root is None else str(Path(root).expanduser())
+    return {
+        "repo_root": repo_root,
+        "expectation_count": len(EXPECTATIONS),
+        "missing_count": None,
+        "missing_path_count": None,
+        "missing_paths": [],
+        "results": [],
+        "error_type": "repo_root_not_found",
+        "error": message,
+    }
+
+
 def summarize_missing_paths(results: list[dict[str, object]]) -> list[dict[str, object]]:
-    missing_by_path: dict[str, list[dict[str, object]]] = {}
+    missing_by_path: dict[str, list[str]] = {}
 
     for result in results:
         if result["exists"]:
@@ -243,6 +247,17 @@ def build_replay_quickstart_audit(repo_root: Path) -> dict[str, object]:
 
 
 def render_text_report(audit: dict[str, object]) -> str:
+    if audit.get("error"):
+        return "\n".join(
+            [
+                "Google Issue #3 Windows Replay Quickstart Audit",
+                "",
+                f"Repo root: {audit['repo_root']}",
+                f"Error: {audit['error']}",
+                "",
+            ]
+        )
+
     lines = [
         "Google Issue #3 Windows Replay Quickstart Audit",
         "",
@@ -279,7 +294,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="Print structured JSON instead of text.")
     args = parser.parse_args(argv)
 
-    repo_root = resolve_repo_root(args.repo_root)
+    try:
+        repo_root = resolve_repo_root(args.repo_root)
+    except FileNotFoundError as err:
+        audit = build_repo_root_error_audit(args.repo_root, str(err))
+        if args.json:
+            print(json.dumps(audit, indent=2))
+        else:
+            print(render_text_report(audit), end="")
+        return 1
+
     audit = build_replay_quickstart_audit(repo_root)
 
     if args.json:
