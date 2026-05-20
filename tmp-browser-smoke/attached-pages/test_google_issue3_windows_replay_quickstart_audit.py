@@ -126,6 +126,36 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_windows_full_use_route_surface_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
+        "",
+    ),
+    (
+        "missing_windows_validation_bridge_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "",
+    ),
+    (
+        "missing_windows_catalog_quickstart_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        "",
+    ),
+    (
+        "missing_validation_router_quickstart_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
+        "",
+    ),
+    (
+        "missing_launcher_surface_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)',
+        "",
+    ),
+    (
         "missing_replay_attached_note_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         'Write-Host (("  Replay attached note:      {0}") -f $helper.replay_attached_html_note_path)',
