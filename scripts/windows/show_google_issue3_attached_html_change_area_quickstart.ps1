@@ -264,15 +264,15 @@ $helper = [ordered]@{
 }
 
 $helper.recommended_next_key = if ($helper.explicit_input_path_count -gt 0) {
-    'attached_bundle_first'
+    'attached_bundle_suite_surface'
 } elseif (-not [string]::IsNullOrWhiteSpace($helper.repo_root) -or -not [string]::IsNullOrWhiteSpace($helper.summary_path)) {
     'attached_html_context_surface'
 } else {
     'top_level_attached_html_quickstart'
 }
 $helper.recommended_next_command = $helper.commands[$helper.recommended_next_key]
-$helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_first') {
-    'Explicit input paths are already in play, so stay pinned to the known three-page compatibility bundle before widening back into the broader issue #3 attached-page helper chain.'
+$helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached_bundle_suite_surface') {
+    'Explicit input paths are already in play, so reopen the compact bundle-specific suite surface first and keep the replay pinned to the known three-page compatibility set before narrowing into the bundle-first helper or widening back into the broader issue #3 attached-page helper chain.'
 } elseif ($helper.recommended_next_key -eq 'attached_html_context_surface') {
     'A non-default repo root or saved summary is already in play, so reopen the dedicated attached-html context surface before choosing between the broader attached-page flow helper, the launcher companion preflight lane, the dedicated Google attached-page flow guide, the pinned bundle lane, the validation-router bridge, the Windows-first and replay-side quickstarts, the attached-page quickstarts, the newer suite-catalog surfaces, the compact bundle-suite surface, shortcuts, next-step matrix, or the safe-route helper.'
 } else {
