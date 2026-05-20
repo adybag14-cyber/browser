@@ -599,9 +599,13 @@ fn inferModeSlice(tokens: []const []const u8) ParseError!RunMode {
             return .version;
         }
 
-        if (try parseCommon(allocator, token, &shared_opts, &std.process.ArgIteratorGeneral(.{}).init(tokens[index + 1 ..]))) {
+        if (inferSharedFlagOption(token)) {
             index += 1;
             continue;
+        }
+
+        if (inferLocalBrowseTarget(token)) {
+            return .browse;
         }
 
         return if (std.mem.indexOfAny(u8, token, ":/") == null)
@@ -660,6 +664,23 @@ fn inferModeOption(opt: []const u8) bool {
         return true;
     }
     if (std.mem.eql(u8, opt, "--profile_dir")) {
+        return true;
+    }
+    return false;
+}
+
+fn inferSharedFlagOption(opt: []const u8) bool {
+    if (std.mem.eql(u8, opt, "--obey_robots")) {
+        return true;
+    }
+    return false;
+}
+
+fn inferLocalBrowseTarget(token: []const u8) bool {
+    if (token.len >= 5 and std.ascii.eqlIgnoreCase(token[token.len - 5 ..], ".html")) {
+        return true;
+    }
+    if (token.len >= 4 and std.ascii.eqlIgnoreCase(token[token.len - 4 ..], ".htm")) {
         return true;
     }
     return false;
@@ -1230,6 +1251,30 @@ test "infer mode treats window width before url as browse" {
 
 test "infer mode treats window height before url as browse" {
     const mode = try inferModeSlice(&.{ "--window_height", "720", "https://example.com/" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats bare html filename as browse" {
+    const mode = try inferModeSlice(&.{ "attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats relative windows html path as browse" {
+    const mode = try inferModeSlice(&.{ "agent_files\\attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode treats absolute windows html path as browse" {
+    const mode = try inferModeSlice(&.{ "C:\\fixtures\\attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode keeps browse for html target after shared flag" {
+    const mode = try inferModeSlice(&.{ "--obey_robots", "agent_files\\attached-page.html" });
 
     try std.testing.expectEqual(RunMode.browse, mode);
 }
