@@ -57,6 +57,11 @@ $submitTimingFlow = '.\\scripts\\windows\\show_google_submit_timing_validation_f
 $sharedEnterOrderFlow = '.\\scripts\\windows\\show_google_shared_enter_order_validation_flow.ps1'
 $attachedHtmlFlow = '.\\scripts\\windows\\show_google_attached_html_validation_flow.ps1'
 
+$suiteRouterArgs = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $suiteRouterArgs -Name ChangeArea -Value 'google-input'
+Add-SharedArgument -Arguments $suiteRouterArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $suiteRouterArgs -Name BrowserExe -Value $BrowserExe
+
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
 
@@ -125,8 +130,8 @@ $flow = [ordered]@{
     steps = @(
         [ordered]@{
             name = "suite-router"
-            goal = "Print the shared headed validation suite entry for the live-trace handoff before you narrow into the dedicated checker or later trace commands."
-            command = ("powershell -ExecutionPolicy Bypass -File {0} -SuiteName google-live-trace" -f $suiteRouterEntry)
+            goal = "Reopen the nearest supported higher-level Google input route before you narrow into the dedicated checker or later trace commands."
+            command = ("powershell -ExecutionPolicy Bypass -File {0}{1}" -f $suiteRouterEntry, $(if ($suiteRouterArgs.Count -gt 0) { " " + ($suiteRouterArgs -join " ") } else { "" }))
         }
         [ordered]@{
             name = "surface-check"
@@ -156,13 +161,13 @@ $flow = [ordered]@{
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when the next question is whether the current attached or saved Google-style localhost pages diverge before the live Google homepage does." -f $attachedHtmlFlow, $(if ($attachedHtmlFlowArgs.Count -gt 0) { " " + ($attachedHtmlFlowArgs -join " ") } else { "" }))
     )
     notes = @(
-        "Start with the shared suite-router entry when you need the live-trace lane, its neighboring suites, and the dedicated helper surface reintroduced before you dive into raw trace commands.",
+        "Start with the nearest supported shared suite-router entry when you need the higher-level Google input lane, its neighboring suites, and the dedicated helper surface reintroduced before you dive into raw trace commands.",
         "Run the trace surface checker first so missing guides, runner wiring, or probe files fail before the later-stage capture looks trustworthy.",
         "After any capture, print the trace artifact guide so the reduced-home logs, live-home logs, and Google-focused runtime traces stay on one repeatable inspection surface.",
         "Treat this helper as a later-stage investigation handoff, not the first gate. Start with the reduced localhost probes and shared input stacks first.",
         "Use the wrapper unless you already know you need the raw direct probe outputs from tmp-browser-smoke/google-investigation-next.",
         "When LeaveOpen is set, the reduced and live trace commands keep the headed window open after capture so the real surface can be inspected before teardown.",
-        "The printed handoff commands preserve the current repo root, browser path, host, input text, and LeaveOpen mode where those later helpers support them."
+        "The printed handoff commands preserve the current repo root, browser path, host, input text, and LeaveOpen mode where those later helpers support them. The top-level router handoff now uses the nearest real supported entry instead of a nonexistent google-live-trace suite name."
     )
 }
 
