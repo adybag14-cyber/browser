@@ -264,6 +264,24 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "suite_catalog_guide_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Suite-catalog guide:      {0}") -f $helper.commands.suite_catalog_entrypoints)',
+        "",
+    ),
+    (
+        "broader_attached_flow_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Broader attached flow:    {0}") -f $helper.commands.attached_html_validation_flow)',
+        "",
+    ),
+    (
+        "suite_router_sidecar_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Suite-router sidecar:     {0}") -f $helper.commands.suite_router_attached_html_quickstart)',
+        "",
+    ),
+    (
         "top_level_shortcut_bridge_note_reference",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "- `docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md`",
@@ -354,7 +372,7 @@ DRIFT_CASES = (
         "",
     ),
     (
-        "broader_attached_flow_output",
+        "broader_attached_flow_output_duplicate",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Broader attached flow:    {0}") -f $helper.commands.attached_html_validation_flow)',
         "",
