@@ -54,9 +54,27 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_windows_route_surface_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
+        "",
+    ),
+    (
+        "missing_windows_validation_bridge_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1",
+        "",
+    ),
+    (
         "missing_windows_catalog_quickstart_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1",
+        "",
+    ),
+    (
+        "missing_validation_router_attached_html_quickstart_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1",
         "",
     ),
     (
@@ -102,6 +120,24 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_windows_route_surface_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments",
+        "",
+    ),
+    (
+        "missing_windows_validation_bridge_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_validation_router_quickstart_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
         "missing_replay_note_pairing_guidance",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "Treat replay_attached_html_note_path as the read-first written companion to windows_replay_attached_html_quickstart",
@@ -118,6 +154,30 @@ DRIFT_CASES = (
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "Use attached_html_target_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle and you want the compact suite-level bundle surface visible before the bundle-first helper takes over.",
         "drifted guidance",
+    ),
+    (
+        "missing_route_surface_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
+        "",
+    ),
+    (
+        "missing_windows_validation_bridge_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "",
+    ),
+    (
+        "missing_windows_catalog_quick_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        "",
+    ),
+    (
+        "missing_validation_router_quick_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
+        "",
     ),
     (
         "missing_route_shortcut_output",
