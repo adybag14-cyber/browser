@@ -58,6 +58,24 @@ For the pinned bundle route, pass the folder containing these three files as `-I
 
 Prefer `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html` as `-PreferredInitialPage` when the replay should keep one Google-like page first while still staying on the same three-page bundle.
 
+## Page-by-page proof loop
+
+Use this as the smallest honest headed-compatibility check for the pinned three-page bundle before widening back into broader issue `#3` replay work:
+
+1. Google Safety Centre
+
+Confirm the page title still resolves to `Control your online safety and privacy – Google Safety Centre`, the cookie bar renders, `Agree` and `No thanks` can both be activated, and one top navigation target such as `Safer by design` or `Product protections` can be focused or opened without freezing the page.
+
+2. Anthropic application
+
+Confirm the page reaches the live application form, one select-style field such as `Gender` can be opened and closed, and `Submit application` stays reachable after scrolling.
+
+3. U.S. Department of War UAP page
+
+Confirm the `Presidential Unsealing and Reporting System for UAP Encounters | U.S. Department of War` title surface renders, the search input accepts focus and typed text, one `record-row` entry opens the detail modal, `Close` returns to the list, and pagination advances without crashing the headed session.
+
+If the first page fails, stop there and keep the next replay narrow until the failure boundary is understood. If the Google-shaped page passes, continue in the listed order so the next signal separates Google-specific input regressions from broader combobox, modal, or pagination behavior.
+
 ## Top-level re-entry points
 
 Use these when the broader router should pick the next branch before the Google-style attached-page flow narrows again:
