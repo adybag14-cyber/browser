@@ -171,32 +171,42 @@ fn browseTargetAuthority(url: []const u8) ?[]const u8 {
     return authority_tail[0..authority_end];
 }
 
-fn browseTargetHost(authority: []const u8) []const u8 {
-    if (authority.len == 0) {
+fn browseTargetHostPortAuthority(authority: []const u8) []const u8 {
+    const at_index = std.mem.lastIndexOfScalar(u8, authority, '@') orelse return authority;
+    if (at_index + 1 >= authority.len) {
         return authority;
     }
-    if (authority[0] == '[') {
-        const closing = std.mem.indexOfScalar(u8, authority, ']') orelse return authority;
-        return authority[0 .. closing + 1];
+    return authority[at_index + 1 ..];
+}
+
+fn browseTargetHost(authority: []const u8) []const u8 {
+    const host_port_authority = browseTargetHostPortAuthority(authority);
+    if (host_port_authority.len == 0) {
+        return host_port_authority;
     }
-    const port_separator = std.mem.lastIndexOfScalar(u8, authority, ':') orelse return authority;
-    return authority[0..port_separator];
+    if (host_port_authority[0] == '[') {
+        const closing = std.mem.indexOfScalar(u8, host_port_authority, ']') orelse return host_port_authority;
+        return host_port_authority[0 .. closing + 1];
+    }
+    const port_separator = std.mem.lastIndexOfScalar(u8, host_port_authority, ':') orelse return host_port_authority;
+    return host_port_authority[0..port_separator];
 }
 
 fn browseTargetPort(authority: []const u8) []const u8 {
-    if (authority.len == 0) {
+    const host_port_authority = browseTargetHostPortAuthority(authority);
+    if (host_port_authority.len == 0) {
         return "(none)";
     }
-    if (authority[0] == '[') {
-        const closing = std.mem.indexOfScalar(u8, authority, ']') orelse return "(default)";
-        if (closing + 1 >= authority.len or authority[closing + 1] != ':') {
+    if (host_port_authority[0] == '[') {
+        const closing = std.mem.indexOfScalar(u8, host_port_authority, ']') orelse return "(default)";
+        if (closing + 1 >= host_port_authority.len or host_port_authority[closing + 1] != ':') {
             return "(default)";
         }
-        const port = authority[closing + 2 ..];
+        const port = host_port_authority[closing + 2 ..];
         return if (port.len == 0) "(default)" else port;
     }
-    const port_separator = std.mem.lastIndexOfScalar(u8, authority, ':') orelse return "(default)";
-    const port = authority[port_separator + 1 ..];
+    const port_separator = std.mem.lastIndexOfScalar(u8, host_port_authority, ':') orelse return "(default)";
+    const port = host_port_authority[port_separator + 1 ..];
     return if (port.len == 0) "(default)" else port;
 }
 
@@ -275,6 +285,24 @@ test "browse artifact status still reports settled headed exports" {
         "settled_without_export",
         browseArtifactStatus("capture.png", .headed, .headed, false, true, false),
     );
+}
+
+test "browse target info strips userinfo before loopback host classification" {
+    const info = browseTargetInfo("http://user:pass@localhost:9222/");
+
+    try std.testing.expectEqualStrings("http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("localhost", info.host);
+    try std.testing.expectEqualStrings("9222", info.port);
+}
+
+test "browse target info strips userinfo before ipv6 loopback classification" {
+    const info = browseTargetInfo("http://user:pass@[::1]:8080/");
+
+    try std.testing.expectEqualStrings("http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("[::1]", info.host);
+    try std.testing.expectEqualStrings("8080", info.port);
 }
 
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
