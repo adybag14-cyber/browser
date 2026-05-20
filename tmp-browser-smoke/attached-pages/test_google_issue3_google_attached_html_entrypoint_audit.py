@@ -91,15 +91,57 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_issue_specific_checker_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1' -RepoRootOverride $RepoRoot",
+        "",
+    ),
+    (
         "missing_google_attached_flow_wiring",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         "google_attached_html_validation_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments",
         "",
     ),
     (
+        "missing_bundle_suite_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments",
+        "",
+    ),
+    (
         "missing_bundle_first_wiring",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         "attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments",
+        "",
+    ),
+    (
+        "missing_sidecar_audit_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host (("  6. Sidecar audit:        {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)',
+        "",
+    ),
+    (
+        "missing_broader_surface_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host (("  7. Broader surface:      {0}") -f $entrypoint.helper_commands.broader_google_attached_html_surface_check)',
+        "",
+    ),
+    (
+        "missing_asset_closure_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host (("  8. Asset closure:        {0}") -f $entrypoint.helper_commands.google_attached_html_asset_closure)',
+        "",
+    ),
+    (
+        "missing_google_attached_flow_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host ((" 10. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)',
+        "",
+    ),
+    (
+        "missing_sidecar_audit_guidance",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "Use google_attached_html_sidecar_audit when the current saved export may be missing its whole sibling `_files` bundle and you want that simpler failure mode ruled in or out before the broader surface check or the deeper asset audit.",
         "",
     ),
     (
