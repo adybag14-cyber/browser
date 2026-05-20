@@ -119,6 +119,13 @@ fn browseLifecycleLabel(app: *const App) []const u8 {
     return if (app.display.browse_is_loading) "loading" else "settled";
 }
 
+fn httpTimeoutSourceLabel(common: Config.Common, interactive_default: bool) []const u8 {
+    if (common.http_timeout != null) {
+        return "explicit_override";
+    }
+    return if (interactive_default) "interactive_default" else "standard_default";
+}
+
 const BrowseTargetInfo = struct {
     scheme: []const u8,
     scope: []const u8,
@@ -213,7 +220,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             return std.process.cleanExit();
         },
         .version => {
-            std.debug.print("{s}\n", .{lp.build_config.git_commit});
+            std.debug.print("{s}\\n", .{lp.build_config.git_commit});
             return std.process.cleanExit();
         },
         else => {},
@@ -267,6 +274,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             const sighandler = try main_arena.create(SigHandler);
             sighandler.* = .{ .arena = main_arena };
             try sighandler.install();
+            const effective_http_timeout_ms = args.httpTimeout();
+            const http_timeout_source = httpTimeoutSourceLabel(opts.common, opts.common.browser_mode == .headed);
 
             log.debug(.app, "startup", .{
                 .mode = "serve",
@@ -278,6 +287,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
+                .http_timeout_ms = effective_http_timeout_ms,
+                .http_timeout_source = http_timeout_source,
                 .snapshot = app.snapshot.fromEmbedded(),
             });
             if (headed_runtime_active) {
@@ -295,6 +306,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .http_timeout_ms = effective_http_timeout_ms,
+                    .http_timeout_source = http_timeout_source,
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
             }
@@ -315,6 +328,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .http_timeout_ms = effective_http_timeout_ms,
+                    .http_timeout_source = http_timeout_source,
                     .reason = info.reason,
                 });
             }
@@ -346,6 +361,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .http_timeout_ms = effective_http_timeout_ms,
+                    .http_timeout_source = http_timeout_source,
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
                 return err;
@@ -366,12 +383,16 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
+                .http_timeout_ms = effective_http_timeout_ms,
+                .http_timeout_source = http_timeout_source,
                 .snapshot = app.snapshot.fromEmbedded(),
             });
         },
         .browse => |opts| {
             const url = opts.url;
             const browse_target = browseTargetInfo(url);
+            const effective_http_timeout_ms = args.httpTimeout();
+            const http_timeout_source = httpTimeoutSourceLabel(opts.common, true);
             log.debug(.app, "startup", .{
                 .mode = "browse",
                 .requested_browser_mode = @tagName(requested_browser_mode),
@@ -386,6 +407,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
+                .http_timeout_ms = effective_http_timeout_ms,
+                .http_timeout_source = http_timeout_source,
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
                 .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
@@ -409,6 +432,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .http_timeout_ms = effective_http_timeout_ms,
+                    .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
                     .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
@@ -434,6 +459,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .http_timeout_ms = effective_http_timeout_ms,
+                    .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
                     .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
@@ -465,6 +492,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .http_timeout_ms = effective_http_timeout_ms,
+                    .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
                     .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, app.display.browse_screenshot_bmp_attempted),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
@@ -494,6 +523,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
+                .http_timeout_ms = effective_http_timeout_ms,
+                .http_timeout_source = http_timeout_source,
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
                 .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, app.display.browse_screenshot_bmp_attempted),
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
