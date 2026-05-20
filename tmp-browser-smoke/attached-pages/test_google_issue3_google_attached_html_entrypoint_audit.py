@@ -47,6 +47,69 @@ Write-Host ((" 15. Bundle suite helper:  {0}") -f $entrypoint.helper_commands.at
 Write-Host ((" 16. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
 """
 
+DRIFT_CASES = (
+    (
+        "missing_broader_surface_doc_command",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1",
+        "",
+    ),
+    (
+        "missing_asset_closure_doc_command",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_attached_html_local_asset_closure.ps1 -GoogleStyle",
+        "",
+    ),
+    (
+        "missing_google_attached_flow_doc_command",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
+        "",
+    ),
+    (
+        "missing_issue_specific_entrypoint_doc_command",
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_google_attached_html_entrypoint.ps1",
+        "",
+    ),
+    (
+        "missing_sidecar_audit_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_sidecar_audit = $googleAttachedHtmlSidecarAuditCommand",
+        "",
+    ),
+    (
+        "missing_broader_surface_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "broader_google_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_attached_html_validation_surface.ps1' -Arguments $googleAttachedHtmlSurfaceCheckArguments",
+        "",
+    ),
+    (
+        "missing_asset_closure_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_asset_closure = Format-HelperCommand -ScriptName 'check_attached_html_local_asset_closure.ps1' -Arguments $googleAttachedHtmlAssetAuditArguments -Switches @('GoogleStyle')",
+        "",
+    ),
+    (
+        "missing_google_attached_flow_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "google_attached_html_validation_flow = Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments",
+        "",
+    ),
+    (
+        "missing_bundle_first_wiring",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments",
+        "",
+    ),
+    (
+        "missing_bundle_first_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host ((" 16. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)',
+        "",
+    ),
+)
+
 
 class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -181,6 +244,24 @@ class GoogleIssue3GoogleAttachedHtmlEntrypointAuditTests(unittest.TestCase):
             "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
             failing_paths,
         )
+
+    def test_build_audit_reports_selected_contract_drift_cases(self) -> None:
+        for name, path, snippet, replacement in DRIFT_CASES:
+            with self.subTest(name=name):
+                if path.startswith("docs/"):
+                    self.write_contract_files(doc_text=DOC_SNIPPET.replace(snippet, replacement))
+                else:
+                    self.write_contract_files(helper_text=HELPER_SNIPPET.replace(snippet, replacement))
+
+                audit = helper.build_google_attached_entrypoint_audit(self.root)
+
+                self.assertGreater(audit["missing_count"], 0)
+                failing = [
+                    result["snippet"]
+                    for result in audit["results"]
+                    if not result["exists"]
+                ]
+                self.assertIn(snippet, failing)
 
     def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
         self.write_contract_files(doc_text="# drifted\n")
