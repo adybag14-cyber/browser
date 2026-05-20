@@ -79,6 +79,13 @@ fn resolvedOptionalPathLabel(path: ?[]const u8) []const u8 {
     return path orelse "(disabled)";
 }
 
+fn browseArtifactStatus(path: ?[]const u8, attempted: bool) []const u8 {
+    if (path == null) {
+        return "disabled";
+    }
+    return if (attempted) "attempted" else "pending";
+}
+
 fn headedRuntimeActive(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) bool {
     return requested_mode == .headed and runtime_mode == .headed;
 }
@@ -292,7 +299,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
+                .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
             if (headed_runtime_active) {
@@ -310,7 +319,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
+                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false),
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
             }
@@ -330,7 +341,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
+                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false),
                     .reason = info.reason,
                 });
             }
@@ -356,7 +369,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, app.display.browse_screenshot_bmp_attempted),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
+                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, app.display.browse_screenshot_png_attempted),
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
                 return err;
@@ -380,7 +395,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, app.display.browse_screenshot_bmp_attempted),
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
+                .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, app.display.browse_screenshot_png_attempted),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
         },
