@@ -340,6 +340,22 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
             failing_paths,
         )
 
+    def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
+        self.write_contract_files(route_doc_text="# drifted\n")
+
+        audit = helper.build_route_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        self.assertIn("docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md", summary)
+        self.assertGreater(
+            summary["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["missing_expectation_count"],
+            1,
+        )
+        self.assertIn(
+            "Windows-to-validation-router bridge visible",
+            summary["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["first_missing_purpose"],
+        )
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(route_helper_text="# drifted\n", catalog_helper_text="# drifted\n")
 
@@ -350,7 +366,7 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         self.assertIn("Missing expectations:", report)
         self.assertIn("[FAIL] scripts/windows/show_google_issue3_windows_full_use_attached_html_route.ps1", report)
 
-    def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
+    def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(self) -> None:
         self.write_contract_files(route_doc_text="# drifted\n", catalog_helper_text="# drifted\n")
 
         stdout = io.StringIO()
@@ -360,6 +376,17 @@ class GoogleIssue3WindowsFullUseAttachedHtmlRouteAuditTests(unittest.TestCase):
         self.assertEqual(1, exit_code)
         payload = json.loads(stdout.getvalue())
         self.assertGreater(payload["missing_count"], 0)
+        self.assertGreater(payload["missing_path_count"], 0)
+        grouped = {entry["path"]: entry for entry in payload["missing_paths"]}
+        self.assertIn("docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md", grouped)
+        self.assertGreater(
+            grouped["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["missing_expectation_count"],
+            1,
+        )
+        self.assertIn(
+            "Windows-to-validation-router bridge visible",
+            grouped["docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md"]["first_missing_purpose"],
+        )
 
 
 if __name__ == "__main__":
