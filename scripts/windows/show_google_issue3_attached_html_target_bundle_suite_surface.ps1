@@ -4,6 +4,7 @@ param(
     [string]$SummaryPath,
     [string[]]$InputPath,
     [string]$BrowserExe,
+    [string]$PreferredInitialPage,
     [switch]$Json
 )
 
@@ -159,17 +160,22 @@ Add-SharedArgument -Arguments $bundleSurfaceCheckArguments -Name RepoRoot -Value
 $reentryArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $reentryArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $reentryArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $reentryArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 Add-SharedPathArrayArgument -Arguments $reentryArguments -Name InputPath -Values $InputPath
 
 $bundleFirstArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $bundleFirstArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleFirstArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedArgument -Arguments $bundleFirstArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $bundleFirstArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 Add-SharedPathArrayArgument -Arguments $bundleFirstArguments -Name InputPath -Values $InputPath
 
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath -and $InputPath.Count -gt 0) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($PreferredInitialPage) {
+    $attachedHtmlFlowArguments['PreferredInitialPage'] = $PreferredInitialPage
 }
 
 $googleAttachedHtmlFlowArguments = [ordered]@{}
@@ -178,6 +184,9 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 }
 if ($BrowserExe) {
     $googleAttachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $googleAttachedHtmlFlowArguments['PreferredInitialPage'] = $PreferredInitialPage
 }
 
 $attachedHtmlTargetBundleSuiteArguments = [ordered]@{
@@ -189,6 +198,9 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 if ($BrowserExe) {
     $attachedHtmlTargetBundleSuiteArguments['BrowserExe'] = $BrowserExe
 }
+if ($PreferredInitialPage) {
+    $attachedHtmlTargetBundleSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
 
 $attachedHtmlSuiteArguments = [ordered]@{
     ChangeArea = 'attached-html'
@@ -198,6 +210,9 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 }
 if ($BrowserExe) {
     $attachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $attachedHtmlSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
 }
 
 $googleAttachedHtmlSuiteArguments = [ordered]@{
@@ -209,6 +224,9 @@ if ($InputPath -and $InputPath.Count -gt 0) {
 if ($BrowserExe) {
     $googleAttachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
 }
+if ($PreferredInitialPage) {
+    $googleAttachedHtmlSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
 
 $surface = [ordered]@{
     issue = 'Google issue #3 attached-html target-bundle suite surface'
@@ -216,6 +234,7 @@ $surface = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
+    preferred_initial_page = $PreferredInitialPage
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     known_bundle_files = @(
         'Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html'
@@ -269,6 +288,7 @@ $surface = [ordered]@{
         'Run bundle_surface_check before trusting the bundle-only replay after branch moves or helper renames.',
         'Run bundle_check right after bundle_surface_check when you want the current saved-page set revalidated as the same known three-page compatibility bundle before the delegated runner takes over.',
         'Pass -BrowserExe when the bundle-specific route should stay pinned to a non-default Windows headed build through the suite surface, bundle-first entrypoint, printed bundle flow, and delegated bundle runner.',
+        'Pass -PreferredInitialPage when the suite surface should keep the same Google-like page first across the broader attached-page lane, the narrower issue #3 re-entry helpers, and the compact bundle-first follow-up.',
         'Use bundle_proof_entrypoint after the bundle runner when the delegated bundle replay is green and the next decision depends on keeping the fixed-list screenshot-and-title proof pinned to the same saved inputs.',
         'Use top_level_attached_html_bridge when the bundle replay still needs the broader top-level attached-page bridge reprinted before the route drops into the bundle-first helper or the replay-route helpers.',
         'Use bundle_first_entrypoint when explicit input paths, repo-root context, replay-route context, or a non-default BrowserExe are already in play and you want the narrower issue #3 bridge printed before the delegated bundle flow.',
@@ -303,6 +323,9 @@ if ($surface.summary_path) {
 }
 if ($surface.browser_exe) {
     Write-Host (("Browser exe: {0}") -f $surface.browser_exe)
+}
+if ($surface.preferred_initial_page) {
+    Write-Host (("Preferred page: {0}") -f $surface.preferred_initial_page)
 }
 if ($surface.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $surface.explicit_input_path_count)
