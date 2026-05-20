@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import tempfile
 import unittest
@@ -332,6 +333,61 @@ def render_text_report(audit):
         self.assertEqual(0, exit_code)
         self.assertIn('"fixtures_with_missing_sidecars": 0', stdout.getvalue())
 
+    def test_main_audit_sidecars_json_missing_returns_nonzero_unless_allowed(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_sidecar_audit.py").write_text(
+            """def build_sidecar_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_sidecars": 1,
+        "missing_paths": ["fixture_files/app.js"],
+        "fixtures": [],
+    }
+
+def render_text_report(audit):
+    return "sidecars\\n"
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--audit-sidecars",
+                    "--audit-sidecars-json",
+                ]
+            )
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(1, payload["fixtures_with_missing_sidecars"])
+        self.assertEqual(["fixture_files/app.js"], payload["missing_paths"])
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--audit-sidecars",
+                    "--audit-sidecars-json",
+                    "--allow-missing-sidecars",
+                ]
+            )
+
+        self.assertEqual(0, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(1, payload["fixtures_with_missing_sidecars"])
+
     def test_main_audit_sidecars_missing_returns_nonzero_unless_allowed(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
         attached_pages_dir.mkdir(parents=True)
@@ -376,6 +432,70 @@ def render_text_report(audit):
                 ]
             )
         self.assertEqual(0, exit_code)
+
+    def test_main_audit_assets_json_missing_returns_nonzero_unless_allowed(self):
+        attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
+        attached_pages_dir.mkdir(parents=True)
+        fixture = self.write_html(self.workspace_root / "agent_files" / "fixture.html", "Fixture", "fixture")
+        (attached_pages_dir / "attached_pages_server.py").write_text(
+            """def build_manifest(root=None, selected_files=None):
+    return [{"file": "fixture.html", "route": "/pages/1"}]
+
+def build_asset_audit(root=None, selected_files=None):
+    return {
+        "fixture_count": 1,
+        "fixtures_with_missing_assets": 1,
+        "missing_paths": ["fixture_files/app.js", "fixture_files/site.css"],
+        "fixtures": [],
+    }
+
+def render_asset_audit_text(audit):
+    return "assets\\n"
+
+def create_server(root=None, bind="127.0.0.1", port=8235, selected_files=None, staging_root=None):
+    raise AssertionError("server launch should not happen during --audit-assets")
+""",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--audit-assets",
+                    "--audit-assets-json",
+                ]
+            )
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(1, payload["fixtures_with_missing_assets"])
+        self.assertEqual(
+            ["fixture_files/app.js", "fixture_files/site.css"],
+            payload["missing_paths"],
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(
+                [
+                    "--repo-root",
+                    str(self.repo_root),
+                    "--input",
+                    str(fixture),
+                    "--audit-assets",
+                    "--audit-assets-json",
+                    "--allow-missing-assets",
+                ]
+            )
+
+        self.assertEqual(0, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(1, payload["fixtures_with_missing_assets"])
 
     def test_main_server_mode_can_require_complete_sidecars(self):
         attached_pages_dir = self.repo_root / "tmp-browser-smoke" / "attached-pages"
