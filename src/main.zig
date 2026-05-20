@@ -75,6 +75,10 @@ fn resolvedProfileDirLabel(path: ?[]const u8) []const u8 {
     return path orelse "(unavailable)";
 }
 
+fn resolvedOptionalPathLabel(path: ?[]const u8) []const u8 {
+    return path orelse "(disabled)";
+}
+
 fn headedRuntimeActive(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) bool {
     return requested_mode == .headed and runtime_mode == .headed;
 }
@@ -238,6 +242,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                 .window_width = args.windowWidth(),
                 .window_height = args.windowHeight(),
+                .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
             if (headed_runtime_active) {
@@ -254,6 +260,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                    .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
             }
@@ -272,6 +280,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .profile_dir = resolvedProfileDirLabel(app.app_dir_path),
                     .window_width = args.windowWidth(),
                     .window_height = args.windowHeight(),
+                    .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
+                    .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
                     .reason = info.reason,
                 });
             }
