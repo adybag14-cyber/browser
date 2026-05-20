@@ -3,6 +3,7 @@ param(
     [string]$RepoRoot,
     [string]$SummaryPath,
     [string[]]$InputPath,
+    [string]$PreferredInitialPage,
     [string]$BrowserExe,
     [switch]$Json
 )
@@ -167,6 +168,12 @@ Add-SharedArgument -Arguments $browserAwareSharedArguments -Name SummaryPath -Va
 Add-SharedArgument -Arguments $browserAwareSharedArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedPathArrayArgument -Arguments $browserAwareSharedArguments -Name InputPath -Values $InputPath
 
+$preferredInitialPageArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $preferredInitialPageArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $preferredInitialPageArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $preferredInitialPageArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+Add-SharedPathArrayArgument -Arguments $preferredInitialPageArguments -Name InputPath -Values $InputPath
+
 $routeSurfaceArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $routeSurfaceArguments -Name RepoRoot -Value $RepoRoot
 
@@ -174,19 +181,37 @@ $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
+if ($PreferredInitialPage) {
+    $attachedHtmlFlowArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
 if ($BrowserExe) {
     $attachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
 }
 
-$attachedHtmlChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+$attachedHtmlChangeAreaArguments = [ordered]@{
     ChangeArea = 'attached-html'
-}) -RepoRootOverride $RepoRoot
-$googleAttachedHtmlChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+}
+if ($PreferredInitialPage) {
+    $attachedHtmlChangeAreaArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
+$googleAttachedHtmlChangeAreaArguments = [ordered]@{
     ChangeArea = 'google-attached-html'
-}) -RepoRootOverride $RepoRoot
-$attachedBundleChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
+}
+if ($PreferredInitialPage) {
+    $googleAttachedHtmlChangeAreaArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
+$attachedBundleChangeAreaArguments = [ordered]@{
     ChangeArea = 'attached-html-target-bundle'
-}) -RepoRootOverride $RepoRoot
+}
+if ($PreferredInitialPage) {
+    $attachedBundleChangeAreaArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
+$attachedHtmlChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
+$googleAttachedHtmlChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleAttachedHtmlChangeAreaArguments -RepoRootOverride $RepoRoot
+$attachedBundleChangeAreaCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedBundleChangeAreaArguments -RepoRootOverride $RepoRoot
 
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay attached HTML quickstart'
@@ -194,6 +219,7 @@ $helper = [ordered]@{
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     browser_exe = $BrowserExe
+    preferred_initial_page = $PreferredInitialPage
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     windows_replay_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md'
     windows_replay_attached_html_quickstart_note_path = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'
@@ -238,7 +264,7 @@ $helper = [ordered]@{
         suite_catalog_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_attached_html_entrypoint.ps1' -Arguments $sharedArguments
         attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         attached_pages_launcher_companion_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $routeSurfaceArguments
-        attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments
+        attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $preferredInitialPageArguments
         google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot
         google_attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $sharedArguments
@@ -302,6 +328,12 @@ $helper.recommended_next_reason = if ($helper.recommended_next_key -eq 'attached
     'No pinned bundle inputs, non-default repo root, or saved summary are in play yet, so reopen the Windows full-use validation-router attached-html bridge first and keep the replay-side checker, the route-level surface checker, and the Windows-first attached-html catalog quickstart nearby before dropping into the smaller attached-page quickstarts.'
 }
 
+if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
+    $helper.notes += "Current preferred initial page: $PreferredInitialPage"
+    $helper.notes += 'The top-level attached-html, Google-attached-html, and attached-html-target-bundle re-entry commands shown here now preserve -PreferredInitialPage when the replay should keep one saved page first before reopening the narrower helper ladder.'
+    $helper.notes += 'The launcher-companion and dedicated Google attached-html flow commands shown here now also preserve the same preferred-first-page override, so the narrower replay ladder can keep the strongest Google-like page pinned without hand-editing each command.'
+}
+
 if ($Json) {
     $helper | ConvertTo-Json -Depth 5
     exit 0
@@ -317,6 +349,9 @@ if ($helper.summary_path) {
 }
 if ($helper.browser_exe) {
     Write-Host (("Browser exe: {0}") -f $helper.browser_exe)
+}
+if (-not [string]::IsNullOrWhiteSpace($helper.preferred_initial_page)) {
+    Write-Host (("Preferred initial page: {0}") -f $helper.preferred_initial_page)
 }
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
