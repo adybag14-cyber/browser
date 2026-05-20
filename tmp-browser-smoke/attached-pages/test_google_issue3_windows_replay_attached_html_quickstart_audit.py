@@ -174,12 +174,6 @@ DRIFT_CASES = (
         "drifted note",
     ),
     (
-        "google_surface_check_guidance",
-        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "Use google_attached_html_surface_check when branch state may have moved and the replay should fail fast on the dedicated Google-shaped attached-page lane before reopening the narrower Google helper from this same replay ladder.",
-        "drifted note",
-    ),
-    (
         "bundle_proof_note_reference",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "- `docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md`",
@@ -384,18 +378,6 @@ DRIFT_CASES = (
         "drifted note",
     ),
     (
-        "top_level_shortcut_windows_replay_wiring",
-        "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
-        "windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $bundleArguments",
-        "",
-    ),
-    (
-        "top_level_shortcut_windows_replay_output",
-        "scripts/windows/show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
-        'Write-Host (("  Windows replay quick:   {0}") -f $entrypoint.helper_commands.windows_replay_attached_html_quickstart)',
-        "",
-    ),
-    (
         "attached_bundle_suite_surface_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "attached_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $sharedArguments",
@@ -405,6 +387,12 @@ DRIFT_CASES = (
         "attached_bundle_suite_surface_guidance",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "Use attached_bundle_suite_surface when the replay is already close to the known three-page compatibility bundle but you still want the compact suite-level surface printed before the narrower bundle-first helper or the delegated bundle flow takes over.",
+        "drifted note",
+    ),
+    (
+        "attached_bundle_proof_entrypoint_guidance",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Use attached_bundle_proof_entrypoint when the replay is already pinned to the known three-page compatibility bundle and you want the proof-only follow-up helper kept visible beside the proof surface checker before the route widens again.",
         "drifted note",
     ),
     (
