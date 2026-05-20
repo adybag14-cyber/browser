@@ -58,6 +58,24 @@ For the pinned bundle route, pass the folder containing these three files as `-I
 
 Prefer `Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html` as `-PreferredInitialPage` when the replay should keep one Google-like page first while still staying on the same three-page bundle.
 
+## Strict manifest preflight
+
+Run this before a headed replay when the current attached export is supposed to be a closed, browser-blamable bundle rather than a best-effort saved-page set:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<bundle-folder-or-html>' -PreferredInitialPage '<preferred-page>' -AuditSidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<bundle-folder-or-html>' -PreferredInitialPage '<preferred-page>' -AuditAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath '<bundle-folder-or-html>' -PreferredInitialPage '<preferred-page>' -RequireCompleteSidecars -RequireCompleteAssets -PrintManifest
+```
+
+Use this ordering on purpose:
+
+1. `-AuditSidecars` proves the sibling `_files` directories are present before you spend time on deeper asset closure or browser runtime debugging.
+2. `-AuditAssets` proves the saved HTML, CSS, and module-script references are locally closed before the replay is treated as a headed regression.
+3. The strict `-PrintManifest` call proves the exact same pinned inputs can still produce the short-route manifest while both strict gates stay green.
+
+If the strict manifest command fails, treat that as an export-bundle problem first, not a headed-browser regression. If it succeeds, keep the manifest output nearby for the next replay step so the short routes and preferred first page stay pinned all the way into the actual browser run.
+
 ## Page-by-page proof loop
 
 Use this as the smallest honest headed-compatibility check for the pinned three-page bundle before widening back into broader issue `#3` replay work:
@@ -257,35 +275,3 @@ Use this next when the current export may be missing its whole sibling `_files` 
 3. `check_attached_html_local_asset_closure.ps1 -GoogleStyle`
 
 Use this next when the attached pages should stay strict about sibling local assets after the sidecar bundle itself is confirmed present and before the helper or runner opens a browser.
-
-4. `show_google_attached_html_validation_flow.ps1`
-
-Use this when you want the current attached-page set printed, summarized, and handed off into the saved-page Google validation flow with the same locked inputs.
-
-5. `run_google_attached_html_validation.ps1 -Wait`
-
-Use this when the earlier checks are green and you want to launch the headed localhost replay directly.
-
-6. `show_saved_page_google_validation_flow.ps1 -ManualGoogleStyle`
-
-Use this when the attached-page set is already resolved and you want the underlying saved-page Google helper reprinted directly before a manual or narrower follow-up.
-
-7. `show_headed_validation_suites.ps1 -SuiteName google-attached-html`
-
-Use this when you want the suite catalog itself to reprint the narrower Google-style attached-page helper surface, its nearby issue `#3` re-entry commands, and the broader attached-page helper without widening back out to the rest of the catalog first.
-
-8. `show_headed_validation_suites.ps1 -SuiteName attached-html-target-bundle`
-
-Use this when the current inputs are still the known three-page compatibility bundle and you want the suite catalog to keep the pinned bundle helper, the compact bundle-suite re-entry, the runner, and the broader attached-page fallback visible together.
-
-9. `show_google_issue3_suite_catalog_entrypoints.ps1`
-
-Use this when you want the suite-catalog command map itself to keep the dedicated Google attached-page surface checker, the top-level attached-page ladders, the suite-router attached-page quickstart, and the shorter attached-page shortcut visible before you pick the next narrower replay branch.
-
-10. `show_google_issue3_suite_router_attached_html_quickstart.ps1`
-
-Use this when the replay is already narrowed to attached localhost follow-up and you want the broader attached-page flow helper, the dedicated Google attached-page surface checker, and the narrower attached-page helper family surfaced together before the route narrows again.
-
-11. `show_google_issue3_google_attached_html_entrypoint.ps1`
-
-Use this when the replay is already narrowed to the issue-specific Google-shaped attached-page route and you want the dedicated surface check, the dedicated flow helper, and the shorter shortcut-first bridge reprinted together.
