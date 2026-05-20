@@ -600,6 +600,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_entrypoint_companion_flow_guidance",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.",
+        "drifted note",
+    ),
+    (
         "google_entrypoint_companion_flow_output",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         'Write-Host ((" 10. Google attached flow: {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)',
