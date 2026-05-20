@@ -90,6 +90,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "windows_full_use_route_output",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        'Write-Host (("  Windows full route:      {0}") -f $helper.commands.windows_full_use_attached_html_route)',
+        "",
+    ),
+    (
         "validation_bridge_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $browserAwareSharedArguments",
