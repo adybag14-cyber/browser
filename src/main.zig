@@ -79,11 +79,22 @@ fn resolvedOptionalPathLabel(path: ?[]const u8) []const u8 {
     return path orelse "(disabled)";
 }
 
-fn browseArtifactStatus(path: ?[]const u8, attempted: bool) []const u8 {
+fn browseArtifactStatus(
+    path: ?[]const u8,
+    attempted: bool,
+    navigation_state_seen: bool,
+    is_loading: bool,
+) []const u8 {
     if (path == null) {
         return "disabled";
     }
-    return if (attempted) "attempted" else "pending";
+    if (attempted) {
+        return "attempted";
+    }
+    if (!navigation_state_seen) {
+        return "pre_navigation";
+    }
+    return if (is_loading) "waiting_for_load" else "settled_without_export";
 }
 
 fn headedRuntimeActive(requested_mode: Config.BrowserMode, runtime_mode: Config.BrowserMode) bool {
@@ -434,9 +445,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .http_timeout_ms = effective_http_timeout_ms,
                 .http_timeout_source = http_timeout_source,
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
+                .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false, false, true),
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false),
+                .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false, false, true),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
             if (headed_runtime_active) {
@@ -460,9 +471,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .http_timeout_ms = effective_http_timeout_ms,
                     .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
+                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false, false, true),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false),
+                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false, false, true),
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
             }
@@ -488,9 +499,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .http_timeout_ms = effective_http_timeout_ms,
                     .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false),
+                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false, false, true),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false),
+                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false, false, true),
                     .reason = info.reason,
                 });
             }
@@ -522,9 +533,19 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .http_timeout_ms = effective_http_timeout_ms,
                     .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, app.display.browse_screenshot_bmp_attempted),
+                    .screenshot_bmp_status = browseArtifactStatus(
+                        opts.screenshot_bmp_path,
+                        app.display.browse_screenshot_bmp_attempted,
+                        app.display.browse_navigation_state_seen,
+                        app.display.browse_is_loading,
+                    ),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, app.display.browse_screenshot_png_attempted),
+                    .screenshot_png_status = browseArtifactStatus(
+                        opts.screenshot_png_path,
+                        app.display.browse_screenshot_png_attempted,
+                        app.display.browse_navigation_state_seen,
+                        app.display.browse_is_loading,
+                    ),
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
                 return err;
@@ -554,9 +575,19 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .http_timeout_ms = effective_http_timeout_ms,
                 .http_timeout_source = http_timeout_source,
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, app.display.browse_screenshot_bmp_attempted),
+                .screenshot_bmp_status = browseArtifactStatus(
+                    opts.screenshot_bmp_path,
+                    app.display.browse_screenshot_bmp_attempted,
+                    app.display.browse_navigation_state_seen,
+                    app.display.browse_is_loading,
+                ),
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, app.display.browse_screenshot_png_attempted),
+                .screenshot_png_status = browseArtifactStatus(
+                    opts.screenshot_png_path,
+                    app.display.browse_screenshot_png_attempted,
+                    app.display.browse_navigation_state_seen,
+                    app.display.browse_is_loading,
+                ),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
         },
