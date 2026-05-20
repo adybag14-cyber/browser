@@ -48,6 +48,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_validation_router_surface_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1",
+        "",
+    ),
+    (
+        "missing_validation_router_quickstart_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_validation_router_attached_html_quickstart.ps1",
+        "",
+    ),
+    (
         "missing_windows_validation_bridge_wiring",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "windows_full_use_validation_router_attached_html_bridge = Format-HelperCommand -ScriptName 'show_google_issue3_windows_full_use_validation_router_attached_html_bridge.ps1' -Arguments $sharedArguments",
@@ -57,6 +69,18 @@ DRIFT_CASES = (
         "missing_windows_validation_bridge_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        "",
+    ),
+    (
+        "missing_validation_router_quickstart_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_validation_router_quickstart_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
         "",
     ),
     (
