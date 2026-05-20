@@ -203,6 +203,53 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
         self.assertIn("Fixtures with missing sidecars: 1", stdout.getvalue())
         self.assertIn("Missing sidecar paths:", stdout.getvalue())
 
+    def test_cli_json_reports_missing_repo_root_cleanly(self):
+        missing_root = self.root / "missing-bundle"
+
+        original_argv = sys.argv[:]
+        stdout = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(audit_module.__file__)),
+                "--root",
+                str(missing_root),
+                "--json",
+            ]
+            with contextlib.redirect_stdout(stdout):
+                exit_code = audit_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual("repo_root_not_found", payload["error_type"])
+        self.assertEqual(0, payload["fixture_count"])
+        self.assertEqual(0, payload["missing_sidecar_path_count"])
+        self.assertTrue(payload["bundle_root"].endswith("missing-bundle"))
+        self.assertIn("bundle root does not exist", payload["error"])
+
+    def test_cli_text_reports_missing_repo_root_cleanly(self):
+        missing_root = self.root / "missing-bundle"
+
+        original_argv = sys.argv[:]
+        stdout = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(audit_module.__file__)),
+                "--root",
+                str(missing_root),
+            ]
+            with contextlib.redirect_stdout(stdout):
+                exit_code = audit_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        report = stdout.getvalue()
+        self.assertIn("Attached Pages Sidecar Audit", report)
+        self.assertIn("Error: repo_root_not_found", report)
+        self.assertIn("bundle root does not exist", report)
+
 
 if __name__ == "__main__":
     unittest.main()
