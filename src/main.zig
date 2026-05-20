@@ -220,8 +220,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
             return std.process.cleanExit();
         },
         .version => {
-            std.debug.print("{s}
-", .{lp.build_config.git_commit});
+            std.debug.print("{s}\u005cn", .{lp.build_config.git_commit});
             return std.process.cleanExit();
         },
         else => {},
