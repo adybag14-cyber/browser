@@ -170,7 +170,7 @@ if ($InputPath) {
 
 $helper = [ordered]@{
     issue = 'Google issue #3 Windows replay quickstart'
-    purpose = 'Print the main read-first replay entrypoint for issue #3, keeping the suite-catalog bridge, the suite-router quickstart, the replay-attached-html fail-fast checker, the replay-side attached-html helper, its written companion note, the attached-pages launcher companion checker and helper, the broader attached-page flow helper, the dedicated Google-shaped attached-page flow helper, the compact bundle-suite surface helper, the top-level attached-html ladder, the shortcut bridges, and the safe-route helpers visible from one compact surface.'
+    purpose = 'Print the main read-first replay entrypoint for issue #3, keeping the suite-catalog bridge, the suite-router quickstart, the validation-router attached-html fail-fast checker, the validation-router attached-html helper, the replay-attached-html fail-fast checker, the replay-side attached-html helper, its written companion note, the attached-pages launcher companion checker and helper, the broader attached-page flow helper, the dedicated Google-shaped attached-page flow helper, the compact bundle-suite surface helper, the top-level attached-html ladder, the shortcut bridges, and the safe-route helpers visible from one compact surface.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
@@ -210,6 +210,7 @@ $helper = [ordered]@{
         }) -RepoRootOverride $RepoRoot
         suite_catalog_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_suite_catalog_entrypoints.ps1' -Arguments $sharedArguments
         suite_router_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_quickstart.ps1' -Arguments $sharedArguments
+        validation_router_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_validation_router_attached_html_quickstart_surface.ps1' -Arguments $routeSurfaceArguments
         validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments
         windows_replay_attached_html_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1' -Arguments $routeSurfaceArguments
         windows_full_use_attached_html_route_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1' -Arguments $routeSurfaceArguments
@@ -241,6 +242,7 @@ $helper = [ordered]@{
     notes = @(
         'Start with suite_catalog_entrypoints when you want the broadest read-first bridge that still stays inside the issue #3 replay family.',
         'Use suite_router_quickstart when the top-level validation catalog already made issue #3 obvious and you want the shortest router-side bridge before the route narrows again.',
+        'Use validation_router_attached_html_surface_check immediately before validation_router_attached_html_quickstart when attached localhost replay is already the next obvious branch and you want that narrower bridge to fail fast on drifted quickstart notes, missing helper scripts, or renamed attached-page follow-up before the replay narrows further.',
         'Use windows_replay_attached_html_surface_check before trusting the narrower replay-side attached-html ladder from another checkout, because it fails fast on missing replay-note, helper-script, or downstream attached-page surfaces before the route narrows again.',
         'Use windows_full_use_attached_html_route_surface_check before trusting the attached-page ladder from another checkout, because it fails fast on missing route notes, helper scripts, or downstream attached-page surfaces.',
         'Use windows_replay_attached_html_quickstart when the main replay note already narrowed the next step to the attached localhost branch and you want the shorter replay-side attached-page ladder printed directly.',
@@ -304,6 +306,7 @@ Write-Host ''
 Write-Host 'Read-first issue #3 bridge:'
 Write-Host (("  Suite catalog:             {0}") -f $helper.commands.suite_catalog_entrypoints)
 Write-Host (("  Suite router quickstart:   {0}") -f $helper.commands.suite_router_quickstart)
+Write-Host (("  Validation-router check:   {0}") -f $helper.commands.validation_router_attached_html_surface_check)
 Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)
 Write-Host ''
 Write-Host 'Attached-page ladder:'
