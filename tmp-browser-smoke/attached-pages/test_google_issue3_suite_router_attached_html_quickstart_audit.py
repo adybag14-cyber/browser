@@ -100,6 +100,8 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
         audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
 
         self.assertEqual(0, audit["missing_count"])
+        self.assertEqual(0, audit["missing_path_count"])
+        self.assertEqual([], audit["missing_paths"])
         self.assertTrue(all(result["exists"] for result in audit["results"]))
 
     def test_build_audit_reports_missing_sidecar_audit_line(self) -> None:
@@ -164,6 +166,24 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
         failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
         self.assertIn("scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1", failing_paths)
 
+    def test_missing_path_summary_groups_multiple_expectations_for_one_path(self) -> None:
+        self.write_contract_files(
+            doc_text="# drifted\n"
+        )
+
+        audit = helper.build_suite_router_attached_html_quickstart_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        self.assertIn("docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md", summary)
+        self.assertGreater(
+            summary["docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md"]["missing_expectation_count"],
+            1,
+        )
+        self.assertIn(
+            "fail-fast checker visible",
+            summary["docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md"]["first_missing_purpose"],
+        )
+
     def test_text_report_surfaces_failure_count(self) -> None:
         self.write_contract_files(helper_text="# drifted\n")
 
@@ -174,7 +194,7 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
         self.assertIn("Missing expectations:", report)
         self.assertIn("[FAIL] scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1", report)
 
-    def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
+    def test_cli_json_output_returns_nonzero_and_grouped_summary_when_contract_drifts(self) -> None:
         self.write_contract_files(doc_text="# drifted\n")
 
         stdout = io.StringIO()
@@ -184,6 +204,15 @@ class GoogleIssue3SuiteRouterAttachedHtmlQuickstartAuditTests(unittest.TestCase)
         self.assertEqual(1, exit_code)
         payload = json.loads(stdout.getvalue())
         self.assertGreater(payload["missing_count"], 0)
+        self.assertGreater(payload["missing_path_count"], 0)
+        self.assertEqual(
+            "docs/ISSUE3_SUITE_ROUTER_ATTACHED_HTML_QUICKSTART.md",
+            payload["missing_paths"][0]["path"],
+        )
+        self.assertGreater(
+            payload["missing_paths"][0]["missing_expectation_count"],
+            1,
+        )
 
 
 if __name__ == "__main__":
