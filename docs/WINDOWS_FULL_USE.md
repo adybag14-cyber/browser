@@ -271,6 +271,25 @@ asset gate, the strict bundle gate, and the pinned proof checker plus proof
 entrypoint on one smaller surface before the broader Windows-first ladders
 reopen.
 
+When you start from a plain checkout before the narrower helper notes are back
+in front of you, keep this direct localhost fallback loop nearby:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditSidecars
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -AuditAssets
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PreferredInitialPage "Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PreferredInitialPage "Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" -RequireCompleteSidecars -RequireCompleteAssets -PrintManifest
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1 -InputPath "<saved-html-or-folder>" -PreferredInitialPage "Control your online safety and privacy – Google Safety Centre (09_05_2026 21：23：40).html" -RequireCompleteSidecars -RequireCompleteAssets -Port 8235
+```
+
+Run those five commands in order when the current replay still needs to be
+re-established from a normal checkout. The first two commands separate missing
+sidecar bundles from broader asset drift, the manifest steps keep the pinned
+routes visible without launching too early, and the final strict launch leaves
+the localhost catalog printing `/pages/<n>` and `/named/<slug>` routes that can
+be opened directly in headed mode. Drop `-PreferredInitialPage` when the saved
+bundle is not supposed to keep the Google Safety Centre export first.
+
 When the current replay should stay pinned to the known three-page compatibility
 bundle, use the compact Windows-first bundle bridge before widening back into
 the broader attached-page ladders:
