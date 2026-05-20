@@ -232,13 +232,34 @@ fn browseTargetPort(authority: []const u8) []const u8 {
     return if (port.len == 0) "(default)" else port;
 }
 
+fn isLoopbackIpv4Host(host: []const u8) bool {
+    var iterator = std.mem.splitScalar(u8, host, '.');
+    var octet_count: usize = 0;
+
+    while (iterator.next()) |part| {
+        if (part.len == 0) {
+            return false;
+        }
+
+        const octet = std.fmt.parseInt(u8, part, 10) catch {
+            return false;
+        };
+        if (octet_count == 0 and octet != 127) {
+            return false;
+        }
+        octet_count += 1;
+    }
+
+    return octet_count == 4;
+}
+
 fn isLoopbackBrowseHost(host: []const u8) bool {
     if (host.len == 0) {
         return false;
     }
     return std.ascii.eqlIgnoreCase(host, "localhost") or
         std.ascii.endsWithIgnoreCase(host, ".localhost") or
-        std.mem.eql(u8, host, "127.0.0.1") or
+        isLoopbackIpv4Host(host) or
         std.mem.eql(u8, host, "0.0.0.0") or
         std.ascii.eqlIgnoreCase(host, "[::1]") or
         std.ascii.eqlIgnoreCase(host, "[0:0:0:0:0:0:0:1]");
@@ -325,6 +346,24 @@ test "browse target info strips userinfo before ipv6 loopback classification" {
     try std.testing.expectEqualStrings("loopback", info.scope);
     try std.testing.expectEqualStrings("[::1]", info.host);
     try std.testing.expectEqualStrings("8080", info.port);
+}
+
+test "browse target info treats the 127 slash 8 range as loopback" {
+    const info = browseTargetInfo("http://127.42.0.9:8235/");
+
+    try std.testing.expectEqualStrings("http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("127.42.0.9", info.host);
+    try std.testing.expectEqualStrings("8235", info.port);
+}
+
+test "browse target info keeps non-loopback ipv4 hosts remote" {
+    const info = browseTargetInfo("http://126.42.0.9:8235/");
+
+    try std.testing.expectEqualStrings("http", info.scheme);
+    try std.testing.expectEqualStrings("remote", info.scope);
+    try std.testing.expectEqualStrings("126.42.0.9", info.host);
+    try std.testing.expectEqualStrings("8235", info.port);
 }
 
 test "headed runtime helper stays active only for native headed execution" {
