@@ -535,6 +535,12 @@ const InferModeHint = enum {
     browse_only,
 };
 
+const InferModeValue = enum {
+    none,
+    required,
+    optional,
+};
+
 fn inferModeOption(opt: []const u8) ?InferModeHint {
     if (std.mem.eql(u8, opt, "--dump")) {
         return .fetch;
@@ -599,6 +605,40 @@ fn inferModeOption(opt: []const u8) ?InferModeHint {
     return null;
 }
 
+fn inferModeOptionValue(opt: []const u8) InferModeValue {
+    if (std.mem.eql(u8, opt, "--host") or
+        std.mem.eql(u8, opt, "--port") or
+        std.mem.eql(u8, opt, "--timeout") or
+        std.mem.eql(u8, opt, "--cdp_max_connections") or
+        std.mem.eql(u8, opt, "--cdp_max_pending_connections") or
+        std.mem.eql(u8, opt, "--http_proxy") or
+        std.mem.eql(u8, opt, "--proxy_bearer_token") or
+        std.mem.eql(u8, opt, "--http_max_concurrent") or
+        std.mem.eql(u8, opt, "--http_max_host_open") or
+        std.mem.eql(u8, opt, "--http_connect_timeout") or
+        std.mem.eql(u8, opt, "--http_timeout") or
+        std.mem.eql(u8, opt, "--http_max_response_size") or
+        std.mem.eql(u8, opt, "--log_level") or
+        std.mem.eql(u8, opt, "--log_format") or
+        std.mem.eql(u8, opt, "--user_agent_suffix") or
+        std.mem.eql(u8, opt, "--profile_dir") or
+        std.mem.eql(u8, opt, "--browser_mode") or
+        std.mem.eql(u8, opt, "--window_width") or
+        std.mem.eql(u8, opt, "--window_height") or
+        std.mem.eql(u8, opt, "--screenshot_bmp") or
+        std.mem.eql(u8, opt, "--screenshot_png") or
+        std.mem.eql(u8, opt, "--strip_mode"))
+    {
+        return .required;
+    }
+
+    if (std.mem.eql(u8, opt, "--log_filter_scopes")) {
+        return .optional;
+    }
+
+    return .none;
+}
+
 fn inferMode(first_opt: []const u8, args: *const std.process.Args.Iterator) ?RunMode {
     if (first_opt.len == 0) {
         return .serve;
@@ -618,10 +658,26 @@ fn inferMode(first_opt: []const u8, args: *const std.process.Args.Iterator) ?Run
         }
     }
 
+    var pending_value = inferModeOptionValue(first_opt);
     var peek_args = args.*;
     while (peek_args.next()) |opt| {
+        switch (pending_value) {
+            .required => {
+                pending_value = .none;
+                continue;
+            },
+            .optional => {
+                if (!std.mem.startsWith(u8, opt, "--")) {
+                    pending_value = .none;
+                    continue;
+                }
+                pending_value = .none;
+            },
+            .none => {},
+        }
+
         if (std.mem.startsWith(u8, opt, "--") == false) {
-            return .fetch;
+            return if (browse_candidate) .browse else .fetch;
         }
         if (inferModeOption(opt)) |hint| {
             switch (hint) {
@@ -631,6 +687,7 @@ fn inferMode(first_opt: []const u8, args: *const std.process.Args.Iterator) ?Run
                 .browse_only => return .browse,
             }
         }
+        pending_value = inferModeOptionValue(opt);
     }
 
     if (browse_candidate) {
@@ -658,9 +715,25 @@ fn inferModeSlice(first_opt: []const u8, remaining_opts: []const []const u8) ?Ru
         }
     }
 
+    var pending_value = inferModeOptionValue(first_opt);
     for (remaining_opts) |opt| {
+        switch (pending_value) {
+            .required => {
+                pending_value = .none;
+                continue;
+            },
+            .optional => {
+                if (!std.mem.startsWith(u8, opt, "--")) {
+                    pending_value = .none;
+                    continue;
+                }
+                pending_value = .none;
+            },
+            .none => {},
+        }
+
         if (std.mem.startsWith(u8, opt, "--") == false) {
-            return .fetch;
+            return if (browse_candidate) .browse else .fetch;
         }
         if (inferModeOption(opt)) |hint| {
             switch (hint) {
@@ -670,6 +743,7 @@ fn inferModeSlice(first_opt: []const u8, remaining_opts: []const []const u8) ?Ru
                 .browse_only => return .browse,
             }
         }
+        pending_value = inferModeOptionValue(opt);
     }
 
     if (browse_candidate) {
@@ -1256,6 +1330,14 @@ test "infer mode scans later args for headed browse" {
 
 test "infer mode scans later args for serve" {
     try std.testing.expectEqual(RunMode.serve, inferModeSlice("--profile_dir", &.{ "tmp-profile", "--host", "127.0.0.1" }).?);
+}
+
+test "infer mode skips optional shared values before later headed browse" {
+    try std.testing.expectEqual(RunMode.browse, inferModeSlice("--log_filter_scopes", &.{ "event", "--headed", "https://example.com/" }).?);
+}
+
+test "infer mode keeps headed browse when shared option values come first" {
+    try std.testing.expectEqual(RunMode.browse, inferModeSlice("--profile_dir", &.{ "tmp-profile", "--window_width", "1280", "https://example.com/" }).?);
 }
 
 test "infer mode keeps headed serve when a shared browser flag comes first" {
