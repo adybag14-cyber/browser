@@ -87,6 +87,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea navigation
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea stop-loading
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-attached-html
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering
@@ -102,18 +105,23 @@ Use the dedicated Google form-controls Enter-order route after the shared input
 probes when issue #3 is already narrowed to the smallest real-surface
 Enter-submit checkpoint. Use the broader `google-shared-enter-order` route when
 issue #3 replay should stay on the reusable shared Enter-order ladder before
-widening back out to live Google or attached-page follow-up. Use `rendering`
-before attached-page replay when the change touched layout, paint, screenshot
-timing, or other visible headed-surface behavior. Use `network` before
-attached-page replay when the change touched shared subresource loading,
-authenticated asset fetches, or browser-managed request credentials. Use
-`browser-shell` when the change touched tabs, settings persistence, chrome
-keyboard shortcuts, or related shell behavior. Use `popup` when the change
-touched popup creation, named-target flows, or popup policy on the real headed
-window. Use the suite-level `google-attached-html` and
-`attached-html-target-bundle` views when you want the narrower issue #3
-attached-page helper surface reprinted without widening back out to the rest of
-the router catalog first.
+widening back out to live Google or attached-page follow-up. Use the broader
+`attached-html` route first when the saved bundle is not yet obviously on the
+Google-like replay lane, use `google-attached-html` when the replay still
+matches the issue-specific Google-shaped flow but is not yet pinned to the
+exact three-page compatibility bundle, and switch to
+`attached-html-target-bundle` once the current pages are already confirmed to
+be that known three-page set. Use `rendering` before attached-page replay when
+the change touched layout, paint, screenshot timing, or other visible
+headed-surface behavior. Use `network` before attached-page replay when the
+change touched shared subresource loading, authenticated asset fetches, or
+browser-managed request credentials. Use `browser-shell` when the change
+touched tabs, settings persistence, chrome keyboard shortcuts, or related shell
+behavior. Use `popup` when the change touched popup creation, named-target
+flows, or popup policy on the real headed window. Use the suite-level
+`google-attached-html` and `attached-html-target-bundle` views when you want
+the narrower issue #3 attached-page helper surface reprinted without widening
+back out to the rest of the router catalog first.
 
 For browser-shell work, keep this direct headed probe ladder nearby once the
 router points you at `browser-shell`:
