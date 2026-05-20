@@ -40,6 +40,16 @@ EXPECTATIONS = (
         "purpose": "The replay quickstart keeps the replay-route shortcut bridge visible when the narrower replay follow-up is the next likely handoff.",
     },
     {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1",
+        "purpose": "The replay quickstart keeps the broader attached-page flow helper visible before the route collapses into the shorter issue #3 helpers.",
+    },
+    {
+        "path": "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
+        "purpose": "The replay quickstart keeps the Google-shaped attached-page flow helper visible when the current inputs are already on that narrower branch.",
+    },
+    {
         "path": "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "snippet": "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
         "purpose": "The replay-attached quickstart keeps the broader Windows full-use route checker visible before the replay ladder is trusted.",
@@ -106,6 +116,16 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
+        "purpose": "The replay quickstart helper wires the broader attached-page flow helper into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
+        "purpose": "The replay quickstart helper wires the Google-shaped attached-page flow helper into the command map.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "snippet": "suite_router_shortcut_first = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $sharedArguments",
         "purpose": "The replay quickstart helper wires the suite-router shortcut bridge into the command map.",
     },
@@ -156,6 +176,21 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "Write-Host ((\"  Attached-page flow:        {0}\") -f $helper.commands.attached_html_flow)",
+        "purpose": "The replay quickstart helper prints the broader attached-page flow helper on the surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "Write-Host ((\"  Google attached flow:      {0}\") -f $helper.commands.google_attached_html_flow)",
+        "purpose": "The replay quickstart helper prints the Google-shaped attached-page flow helper on the surfaced ladder.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "snippet": "Write-Host ((\"  Replay attached note:      {0}\") -f $helper.replay_attached_html_note_path)",
+        "purpose": "The replay quickstart helper prints the replay-attached companion note on the surfaced ladder so the written route stays paired with the narrower helper.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "snippet": "Write-Host ((\"  Router shortcut:           {0}\") -f $helper.commands.suite_router_shortcut_first)",
         "purpose": "The replay quickstart helper prints the suite-router shortcut bridge on the surfaced ladder.",
     },
@@ -190,7 +225,7 @@ def build_repo_root_error_audit(root: str | None, message: str) -> dict[str, obj
 
 
 def summarize_missing_paths(results: list[dict[str, object]]) -> list[dict[str, object]]:
-    missing_by_path: dict[str, list[str]] = {}
+    missing_by_path: dict[str, list[dict[str, object]]] = {}
 
     for result in results:
         if result["exists"]:
