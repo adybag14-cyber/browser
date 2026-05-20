@@ -277,6 +277,20 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
     }
 
     const authority = browseTargetAuthority(url) orelse {
+        if (std.mem.indexOf(u8, url, "://") == null and
+            (std.mem.indexOfScalar(u8, url, '/') != null or
+                std.mem.indexOfScalar(u8, url, '\\') != null or
+                std.ascii.endsWithIgnoreCase(url, ".xhtml") or
+                std.ascii.endsWithIgnoreCase(url, ".html") or
+                std.ascii.endsWithIgnoreCase(url, ".htm")))
+        {
+            return .{
+                .scheme = "path",
+                .scope = "local_path",
+                .host = "(none)",
+                .port = "(none)",
+            };
+        }
         return .{
             .scheme = scheme,
             .scope = "unknown",
@@ -364,6 +378,24 @@ test "browse target info keeps non-loopback ipv4 hosts remote" {
     try std.testing.expectEqualStrings("remote", info.scope);
     try std.testing.expectEqualStrings("126.42.0.9", info.host);
     try std.testing.expectEqualStrings("8235", info.port);
+}
+
+test "browse target info classifies attached html filenames as local paths" {
+    const info = browseTargetInfo("attached-page.html");
+
+    try std.testing.expectEqualStrings("path", info.scheme);
+    try std.testing.expectEqualStrings("local_path", info.scope);
+    try std.testing.expectEqualStrings("(none)", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info classifies windows attached html paths as local paths" {
+    const info = browseTargetInfo("user_files\\attached-page.xhtml");
+
+    try std.testing.expectEqualStrings("path", info.scheme);
+    try std.testing.expectEqualStrings("local_path", info.scope);
+    try std.testing.expectEqualStrings("(none)", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
 }
 
 test "headed runtime helper stays active only for native headed execution" {
