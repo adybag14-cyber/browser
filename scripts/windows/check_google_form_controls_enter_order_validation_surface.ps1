@@ -47,6 +47,7 @@ $references = @(
     (New-ValidationReference -Path "tmp-browser-smoke/form-controls/form_server.py" -Kind "file" -Purpose "Shared localhost form-controls server that the dedicated Enter-order probe boots before replay."),
     (New-ValidationReference -Path "tmp-browser-smoke/common/Win32Input.ps1" -Kind "file" -Purpose "Shared Win32 input helper used by the dedicated Enter-order probe for click and text delivery."),
     (New-ValidationReference -Path "tmp-browser-smoke/tabs/TabProbeCommon.ps1" -Kind "file" -Purpose "Shared tab-window helper used by the dedicated Enter-order probe for profile setup, window discovery, and owned-process cleanup."),
+    (New-ValidationReference -Path "tmp-browser-smoke/form-controls/enter-submit-probe.ps1" -Kind "file" -Purpose "Reusable shared click-first fallback probe that the dedicated Enter-order flow helper prints with -GoogleEnterOrder -ClickFocus."),
     (New-ValidationReference -Path "tmp-browser-smoke/form-controls/google-enter-order-probe.ps1" -Kind "file" -Purpose "Smallest shared form-controls Enter-order probe on the real headed surface."),
     (New-ValidationReference -Path "tmp-browser-smoke/form-controls/chrome-google-enter-order-probe.ps1" -Kind "file" -Purpose "Compatibility wrapper that keeps older chrome-prefixed probe entry points valid while they still appear in notes or prior issue handoffs."),
     (New-ValidationReference -Path "tmp-browser-smoke/form-controls/README.md" -Kind "file" -Purpose "Shared form-controls suite note for the dedicated Enter-order gate.")
