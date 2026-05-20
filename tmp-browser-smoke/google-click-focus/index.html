@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>READY</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f6f8fb;
+      color: #1f2937;
+    }
+
+    .shell {
+      padding: 40px 0 0 48px;
+    }
+
+    .brand {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 0;
+      margin: 0 0 28px;
+    }
+
+    .prompt {
+      margin: 0 0 16px;
+      font-size: 16px;
+      color: #475467;
+    }
+
+    .search-card {
+      width: 360px;
+      padding: 18px;
+      border: 3px solid #f1c40f;
+      background: #fff6a8;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .search-box {
+      width: 100%;
+      height: 46px;
+      box-sizing: border-box;
+      border: 2px solid #cfd6e4;
+      background: #ffffff;
+      color: #111827;
+      font-size: 20px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .search-box:focus {
+      border-color: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1 class="brand">Google</h1>
+    <p class="prompt">Click the search box, type a letter, then press Enter.</p>
+    <form id="f" name="f" action="/search" method="get">
+      <div class="search-card" id="card">
+        <input id="q" class="search-box" name="q" type="search" autocomplete="off" spellcheck="false">
+      </div>
+    </form>
+  </main>
+  <script>
+    window.__lpEarlyEvents = [];
+    const form = document.forms.f;
+    const input = form.q;
+
+    document.addEventListener('keydown', function (e) {
+      window.__lpEarlyEvents.push('KD:' + [e.key || '', e.code || '', e.keyCode, e.which, e.defaultPrevented ? 1 : 0].join('|'));
+    }, true);
+
+    document.addEventListener('keypress', function (e) {
+      window.__lpEarlyEvents.push('KP:' + [e.key || '', e.code || '', e.keyCode, e.which, e.charCode, e.defaultPrevented ? 1 : 0].join('|'));
+    }, true);
+
+    document.addEventListener('beforeinput', function (e) {
+      window.__lpEarlyEvents.push('BI:' + [e.data || '', e.inputType || '', e.defaultPrevented ? 1 : 0].join('|'));
+    }, true);
+
+    document.addEventListener('input', function (e) {
+      const target = e.target;
+      window.__lpEarlyEvents.push('IN:' + [(target && target.value) || '', e.inputType || '', e.defaultPrevented ? 1 : 0].join('|'));
+    }, true);
+
+    input.addEventListener('focus', function () {
+      document.title = 'FOCUSED';
+    });
+
+    input.addEventListener('input', function () {
+      document.title = 'IN:' + input.value;
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.title = 'SUBMIT:' + input.value + '|' + window.__lpEarlyEvents.join(',');
+    });
+  </script>
+</body>
+</html>
