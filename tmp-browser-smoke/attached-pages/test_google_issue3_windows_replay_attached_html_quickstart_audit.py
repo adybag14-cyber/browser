@@ -132,6 +132,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_attached_flow_guidance",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Use google_attached_html_validation_flow when the current attached inputs are already Google-shaped and you want the dedicated attached-page asset-closure and preferred-initial-page helper visible after the dedicated Google-shaped attached-page surface check and before the route narrows back into the suite-router sidecar or the shorter attached-page shortcut.",
+        "drifted note",
+    ),
+    (
         "google_issue_bridge_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "google_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $sharedArguments",
@@ -142,6 +148,12 @@ DRIFT_CASES = (
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Google issue bridge:      {0}") -f $helper.commands.google_attached_html_entrypoint)',
         "",
+    ),
+    (
+        "google_issue_bridge_guidance",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Use google_attached_html_entrypoint when the replay already needs the issue-specific Google attached-html bridge kept visible after the dedicated Google attached-page flow and before the compact bundle suite or the narrower shortcuts take over.",
+        "drifted note",
     ),
     (
         "google_surface_check_guidance",
