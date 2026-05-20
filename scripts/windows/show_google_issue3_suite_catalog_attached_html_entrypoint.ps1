@@ -258,15 +258,15 @@ $entrypoint = [ordered]@{
 }
 
 $entrypoint.recommended_next_key = if ($entrypoint.explicit_input_path_count -gt 0) {
-    'attached_bundle_first'
+    'attached_html_target_bundle_suite_surface'
 } elseif (-not [string]::IsNullOrWhiteSpace($entrypoint.repo_root) -or -not [string]::IsNullOrWhiteSpace($entrypoint.summary_path)) {
     'contextual_flow'
 } else {
     'suite_router_attached_html_quickstart'
 }
 $entrypoint.recommended_next_command = $entrypoint.helper_commands[$entrypoint.recommended_next_key]
-$entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq 'attached_bundle_first') {
-    'Explicit input paths are already pinned, so stay on the known three-page compatibility bundle before widening back into the broader Google-only issue #3 helper chain.'
+$entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq 'attached_html_target_bundle_suite_surface') {
+    'Explicit input paths are already pinned, so reopen the compact bundle-suite helper first and keep the replay on the known three-page compatibility bundle before narrowing into the bundle-first helper or widening back into the broader Google-only issue #3 helper chain.'
 } elseif ($entrypoint.recommended_next_key -eq 'contextual_flow') {
     'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between the suite-router attached-page bridge, the dedicated Google-shaped attached-page surface check, the issue-specific attached-page bridge, replay shortcuts, the next-step matrix, the compact bundle-suite helper, the bundle-first branch, or the safe-route map.'
 } else {
