@@ -236,6 +236,18 @@ $submitActiveName = $null
 $submitActiveId = $null
 $submitSelection = $null
 $eventLog = $null
+$beforeInputIndex = -1
+$inputIndex = -1
+$focusIndex = -1
+$keydownIndex = -1
+$keypressIndex = -1
+$submitIndex = -1
+$beforeInputAfterFocus = $false
+$inputAfterBeforeInput = $false
+$typedAfterFocus = $false
+$keydownAfterInput = $false
+$keypressAfterInput = $false
+$submitAfterInput = $false
 $submitAfterKeydown = $false
 $submitAfterKeypress = $false
 $submitRecord = $null
@@ -298,16 +310,32 @@ try {
   if ([string]::IsNullOrWhiteSpace($eventLog)) { throw "probe server did not capture the Enter event log" }
 
   $focusIndex = $eventLog.IndexOf("FOCUS")
+  $beforeInputIndex = $eventLog.IndexOf("BI:$InputText:")
+  $inputIndex = $eventLog.IndexOf("IN:$InputText")
   $keydownIndex = $eventLog.IndexOf("KD:Enter:$InputText")
   $keypressIndex = $eventLog.IndexOf("KP:Enter:$InputText")
   $submitIndex = $eventLog.IndexOf("SUBMIT:$InputText")
   if ($focusIndex -lt 0) { throw "event log did not capture click focus" }
+  if ($beforeInputIndex -lt 0) { throw "event log did not capture beforeinput for typed text" }
+  if ($inputIndex -lt 0) { throw "event log did not capture input for typed text" }
   if ($keydownIndex -lt 0) { throw "event log did not capture Enter keydown" }
   if ($keypressIndex -lt 0) { throw "event log did not capture Enter keypress" }
   if ($submitIndex -lt 0) { throw "event log did not capture form submit" }
 
+  $beforeInputAfterFocus = $beforeInputIndex -gt $focusIndex
+  $inputAfterBeforeInput = $inputIndex -gt $beforeInputIndex
+  $typedAfterFocus = $inputIndex -gt $focusIndex
+  $keydownAfterInput = $keydownIndex -gt $inputIndex
+  $keypressAfterInput = $keypressIndex -gt $inputIndex
+  $submitAfterInput = $submitIndex -gt $inputIndex
   $submitAfterKeydown = $submitIndex -gt $keydownIndex
   $submitAfterKeypress = $submitIndex -gt $keypressIndex
+  if (-not $beforeInputAfterFocus) { throw "typed text reached beforeinput before click focus settled on the query field" }
+  if (-not $inputAfterBeforeInput) { throw "input event landed before beforeinput for typed text" }
+  if (-not $typedAfterFocus) { throw "typed text became visible before click focus settled on the query field" }
+  if (-not $keydownAfterInput) { throw "Enter keydown arrived before typed text input settled" }
+  if (-not $keypressAfterInput) { throw "Enter keypress arrived before typed text input settled" }
+  if (-not $submitAfterInput) { throw "form submit happened before typed text input settled" }
   if (-not $submitAfterKeypress) { throw "form submit happened before Enter keypress reached the page" }
 } catch {
   $failure = $_.Exception.Message
@@ -349,6 +377,18 @@ try {
     submit_active_id = $submitActiveId
     submit_selection = $submitSelection
     event_log = $eventLog
+    focus_index = $focusIndex
+    beforeinput_index = $beforeInputIndex
+    input_index = $inputIndex
+    keydown_index = $keydownIndex
+    keypress_index = $keypressIndex
+    submit_index = $submitIndex
+    beforeinput_after_focus = $beforeInputAfterFocus
+    input_after_beforeinput = $inputAfterBeforeInput
+    typed_after_focus = $typedAfterFocus
+    keydown_after_input = $keydownAfterInput
+    keypress_after_input = $keypressAfterInput
+    submit_after_input = $submitAfterInput
     submit_record = if ($submitRecord) { $submitRecord.Line } else { $null }
     submit_after_keydown = $submitAfterKeydown
     submit_after_keypress = $submitAfterKeypress
