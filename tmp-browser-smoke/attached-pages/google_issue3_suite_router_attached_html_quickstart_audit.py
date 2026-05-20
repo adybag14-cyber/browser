@@ -113,6 +113,7 @@ def resolve_repo_root(root: str | None) -> Path:
 def build_suite_router_attached_html_quickstart_audit(repo_root: Path) -> dict[str, object]:
     results: list[dict[str, object]] = []
     missing_count = 0
+    missing_paths: dict[str, dict[str, object]] = {}
 
     for expectation in EXPECTATIONS:
         full_path = repo_root / expectation["path"]
@@ -123,6 +124,15 @@ def build_suite_router_attached_html_quickstart_audit(repo_root: Path) -> dict[s
 
         if not exists:
             missing_count += 1
+            missing_path = missing_paths.get(expectation["path"])
+            if missing_path is None:
+                missing_path = {
+                    "path": expectation["path"],
+                    "missing_expectation_count": 0,
+                    "first_missing_purpose": expectation["purpose"],
+                }
+                missing_paths[expectation["path"]] = missing_path
+            missing_path["missing_expectation_count"] += 1
 
         results.append(
             {
@@ -133,10 +143,14 @@ def build_suite_router_attached_html_quickstart_audit(repo_root: Path) -> dict[s
             }
         )
 
+    missing_path_results = list(missing_paths.values())
+
     return {
         "repo_root": str(repo_root),
         "expectation_count": len(results),
         "missing_count": missing_count,
+        "missing_path_count": len(missing_path_results),
+        "missing_paths": missing_path_results,
         "results": results,
     }
 
