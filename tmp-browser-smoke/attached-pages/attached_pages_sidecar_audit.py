@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 import re
-from collections import defaultdict
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
@@ -54,6 +53,24 @@ def normalize_inputs(root: Path | None = None, selected_files: list[Path] | None
     raise FileNotFoundError(f"bundle root does not exist: {resolved_root}")
 
 
+def build_repo_root_error_audit(root: Path | None, selected_files: list[Path] | None, error: FileNotFoundError) -> dict[str, object]:
+    bundle_root = ""
+    if root is not None:
+        bundle_root = str(Path(root).expanduser().resolve(strict=False))
+    elif selected_files:
+        bundle_root = str(Path(selected_files[0]).expanduser().resolve(strict=False))
+    return {
+        "bundle_root": bundle_root,
+        "fixture_count": 0,
+        "fixtures_with_missing_sidecars": 0,
+        "missing_sidecar_path_count": 0,
+        "missing_sidecar_paths": [],
+        "fixtures": [],
+        "error_type": "repo_root_not_found",
+        "error": str(error),
+    }
+
+
 def extract_reference_candidates(text: str) -> list[str]:
     candidates: list[str] = []
     seen: set[str] = set()
@@ -77,8 +94,6 @@ def extract_reference_candidates(text: str) -> list[str]:
                 add_candidate(value)
 
     for raw_reference in QUOTED_VALUE_PATTERN.findall(text):
-        # Keep a generic quoted-string fallback for unexpected export markup,
-        # but avoid whole srcset-style payloads that contain multiple assets.
         if "," in raw_reference:
             continue
         add_candidate(raw_reference)
@@ -222,6 +237,18 @@ def build_sidecar_audit(root: Path | None = None, *, selected_files: list[Path] 
 
 
 def render_text_report(audit: dict[str, object]) -> str:
+    if audit.get("error_type") == "repo_root_not_found":
+        return "\n".join(
+            [
+                "Attached Pages Sidecar Audit",
+                "",
+                f"Bundle root: {audit['bundle_root']}",
+                "Error: repo_root_not_found",
+                str(audit["error"]),
+                "",
+            ]
+        )
+
     lines = [
         "Attached Pages Sidecar Audit",
         "",
@@ -247,9 +274,7 @@ def render_text_report(audit: dict[str, object]) -> str:
         lines.append(f"Sidecar directories referenced: {fixture['sidecar_directory_count']}")
         for entry in fixture["sidecar_directories"]:
             status = "present" if entry["exists"] else "missing"
-            lines.append(
-                f"- {entry['sidecar_dir']} ({status}, referenced assets: {entry['referenced_asset_count']})"
-            )
+            lines.append(f"- {entry['sidecar_dir']} ({status}, referenced assets: {entry['referenced_asset_count']})")
             for sample in entry["sample_assets"][:3]:
                 lines.append(f"  sample: {sample}")
         lines.append("")
@@ -278,13 +303,18 @@ def main() -> int:
 
     selected_files = [Path(path) for path in args.selected_files] if args.selected_files else None
     root = Path(args.root) if args.root else None
-    audit = build_sidecar_audit(root, selected_files=selected_files)
+    try:
+        audit = build_sidecar_audit(root, selected_files=selected_files)
+    except FileNotFoundError as error:
+        audit = build_repo_root_error_audit(root, selected_files, error)
 
     if args.json:
         print(json.dumps(audit, indent=2))
     else:
         print(render_text_report(audit), end="")
 
+    if audit.get("error_type"):
+        return 1
     if audit["fixtures_with_missing_sidecars"] > 0 and not args.allow_missing_sidecars:
         return 1
     return 0
