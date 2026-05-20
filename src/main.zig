@@ -81,6 +81,8 @@ fn resolvedOptionalPathLabel(path: ?[]const u8) []const u8 {
 
 fn browseArtifactStatus(
     path: ?[]const u8,
+    requested_mode: Config.BrowserMode,
+    runtime_mode: Config.BrowserMode,
     attempted: bool,
     navigation_state_seen: bool,
     is_loading: bool,
@@ -90,6 +92,9 @@ fn browseArtifactStatus(
     }
     if (attempted) {
         return "attempted";
+    }
+    if (requested_mode == .headed and runtime_mode != .headed) {
+        return "unavailable_without_native_surface";
     }
     if (!navigation_state_seen) {
         return "pre_navigation";
@@ -242,6 +247,34 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
         .host = if (host.len == 0) "(none)" else host,
         .port = port,
     };
+}
+
+test "browse artifact status reports unavailable without native surface" {
+    try std.testing.expectEqualStrings(
+        "unavailable_without_native_surface",
+        browseArtifactStatus("capture.png", .headed, .headless, false, false, true),
+    );
+}
+
+test "browse artifact status keeps disabled when export path is off" {
+    try std.testing.expectEqualStrings(
+        "disabled",
+        browseArtifactStatus(null, .headed, .headless, false, false, true),
+    );
+}
+
+test "browse artifact status preserves attempted exports" {
+    try std.testing.expectEqualStrings(
+        "attempted",
+        browseArtifactStatus("capture.png", .headed, .headless, true, false, true),
+    );
+}
+
+test "browse artifact status still reports settled headed exports" {
+    try std.testing.expectEqualStrings(
+        "settled_without_export",
+        browseArtifactStatus("capture.png", .headed, .headed, false, true, false),
+    );
 }
 
 fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.process.Args) !void {
@@ -445,9 +478,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .http_timeout_ms = effective_http_timeout_ms,
                 .http_timeout_source = http_timeout_source,
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false, false, true),
+                .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, requested_browser_mode, browser_mode, false, false, true),
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false, false, true),
+                .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, requested_browser_mode, browser_mode, false, false, true),
                 .snapshot = app.snapshot.fromEmbedded(),
             });
             if (headed_runtime_active) {
@@ -471,9 +504,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .http_timeout_ms = effective_http_timeout_ms,
                     .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false, false, true),
+                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, requested_browser_mode, browser_mode, false, false, true),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false, false, true),
+                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, requested_browser_mode, browser_mode, false, false, true),
                     .snapshot = app.snapshot.fromEmbedded(),
                 });
             }
@@ -499,9 +532,9 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .http_timeout_ms = effective_http_timeout_ms,
                     .http_timeout_source = http_timeout_source,
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
-                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, false, false, true),
+                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, requested_browser_mode, browser_mode, false, false, true),
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
-                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, false, false, true),
+                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, requested_browser_mode, browser_mode, false, false, true),
                     .reason = info.reason,
                 });
             }
@@ -535,6 +568,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
                     .screenshot_bmp_status = browseArtifactStatus(
                         opts.screenshot_bmp_path,
+                        requested_browser_mode,
+                        browser_mode,
                         app.display.browse_screenshot_bmp_attempted,
                         app.display.browse_navigation_state_seen,
                         app.display.browse_is_loading,
@@ -542,6 +577,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                     .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
                     .screenshot_png_status = browseArtifactStatus(
                         opts.screenshot_png_path,
+                        requested_browser_mode,
+                        browser_mode,
                         app.display.browse_screenshot_png_attempted,
                         app.display.browse_navigation_state_seen,
                         app.display.browse_is_loading,
@@ -577,6 +614,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),
                 .screenshot_bmp_status = browseArtifactStatus(
                     opts.screenshot_bmp_path,
+                    requested_browser_mode,
+                    browser_mode,
                     app.display.browse_screenshot_bmp_attempted,
                     app.display.browse_navigation_state_seen,
                     app.display.browse_is_loading,
@@ -584,6 +623,8 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
                 .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),
                 .screenshot_png_status = browseArtifactStatus(
                     opts.screenshot_png_path,
+                    requested_browser_mode,
+                    browser_mode,
                     app.display.browse_screenshot_png_attempted,
                     app.display.browse_navigation_state_seen,
                     app.display.browse_is_loading,
