@@ -552,6 +552,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "replay_to_windows_companion_output",
+        "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        'Write-Host (("  Replay-to-Windows:    {0}") -f $entrypoint.helper_commands.replay_shortcuts_windows_replay_attached_html_bridge)',
+        "",
+    ),
+    (
         "replay_to_windows_numbered_bridge_check_output",
         "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
         'Write-Host (("  9. Replay quick check:{0}") -f (\' \' + $entrypoint.helper_commands.windows_replay_attached_html_surface_check))',
