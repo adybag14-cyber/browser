@@ -42,6 +42,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_attached_page_flow_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_attached_html_validation_flow.ps1",
+        "",
+    ),
+    (
+        "missing_google_attached_flow_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
+        "",
+    ),
+    (
         "missing_windows_catalog_quickstart_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_windows_full_use_attached_html_catalog_quickstart.ps1",
@@ -57,6 +69,18 @@ DRIFT_CASES = (
         "missing_launcher_companion_wiring",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
         "attached_pages_launcher_companion = Format-HelperCommand -ScriptName 'show_google_issue3_attached_pages_launcher_companion.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
+        "missing_attached_page_flow_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
+        "",
+    ),
+    (
+        "missing_google_attached_flow_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        "google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
         "",
     ),
     (
@@ -86,7 +110,25 @@ DRIFT_CASES = (
     (
         "missing_route_shortcut_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        "Write-Host ((\"  Route shortcut:            {0}\") -f $helper.commands.replay_route_shortcut_entrypoint)",
+        'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)',
+        "",
+    ),
+    (
+        "missing_attached_page_flow_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Attached-page flow:        {0}") -f $helper.commands.attached_html_flow)',
+        "",
+    ),
+    (
+        "missing_google_attached_flow_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Google attached flow:      {0}") -f $helper.commands.google_attached_html_flow)',
+        "",
+    ),
+    (
+        "missing_replay_attached_note_output",
+        "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
+        'Write-Host (("  Replay attached note:      {0}") -f $helper.replay_attached_html_note_path)',
         "",
     ),
 )
