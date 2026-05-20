@@ -157,9 +157,11 @@ def build_google_attached_entrypoint_audit(repo_root: Path) -> dict[str, object]
                     "path": expectation["path"],
                     "missing_expectation_count": 0,
                     "first_missing_purpose": expectation["purpose"],
+                    "missing_snippets": [],
                 }
                 missing_paths[expectation["path"]] = missing_path
             missing_path["missing_expectation_count"] += 1
+            missing_path["missing_snippets"].append(expectation["snippet"])
 
         results.append(
             {
