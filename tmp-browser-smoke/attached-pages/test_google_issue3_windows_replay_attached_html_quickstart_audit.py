@@ -522,6 +522,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "replay_windows_bridge_quickstart_wiring",
+        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
+        "windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $sharedArguments",
+        "",
+    ),
+    (
         "replay_to_windows_wiring",
         "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
         "replay_shortcuts_windows_replay_attached_html_bridge = $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand",
