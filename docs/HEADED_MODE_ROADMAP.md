@@ -16,6 +16,7 @@ production-ready minimalist Zig browser, see
 - On Windows targets, `headed` now starts a native window lifecycle backend.
 - On non-Windows targets, `headed` still uses a safe headless fallback with warning.
 - Startup diagnostics now distinguish successful headed activation from headed fallback and surface the target class, OS, profile directory, window size, timeout source, and browse/serve target context needed for local headed triage.
+- Command-mode inference now keeps local `.html`, `.htm`, and `.xhtml` attached-page targets on `browse`, even when shared options come first, while remote `.html` and `.htm` URLs still preserve the older `fetch` fallback unless a headed or browse hint is present.
 - `--window_width` / `--window_height` now drive window/screen/viewport values.
 - Display runtime abstraction exists with page lifecycle hooks and a Win32 thread backend.
 - CDP viewport APIs update runtime viewport (`Emulation.*Metrics*`, `Browser.setWindowBounds`).
@@ -60,6 +61,7 @@ Current validation truth on this branch:
 - bounded localhost navigation probes exist under `tmp-browser-smoke/wrapped-link/`
 - bounded localhost stop/reload probes exist under `tmp-browser-smoke/stop-loading/`
 - bounded localhost input probes exist under `tmp-browser-smoke/form-controls/`
+- direct attached-page startup now accepts saved local `.html`, `.htm`, and `.xhtml` paths before the replay route widens into the wrapper-backed localhost helper lane
 - the router now surfaces a dedicated `google-form-controls-enter-order` gate for the smallest issue #3 shared Enter-submit checkpoint on the real headed surface
 - the router now surfaces a broader `google-shared-enter-order` gate when issue #3 replay should stay on the reusable shared Enter-order ladder before widening back out to live Google or attached-page follow-up
 - the router now surfaces first-line `rendering` probes for shared layout, screenshot timing, and visible headed surface checks before attached-page replay
