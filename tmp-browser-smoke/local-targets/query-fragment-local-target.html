@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Local Query Target plain</title>
+</head>
+<body>
+  <main>
+    <h1>Local Query Target</h1>
+    <p id="mode">plain</p>
+  </main>
+  <script>
+    const mode = location.search
+      ? `query ${location.search.slice(1)}`
+      : location.hash
+        ? `fragment ${location.hash.slice(1)}`
+        : 'plain';
+    document.title = `Local Query Target ${mode}`;
+    document.getElementById('mode').textContent = mode;
+  </script>
+</body>
+</html>
