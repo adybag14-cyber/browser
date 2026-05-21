@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import os
 import tempfile
 import unittest
 from collections import defaultdict
@@ -343,6 +344,26 @@ class GoogleIssue3WindowsReplayQuickstartAuditTests(unittest.TestCase):
         self.assertEqual(str(missing_root), payload["repo_root"])
         self.assertIsNone(payload["missing_count"])
         self.assertIn("repo root does not exist:", payload["error"])
+
+    def test_cli_json_output_resolves_relative_missing_repo_root_cleanly(self) -> None:
+        missing_root = Path("missing-relative-root")
+        expected = str((self.root / missing_root).resolve())
+
+        stdout = io.StringIO()
+        previous_cwd = Path.cwd()
+        os.chdir(self.root)
+        try:
+            with contextlib.redirect_stdout(stdout):
+                exit_code = helper.main(["--repo-root", str(missing_root), "--json"])
+        finally:
+            os.chdir(previous_cwd)
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual("repo_root_not_found", payload["error_type"])
+        self.assertEqual(expected, payload["repo_root"])
+        self.assertIn(f"repo root does not exist: {expected}", payload["error"])
+        self.assertIsNone(payload["missing_count"])
 
     def test_cli_text_output_reports_missing_repo_root_cleanly(self) -> None:
         missing_root = self.root / "missing-repo-root"
