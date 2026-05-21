@@ -1,8 +1,20 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8191,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\layout-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$root = Join-Path $repo "tmp-browser-smoke\layout-smoke"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $serverScript = Join-Path $root "layout_server.py"
 $common = Join-Path $root "LayoutProbeCommon.ps1"
 . $common
@@ -36,8 +48,7 @@ function Find-ColorBoundsInRegion($Path, [scriptblock]$Predicate, [int]$MinX, [i
   finally { $bmp.Dispose() }
 }
 
-$port = 8191
-$pageUrl = "http://127.0.0.1:$port/background-size.html"
+$pageUrl = "http://$Host`:$Port/background-size.html"
 $outPng = Join-Path $root "background-size.png"
 $browserOut = Join-Path $root "background-size.browser.stdout.txt"
 $browserErr = Join-Path $root "background-size.browser.stderr.txt"
@@ -48,9 +59,15 @@ $profileRoot = Join-Path $root "profile-background-size"
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 Reset-ProfileRoot $profileRoot
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$server = $null
+$browser = $null
+
+$python = Resolve-LightpandaPythonCommand
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 try {
-  if (-not (Wait-HttpReady $pageUrl)) { throw "layout smoke server did not become ready" }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+  if (-not (Test-Path -LiteralPath $serverScript)) { throw "layout smoke server script not found: $serverScript" }
+  if (-not (Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds)) { throw "layout smoke server did not become ready" }
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
   $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","640","--window_height","860","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
