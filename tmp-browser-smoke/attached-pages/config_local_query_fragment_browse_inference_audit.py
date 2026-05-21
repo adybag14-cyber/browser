@@ -106,6 +106,42 @@ EXPECTATIONS = (
         "snippet": 'expected_title = "Local Query Target fragment focus-probe"',
         "why": "The headed smoke probe should wait for the fragment-specific page title before passing.",
     },
+    {
+        "label": "local_query_fragment_xhtml_fixture_base_title",
+        "path": "tmp-browser-smoke/local-targets/query-fragment-local-target.xhtml",
+        "snippet": "<title>Local XHTML Target plain</title>",
+        "why": "The XHTML local smoke fixture should start from the plain title before query or fragment logic rewrites it.",
+    },
+    {
+        "label": "local_query_fragment_xhtml_fixture_dynamic_title_logic",
+        "path": "tmp-browser-smoke/local-targets/query-fragment-local-target.xhtml",
+        "snippet": 'document.title = `Local XHTML Target ${mode}`;',
+        "why": "The XHTML local smoke fixture should surface query and fragment state through the page title.",
+    },
+    {
+        "label": "local_query_fragment_xhtml_probe_query_target",
+        "path": "tmp-browser-smoke/local-targets/chrome-local-query-fragment-xhtml-probe.ps1",
+        "snippet": 'target = "tmp-browser-smoke\\local-targets\\query-fragment-local-target.xhtml?case=1"',
+        "why": "The headed XHTML smoke probe should launch the local target with a query suffix and no explicit browse command.",
+    },
+    {
+        "label": "local_query_fragment_xhtml_probe_fragment_target",
+        "path": "tmp-browser-smoke/local-targets/chrome-local-query-fragment-xhtml-probe.ps1",
+        "snippet": 'target = "tmp-browser-smoke\\local-targets\\query-fragment-local-target.xhtml#focus-probe"',
+        "why": "The headed XHTML smoke probe should launch the local target with a fragment suffix and no explicit browse command.",
+    },
+    {
+        "label": "local_query_fragment_xhtml_probe_query_title_wait",
+        "path": "tmp-browser-smoke/local-targets/chrome-local-query-fragment-xhtml-probe.ps1",
+        "snippet": 'expected_title = "Local XHTML Target query case=1"',
+        "why": "The headed XHTML smoke probe should wait for the query-specific page title before passing.",
+    },
+    {
+        "label": "local_query_fragment_xhtml_probe_fragment_title_wait",
+        "path": "tmp-browser-smoke/local-targets/chrome-local-query-fragment-xhtml-probe.ps1",
+        "snippet": 'expected_title = "Local XHTML Target fragment focus-probe"',
+        "why": "The headed XHTML smoke probe should wait for the fragment-specific page title before passing.",
+    },
 )
 
 
