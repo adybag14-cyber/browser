@@ -77,7 +77,7 @@ try {
   }
   if (-not $ready) { throw "bookmark probe server did not become ready" }
 
-  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","320","--window_height","420","--screenshot_png",$browser1ReadyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browser1Out -RedirectStandardError $browser1Err
+  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","320","--window_height","420","--screenshot_png",$browser1ReadyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browser1Out -RedirectStandardError $browser1Err
   $hwnd1 = Wait-SmokeWindow $browser1
   Wait-SmokeArtifact $browser1ReadyPng "run1 screenshot"
   Show-SmokeWindow $hwnd1
@@ -104,7 +104,7 @@ try {
   Start-Sleep -Milliseconds 300
 
   $initialIndexHits = Count-Hits 'GET /index\.html HTTP/1\.1" 200'
-  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/next.html","--window_width","320","--window_height","420","--screenshot_png",$browser2ReadyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browser2Out -RedirectStandardError $browser2Err
+  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/next.html","--window_width","320","--window_height","420","--screenshot_png",$browser2ReadyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browser2Out -RedirectStandardError $browser2Err
   $hwnd2 = Wait-SmokeWindow $browser2
   Wait-SmokeArtifact $browser2ReadyPng "run2 screenshot"
   Show-SmokeWindow $hwnd2
