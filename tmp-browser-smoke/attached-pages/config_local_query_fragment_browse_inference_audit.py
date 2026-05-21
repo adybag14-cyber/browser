@@ -95,6 +95,30 @@ EXPECTATIONS = (
         "why": "Remote .htm URLs should keep the fetch fallback unless a real browse-only hint is present.",
     },
     {
+        "label": "main_scheme_less_loopback_helper",
+        "path": "src/main.zig",
+        "snippet": "fn browseTargetImplicitLoopback(url: []const u8) ?BrowseTargetInfo {",
+        "why": "Startup diagnostics should recognize scheme-less loopback targets before they drift back to generic local-path classification.",
+    },
+    {
+        "label": "main_scheme_less_localhost_regression",
+        "path": "src/main.zig",
+        "snippet": 'test "browse target info classifies scheme-less localhost pages as loopback" {',
+        "why": "Short localhost browse targets should stay on the loopback diagnostics route during headed startup.",
+    },
+    {
+        "label": "main_scheme_less_ipv4_loopback_regression",
+        "path": "src/main.zig",
+        "snippet": 'test "browse target info keeps loopback scope for scheme-less ipv4 pages" {',
+        "why": "Scheme-less IPv4 localhost targets should keep the same loopback diagnostics path as explicit localhost URLs.",
+    },
+    {
+        "label": "main_scheme_less_remote_guard",
+        "path": "src/main.zig",
+        "snippet": 'test "browse target info classifies scheme-less remote hosts as implicit http" {',
+        "why": "The loopback diagnostics helper should not swallow real remote hosts.",
+    },
+    {
         "label": "local_query_fragment_fixture_base_title",
         "path": "tmp-browser-smoke/local-targets/query-fragment-local-target.html",
         "snippet": "<title>Local Query Target plain</title>",
