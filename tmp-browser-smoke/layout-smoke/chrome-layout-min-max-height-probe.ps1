@@ -24,7 +24,7 @@ try {
   if (-not (Wait-HttpReady $pageUrl)) { throw "min max height smoke server did not become ready" }
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","460","--window_height","560","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","460","--window_height","560","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   try {
     if (-not (Wait-Screenshot $outPng)) { throw "min max height screenshot did not become ready" }
     $red = Find-ColorBounds $outPng { param($c) $c.R -ge 180 -and $c.G -le 100 -and $c.B -le 100 }
