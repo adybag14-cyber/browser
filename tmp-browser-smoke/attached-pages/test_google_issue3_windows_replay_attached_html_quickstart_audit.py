@@ -773,6 +773,12 @@ DRIFT_CASES = (
         "Use google_attached_html_asset_closure when local asset drift might explain the current Google-shaped attached-page failure and you want the deeper asset audit reprinted after the sidecar audit and broader surface check but before the route narrows into the issue-specific checker or shortcut ladder.",
         "drifted note",
     ),
+    (
+        "google_entrypoint_flow_companion_guidance",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "Use google_attached_html_validation_flow when the broader Google-style attached-page flow helper still needs to stay visible after the sidecar audit, broader surface check, asset audit, and dedicated entrypoint surface check and before the route narrows into the shorter issue #3 shortcut-first, replay-shortcut, context-preserving, or bundle-aware branches.",
+        "drifted note",
+    ),
 )
 
 
