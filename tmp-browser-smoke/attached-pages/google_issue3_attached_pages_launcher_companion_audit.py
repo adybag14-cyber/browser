@@ -91,16 +91,6 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments",
-        "purpose": "The launcher companion helper keeps the replay-attached Windows quickstart wired into its command map for direct re-entry after preflight.",
-    },
-    {
-        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments",
-        "purpose": "The launcher companion helper keeps the compact replay-route shortcut helper wired into its command map for direct re-entry after preflight.",
-    },
-    {
-        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
         "snippet": "python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-sidecars')",
         "purpose": "The launcher companion helper preserves the preferred first page through the Python sidecar audit path.",
     },
@@ -126,22 +116,32 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  6. Strict bundle:      {0}\") -f $helper.helper_commands.wrapper_strict_bundle)",
+        "snippet": "windows_replay_attached_html_quickstart_note = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'",
+        "purpose": "The launcher companion helper keeps the Windows replay attached-html quickstart note visible beside the replay companion paths.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": "replay_route_shortcut_bridge_note = 'docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md'",
+        "purpose": "The launcher companion helper keeps the replay-route bridge note visible beside the replay companion paths.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("  6. Strict bundle:      {0}") -f $helper.helper_commands.wrapper_strict_bundle)',
         "purpose": "The launcher companion helper prints the strict wrapper bundle route.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  10. Google strict:     {0}\") -f $helper.helper_commands.wrapper_google_strict_bundle)",
+        "snippet": 'Write-Host (("  10. Google strict:     {0}") -f $helper.helper_commands.wrapper_google_strict_bundle)',
         "purpose": "The launcher companion helper prints the strict Google-style wrapper route.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  6. Strict bundle:      {0}\") -f $helper.helper_commands.python_strict_bundle)",
+        "snippet": 'Write-Host (("  6. Strict bundle:      {0}") -f $helper.helper_commands.python_strict_bundle)',
         "purpose": "The launcher companion helper prints the strict Python bundle route.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  10. Google strict:     {0}\") -f $helper.helper_commands.python_google_strict_bundle)",
+        "snippet": 'Write-Host (("  10. Google strict:     {0}") -f $helper.helper_commands.python_google_strict_bundle)',
         "purpose": "The launcher companion helper prints the strict Google-style Python route.",
     },
     {
@@ -151,22 +151,22 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  Surface check:      {0}\") -f $helper.helper_commands.proof_surface_check)",
+        "snippet": 'Write-Host (("  Surface check:      {0}") -f $helper.helper_commands.proof_surface_check)',
         "purpose": "The launcher companion helper prints the pinned proof-entrypoint surface checker.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  Proof entrypoint:   {0}\") -f $helper.helper_commands.proof_entrypoint)",
+        "snippet": 'Write-Host (("  Proof entrypoint:   {0}") -f $helper.helper_commands.proof_entrypoint)',
         "purpose": "The launcher companion helper prints the pinned proof-entrypoint helper.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"Launcher surface check: {0}\") -f $helper.companion_paths.launcher_companion_surface_check)",
+        "snippet": 'Write-Host (("Launcher surface check: {0}") -f $helper.companion_paths.launcher_companion_surface_check)',
         "purpose": "The launcher companion helper prints the checker path again with the companion paths.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"Bundle proof note:       {0}\") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)",
+        "snippet": 'Write-Host (("Bundle proof note:       {0}") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)',
         "purpose": "The launcher companion helper prints the pinned bundle proof note beside the companion paths.",
     },
     {
@@ -176,22 +176,27 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  Windows replay quick: {0}\") -f $helper.helper_commands.windows_replay_quickstart)",
+        "snippet": 'Write-Host (("  Windows replay quick: {0}") -f $helper.helper_commands.windows_replay_quickstart)',
         "purpose": "The launcher companion helper prints the replay-attached Windows quickstart command for direct re-entry after preflight.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"  Replay-route helper: {0}\") -f $helper.helper_commands.replay_route_shortcut)",
+        "snippet": 'Write-Host (("  Replay-route helper: {0}") -f $helper.helper_commands.replay_route_shortcut)',
         "purpose": "The launcher companion helper prints the compact replay-route shortcut command for direct re-entry after preflight.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"Windows catalog note:    {0}\") -f $helper.companion_paths.windows_full_use_attached_html_catalog_quickstart_note)",
+        "snippet": 'Write-Host (("Windows catalog note:    {0}") -f $helper.companion_paths.windows_full_use_attached_html_catalog_quickstart_note)',
         "purpose": "The launcher companion helper prints the Windows full-use attached-html catalog quickstart note beside the replay companion notes.",
     },
     {
         "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
-        "snippet": "Write-Host ((\"Replay-route note:       {0}\") -f $helper.companion_paths.replay_route_shortcut_bridge_note)",
+        "snippet": 'Write-Host (("Windows replay note:     {0}") -f $helper.companion_paths.windows_replay_attached_html_quickstart_note)',
+        "purpose": "The launcher companion helper prints the Windows replay attached-html quickstart note beside the replay companion notes.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1",
+        "snippet": 'Write-Host (("Replay-route note:       {0}") -f $helper.companion_paths.replay_route_shortcut_bridge_note)',
         "purpose": "The launcher companion helper prints the replay-route bridge note beside the other companion notes.",
     },
     {
@@ -221,22 +226,22 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"Write-Host 'Pinned bundle proof follow-up:'\"",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"Write-Host 'Pinned bundle proof follow-up:'\\\"",
         "purpose": "The Windows checker keeps guarding the proof follow-up section header on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Surface check:      {0}\\\") -f $helper.helper_commands.proof_surface_check)'",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\\\\\"  Surface check:      {0}\\\\\\\") -f $helper.helper_commands.proof_surface_check)'",
         "purpose": "The Windows checker keeps guarding the proof surface-check output on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Proof entrypoint:   {0}\\\") -f $helper.helper_commands.proof_entrypoint)'",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\\\\\"  Proof entrypoint:   {0}\\\\\\\") -f $helper.helper_commands.proof_entrypoint)'",
         "purpose": "The Windows checker keeps guarding the proof entrypoint output on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"Bundle proof note:       {0}\\\") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)'",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\\\\\"Bundle proof note:       {0}\\\\\\\") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)'",
         "purpose": "The Windows checker keeps guarding the pinned bundle proof note output on the helper surface.",
     },
     {
@@ -246,27 +251,27 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments\"",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments\\\"",
         "purpose": "The Windows checker keeps guarding the replay quickstart helper wiring on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments\"",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments\\\"",
         "purpose": "The Windows checker keeps guarding the replay-route helper wiring on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \"Write-Host 'Replay re-entry helpers:'\"",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"Write-Host 'Replay re-entry helpers:'\\\"",
         "purpose": "The Windows checker keeps guarding the replay re-entry section header on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Windows replay quick: {0}\\\") -f $helper.helper_commands.windows_replay_quickstart)'",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\\\\\"  Windows replay quick: {0}\\\\\\\") -f $helper.helper_commands.windows_replay_quickstart)'",
         "purpose": "The Windows checker keeps guarding the replay quickstart output on the helper surface.",
     },
     {
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\"  Replay-route helper: {0}\\\") -f $helper.helper_commands.replay_route_shortcut)'",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\\\\\"  Replay-route helper: {0}\\\\\\\") -f $helper.helper_commands.replay_route_shortcut)'",
         "purpose": "The Windows checker keeps guarding the replay-route output on the helper surface.",
     },
     {
@@ -278,6 +283,16 @@ EXPECTATIONS = (
         "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
         "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Use replay_route_shortcut when the preflight already narrowed the problem",
         "purpose": "The Windows checker keeps guarding the replay-route guidance on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet \\\"windows_replay_attached_html_quickstart_note = 'docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md'\\\"",
+        "purpose": "The Windows checker keeps guarding the replay quickstart note path on the helper surface.",
+    },
+    {
+        "path": "scripts/windows/check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
+        "snippet": "(New-ValidationContentExpectation -Path 'scripts/windows/show_google_issue3_attached_pages_launcher_companion.ps1' -Snippet 'Write-Host ((\\\\\\\"Windows replay note:     {0}\\\\\\\") -f $helper.companion_paths.windows_replay_attached_html_quickstart_note)'",
+        "purpose": "The Windows checker keeps guarding the replay quickstart note output on the helper surface.",
     },
     {
         "path": "docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_CATALOG_QUICKSTART.md",
@@ -311,17 +326,17 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars'",
+        "snippet": "(New-ValidationContentExpectation -Path \\\"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\\\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\start_attached_pages_catalog.ps1 -InputPath ''<attached-html-root>'' -AuditSidecars'",
         "purpose": "The Windows full-use route checker keeps guarding the wrapper-backed sidecar audit on the broader route note.",
     },
     {
         "path": "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_windows_replay_attached_html_quickstart.ps1'",
+        "snippet": "(New-ValidationContentExpectation -Path \\\"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\\\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_windows_replay_attached_html_quickstart.ps1'",
         "purpose": "The Windows full-use route checker keeps guarding the replay-attached quickstart handoff on the broader route note.",
     },
     {
         "path": "scripts/windows/check_google_issue3_windows_full_use_attached_html_route_validation_surface.ps1",
-        "snippet": "(New-ValidationContentExpectation -Path \"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>'''",
+        "snippet": "(New-ValidationContentExpectation -Path \\\"docs/ISSUE3_WINDOWS_FULL_USE_ATTACHED_HTML_ROUTE.md\\\" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\windows\\\\show_google_issue3_attached_html_target_bundle_suite_surface.ps1 -InputPath ''<bundle-html-or-folder>'''",
         "purpose": "The Windows full-use route checker keeps guarding the compact bundle-suite handoff on the broader route note.",
     },
     {
@@ -341,17 +356,17 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/start_attached_pages_catalog.ps1",
-        "snippet": "$launcherArgs += \"--audit-sidecars\"",
+        "snippet": '$launcherArgs += \"--audit-sidecars\"',
         "purpose": "The Windows wrapper still forwards the sidecar-audit mode.",
     },
     {
         "path": "scripts/windows/start_attached_pages_catalog.ps1",
-        "snippet": "$launcherArgs += \"--require-complete-sidecars\"",
+        "snippet": '$launcherArgs += \"--require-complete-sidecars\"',
         "purpose": "The Windows wrapper still forwards the strict sidecar gate.",
     },
     {
         "path": "scripts/windows/start_attached_pages_catalog.ps1",
-        "snippet": "$launcherArgs += \"--require-complete-assets\"",
+        "snippet": '$launcherArgs += \"--require-complete-assets\"',
         "purpose": "The Windows wrapper still forwards the strict asset gate.",
     },
     {
@@ -518,9 +533,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(render_text_report(audit), end="")
 
-    if audit.get("error_type"):
-        return 1
-    return 1 if audit["missing_count"] else 0
+    return 0 if not audit.get("missing_count") else 1
 
 
 if __name__ == "__main__":
