@@ -390,6 +390,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "top_level_shortcut_note_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
+        "",
+    ),
+    (
+        "replay_route_shortcut_note_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+        "",
+    ),
+    (
         "top_level_shortcut_bridge_helper_note",
         "docs/ISSUE3_TOP_LEVEL_SHORTCUT_BRIDGE.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_top_level_shortcut_first_entrypoint.ps1",
