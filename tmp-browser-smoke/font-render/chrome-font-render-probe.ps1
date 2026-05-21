@@ -1,10 +1,14 @@
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\font-render"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+
+$repo = Resolve-LightpandaRepoRoot $PSScriptRoot
+$root = Join-Path $repo "tmp-browser-smoke\font-render"
 $profileRoot = Join-Path $root "profile-font-render"
 $appDataRoot = Join-Path $profileRoot "lightpanda"
 $port = 8163
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+$browserExe = Resolve-LightpandaBrowserExe $repo $null
 $serverScript = Join-Path $root "font_render_server.py"
 $outPng = Join-Path $root "font-render.png"
 $browserOut = Join-Path $root "font-render.browser.stdout.txt"
@@ -13,7 +17,9 @@ $serverOut = Join-Path $root "font-render.server.stdout.txt"
 $serverErr = Join-Path $root "font-render.server.stderr.txt"
 
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+if (Test-Path -LiteralPath $profileRoot) {
+  Remove-Item -LiteralPath $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
 $env:APPDATA = $profileRoot
 $env:LOCALAPPDATA = $profileRoot
@@ -25,26 +31,13 @@ default_zoom_percent	100
 homepage_url	
 "@ | Set-Content -Path (Join-Path $appDataRoot "browse-settings-v1.txt") -NoNewline
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-$ready = $false
-for ($i = 0; $i -lt 40; $i++) {
-  Start-Sleep -Milliseconds 250
-  try {
-    $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-    if ($resp.StatusCode -eq 200) { $ready = $true; break }
-  } catch {}
-}
+$python = Resolve-LightpandaPythonCommand
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript,$port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$ready = Wait-LightpandaHttpReady -Url "http://127.0.0.1:$port/index.html" -TimeoutSeconds 15 -PollMilliseconds 250
 if (-not $ready) { throw "font render server did not become ready" }
 
 $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","520","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-$pngReady = $false
-for ($i = 0; $i -lt 80; $i++) {
-  Start-Sleep -Milliseconds 250
-  if ((Test-Path $outPng) -and ((Get-Item $outPng).Length -gt 0)) {
-    $pngReady = $true
-    break
-  }
-}
+$pngReady = Wait-LightpandaFileReady -Path $outPng -Attempts 80 -PollMilliseconds 250
 if (-not $pngReady) { throw "font render screenshot did not become ready" }
 
 $redBounds = $null
@@ -127,30 +120,14 @@ try {
   }
 }
 finally {
-  $browserMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" -ErrorAction SilentlyContinue |
-    Select-Object Name,ProcessId,CommandLine,CreationDate
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
   if ($browserMeta) {
     $browserCommand = [string]$browserMeta.CommandLine
-    if ($browserCommand -notmatch "codex\.js|@openai/codex") {
-      try {
-        Stop-Process -Id $browser.Id -Force -ErrorAction Stop
-      } catch {
-        if (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) { throw }
-      }
-    }
   }
 
-  $serverMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" -ErrorAction SilentlyContinue |
-    Select-Object Name,ProcessId,CommandLine,CreationDate
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
   if ($serverMeta) {
     $serverCommand = [string]$serverMeta.CommandLine
-    if ($serverCommand -notmatch "codex\.js|@openai/codex") {
-      try {
-        Stop-Process -Id $server.Id -Force -ErrorAction Stop
-      } catch {
-        if (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) { throw }
-      }
-    }
   }
 
   for ($i = 0; $i -lt 20; $i++) {
