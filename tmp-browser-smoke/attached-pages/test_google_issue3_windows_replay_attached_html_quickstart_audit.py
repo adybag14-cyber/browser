@@ -708,6 +708,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_entrypoint_issue_specific_companion_output",
+        "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        'Write-Host (("  Google surface check:  {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)',
+        "",
+    ),
+    (
         "google_entrypoint_flow_companion_output",
         "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         'Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)',
