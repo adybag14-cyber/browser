@@ -1,6 +1,15 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [int]$Port = 8155
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repo = "C:\Users\adyba\src\lightpanda-browser"
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'common\ProbeRuntime.ps1')
+
+$repo = if ([string]::IsNullOrWhiteSpace($RepoRoot)) { Resolve-LightpandaRepoRoot $PSScriptRoot } else { $RepoRoot }
 $root = Join-Path $repo "tmp-browser-smoke\bare-metal-release"
 $packageRoot = Join-Path $root "image"
 $stdout = Join-Path $root "chrome-bare-metal-policy-probe.stdout.txt"
@@ -20,7 +29,7 @@ $browserExe = $bootBinary
 $archivePath = Join-Path (Split-Path -Parent (Split-Path -Parent $packageRoot)) "bare-metal-release.zip"
 $serverRoot = Join-Path $repo "tmp-browser-smoke\image-smoke"
 $serverScript = Join-Path $serverRoot "http_runtime_server.py"
-$port = 8155
+$port = $Port
 
 Remove-Item $stdout, $stderr, $browserOut, $browserErr, $serverOut, $serverErr, $policyScreenshot -Force -ErrorAction SilentlyContinue
 Remove-Item $requestLog -Force -ErrorAction SilentlyContinue
@@ -48,7 +57,8 @@ try {
     throw "archive missing: $archivePath"
   }
 
-  $server = Start-Process -FilePath "python" -ArgumentList $serverScript, $port -WorkingDirectory $serverRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $port)) -WorkingDirectory $serverRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
   $ready = $false
   for ($i = 0; $i -lt 40; $i++) {
     Start-Sleep -Milliseconds 250
@@ -124,6 +134,7 @@ try {
   }
 
   $result = [ordered]@{
+    repo_root = $repo
     browser_pid = $browser.Id
     server_pid = $server.Id
     ready = $ready
@@ -154,6 +165,7 @@ try {
   }
 
   $resultMeta = [ordered]@{
+    repo_root = $repo
     package_root = $packageRoot
     manifest_path = $manifestPath
     boot_binary = $bootBinary
