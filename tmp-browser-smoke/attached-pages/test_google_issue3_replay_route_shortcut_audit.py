@@ -57,12 +57,21 @@ class GoogleIssue3ReplayRouteShortcutAuditTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tempdir.cleanup()
 
-    def write_contract_files(self, *, doc_text: str = DOC_SNIPPET, script_text: str = REPLAY_ROUTE_SCRIPT_SNIPPET) -> None:
-        (self.root / "docs" / "ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md").write_text(doc_text, encoding="utf-8")
-        (self.root / "scripts" / "windows" / "show_google_issue3_replay_route_shortcut_entrypoint.ps1").write_text(
-            script_text,
-            encoding="utf-8",
-        )
+    def write_contract_files(
+        self,
+        *,
+        doc_text: str = DOC_SNIPPET,
+        script_text: str = REPLAY_ROUTE_SCRIPT_SNIPPET,
+    ) -> None:
+        (
+            self.root / "docs" / "ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md"
+        ).write_text(doc_text, encoding="utf-8")
+        (
+            self.root
+            / "scripts"
+            / "windows"
+            / "show_google_issue3_replay_route_shortcut_entrypoint.ps1"
+        ).write_text(script_text, encoding="utf-8")
 
     def test_build_audit_passes_when_contract_is_present(self) -> None:
         self.write_contract_files()
@@ -70,6 +79,7 @@ class GoogleIssue3ReplayRouteShortcutAuditTests(unittest.TestCase):
         audit = helper.build_replay_route_shortcut_audit(self.root)
 
         self.assertEqual(0, audit["missing_count"])
+        self.assertEqual(0, audit["missing_path_count"])
         self.assertTrue(all(result["exists"] for result in audit["results"]))
 
     def test_build_audit_reports_missing_google_attached_flow_note(self) -> None:
@@ -83,7 +93,9 @@ class GoogleIssue3ReplayRouteShortcutAuditTests(unittest.TestCase):
         audit = helper.build_replay_route_shortcut_audit(self.root)
 
         self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        failing_snippets = [
+            result["snippet"] for result in audit["results"] if not result["exists"]
+        ]
         self.assertIn(
             "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
             failing_snippets,
@@ -100,8 +112,13 @@ class GoogleIssue3ReplayRouteShortcutAuditTests(unittest.TestCase):
         audit = helper.build_replay_route_shortcut_audit(self.root)
 
         self.assertGreater(audit["missing_count"], 0)
-        failing_paths = [result["path"] for result in audit["results"] if not result["exists"]]
-        self.assertIn("scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1", failing_paths)
+        failing_paths = [
+            result["path"] for result in audit["results"] if not result["exists"]
+        ]
+        self.assertIn(
+            "scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1",
+            failing_paths,
+        )
 
     def test_build_audit_reports_missing_bundle_first_wiring(self) -> None:
         self.write_contract_files(
@@ -114,21 +131,58 @@ class GoogleIssue3ReplayRouteShortcutAuditTests(unittest.TestCase):
         audit = helper.build_replay_route_shortcut_audit(self.root)
 
         self.assertGreater(audit["missing_count"], 0)
-        failing_snippets = [result["snippet"] for result in audit["results"] if not result["exists"]]
+        failing_snippets = [
+            result["snippet"] for result in audit["results"] if not result["exists"]
+        ]
         self.assertIn(
             "attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments",
             failing_snippets,
         )
 
-    def test_text_report_surfaces_failure_count(self) -> None:
+    def test_build_audit_groups_multiple_missing_expectations_by_path(self) -> None:
+        self.write_contract_files(doc_text="# drifted\n")
+
+        audit = helper.build_replay_route_shortcut_audit(self.root)
+
+        summary = {entry["path"]: entry for entry in audit["missing_paths"]}
+        self.assertIn("docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md", summary)
+        self.assertEqual(1, audit["missing_path_count"])
+        self.assertGreater(audit["missing_count"], 1)
+        self.assertGreater(
+            summary["docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md"][
+                "missing_expectation_count"
+            ],
+            1,
+        )
+        self.assertIn(
+            "dedicated fail-fast checker visible",
+            summary["docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md"][
+                "first_missing_purpose"
+            ],
+        )
+        self.assertIn(
+            "check_google_issue3_replay_route_shortcut_validation_surface.ps1",
+            summary["docs/ISSUE3_REPLAY_ROUTE_SHORTCUT_BRIDGE.md"][
+                "first_missing_snippet"
+            ],
+        )
+
+    def test_text_report_surfaces_failure_summary(self) -> None:
         self.write_contract_files(script_text="# drifted\n")
 
         audit = helper.build_replay_route_shortcut_audit(self.root)
         report = helper.render_text_report(audit)
 
         self.assertIn("Google Issue #3 Replay-Route Shortcut Audit", report)
-        self.assertIn("Missing expectations:", report)
-        self.assertIn("[FAIL] scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1", report)
+        self.assertIn("Missing paths:", report)
+        self.assertIn(
+            "- scripts/windows/show_google_issue3_replay_route_shortcut_entrypoint.ps1 (",
+            report,
+        )
+        self.assertIn(
+            "First snippet: replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand",
+            report,
+        )
 
     def test_cli_json_output_returns_nonzero_when_contract_drifts(self) -> None:
         self.write_contract_files(doc_text="# drifted\n", script_text="# drifted\n")
@@ -140,6 +194,34 @@ class GoogleIssue3ReplayRouteShortcutAuditTests(unittest.TestCase):
         self.assertEqual(1, exit_code)
         payload = json.loads(stdout.getvalue())
         self.assertGreater(payload["missing_count"], 0)
+        self.assertGreater(payload["missing_path_count"], 0)
+
+    def test_main_reports_missing_repo_root_in_json(self) -> None:
+        missing_root = self.root / "missing-repo-root"
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(["--repo-root", str(missing_root), "--json"])
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual("repo_root_not_found", payload["error_type"])
+        self.assertEqual(str(missing_root), payload["repo_root"])
+        self.assertIsNone(payload["missing_count"])
+        self.assertIn("repo root does not exist:", payload["error"])
+
+    def test_main_reports_missing_repo_root_in_text(self) -> None:
+        missing_root = self.root / "missing-repo-root"
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = helper.main(["--repo-root", str(missing_root)])
+
+        self.assertEqual(1, exit_code)
+        report = stdout.getvalue()
+        self.assertIn("Google Issue #3 Replay-Route Shortcut Audit", report)
+        self.assertIn(f"Repo root: {missing_root}", report)
+        self.assertIn("Error: repo root does not exist:", report)
 
 
 if __name__ == "__main__":
