@@ -24,7 +24,7 @@ try {
   if (-not (Wait-HttpReady $pageUrl)) { throw "overflow hidden smoke server did not become ready" }
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","420","--window_height","420","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","420","--window_height","420","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   try {
     if (-not (Wait-Screenshot $outPng)) { throw "overflow hidden screenshot did not become ready" }
     $blue = Find-ColorBounds $outPng { param($c) $c.B -ge 180 -and $c.R -le 80 -and $c.G -ge 60 -and $c.G -le 150 }
