@@ -452,7 +452,7 @@ DRIFT_CASES = (
     (
         "replay_route_shortcut_guidance",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surfaced before the route drops into the attached-page shortcut, replay shortcuts, contextual_flow, bundle-first reuse, or the safe-route map.",
+        "Use replay_route_shortcut after the top-level shortcut bridge, the attached-page shortcut, or replay_shortcuts when you want the narrower replay-route companion surfaced before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.",
         "drifted note",
     ),
     (
