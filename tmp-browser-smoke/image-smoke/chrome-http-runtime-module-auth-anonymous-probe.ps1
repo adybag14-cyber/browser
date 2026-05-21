@@ -37,7 +37,7 @@ for ($i = 0; $i -lt 40; $i++) {
 }
 if (-not $ready) { throw "localhost anonymous module auth server did not become ready" }
 
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 $pngReady = $false
 for ($i = 0; $i -lt 80; $i++) {
   Start-Sleep -Milliseconds 250
