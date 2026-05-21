@@ -63,6 +63,58 @@ EXPECTATIONS = (
             "launch while it verifies popup tab reuse and screenshot flow."
         ),
     },
+    {
+        "label": "popup_form_enter_launches_headed_explicitly",
+        "path": "tmp-browser-smoke/popup/chrome-popup-form-enter-probe.ps1",
+        "snippet": (
+            '$browser = Start-Process -FilePath $browserExe -ArgumentList '
+            '@("browse","--browser_mode","headed","--window_width","960",'
+            '"--window_height","640","$origin/form-index.html")'
+        ),
+        "why": (
+            "The popup form-enter probe should keep explicit headed launch "
+            "arguments while it verifies Enter-driven popup navigation."
+        ),
+    },
+    {
+        "label": "popup_form_post_launches_headed_explicitly",
+        "path": "tmp-browser-smoke/popup/chrome-popup-form-post-probe.ps1",
+        "snippet": (
+            '$browser = Start-Process -FilePath $browserExe -ArgumentList '
+            '@("browse","--browser_mode","headed","--window_width","960",'
+            '"--window_height","640","$origin/form-post-index.html")'
+        ),
+        "why": (
+            "The popup form-post probe should keep explicit headed launch "
+            "arguments while it verifies POST-backed popup navigation."
+        ),
+    },
+    {
+        "label": "popup_query_load_launches_headed_explicitly",
+        "path": "tmp-browser-smoke/popup/chrome-query-load-probe.ps1",
+        "snippet": (
+            '$browser = Start-Process -FilePath $browserExe -ArgumentList '
+            '@("browse","--browser_mode","headed","--window_width","960",'
+            '"--window_height","640",$pageUrl)'
+        ),
+        "why": (
+            "The popup query-load probe should keep explicit headed launch "
+            "arguments while it verifies direct popup result loads."
+        ),
+    },
+    {
+        "label": "popup_script_policy_block_launches_headed_explicitly",
+        "path": "tmp-browser-smoke/popup/chrome-popup-script-policy-block-probe.ps1",
+        "snippet": (
+            '$browser = Start-Process -FilePath $browserExe -ArgumentList '
+            '@("browse","--browser_mode","headed","--window_width","960",'
+            '"--window_height","640","$origin/script-popup-blank-index.html")'
+        ),
+        "why": (
+            "The popup script-policy-block probe should keep explicit headed "
+            "launch arguments while it verifies blocked popup policy behavior."
+        ),
+    },
 )
 
 
