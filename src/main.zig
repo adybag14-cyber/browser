@@ -209,6 +209,28 @@ fn browseTargetLocalPathCandidate(url: []const u8) []const u8 {
     return url[0..suffix_start];
 }
 
+fn browseTargetInternal(url: []const u8, scheme: []const u8) ?BrowseTargetInfo {
+    if (!std.ascii.eqlIgnoreCase(scheme, "browser")) {
+        return null;
+    }
+
+    const authority = browseTargetAuthority(url) orelse {
+        return .{
+            .scheme = "browser",
+            .scope = "internal",
+            .host = "(none)",
+            .port = "(none)",
+        };
+    };
+    const host = browseTargetHost(authority);
+    return .{
+        .scheme = "browser",
+        .scope = "internal",
+        .host = if (host.len == 0) "(none)" else host,
+        .port = "(none)",
+    };
+}
+
 fn browseTargetHostPortAuthority(authority: []const u8) []const u8 {
     const at_index = std.mem.lastIndexOfScalar(u8, authority, '@') orelse return authority;
     if (at_index + 1 >= authority.len) {
@@ -355,6 +377,9 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
             .port = "(none)",
         };
     }
+    if (browseTargetInternal(url, scheme)) |internal| {
+        return internal;
+    }
 
     const authority = browseTargetAuthority(url) orelse {
         if (browseTargetImplicitLoopback(url)) |implicit_loopback| {
@@ -465,6 +490,24 @@ test "browse target info keeps non-loopback ipv4 hosts remote" {
     try std.testing.expectEqualStrings("remote", info.scope);
     try std.testing.expectEqualStrings("126.42.0.9", info.host);
     try std.testing.expectEqualStrings("8235", info.port);
+}
+
+test "browse target info classifies browser downloads pages as internal" {
+    const info = browseTargetInfo("browser://downloads");
+
+    try std.testing.expectEqualStrings("browser", info.scheme);
+    try std.testing.expectEqualStrings("internal", info.scope);
+    try std.testing.expectEqualStrings("downloads", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info keeps browser settings routes on the internal path" {
+    const info = browseTargetInfo("browser://settings/homepage");
+
+    try std.testing.expectEqualStrings("browser", info.scheme);
+    try std.testing.expectEqualStrings("internal", info.scope);
+    try std.testing.expectEqualStrings("settings", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
 }
 
 test "browse target info classifies attached html filenames as local paths" {
@@ -660,7 +703,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
     }
 
     const requested_browser_mode = args.browserMode();
-    const native_headed_surface_expected = nativeHeadedSurfaceExpected(requested_browser_mode);
+    const native_headed_surface_expected = nativeHeadedSurfaceExpected(requested_mode);
 
     // _app is global to handle graceful shutdown.
     var host = Host.initForBuildClass(allocator, lp.build_config.target_class == .bare_metal);
