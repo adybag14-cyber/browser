@@ -1,6 +1,9 @@
 $script:Root = $PSScriptRoot
-$script:Repo = (Resolve-Path (Join-Path $script:Root "..\..")).Path
-$script:BrowserExe = Join-Path $script:Repo "zig-out\bin\lightpanda.exe"
+
+. (Join-Path (Split-Path $script:Root -Parent) "common\ProbeRuntime.ps1")
+
+$script:Repo = Resolve-LightpandaRepoRoot $script:Root
+$script:BrowserExe = Resolve-LightpandaBrowserExe $script:Repo $null
 
 . (Join-Path $script:Repo "tmp-browser-smoke\common\Win32Input.ps1")
 . (Join-Path $script:Repo "tmp-browser-smoke\tabs\TabProbeCommon.ps1")
@@ -26,7 +29,8 @@ homepage_url
 }
 
 function Start-FetchServer([int]$Port, [int]$PeerPort, [string]$Stdout, [string]$Stderr) {
-  return Start-Process -FilePath "python" -ArgumentList (Join-Path $script:Root "fetch_server.py"),"$Port","$PeerPort" -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  $python = Resolve-LightpandaPythonCommand
+  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $script:Root "fetch_server.py"),"$Port","$PeerPort")) -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Wait-FetchServer([int]$Port, [int]$Attempts = 30) {
