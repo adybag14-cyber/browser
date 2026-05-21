@@ -62,7 +62,7 @@ try {
   if (-not $ready) { throw "bookmark keyboard probe server did not become ready" }
 
   $initialIndexHits = Count-Hits 'GET /index\.html HTTP/1\.1" 200'
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/next.html","--window_width","320","--window_height","420","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/next.html","--window_width","320","--window_height","420","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $hwnd = Wait-SmokeWindow $browser
   Wait-SmokeArtifact $readyPng "screenshot"
   Show-SmokeWindow $hwnd
