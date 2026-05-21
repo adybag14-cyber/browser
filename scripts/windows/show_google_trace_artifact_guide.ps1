@@ -36,10 +36,10 @@ function Convert-ToRepoRelativePath {
         [string]$Path
     )
 
-    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\', '/')
+    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd('\\', '/')
     $normalizedPath = [System.IO.Path]::GetFullPath($Path)
     if ($normalizedPath.StartsWith($normalizedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\', '/')
+        $relative = $normalizedPath.Substring($normalizedRepoRoot.Length).TrimStart('\\', '/')
         if (-not [string]::IsNullOrWhiteSpace($relative)) {
             return $relative -replace '\\', '/'
         }
@@ -107,6 +107,79 @@ function Get-ArtifactGroup {
     }
 }
 
+function Resolve-ArtifactFullPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        $Artifact
+    )
+
+    if ($Artifact.relative_path -is [string] -and [System.IO.Path]::IsPathRooted($Artifact.relative_path)) {
+        return $Artifact.relative_path
+    }
+
+    return Join-Path $RepoRoot ($Artifact.relative_path -replace '/', '\\')
+}
+
+function Get-ActivationMarkerSummaries {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [object[]]$Groups
+    )
+
+    $markers = @(
+        [pscustomobject]@{
+            marker = "browse headed runtime"
+            meaning = "Confirms the browse command stayed on the native headed runtime."
+            expected_when = "The reduced-home or live Google probe really opened the native headed browser window."
+        }
+        [pscustomobject]@{
+            marker = "browse headed fallback"
+            meaning = "Shows the browse command dropped to the safe headless runtime instead of staying headed."
+            expected_when = "A headed request did not keep the native window alive, so later input traces may not describe the intended surface."
+        }
+        [pscustomobject]@{
+            marker = "serve headed runtime"
+            meaning = "Confirms the server-side headed startup stayed on the native runtime."
+            expected_when = "A headed serve session for the localhost replay path really kept the native surface active."
+        }
+        [pscustomobject]@{
+            marker = "serve headed fallback"
+            meaning = "Shows the server-side headed startup dropped to the safe headless runtime."
+            expected_when = "A headed localhost replay session fell back before the later Google flow could be trusted as a native headed run."
+        }
+    )
+
+    $artifacts = @(
+        $Groups |
+            ForEach-Object { @($_.artifacts) } |
+            Where-Object { $_.exists }
+    )
+
+    return @(
+        foreach ($marker in $markers) {
+            $matchedArtifacts = @()
+            foreach ($artifact in $artifacts) {
+                $artifactPath = Resolve-ArtifactFullPath -RepoRoot $RepoRoot -Artifact $artifact
+                if (Select-String -LiteralPath $artifactPath -SimpleMatch -Pattern $marker.marker -List -ErrorAction SilentlyContinue) {
+                    $matchedArtifacts += $artifact.relative_path
+                }
+            }
+
+            [pscustomobject]@{
+                marker = $marker.marker
+                meaning = $marker.meaning
+                expected_when = $marker.expected_when
+                found = [bool]($matchedArtifacts.Count -gt 0)
+                artifacts = @($matchedArtifacts)
+            }
+        }
+    )
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -158,12 +231,15 @@ $missingCount = @(
         Where-Object { -not $_.exists }
 ).Count
 
+$activationMarkers = Get-ActivationMarkerSummaries -RepoRoot $resolvedRepoRoot -Groups $groups
+
 $guide = [pscustomobject]@{
     issue = "Google live trace artifact guide"
     repo_root = $resolvedRepoRoot
     trace_root = $resolvedTraceRoot
     tail_count = $TailCount
     missing_count = $missingCount
+    activation_markers = $activationMarkers
     groups = $groups
     next_steps = @(
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1",
@@ -172,6 +248,7 @@ $guide = [pscustomobject]@{
         "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1"
     )
     notes = @(
+        "Check the activation markers first so a headed fallback is visible before you spend time narrowing Google input behavior.",
         "Compare the reduced-home and live-trace outputs before assuming the real Google homepage divergence belongs in the Win32 engine path.",
         "Use the submit-timing and shared Enter-order helpers when the trace logs stop matching the closest bounded localhost checkpoints.",
         "Use the attached-html helper when the next question is whether saved or attached Google-like localhost pages diverge earlier than the live homepage path."
@@ -201,6 +278,18 @@ foreach ($group in $guide.groups) {
                 Write-Host ("      {0}" -f $line)
             }
         }
+    }
+    Write-Host ""
+}
+
+Write-Host "Activation markers:"
+foreach ($marker in $guide.activation_markers) {
+    $status = if ($marker.found) { "PASS" } else { "MISS" }
+    Write-Host ("[{0}] {1}" -f $status, $marker.marker)
+    Write-Host ("  {0}" -f $marker.meaning)
+    Write-Host ("  Expected when: {0}" -f $marker.expected_when)
+    foreach ($artifactPath in @($marker.artifacts)) {
+        Write-Host ("    {0}" -f $artifactPath)
     }
     Write-Host ""
 }
