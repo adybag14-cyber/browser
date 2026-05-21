@@ -35,6 +35,12 @@ EXPECTATIONS = (
         "why": "Local browse-target suffix checks should run against the trimmed candidate.",
     },
     {
+        "label": "config_local_file_url_guard",
+        "path": "src/Config.zig",
+        "snippet": 'if (std.ascii.startsWithIgnoreCase(token, "file://")) {',
+        "why": "Local file URLs should stay on the browse path before the generic remote URL guard runs.",
+    },
+    {
         "label": "config_remote_url_guard",
         "path": "src/Config.zig",
         "snippet": 'if (std.mem.indexOf(u8, token, "://") != null) {',
@@ -45,6 +51,12 @@ EXPECTATIONS = (
         "path": "src/Config.zig",
         "snippet": 'if (candidate.len >= 6 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 6 ..], ".xhtml")) {',
         "why": "Local XHTML targets should keep the same browse inference path as local HTML targets.",
+    },
+    {
+        "label": "config_local_htm_suffix_support",
+        "path": "src/Config.zig",
+        "snippet": 'if (candidate.len >= 4 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 4 ..], ".htm")) {',
+        "why": "Local HTM targets should stay on the same browse inference path as the attached HTML fixtures.",
     },
     {
         "label": "config_local_html_query_regression",
@@ -81,6 +93,12 @@ EXPECTATIONS = (
         "path": "src/Config.zig",
         "snippet": 'test "infer mode keeps browse for xhtml target after shared flag" {',
         "why": "Shared flags before a local .xhtml target should still resolve to browse mode.",
+    },
+    {
+        "label": "config_local_file_url_shared_option_regression",
+        "path": "src/Config.zig",
+        "snippet": 'test "infer mode keeps browse for file url after shared flag" {',
+        "why": "Value-taking shared options before a local file URL should still preserve browse inference.",
     },
     {
         "label": "config_remote_html_fetch_fallback_regression",
