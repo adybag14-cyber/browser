@@ -58,7 +58,7 @@ try {
   if (-not $ready) { throw "bookmark toggle probe server did not become ready" }
 
   $url = "http://127.0.0.1:$port/index.html"
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$url,"--window_width","320","--window_height","420","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$url,"--window_width","320","--window_height","420","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $hwnd = Wait-SmokeWindow $browser
   Wait-SmokeArtifact $readyPng "screenshot"
   Show-SmokeWindow $hwnd
