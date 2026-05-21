@@ -1,14 +1,25 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8231,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\layout-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$root = Join-Path $repo "tmp-browser-smoke\layout-smoke"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $serverScript = Join-Path $root "layout_server.py"
 $common = Join-Path $root "LayoutProbeCommon.ps1"
 . $common
 
-$port = 8231
-$pageUrl = "http://127.0.0.1:$port/box-shadow.html"
+$pageUrl = "http://$Host`:$Port/box-shadow.html"
 $outPng = Join-Path $root "box-shadow.png"
 $browserOut = Join-Path $root "box-shadow.browser.stdout.txt"
 $browserErr = Join-Path $root "box-shadow.browser.stderr.txt"
@@ -19,10 +30,16 @@ $profileRoot = Join-Path $root "profile-box-shadow"
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 Reset-ProfileRoot $profileRoot
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$server = $null
+$browser = $null
+
+$python = Resolve-LightpandaPythonCommand
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
-  if (-not (Wait-HttpReady $pageUrl)) { throw "box shadow smoke server did not become ready" }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+  if (-not (Test-Path -LiteralPath $serverScript)) { throw "layout smoke server script not found: $serverScript" }
+  if (-not (Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds)) { throw "box shadow smoke server did not become ready" }
 
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
