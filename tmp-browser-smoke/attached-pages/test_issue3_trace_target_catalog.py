@@ -5,10 +5,14 @@ import unittest
 from pathlib import Path
 
 from issue3_trace_target_catalog import (
+    ISSUE3_TRACE_HINTS,
     REPRESENTATIVE_TRACE_URLS,
     audit_trace_log,
+    audit_trace_source,
     is_issue3_trace_target,
+    matching_trace_hints,
     matching_trace_urls,
+    missing_trace_hints,
     missing_trace_urls,
 )
 
@@ -20,6 +24,32 @@ class Issue3TraceTargetCatalogTests(unittest.TestCase):
 
     def test_issue3_trace_target_rejects_unrelated_url(self) -> None:
         self.assertFalse(is_issue3_trace_target("http://127.0.0.1:8000/unrelated.html"))
+
+    def test_matching_trace_hints_marks_seen_hints(self) -> None:
+        seen = matching_trace_hints(
+            [
+                "// google-home- and google.com remain enabled",
+                "// google_home_title_probe.html expands the fixture surface",
+                "// file:///tmp/Control%20your%20online%20safety%20and%20privacy%20%E2%80%93%20Google%20Safety%20Centre.html",
+            ]
+        )
+        self.assertTrue(seen["google-home-"])
+        self.assertTrue(seen["google.com"])
+        self.assertTrue(seen["google_home_title_probe.html"])
+        self.assertTrue(seen["control%20your%20online%20safety%20and%20privacy"])
+        self.assertFalse(seen["mouse_down_focus_input.html"])
+
+    def test_missing_trace_hints_reports_remaining_hints(self) -> None:
+        missing = missing_trace_hints(
+            [
+                "google-home-",
+                "google.com",
+                "google_home_title_probe.html",
+            ]
+        )
+        self.assertIn("body_onload_keyboard_input.html", missing)
+        self.assertIn("department of war", missing)
+        self.assertNotIn("google-home-", missing)
 
     def test_matching_trace_urls_marks_seen_urls(self) -> None:
         seen = matching_trace_urls(
@@ -39,6 +69,12 @@ class Issue3TraceTargetCatalogTests(unittest.TestCase):
         self.assertIn("fixture-onload-input", missing)
         self.assertIn("saved-google-safety", missing)
         self.assertNotIn("google-home", missing)
+
+    def test_audit_trace_source_reads_source_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            trace_path = Path(tmp_dir) / "trace-targets.txt"
+            trace_path.write_text("\n".join(ISSUE3_TRACE_HINTS), encoding="utf-8")
+            self.assertEqual([], audit_trace_source(trace_path))
 
     def test_audit_trace_log_reads_trace_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
