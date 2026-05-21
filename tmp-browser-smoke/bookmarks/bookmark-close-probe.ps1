@@ -1,17 +1,52 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [int]$Port = 8155,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. "$PSScriptRoot\..\common\Win32Input.ps1"
+. "$PSScriptRoot\BookmarkProbeCommon.ps1"
+
+$repo = if ([string]::IsNullOrWhiteSpace($RepoRoot)) { Resolve-LightpandaRepoRoot $PSScriptRoot } else { $RepoRoot }
 $serverRoot = Join-Path $repo "tmp-browser-smoke\wrapped-link"
-$port = 8155
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
-$readyPng = Join-Path $repo "tmp-browser-smoke\bookmarks\bookmark-close.ready.png"
-$browserOut = Join-Path $repo "tmp-browser-smoke\bookmarks\bookmark-close.browser.stdout.txt"
-$browserErr = Join-Path $repo "tmp-browser-smoke\bookmarks\bookmark-close.browser.stderr.txt"
-$serverOut = Join-Path $repo "tmp-browser-smoke\bookmarks\bookmark-close.server.stdout.txt"
-$serverErr = Join-Path $repo "tmp-browser-smoke\bookmarks\bookmark-close.server.stderr.txt"
+$bookmarksRoot = Join-Path $repo "tmp-browser-smoke\bookmarks"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+$readyPng = Join-Path $bookmarksRoot "bookmark-close.ready.png"
+$browserOut = Join-Path $bookmarksRoot "bookmark-close.browser.stdout.txt"
+$browserErr = Join-Path $bookmarksRoot "bookmark-close.browser.stderr.txt"
+$serverOut = Join-Path $bookmarksRoot "bookmark-close.server.stdout.txt"
+$serverErr = Join-Path $bookmarksRoot "bookmark-close.server.stderr.txt"
 Remove-Item $readyPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 
 Add-Type -AssemblyName System.Drawing
-. "$PSScriptRoot\..\common\Win32Input.ps1"
-. "$PSScriptRoot\BookmarkProbeCommon.ps1"
+
+function Wait-SmokeWindow([System.Diagnostics.Process]$Process) {
+  for ($i = 0; $i -lt 60; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    $proc = Get-Process -Id $Process.Id -ErrorAction SilentlyContinue
+    if ($proc -and $proc.MainWindowHandle -ne 0) {
+      return [IntPtr]$proc.MainWindowHandle
+    }
+  }
+  throw "bookmark close probe window handle not found"
+}
+
+function Wait-SmokeArtifact([string]$Path, [string]$Label) {
+  for ($i = 0; $i -lt 60; $i++) {
+    Start-Sleep -Milliseconds $PollMilliseconds
+    if ((Test-Path $Path) -and ((Get-Item $Path).Length -gt 0)) {
+      return
+    }
+  }
+  throw "bookmark close probe $Label did not become ready"
+}
 
 function Get-ColorBounds([System.Drawing.Bitmap]$Bitmap, [scriptblock]$Matcher) {
   $bounds = [ordered]@{min_x=$null; min_y=$null; max_x=$null; max_y=$null; count=0}
@@ -47,36 +82,22 @@ $backup = $null
 $failure = $null
 
 try {
-  $backup = Backup-BookmarkProbeFile
-  Set-BookmarkProbeEntries @("http://127.0.0.1:$port/index.html")
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+  if (-not (Test-Path -LiteralPath $serverRoot)) { throw "wrapped link probe root not found: $serverRoot" }
 
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $serverRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  $backup = Backup-BookmarkProbeFile
+  Set-BookmarkProbeEntries @("http://127.0.0.1:$Port/index.html")
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m","http.server",$Port,"--bind","127.0.0.1")) -WorkingDirectory $serverRoot -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url "http://127.0.0.1:$Port/index.html" -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "bookmark close probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","320","--window_height","420","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $readyPng) -and ((Get-Item $readyPng).Length -gt 0)) { $pngReady = $true; break }
-  }
-  if (-not $pngReady) { throw "bookmark close probe screenshot did not become ready" }
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$Port/index.html","--window_width","320","--window_height","420","--screenshot_png",$readyPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  Wait-SmokeArtifact $readyPng "screenshot"
+  $pngReady = $true
 
-  $hwnd = [IntPtr]::Zero
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
-    if ($proc -and $proc.MainWindowHandle -ne 0) {
-      $hwnd = [IntPtr]$proc.MainWindowHandle
-      break
-    }
-  }
-  if ($hwnd -eq [IntPtr]::Zero) { throw "bookmark close probe window handle not found" }
+  $hwnd = Wait-SmokeWindow $browser
 
   $bmp = [System.Drawing.Bitmap]::new($readyPng)
   try {
@@ -91,18 +112,18 @@ try {
   $initialNextHits = Count-Hits 'GET /next\.html HTTP/1\.1" 200'
 
   Show-SmokeWindow $hwnd
-  Start-Sleep -Milliseconds 250
+  Start-Sleep -Milliseconds $PollMilliseconds
   Send-SmokeCtrlShiftB
-  Start-Sleep -Milliseconds 250
+  Start-Sleep -Milliseconds $PollMilliseconds
   [void](Invoke-SmokeClientClick $hwnd 286 115)
-  Start-Sleep -Milliseconds 250
+  Start-Sleep -Milliseconds $PollMilliseconds
   $closeWorked = $true
 
   Show-SmokeWindow $hwnd
   [void](Invoke-SmokeClientClick $hwnd $linkX $linkY)
 
   for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds $PollMilliseconds
     $afterNextHits = Count-Hits 'GET /next\.html HTTP/1\.1" 200'
     if ($afterNextHits -gt $initialNextHits) {
       $navigateWorked = $true
@@ -115,10 +136,17 @@ try {
 } finally {
   if ($browser) { Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue }
   if ($server) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
-  Start-Sleep -Milliseconds 250
+  Start-Sleep -Milliseconds $PollMilliseconds
   Restore-BookmarkProbeFile $backup
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    port = $Port
+    ready_png = $readyPng
+    server_root = $serverRoot
+    server_ready_timeout_seconds = $ServerReadyTimeoutSeconds
+    poll_milliseconds = $PollMilliseconds
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
