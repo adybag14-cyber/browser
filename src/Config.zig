@@ -325,156 +325,156 @@ pub fn printHelp(self: *const Config, err: ?anyerror) void {
     }
 
     const common_options =
-        \\
+        \
         \\--obey_robots
         \\                Fetches and obeys the robots.txt (if available) of the web pages
         \\                we make requests towards.
         \\                Defaults to false.
-        \\
+        \
         \\--http_proxy    The HTTP proxy to use for all HTTP requests.
         \\                A username:password can be included for basic authentication.
         \\                Defaults to none.
-        \\
+        \
         \\--proxy_bearer_token
         \\                The <token> to send for bearer authentication with the proxy
         \\                Proxy-Authorization: Bearer <token>
-        \\
+        \
         \\--http_max_concurrent
         \\                The maximum number of concurrent HTTP requests.
         \\                Defaults to 10.
-        \\
+        \
         \\--http_max_host_open
         \\                The maximum number of open connection to a given host:port.
         \\                Defaults to 4.
-        \\
+        \
         \\--http_connect_timeout
         \\                The time, in milliseconds, for establishing an HTTP connection
         \\                before timing out. 0 means it never times out.
         \\                Defaults to 0.
-        \\
+        \
         \\--http_timeout
         \\                The maximum time, in milliseconds, the transfer is allowed
         \\                to complete. 0 means it never times out.
         \\                Defaults to 30000 for browse and headed serve.
         \\                Defaults to 5000 for headless serve, fetch, and mcp.
-        \\
+        \
         \\--http_max_response_size
         \\                Limits the acceptable response size for any request
         \\                (e.g. XHR, fetch, script loading, ...).
         \\                Defaults to no limit.
-        \\
+        \
         \\--log_level     The log level: debug, info, warn, error or fatal.
         \\                Defaults to
     ++ (if (builtin.mode == .Debug) " info." else "warn.") ++
-        \\
-        \\
+        \
+        \
         \\--log_format    The log format: pretty or logfmt.
         \\                Defaults to
     ++ (if (builtin.mode == .Debug) " pretty." else " logfmt.") ++
-        \\
-        \\
+        \
+        \
         \\--log_filter_scopes
         \\                Filter out too verbose logs per scope:
         \\                http, unknown_prop, event, ...
-        \\
+        \
         \\--user_agent_suffix
         \\                Suffix to append to the Lightpanda/X.Y User-Agent
-        \\
+        \
         \\--profile_dir   Explicit browser profile root for cookies, storage,
         \\                downloads, telemetry IDs, and other persisted state.
         \\                Defaults to the platform app-data directory when
         \\                available.
-        \\
+        \
         \\--browser_mode  Browser mode: headless or headed.
         \\                Defaults to headless for serve, fetch, and mcp.
         \\                Defaults to headed for browse.
-        \\
+        \
         \\--headed        Shortcut for '--browser_mode headed'
-        \\
+        \
         \\--headless      Shortcut for '--browser_mode headless'
-        \\
+        \
         \\--window_width  Window/viewport width in CSS pixels.
         \\                Defaults to 1920.
-        \\
+        \
         \\--window_height Window/viewport height in CSS pixels.
         \\                Defaults to 1080.
-        \\
+        \
     ;
 
     //                                                                     MAX_HELP_LEN|
     const usage =
         \\usage: {s} command [options] [URL]
-        \\
+        \
         \\Command can be either 'browse', 'fetch', 'serve', 'mcp' or 'help'
-        \\
+        \
         \\browse command
         \\Opens the specified URL in a native browser window.
         \\Example: {s} browse https://lightpanda.io/
-        \\
+        \
         \\Options:
         \\--screenshot_bmp
         \\                Save the first rendered headed browse frame as a BMP file.
         \\                Argument must be the output path.
-        \\
+        \
         \\--screenshot_png
         \\                Save the first rendered headed browse frame as a PNG file.
         \\                Argument must be the output path.
-        \\
+        \
     ++ common_options ++
-        \\
+        \
         \\fetch command
         \\Fetches the specified URL
         \\Example: {s} fetch --dump html https://lightpanda.io/
-        \\
+        \
         \\Options:
         \\--dump          Dumps document to stdout.
         \\                Optional formats: html, markdown, wpt.
         \\                Defaults to html.
-        \\
+        \
         \\--with-base     Prepends base URL to links in markdown.
         \\                Ignored unless --dump markdown.
-        \\
+        \
         \\--with-frames   Includes HTML for frames and iframes.
         \\                These subtrees are excluded by default.
-        \\
+        \
         \\--strip         Strips selected fields in the dump. Repeatable.
         \\                Choices: script, style, noscript, comment, cdata, iframe, event, hidden, meta.
-        \\
+        \
     ++ common_options ++
-        \\
+        \
         \\serve command
         \\Runs a server exposing the HTTP/WebSocket Chrome DevTools Protocol.
         \\Example: {s} serve
-        \\
+        \
         \\Options:
         \\--host          The host to listen on.
         \\                Defaults to 127.0.0.1.
-        \\
+        \
         \\--port          The port to listen on.
         \\                Defaults to 9222.
-        \\
+        \
         \\--timeout       The maximum number of seconds to wait for the browser instance
         \\                to shut down after the last client disconnects.
         \\                0 means it never times out.
         \\                Defaults to 10.
-        \\
+        \
         \\--cdp_max_connections
         \\                The maximum number of concurrent HTTP clients.
         \\                Defaults to 16.
-        \\
+        \
         \\--cdp_max_pending_connections
         \\                The maximum number of pending HTTP clients.
         \\                Defaults to 128.
-        \\
+        \
     ++ common_options ++
-        \\
+        \
         \\mcp command
         \\Runs an MCP server over stdio.
         \\Example: {s} mcp
-        \\
+        \
         \\Options:
     ++ common_options ++
-        \\
+        \
         \\help command
         \\Print this help and exits.
     ;
@@ -676,6 +676,12 @@ fn inferSharedFlagOption(opt: []const u8) bool {
     return false;
 }
 
+fn trimLocalBrowseTarget(token: []const u8) []const u8 {
+    const query_index = std.mem.indexOfScalar(u8, token, '?') orelse token.len;
+    const fragment_index = std.mem.indexOfScalar(u8, token, '#') orelse token.len;
+    return token[0..@min(query_index, fragment_index)];
+}
+
 fn inferLocalBrowseTarget(token: []const u8) bool {
     if (std.ascii.startsWithIgnoreCase(token, "file://")) {
         return true;
@@ -683,13 +689,14 @@ fn inferLocalBrowseTarget(token: []const u8) bool {
     if (std.mem.indexOf(u8, token, "://") != null) {
         return false;
     }
-    if (token.len >= 6 and std.ascii.eqlIgnoreCase(token[token.len - 6 ..], ".xhtml")) {
+    const candidate = trimLocalBrowseTarget(token);
+    if (candidate.len >= 6 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 6 ..], ".xhtml")) {
         return true;
     }
-    if (token.len >= 5 and std.ascii.eqlIgnoreCase(token[token.len - 5 ..], ".html")) {
+    if (candidate.len >= 5 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 5 ..], ".html")) {
         return true;
     }
-    if (token.len >= 4 and std.ascii.eqlIgnoreCase(token[token.len - 4 ..], ".htm")) {
+    if (candidate.len >= 4 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 4 ..], ".htm")) {
         return true;
     }
     return false;
@@ -701,13 +708,14 @@ pub fn parseMode(allocator: Allocator, mode: RunMode, process: *std.process.ArgI
         .fetch => .{ .fetch = try parseFetch(allocator, process) },
         .serve => .{ .serve = try parseServe(allocator, process) },
         .mcp => .{ .mcp = try parseMcp(allocator, process) },
-        else => unreachable,
+        .help, .version => unreachable,
     };
 }
 
 pub fn parseBrowse(allocator: Allocator, process: *std.process.ArgIterator) ParseError!Browse {
     var args = process;
-    var common: Common = .{ .browser_mode = .headed };
+
+    var common = Common{ .browser_mode = .headed };
     var screenshot_bmp_path: ?[:0]const u8 = null;
     var screenshot_png_path: ?[:0]const u8 = null;
 
@@ -717,7 +725,6 @@ pub fn parseBrowse(allocator: Allocator, process: *std.process.ArgIterator) Pars
                 log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_bmp" });
                 return error.InvalidArgument;
             };
-
             screenshot_bmp_path = try allocator.dupeZ(u8, str);
             continue;
         }
@@ -727,7 +734,6 @@ pub fn parseBrowse(allocator: Allocator, process: *std.process.ArgIterator) Pars
                 log.fatal(.app, "missing argument value", .{ .arg = "--screenshot_png" });
                 return error.InvalidArgument;
             };
-
             screenshot_png_path = try allocator.dupeZ(u8, str);
             continue;
         }
@@ -752,11 +758,11 @@ pub fn parseBrowse(allocator: Allocator, process: *std.process.ArgIterator) Pars
 
 pub fn parseFetch(allocator: Allocator, process: *std.process.ArgIterator) ParseError!Fetch {
     var args = process;
-    var common: Common = .{};
 
+    var dump_mode: ?DumpFormat = null;
     var with_base = false;
     var with_frames = false;
-    var dump_mode: ?DumpFormat = null;
+    var common = Common{};
     var strip: dump.Opts.Strip = .{};
 
     const url = while (args.next()) |opt| {
@@ -1270,6 +1276,12 @@ test "infer mode treats bare html filename as browse" {
     try std.testing.expectEqual(RunMode.browse, mode);
 }
 
+test "infer mode treats html filename with query as browse" {
+    const mode = try inferModeSlice(&.{ "attached-page.html?case=1" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
 test "infer mode treats relative windows html path as browse" {
     const mode = try inferModeSlice(&.{ "agent_files\\attached-page.html" });
 
@@ -1288,6 +1300,12 @@ test "infer mode treats bare xhtml filename as browse" {
     try std.testing.expectEqual(RunMode.browse, mode);
 }
 
+test "infer mode treats xhtml filename with fragment as browse" {
+    const mode = try inferModeSlice(&.{ "attached-page.xhtml#focus-probe" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
 test "infer mode treats relative windows xhtml path as browse" {
     const mode = try inferModeSlice(&.{ "agent_files\\attached-page.xhtml" });
 
@@ -1302,6 +1320,12 @@ test "infer mode treats file url as browse" {
 
 test "infer mode keeps browse for html target after shared flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "agent_files\\attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode keeps browse for html target with query after shared flag" {
+    const mode = try inferModeSlice(&.{ "--obey_robots", "agent_files\\attached-page.html?case=1" });
 
     try std.testing.expectEqual(RunMode.browse, mode);
 }
