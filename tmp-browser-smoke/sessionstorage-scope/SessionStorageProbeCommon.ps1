@@ -1,49 +1,16 @@
+[CmdletBinding()]
+param()
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Resolve-SessionStorageRepoRoot([string]$StartPath) {
-  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
-    return [System.IO.Path]::GetFullPath($env:LIGHTPANDA_REPO_ROOT)
-  }
-
-  $cursor = [System.IO.Path]::GetFullPath($StartPath)
-  while ($true) {
-    if (Test-Path (Join-Path $cursor "build.zig")) {
-      return $cursor
-    }
-
-    $parent = Split-Path $cursor -Parent
-    if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $cursor) {
-      throw "Could not resolve the Lightpanda repo root from $StartPath. Set LIGHTPANDA_REPO_ROOT to override."
-    }
-    $cursor = $parent
-  }
-}
-
-function Resolve-SessionStorageBrowserExe([string]$RepoRoot) {
-  if (-not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_BROWSER_EXE)) {
-    return [System.IO.Path]::GetFullPath($env:LIGHTPANDA_BROWSER_EXE)
-  }
-
-  return Join-Path $RepoRoot "zig-out\bin\lightpanda.exe"
-}
-
-function Resolve-SessionStoragePythonCommand {
-  if (Get-Command python -ErrorAction SilentlyContinue) {
-    return @{ FileName = "python"; Arguments = @() }
-  }
-  if (Get-Command py -ErrorAction SilentlyContinue) {
-    return @{ FileName = "py"; Arguments = @("-3") }
-  }
-  throw "Python was not found in PATH. Install Python or start the sessionStorage probe server separately."
-}
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
 
 $script:Root = $PSScriptRoot
-$script:Repo = Resolve-SessionStorageRepoRoot $script:Root
-$script:BrowserExe = Resolve-SessionStorageBrowserExe $script:Repo
-
-. (Join-Path (Split-Path $script:Root -Parent) "common\Win32Input.ps1")
-. (Join-Path (Split-Path $script:Root -Parent) "tabs\TabProbeCommon.ps1")
+$script:Repo = Resolve-LightpandaRepoRoot $script:Root
+$script:BrowserExe = Resolve-LightpandaBrowserExe $script:Repo $null
 
 function Reset-SessionStorageProfile([string]$ProfileRoot) {
   $appDataRoot = Join-Path $ProfileRoot "lightpanda"
@@ -69,19 +36,12 @@ homepage_url
 }
 
 function Wait-SessionStorageServer([int]$Port, [int]$Attempts = 30) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port/seed.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { return $true }
-    } catch {}
-  }
-  return $false
+  return Wait-LightpandaHttpReady -Url "http://127.0.0.1:$Port/seed.html" -TimeoutSeconds ([Math]::Max(1, [int][Math]::Ceiling($Attempts / 4.0))) -PollMilliseconds 250
 }
 
 function Start-SessionStorageServer([int]$Port, [string]$Stdout, [string]$Stderr) {
-  $python = Resolve-SessionStoragePythonCommand
-  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $script:Root "session_storage_server.py"), "$Port")) -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+  $python = Resolve-LightpandaPythonCommand
+  return Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @((Join-Path $script:Root "session_storage_server.py"),"$Port")) -WorkingDirectory $script:Root -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
 
 function Start-SessionStorageBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
