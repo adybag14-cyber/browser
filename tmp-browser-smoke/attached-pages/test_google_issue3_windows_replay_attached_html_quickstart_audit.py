@@ -224,7 +224,7 @@ DRIFT_CASES = (
     (
         "bundle_proof_entrypoint_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_ENTRYPOINT.ps1' -Arguments $sharedArguments",
+        "attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $sharedArguments",
         "",
     ),
     (
