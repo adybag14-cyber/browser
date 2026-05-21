@@ -164,8 +164,12 @@ function Get-ActivationMarkerSummaries {
             $matchedArtifacts = @()
             foreach ($artifact in $artifacts) {
                 $artifactPath = Resolve-ArtifactFullPath -RepoRoot $RepoRoot -Artifact $artifact
-                if (Select-String -LiteralPath $artifactPath -SimpleMatch -Pattern $marker.marker -List -ErrorAction SilentlyContinue) {
-                    $matchedArtifacts += $artifact.relative_path
+                $match = Select-String -LiteralPath $artifactPath -SimpleMatch -Pattern $marker.marker -List -ErrorAction SilentlyContinue
+                if ($match) {
+                    $matchedArtifacts += [pscustomobject]@{
+                        relative_path = $artifact.relative_path
+                        sample_line = $match.Line.Trim()
+                    }
                 }
             }
 
@@ -174,7 +178,8 @@ function Get-ActivationMarkerSummaries {
                 meaning = $marker.meaning
                 expected_when = $marker.expected_when
                 found = [bool]($matchedArtifacts.Count -gt 0)
-                artifacts = @($matchedArtifacts)
+                artifacts = @($matchedArtifacts | ForEach-Object { $_.relative_path })
+                samples = @($matchedArtifacts)
             }
         }
     )
@@ -232,6 +237,11 @@ $missingCount = @(
 ).Count
 
 $activationMarkers = Get-ActivationMarkerSummaries -RepoRoot $resolvedRepoRoot -Groups $groups
+$activationOverview = [pscustomobject]@{
+    headed_runtime_markers_found = @($activationMarkers | Where-Object { $_.marker -like '* headed runtime' -and $_.found }).Count
+    fallback_markers_found = @($activationMarkers | Where-Object { $_.marker -like '* headed fallback' -and $_.found }).Count
+    total_markers_found = @($activationMarkers | Where-Object { $_.found }).Count
+}
 
 $guide = [pscustomobject]@{
     issue = "Google live trace artifact guide"
@@ -239,6 +249,7 @@ $guide = [pscustomobject]@{
     trace_root = $resolvedTraceRoot
     tail_count = $TailCount
     missing_count = $missingCount
+    activation_overview = $activationOverview
     activation_markers = $activationMarkers
     groups = $groups
     next_steps = @(
@@ -265,6 +276,7 @@ Write-Host ""
 Write-Host ("Repo root: {0}" -f $guide.repo_root)
 Write-Host ("Trace root: {0}" -f $guide.trace_root)
 Write-Host ("Missing artifact count: {0}" -f $guide.missing_count)
+Write-Host ("Activation summary: {0} runtime marker(s), {1} fallback marker(s)" -f $guide.activation_overview.headed_runtime_markers_found, $guide.activation_overview.fallback_markers_found)
 Write-Host ""
 
 foreach ($group in $guide.groups) {
@@ -288,8 +300,9 @@ foreach ($marker in $guide.activation_markers) {
     Write-Host ("[{0}] {1}" -f $status, $marker.marker)
     Write-Host ("  {0}" -f $marker.meaning)
     Write-Host ("  Expected when: {0}" -f $marker.expected_when)
-    foreach ($artifactPath in @($marker.artifacts)) {
-        Write-Host ("    {0}" -f $artifactPath)
+    foreach ($sample in @($marker.samples)) {
+        Write-Host ("    {0}" -f $sample.relative_path)
+        Write-Host ("      {0}" -f $sample.sample_line)
     }
     Write-Host ""
 }
