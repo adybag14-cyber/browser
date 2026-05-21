@@ -300,6 +300,52 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
         self.assertIn("Error: invalid_input", report)
         self.assertIn("selected file is not an attached HTML export", report)
 
+    def test_cli_json_reports_missing_selected_input_cleanly(self):
+        missing_input = self.root / "bundle" / "missing.html"
+
+        original_argv = sys.argv[:]
+        stdout = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(audit_module.__file__)),
+                "--input",
+                str(missing_input),
+                "--json",
+            ]
+            with contextlib.redirect_stdout(stdout):
+                exit_code = audit_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual("repo_root_not_found", payload["error_type"])
+        self.assertEqual(0, payload["fixture_count"])
+        self.assertTrue(payload["bundle_root"].endswith("missing.html"))
+        self.assertIn("selected HTML file does not exist", payload["error"])
+
+    def test_cli_text_reports_missing_selected_input_cleanly(self):
+        missing_input = self.root / "bundle" / "missing.html"
+
+        original_argv = sys.argv[:]
+        stdout = io.StringIO()
+        try:
+            sys.argv = [
+                str(Path(audit_module.__file__)),
+                "--input",
+                str(missing_input),
+            ]
+            with contextlib.redirect_stdout(stdout):
+                exit_code = audit_module.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(1, exit_code)
+        report = stdout.getvalue()
+        self.assertIn("Attached Pages Sidecar Audit", report)
+        self.assertIn("Error: repo_root_not_found", report)
+        self.assertIn("selected HTML file does not exist", report)
+
 
 if __name__ == "__main__":
     unittest.main()
