@@ -54,6 +54,18 @@ def is_issue3_trace_target(text: str) -> bool:
     return any(hint in normalized for hint in ISSUE3_TRACE_HINTS)
 
 
+def matching_trace_hints(lines: Iterable[str]) -> dict[str, bool]:
+    normalized_lines = [normalize_trace_text(line) for line in lines]
+    return {
+        hint: any(normalize_trace_text(hint) in line for line in normalized_lines)
+        for hint in ISSUE3_TRACE_HINTS
+    }
+
+
+def missing_trace_hints(lines: Iterable[str]) -> list[str]:
+    return [hint for hint, present in matching_trace_hints(lines).items() if not present]
+
+
 def matching_trace_urls(lines: Iterable[str]) -> dict[str, bool]:
     remaining = dict.fromkeys(REPRESENTATIVE_TRACE_URLS, False)
     for line in lines:
@@ -65,6 +77,12 @@ def matching_trace_urls(lines: Iterable[str]) -> dict[str, bool]:
 
 def missing_trace_urls(lines: Iterable[str]) -> list[str]:
     return [name for name, present in matching_trace_urls(lines).items() if not present]
+
+
+def audit_trace_source(path: str | Path) -> list[str]:
+    source_path = Path(path)
+    lines = source_path.read_text(encoding="utf-8").splitlines()
+    return missing_trace_hints(lines)
 
 
 def audit_trace_log(path: str | Path) -> list[str]:
