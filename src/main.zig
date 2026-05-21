@@ -703,7 +703,7 @@ fn run(allocator: Allocator, main_arena: Allocator, io: std.Io, argv: std.proces
     }
 
     const requested_browser_mode = args.browserMode();
-    const native_headed_surface_expected = nativeHeadedSurfaceExpected(requested_mode);
+    const native_headed_surface_expected = nativeHeadedSurfaceExpected(requested_browser_mode);
 
     // _app is global to handle graceful shutdown.
     var host = Host.initForBuildClass(allocator, lp.build_config.target_class == .bare_metal);
