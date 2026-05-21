@@ -11,16 +11,28 @@ from pathlib import Path
 
 EXPECTATIONS = (
     {
-        "label": "config_local_path_suffix_trim",
+        "label": "config_local_trim_query_index",
         "path": "src/Config.zig",
-        "snippet": 'const path_suffix_end = std.mem.indexOfAny(u8, token, "?#") orelse token.len;',
-        "why": "Local attached-page inference should ignore query and fragment suffixes before extension checks.",
+        "snippet": "const query_index = std.mem.indexOfScalar(u8, token, '?') orelse token.len;",
+        "why": "Local attached-page inference should ignore query suffixes before extension checks.",
     },
     {
-        "label": "config_local_path_suffix_slice",
+        "label": "config_local_trim_fragment_index",
         "path": "src/Config.zig",
-        "snippet": "const path_suffix = token[0..path_suffix_end];",
+        "snippet": "const fragment_index = std.mem.indexOfScalar(u8, token, '#') orelse token.len;",
+        "why": "Local attached-page inference should ignore fragment suffixes before extension checks.",
+    },
+    {
+        "label": "config_local_trim_candidate_slice",
+        "path": "src/Config.zig",
+        "snippet": "return token[0..@min(query_index, fragment_index)];",
         "why": "Extension checks should run against the path portion only.",
+    },
+    {
+        "label": "config_local_trim_helper_use",
+        "path": "src/Config.zig",
+        "snippet": "const candidate = trimLocalBrowseTarget(token);",
+        "why": "Local browse-target suffix checks should run against the trimmed candidate.",
     },
     {
         "label": "config_remote_url_guard",
@@ -31,32 +43,32 @@ EXPECTATIONS = (
     {
         "label": "config_local_xhtml_suffix_support",
         "path": "src/Config.zig",
-        "snippet": 'if (path_suffix.len >= 6 and std.ascii.eqlIgnoreCase(path_suffix[path_suffix.len - 6 ..], ".xhtml")) {',
+        "snippet": 'if (candidate.len >= 6 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 6 ..], ".xhtml")) {',
         "why": "Local XHTML targets should keep the same browse inference path as local HTML targets.",
     },
     {
         "label": "config_local_html_query_regression",
         "path": "src/Config.zig",
-        "snippet": 'test "infer mode treats bare html filename with query as browse" {',
+        "snippet": 'test "infer mode treats html filename with query as browse" {',
         "why": "Headed startup should keep local .html targets with ?query on the browse path.",
     },
     {
         "label": "config_local_xhtml_fragment_regression",
         "path": "src/Config.zig",
-        "snippet": 'test "infer mode treats bare xhtml filename with fragment as browse" {',
+        "snippet": 'test "infer mode treats xhtml filename with fragment as browse" {',
         "why": "Headed startup should keep local .xhtml targets with #fragment on the browse path.",
     },
     {
-        "label": "config_local_windows_html_query_regression",
+        "label": "config_local_windows_html_regression",
         "path": "src/Config.zig",
-        "snippet": 'test "infer mode treats relative windows html path with query as browse" {',
-        "why": "Windows-style local .html targets with ?query should stay on the browse path.",
+        "snippet": 'test "infer mode treats relative windows html path as browse" {',
+        "why": "Windows-style local .html targets should stay on the browse path.",
     },
     {
-        "label": "config_local_windows_xhtml_fragment_regression",
+        "label": "config_local_windows_xhtml_regression",
         "path": "src/Config.zig",
-        "snippet": 'test "infer mode treats relative windows xhtml path with fragment as browse" {',
-        "why": "Windows-style local .xhtml targets with #fragment should stay on the browse path.",
+        "snippet": 'test "infer mode treats relative windows xhtml path as browse" {',
+        "why": "Windows-style local .xhtml targets should stay on the browse path.",
     },
     {
         "label": "config_local_html_query_shared_flag_regression",
@@ -65,22 +77,10 @@ EXPECTATIONS = (
         "why": "Shared flags before a local .html target with ?query should not knock startup off browse mode.",
     },
     {
-        "label": "config_local_xhtml_fragment_shared_flag_regression",
+        "label": "config_local_xhtml_shared_flag_regression",
         "path": "src/Config.zig",
-        "snippet": 'test "infer mode keeps browse for xhtml target with fragment after shared flag" {',
-        "why": "Shared flags before a local .xhtml target with #fragment should still resolve to browse mode.",
-    },
-    {
-        "label": "config_local_windows_html_query_shared_flag_regression",
-        "path": "src/Config.zig",
-        "snippet": 'test "infer mode keeps browse for windows html target with query after shared flag" {',
-        "why": "Windows-style local .html targets with ?query should still resolve to browse after shared flags.",
-    },
-    {
-        "label": "config_local_windows_xhtml_fragment_shared_flag_regression",
-        "path": "src/Config.zig",
-        "snippet": 'test "infer mode keeps browse for windows xhtml target with fragment after shared flag" {',
-        "why": "Windows-style local .xhtml targets with #fragment should still resolve to browse after shared flags.",
+        "snippet": 'test "infer mode keeps browse for xhtml target after shared flag" {',
+        "why": "Shared flags before a local .xhtml target should still resolve to browse mode.",
     },
     {
         "label": "config_remote_html_fetch_fallback_regression",
