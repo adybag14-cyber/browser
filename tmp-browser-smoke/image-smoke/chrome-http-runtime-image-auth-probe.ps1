@@ -38,7 +38,7 @@ if (-not $ready) {
   throw "localhost image auth server did not become ready"
 }
 
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/auth-page.html","--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/auth-page.html","--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 $pngReady = $false
 for ($i = 0; $i -lt 80; $i++) {
   Start-Sleep -Milliseconds 250
