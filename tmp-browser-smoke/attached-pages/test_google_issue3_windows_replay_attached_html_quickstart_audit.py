@@ -126,6 +126,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "broader_attached_flow_wiring",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "attached_html_validation_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot",
+        "",
+    ),
+    (
         "google_surface_check_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "google_attached_html_surface_check = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_attached_html_validation_surface.ps1' -RepoRootOverride $RepoRoot",
@@ -352,6 +358,12 @@ DRIFT_CASES = (
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         'Write-Host (("  Broader attached flow:    {0}") -f $helper.commands.attached_html_validation_flow)',
         "",
+    ),
+    (
+        "broader_attached_flow_guidance",
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Use attached_html_validation_flow when the replay should keep the broader attached-page helper visible before the ladder narrows into the Google-shaped route or the shorter issue #3 helpers.",
+        "drifted note",
     ),
     (
         "suite_router_sidecar_output",
