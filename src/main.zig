@@ -209,6 +209,23 @@ fn browseTargetLocalPathCandidate(url: []const u8) []const u8 {
     return url[0..suffix_start];
 }
 
+fn browseTargetAbout(url: []const u8) ?BrowseTargetInfo {
+    const prefix = "about:";
+    if (url.len < prefix.len or !std.ascii.eqlIgnoreCase(url[0..prefix.len], prefix)) {
+        return null;
+    }
+
+    const route = url[prefix.len..];
+    const route_end = std.mem.indexOfAny(u8, route, "?#") orelse route.len;
+    const page = route[0..route_end];
+    return .{
+        .scheme = "about",
+        .scope = "internal",
+        .host = if (page.len == 0) "(none)" else page,
+        .port = "(none)",
+    };
+}
+
 fn browseTargetInternal(url: []const u8, scheme: []const u8) ?BrowseTargetInfo {
     if (!std.ascii.eqlIgnoreCase(scheme, "browser")) {
         return null;
@@ -380,6 +397,9 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
     if (browseTargetInternal(url, scheme)) |internal| {
         return internal;
     }
+    if (browseTargetAbout(url)) |about| {
+        return about;
+    }
 
     const authority = browseTargetAuthority(url) orelse {
         if (browseTargetImplicitLoopback(url)) |implicit_loopback| {
@@ -507,6 +527,24 @@ test "browse target info keeps browser settings routes on the internal path" {
     try std.testing.expectEqualStrings("browser", info.scheme);
     try std.testing.expectEqualStrings("internal", info.scope);
     try std.testing.expectEqualStrings("settings", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info classifies about blank pages as internal" {
+    const info = browseTargetInfo("about:blank");
+
+    try std.testing.expectEqualStrings("about", info.scheme);
+    try std.testing.expectEqualStrings("internal", info.scope);
+    try std.testing.expectEqualStrings("blank", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info keeps about fragments on the internal path" {
+    const info = browseTargetInfo("about:blank#popup-probe");
+
+    try std.testing.expectEqualStrings("about", info.scheme);
+    try std.testing.expectEqualStrings("internal", info.scope);
+    try std.testing.expectEqualStrings("blank", info.host);
     try std.testing.expectEqualStrings("(none)", info.port);
 }
 
