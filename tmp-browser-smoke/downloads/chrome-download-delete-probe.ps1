@@ -106,7 +106,7 @@ try {
   }
   if (-not $ready) { throw "download delete probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","browser://downloads","--window_width","960","--window_height","640","--screenshot_png",$initialPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","browser://downloads","--window_width","960","--window_height","640","--screenshot_png",$initialPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $hwnd = Wait-TabWindowHandle $browser.Id
   if ($hwnd -eq [IntPtr]::Zero) { throw "download delete probe window handle not found" }
   $null = Wait-TabTitle $browser.Id "Browser Downloads"
