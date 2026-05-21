@@ -19,7 +19,7 @@ for ($i = 0; $i -lt 30; $i++) {
   } catch {}
 }
 if (-not $ready) { throw "localhost probe server did not become ready" }
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 $pngReady = $false
 for ($i = 0; $i -lt 60; $i++) {
   Start-Sleep -Milliseconds 250
