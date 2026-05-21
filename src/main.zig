@@ -204,6 +204,11 @@ fn browseTargetImplicitAuthority(url: []const u8) ?[]const u8 {
     return url[0..authority_end];
 }
 
+fn browseTargetLocalPathCandidate(url: []const u8) []const u8 {
+    const suffix_start = std.mem.indexOfAny(u8, url, "?#") orelse url.len;
+    return url[0..suffix_start];
+}
+
 fn browseTargetHostPortAuthority(authority: []const u8) []const u8 {
     const at_index = std.mem.lastIndexOfScalar(u8, authority, '@') orelse return authority;
     if (at_index + 1 >= authority.len) {
@@ -358,12 +363,13 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
         if (browseTargetImplicitRemote(url)) |implicit_remote| {
             return implicit_remote;
         }
-        if (std.mem.indexOf(u8, url, "://") == null and
-            (std.mem.indexOfScalar(u8, url, '/') != null or
-                std.mem.indexOfScalar(u8, url, '\\') != null or
-                std.ascii.endsWithIgnoreCase(url, ".xhtml") or
-                std.ascii.endsWithIgnoreCase(url, ".html") or
-                std.ascii.endsWithIgnoreCase(url, ".htm")))
+        const local_path_candidate = browseTargetLocalPathCandidate(url);
+        if (std.mem.indexOf(u8, local_path_candidate, "://") == null and
+            (std.mem.indexOfScalar(u8, local_path_candidate, '/') != null or
+                std.mem.indexOfScalar(u8, local_path_candidate, '\\') != null or
+                std.ascii.endsWithIgnoreCase(local_path_candidate, ".xhtml") or
+                std.ascii.endsWithIgnoreCase(local_path_candidate, ".html") or
+                std.ascii.endsWithIgnoreCase(local_path_candidate, ".htm")))
         {
             return .{
                 .scheme = "path",
@@ -463,6 +469,24 @@ test "browse target info keeps non-loopback ipv4 hosts remote" {
 
 test "browse target info classifies attached html filenames as local paths" {
     const info = browseTargetInfo("attached-page.html");
+
+    try std.testing.expectEqualStrings("path", info.scheme);
+    try std.testing.expectEqualStrings("local_path", info.scope);
+    try std.testing.expectEqualStrings("(none)", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info keeps attached html queries on the local path route" {
+    const info = browseTargetInfo("attached-page.html?case=1");
+
+    try std.testing.expectEqualStrings("path", info.scheme);
+    try std.testing.expectEqualStrings("local_path", info.scope);
+    try std.testing.expectEqualStrings("(none)", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info keeps attached xhtml fragments on the local path route" {
+    const info = browseTargetInfo("attached-page.xhtml#focus-probe");
 
     try std.testing.expectEqualStrings("path", info.scheme);
     try std.testing.expectEqualStrings("local_path", info.scope);
