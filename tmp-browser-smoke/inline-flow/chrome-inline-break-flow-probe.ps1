@@ -74,7 +74,7 @@ homepage_url
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/break.html","--window_width","760","--window_height","460","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/break.html","--window_width","760","--window_height","460","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   try {
     $pngReady = $false
     for ($i = 0; $i -lt 60; $i++) {
