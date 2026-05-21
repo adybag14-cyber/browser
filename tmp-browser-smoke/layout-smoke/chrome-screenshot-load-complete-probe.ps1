@@ -46,7 +46,7 @@ try {
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
   $started = Get-Date
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","420","--window_height","320","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","420","--window_height","320","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
   try {
     if (-not (Wait-Screenshot $outPng)) { throw "load-complete screenshot did not become ready" }
