@@ -35,6 +35,30 @@ EXPECTATIONS = (
         "why": "Cookie persistence checks should stay on an explicit headed validation route.",
     },
     {
+        "label": "localstorage_common_headed_launch",
+        "path": "tmp-browser-smoke/localstorage-persistence/StorageProbeCommon.ps1",
+        "snippet": 'return Start-Process -FilePath $BrowserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640",$StartupUrl)',
+        "why": "Local storage persistence probes should keep using an explicit headed browser launch on localhost pages.",
+    },
+    {
+        "label": "indexeddb_common_headed_launch",
+        "path": "tmp-browser-smoke/indexeddb-persistence/IndexedDbProbeCommon.ps1",
+        "snippet": 'return Start-Process -FilePath $script:BrowserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640",$StartupUrl)',
+        "why": "IndexedDB persistence helpers should keep the headed launch path explicit for realistic local validation.",
+    },
+    {
+        "label": "fetch_abort_common_headed_launch",
+        "path": "tmp-browser-smoke/fetch-abort/FetchAbortProbeCommon.ps1",
+        "snippet": 'return Start-Process -FilePath $script:BrowserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640",$StartupUrl)',
+        "why": "Fetch abort probes should stay on an explicit headed route while exercising real localhost timing behavior.",
+    },
+    {
+        "label": "fetch_credentials_common_headed_launch",
+        "path": "tmp-browser-smoke/fetch-credentials/FetchCredentialsProbeCommon.ps1",
+        "snippet": 'return Start-Process -FilePath $script:BrowserExe -ArgumentList @("browse","--browser_mode","headed",$StartupUrl,"--window_width","960","--window_height","640")',
+        "why": "Fetch credentials probes should keep their headed startup contract even though the URL argument is threaded earlier in the command.",
+    },
+    {
         "label": "websocket_echo_headed_launch",
         "path": "tmp-browser-smoke/websocket-smoke/chrome-websocket-echo-probe.ps1",
         "snippet": "$browser = Start-Process -FilePath $browserExe -ArgumentList 'browse','--browser_mode','headed',$pageUrl,'--window_width','840','--window_height','560'",
