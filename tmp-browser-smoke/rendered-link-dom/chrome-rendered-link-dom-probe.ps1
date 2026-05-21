@@ -1,8 +1,23 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8165,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. "$PSScriptRoot\..\tabs\TabProbeCommon.ps1"
+
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
 $root = Join-Path $repo "tmp-browser-smoke\rendered-link-dom"
 $profileRoot = Join-Path $root "profile"
-$port = 8165
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $browserOut = Join-Path $root "chrome-rendered-link-dom.browser.stdout.txt"
 $browserErr = Join-Path $root "chrome-rendered-link-dom.browser.stderr.txt"
 $serverOut = Join-Path $root "chrome-rendered-link-dom.server.stdout.txt"
@@ -12,10 +27,10 @@ cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
 New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
 Remove-Item $browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 
-$env:APPDATA = $profileRoot
-$env:LOCALAPPDATA = $profileRoot
-
-. "$PSScriptRoot\..\tabs\TabProbeCommon.ps1"
+$probeEnvironment = Get-TabProbeEnvironment $profileRoot
+$env:APPDATA = $probeEnvironment.APPDATA
+$env:LOCALAPPDATA = $probeEnvironment.LOCALAPPDATA
+$indexUrl = "http://$Host`:$Port/index.html"
 
 function Invoke-ClientClicksUntilTitle([IntPtr]$Hwnd, [int]$ProcessId, [object[]]$Points, [string]$Needle) {
   foreach ($point in $Points) {
@@ -41,17 +56,14 @@ $failure = $null
 $titles = [ordered]@{}
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m", "http.server", $Port, "--bind", $Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url $indexUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "rendered link DOM probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","720" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "960", "--window_height", "720", $indexUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $hwnd = Wait-TabWindowHandle $browser.Id
   if ($hwnd -eq [IntPtr]::Zero) { throw "rendered link DOM probe window handle not found" }
   Show-SmokeWindow $hwnd
@@ -87,13 +99,18 @@ try {
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  $serverMeta = Stop-OwnedProbeProcess $server
-  $browserMeta = Stop-OwnedProbeProcess $browser
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    host = $Host
+    port = $Port
+    index_url = $indexUrl
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
