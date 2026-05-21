@@ -54,7 +54,7 @@ try {
   }
   if (-not $ready) { throw "settings restore-off probe server did not become ready" }
 
-  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run1Out -RedirectStandardError $run1Err
+  $browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run1Out -RedirectStandardError $run1Err
   $hwnd1 = Wait-TabWindowHandle $browser1.Id
   if ($hwnd1 -eq [IntPtr]::Zero) { throw "settings restore-off run1 window handle not found" }
   Show-SmokeWindow $hwnd1
@@ -86,7 +86,7 @@ try {
   $sessionCleared = -not (Test-Path $sessionFile)
   if (-not $sessionCleared) { throw "settings restore-off did not clear saved session file" }
 
-  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run2Out -RedirectStandardError $run2Err
+  $browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $run2Out -RedirectStandardError $run2Err
   $hwnd2 = Wait-TabWindowHandle $browser2.Id
   if ($hwnd2 -eq [IntPtr]::Zero) { throw "settings restore-off run2 window handle not found" }
   Show-SmokeWindow $hwnd2
