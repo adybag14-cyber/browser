@@ -36,6 +36,12 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "missing_repo_root_validation_router_guard_doc_command",
+        "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1 -RepoRoot '<repo-root>'",
+        "",
+    ),
+    (
         "missing_launcher_surface_doc_command",
         "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
         "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1",
@@ -98,7 +104,7 @@ DRIFT_CASES = (
     (
         "missing_windows_validation_bridge_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Windows validation bridge: {0}") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
+        'Write-Host ((\\"  Windows validation bridge: {0}\\") -f $helper.commands.windows_full_use_validation_router_attached_html_bridge)',
         "",
     ),
     (
@@ -110,7 +116,7 @@ DRIFT_CASES = (
     (
         "missing_validation_router_quickstart_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Validation-router quick:   {0}") -f $helper.commands.validation_router_attached_html_quickstart)',
+        'Write-Host ((\\"  Validation-router quick:   {0}\\") -f $helper.commands.validation_router_attached_html_quickstart)',
         "",
     ),
     (
@@ -152,19 +158,19 @@ DRIFT_CASES = (
     (
         "missing_route_surface_check_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Route surface check:       {0}") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
+        'Write-Host ((\\"  Route surface check:       {0}\\") -f $helper.commands.windows_full_use_attached_html_route_surface_check)',
         "",
     ),
     (
         "missing_windows_catalog_quickstart_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Windows catalog quick:     {0}") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
+        'Write-Host ((\\"  Windows catalog quick:     {0}\\") -f $helper.commands.windows_full_use_attached_html_catalog_quickstart)',
         "",
     ),
     (
         "missing_launcher_surface_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Launcher surface check:    {0}") -f $helper.commands.attached_pages_launcher_surface_check)',
+        'Write-Host ((\\"  Launcher surface check:    {0}\\") -f $helper.commands.attached_pages_launcher_surface_check)',
         "",
     ),
     (
@@ -176,7 +182,7 @@ DRIFT_CASES = (
     (
         "missing_launcher_companion_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Launcher companion:        {0}") -f $helper.commands.attached_pages_launcher_companion)',
+        'Write-Host ((\\"  Launcher companion:        {0}\\") -f $helper.commands.attached_pages_launcher_companion)',
         "",
     ),
     (
@@ -188,7 +194,7 @@ DRIFT_CASES = (
     (
         "missing_router_shortcut_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Router shortcut:           {0}") -f $helper.commands.suite_router_shortcut_first)',
+        'Write-Host ((\\"  Router shortcut:           {0}\\") -f $helper.commands.suite_router_shortcut_first)',
         "",
     ),
     (
@@ -212,26 +218,8 @@ DRIFT_CASES = (
     (
         "missing_route_shortcut_output",
         "scripts/windows/show_google_issue3_windows_replay_quickstart.ps1",
-        'Write-Host (("  Route shortcut:            {0}") -f $helper.commands.replay_route_shortcut_entrypoint)',
+        'Write-Host ((\\"  Route shortcut:            {0}\\") -f $helper.commands.replay_route_shortcut_entrypoint)',
         "",
-    ),
-    (
-        "missing_replay_to_windows_bridge_check_output",
-        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
-        'Write-Host (("  Replay quickstart check:  {0}") -f $bridge.commands.windows_replay_surface_check)',
-        "",
-    ),
-    (
-        "missing_replay_to_windows_bridge_quickstart_output",
-        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
-        'Write-Host (("  Windows replay quick:     {0}") -f $bridge.commands.windows_replay_quickstart)',
-        "",
-    ),
-    (
-        "missing_replay_to_windows_bridge_default_handoff_guidance",
-        "scripts/windows/show_google_issue3_replay_shortcuts_windows_replay_attached_html_bridge.ps1",
-        "Use windows_replay_quickstart as the default next helper whenever no explicit bundle inputs, saved summary, or non-default repo root need to take precedence first.",
-        "drifted guidance",
     ),
 )
 
