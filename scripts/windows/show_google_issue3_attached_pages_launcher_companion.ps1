@@ -184,6 +184,8 @@ $helper = [ordered]@{
         attached_pages_launcher_readme = 'tmp-browser-smoke/attached-pages/README.md'
         attached_pages_launcher_wrapper = 'scripts/windows/start_attached_pages_catalog.ps1'
         attached_pages_launcher_entrypoint = 'tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py'
+        attached_html_target_bundle_proof_surface_check = 'scripts/windows/check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1'
+        attached_html_target_bundle_proof_entrypoint = 'scripts/windows/show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1'
         attached_html_target_bundle_proof_entrypoint_note = 'docs/ISSUE3_ATTACHED_HTML_TARGET_BUNDLE_PROOF_ENTRYPOINT.md'
         google_attached_html_validation_flow_note = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md'
         google_attached_html_entrypoint_note = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
@@ -198,6 +200,7 @@ $helper = [ordered]@{
         'Use the strict bundle commands when both sidecars and referenced local assets must be complete before a manifest print or localhost launch is trusted.',
         'Prefer the GoogleStyle variants when the current attached-page set should keep the strongest Google-like page first while replay narrows back into the issue-specific helper chain.',
         'Use proof_surface_check and proof_entrypoint when the current attached-page replay is already pinned to the known three-page compatibility bundle and you want the proof-only checker and helper pair reprinted directly from the launcher-companion surface before widening back into the broader replay helper chain.',
+        'Keep the raw proof checker and proof helper paths visible beside the proof note so the pinned-bundle follow-up can still be reopened quickly when only the script references are needed.',
         'Use windows_replay_quickstart after launcher-side sidecar, asset, or proof preflight when the next honest step is to re-enter the replay-attached Windows ladder without reopening the broader route map first.',
         'Use replay_route_shortcut when the preflight already narrowed the problem and you want the shorter replay-route companion visible before the route drops into the attached-page shortcut, replay shortcuts, contextual flow, bundle-first reuse, or the safe-route map.',
         'Keep the attached-pages README, the Windows wrapper, and the lower-level Python launcher visible beside the issue #3 Google attached HTML flow and entrypoint notes so the preflight order stays aligned across Windows and cross-platform replay.'
@@ -271,6 +274,8 @@ Write-Host (("Launcher surface check: {0}") -f $helper.companion_paths.launcher_
 Write-Host (("Attached-pages guide:    {0}") -f $helper.companion_paths.attached_pages_launcher_readme)
 Write-Host (("Windows wrapper:         {0}") -f $helper.companion_paths.attached_pages_launcher_wrapper)
 Write-Host (("Python launcher:         {0}") -f $helper.companion_paths.attached_pages_launcher_entrypoint)
+Write-Host (("Bundle proof checker:    {0}") -f $helper.companion_paths.attached_html_target_bundle_proof_surface_check)
+Write-Host (("Bundle proof helper:     {0}") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint)
 Write-Host (("Bundle proof note:       {0}") -f $helper.companion_paths.attached_html_target_bundle_proof_entrypoint_note)
 Write-Host (("Google flow note:        {0}") -f $helper.companion_paths.google_attached_html_validation_flow_note)
 Write-Host (("Google entrypoint note:  {0}") -f $helper.companion_paths.google_attached_html_entrypoint_note)
