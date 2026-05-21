@@ -506,6 +506,11 @@ EXPECTATIONS = (
     },
     {
         "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
+        "snippet": 'Write-Host (("  Google surface check:  {0}") -f $entrypoint.helper_commands.google_attached_html_surface_check)',
+        "purpose": "The narrower Google entrypoint helper prints the issue-specific surface checker in its companion helper section.",
+    },
+    {
+        "path": "scripts/windows/show_google_issue3_google_attached_html_entrypoint.ps1",
         "snippet": 'Write-Host (("  Google attached flow:  {0}") -f $entrypoint.helper_commands.google_attached_html_validation_flow)',
         "purpose": "The narrower Google entrypoint helper prints the broader Google attached-html flow helper in its companion helper section.",
     },
