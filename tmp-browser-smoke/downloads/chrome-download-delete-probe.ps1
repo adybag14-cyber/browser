@@ -1,8 +1,26 @@
-$repo = "C:\Users\adyba\src\lightpanda-browser"
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8155,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
+
+$repo = if ([string]::IsNullOrWhiteSpace($RepoRoot)) { Resolve-LightpandaRepoRoot $PSScriptRoot } else { $RepoRoot }
 $root = Join-Path $repo "tmp-browser-smoke\downloads"
 $profileRoot = Join-Path $root "profile-download-delete"
-$port = 8155
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+$pageUrl = "http://$Host`:$Port/index.html"
 $initialPng = Join-Path $root "chrome-download-delete.initial.png"
 $browserOut = Join-Path $root "chrome-download-delete.browser.stdout.txt"
 $browserErr = Join-Path $root "chrome-download-delete.browser.stderr.txt"
@@ -14,8 +32,6 @@ Remove-Item $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $profileRoot -Force | Out-Null
 
 Add-Type -AssemblyName System.Drawing
-. "$PSScriptRoot\..\common\Win32Input.ps1"
-. "$PSScriptRoot\..\tabs\TabProbeCommon.ps1"
 
 function Get-ColorBounds([System.Drawing.Bitmap]$Bitmap, [scriptblock]$Matcher) {
   $bounds = [ordered]@{min_x=$null; min_y=$null; max_x=$null; max_y=$null; count=0}
@@ -51,16 +67,6 @@ function Get-ColorBoundsInRegion([System.Drawing.Bitmap]$Bitmap, [int]$MinX, [in
   return $bounds
 }
 
-function Wait-FileExists([string]$Path, [int]$Attempts = 60, [int]$DelayMs = 200) {
-  for ($i = 0; $i -lt $Attempts; $i++) {
-    Start-Sleep -Milliseconds $DelayMs
-    if ((Test-Path $Path) -and ((Get-Item $Path).Length -gt 0)) {
-      return $true
-    }
-  }
-  return $false
-}
-
 function Wait-FileMissing([string]$Path, [int]$Attempts = 60, [int]$DelayMs = 200) {
   for ($i = 0; $i -lt $Attempts; $i++) {
     Start-Sleep -Milliseconds $DelayMs
@@ -82,7 +88,7 @@ New-Item -ItemType Directory -Path $downloadsDir -Force | Out-Null
 [System.IO.File]::WriteAllText($downloadedFile, "download smoke payload`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText(
   $downloadsFile,
-  "2`t23`t23`t1`texample-download.txt`t$downloadedFile`thttp://127.0.0.1:$port/artifact.txt`t`n",
+  "2`t23`t23`t1`texample-download.txt`t$downloadedFile`thttp://$Host`:$Port/artifact.txt`t`n",
   [System.Text.UTF8Encoding]::new($false)
 )
 
@@ -96,25 +102,19 @@ $deleteWorked = $false
 $failure = $null
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m","http.server",$Port,"--bind",$Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "download delete probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","browser://downloads","--window_width","960","--window_height","640","--screenshot_png",$initialPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  $hwnd = Wait-TabWindowHandle $browser.Id
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed","browser://downloads","--window_width","960","--window_height","640","--screenshot_png",$initialPng) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if ($hwnd -eq [IntPtr]::Zero) { throw "download delete probe window handle not found" }
-  $null = Wait-TabTitle $browser.Id "Browser Downloads"
+  $null = Wait-TabTitle -ProcessId $browser.Id -Needle "Browser Downloads" -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
 
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $initialPng) -and ((Get-Item $initialPng).Length -gt 0)) { $pngReady = $true; break }
-  }
+  $pngReady = Wait-LightpandaFileReady -Path $initialPng -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $pngReady) { throw "download delete probe screenshot did not become ready" }
 
   Show-SmokeWindow $hwnd
@@ -143,6 +143,14 @@ try {
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    host = $Host
+    port = $Port
+    page_url = $pageUrl
+    server_ready_timeout_seconds = $ServerReadyTimeoutSeconds
+    window_ready_attempts = $WindowReadyAttempts
+    poll_milliseconds = $PollMilliseconds
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
