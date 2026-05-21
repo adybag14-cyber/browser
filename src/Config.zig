@@ -677,6 +677,9 @@ fn inferSharedFlagOption(opt: []const u8) bool {
 }
 
 fn inferLocalBrowseTarget(token: []const u8) bool {
+    if (std.ascii.startsWithIgnoreCase(token, "file://")) {
+        return true;
+    }
     if (std.mem.indexOf(u8, token, "://") != null) {
         return false;
     }
@@ -1291,6 +1294,12 @@ test "infer mode treats relative windows xhtml path as browse" {
     try std.testing.expectEqual(RunMode.browse, mode);
 }
 
+test "infer mode treats file url as browse" {
+    const mode = try inferModeSlice(&.{ "file:///tmp/attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
 test "infer mode keeps browse for html target after shared flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "agent_files\\attached-page.html" });
 
@@ -1299,6 +1308,16 @@ test "infer mode keeps browse for html target after shared flag" {
 
 test "infer mode keeps browse for xhtml target after shared flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "agent_files\\attached-page.xhtml" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode keeps browse for file url after shared flag" {
+    const mode = try inferModeSlice(&.{
+        "--profile_dir",
+        "/tmp/lightpanda-profile",
+        "file:///tmp/attached-page.xhtml",
+    });
 
     try std.testing.expectEqual(RunMode.browse, mode);
 }
