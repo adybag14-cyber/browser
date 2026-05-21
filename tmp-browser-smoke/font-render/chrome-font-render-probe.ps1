@@ -36,7 +36,7 @@ for ($i = 0; $i -lt 40; $i++) {
 }
 if (-not $ready) { throw "font render server did not become ready" }
 
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","520","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","520","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 $pngReady = $false
 for ($i = 0; $i -lt 80; $i++) {
   Start-Sleep -Milliseconds 250
