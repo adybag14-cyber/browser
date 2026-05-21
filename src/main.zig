@@ -308,16 +308,24 @@ fn isLoopbackIpv4Host(host: []const u8) bool {
     return octet_count == 4;
 }
 
+fn normalizeBrowseHostForClassification(host: []const u8) []const u8 {
+    if (host.len <= 1 or host[host.len - 1] != '.' or host[0] == '[') {
+        return host;
+    }
+    return host[0 .. host.len - 1];
+}
+
 fn isLoopbackBrowseHost(host: []const u8) bool {
     if (host.len == 0) {
         return false;
     }
-    return std.ascii.eqlIgnoreCase(host, "localhost") or
-        std.ascii.endsWithIgnoreCase(host, ".localhost") or
-        isLoopbackIpv4Host(host) or
-        std.mem.eql(u8, host, "0.0.0.0") or
-        std.ascii.eqlIgnoreCase(host, "[::1]") or
-        std.ascii.eqlIgnoreCase(host, "[0:0:0:0:0:0:0:1]");
+    const normalized_host = normalizeBrowseHostForClassification(host);
+    return std.ascii.eqlIgnoreCase(normalized_host, "localhost") or
+        std.ascii.endsWithIgnoreCase(normalized_host, ".localhost") or
+        isLoopbackIpv4Host(normalized_host) or
+        std.mem.eql(u8, normalized_host, "0.0.0.0") or
+        std.ascii.eqlIgnoreCase(normalized_host, "[::1]") or
+        std.ascii.eqlIgnoreCase(normalized_host, "[0:0:0:0:0:0:0:1]");
 }
 
 fn looksLikeImplicitRemoteHost(host: []const u8) bool {
@@ -600,6 +608,24 @@ test "browse target info keeps loopback query targets on the implicit http route
     try std.testing.expectEqualStrings("loopback", info.scope);
     try std.testing.expectEqualStrings("localhost", info.host);
     try std.testing.expectEqualStrings("8123", info.port);
+}
+
+test "browse target info keeps fully qualified localhost hosts on the implicit http route" {
+    const info = browseTargetInfo("localhost.:8123/attached-page.html");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("localhost.", info.host);
+    try std.testing.expectEqualStrings("8123", info.port);
+}
+
+test "browse target info keeps fully qualified localhost subdomains on the loopback path" {
+    const info = browseTargetInfo("https://preview.localhost.:9443/index.html");
+
+    try std.testing.expectEqualStrings("https", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("preview.localhost.", info.host);
+    try std.testing.expectEqualStrings("9443", info.port);
 }
 
 test "browse target info keeps any-bind loopback hosts on the implicit http route" {
