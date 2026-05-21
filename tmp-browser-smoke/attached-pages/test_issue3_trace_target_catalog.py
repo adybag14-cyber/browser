@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import io
+import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from issue3_trace_target_catalog import (
@@ -9,7 +12,9 @@ from issue3_trace_target_catalog import (
     REPRESENTATIVE_TRACE_URLS,
     audit_trace_log,
     audit_trace_source,
+    build_audit_result,
     is_issue3_trace_target,
+    main,
     matching_trace_hints,
     matching_trace_urls,
     missing_trace_hints,
@@ -94,6 +99,42 @@ class Issue3TraceTargetCatalogTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual([], audit_trace_log(trace_path))
+
+    def test_build_audit_result_reports_failures(self) -> None:
+        result = build_audit_result("source", "src/lightpanda.zig", ["anthropic"])
+        self.assertEqual("source", result["audit_kind"])
+        self.assertEqual("src/lightpanda.zig", result["path"])
+        self.assertEqual(["anthropic"], result["missing"])
+        self.assertEqual(1, result["missing_count"])
+        self.assertFalse(result["ok"])
+
+    def test_main_emits_json_for_source_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            trace_path = Path(tmp_dir) / "trace-targets.txt"
+            trace_path.write_text("\n".join(ISSUE3_TRACE_HINTS), encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["source", str(trace_path), "--json"])
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(0, exit_code)
+            self.assertEqual("source", payload["audit_kind"])
+            self.assertTrue(payload["ok"])
+            self.assertEqual([], payload["missing"])
+
+    def test_main_reports_missing_log_targets_in_text_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            trace_path = Path(tmp_dir) / "browse-render.log"
+            trace_path.write_text(
+                f"stage|url={REPRESENTATIVE_TRACE_URLS['google-home']}|detail=ok\n",
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["log", str(trace_path)])
+            output = stdout.getvalue()
+            self.assertEqual(1, exit_code)
+            self.assertIn("[FAIL] issue3 trace log audit", output)
+            self.assertIn("fixture-onload-input", output)
 
 
 if __name__ == "__main__":
