@@ -35,6 +35,18 @@ EXPECTATIONS = (
         "why": "Headed startup should keep local .xhtml targets with #fragment on the browse path.",
     },
     {
+        "label": "config_local_windows_html_query_regression",
+        "path": "src/Config.zig",
+        "snippet": 'test "infer mode treats relative windows html path with query as browse" {',
+        "why": "Windows-style local .html targets with ?query should stay on the browse path.",
+    },
+    {
+        "label": "config_local_windows_xhtml_fragment_regression",
+        "path": "src/Config.zig",
+        "snippet": 'test "infer mode treats relative windows xhtml path with fragment as browse" {',
+        "why": "Windows-style local .xhtml targets with #fragment should stay on the browse path.",
+    },
+    {
         "label": "config_local_html_query_shared_flag_regression",
         "path": "src/Config.zig",
         "snippet": 'test "infer mode keeps browse for html target with query after shared flag" {',
@@ -45,6 +57,18 @@ EXPECTATIONS = (
         "path": "src/Config.zig",
         "snippet": 'test "infer mode keeps browse for xhtml target with fragment after shared flag" {',
         "why": "Shared flags before a local .xhtml target with #fragment should still resolve to browse mode.",
+    },
+    {
+        "label": "config_local_windows_html_query_shared_flag_regression",
+        "path": "src/Config.zig",
+        "snippet": 'test "infer mode keeps browse for windows html target with query after shared flag" {',
+        "why": "Windows-style local .html targets with ?query should still resolve to browse after shared flags.",
+    },
+    {
+        "label": "config_local_windows_xhtml_fragment_shared_flag_regression",
+        "path": "src/Config.zig",
+        "snippet": 'test "infer mode keeps browse for windows xhtml target with fragment after shared flag" {',
+        "why": "Windows-style local .xhtml targets with #fragment should still resolve to browse after shared flags.",
     },
 )
 
