@@ -564,6 +564,24 @@ test "browse target info keeps loopback query targets on the implicit http route
     try std.testing.expectEqualStrings("8123", info.port);
 }
 
+test "browse target info keeps any-bind loopback hosts on the implicit http route" {
+    const info = browseTargetInfo("0.0.0.0:8123/attached-page.html#focus-probe");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("0.0.0.0", info.host);
+    try std.testing.expectEqualStrings("8123", info.port);
+}
+
+test "browse target info keeps ipv6 loopback hosts on the implicit http route" {
+    const info = browseTargetInfo("[::1]:8123/replay.xhtml?case=1");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("[::1]", info.host);
+    try std.testing.expectEqualStrings("8123", info.port);
+}
+
 test "browse target info keeps loopback scope for scheme-less ipv4 pages" {
     const info = browseTargetInfo("127.0.0.1/replay.xhtml");
 
