@@ -1,10 +1,9 @@
 $ErrorActionPreference = "Stop"
-$root = $PSScriptRoot
-$repo = (Resolve-Path (Join-Path $root "..\..")).Path
+$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\image-smoke"
 $profileRoot = Join-Path $root "profile-http-runtime"
 $appDataRoot = Join-Path $profileRoot "lightpanda"
 $port = 8153
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
 $serverScript = Join-Path $root "http_runtime_server.py"
 $outPng = Join-Path $root "http-runtime.png"
 $browserOut = Join-Path $root "http-runtime.browser.stdout.txt"
@@ -39,7 +38,7 @@ if (-not $ready) {
   throw "localhost image runtime server did not become ready"
 }
 
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/img-page.html","--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/img-page.html","--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 $pngReady = $false
 for ($i = 0; $i -lt 80; $i++) {
   Start-Sleep -Milliseconds 250
