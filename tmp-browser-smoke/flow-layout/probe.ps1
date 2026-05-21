@@ -1,7 +1,8 @@
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\flow-layout"
+$root = $PSScriptRoot
+$repo = (Resolve-Path (Join-Path $root "..\..")).ProviderPath
 $port = 8137
-$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
+$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $outPng = Join-Path $root "flow-layout.png"
 $browserOut = Join-Path $root "browser.stdout.txt"
 $browserErr = Join-Path $root "browser.stderr.txt"
@@ -18,7 +19,7 @@ for ($i = 0; $i -lt 30; $i++) {
   } catch {}
 }
 if (-not $ready) { throw "localhost probe server did not become ready" }
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 $pngReady = $false
 for ($i = 0; $i -lt 60; $i++) {
   Start-Sleep -Milliseconds 250
