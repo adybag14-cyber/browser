@@ -79,7 +79,7 @@ try {
   $env:APPDATA = $policyProfile
   $env:LOCALAPPDATA = $policyProfile
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse", "http://127.0.0.1:$port/policy-page.html", "--screenshot_png", $policyScreenshot -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse", "--browser_mode", "headed", "http://127.0.0.1:$port/policy-page.html", "--screenshot_png", $policyScreenshot -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $screenshotReady = $false
   for ($i = 0; $i -lt 80; $i++) {
     Start-Sleep -Milliseconds 250
