@@ -328,15 +328,15 @@ $entrypoint = [ordered]@{
 }
 
 $entrypoint.recommended_next_key = if ($entrypoint.explicit_input_path_count -gt 0) {
-    'attached_bundle_first'
+    'attached_bundle_suite_surface'
 } elseif (-not [string]::IsNullOrWhiteSpace($entrypoint.repo_root) -or -not [string]::IsNullOrWhiteSpace($entrypoint.summary_path)) {
     'contextual_flow'
 } else {
     'suite_router_shortcut_entrypoint'
 }
 $entrypoint.recommended_next_command = $entrypoint.helper_commands[$entrypoint.recommended_next_key]
-$entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq 'attached_bundle_first') {
-    'Explicit input paths are already in play, so keep the compact bundle-suite helper visible and stay pinned to the known three-page compatibility bundle before widening back into the broader Google-only issue #3 helper chain.'
+$entrypoint.recommended_next_reason = if ($entrypoint.recommended_next_key -eq 'attached_bundle_suite_surface') {
+    'Explicit input paths are already in play, so keep the compact bundle-suite helper visible first and stay pinned to the known three-page compatibility bundle before narrowing further into bundle-first replay or widening back into the broader Google-only issue #3 helper chain.'
 } elseif ($entrypoint.recommended_next_key -eq 'contextual_flow') {
     'A non-default repo root or saved summary is already in play, so keep that replay context aligned before choosing between replay shortcuts, replay route, the next-step matrix, the compact bundle-suite helper, the attached bundle branch, or the safe-route helpers.'
 } else {
