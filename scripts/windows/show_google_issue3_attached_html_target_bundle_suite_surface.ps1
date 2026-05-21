@@ -71,7 +71,7 @@ function Format-HelperCommand {
         [string[]]$Switches = @()
     )
 
-    $command = "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\$ScriptName"
+    $command = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\$ScriptName"
     if ($Arguments -and $Arguments.Count -gt 0) {
         $command += " " + ($Arguments -join ' ')
     }
@@ -107,7 +107,7 @@ function Format-HelperCommandWithRepoRootEnv {
         return Format-HelperCommand -ScriptName $ScriptName -Arguments $fallbackArguments -Switches $Switches
     }
 
-    $command = "& '.\\scripts\\windows\\$ScriptName'"
+    $command = "& '.\scripts\windows\$ScriptName'"
     foreach ($entry in $Arguments.GetEnumerator()) {
         $value = $entry.Value
         if ($null -eq $value) {
@@ -138,7 +138,7 @@ function Format-HelperCommandWithRepoRootEnv {
     }
 
     $escapedRepoRoot = ("$RepoRootOverride") -replace "'", "''"
-    return "powershell -NoProfile -ExecutionPolicy Bypass -Command `"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command`""
+    return "powershell -NoProfile -ExecutionPolicy Bypass -Command ``"`$env:LIGHTPANDA_REPO_ROOT = '$escapedRepoRoot'; $command``""
 }
 
 if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_ROOT)) {
@@ -160,6 +160,7 @@ Add-SharedArgument -Arguments $bundleSurfaceCheckArguments -Name RepoRoot -Value
 $reentryArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $reentryArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $reentryArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $reentryArguments -Name BrowserExe -Value $BrowserExe
 Add-SharedArgument -Arguments $reentryArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 Add-SharedPathArrayArgument -Arguments $reentryArguments -Name InputPath -Values $InputPath
 
