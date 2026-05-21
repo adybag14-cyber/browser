@@ -88,7 +88,7 @@ default_zoom_percent	100
 homepage_url	
 "@ | Set-Content -Path (Join-Path $appDataRoot "browse-settings-v1.txt") -NoNewline
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$Url,"--window_width","980","--window_height","460","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$Url,"--window_width","980","--window_height","460","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $result = $null
   try {
     $pngReady = $false
