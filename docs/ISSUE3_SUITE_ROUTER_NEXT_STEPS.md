@@ -30,12 +30,14 @@ Before trusting the printed matrix after helper or note edits, rerun the fail-fa
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1
 ```
 
 Use those checks when:
 - the suite-router next-step note or helper output just changed and you want the compact decision surface to fail fast before reuse
+- the replay is about to narrow into the launcher-backed sidecar-first branch and you want the cheaper attached export integrity check rerun before the broader Google-shaped surface check or the narrower issue-specific bridge
 - the replay is about to narrow into the broader Google-shaped attached-page route and you want that wider helper surface revalidated first
 - the replay is about to narrow from the broader Google-shaped attached-page route into the issue-specific entrypoint and you want the narrower checker rerun before trusting that bridge
 
@@ -105,6 +107,7 @@ If the replay is already carrying a non-default checkout, keep that same repo ro
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_suite_router_next_steps_validation_surface.ps1 -RepoRoot '<repo-root>'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\start_attached_pages_catalog.ps1 -RepoRoot '<repo-root>' -InputPath '<attached-html-root>' -GoogleStyle -AuditSidecars
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1 -RepoRoot '<repo-root>'
 powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_google_attached_html_entrypoint_validation_surface.ps1 -RepoRoot '<repo-root>'
 ```
@@ -120,7 +123,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue
 - Use `show_google_issue3_validation_router_attached_html_quickstart.ps1` when the broader validation router already narrowed the replay to attached localhost follow-up and you want the validation-router bridge, the broader attached-page flow helper, and the dedicated Google-shaped attached-page follow-up kept visible before the route drops to the smaller issue `#3` helpers.
 - Use `show_google_issue3_suite_router_attached_html_quickstart.ps1` when the replay is already inside the issue `#3` helper chain and you want the shorter suite-router-side attached-page bridge visible before the wider replay helpers return.
 - Use `show_google_attached_html_validation_flow.ps1` when the Google-shaped attached-page lane still matters and you want the broader launcher-backed sidecar-bundle audit, the wider Google attached-html surface check, the narrower issue-specific checker, and the dedicated flow reopened before the route narrows into the issue-specific bridge.
-- Use `show_google_issue3_google_attached_html_entrypoint.ps1` only after `show_google_attached_html_validation_flow.ps1` is already back in view and the broader plus narrower checks have been rerun, so the issue-specific bridge narrows the route instead of skipping the sidecar-first branch too early.
+- Use `show_google_issue3_google_attached_html_entrypoint.ps1` only after `show_google_attached_html_validation_flow.ps1` is already back in view and the launcher-backed sidecar audit plus the broader and narrower checks have been rerun, so the issue-specific bridge narrows the route instead of skipping the sidecar-first branch too early.
 - Use `check_google_issue3_suite_router_next_steps_validation_surface.ps1` immediately before `show_google_issue3_suite_router_next_steps.ps1` when you want the compact executable start-point matrix to fail fast on moved notes or helper renames before you widen back into the broader branch map.
 - Use `show_google_issue3_suite_router_next_steps.ps1` after its dedicated checker when you want the explicit executable start-point matrix reprinted before choosing the narrower shortcut-first, attached-html, contextual, or bundle-first follow-up.
 - Use `show_google_issue3_attached_bundle_first_entrypoint.ps1` when the current saved or attached pages are still the known three-page compatibility bundle and you want that pinned route exercised first.
