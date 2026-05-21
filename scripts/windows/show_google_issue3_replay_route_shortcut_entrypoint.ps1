@@ -166,6 +166,25 @@ Add-SharedArgument -Arguments $bundleArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $bundleArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedPathArrayArgument -Arguments $bundleArguments -Name InputPath -Values $InputPath
 
+$preferredPageArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $preferredPageArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $preferredPageArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $preferredPageArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $preferredPageArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+
+$browserPinnedArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $browserPinnedArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $browserPinnedArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $browserPinnedArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $browserPinnedArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $browserPinnedArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+
+$browserOnlyArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $browserOnlyArguments -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $browserOnlyArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $browserOnlyArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $browserOnlyArguments -Name BrowserExe -Value $BrowserExe
+
 $attachedHtmlFlowArguments = [ordered]@{}
 if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
@@ -226,32 +245,34 @@ $entrypoint = [ordered]@{
     purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the replay-route shortcut surface check, the attached-page shortcut, the broader attached-page localhost flow helper, the narrower Google-shaped attached-page flow helper, the broader top-level attached-page bridge, the compact top-level attached-page quickstart, the top-level attached-page catalog quickstart, the top-level shortcut-first bridge, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay shortcuts, the compact bundle-suite surface helper, the pinned bundle reference and proof notes, the bundle route, and the current safe-route helpers while preserving repo-root, saved-summary, preferred initial page, non-default browser, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
+    browser_exe = $BrowserExe
+    preferred_initial_page = $PreferredInitialPage
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     top_level_commands = [ordered]@{
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
         attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
         attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlTargetBundleSuiteArguments -RepoRootOverride $RepoRoot
         replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand
-        attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
+        attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $preferredPageArguments
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
     }
     helper_commands = [ordered]@{
         replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand
         attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments -RepoRootOverride $RepoRoot
         google_attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments -RepoRootOverride $RepoRoot
-        top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $bundleArguments
-        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $bundleArguments
+        top_level_attached_html_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_entrypoint.ps1' -Arguments $browserOnlyArguments
+        top_level_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $browserPinnedArguments
         top_level_attached_html_catalog_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_catalog_quickstart.ps1' -Arguments $bundleArguments
         top_level_shortcut_first_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_top_level_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
-        attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
+        attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $preferredPageArguments
         replay_shortcuts = Format-HelperCommand -ScriptName 'show_google_issue3_replay_shortcuts.ps1' -Arguments $bundleArguments
         replay_shortcuts_windows_replay_attached_html_bridge = $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand
         windows_replay_attached_html_surface_check = $windowsReplayAttachedHtmlSurfaceCheckCommand
-        windows_replay_attached_html_quickstart = $windowsReplayAttachedHtmlQuickstartCommand
+        windows_replay_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $browserPinnedArguments
         suite_router_next_steps = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_next_steps.ps1' -Arguments $bundleArguments
         contextual_flow = $contextualFlowCommand
-        attached_html_target_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $bundleArguments
-        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $bundleArguments
+        attached_html_target_bundle_suite_surface = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $browserPinnedArguments
+        attached_bundle_first = Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $browserPinnedArguments
         safe_route_entrypoints = Format-HelperCommand -ScriptName 'show_google_issue3_safe_route_entrypoints.ps1' -Arguments $bundleArguments
         fresh_safe_route_replay = Format-HelperCommand -ScriptName 'run_google_issue3_recommended_validation_safe_route_runner_patch_handoff.ps1' -Arguments $sharedArguments
         reuse_current_outputs = Format-HelperCommand -ScriptName 'show_google_issue3_validation_safe_route_runner_patch_wrapper.ps1' -Arguments $sharedArguments
@@ -323,6 +344,12 @@ if ($entrypoint.repo_root) {
 }
 if ($entrypoint.summary_path) {
     Write-Host (("Summary path:{0}") -f (" $($entrypoint.summary_path)"))
+}
+if ($entrypoint.browser_exe) {
+    Write-Host (("Browser exe: {0}") -f $entrypoint.browser_exe)
+}
+if ($entrypoint.preferred_initial_page) {
+    Write-Host (("Preferred page:{0}") -f (" $($entrypoint.preferred_initial_page)"))
 }
 if ($entrypoint.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $entrypoint.explicit_input_path_count)
