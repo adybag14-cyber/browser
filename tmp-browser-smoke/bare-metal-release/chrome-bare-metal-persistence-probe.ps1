@@ -39,6 +39,8 @@ function Start-BareMetalReleaseBrowser {
 
   $arguments = @(
     "browse",
+    "--browser_mode",
+    "headed",
     $StartupUrl,
     "--window_width",
     "960",
