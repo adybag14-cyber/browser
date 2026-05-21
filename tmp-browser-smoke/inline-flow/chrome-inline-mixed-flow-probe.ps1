@@ -1,7 +1,12 @@
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\inline-flow"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+
+$repo = Resolve-LightpandaRepoRoot $PSScriptRoot
+$root = Join-Path $repo "tmp-browser-smoke\inline-flow"
 $port = 8138
-$browserExe = "C:\Users\adyba\src\lightpanda-browser\zig-out\bin\lightpanda.exe"
+$browserExe = Resolve-LightpandaBrowserExe $repo $null
 $outPng = Join-Path $root "inline-flow.png"
 $browserOut = Join-Path $root "browser.stdout.txt"
 $browserErr = Join-Path $root "browser.stderr.txt"
@@ -9,43 +14,15 @@ $serverOut = Join-Path $root "server.stdout.txt"
 $serverErr = Join-Path $root "server.stderr.txt"
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 
-function Get-ProcessCommandLine($TargetPid) {
-  $meta = Get-CimInstance Win32_Process -Filter "ProcessId=$TargetPid" -ErrorAction SilentlyContinue |
-    Select-Object Name,ProcessId,CommandLine,CreationDate
-  if ($meta) { return [string]$meta.CommandLine }
-  return ""
-}
-
-function Stop-VerifiedProcess($TargetPid) {
-  $cmd = Get-ProcessCommandLine $TargetPid
-  if ($cmd -and $cmd -notmatch "codex\.js|@openai/codex") {
-    try {
-      Stop-Process -Id $TargetPid -Force -ErrorAction Stop
-    } catch {
-      if (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue) { throw }
-    }
-  }
-}
-
-$server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$python = Resolve-LightpandaPythonCommand
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m","http.server",$port,"--bind","127.0.0.1")) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 try {
-  $ready = $false
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  $ready = Wait-LightpandaHttpReady -Url "http://127.0.0.1:$port/index.html" -TimeoutSeconds 15 -PollMilliseconds 250
   if (-not $ready) { throw "localhost probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/index.html","--screenshot_png",$outPng -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   try {
-    $pngReady = $false
-    for ($i = 0; $i -lt 60; $i++) {
-      Start-Sleep -Milliseconds 250
-      if ((Test-Path $outPng) -and ((Get-Item $outPng).Length -gt 0)) { $pngReady = $true; break }
-    }
+    $pngReady = Wait-LightpandaFileReady -Path $outPng -Attempts 60 -PollMilliseconds 250
     if (-not $pngReady) { throw "inline flow screenshot did not become ready" }
 
     Add-Type -AssemblyName System.Drawing
@@ -104,7 +81,7 @@ try {
     }
   }
   finally {
-    Stop-VerifiedProcess $browser.Id
+    Stop-LightpandaOwnedProbeProcess $browser | Out-Null
     for ($i = 0; $i -lt 20; $i++) {
       if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
       Start-Sleep -Milliseconds 100
@@ -112,7 +89,7 @@ try {
   }
 }
 finally {
-  Stop-VerifiedProcess $server.Id
+  Stop-LightpandaOwnedProbeProcess $server | Out-Null
   for ($i = 0; $i -lt 20; $i++) {
     if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
     Start-Sleep -Milliseconds 100
