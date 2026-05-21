@@ -1,21 +1,41 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8145,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$root = $PSScriptRoot
-$repo = (Resolve-Path (Join-Path $root "..\..")).ProviderPath
-$port = 8145
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\Win32Input.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "tabs\TabProbeCommon.ps1")
+
+Add-Type -AssemblyName System.Drawing
+
+$repo = Resolve-LightpandaRepoRoot $PSScriptRoot
+if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+  $repo = $RepoRoot
+}
+$root = Join-Path $repo "tmp-browser-smoke\zoom"
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+$pageUrl = "http://$Host`:$Port/index.html"
 $beforePng = Join-Path $root "zoom-before.png"
 $browserOut = Join-Path $root "zoom-browser.stdout.txt"
 $browserErr = Join-Path $root "zoom-browser.stderr.txt"
 $serverOut = Join-Path $root "zoom-server.stdout.txt"
 $serverErr = Join-Path $root "zoom-server.stderr.txt"
+
 Remove-Item $beforePng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 Get-ChildItem -Path $repo -Filter "lightpanda-screenshot-*.png" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-Add-Type -AssemblyName System.Drawing
-. "$PSScriptRoot\..\common\Win32Input.ps1"
-
 function Get-ColorBounds([System.Drawing.Bitmap]$Bitmap, [scriptblock]$Matcher) {
-  $bounds = [ordered]@{min_x=$null; min_y=$null; max_x=$null; max_y=$null; count=0}
+  $bounds = [ordered]@{ min_x = $null; min_y = $null; max_x = $null; max_y = $null; count = 0 }
   for ($y = 0; $y -lt $Bitmap.Height; $y++) {
     for ($x = 0; $x -lt $Bitmap.Width; $x++) {
       $c = $Bitmap.GetPixel($x, $y)
@@ -44,31 +64,18 @@ $zoomWorked = $false
 $failure = $null
 
 try {
-  $server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
-  for ($i = 0; $i -lt 30; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  $python = Resolve-LightpandaPythonCommand
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m","http.server",$Port,"--bind",$Host)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "zoom probe server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","320","--window_height","420","--screenshot_png",$beforePng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    if ((Test-Path $beforePng) -and ((Get-Item $beforePng).Length -gt 0)) { $pngReady = $true; break }
-  }
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed",$pageUrl,"--window_width","320","--window_height","420","--screenshot_png",$beforePng) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $pngReady = Wait-LightpandaFileReady -Path $beforePng -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if (-not $pngReady) { throw "zoom probe screenshot did not become ready" }
 
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    $proc = Get-Process -Id $browser.Id -ErrorAction SilentlyContinue
-    if ($proc -and $proc.MainWindowHandle -ne 0) {
-      $hwnd = [IntPtr]$proc.MainWindowHandle
-      break
-    }
-  }
+  $hwnd = Wait-TabWindowHandle -ProcessId $browser.Id -Attempts $WindowReadyAttempts -PollMilliseconds $PollMilliseconds
   if ($hwnd -eq [IntPtr]::Zero) { throw "zoom probe window handle not found" }
 
   $bmp = [System.Drawing.Bitmap]::new($beforePng)
@@ -88,8 +95,10 @@ try {
   Send-SmokeCtrlShiftP
 
   for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
-    $latest = Get-ChildItem -Path $repo -Filter "lightpanda-screenshot-*.png" -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+    Start-Sleep -Milliseconds $PollMilliseconds
+    $latest = Get-ChildItem -Path $repo -Filter "lightpanda-screenshot-*.png" -ErrorAction SilentlyContinue |
+      Sort-Object LastWriteTimeUtc -Descending |
+      Select-Object -First 1
     if ($latest) {
       $afterPng = $latest.FullName
       break
@@ -114,15 +123,21 @@ try {
 } catch {
   $failure = $_.Exception.Message
 } finally {
-  $serverMeta = if ($server) { Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  $browserMeta = if ($browser) { Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate } else { $null }
-  if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue }
-  if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
   Start-Sleep -Milliseconds 200
   $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
   $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
 
   [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    host = $Host
+    port = $Port
+    page_url = $pageUrl
+    server_ready_timeout_seconds = $ServerReadyTimeoutSeconds
+    window_ready_attempts = $WindowReadyAttempts
+    poll_milliseconds = $PollMilliseconds
     server_pid = if ($server) { $server.Id } else { 0 }
     browser_pid = if ($browser) { $browser.Id } else { 0 }
     ready = $ready
