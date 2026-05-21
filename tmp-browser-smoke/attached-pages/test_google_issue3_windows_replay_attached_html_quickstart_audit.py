@@ -30,6 +30,18 @@ DRIFT_CASES = (
         "",
     ),
     (
+        "google_surface_check_note",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_attached_html_validation_surface.ps1",
+        "",
+    ),
+    (
+        "google_attached_flow_note",
+        "docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md",
+        "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1",
+        "",
+    ),
+    (
         "validation_router_quickstart_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
         "validation_router_attached_html_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_validation_router_attached_html_quickstart.ps1' -Arguments $sharedArguments",
@@ -446,7 +458,7 @@ DRIFT_CASES = (
     (
         "attached_bundle_suite_surface_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
+        'Write-Host (("  Bundle suite helper:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
         "",
     ),
     (
