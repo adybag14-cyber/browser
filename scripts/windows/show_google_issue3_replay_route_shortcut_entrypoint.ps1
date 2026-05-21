@@ -169,6 +169,49 @@ if ($InputPath) {
     $attachedHtmlFlowArguments['InputPath'] = @($InputPath)
 }
 
+$googleAttachedHtmlFlowArguments = [ordered]@{}
+if ($InputPath) {
+    $googleAttachedHtmlFlowArguments['InputPath'] = @($InputPath)
+}
+if ($BrowserExe) {
+    $googleAttachedHtmlFlowArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $googleAttachedHtmlFlowArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
+$attachedHtmlSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedHtmlSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($SummaryPath) {
+    $attachedHtmlSuiteArguments['SummaryPath'] = $SummaryPath
+}
+if ($BrowserExe) {
+    $attachedHtmlSuiteArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $attachedHtmlSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
+$attachedHtmlTargetBundleSuiteArguments = [ordered]@{
+    ChangeArea = 'attached-html-target-bundle'
+}
+if ($InputPath -and $InputPath.Count -gt 0) {
+    $attachedHtmlTargetBundleSuiteArguments['InputPath'] = @($InputPath)
+}
+if ($SummaryPath) {
+    $attachedHtmlTargetBundleSuiteArguments['SummaryPath'] = $SummaryPath
+}
+if ($BrowserExe) {
+    $attachedHtmlTargetBundleSuiteArguments['BrowserExe'] = $BrowserExe
+}
+if ($PreferredInitialPage) {
+    $attachedHtmlTargetBundleSuiteArguments['PreferredInitialPage'] = $PreferredInitialPage
+}
+
 $googleFlowCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_google_input_validation_flow.ps1' -RepoRootOverride $RepoRoot
 $contextualFlowCommand = Format-HelperCommand -ScriptName 'show_google_issue3_contextual_flow.ps1' -Arguments $bundleArguments
 $replayRouteShortcutSurfaceCheckCommand = Format-HelperCommandWithRepoRootEnv -ScriptName 'check_google_issue3_replay_route_shortcut_validation_surface.ps1' -RepoRootOverride $RepoRoot
@@ -178,18 +221,14 @@ $replayShortcutsWindowsReplayAttachedHtmlBridgeCommand = Format-HelperCommand -S
 
 $entrypoint = [ordered]@{
     issue = 'Google issue #3 replay-route shortcut entrypoint'
-    purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the replay-route shortcut surface check, the attached-page shortcut, the broader attached-page localhost flow helper, the narrower Google-shaped attached-page flow helper, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay shortcuts, the compact bundle-suite surface helper, the pinned bundle reference and proof notes, the bundle route, and the current safe-route helpers while preserving repo-root, saved-summary, and pinned bundle-input context when it is already in play.'
+    purpose = 'Print the shortest replay-route follow-up from the headed validation suite router into the replay-route shortcut surface check, the attached-page shortcut, the broader attached-page localhost flow helper, the narrower Google-shaped attached-page flow helper, the replay-shortcuts Windows replay attached-page bridge, the replay-side surface check, the Windows replay attached-page quickstart, replay shortcuts, the compact bundle-suite surface helper, the pinned bundle reference and proof notes, the bundle route, and the current safe-route helpers while preserving repo-root, saved-summary, preferred initial page, non-default browser, and pinned bundle-input context when it is already in play.'
     repo_root = $RepoRoot
     summary_path = $SummaryPath
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     top_level_commands = [ordered]@{
         replay_route = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route.ps1' -Arguments $bundleArguments
-        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html'
-        }) -RepoRootOverride $RepoRoot
-        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([ordered]@{
-            ChangeArea = 'attached-html-target-bundle'
-        }) -RepoRootOverride $RepoRoot
+        attached_html_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlSuiteArguments -RepoRootOverride $RepoRoot
+        attached_bundle_change_area = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_headed_validation_suites.ps1' -Arguments $attachedHtmlTargetBundleSuiteArguments -RepoRootOverride $RepoRoot
         replay_route_shortcut_surface_check = $replayRouteShortcutSurfaceCheckCommand
         attached_html_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_shortcut_entrypoint.ps1' -Arguments $bundleArguments
         suite_router_shortcut_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_shortcut_first_entrypoint.ps1' -Arguments $bundleArguments
