@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import argparse
+import json
+import sys
 from pathlib import Path
 from typing import Iterable
 
@@ -89,3 +92,65 @@ def audit_trace_log(path: str | Path) -> list[str]:
     trace_path = Path(path)
     lines = trace_path.read_text(encoding="utf-8").splitlines()
     return missing_trace_urls(lines)
+
+
+def build_audit_result(audit_kind: str, path: str | Path, missing: Iterable[str]) -> dict[str, object]:
+    missing_items = list(missing)
+    return {
+        "audit_kind": audit_kind,
+        "path": str(path),
+        "missing": missing_items,
+        "missing_count": len(missing_items),
+        "ok": not missing_items,
+    }
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Audit issue #3 trace source snippets or trace logs against the shared target catalog."
+    )
+    parser.add_argument(
+        "audit_kind",
+        choices=("source", "log"),
+        help="Whether to audit source hints or representative trace-log URLs.",
+    )
+    parser.add_argument(
+        "path",
+        type=Path,
+        help="Path to the source file or trace log to inspect.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the audit result as JSON.",
+    )
+    return parser.parse_args(argv)
+
+
+def emit_audit_result(result: dict[str, object], emit_json: bool) -> None:
+    if emit_json:
+        json.dump(result, fp=sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return
+
+    status = "PASS" if result["ok"] else "FAIL"
+    audit_kind = result["audit_kind"]
+    path = result["path"]
+    missing = result["missing"]
+    print(f"[{status}] issue3 trace {audit_kind} audit")
+    print(f"Path: {path}")
+    print(f"Missing targets: {result['missing_count']}")
+    for item in missing:
+        print(f"- {item}")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    missing = audit_trace_source(args.path) if args.audit_kind == "source" else audit_trace_log(args.path)
+    result = build_audit_result(args.audit_kind, args.path, missing)
+    emit_audit_result(result, args.json)
+    return 0 if result["ok"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
