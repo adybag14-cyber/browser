@@ -64,8 +64,12 @@ class HeadedPopupProbeLaunchAuditTests(unittest.TestCase):
         self.assertTrue(
             {
                 "popup_anchor_launches_headed_explicitly",
+                "popup_form_enter_launches_headed_explicitly",
+                "popup_form_post_launches_headed_explicitly",
+                "popup_query_load_launches_headed_explicitly",
                 "popup_script_blank_launches_headed_explicitly",
                 "popup_script_policy_launches_headed_explicitly",
+                "popup_script_policy_block_launches_headed_explicitly",
                 "popup_named_anchor_launches_headed_explicitly",
             }.issubset(covered_labels)
         )
