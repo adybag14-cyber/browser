@@ -265,6 +265,27 @@ fn isLoopbackBrowseHost(host: []const u8) bool {
         std.ascii.eqlIgnoreCase(host, "[0:0:0:0:0:0:0:1]");
 }
 
+fn browseTargetImplicitLoopback(url: []const u8) ?BrowseTargetInfo {
+    if (std.mem.indexOf(u8, url, "://") != null) {
+        return null;
+    }
+    const authority_end = std.mem.indexOfAny(u8, url, "/\\?#") orelse url.len;
+    if (authority_end == 0) {
+        return null;
+    }
+    const authority = url[0..authority_end];
+    const host = browseTargetHost(authority);
+    if (!isLoopbackBrowseHost(host)) {
+        return null;
+    }
+    return .{
+        .scheme = "implicit_http",
+        .scope = "loopback",
+        .host = host,
+        .port = browseTargetPort(authority),
+    };
+}
+
 fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
     const scheme = browseTargetScheme(url);
     if (std.ascii.eqlIgnoreCase(scheme, "file")) {
@@ -277,6 +298,9 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
     }
 
     const authority = browseTargetAuthority(url) orelse {
+        if (browseTargetImplicitLoopback(url)) |implicit_loopback| {
+            return implicit_loopback;
+        }
         if (std.mem.indexOf(u8, url, "://") == null and
             (std.mem.indexOfScalar(u8, url, '/') != null or
                 std.mem.indexOfScalar(u8, url, '\\') != null or
@@ -396,6 +420,24 @@ test "browse target info classifies windows attached html paths as local paths" 
     try std.testing.expectEqualStrings("local_path", info.scope);
     try std.testing.expectEqualStrings("(none)", info.host);
     try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info classifies scheme-less localhost pages as loopback" {
+    const info = browseTargetInfo("localhost:8123/attached-page.html");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("localhost", info.host);
+    try std.testing.expectEqualStrings("8123", info.port);
+}
+
+test "browse target info keeps loopback scope for scheme-less ipv4 pages" {
+    const info = browseTargetInfo("127.0.0.1/replay.xhtml");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("127.0.0.1", info.host);
+    try std.testing.expectEqualStrings("(default)", info.port);
 }
 
 test "headed runtime helper stays active only for native headed execution" {
