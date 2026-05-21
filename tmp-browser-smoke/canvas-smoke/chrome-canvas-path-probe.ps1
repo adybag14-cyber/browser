@@ -63,7 +63,7 @@ try {
   for ($i = 0; $i -lt 40; $i++) { Start-Sleep -Milliseconds 250; try { $resp = Invoke-WebRequest -UseBasicParsing -Uri $pageUrl -TimeoutSec 2; if ($resp.StatusCode -eq 200) { $ready = $true; break } } catch {} }
   if (-not $ready) { throw 'canvas path smoke server did not become ready' }
   $env:APPDATA = $profileRoot; $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList 'browse',$pageUrl,'--window_width','420','--window_height','360','--screenshot_png',$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList 'browse','--browser_mode','headed',$pageUrl,'--window_width','420','--window_height','360','--screenshot_png',$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   try {
     $pngReady = $false
     for ($i = 0; $i -lt 80; $i++) { Start-Sleep -Milliseconds 250; if ((Test-Path $outPng) -and ((Get-Item $outPng).Length -gt 0)) { $pngReady = $true; break } }
