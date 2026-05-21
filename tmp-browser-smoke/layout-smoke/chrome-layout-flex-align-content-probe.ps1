@@ -24,7 +24,7 @@ try {
   if (-not (Wait-HttpReady $pageUrl)) { throw "flex align-content smoke server did not become ready" }
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","480","--window_height","420","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","480","--window_height","420","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   try {
     if (-not (Wait-Screenshot $outPng)) { throw "flex align-content screenshot did not become ready" }
     $red = Find-ColorBounds $outPng { param($c) $c.R -ge 180 -and $c.G -le 100 -and $c.B -le 100 }
