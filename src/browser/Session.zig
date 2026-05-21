@@ -1012,3 +1012,18 @@ test "google wait trace gate includes the saved localhost google probe, exact at
     try std.testing.expect(googleWaitTraceEnabled("https://www.google.com/"));
     try std.testing.expect(!googleWaitTraceEnabled("http://127.0.0.1:8000/tmp-browser-smoke/form-controls/index.html"));
 }
+
+test "google wait trace gate stays enabled for mixed-case attached urls with query and fragment suffixes" {
+    try std.testing.expect(googleWaitTraceEnabled(
+        "HTTP://127.0.0.1:8000/TMP-BROWSER-SMOKE/LOCAL-HTML-FIXTURES/MOUSE_DOWN_FOCUS_INPUT.HTML?Probe=1#Focus",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/CONTROL%20YOUR%20ONLINE%20SAFETY%20AND%20PRIVACY%20%E2%80%93%20GOOGLE%20SAFETY%20CENTRE.HTML?copy=UPPER#A",
+    ));
+    try std.testing.expect(googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/PRESIDENTIAL%20UNSEALING%20AND%20REPORTING%20SYSTEM%20FOR%20UAP%20ENCOUNTERS%20_%20U.S.%20DEPARTMENT%20OF%20WAR.HTML?mode=trace",
+    ));
+    try std.testing.expect(!googleWaitTraceEnabled(
+        "http://127.0.0.1:8000/tmp-browser-smoke/local-html-fixtures/body_onload_keyboard.html?Probe=1#Focus",
+    ));
+}
