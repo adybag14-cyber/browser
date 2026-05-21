@@ -1297,6 +1297,12 @@ test "infer mode keeps browse for html target after shared flag" {
     try std.testing.expectEqual(RunMode.browse, mode);
 }
 
+test "infer mode keeps browse for xhtml target after shared flag" {
+    const mode = try inferModeSlice(&.{ "--obey_robots", "agent_files\\attached-page.xhtml" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
 test "infer mode keeps fetch fallback after obey robots flag" {
     const mode = try inferModeSlice(&.{ "--obey_robots", "https://example.com/" });
 
@@ -1305,6 +1311,12 @@ test "infer mode keeps fetch fallback after obey robots flag" {
 
 test "infer mode keeps fetch for remote html url without browse hint" {
     const mode = try inferModeSlice(&.{ "https://example.com/attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.fetch, mode);
+}
+
+test "infer mode keeps fetch for remote htm url without browse hint" {
+    const mode = try inferModeSlice(&.{ "https://example.com/attached-page.htm" });
 
     try std.testing.expectEqual(RunMode.fetch, mode);
 }
