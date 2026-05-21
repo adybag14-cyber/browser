@@ -1,8 +1,11 @@
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\layout-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+
+$root = $PSScriptRoot
+$repo = Resolve-LightpandaRepoRoot $root
+$browserExe = Resolve-LightpandaBrowserExe $repo $null
+$python = Resolve-LightpandaPythonCommand
 $serverScript = Join-Path $root "layout_server.py"
 $common = Join-Path $root "LayoutProbeCommon.ps1"
 . $common
@@ -19,7 +22,7 @@ $profileRoot = Join-Path $root "profile-overflow-hidden"
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
 Reset-ProfileRoot $profileRoot
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript,$port)) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 try {
   if (-not (Wait-HttpReady $pageUrl)) { throw "overflow hidden smoke server did not become ready" }
   $env:APPDATA = $profileRoot
