@@ -1,32 +1,39 @@
 $ErrorActionPreference = "Stop"
-$root = $PSScriptRoot
-$repo = (Resolve-Path (Join-Path $root "..\..")).ProviderPath
+
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+
+$repo = Resolve-LightpandaRepoRoot $PSScriptRoot
 $port = 8137
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+$browserExe = Resolve-LightpandaBrowserExe $repo $null
+$python = Resolve-LightpandaPythonCommand
+$root = Join-Path $repo "tmp-browser-smoke\flow-layout"
 $outPng = Join-Path $root "flow-layout.png"
 $browserOut = Join-Path $root "browser.stdout.txt"
 $browserErr = Join-Path $root "browser.stderr.txt"
 $serverOut = Join-Path $root "server.stdout.txt"
 $serverErr = Join-Path $root "server.stderr.txt"
+$pageUrl = "http://127.0.0.1:$port/index.html"
+
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-$server = Start-Process -FilePath "python" -ArgumentList "-m","http.server",$port,"--bind","127.0.0.1" -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+
+$server = $null
+$browser = $null
 $ready = $false
-for ($i = 0; $i -lt 30; $i++) {
-  Start-Sleep -Milliseconds 250
-  try {
-    $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 2
-    if ($resp.StatusCode -eq 200) { $ready = $true; break }
-  } catch {}
-}
-if (-not $ready) { throw "localhost probe server did not become ready" }
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 $pngReady = $false
-for ($i = 0; $i -lt 60; $i++) {
-  Start-Sleep -Milliseconds 250
-  if ((Test-Path $outPng) -and ((Get-Item $outPng).Length -gt 0)) { $pngReady = $true; break }
-}
 $analysis = $null
-if ($pngReady) {
+$failure = $null
+
+try {
+  if (-not (Test-Path -LiteralPath $browserExe)) { throw "headed browser binary not found: $browserExe" }
+
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @("-m","http.server",$port,"--bind","127.0.0.1")) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds 15 -PollMilliseconds 250
+  if (-not $ready) { throw "localhost probe server did not become ready" }
+
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640","--screenshot_png",$outPng,$pageUrl) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $pngReady = Wait-LightpandaFileReady -Path $outPng -Attempts 60 -PollMilliseconds 250
+  if (-not $pngReady) { throw "flow layout screenshot did not become ready" }
+
   Add-Type -AssemblyName System.Drawing
   $bmp = [System.Drawing.Bitmap]::new($outPng)
   try {
@@ -62,23 +69,34 @@ if ($pngReady) {
   } finally {
     $bmp.Dispose()
   }
+} catch {
+  $failure = $_.Exception.Message
+} finally {
+  $serverMeta = Stop-LightpandaOwnedProbeProcess $server
+  $browserMeta = Stop-LightpandaOwnedProbeProcess $browser
+  Start-Sleep -Milliseconds 200
+  $browserGone = if ($browser) { -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue) } else { $true }
+  $serverGone = if ($server) { -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue) } else { $true }
+
+  [ordered]@{
+    repo_root = $repo
+    browser_exe = $browserExe
+    page_url = $pageUrl
+    server_pid = if ($server) { $server.Id } else { 0 }
+    browser_pid = if ($browser) { $browser.Id } else { 0 }
+    ready = $ready
+    screenshot_ready = $pngReady
+    screenshot_path = $outPng
+    screenshot_length = if (Test-Path $outPng) { (Get-Item $outPng).Length } else { 0 }
+    analysis = $analysis
+    error = $failure
+    server_meta = $serverMeta
+    browser_meta = $browserMeta
+    browser_gone = $browserGone
+    server_gone = $serverGone
+  } | ConvertTo-Json -Depth 6
 }
-$serverMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($server.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate
-$browserMeta = Get-CimInstance Win32_Process -Filter "ProcessId=$($browser.Id)" | Select-Object Name,ProcessId,CommandLine,CreationDate
-if ($browserMeta -and $browserMeta.CommandLine -and $browserMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $browser.Id -Force }
-if ($serverMeta -and $serverMeta.CommandLine -and $serverMeta.CommandLine -notmatch "codex\\.js|@openai/codex") { Stop-Process -Id $server.Id -Force }
-$browserGone = -not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)
-$serverGone = -not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)
-[ordered]@{
-  server_pid = $server.Id
-  browser_pid = $browser.Id
-  ready = $ready
-  screenshot_ready = $pngReady
-  screenshot_path = $outPng
-  screenshot_length = if (Test-Path $outPng) { (Get-Item $outPng).Length } else { 0 }
-  analysis = $analysis
-  server_meta = $serverMeta
-  browser_meta = $browserMeta
-  browser_gone = $browserGone
-  server_gone = $serverGone
-} | ConvertTo-Json -Depth 6
+
+if ($failure) {
+  exit 1
+}
