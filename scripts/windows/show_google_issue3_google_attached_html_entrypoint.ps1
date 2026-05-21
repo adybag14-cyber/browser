@@ -385,6 +385,10 @@ Write-Host ((" 13. Contextual flow:      {0}") -f $entrypoint.helper_commands.co
 Write-Host ((" 14. Next-step matrix:     {0}") -f $entrypoint.helper_commands.suite_router_next_steps)
 Write-Host ((" 15. Bundle suite helper:  {0}") -f $entrypoint.helper_commands.attached_bundle_suite_surface)
 Write-Host ((" 16. Bundle first:         {0}") -f $entrypoint.helper_commands.attached_bundle_first)
+Write-Host ((" 17. Suite-catalog:        {0}") -f $entrypoint.helper_commands.suite_catalog_entrypoints)
+Write-Host ((" 18. Suite-router handoff: {0}") -f $entrypoint.helper_commands.suite_router_handoff)
+Write-Host ((" 19. Replay route:         {0}") -f $entrypoint.helper_commands.replay_route)
+Write-Host ((" 20. Safe-route map:       {0}") -f $entrypoint.helper_commands.safe_route_entrypoints)
 Write-Host ''
 Write-Host 'Companion helpers:'
 Write-Host (("  Sidecar audit:         {0}") -f $entrypoint.helper_commands.google_attached_html_sidecar_audit)
