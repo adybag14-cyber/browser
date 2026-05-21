@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>INIT</title>
+  <style>
+    body {
+      margin: 0;
+      background: #fff;
+      color: #1f1f1f;
+      font: 16px/1.4 Arial, sans-serif;
+    }
+    main {
+      width: 100%;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+    .shell {
+      width: 640px;
+      text-align: center;
+    }
+    .logo {
+      margin: 0 0 28px;
+      font-size: 56px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    form {
+      margin: 0;
+    }
+    .ds {
+      display: inline-block;
+      width: 496px;
+      height: 32px;
+      margin: 4px 0 18px;
+      padding: 0;
+      border: 1px solid #d2d2d2;
+      border-radius: 999px;
+      background: #fff;
+    }
+    .lst {
+      width: 100%;
+      margin: 0;
+      padding: 5px 8px 0 6px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #1f1f1f;
+      font: 18px Arial, sans-serif;
+      box-sizing: border-box;
+    }
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    .lsb {
+      height: 36px;
+      border: 1px solid #d2d2d2;
+      background: #f8f9fa;
+      color: #1f1f1f;
+      font: 14px Arial, sans-serif;
+      padding: 0 18px;
+      cursor: pointer;
+    }
+    #lp-probe-status {
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      z-index: 2147483647;
+      max-width: min(62ch, calc(100vw - 16px));
+      background: #111;
+      color: #fff;
+      font: 14px/1.3 monospace;
+      padding: 6px 10px;
+      border: 2px solid #0a84ff;
+      border-radius: 6px;
+      white-space: normal;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="shell">
+      <div class="logo">Google</div>
+      <form action="/search" name="f">
+        <div class="ds">
+          <input
+            class="lst"
+            autocomplete="off"
+            maxlength="2048"
+            name="q"
+            size="57"
+            title="Google Search"
+            value=""
+          >
+        </div>
+        <div class="actions">
+          <input class="lsb" name="btnG" type="submit" value="Google Search">
+          <input class="lsb" name="btnI" type="submit" value="I'm Feeling Lucky">
+        </div>
+      </form>
+    </div>
+  </main>
+  <script>
+    window.__lpEarlyEvents = [];
+    const badge = document.createElement("div");
+    badge.id = "lp-probe-status";
+    badge.textContent = "INIT";
+    document.body.appendChild(badge);
+
+    let currentQ = null;
+    let lastMark = "INIT";
+
+    function describeElement(el) {
+      if (!el) return "NONE";
+      return [
+        el.tagName || "",
+        (el.getAttribute && (el.getAttribute("name") || "")) || "",
+        el.id || "",
+        el.isConnected ? "1" : "0",
+      ].join(":");
+    }
+
+    function renderStatus() {
+      const early = window.__lpEarlyEvents.length
+        ? window.__lpEarlyEvents[window.__lpEarlyEvents.length - 1]
+        : "NONE";
+      const value = currentQ ? (currentQ.value || "") : "";
+      const selection = currentQ
+        ? [currentQ.selectionStart, currentQ.selectionEnd].join(":")
+        : "NONE";
+      const summary =
+        lastMark +
+        "|A=" + describeElement(document.activeElement) +
+        "|Q=" + describeElement(currentQ) +
+        "|V=" + value +
+        "|S=" + selection +
+        "|E=" + early;
+      document.title = summary;
+      badge.textContent = summary;
+    }
+
+    function mark(value) {
+      lastMark = value;
+      renderStatus();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      window.__lpEarlyEvents.push(
+        "KD:" + [(e.key || ""), (e.code || ""), e.keyCode, e.which, e.defaultPrevented ? 1 : 0].join("|")
+      );
+    }, true);
+
+    document.addEventListener("keypress", (e) => {
+      window.__lpEarlyEvents.push(
+        "KP:" + [(e.key || ""), (e.code || ""), e.keyCode, e.which, e.charCode, e.defaultPrevented ? 1 : 0].join("|")
+      );
+    }, true);
+
+    document.addEventListener("beforeinput", (e) => {
+      window.__lpEarlyEvents.push(
+        "BI:" + [describeElement(e.target), (e.data || ""), e.defaultPrevented ? 1 : 0].join("|")
+      );
+    }, true);
+
+    document.addEventListener("input", (e) => {
+      const t = e.target;
+      window.__lpEarlyEvents.push(
+        "IN:" + [describeElement(t), (t && t.value) || "", e.defaultPrevented ? 1 : 0].join("|")
+      );
+    }, true);
+
+    function bindQueryInput(q) {
+      if (!q || q.__lpProbeBound) return;
+      q.__lpProbeBound = true;
+      q.addEventListener("focus", () => mark("FOCUSED"));
+      q.addEventListener("blur", () => mark("BLURRED"));
+      q.addEventListener("beforeinput", (e) => mark("BEFOREINPUT:" + (e.data || "") + ":" + q.value));
+      q.addEventListener("input", () => mark("TYPED:" + q.value));
+      q.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
+          mark("KEYDOWN:" + q.value + ":" + e.keyCode + ":" + e.which);
+        } else if ((e.key || "").length === 1) {
+          mark("KEYDOWN:" + e.key + ":" + q.value);
+        }
+      });
+      if (q.form && !q.form.__lpProbeBound) {
+        q.form.__lpProbeBound = true;
+        q.form.addEventListener("submit", (e) => {
+          e.preventDefault();
+          mark("SUBMIT:" + q.value);
+        });
+      }
+    }
+
+    document.addEventListener("focusin", (e) => {
+      mark("FOCUSIN:" + describeElement(e.target));
+    }, true);
+
+    document.addEventListener("focusout", (e) => {
+      mark("FOCUSOUT:" + describeElement(e.target));
+    }, true);
+
+    document.addEventListener("selectionchange", () => {
+      mark("SEL:" + describeElement(document.activeElement));
+    }, true);
+
+    function syncQueryInput() {
+      const next = (document.forms.f && document.forms.f.q) || document.querySelector("[name='q']");
+      if (next !== currentQ) {
+        currentQ = next;
+        bindQueryInput(currentQ);
+        mark(currentQ ? "BOUND" : "NOQ");
+        return;
+      }
+      renderStatus();
+    }
+
+    syncQueryInput();
+    window.setInterval(syncQueryInput, 250);
+  </script>
+</body>
+</html>
