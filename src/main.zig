@@ -193,6 +193,17 @@ fn browseTargetAuthority(url: []const u8) ?[]const u8 {
     return authority_tail[0..authority_end];
 }
 
+fn browseTargetImplicitAuthority(url: []const u8) ?[]const u8 {
+    if (std.mem.indexOf(u8, url, "://") != null) {
+        return null;
+    }
+    const authority_end = std.mem.indexOfAny(u8, url, "/\\?#") orelse url.len;
+    if (authority_end == 0) {
+        return null;
+    }
+    return url[0..authority_end];
+}
+
 fn browseTargetHostPortAuthority(authority: []const u8) []const u8 {
     const at_index = std.mem.lastIndexOfScalar(u8, authority, '@') orelse return authority;
     if (at_index + 1 >= authority.len) {
@@ -265,15 +276,44 @@ fn isLoopbackBrowseHost(host: []const u8) bool {
         std.ascii.eqlIgnoreCase(host, "[0:0:0:0:0:0:0:1]");
 }
 
+fn looksLikeImplicitRemoteHost(host: []const u8) bool {
+    if (host.len == 0) {
+        return false;
+    }
+    if (host[0] == '[') {
+        return true;
+    }
+
+    var labels = std.mem.splitScalar(u8, host, '.');
+    var label_count: usize = 0;
+    var suffix: []const u8 = "";
+
+    while (labels.next()) |label| {
+        if (label.len == 0) {
+            return false;
+        }
+        for (label) |ch| {
+            if (!std.ascii.isAlphanumeric(ch) and ch != '-') {
+                return false;
+            }
+        }
+        suffix = label;
+        label_count += 1;
+    }
+
+    if (label_count < 2 or suffix.len < 2) {
+        return false;
+    }
+    for (suffix) |ch| {
+        if (!std.ascii.isAlphabetic(ch)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 fn browseTargetImplicitLoopback(url: []const u8) ?BrowseTargetInfo {
-    if (std.mem.indexOf(u8, url, "://") != null) {
-        return null;
-    }
-    const authority_end = std.mem.indexOfAny(u8, url, "/\\?#") orelse url.len;
-    if (authority_end == 0) {
-        return null;
-    }
-    const authority = url[0..authority_end];
+    const authority = browseTargetImplicitAuthority(url) orelse return null;
     const host = browseTargetHost(authority);
     if (!isLoopbackBrowseHost(host)) {
         return null;
@@ -281,6 +321,20 @@ fn browseTargetImplicitLoopback(url: []const u8) ?BrowseTargetInfo {
     return .{
         .scheme = "implicit_http",
         .scope = "loopback",
+        .host = host,
+        .port = browseTargetPort(authority),
+    };
+}
+
+fn browseTargetImplicitRemote(url: []const u8) ?BrowseTargetInfo {
+    const authority = browseTargetImplicitAuthority(url) orelse return null;
+    const host = browseTargetHost(authority);
+    if (isLoopbackBrowseHost(host) or !looksLikeImplicitRemoteHost(host)) {
+        return null;
+    }
+    return .{
+        .scheme = "implicit_http",
+        .scope = "remote",
         .host = host,
         .port = browseTargetPort(authority),
     };
@@ -300,6 +354,9 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
     const authority = browseTargetAuthority(url) orelse {
         if (browseTargetImplicitLoopback(url)) |implicit_loopback| {
             return implicit_loopback;
+        }
+        if (browseTargetImplicitRemote(url)) |implicit_remote| {
+            return implicit_remote;
         }
         if (std.mem.indexOf(u8, url, "://") == null and
             (std.mem.indexOfScalar(u8, url, '/') != null or
@@ -438,6 +495,24 @@ test "browse target info keeps loopback scope for scheme-less ipv4 pages" {
     try std.testing.expectEqualStrings("loopback", info.scope);
     try std.testing.expectEqualStrings("127.0.0.1", info.host);
     try std.testing.expectEqualStrings("(default)", info.port);
+}
+
+test "browse target info classifies scheme-less remote hosts as implicit http" {
+    const info = browseTargetInfo("example.com/attached-page.html");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("remote", info.scope);
+    try std.testing.expectEqualStrings("example.com", info.host);
+    try std.testing.expectEqualStrings("(default)", info.port);
+}
+
+test "browse target info keeps dotted local directories on the local path route" {
+    const info = browseTargetInfo("fixtures.v1/attached-page.html");
+
+    try std.testing.expectEqualStrings("path", info.scheme);
+    try std.testing.expectEqualStrings("local_path", info.scope);
+    try std.testing.expectEqualStrings("(none)", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
 }
 
 test "headed runtime helper stays active only for native headed execution" {
