@@ -60,6 +60,17 @@ class HeadedLocalhostProbeLaunchAuditTests(unittest.TestCase):
             self.assertFalse(result["checks"][0]["exists"])
             self.assertFalse(result["checks"][0]["present"])
 
+    def test_audit_keeps_stateful_probe_helpers_in_coverage(self) -> None:
+        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
+        self.assertTrue(
+            {
+                "localstorage_common_headed_launch",
+                "indexeddb_common_headed_launch",
+                "fetch_abort_common_headed_launch",
+                "fetch_credentials_common_headed_launch",
+            }.issubset(covered_labels)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
