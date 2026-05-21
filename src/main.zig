@@ -512,8 +512,26 @@ test "browse target info classifies scheme-less localhost pages as loopback" {
     try std.testing.expectEqualStrings("8123", info.port);
 }
 
+test "browse target info keeps loopback query targets on the implicit http route" {
+    const info = browseTargetInfo("localhost:8123/attached-page.html?case=1");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("localhost", info.host);
+    try std.testing.expectEqualStrings("8123", info.port);
+}
+
 test "browse target info keeps loopback scope for scheme-less ipv4 pages" {
     const info = browseTargetInfo("127.0.0.1/replay.xhtml");
+
+    try std.testing.expectEqualStrings("implicit_http", info.scheme);
+    try std.testing.expectEqualStrings("loopback", info.scope);
+    try std.testing.expectEqualStrings("127.0.0.1", info.host);
+    try std.testing.expectEqualStrings("(default)", info.port);
+}
+
+test "browse target info keeps loopback fragments on the implicit http route" {
+    const info = browseTargetInfo("127.0.0.1/replay.xhtml#focus-probe");
 
     try std.testing.expectEqualStrings("implicit_http", info.scheme);
     try std.testing.expectEqualStrings("loopback", info.scope);
@@ -581,8 +599,9 @@ test "browser mode fallback info reports unexpected windows hosted fallback" {
     try std.testing.expect(info.support_expected);
     try std.testing.expectEqualStrings(
         "headed mode was requested on a runtime that should support a native headed surface, but startup still resolved to headless; inspect earlier startup diagnostics for the display bring-up failure",
-        info.reason,
-    );
+            info.reason,
+        );
+    }
 }
 
 test "native headed surface expected matches explicit environment inputs" {
