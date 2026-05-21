@@ -209,6 +209,26 @@ fn browseTargetLocalPathCandidate(url: []const u8) []const u8 {
     return url[0..suffix_start];
 }
 
+fn looksLikeBareLocalHtmlPath(url: []const u8) bool {
+    if (std.mem.indexOf(u8, url, "://") != null) {
+        return false;
+    }
+
+    const candidate = browseTargetLocalPathCandidate(url);
+    if (candidate.len == 0) {
+        return false;
+    }
+    if (std.mem.indexOfScalar(u8, candidate, '/') != null or
+        std.mem.indexOfScalar(u8, candidate, '\\') != null)
+    {
+        return false;
+    }
+
+    return std.ascii.endsWithIgnoreCase(candidate, ".xhtml") or
+        std.ascii.endsWithIgnoreCase(candidate, ".html") or
+        std.ascii.endsWithIgnoreCase(candidate, ".htm");
+}
+
 fn browseTargetAbout(url: []const u8) ?BrowseTargetInfo {
     const prefix = "about:";
     if (url.len < prefix.len or !std.ascii.eqlIgnoreCase(url[0..prefix.len], prefix)) {
@@ -247,7 +267,6 @@ fn browseTargetInternal(url: []const u8, scheme: []const u8) ?BrowseTargetInfo {
         .port = "(none)",
     };
 }
-
 fn browseTargetHostPortAuthority(authority: []const u8) []const u8 {
     const at_index = std.mem.lastIndexOfScalar(u8, authority, '@') orelse return authority;
     if (at_index + 1 >= authority.len) {
@@ -413,6 +432,14 @@ fn browseTargetInfo(url: []const u8) BrowseTargetInfo {
         if (browseTargetImplicitLoopback(url)) |implicit_loopback| {
             return implicit_loopback;
         }
+        if (looksLikeBareLocalHtmlPath(url)) {
+            return .{
+                .scheme = "path",
+                .scope = "local_path",
+                .host = "(none)",
+                .port = "(none)",
+            };
+        }
         if (browseTargetImplicitRemote(url)) |implicit_remote| {
             return implicit_remote;
         }
@@ -576,6 +603,24 @@ test "browse target info keeps attached html queries on the local path route" {
 
 test "browse target info keeps attached xhtml fragments on the local path route" {
     const info = browseTargetInfo("attached-page.xhtml#focus-probe");
+
+    try std.testing.expectEqualStrings("path", info.scheme);
+    try std.testing.expectEqualStrings("local_path", info.scope);
+    try std.testing.expectEqualStrings("(none)", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info keeps dotted bare local html files on the local path route" {
+    const info = browseTargetInfo("report.v1.html");
+
+    try std.testing.expectEqualStrings("path", info.scheme);
+    try std.testing.expectEqualStrings("local_path", info.scope);
+    try std.testing.expectEqualStrings("(none)", info.host);
+    try std.testing.expectEqualStrings("(none)", info.port);
+}
+
+test "browse target info keeps dotted bare local xhtml files on the local path route" {
+    const info = browseTargetInfo("report.v1.xhtml#focus-probe");
 
     try std.testing.expectEqualStrings("path", info.scheme);
     try std.testing.expectEqualStrings("local_path", info.scope);
