@@ -458,7 +458,7 @@ DRIFT_CASES = (
     (
         "attached_bundle_suite_surface_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
+        'Write-Host (("  Attached suite:          {0}") -f $helper.commands.attached_bundle_suite_surface)',
         "",
     ),
     (
