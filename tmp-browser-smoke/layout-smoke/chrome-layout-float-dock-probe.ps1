@@ -26,7 +26,7 @@ try {
 
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse",$pageUrl,"--window_width","760","--window_height","420","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","760","--window_height","420","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
   try {
     if (-not (Wait-Screenshot $outPng)) { throw "float dock screenshot did not become ready" }
