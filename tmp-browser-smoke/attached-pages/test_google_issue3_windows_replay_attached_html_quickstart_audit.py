@@ -224,7 +224,7 @@ DRIFT_CASES = (
     (
         "bundle_proof_entrypoint_wiring",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        "attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $sharedArguments",
+        "attached_bundle_proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_ENTRYPOINT.ps1' -Arguments $sharedArguments",
         "",
     ),
     (
@@ -458,7 +458,7 @@ DRIFT_CASES = (
     (
         "attached_bundle_suite_surface_output",
         "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
-        'Write-Host (("  Attached suite:          {0}") -f $helper.commands.attached_bundle_suite_surface)',
+        'Write-Host (("  Bundle suite surface:     {0}") -f $helper.commands.attached_bundle_suite_surface)',
         "",
     ),
     (
