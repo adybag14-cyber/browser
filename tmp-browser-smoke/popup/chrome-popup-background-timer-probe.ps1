@@ -37,7 +37,7 @@ try {
   }
   if (-not $ready) { throw "popup background timer server did not become ready" }
 
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","http://127.0.0.1:$port/script-popup-background-timer.html","--window_width","960","--window_height","640" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/script-popup-background-timer.html","--window_width","960","--window_height","640" -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
   $hwnd = Wait-TabWindowHandle $browser.Id
   if ($hwnd -eq [IntPtr]::Zero) { throw "popup background timer window handle not found" }
   Show-SmokeWindow $hwnd
