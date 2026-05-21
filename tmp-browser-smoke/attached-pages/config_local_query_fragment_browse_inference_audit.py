@@ -23,6 +23,18 @@ EXPECTATIONS = (
         "why": "Extension checks should run against the path portion only.",
     },
     {
+        "label": "config_remote_url_guard",
+        "path": "src/Config.zig",
+        "snippet": 'if (std.mem.indexOf(u8, token, "://") != null) {',
+        "why": "Remote URLs should keep their fetch fallback instead of being treated like local browse targets.",
+    },
+    {
+        "label": "config_local_xhtml_suffix_support",
+        "path": "src/Config.zig",
+        "snippet": 'if (path_suffix.len >= 6 and std.ascii.eqlIgnoreCase(path_suffix[path_suffix.len - 6 ..], ".xhtml")) {',
+        "why": "Local XHTML targets should keep the same browse inference path as local HTML targets.",
+    },
+    {
         "label": "config_local_html_query_regression",
         "path": "src/Config.zig",
         "snippet": 'test "infer mode treats bare html filename with query as browse" {',
@@ -69,6 +81,18 @@ EXPECTATIONS = (
         "path": "src/Config.zig",
         "snippet": 'test "infer mode keeps browse for windows xhtml target with fragment after shared flag" {',
         "why": "Windows-style local .xhtml targets with #fragment should still resolve to browse after shared flags.",
+    },
+    {
+        "label": "config_remote_html_fetch_fallback_regression",
+        "path": "src/Config.zig",
+        "snippet": 'test "infer mode keeps fetch for remote html url without browse hint" {',
+        "why": "Remote .html URLs should keep the fetch fallback unless a real browse-only hint is present.",
+    },
+    {
+        "label": "config_remote_htm_fetch_fallback_regression",
+        "path": "src/Config.zig",
+        "snippet": 'test "infer mode keeps fetch for remote htm url without browse hint" {',
+        "why": "Remote .htm URLs should keep the fetch fallback unless a real browse-only hint is present.",
     },
     {
         "label": "local_query_fragment_fixture_base_title",
