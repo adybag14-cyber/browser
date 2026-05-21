@@ -100,19 +100,46 @@ def resolve_repo_root(root: str | None) -> Path:
     return resolved
 
 
+def build_repo_root_error_audit(root: str | None, message: str) -> dict[str, object]:
+    repo_root = str(Path.cwd()) if root is None else str(Path(root).expanduser())
+    return {
+        "repo_root": repo_root,
+        "expectation_count": len(EXPECTATIONS),
+        "missing_count": None,
+        "missing_path_count": None,
+        "missing_paths": [],
+        "results": [],
+        "error_type": "repo_root_not_found",
+        "error": message,
+    }
+
+
 def build_replay_route_shortcut_audit(repo_root: Path) -> dict[str, object]:
     results: list[dict[str, object]] = []
     missing_count = 0
+    missing_paths: dict[str, dict[str, object]] = {}
 
     for expectation in EXPECTATIONS:
         full_path = repo_root / expectation["path"]
         if not full_path.is_file():
             exists = False
         else:
-            exists = expectation["snippet"] in full_path.read_text(encoding="utf-8", errors="ignore")
+            exists = expectation["snippet"] in full_path.read_text(
+                encoding="utf-8", errors="ignore"
+            )
 
         if not exists:
             missing_count += 1
+            missing_path = missing_paths.get(expectation["path"])
+            if missing_path is None:
+                missing_path = {
+                    "path": expectation["path"],
+                    "missing_expectation_count": 0,
+                    "first_missing_purpose": expectation["purpose"],
+                    "first_missing_snippet": expectation["snippet"],
+                }
+                missing_paths[expectation["path"]] = missing_path
+            missing_path["missing_expectation_count"] += 1
 
         results.append(
             {
@@ -123,10 +150,13 @@ def build_replay_route_shortcut_audit(repo_root: Path) -> dict[str, object]:
             }
         )
 
+    missing_path_results = list(missing_paths.values())
     return {
         "repo_root": str(repo_root),
         "expectation_count": len(results),
         "missing_count": missing_count,
+        "missing_path_count": len(missing_path_results),
+        "missing_paths": missing_path_results,
         "results": results,
     }
 
@@ -136,11 +166,31 @@ def render_text_report(audit: dict[str, object]) -> str:
         "Google Issue #3 Replay-Route Shortcut Audit",
         "",
         f"Repo root: {audit['repo_root']}",
-        f"Expectations checked: {audit['expectation_count']}",
-        f"Missing expectations: {audit['missing_count']}",
-        "",
     ]
 
+    if audit.get("error_type"):
+        lines.extend([f"Error: {audit['error']}", ""])
+        return "\n".join(lines).rstrip() + "\n"
+
+    lines.extend(
+        [
+            f"Expectations checked: {audit['expectation_count']}",
+            f"Missing expectations: {audit['missing_count']}",
+        ]
+    )
+
+    missing_paths = audit["missing_paths"]
+    if missing_paths:
+        lines.append("
+Missing paths:")
+        for missing_path in missing_paths:
+            lines.append(
+                f"- {missing_path['path']} ({missing_path['missing_expectation_count']} missing expectations)"
+            )
+            lines.append(f"  First purpose: {missing_path['first_missing_purpose']}")
+            lines.append(f"  First snippet: {missing_path['first_missing_snippet']}")
+
+    lines.append("")
     for result in audit["results"]:
         status = "PASS" if result["exists"] else "FAIL"
         lines.append(f"[{status}] {result['path']}")
@@ -153,19 +203,27 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Audit the issue #3 replay-route shortcut note and helper for attached-page, Google-flow, and replay-bridge drift."
     )
-    parser.add_argument("--repo-root", help="Lightpanda repo root to inspect. Defaults to the current directory.")
-    parser.add_argument("--json", action="store_true", help="Print structured JSON instead of text.")
+    parser.add_argument(
+        "--repo-root",
+        help="Lightpanda repo root to inspect. Defaults to the current directory.",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Print structured JSON instead of text."
+    )
     args = parser.parse_args(argv)
 
-    repo_root = resolve_repo_root(args.repo_root)
-    audit = build_replay_route_shortcut_audit(repo_root)
+    try:
+        repo_root = resolve_repo_root(args.repo_root)
+        audit = build_replay_route_shortcut_audit(repo_root)
+    except FileNotFoundError as exc:
+        audit = build_repo_root_error_audit(args.repo_root, str(exc))
 
     if args.json:
         print(json.dumps(audit, indent=2))
     else:
         print(render_text_report(audit), end="")
 
-    return 1 if audit["missing_count"] else 0
+    return 1 if audit.get("error_type") or audit["missing_count"] else 0
 
 
 if __name__ == "__main__":
