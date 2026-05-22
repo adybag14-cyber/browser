@@ -89,16 +89,6 @@ function Get-AttachedHtmlValidationHint {
         }
     }
 
-    if ($hasDenseAssetSignals) {
-        return [ordered]@{
-            fixture = $leaf
-            change_area = "rendering"
-            summary = "Asset-heavy saved page. Start with layout/rendering plus stylesheet or image gates before the manual localhost replay."
-            bounded_first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering"
-            follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network"
-        }
-    }
-
     return [ordered]@{
         fixture = $leaf
         change_area = "attached-html"
@@ -107,35 +97,21 @@ function Get-AttachedHtmlValidationHint {
         follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait"
     }
 }
-
-function Get-AttachedHtmlOverallRecommendation {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object[]]$Hints,
-        [Parameter(Mandatory = $true)]
-        [bool]$GoogleStyle,
-        $BundleRecommendation
-    )
-
-    if ($Hints | Where-Object { $_.change_area -eq "input" }) {
-        return [ordered]@{
-            change_area = "input"
-            first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input"
-            follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait"
-        }
-    }
-
-    return [ordered]@{
-        change_area = "attached-html"
-        first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html"
-        follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait"
-    }
-}
 """,
     "tmp-browser-smoke/form-controls/enter-submit-probe.ps1": r"""
+function Resolve-RepoRoot([string]$StartPath) {
+  return $StartPath
+}
+
+$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","420","--window_height","520","--screenshot_png",$pngPath,$probeUrl)
 """,
     "tmp-browser-smoke/form-controls/label-click-probe.ps1": r"""
+function Resolve-RepoRoot([string]$StartPath) {
+  return $StartPath
+}
+
+$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","420","--window_height","520","--screenshot_png",$pngPath,$probeUrl)
 """,
 }
@@ -200,11 +176,13 @@ class InputManualHtmlValidationSurfaceTest(unittest.TestCase):
         self.assertIn(r'change_area = "attached-html"', self.attached_flow)
         self.assertIn(r'show_headed_validation_suites.ps1 -ChangeArea attached-html', self.attached_flow)
 
-    def test_shared_input_probes_keep_explicit_headed_launches(self) -> None:
+    def test_shared_input_probes_keep_repo_root_fallback_and_explicit_headed_launches(self) -> None:
         for label, source in (
             ("enter-submit probe", self.enter_submit_probe),
             ("label-click probe", self.label_click_probe),
         ):
+            self.assertIn("function Resolve-RepoRoot", source, f"{label} should keep repo-root auto resolution")
+            self.assertIn(r'Join-Path $repo "zig-out\bin\lightpanda.exe"', source, f"{label} should keep the default headed browser path")
             assert_explicit_headed_launch(self, source, label)
             self.assertIn('"--window_width"', source, f"{label} should keep its explicit window width")
             self.assertIn('"--window_height"', source, f"{label} should keep its explicit window height")
