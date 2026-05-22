@@ -3,6 +3,8 @@ param(
     [switch]$Json,
     [string]$RepoRoot,
     [string]$BrowserExe,
+    [string]$SummaryPath,
+    [string[]]$InputPath,
     [string]$Host = "127.0.0.1",
     [string]$SharedInputText = "Q",
     [string]$EnterMutationSuffix = "!",
@@ -57,20 +59,39 @@ function Add-SharedArgument {
     }
 }
 
-$surfaceCheck = '.\scripts\windows\check_google_shared_enter_order_validation_surface.ps1'
-$runner = '.\scripts\windows\run_google_shared_enter_order_validation.ps1'
-$sharedRunner = '.\scripts\windows\run_google_input_validation.ps1'
-$googleTitleProbe = '.\tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1'
-$reducedHomeProbe = '.\tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1'
-$localhostProbe = '.\tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1'
-$sharedClickFocusProbe = '.\tmp-browser-smoke\form-controls\enter-submit-probe.ps1'
-$formControlsRunner = '.\scripts\windows\run_google_form_controls_enter_order_validation.ps1'
-$formControlsFlow = '.\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1'
-$formControlsTraceGuide = '.\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1'
-$recommendedValidation = '.\scripts\windows\run_google_issue3_recommended_validation.ps1'
-$suiteRouterNextSteps = '.\scripts\windows\show_google_issue3_suite_router_next_steps.ps1'
-$replayRoute = '.\scripts\windows\show_google_issue3_replay_route.ps1'
-$traceFlow = '.\scripts\windows\show_google_trace_validation_flow.ps1'
+function Add-SharedPathArrayArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string[]]$Values
+    )
+
+    if (-not $Values -or $Values.Count -eq 0) {
+        return
+    }
+
+    $Arguments.Add("-$Name")
+    foreach ($value in $Values) {
+        $Arguments.Add((ConvertTo-PowerShellSingleQuotedLiteral -Value $value))
+    }
+}
+
+$surfaceCheck = '.\\scripts\\windows\\check_google_shared_enter_order_validation_surface.ps1'
+$runner = '.\\scripts\\windows\\run_google_shared_enter_order_validation.ps1'
+$sharedRunner = '.\\scripts\\windows\\run_google_input_validation.ps1'
+$googleTitleProbe = '.\\tmp-browser-smoke\\google-investigation-next\\chrome-google-title-probe.ps1'
+$reducedHomeProbe = '.\\tmp-browser-smoke\\google-home\\chrome-google-home-keypress-submit-probe.ps1'
+$localhostProbe = '.\\tmp-browser-smoke\\google-investigation-next\\google-enter-order-localhost-probe.ps1'
+$sharedClickFocusProbe = '.\\tmp-browser-smoke\\form-controls\\enter-submit-probe.ps1'
+$formControlsRunner = '.\\scripts\\windows\\run_google_form_controls_enter_order_validation.ps1'
+$formControlsFlow = '.\\scripts\\windows\\show_google_form_controls_enter_order_validation_flow.ps1'
+$formControlsTraceGuide = '.\\scripts\\windows\\show_google_form_controls_enter_order_trace_guide.ps1'
+$recommendedValidation = '.\\scripts\\windows\\run_google_issue3_recommended_validation.ps1'
+$suiteRouterNextSteps = '.\\scripts\\windows\\show_google_issue3_suite_router_next_steps.ps1'
+$replayRoute = '.\\scripts\\windows\\show_google_issue3_replay_route.ps1'
+$traceFlow = '.\\scripts\\windows\\show_google_trace_validation_flow.ps1'
 
 $surfaceCheckArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArgs -Name RepoRoot -Value $RepoRoot
@@ -151,9 +172,16 @@ Add-SharedArgument -Arguments $recommendedValidationArgs -Name HomePollMilliseco
 
 $suiteRouterArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $suiteRouterArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $suiteRouterArgs -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $suiteRouterArgs -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $suiteRouterArgs -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $suiteRouterArgs -Name Host -Value $Host
+Add-SharedArgument -Arguments $suiteRouterArgs -Name SharedInputText -Value $SharedInputText
 
 $replayRouteArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $replayRouteArgs -Name RepoRoot -Value $RepoRoot
+Add-SharedArgument -Arguments $replayRouteArgs -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $replayRouteArgs -Name InputPath -Values $InputPath
 
 $traceFlowArgs = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $traceFlowArgs -Name RepoRoot -Value $RepoRoot
@@ -166,6 +194,8 @@ Add-SharedArgument -Arguments $traceFlowArgs -Name PollMilliseconds -Value $Home
 $flow = [ordered]@{
     issue = "Headed Windows Google shared Enter-order validation flow"
     focus = "Run the shared form-controls baseline, the localhost Google title probe, the reduced Google homepage keypress probe, the reusable click-first shared page probe, the localhost Enter-order wrapper, and the dedicated shared Enter-order gate in the same order before a live Google manual pass."
+    summary_path = $SummaryPath
+    input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
     shared_input_text = $SharedInputText
     enter_mutation_suffix = $EnterMutationSuffix
     host = $Host
@@ -228,10 +258,10 @@ $flow = [ordered]@{
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the dedicated gate markers translated into click-focus, typed-text, keypress, and submit failure stages without reconstructing the current shared Enter-order context by hand." -f $formControlsTraceGuide, $(if ($formControlsGuideArgs.Count -gt 0) { " " + ($formControlsGuideArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want this stack folded back into the broader localhost-first issue #3 flow with the same repo-root, browser, host, shared input, Enter mutation, and timing settings." -f $recommendedValidation, $(if ($recommendedValidationArgs.Count -gt 0) { " " + ($recommendedValidationArgs -join " ") } else { "" })),
         ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the later live-trace handoff reopened with the same repo-root, browser, host, shared input, and bounded wait settings before the next real Google capture." -f $traceFlow, $(if ($traceFlowArgs.Count -gt 0) { " " + ($traceFlowArgs -join " ") } else { "" })),
-        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the higher-level issue #3 next-step matrix reopened with the same repo-root context before choosing between replay shortcuts, the attached bundle branch, or the safe-route wrapper chain." -f $suiteRouterNextSteps, $(if ($suiteRouterArgs.Count -gt 0) { " " + ($suiteRouterArgs -join " ") } else { "" })),
-        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the broader issue #3 replay bridge reopened with the same repo-root context before you widen back out from the shared Enter-order slice." -f $replayRoute, $(if ($replayRouteArgs.Count -gt 0) { " " + ($replayRouteArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the higher-level issue #3 next-step matrix reopened with the same repo-root, saved summary, pinned input paths, browser override, host, and shared input context before choosing between replay shortcuts, the attached bundle branch, or the safe-route wrapper chain." -f $suiteRouterNextSteps, $(if ($suiteRouterArgs.Count -gt 0) { " " + ($suiteRouterArgs -join " ") } else { "" })),
+        ("Use powershell -ExecutionPolicy Bypass -File {0}{1} when you want the broader issue #3 replay bridge reopened with the same repo-root, saved summary, and pinned input-path context before you widen back out from the shared Enter-order slice." -f $replayRoute, $(if ($replayRouteArgs.Count -gt 0) { " " + ($replayRouteArgs -join " ") } else { "" })),
         "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, shared click-first fallback, and both Enter-order probes stay green together.",
-        "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
+        "Use .\\scripts\\windows\\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
     )
     notes = @(
         "Run the shared Enter-order surface checker first so missing docs, wrapper scripts, or probe files fail before the narrower ladder looks trustworthy.",
@@ -241,7 +271,9 @@ $flow = [ordered]@{
         "Use the shared click-first fallback when you want to compare the reusable Google-shaped page against the dedicated form-controls gate before widening back to the broader shared Enter-order ladder.",
         "Use the dedicated form-controls flow helper when you only need the last shared keypress-before-submit gate without printing the wider shared Enter-order ladder.",
         "Use the form-controls trace guide when you want a quick explanation of whether the remaining failure stayed before click focus, before visible text commit, or before keypress reached submit.",
-        "The printed next-step commands now preserve the current repo root, custom browser path, host, shared input, Enter mutation, and timing settings where those later helpers support them, including the live-trace handoff, and they reopen the higher-level issue #3 route helpers with the same repo-root context when you need to widen back out."
+        "The printed next-step commands now preserve the current repo root, custom browser path, host, shared input, Enter mutation, and timing settings where those later helpers support them, including the live-trace handoff.",
+        "When SummaryPath or InputPath are supplied, the suite-router next-step and replay-route helpers now keep that same saved-summary or pinned-bundle context attached instead of dropping back to generic route defaults.",
+        "The higher-level issue #3 route helpers reopened from this flow now also keep the current browser override and host context where those downstream helpers support them."
     )
 }
 
@@ -254,6 +286,12 @@ Write-Host "Headed Windows Google shared Enter-order validation flow"
 Write-Host ""
 Write-Host ("Focus: {0}" -f $flow.focus)
 Write-Host ("Host: {0}" -f $flow.host)
+if ($flow.summary_path) {
+    Write-Host ("Summary path: {0}" -f $flow.summary_path)
+}
+if ($flow.input_path_count -gt 0) {
+    Write-Host ("Pinned input paths: {0}" -f $flow.input_path_count)
+}
 Write-Host ("Shared input text: {0}" -f $flow.shared_input_text)
 Write-Host ("Enter mutation suffix: {0}" -f $flow.enter_mutation_suffix)
 Write-Host ("Google title probe port: {0}" -f $flow.title_probe_port)
