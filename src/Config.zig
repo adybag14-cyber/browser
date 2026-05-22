@@ -682,6 +682,118 @@ fn trimLocalBrowseTarget(token: []const u8) []const u8 {
     return token[0..@min(query_index, fragment_index)];
 }
 
+fn hasLocalBrowseHtmlSuffix(candidate: []const u8) bool {
+    return (candidate.len >= 6 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 6 ..], ".xhtml")) or
+        (candidate.len >= 5 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 5 ..], ".html")) or
+        (candidate.len >= 4 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 4 ..], ".htm"));
+}
+
+fn inferLocalBrowseImplicitAuthority(token: []const u8) ?[]const u8 {
+    const authority_end = std.mem.indexOfAny(u8, token, "/\\") orelse return null;
+    if (authority_end == 0) {
+        return null;
+    }
+    return token[0..authority_end];
+}
+
+fn inferLocalBrowseHostPortAuthority(authority: []const u8) []const u8 {
+    const at_index = std.mem.lastIndexOfScalar(u8, authority, '@') orelse return authority;
+    if (at_index + 1 >= authority.len) {
+        return authority;
+    }
+    return authority[at_index + 1 ..];
+}
+
+fn inferLocalBrowseHost(authority: []const u8) []const u8 {
+    const host_port_authority = inferLocalBrowseHostPortAuthority(authority);
+    if (host_port_authority.len == 0) {
+        return host_port_authority;
+    }
+    if (host_port_authority[0] == '[') {
+        const closing = std.mem.indexOfScalar(u8, host_port_authority, ']') orelse return host_port_authority;
+        return host_port_authority[0 .. closing + 1];
+    }
+    const port_separator = std.mem.lastIndexOfScalar(u8, host_port_authority, ':') orelse return host_port_authority;
+    return host_port_authority[0..port_separator];
+}
+
+fn isLoopbackIpv4Host(host: []const u8) bool {
+    var iterator = std.mem.splitScalar(u8, host, '.');
+    var octet_count: usize = 0;
+
+    while (iterator.next()) |part| {
+        if (part.len == 0) {
+            return false;
+        }
+
+        const octet = std.fmt.parseInt(u8, part, 10) catch {
+            return false;
+        };
+        if (octet_count == 0 and octet != 127) {
+            return false;
+        }
+        octet_count += 1;
+    }
+
+    return octet_count == 4;
+}
+
+fn normalizeBrowseHostForClassification(host: []const u8) []const u8 {
+    if (host.len <= 1 or host[host.len - 1] != '.' or host[0] == '[') {
+        return host;
+    }
+    return host[0 .. host.len - 1];
+}
+
+fn isLoopbackBrowseHost(host: []const u8) bool {
+    if (host.len == 0) {
+        return false;
+    }
+    const normalized_host = normalizeBrowseHostForClassification(host);
+    return std.ascii.eqlIgnoreCase(normalized_host, "localhost") or
+        std.ascii.endsWithIgnoreCase(normalized_host, ".localhost") or
+        isLoopbackIpv4Host(normalized_host) or
+        std.mem.eql(u8, normalized_host, "0.0.0.0") or
+        std.ascii.eqlIgnoreCase(normalized_host, "[::1]") or
+        std.ascii.eqlIgnoreCase(normalized_host, "[0:0:0:0:0:0:0:1]");
+}
+
+fn looksLikeImplicitRemoteHost(host: []const u8) bool {
+    if (host.len == 0) {
+        return false;
+    }
+    if (host[0] == '[') {
+        return true;
+    }
+
+    var labels = std.mem.splitScalar(u8, host, '.');
+    var label_count: usize = 0;
+    var suffix: []const u8 = "";
+
+    while (labels.next()) |label| {
+        if (label.len == 0) {
+            return false;
+        }
+        for (label) |ch| {
+            if (!std.ascii.isAlphanumeric(ch) and ch != '-') {
+                return false;
+            }
+        }
+        suffix = label;
+        label_count += 1;
+    }
+
+    if (label_count < 2 or suffix.len < 2) {
+        return false;
+    }
+    for (suffix) |ch| {
+        if (!std.ascii.isAlphabetic(ch)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 fn inferLocalBrowseTarget(token: []const u8) bool {
     if (std.ascii.startsWithIgnoreCase(token, "file://")) {
         return true;
@@ -690,16 +802,16 @@ fn inferLocalBrowseTarget(token: []const u8) bool {
         return false;
     }
     const candidate = trimLocalBrowseTarget(token);
-    if (candidate.len >= 6 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 6 ..], ".xhtml")) {
+    if (!hasLocalBrowseHtmlSuffix(candidate)) {
+        return false;
+    }
+
+    const authority = inferLocalBrowseImplicitAuthority(candidate) orelse return true;
+    const host = inferLocalBrowseHost(authority);
+    if (isLoopbackBrowseHost(host)) {
         return true;
     }
-    if (candidate.len >= 5 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 5 ..], ".html")) {
-        return true;
-    }
-    if (candidate.len >= 4 and std.ascii.eqlIgnoreCase(candidate[candidate.len - 4 ..], ".htm")) {
-        return true;
-    }
-    return false;
+    return !looksLikeImplicitRemoteHost(host);
 }
 
 pub fn parseMode(allocator: Allocator, mode: RunMode, process: *std.process.ArgIterator) ParseError!Mode {
@@ -1362,6 +1474,30 @@ test "infer mode keeps fetch for remote htm url without browse hint" {
     const mode = try inferModeSlice(&.{ "https://example.com/attached-page.htm" });
 
     try std.testing.expectEqual(RunMode.fetch, mode);
+}
+
+test "infer mode keeps fetch for scheme-less remote html target without browse hint" {
+    const mode = try inferModeSlice(&.{ "example.com/attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.fetch, mode);
+}
+
+test "infer mode keeps fetch for scheme-less remote xhtml target without browse hint" {
+    const mode = try inferModeSlice(&.{ "example.com/attached-page.xhtml#focus-probe" });
+
+    try std.testing.expectEqual(RunMode.fetch, mode);
+}
+
+test "infer mode keeps browse for scheme-less loopback html target" {
+    const mode = try inferModeSlice(&.{ "localhost:8123/attached-page.html" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
+}
+
+test "infer mode keeps browse for scheme-less ipv4 loopback html target" {
+    const mode = try inferModeSlice(&.{ "127.0.0.1:8123/attached-page.html?case=1" });
+
+    try std.testing.expectEqual(RunMode.browse, mode);
 }
 
 test "infer mode keeps browse for remote html url after headed shortcut" {
