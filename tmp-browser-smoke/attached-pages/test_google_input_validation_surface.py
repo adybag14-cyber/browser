@@ -61,11 +61,26 @@ Write-Route -Name "input" -Commands @(
 )
 Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands)
 Write-Route -Name "google-shared-enter-order" -Commands (Get-GoogleSharedEnterOrderCommands)
-Write-Route -Name "google-recommended" -Commands @(
-    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
-    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1",
-    "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
+$googleRecommendedNotes = @(
+    "Use the bounded input probe first, then the dedicated Google form-controls Enter-order gate, then live Google, then the broader attached-page localhost flow and dedicated Google-shaped attached-page flow before the shorter issue #3 helper surface, the compact bundle-suite helper, or bundle-first replay.",
+    "Pass -InputPath when you already want the attached-page helpers, top-level attached-page quickstart, compact bundle-suite helper, or bundle-first helper pinned to a saved page or the current three-page compatibility bundle.",
+    "Run the validation-router attached-html surface checker before trusting the shorter issue #3 helper ladder so missing quickstart notes or downstream helper paths fail fast.",
+    "Keep the same preferred starting page pinned by rerunning this router with -PreferredInitialPage before switching to the Google-shaped attached-page helper route.",
+    "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder.",
+    "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
 )
+Write-Route -Name "google-recommended" -Commands @(
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order",
+    "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1"
+) -Notes $googleRecommendedNotes
 
 Write-Route -Name "bounded-input" -Commands @(
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
@@ -186,7 +201,7 @@ if ($ClickFocus -and -not $GoogleEnterOrder) {
   throw "ClickFocus currently supports only -GoogleEnterOrder."
 }
 
-$browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "420", "--window_height", "520", "http://127.0.0.1:8157/google-enter-order.html")
+$browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "420", "--window_height", "520", "--screenshot_png", $pngPath, "http://127.0.0.1:8157/google-enter-order.html")
 """,
 }
 
@@ -253,6 +268,39 @@ class GoogleInputValidationSurfaceTest(unittest.TestCase):
             self.router,
             r'Write-Route\s+-Name\s+"google-recommended"\s+-Commands\s+@\(',
         )
+
+    def test_google_recommended_route_keeps_issue3_ladder_visible(self) -> None:
+        expected_fragments = (
+            r'.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input',
+            r'.\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order',
+            r'browse --headed `"https://www.google.com/`"',
+            "show_attached_html_validation_flow.ps1",
+            "show_google_attached_html_validation_flow.ps1",
+            "check_google_issue3_validation_router_attached_html_quickstart_surface.ps1",
+            "show_google_issue3_attached_html_change_area_quickstart.ps1",
+            "show_google_issue3_top_level_attached_html_quickstart.ps1",
+            "show_google_issue3_attached_html_target_bundle_suite_surface.ps1",
+            "show_google_issue3_attached_bundle_first_entrypoint.ps1",
+        )
+        for fragment in expected_fragments:
+            self.assertIn(fragment, self.router)
+
+    def test_google_recommended_notes_keep_bundle_and_pinning_guidance(self) -> None:
+        expected_fragments = (
+            "bounded input probe first",
+            "dedicated Google form-controls Enter-order gate",
+            "broader attached-page localhost flow",
+            "dedicated Google-shaped attached-page flow",
+            "compact bundle-suite helper",
+            "bundle-first replay",
+            "Pass -InputPath",
+            "validation-router attached-html surface checker",
+            "-PreferredInitialPage",
+            "-SummaryPath",
+            "-BrowserExe",
+        )
+        for fragment in expected_fragments:
+            self.assertIn(fragment, self.router)
 
     def test_google_input_change_area_keeps_narrow_and_follow_up_routes(self) -> None:
         self.assertRegex(
