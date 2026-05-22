@@ -37,24 +37,46 @@ function Get-BrowserShellRouteCommands {
     )
 }
 
+function Get-BrowserShellRouteNotes {
+    return @(
+        "Use these when the change touched tabs, reopen flows, chrome keyboard shortcuts, settings persistence, or other browser-shell surfaces on the real headed window.",
+        "These first-line browser-shell probes already auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; use the validation matrix before widening into older deeper helpers."
+    )
+}
+
 function Get-PopupRouteCommands {
     return @(
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-anchor-probe.ps1"
     )
 }
 
-Write-Route -Name "browser-shell" -Commands (Get-BrowserShellRouteCommands)
-Write-Route -Name "popup" -Commands (Get-PopupRouteCommands)
-Write-Route -Name "bounded-browser-shell" -Commands (Get-BrowserShellRouteCommands)
-Write-Route -Name "bounded-popup" -Commands (Get-PopupRouteCommands)
+function Get-PopupRouteNotes {
+    return @(
+        "Use this when the change touched popup creation, named-target navigation, or popup policy on the real headed window.",
+        "Keep deeper popup follow-up on the validation matrix for now because several older popup helpers still carry fixed checkout assumptions."
+    )
+}
+
+Write-Route -Name "browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)
+Write-Route -Name "popup" -Commands (Get-PopupRouteCommands) -Notes (Get-PopupRouteNotes)
+Write-Route -Name "bounded-browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)
+Write-Route -Name "bounded-popup" -Commands (Get-PopupRouteCommands) -Notes (Get-PopupRouteNotes)
 """,
     "tmp-browser-smoke/tabs/chrome-tabs-probe.ps1": r"""
-$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:8151/index.html"
+$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:8151/index.html","--window_width","960","--window_height","640","--screenshot_png",$initialPng
 """,
     "tmp-browser-smoke/settings/chrome-settings-home-probe.ps1": r"""
+$config = Resolve-TabProbeConfig -StartPath $PSScriptRoot -RepoRoot $RepoRoot -BrowserExe $BrowserExe -ProfileName "profile-home"
+Reset-TabProbeProfile $profileRoot
+Set-TabProbeProfileEnvironment $profileRoot
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640","http://127.0.0.1:8155/home.html")
+Send-SmokeCtrlComma
+Send-SmokeAltHome
 """,
     "tmp-browser-smoke/popup/chrome-popup-anchor-probe.ps1": r"""
+$config = Resolve-TabProbeConfig -StartPath $PSScriptRoot -RepoRoot $RepoRoot -BrowserExe $BrowserExe -ProfileName "profile-anchor"
+Reset-TabProbeProfile $profileRoot
+Set-TabProbeProfileEnvironment $profileRoot
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed","--window_width","960","--window_height","640","http://127.0.0.1:8158/anchor-index.html")
 """,
 }
@@ -117,12 +139,45 @@ class BrowserShellPopupValidationSurfaceTest(unittest.TestCase):
         )
         self.assertIsNotNone(change_area_surface, "popup change area should reuse the popup route helper")
 
+    def test_browser_shell_notes_keep_tabs_settings_and_headed_window_guidance(self) -> None:
+        notes_block = extract_function_block(self.router, "Get-BrowserShellRouteNotes")
+        self.assertIn("tabs, reopen flows, chrome keyboard shortcuts, settings persistence", notes_block)
+        self.assertIn("real headed window", notes_block)
+        self.assertIn("auto-resolve the repo root and zig-out\\bin\\lightpanda.exe", notes_block)
+        self.assertIn("validation matrix", notes_block)
+
+    def test_popup_notes_keep_named_target_and_follow_up_guidance(self) -> None:
+        notes_block = extract_function_block(self.router, "Get-PopupRouteNotes")
+        self.assertIn("popup creation, named-target navigation, or popup policy", notes_block)
+        self.assertIn("real headed window", notes_block)
+        self.assertIn("validation matrix", notes_block)
+        self.assertIn("fixed checkout assumptions", notes_block)
+
     def test_browser_shell_probes_keep_explicit_headed_launches(self) -> None:
         assert_explicit_headed_launch(self, self.tabs_probe, "tabs probe")
         assert_explicit_headed_launch(self, self.settings_probe, "settings home probe")
 
+    def test_tabs_probe_keeps_screenshot_capture(self) -> None:
+        self.assertIn('"--screenshot_png"', self.tabs_probe)
+        self.assertIn('"--window_width"', self.tabs_probe)
+        self.assertIn('"--window_height"', self.tabs_probe)
+
+    def test_settings_probe_keeps_profile_and_settings_shortcut_flow(self) -> None:
+        self.assertIn('ProfileName "profile-home"', self.settings_probe)
+        self.assertIn("Reset-TabProbeProfile", self.settings_probe)
+        self.assertIn("Set-TabProbeProfileEnvironment", self.settings_probe)
+        self.assertIn("Send-SmokeCtrlComma", self.settings_probe)
+        self.assertIn("Send-SmokeAltHome", self.settings_probe)
+
     def test_popup_probe_keeps_explicit_headed_launch(self) -> None:
         assert_explicit_headed_launch(self, self.popup_probe, "popup anchor probe")
+
+    def test_popup_probe_keeps_profile_reset_flow(self) -> None:
+        self.assertIn('ProfileName "profile-anchor"', self.popup_probe)
+        self.assertIn("Reset-TabProbeProfile", self.popup_probe)
+        self.assertIn("Set-TabProbeProfileEnvironment", self.popup_probe)
+        self.assertIn('"--window_width"', self.popup_probe)
+        self.assertIn('"--window_height"', self.popup_probe)
 
 
 if __name__ == "__main__":
