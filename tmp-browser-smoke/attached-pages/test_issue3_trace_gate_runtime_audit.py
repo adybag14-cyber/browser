@@ -76,6 +76,28 @@ class Issue3TraceGateRuntimeAuditTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertTrue(all(not check["exists"] for check in result["checks"]))
 
+    def test_audit_keeps_both_runtime_files_in_scope(self) -> None:
+        covered_paths = {expectation["path"] for expectation in STATIC_EXPECTATIONS}
+        self.assertEqual(
+            {"src/display/win32_backend.zig", "src/lightpanda.zig"},
+            covered_paths,
+        )
+
+    def test_audit_keeps_both_regression_guards_in_scope(self) -> None:
+        covered_labels = {expectation["label"] for expectation in STATIC_EXPECTATIONS}
+        self.assertIn("win32_trace_gate_regression_present", covered_labels)
+        self.assertIn("render_trace_gate_regression_present", covered_labels)
+
+    def test_audit_keeps_local_fixture_hints_in_scope(self) -> None:
+        self.assertIn("google_home_title_probe.html", TRACE_HINTS)
+        self.assertIn("body_onload_keyboard_input.html", TRACE_HINTS)
+        self.assertIn("mouse_down_focus_input.html", TRACE_HINTS)
+
+    def test_audit_keeps_saved_attachment_hints_in_scope(self) -> None:
+        self.assertIn("Control%20your%20online%20safety%20and%20privacy", TRACE_HINTS)
+        self.assertIn("Anthropic", TRACE_HINTS)
+        self.assertIn("Department%20of%20War", TRACE_HINTS)
+
 
 if __name__ == "__main__":
     unittest.main()
