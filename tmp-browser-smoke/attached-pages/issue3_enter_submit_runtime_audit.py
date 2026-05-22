@@ -29,6 +29,16 @@ EXPECTATIONS = (
         ),
     },
     {
+        "label": "page_keyboard_text_suppression_depth_present",
+        "path": "src/browser/Page.zig",
+        "snippet": "_keyboard_text_suppression_depth: u32 = 0,",
+        "why": (
+            "Page.zig needs keyboard text-suppression depth tracking so the "
+            "Win32 keydown path can block duplicate printable text before the "
+            "later text-input event arrives."
+        ),
+    },
+    {
         "label": "page_begin_deferred_submit_helper_present",
         "path": "src/browser/Page.zig",
         "snippet": "pub fn beginDeferredNativeTextInputEnterSubmit(self: *Page) void {",
@@ -58,6 +68,20 @@ EXPECTATIONS = (
         "why": (
             "The page Enter path should queue the focused submit-capable input "
             "instead of submitting immediately while native text input is deferred."
+        ),
+    },
+    {
+        "label": "page_printable_input_respects_suppression_depth",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "        // Handle printable characters\n"
+            "        if (!suppress_text and key.isPrintable() and !blocksTextInsertion(keyboard_event)) {\n"
+            "            try input.innerInsert(key.asString(), self);\n"
+            "        }\n"
+        ),
+        "why": (
+            "The page keydown path should skip direct printable insertion while "
+            "native text input is suppressed so stale and real text do not both land."
         ),
     },
     {
