@@ -97,6 +97,18 @@ class GoogleRecommendedValidationSurfaceTest(unittest.TestCase):
             self.router,
         )
 
+    def test_google_recommended_notes_keep_attached_html_escalation_order(self) -> None:
+        expected_notes = (
+            "broader attached-page localhost flow",
+            "dedicated Google-shaped attached-page flow",
+            "shorter issue #3 helper surface",
+            "compact bundle-suite helper",
+            "bundle-first replay",
+            "validation-router attached-html surface checker",
+        )
+        for note in expected_notes:
+            self.assertIn(note, self.router)
+
     def test_google_recommended_notes_keep_rerun_pinning_guidance(self) -> None:
         self.assertIn(
             "Pass -InputPath when you already want the attached-page helpers, top-level attached-page quickstart, compact bundle-suite helper, or bundle-first helper pinned to a saved page or the current three-page compatibility bundle.",
