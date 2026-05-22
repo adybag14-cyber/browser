@@ -47,13 +47,18 @@ class HeadedStartupTargetDiagnosticsAuditTests(unittest.TestCase):
             self.assertFalse(result["checks"][0]["exists"])
             self.assertFalse(result["checks"][0]["present"])
 
-    def test_audit_keeps_local_and_loopback_routes_in_coverage(self) -> None:
+    def test_audit_keeps_target_route_variants_in_coverage(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertTrue(
             {
                 "attached_html_local_path_test",
                 "windows_attached_path_test",
+                "dotted_local_directory_test",
                 "implicit_loopback_test",
+                "fully_qualified_loopback_test",
+                "ipv6_loopback_test",
+                "loopback_userinfo_test",
+                "ipv6_loopback_userinfo_test",
                 "implicit_remote_test",
             }.issubset(covered_labels)
         )
