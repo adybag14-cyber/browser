@@ -36,14 +36,14 @@ class MainZigStartupTargetRouteAuditTests(unittest.TestCase):
             self.write_repo_file(
                 repo_root,
                 "src/main.zig",
-                self.render_main_zig(missing_label="bare_local_html_guard_precedes_implicit_remote"),
+                self.render_main_zig(missing_label="implicit_loopback_guard_precedes_local_path"),
             )
 
             result = audit(repo_root)
             self.assertFalse(result["ok"])
             self.assertEqual(1, result["missing_count"])
             failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("bare_local_html_guard_precedes_implicit_remote", failed["label"])
+            self.assertEqual("implicit_loopback_guard_precedes_local_path", failed["label"])
             self.assertTrue(failed["exists"])
 
     def test_audit_reports_missing_main_zig_file(self) -> None:
@@ -55,10 +55,13 @@ class MainZigStartupTargetRouteAuditTests(unittest.TestCase):
             self.assertEqual(len(EXPECTATIONS), result["missing_count"])
             self.assertTrue(all(not check["exists"] for check in result["checks"]))
 
-    def test_audit_keeps_dotted_filename_regressions_in_scope(self) -> None:
+    def test_audit_keeps_browser_and_localhost_regressions_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertTrue(
             {
+                "browser_internal_helper_present",
+                "browser_downloads_regression_test_present",
+                "fully_qualified_localhost_regression_test_present",
                 "dotted_bare_html_regression_test_present",
                 "dotted_bare_xhtml_regression_test_present",
             }.issubset(covered_labels)
