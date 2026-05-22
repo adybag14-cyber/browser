@@ -1,0 +1,157 @@
+--- /tmp/browser_orig/browser-fork-headed-mode-foundation/src/browser/Page.zig	2026-04-06 12:35:42.000000000 +0100
++++ /tmp/browser_run/browser-fork-headed-mode-foundation/src/browser/Page.zig	2026-05-22 09:34:45.885203963 +0100
+@@ -287,10 +287,12 @@
+ 
+ _parent_notified: bool = false,
+ 
+-_type: enum { root, frame }, // only used for logs right now
+-_req_id: u32 = 0,
+-_navigated_options: ?NavigatedOpts = null,
+-_keyboard_text_suppression_depth: u32 = 0,
++_type: enum { root, frame }, // only used for logs right now
++_req_id: u32 = 0,
++_navigated_options: ?NavigatedOpts = null,
++_keyboard_text_suppression_depth: u32 = 0,
++_defer_native_text_input_enter_submit: bool = false,
++_pending_native_enter_submit: ?*Element.Html.Input = null,
+ 
+ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void {
+     if (comptime IS_DEBUG) {
+@@ -4602,10 +4604,10 @@
+     return self.triggerKeyboardKeyPressWithCode(key, null, modifiers, repeat);
+ }
+ 
+-pub fn triggerKeyboardKeyPressWithCode(
+-    self: *Page,
+-    key: []const u8,
+-    code: ?[]const u8,
++pub fn triggerKeyboardKeyPressWithCode(
++    self: *Page,
++    key: []const u8,
++    code: ?[]const u8,
+     modifiers: KeyboardModifiers,
+     repeat: bool,
+ ) !bool {
+@@ -4617,14 +4619,36 @@
+         .metaKey = modifiers.meta,
+         .shiftKey = modifiers.shift,
+         .repeat = repeat,
+-    }, self);
+-    return self.triggerKeyboard(keyboard_event);
+-}
+-
+-pub fn triggerWindowBlur(self: *Page) !void {
+-    const active = self.document.getFocusedElement() orelse return;
+-    try active.blur(self);
+-}
++    }, self);
++    return self.triggerKeyboard(keyboard_event);
++}
++
++pub fn beginDeferredNativeTextInputEnterSubmit(self: *Page) void {
++    self._defer_native_text_input_enter_submit = true;
++    self._pending_native_enter_submit = null;
++}
++
++pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {
++    self._defer_native_text_input_enter_submit = false;
++    self._pending_native_enter_submit = null;
++}
++
++pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {
++    const input = self._pending_native_enter_submit orelse return;
++    self._pending_native_enter_submit = null;
++
++    const focused = self.document.getFocusedElement() orelse return;
++    if (focused.asNode() != input.asNode()) {
++        return;
++    }
++
++    try self.submitForm(input.asElement(), input.getForm(self), .{});
++}
++
++pub fn triggerWindowBlur(self: *Page) !void {
++    const active = self.document.getFocusedElement() orelse return;
++    try active.blur(self);
++}
+ 
+ pub fn triggerClipboardEvent(self: *Page, typ: []const u8) !bool {
+     const active = self.document.getFocusedElement() orelse return false;
+@@ -5290,11 +5314,17 @@
+                         const html_element = input.asElement().is(Element.Html).?;
+                         try html_element.click(self);
+                         return;
+-                    },
+-                    .radio, .checkbox => return,
+-                    else => return self.submitForm(input.asElement(), input.getForm(self), .{}),
+-                }
+-            }
++                    },
++                    .radio, .checkbox => return,
++                    else => {
++                        if (self._defer_native_text_input_enter_submit) {
++                            self._pending_native_enter_submit = input;
++                            return;
++                        }
++                        return self.submitForm(input.asElement(), input.getForm(self), .{});
++                    },
++                }
++            }
+ 
+             if (isKeyboardSpaceKey(key)) {
+                 switch (input_type) {
+@@ -6194,9 +6224,9 @@
+     try testing.expectString("BI||deleteContentBackward|0,IN|a||deleteContentBackward|0", events_actual);
+ }
+ 
+-test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {
+-    var page = try testing.pageTest("page/google_home_title_probe.html");
+-    defer page._session.removePage();
++test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {
++    var page = try testing.pageTest("page/google_home_title_probe.html");
++    defer page._session.removePage();
+ 
+     _ = page._session.wait(200);
+ 
+@@ -6225,11 +6255,36 @@
+ 
+     _ = try page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat("Enter", "Enter", .{}, false);
+ 
+-    const title = (try page.getTitle()) orelse return error.TestTitleMissing;
+-    try testing.expect(std.mem.startsWith(u8, title, "SUBMIT:n|"));
+-}
+-
+-test "getBoundingClientRect computes layout boxes for an unpresented consent card page" {
++    const title = (try page.getTitle()) orelse return error.TestTitleMissing;
++    try testing.expect(std.mem.startsWith(u8, title, "SUBMIT:n|"));
++}
++
++test "Page reduced Google fixture defers native Enter submit until keypress" {
++    var page = try testing.pageTest("page/google_home_title_probe.html");
++    defer page._session.removePage();
++
++    _ = page._session.wait(200);
++
++    _ = try page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat("n", "KeyN", .{}, false);
++    _ = try page.triggerKeyboardKeyPressWithCode("n", "KeyN", .{}, false);
++    try page.insertText("n");
++
++    page.beginDeferredNativeTextInputEnterSubmit();
++    defer page.endDeferredNativeTextInputEnterSubmit();
++
++    _ = try page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat("Enter", "Enter", .{}, false);
++
++    const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;
++    try testing.expect(std.mem.startsWith(u8, keydown_title, "KEYDOWN:n|"));
++
++    _ = try page.triggerKeyboardKeyPressWithCode("Enter", "Enter", .{}, false);
++    try page.applyDeferredNativeTextInputEnterSubmit();
++
++    const submit_title = (try page.getTitle()) orelse return error.TestTitleMissing;
++    try testing.expect(std.mem.startsWith(u8, submit_title, "SUBMIT:n|"));
++}
++
++test "getBoundingClientRect computes layout boxes for an unpresented consent card page" {
+     var page = try testing.pageTest("page/consent_card_center_layout.html");
+     defer page._session.removePage();
+ 
