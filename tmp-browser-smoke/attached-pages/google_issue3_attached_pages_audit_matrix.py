@@ -42,24 +42,44 @@ def build_repo_root_error_matrix(root: str | None, message: str) -> dict[str, ob
     }
 
 
-def load_audits(
+def load_audit_specs(
     audit_specs: tuple[dict[str, object], ...] | list[dict[str, object]] | None = None,
 ) -> list[dict[str, object]]:
     specs = DEFAULT_AUDIT_SPECS if audit_specs is None else audit_specs
-    audits: list[dict[str, object]] = []
-    for spec in specs:
-        builder = spec.get("builder")
-        if not callable(builder):
-            module = importlib.import_module(str(spec["module"]))
-            builder = getattr(module, str(spec["builder_name"]))
-        audits.append(
-            {
-                "name": str(spec["name"]),
-                "label": str(spec["label"]),
-                "builder": builder,
-            }
-        )
-    return audits
+    return [
+        {
+            "name": str(spec["name"]),
+            "label": str(spec["label"]),
+            "builder": spec.get("builder"),
+            "module": spec.get("module"),
+            "builder_name": spec.get("builder_name"),
+        }
+        for spec in specs
+    ]
+
+
+def resolve_audit_builder(spec: dict[str, object]):
+    builder = spec.get("builder")
+    if callable(builder):
+        return builder
+    module = importlib.import_module(str(spec["module"]))
+    return getattr(module, str(spec["builder_name"]))
+
+
+def build_error_surface(name: str, label: str, error: Exception) -> dict[str, object]:
+    return {
+        "name": name,
+        "label": label,
+        "status": "error",
+        "expectation_count": None,
+        "missing_count": None,
+        "missing_path_count": None,
+        "first_missing_path": None,
+        "first_missing_purpose": None,
+        "first_missing_snippet": None,
+        "error_type": type(error).__name__,
+        "error": str(error),
+    }
 
 
 def summarize_surface(name: str, label: str, audit: dict[str, object]) -> dict[str, object]:
@@ -69,12 +89,25 @@ def summarize_surface(name: str, label: str, audit: dict[str, object]) -> dict[s
     first_missing = missing_paths[0] if missing_paths else None
 
     if audit.get("error_type"):
-        status = "error"
-    elif missing_count:
-        status = "drift"
-    else:
-        status = "clean"
+        return {
+            "name": name,
+            "label": label,
+            "status": "error",
+            "expectation_count": audit.get("expectation_count"),
+            "missing_count": missing_count,
+            "missing_path_count": missing_path_count,
+            "first_missing_path": None if first_missing is None else first_missing.get("path"),
+            "first_missing_purpose": None
+            if first_missing is None
+            else first_missing.get("first_missing_purpose"),
+            "first_missing_snippet": None
+            if first_missing is None
+            else first_missing.get("first_missing_snippet"),
+            "error_type": audit.get("error_type"),
+            "error": audit.get("error"),
+        }
 
+    status = "drift" if missing_count else "clean"
     return {
         "name": name,
         "label": label,
@@ -89,6 +122,8 @@ def summarize_surface(name: str, label: str, audit: dict[str, object]) -> dict[s
         "first_missing_snippet": None
         if first_missing is None
         else first_missing.get("first_missing_snippet"),
+        "error_type": None,
+        "error": None,
     }
 
 
@@ -100,20 +135,25 @@ def build_attached_pages_audit_matrix(
     total_missing_count = 0
     failing_surface_count = 0
 
-    for audit_spec in load_audits(audits):
-        audit = audit_spec["builder"](repo_root)
-        surface = summarize_surface(audit_spec["name"], audit_spec["label"], audit)
+    for audit_spec in load_audit_specs(audits):
+        try:
+            audit = resolve_audit_builder(audit_spec)(repo_root)
+            surface = summarize_surface(audit_spec["name"], audit_spec["label"], audit)
+        except Exception as exc:
+            surface = build_error_surface(audit_spec["name"], audit_spec["label"], exc)
+
         surfaces.append(surface)
         if surface["status"] != "clean":
             failing_surface_count += 1
         total_missing_count += int(surface["missing_count"] or 0)
 
-    drifted = [surface for surface in surfaces if surface["status"] == "drift"]
+    failing_surfaces = [surface for surface in surfaces if surface["status"] != "clean"]
     recommended_focus = None
-    if drifted:
+    if failing_surfaces:
         recommended_focus = max(
-            drifted,
+            failing_surfaces,
             key=lambda surface: (
+                2 if surface["status"] == "error" else 1,
                 int(surface["missing_count"] or 0),
                 int(surface["missing_path_count"] or 0),
                 surface["name"],
@@ -130,10 +170,13 @@ def build_attached_pages_audit_matrix(
         else {
             "name": recommended_focus["name"],
             "label": recommended_focus["label"],
+            "status": recommended_focus["status"],
             "missing_count": recommended_focus["missing_count"],
             "missing_path_count": recommended_focus["missing_path_count"],
             "first_missing_path": recommended_focus["first_missing_path"],
             "first_missing_purpose": recommended_focus["first_missing_purpose"],
+            "error_type": recommended_focus.get("error_type"),
+            "error": recommended_focus.get("error"),
         },
         "surfaces": surfaces,
     }
@@ -153,7 +196,7 @@ def render_text_report(matrix: dict[str, object]) -> str:
     lines.extend(
         [
             f"Audited surfaces: {matrix['surface_count']}",
-            f"Drifted surfaces: {matrix['failing_surface_count']}",
+            f"Failing surfaces: {matrix['failing_surface_count']}",
             f"Missing expectations: {matrix['total_missing_count']}",
             "",
         ]
@@ -164,24 +207,32 @@ def render_text_report(matrix: dict[str, object]) -> str:
         lines.extend(
             [
                 "Recommended focus:",
-                (
-                    f"- {recommended_focus['label']} "
-                    f"({recommended_focus['missing_count']} missing expectations across "
-                    f"{recommended_focus['missing_path_count']} path(s))"
-                ),
+                f"- {recommended_focus['label']} [{recommended_focus['status']}]",
             ]
         )
-        if recommended_focus.get("first_missing_path"):
-            lines.append(f"  First path: {recommended_focus['first_missing_path']}")
-        if recommended_focus.get("first_missing_purpose"):
-            lines.append(f"  First purpose: {recommended_focus['first_missing_purpose']}")
+        if recommended_focus["status"] == "error":
+            lines.append(
+                f"  Error: {recommended_focus['error_type']}: {recommended_focus['error']}"
+            )
+        else:
+            lines.append(
+                f"  Missing expectations: {recommended_focus['missing_count']} across "
+                f"{recommended_focus['missing_path_count']} path(s)"
+            )
+            if recommended_focus.get("first_missing_path"):
+                lines.append(f"  First path: {recommended_focus['first_missing_path']}")
+            if recommended_focus.get("first_missing_purpose"):
+                lines.append(
+                    f"  First purpose: {recommended_focus['first_missing_purpose']}"
+                )
         lines.append("")
 
     for surface in matrix["surfaces"]:
-        lines.append(
-            f"[{surface['status'].upper()}] {surface['label']}: "
-            f"{surface['missing_count']} missing expectation(s)"
-        )
+        lines.append(f"[{surface['status'].upper()}] {surface['label']}")
+        if surface["status"] == "error":
+            lines.append(f"  {surface['error_type']}: {surface['error']}")
+            continue
+        lines.append(f"  Missing expectations: {surface['missing_count']}")
         if surface.get("first_missing_path"):
             lines.append(f"  First path: {surface['first_missing_path']}")
         if surface.get("first_missing_purpose"):
