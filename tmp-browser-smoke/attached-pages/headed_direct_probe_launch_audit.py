@@ -58,6 +58,48 @@ EXPECTATIONS = (
         "snippet": '$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","420","--window_height","360","--screenshot_png",$outPng',
         "why": "Canvas render probes depend on the real headed presentation surface and should keep that request explicit.",
     },
+    {
+        "label": "find_probe_headed_launch",
+        "path": "tmp-browser-smoke/find/chrome-find-probe.ps1",
+        "snippet": '$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","360","--window_height","420","--screenshot_png",$readyPng',
+        "why": "Find-in-page probes should keep their direct headed launch explicit.",
+    },
+    {
+        "label": "settings_restore_off_headed_launch",
+        "path": "tmp-browser-smoke/settings/chrome-settings-restore-off-probe.ps1",
+        "snippet": '$browser1 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640"',
+        "why": "Settings restore-off probes should keep the first headed browser launch explicit.",
+    },
+    {
+        "label": "settings_restore_off_restart_headed_launch",
+        "path": "tmp-browser-smoke/settings/chrome-settings-restore-off-probe.ps1",
+        "snippet": '$browser2 = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$port/index.html","--window_width","960","--window_height","640"',
+        "why": "Settings restore-off probes should keep the restart headed browser launch explicit.",
+    },
+    {
+        "label": "bookmark_close_headed_launch",
+        "path": "tmp-browser-smoke/bookmarks/bookmark-close-probe.ps1",
+        "snippet": '$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed","http://127.0.0.1:$Port/index.html","--window_width","320","--window_height","420","--screenshot_png",$readyPng',
+        "why": "Bookmark close probes validate visible chrome behavior and should keep the headed launch explicit.",
+    },
+    {
+        "label": "layout_flex_order_headed_launch",
+        "path": "tmp-browser-smoke/layout-smoke/chrome-layout-flex-order-probe.ps1",
+        "snippet": '$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","480","--window_height","240","--screenshot_png",$outPng',
+        "why": "Flex-order layout probes should keep their headed screenshot launch explicit.",
+    },
+    {
+        "label": "layout_background_size_headed_launch",
+        "path": "tmp-browser-smoke/layout-smoke/chrome-layout-background-size-probe.ps1",
+        "snippet": '$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","640","--window_height","860","--screenshot_png",$outPng',
+        "why": "Background-size layout probes should keep their headed screenshot launch explicit.",
+    },
+    {
+        "label": "layout_screenshot_load_complete_headed_launch",
+        "path": "tmp-browser-smoke/layout-smoke/chrome-screenshot-load-complete-probe.ps1",
+        "snippet": '$browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","420","--window_height","320","--screenshot_png",$outPng',
+        "why": "Load-complete screenshot probes should keep their headed screenshot launch explicit.",
+    },
 )
 
 
