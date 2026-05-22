@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit main.zig startup target routing safeguards for headed local pages."""
+"""Audit main.zig startup target routing safeguards for headed startup paths."""
 
 from __future__ import annotations
 
@@ -10,6 +10,29 @@ from pathlib import Path
 
 
 EXPECTATIONS = (
+    {
+        "label": "browser_internal_helper_present",
+        "path": "src/main.zig",
+        "snippet": "fn browseTargetInternal(url: []const u8, scheme: []const u8) ?BrowseTargetInfo {",
+        "why": (
+            "Browser-shell pages should keep a dedicated internal-target helper so "
+            "headed startup logs do not regress back to remote-host labels."
+        ),
+    },
+    {
+        "label": "implicit_loopback_guard_precedes_local_path",
+        "path": "src/main.zig",
+        "snippet": (
+            "        if (browseTargetImplicitLoopback(url)) |implicit_loopback| {\n"
+            "            return implicit_loopback;\n"
+            "        }\n"
+            "        if (looksLikeBareLocalHtmlPath(url)) {\n"
+        ),
+        "why": (
+            "Scheme-less loopback targets should stay on the implicit-http route "
+            "before local attached-page classification runs."
+        ),
+    },
     {
         "label": "bare_local_html_helper_present",
         "path": "src/main.zig",
@@ -36,6 +59,24 @@ EXPECTATIONS = (
         "why": (
             "The bare local HTML guard should run before implicit remote-host "
             "classification so attached pages do not get mislabeled at startup."
+        ),
+    },
+    {
+        "label": "browser_downloads_regression_test_present",
+        "path": "src/main.zig",
+        "snippet": 'test "browse target info classifies browser downloads pages as internal" {',
+        "why": (
+            "Regression coverage should keep browser-shell downloads routes on the "
+            "internal headed startup path."
+        ),
+    },
+    {
+        "label": "fully_qualified_localhost_regression_test_present",
+        "path": "src/main.zig",
+        "snippet": 'test "browse target info keeps fully qualified localhost hosts on the implicit http route" {',
+        "why": (
+            "Regression coverage should keep fully qualified localhost hosts on the "
+            "scheme-less loopback route."
         ),
     },
     {
@@ -71,8 +112,8 @@ def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(
         description=(
-            "Check whether src/main.zig protects bare local HTML browse targets "
-            "from being classified as implicit remote hosts."
+            "Check whether src/main.zig keeps browser-shell, loopback, and bare "
+            "local headed startup targets on the intended routing paths."
         )
     )
     parser.add_argument(
