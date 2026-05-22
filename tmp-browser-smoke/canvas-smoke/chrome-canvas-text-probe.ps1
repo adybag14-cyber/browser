@@ -1,11 +1,24 @@
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8332,
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$ScreenshotReadyAttempts = 80,
+  [int]$PollMilliseconds = 250
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$root = "C:\Users\adyba\src\lightpanda-browser\tmp-browser-smoke\canvas-smoke"
-$repo = "C:\Users\adyba\src\lightpanda-browser"
-$browserExe = Join-Path $repo "zig-out\bin\lightpanda.exe"
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "common\ProbeRuntime.ps1")
+
+$root = $PSScriptRoot
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $root }
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
 $serverScript = Join-Path $root "canvas_server.py"
-$port = 8332
-$pageUrl = "http://127.0.0.1:$port/text.html"
+$pageUrl = "http://$Host`:$Port/text.html"
 $outPng = Join-Path $root "canvas-text.png"
 $browserOut = Join-Path $root "canvas-text.browser.stdout.txt"
 $browserErr = Join-Path $root "canvas-text.browser.stderr.txt"
@@ -15,8 +28,17 @@ $profileRoot = Join-Path $root "profile-canvas-text"
 $appDataRoot = Join-Path $profileRoot "lightpanda"
 
 Remove-Item $outPng,$browserOut,$browserErr,$serverOut,$serverErr -Force -ErrorAction SilentlyContinue
-cmd /c "rmdir /s /q `"$profileRoot`"" | Out-Null
+if (Test-Path -LiteralPath $profileRoot) {
+  Remove-Item -LiteralPath $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
+
+if (-not (Test-Path -LiteralPath $browserExe)) {
+  throw "headed browser binary not found: $browserExe"
+}
+if (-not (Test-Path -LiteralPath $serverScript)) {
+  throw "canvas text server script not found: $serverScript"
+}
 
 @"
 lightpanda-browse-settings-v1
@@ -25,24 +47,6 @@ allow_script_popups	0
 default_zoom_percent	100
 homepage_url	
 "@ | Set-Content -Path (Join-Path $appDataRoot "browse-settings-v1.txt") -NoNewline
-
-function Get-ProcessCommandLine($TargetPid) {
-  $meta = Get-CimInstance Win32_Process -Filter "ProcessId=$TargetPid" -ErrorAction SilentlyContinue |
-    Select-Object Name,ProcessId,CommandLine,CreationDate
-  if ($meta) { return [string]$meta.CommandLine }
-  return ""
-}
-
-function Stop-VerifiedProcess($TargetPid) {
-  $cmd = Get-ProcessCommandLine $TargetPid
-  if ($cmd -and $cmd -notmatch "codex\.js|@openai/codex") {
-    try {
-      Stop-Process -Id $TargetPid -Force -ErrorAction Stop
-    } catch {
-      if (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue) { throw }
-    }
-  }
-}
 
 function Count-TextPixels($Path) {
   Add-Type -AssemblyName System.Drawing
@@ -68,54 +72,52 @@ function Count-TextPixels($Path) {
   }
 }
 
-$server = Start-Process -FilePath "python" -ArgumentList $serverScript,$port -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+$python = Resolve-LightpandaPythonCommand
+$server = $null
+$browser = $null
 
 try {
-  $ready = $false
-  for ($i = 0; $i -lt 40; $i++) {
-    Start-Sleep -Milliseconds 250
-    try {
-      $resp = Invoke-WebRequest -UseBasicParsing -Uri $pageUrl -TimeoutSec 2
-      if ($resp.StatusCode -eq 200) { $ready = $true; break }
-    } catch {}
-  }
+  $server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, "$Port")) -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
+  $ready = Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
   if (-not $ready) { throw "canvas text server did not become ready" }
 
   $env:APPDATA = $profileRoot
   $env:LOCALAPPDATA = $profileRoot
-  $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","480","--window_height","360","--screenshot_png",$outPng -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
+  $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse","--browser_mode","headed",$pageUrl,"--window_width","480","--window_height","360","--screenshot_png",$outPng) -WorkingDirectory $repo -PassThru -RedirectStandardOutput $browserOut -RedirectStandardError $browserErr
 
   try {
-    $pngReady = $false
-    for ($i = 0; $i -lt 80; $i++) {
-      Start-Sleep -Milliseconds 250
-      if ((Test-Path $outPng) -and ((Get-Item $outPng).Length -gt 0)) {
-        $pngReady = $true
-        break
-      }
-    }
+    $pngReady = Wait-LightpandaFileReady -Path $outPng -Attempts $ScreenshotReadyAttempts -PollMilliseconds $PollMilliseconds
     if (-not $pngReady) { throw "canvas text screenshot did not become ready" }
 
     $counts = Count-TextPixels $outPng
+    $counts["repo_root"] = $repo
+    $counts["browser_exe"] = $browserExe
+    $counts["host"] = $Host
+    $counts["port"] = $Port
+    $counts["page_url"] = $pageUrl
     $counts["ready"] = $ready
     $counts["screenshot_length"] = (Get-Item $outPng).Length
     if (-not $counts.text_worked) {
       throw "canvas text probe did not observe expected screenshot pixels"
     }
-    $counts | ConvertTo-Json -Depth 5
+    $counts | ConvertTo-Json -Depth 6
   }
   finally {
-    Stop-VerifiedProcess $browser.Id
-    for ($i = 0; $i -lt 20; $i++) {
-      if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
-      Start-Sleep -Milliseconds 100
+    if ($browser) {
+      [void](Stop-LightpandaOwnedProbeProcess $browser)
+      for ($i = 0; $i -lt 20; $i++) {
+        if (-not (Get-Process -Id $browser.Id -ErrorAction SilentlyContinue)) { break }
+        Start-Sleep -Milliseconds 100
+      }
     }
   }
 }
 finally {
-  Stop-VerifiedProcess $server.Id
-  for ($i = 0; $i -lt 20; $i++) {
-    if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
-    Start-Sleep -Milliseconds 100
+  if ($server) {
+    [void](Stop-LightpandaOwnedProbeProcess $server)
+    for ($i = 0; $i -lt 20; $i++) {
+      if (-not (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) { break }
+      Start-Sleep -Milliseconds 100
+    }
   }
 }
