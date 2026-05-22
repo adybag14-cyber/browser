@@ -4,7 +4,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from issue3_trace_gate_runtime_audit import STATIC_EXPECTATIONS, TRACE_HINTS, audit
+from issue3_trace_gate_runtime_audit import EXPECTATIONS, audit
+from issue3_trace_target_catalog import ISSUE3_TRACE_HINTS
+
+
+WIN32_HELPER = "fn traceUrlContainsIgnoreCase(url: []const u8, needle: []const u8) bool {"
+RENDER_HELPER = "fn browseTraceUrlContainsIgnoreCase(url: []const u8, needle: []const u8) bool {"
+WIN32_TEST = 'test "win32 google input trace gate includes attached compatibility pages and headed fixtures" {'
+RENDER_TEST = 'test "browse render trace gate includes attached compatibility pages and headed fixtures" {'
 
 
 class Issue3TraceGateRuntimeAuditTests(unittest.TestCase):
@@ -13,29 +20,61 @@ class Issue3TraceGateRuntimeAuditTests(unittest.TestCase):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
-    def render_file(self, relative_path: str, *, missing_label: str | None = None, missing_hint: str | None = None) -> str:
-        parts = [f"// synthetic {relative_path} fixture"]
-        for expectation in STATIC_EXPECTATIONS:
-            if expectation["path"] != relative_path:
-                continue
-            if expectation["label"] == missing_label:
-                continue
-            parts.append(expectation["snippet"])
-        for hint in TRACE_HINTS:
+    def render_source(
+        self,
+        helper_snippet: str,
+        test_snippet: str,
+        *,
+        missing_hint: str | None = None,
+        include_helper: bool = True,
+        include_test: bool = True,
+    ) -> str:
+        parts = ["// synthetic runtime trace gate fixture"]
+        if include_helper:
+            parts.append(helper_snippet)
+        for hint in ISSUE3_TRACE_HINTS:
             if hint == missing_hint:
                 continue
-            parts.append(hint)
+            parts.append(f"// {hint}")
+        if include_test:
+            parts.append(test_snippet)
         return "\n".join(parts) + "\n"
 
-    def render_repo(self, repo_root: Path, *, missing_label: str | None = None, missing_hint: str | None = None) -> None:
-        for relative_path in ("src/display/win32_backend.zig", "src/lightpanda.zig"):
-            self.write_repo_file(
-                repo_root,
-                relative_path,
-                self.render_file(relative_path, missing_label=missing_label, missing_hint=missing_hint),
-            )
+    def render_repo(
+        self,
+        repo_root: Path,
+        *,
+        win32_missing_hint: str | None = None,
+        render_missing_hint: str | None = None,
+        include_win32_helper: bool = True,
+        include_render_helper: bool = True,
+        include_win32_test: bool = True,
+        include_render_test: bool = True,
+    ) -> None:
+        self.write_repo_file(
+            repo_root,
+            "src/display/win32_backend.zig",
+            self.render_source(
+                WIN32_HELPER,
+                WIN32_TEST,
+                missing_hint=win32_missing_hint,
+                include_helper=include_win32_helper,
+                include_test=include_win32_test,
+            ),
+        )
+        self.write_repo_file(
+            repo_root,
+            "src/lightpanda.zig",
+            self.render_source(
+                RENDER_HELPER,
+                RENDER_TEST,
+                missing_hint=render_missing_hint,
+                include_helper=include_render_helper,
+                include_test=include_render_test,
+            ),
+        )
 
-    def test_audit_passes_when_all_runtime_gate_expectations_are_present(self) -> None:
+    def test_audit_passes_when_all_trace_gate_contracts_are_present(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
             self.render_repo(repo_root)
@@ -47,26 +86,43 @@ class Issue3TraceGateRuntimeAuditTests(unittest.TestCase):
     def test_audit_reports_missing_win32_helper(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="win32_casefold_trace_helper_present")
+            self.render_repo(repo_root, include_win32_helper=False)
 
             result = audit(repo_root)
             self.assertFalse(result["ok"])
             failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("win32_casefold_trace_helper_present", failed["label"])
+            self.assertEqual("win32_ignore_case_trace_helper_present", failed["label"])
+            self.assertTrue(failed["exists"])
 
-    def test_audit_reports_missing_render_hint(self) -> None:
+    def test_audit_reports_missing_render_catalog_hint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_hint="Department%20of%20War")
+            self.render_repo(repo_root, render_missing_hint="department of war")
 
             result = audit(repo_root)
             self.assertFalse(result["ok"])
             failed = next(
                 check
                 for check in result["checks"]
-                if not check["present"] and check["label"] == "render_trace_hint::Department%20of%20War"
+                if check["label"] == "render_trace_gate_covers_issue3_catalog_hints"
             )
-            self.assertEqual("src/lightpanda.zig", failed["path"])
+            self.assertFalse(failed["present"])
+            self.assertIn("department of war", failed["details"])
+
+    def test_audit_reports_missing_render_regression_test(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.render_repo(repo_root, include_render_test=False)
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            failed = next(
+                check
+                for check in result["checks"]
+                if check["label"] == "render_trace_gate_regression_test_present"
+            )
+            self.assertFalse(failed["present"])
+            self.assertTrue(failed["exists"])
 
     def test_audit_reports_missing_repo_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -74,29 +130,15 @@ class Issue3TraceGateRuntimeAuditTests(unittest.TestCase):
 
             result = audit(repo_root)
             self.assertFalse(result["ok"])
+            self.assertEqual(len(EXPECTATIONS), result["missing_count"])
             self.assertTrue(all(not check["exists"] for check in result["checks"]))
 
-    def test_audit_keeps_both_runtime_files_in_scope(self) -> None:
-        covered_paths = {expectation["path"] for expectation in STATIC_EXPECTATIONS}
+    def test_audit_keeps_both_runtime_trace_files_in_scope(self) -> None:
+        covered_paths = {expectation["path"] for expectation in EXPECTATIONS}
         self.assertEqual(
             {"src/display/win32_backend.zig", "src/lightpanda.zig"},
             covered_paths,
         )
-
-    def test_audit_keeps_both_regression_guards_in_scope(self) -> None:
-        covered_labels = {expectation["label"] for expectation in STATIC_EXPECTATIONS}
-        self.assertIn("win32_trace_gate_regression_present", covered_labels)
-        self.assertIn("render_trace_gate_regression_present", covered_labels)
-
-    def test_audit_keeps_local_fixture_hints_in_scope(self) -> None:
-        self.assertIn("google_home_title_probe.html", TRACE_HINTS)
-        self.assertIn("body_onload_keyboard_input.html", TRACE_HINTS)
-        self.assertIn("mouse_down_focus_input.html", TRACE_HINTS)
-
-    def test_audit_keeps_saved_attachment_hints_in_scope(self) -> None:
-        self.assertIn("Control%20your%20online%20safety%20and%20privacy", TRACE_HINTS)
-        self.assertIn("Anthropic", TRACE_HINTS)
-        self.assertIn("Department%20of%20War", TRACE_HINTS)
 
 
 if __name__ == "__main__":
