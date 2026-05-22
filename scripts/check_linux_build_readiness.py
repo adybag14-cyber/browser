@@ -16,15 +16,22 @@ import pathlib
 import re
 import subprocess
 import sys
+import tempfile
+import unittest
 
 
 MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
 PATH_VALUE_RE = re.compile(r'\.path\s*=\s*"([^"]+)"')
 URL_VALUE_RE = re.compile(r'\.url\s*=\s*"([^"]+)"')
 
+DEPENDENCY_MARKERS: dict[str, tuple[str, ...]] = {
+    "v8": ("build.zig", "build.zig.zon", "src/v8.zig"),
+    "boringssl-zig": ("build.zig", "README.md", "generated"),
+}
+
 
 def normalize_name(raw: str) -> str:
-    return raw.replace('@', "").strip('"')
+    return raw.replace("@", "").strip('"')
 
 
 def extract_braced_block(text: str, start_index: int) -> str:
@@ -130,11 +137,31 @@ def check_zig_version(repo_root: pathlib.Path, minimum_zig: str, zig_cmd: str) -
     return failures
 
 
+def find_missing_markers(dep_name: str, dep_path: pathlib.Path) -> list[str]:
+    markers = DEPENDENCY_MARKERS.get(dep_name, ())
+    missing: list[str] = []
+    for marker in markers:
+        if not (dep_path / marker).exists():
+            missing.append(marker)
+    return missing
+
+
 def check_path_dependencies(path_deps: list[tuple[str, pathlib.Path]]) -> list[str]:
     failures: list[str] = []
     for name, dep_path in path_deps:
         if not dep_path.exists():
             failures.append(f"missing sibling dependency {name}: expected {dep_path}")
+            continue
+        if not dep_path.is_dir():
+            failures.append(f"sibling dependency {name} is not a directory: {dep_path}")
+            continue
+
+        missing_markers = find_missing_markers(name, dep_path)
+        if missing_markers:
+            joined_markers = ", ".join(missing_markers)
+            failures.append(
+                f"sibling dependency {name} at {dep_path} is incomplete; missing expected markers: {joined_markers}"
+            )
     return failures
 
 
@@ -157,11 +184,67 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip calling `zig version` and only validate the repo layout",
     )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run the helper's focused unit tests and exit",
+    )
     return parser
+
+
+class ReadinessHelperTests(unittest.TestCase):
+    def test_placeholder_dependency_dirs_fail_marker_checks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = pathlib.Path(tmpdir)
+            v8_path = tmp_path / "zig-v8-fork"
+            boring_path = tmp_path / "boringssl-zig"
+            v8_path.mkdir()
+            boring_path.mkdir()
+
+            failures = check_path_dependencies(
+                [
+                    ("v8", v8_path),
+                    ("boringssl-zig", boring_path),
+                ]
+            )
+
+            self.assertEqual(len(failures), 2)
+            self.assertIn("missing expected markers", failures[0])
+            self.assertIn("missing expected markers", failures[1])
+
+    def test_dependency_marker_checks_pass_for_expected_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = pathlib.Path(tmpdir)
+            v8_path = tmp_path / "zig-v8-fork"
+            boring_path = tmp_path / "boringssl-zig"
+            (v8_path / "src").mkdir(parents=True)
+            (boring_path / "generated").mkdir(parents=True)
+            for path in (
+                v8_path / "build.zig",
+                v8_path / "build.zig.zon",
+                v8_path / "src" / "v8.zig",
+                boring_path / "build.zig",
+                boring_path / "README.md",
+            ):
+                path.write_text("", encoding="utf-8")
+
+            failures = check_path_dependencies(
+                [
+                    ("v8", v8_path),
+                    ("boringssl-zig", boring_path),
+                ]
+            )
+
+            self.assertEqual(failures, [])
 
 
 def main() -> int:
     args = build_parser().parse_args()
+    if args.self_test:
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(ReadinessHelperTests)
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        return 0 if result.wasSuccessful() else 1
+
     repo_root = pathlib.Path(args.repo_root).resolve()
     zon_path = repo_root / "build.zig.zon"
     if not zon_path.is_file():
@@ -179,7 +262,11 @@ def main() -> int:
     if path_deps:
         print("Sibling path dependencies:")
         for name, dep_path in path_deps:
-            state = "ok" if dep_path.exists() else "missing"
+            state = "ok"
+            if not dep_path.exists():
+                state = "missing"
+            elif find_missing_markers(name, dep_path):
+                state = "incomplete"
             print(f"  - {name}: {dep_path} [{state}]")
 
     if url_deps:
@@ -192,7 +279,7 @@ def main() -> int:
         for failure in failures:
             print(f"  - {failure}", file=sys.stderr)
         print(
-            "\nSuggested next step: use a Zig toolchain on the declared branch line and stage the sibling dependencies before retrying `zig build`.",
+            "\nSuggested next step: use a Zig toolchain on the declared branch line and stage the real sibling dependencies before retrying `zig build`.",
             file=sys.stderr,
         )
         return 1
