@@ -31,7 +31,7 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_authority_extracts_leading_segment",
         "path": "src/Config.zig",
-        "snippet": "const authority_end = std.mem.indexOfAny(u8, candidate, \"/\\\\\") orelse candidate.len;",
+        "snippet": 'const authority_end = std.mem.indexOfAny(u8, candidate, "/\\\\") orelse candidate.len;',
         "why": (
             "The scheme-less authority classifier should inspect the leading "
             "authority before any path segment."
@@ -49,7 +49,7 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_loopback_localhost_guard",
         "path": "src/Config.zig",
-        "snippet": "if (std.ascii.eqlIgnoreCase(host, \"localhost\") or std.ascii.endsWithIgnoreCase(host, \".localhost\")) {",
+        "snippet": 'if (std.ascii.eqlIgnoreCase(host, "localhost") or std.ascii.endsWithIgnoreCase(host, ".localhost")) {',
         "why": (
             "Scheme-less localhost targets should keep browse inference on the "
             "headed localhost route."
@@ -58,7 +58,7 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_loopback_ipv4_guard",
         "path": "src/Config.zig",
-        "snippet": "if (std.mem.eql(u8, host, \"0.0.0.0\") or std.mem.startsWith(u8, host, \"127.\")) {",
+        "snippet": 'if (std.mem.eql(u8, host, "0.0.0.0") or std.mem.startsWith(u8, host, "127.")) {',
         "why": (
             "Scheme-less loopback IPv4 targets should stay on browse instead of "
             "dropping to the generic fetch fallback."
@@ -67,7 +67,7 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_loopback_ipv6_guard",
         "path": "src/Config.zig",
-        "snippet": "if (std.ascii.eqlIgnoreCase(host, \"[::1]\") or std.ascii.eqlIgnoreCase(host, \"[0:0:0:0:0:0:0:1]\")) {",
+        "snippet": 'if (std.ascii.eqlIgnoreCase(host, "[::1]") or std.ascii.eqlIgnoreCase(host, "[0:0:0:0:0:0:0:1]")) {',
         "why": (
             "Scheme-less IPv6 loopback targets should keep the same local browse "
             "path as localhost and 127.x.x.x."
@@ -100,7 +100,7 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_remote_html_fetch_regression",
         "path": "src/Config.zig",
-        "snippet": "test \"infer mode keeps fetch for scheme-less remote html target without browse hint\" {",
+        "snippet": 'test "infer mode keeps fetch for scheme-less remote html target without browse hint" {',
         "why": (
             "Regression coverage should keep example.com/attached-page.html on "
             "the fetch fallback."
@@ -109,7 +109,7 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_remote_xhtml_fetch_regression",
         "path": "src/Config.zig",
-        "snippet": "test \"infer mode keeps fetch for scheme-less remote xhtml target without browse hint\" {",
+        "snippet": 'test "infer mode keeps fetch for scheme-less remote xhtml target without browse hint" {',
         "why": (
             "Regression coverage should keep scheme-less remote .xhtml targets on "
             "fetch when there is no explicit browse hint."
@@ -118,7 +118,7 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_loopback_html_browse_regression",
         "path": "src/Config.zig",
-        "snippet": "test \"infer mode keeps browse for scheme-less loopback html target\" {",
+        "snippet": 'test "infer mode keeps browse for scheme-less loopback html target" {',
         "why": (
             "Loopback hostname HTML targets should keep browse inference on the "
             "headed localhost path."
@@ -127,10 +127,19 @@ EXPECTATIONS = (
     {
         "label": "config_scheme_less_ipv4_loopback_html_browse_regression",
         "path": "src/Config.zig",
-        "snippet": "test \"infer mode keeps browse for scheme-less ipv4 loopback html target\" {",
+        "snippet": 'test "infer mode keeps browse for scheme-less ipv4 loopback html target" {',
         "why": (
             "IPv4 loopback HTML targets should keep browse inference even without "
             "an explicit scheme."
+        ),
+    },
+    {
+        "label": "config_headed_remote_html_override_regression",
+        "path": "src/Config.zig",
+        "snippet": 'const mode = try inferModeSlice(&.{ "--headed", "https://example.com/attached-page.html" });',
+        "why": (
+            "The scheme-less remote fetch fix should preserve the explicit headed "
+            "override for fully qualified remote HTML targets."
         ),
     },
 )
