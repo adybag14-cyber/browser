@@ -20,6 +20,17 @@ def extract_function_block(source: str, function_name: str) -> str:
     return match.group(0)
 
 
+def extract_route_block(source: str, route_name: str) -> str:
+    pattern = re.compile(
+        rf'Write-Route\s+-Name\s+"{re.escape(route_name)}".*?(?=^\s*Write-Route\s+-Name\s+"|^\s*break\b|\Z)',
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(source)
+    if not match:
+        raise AssertionError(f"Could not find route block for {route_name}")
+    return match.group(0)
+
+
 def assert_explicit_headed_launch(testcase: unittest.TestCase, source: str, label: str) -> None:
     pattern = re.compile(
         r'Start-Process\s+-FilePath\s+\$[A-Za-z_:][A-Za-z0-9_:]*\s+-ArgumentList\s+.*?"browse".*?"--browser_mode".*?"headed"',
@@ -32,7 +43,13 @@ FIXTURE_FILES = {
     "scripts/windows/show_headed_validation_suites.ps1": r"""
 function Get-Issue3AttachedHtmlFollowUpCommands {
     return @(
-        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1"
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_attached_html_validation_flow.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_attached_html_validation_flow.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_validation_router_attached_html_quickstart_surface.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_top_level_attached_html_quickstart.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_target_bundle_suite_surface.ps1",
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_bundle_first_entrypoint.ps1"
     )
 }
 
@@ -85,12 +102,29 @@ Write-Route -Name "google-recommended" -Commands @(
 Write-Route -Name "bounded-input" -Commands @(
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1",
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\label-click-probe.ps1"
+) -Notes @(
+    "These probes are the smallest shared headed checks for typing, focus, and Enter submit."
 )
-Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands)
+Write-Route -Name "google-form-controls-enter-order" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes @(
+    "Use this after the shared input probes are green when the next question is whether submit still waits until keypress on the Google-style form-controls path."
+)
 Write-Route -Name "manual-google" -Commands @(
     "& `"$BrowserExe`" browse --headed `"https://www.google.com/`""
+) -Notes @(
+    "Use this after the bounded input probes are green."
 )
-Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands)
+Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes @(
+    "Use the broader attached-page localhost flow when the next step should stay generic before the route narrows into the shorter issue #3 helpers.",
+    "Use the dedicated Google-shaped attached-page flow when the next step still needs the broader Google-like replay map visible before the shorter issue #3 helpers.",
+    "Use the attached-html change-area quickstart when the next step should stay on the shorter issue #3 attached-page ladder before the top-level quickstart or bundle-focused helpers.",
+    "Use the top-level attached-page quickstart when the next step is saved-page follow-up on the shorter issue #3 helper ladder.",
+    "Use the compact bundle-suite helper when the replay should stay pinned to the known three-page compatibility set but you still want the bundle lane printed with the broader attached-page follow-up surfaces before bundle-first replay.",
+    "Use the bundle-first helper only after the compact bundle-suite helper has made the pinned three-page route easy to reopen, or when -InputPath already fixes the bundle inputs tightly enough that the narrower bundle-only bridge is the next obvious step.",
+    "Run the validation-router attached-html surface checker first so missing quickstart notes or downstream helper paths fail fast before you trust the shorter issue #3 attached-page ladder.",
+    "Keep the same preferred starting page pinned by rerunning this router with -PreferredInitialPage before switching to the Google-shaped attached-page helper route.",
+    "Keep the same saved summary pinned by rerunning this router with -SummaryPath before switching to the shorter issue #3 helper ladder.",
+    "Keep the same non-default binary pinned by rerunning this router with -BrowserExe before switching to the shorter issue #3 helper ladder."
+)
 """,
     "scripts/windows/show_google_form_controls_enter_order_validation_flow.ps1": r"""
 $surfaceCheck = '.\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1'
@@ -203,6 +237,16 @@ if ($ClickFocus -and -not $GoogleEnterOrder) {
 
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "420", "--window_height", "520", "--screenshot_png", $pngPath, "http://127.0.0.1:8157/google-enter-order.html")
 """,
+    "tmp-browser-smoke/form-controls/label-click-probe.ps1": r"""
+param(
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8153
+)
+
+$browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "420", "--window_height", "520", "--screenshot_png", $pngPath, "http://127.0.0.1:8153/label.html")
+[void](Invoke-SmokeClientClick $hwnd 316 408)
+""",
 }
 
 
@@ -241,6 +285,9 @@ class GoogleInputValidationSurfaceTest(unittest.TestCase):
         )
         cls.enter_submit_probe = read_text(
             cls.repo_root / "tmp-browser-smoke/form-controls/enter-submit-probe.ps1"
+        )
+        cls.label_click_probe = read_text(
+            cls.repo_root / "tmp-browser-smoke/form-controls/label-click-probe.ps1"
         )
 
     def test_router_keeps_google_enter_order_routes_reachable(self) -> None:
@@ -318,6 +365,44 @@ class GoogleInputValidationSurfaceTest(unittest.TestCase):
         self.assertIn(r'.\tmp-browser-smoke\form-controls\enter-submit-probe.ps1', self.router)
         self.assertIn(r'.\tmp-browser-smoke\form-controls\label-click-probe.ps1', self.router)
 
+    def test_google_input_route_keeps_bounded_input_and_manual_google_notes(self) -> None:
+        bounded_input_block = extract_route_block(self.router, "bounded-input")
+        self.assertIn("smallest shared headed checks for typing, focus, and Enter submit", bounded_input_block)
+
+        manual_google_block = extract_route_block(self.router, "manual-google")
+        self.assertIn('browse --headed `"https://www.google.com/`"', manual_google_block)
+        self.assertIn("Use this after the bounded input probes are green.", manual_google_block)
+
+    def test_issue3_follow_up_helper_keeps_broader_google_and_bundle_routes(self) -> None:
+        follow_up_commands = extract_function_block(self.router, "Get-Issue3AttachedHtmlFollowUpCommands")
+        expected_helpers = (
+            "show_attached_html_validation_flow.ps1",
+            "show_google_attached_html_validation_flow.ps1",
+            "check_google_issue3_validation_router_attached_html_quickstart_surface.ps1",
+            "show_google_issue3_attached_html_change_area_quickstart.ps1",
+            "show_google_issue3_top_level_attached_html_quickstart.ps1",
+            "show_google_issue3_attached_html_target_bundle_suite_surface.ps1",
+            "show_google_issue3_attached_bundle_first_entrypoint.ps1",
+        )
+        for helper in expected_helpers:
+            self.assertIn(helper, follow_up_commands)
+
+    def test_google_input_follow_up_notes_keep_escalation_and_pinning_guidance(self) -> None:
+        expected_fragments = (
+            "broader attached-page localhost flow",
+            "dedicated Google-shaped attached-page flow",
+            "attached-html change-area quickstart",
+            "top-level attached-page quickstart",
+            "compact bundle-suite helper",
+            "bundle-first helper",
+            "validation-router attached-html surface checker",
+            "Keep the same preferred starting page pinned by rerunning this router with -PreferredInitialPage",
+            "Keep the same saved summary pinned by rerunning this router with -SummaryPath",
+            "Keep the same non-default binary pinned by rerunning this router with -BrowserExe",
+        )
+        for fragment in expected_fragments:
+            self.assertIn(fragment, self.router)
+
     def test_form_controls_flow_keeps_click_focus_and_broader_stack(self) -> None:
         self.assertIn('name = "surface-check"', self.form_controls_flow)
         self.assertIn('name = "shared-click-focus-fallback"', self.form_controls_flow)
@@ -372,6 +457,11 @@ class GoogleInputValidationSurfaceTest(unittest.TestCase):
         self.assertIn('Choose at most one specialized enter-submit mode.', self.enter_submit_probe)
         self.assertIn('ClickFocus currently supports only -GoogleEnterOrder.', self.enter_submit_probe)
         assert_explicit_headed_launch(self, self.enter_submit_probe, "enter-submit probe")
+
+    def test_label_click_probe_keeps_headed_launch_and_click_delivery(self) -> None:
+        assert_explicit_headed_launch(self, self.label_click_probe, "label-click probe")
+        self.assertIn("Invoke-SmokeClientClick", self.label_click_probe)
+        self.assertIn('"--screenshot_png"', self.label_click_probe)
 
 
 if __name__ == "__main__":
