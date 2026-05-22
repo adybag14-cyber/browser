@@ -89,11 +89,45 @@ function Get-AttachedHtmlValidationHint {
         }
     }
 
+    if ($hasDenseAssetSignals) {
+        return [ordered]@{
+            fixture = $leaf
+            change_area = "rendering"
+            summary = "Asset-heavy saved page. Start with layout/rendering plus stylesheet or image gates before the manual localhost replay."
+            bounded_first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering"
+            follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network"
+        }
+    }
+
     return [ordered]@{
         fixture = $leaf
         change_area = "attached-html"
         summary = "General attached page. Start with the closest bounded suite for the subsystem you changed, then use the attached-page localhost flow."
         bounded_first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html"
+        follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait"
+    }
+}
+
+function Get-AttachedHtmlOverallRecommendation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Hints,
+        [Parameter(Mandatory = $true)]
+        [bool]$GoogleStyle,
+        $BundleRecommendation
+    )
+
+    if ($Hints | Where-Object { $_.change_area -eq "input" }) {
+        return [ordered]@{
+            change_area = "input"
+            first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input"
+            follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait"
+        }
+    }
+
+    return [ordered]@{
+        change_area = "attached-html"
+        first_step = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea attached-html"
         follow_up = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_localhost_html_validation_recommended.ps1 -Wait"
     }
 }
