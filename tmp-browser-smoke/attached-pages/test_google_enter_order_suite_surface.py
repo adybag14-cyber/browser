@@ -104,7 +104,7 @@ switch ($true) {
 
         Write-Route -Name "google-shared-enter-order" -Commands (Get-GoogleSharedEnterOrderCommands) -Notes (Get-GoogleSharedEnterOrderNotes)
         Write-Route -Name "dedicated-form-controls-follow-up" -Commands (Get-GoogleFormControlsEnterOrderCommands) -Notes @(
-            "Use these when the shared Enter-order ladder is already narrowed and you want the last shared form-controls keypress-before-submit gate isolated again."
+            "Use these when the shared Enter-order ladder is already narrowed and you want the last shared form-controls keypress-before-submit gate reopened on its own surface."
         )
         break
     }
@@ -187,6 +187,19 @@ class GoogleEnterOrderSuiteSurfaceTest(unittest.TestCase):
             positions.append(block.index(helper_name))
         self.assertEqual(positions, sorted(positions))
 
+    def test_command_helpers_keep_shared_argument_bundle(self) -> None:
+        form_controls_block = extract_function_block(self.router, "Get-GoogleFormControlsEnterOrderCommands")
+        self.assertEqual(
+            4,
+            form_controls_block.count("-Arguments $googleFormControlsEnterOrderArguments"),
+        )
+
+        shared_block = extract_function_block(self.router, "Get-GoogleSharedEnterOrderCommands")
+        self.assertEqual(
+            5,
+            shared_block.count("-Arguments $googleFormControlsEnterOrderArguments"),
+        )
+
     def test_dedicated_suite_and_change_area_keep_shared_follow_up_route(self) -> None:
         route_matches = re.findall(
             r'Write-Route\s+-Name\s+"shared-enter-order-follow-up"\s+-Commands\s+@\((?P<body>.*?)\)\s+-Notes',
@@ -215,6 +228,16 @@ class GoogleEnterOrderSuiteSurfaceTest(unittest.TestCase):
         )
         self.assertIn("last shared form-controls keypress-before-submit gate", route_matches[0])
         self.assertIn("last shared form-controls keypress-before-submit gate", route_matches[1])
+
+    def test_dedicated_follow_up_notes_keep_distinct_suite_and_change_area_wording(self) -> None:
+        self.assertIn(
+            "reopened on its own surface.",
+            self.router,
+        )
+        self.assertIn(
+            "gate isolated again.",
+            self.router,
+        )
 
     def test_suite_notes_keep_dedicated_and_shared_guidance(self) -> None:
         dedicated_notes = extract_function_block(self.router, "Get-GoogleFormControlsEnterOrderNotes")
