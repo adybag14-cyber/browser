@@ -10,22 +10,22 @@
         .brotli = .{
             // v1.2.0
             .url = "https://github.com/google/brotli/archive/028fb5a23661f123017c060daa546b55cf4bde29.tar.gz",
-            .hash = "N-V-__8AAJudKgCQCuIiH6MJjAiIJHfg_tT_Ew-0vZwVkCo_",
+            .hash = "N-V-__8AAJudKgBGYXQ4BbpZVRHGa2H5ZSgZi8jKmGxPvgLY",
         },
         .zlib = .{
             .url = "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz",
-            .hash = "N-V-__8AAJ2cNgAgfBtAw33Bxfu1IWISDeKKSr3DAqoAysIJ",
+            .hash = "N-V-__8AAJ2cNgAzjPOKRTozPWGxzbG8KtXqzuzNf4PkBfEF",
         },
         .nghttp2 = .{
             .url = "https://github.com/nghttp2/nghttp2/releases/download/v1.68.0/nghttp2-1.68.0.tar.gz",
-            .hash = "N-V-__8AAL15vQCI63ZL6Zaz5hJg6JTEgYXGbLnMFSnf7FT3",
+            .hash = "N-V-__8AAL15vQAkgIl0ev9OwJEyZl7W-9875TdlDon_j9wm",
         },
         .@"boringssl-zig" = .{
             .path = "../boringssl-zig",
         },
         .curl = .{
             .url = "https://github.com/curl/curl/releases/download/curl-8_18_0/curl-8.18.0.tar.gz",
-            .hash = "N-V-__8AALp9QAGn6CCHZ6fK_FfMyGtG824LSHYHHasM3w-y",
+            .hash = "N-V-__8AALp9QAFHFA3skfPjPcs6JeE02Fq2AMUSUbVFKrN8",
         },
     },
     .paths = .{""},
