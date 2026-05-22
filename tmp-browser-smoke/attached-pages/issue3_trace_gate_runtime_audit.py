@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Audit the issue #3 runtime trace gates against attached-page targets."""
-
 from __future__ import annotations
 
 import argparse
@@ -8,45 +5,67 @@ import json
 import sys
 from pathlib import Path
 
+from issue3_trace_target_catalog import ISSUE3_TRACE_HINTS
 
-TRACE_HINTS: tuple[str, ...] = (
-    "google-home-",
-    "google.com",
-    "google_home_title_probe.html",
-    "body_onload_keyboard_input.html",
-    "mouse_down_focus_input.html",
-    "Control your online safety and privacy",
-    "Control%20your%20online%20safety%20and%20privacy",
-    "Google Safety Centre",
-    "Google%20Safety%20Centre",
-    "Anthropic",
-    "Job%20Application%20for",
-    "Presidential Unsealing and Reporting System for UAP Encounters",
-    "Presidential%20Unsealing%20and%20Reporting%20System%20for%20UAP%20Encounters",
-    "Department of War",
-    "Department%20of%20War",
-)
 
-STATIC_EXPECTATIONS: tuple[dict[str, str], ...] = (
+EXPECTATIONS = (
     {
-        "label": "win32_casefold_trace_helper_present",
+        "label": "win32_ignore_case_trace_helper_present",
         "path": "src/display/win32_backend.zig",
+        "kind": "snippet",
         "snippet": "fn traceUrlContainsIgnoreCase(url: []const u8, needle: []const u8) bool {",
+        "why": (
+            "The Win32 input trace gate should use case-insensitive matching so "
+            "saved attached-page names and URL-encoded variants stay traceable."
+        ),
     },
     {
-        "label": "win32_trace_gate_regression_present",
+        "label": "win32_trace_gate_covers_issue3_catalog_hints",
         "path": "src/display/win32_backend.zig",
+        "kind": "catalog_hints",
+        "why": (
+            "The Win32 input trace gate should cover the shared issue #3 target "
+            "catalog instead of only direct google.com-shaped URLs."
+        ),
+    },
+    {
+        "label": "win32_trace_gate_regression_test_present",
+        "path": "src/display/win32_backend.zig",
+        "kind": "snippet",
         "snippet": 'test "win32 google input trace gate includes attached compatibility pages and headed fixtures" {',
+        "why": (
+            "The Win32 trace gate should keep a focused Zig regression test for "
+            "the attached compatibility pages and headed fixtures."
+        ),
     },
     {
-        "label": "render_casefold_trace_helper_present",
+        "label": "render_ignore_case_trace_helper_present",
         "path": "src/lightpanda.zig",
+        "kind": "snippet",
         "snippet": "fn browseTraceUrlContainsIgnoreCase(url: []const u8, needle: []const u8) bool {",
+        "why": (
+            "The headed browse render trace gate should use case-insensitive "
+            "matching for the same attached-page targets."
+        ),
     },
     {
-        "label": "render_trace_gate_regression_present",
+        "label": "render_trace_gate_covers_issue3_catalog_hints",
         "path": "src/lightpanda.zig",
+        "kind": "catalog_hints",
+        "why": (
+            "The headed browse render trace gate should cover the shared issue "
+            "#3 target catalog instead of only the short Google URL matches."
+        ),
+    },
+    {
+        "label": "render_trace_gate_regression_test_present",
+        "path": "src/lightpanda.zig",
+        "kind": "snippet",
         "snippet": 'test "browse render trace gate includes attached compatibility pages and headed fixtures" {',
+        "why": (
+            "The headed browse render trace gate should keep a focused Zig "
+            "regression test for the attached compatibility pages and fixtures."
+        ),
     },
 )
 
@@ -57,8 +76,8 @@ def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(
         description=(
-            "Check whether the issue #3 runtime trace gates keep the attached-page "
-            "target surface in scope."
+            "Check whether the live issue #3 trace gates cover the shared "
+            "attached-page and fixture target catalog."
         )
     )
     parser.add_argument(
@@ -75,48 +94,45 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_expectations() -> list[dict[str, str]]:
-    expectations = [dict(expectation) for expectation in STATIC_EXPECTATIONS]
-    for path, prefix in (
-        ("src/display/win32_backend.zig", "win32"),
-        ("src/lightpanda.zig", "render"),
-    ):
-        for hint in TRACE_HINTS:
-            expectations.append(
-                {
-                    "label": f"{prefix}_trace_hint::{hint}",
-                    "path": path,
-                    "snippet": hint,
-                }
-            )
-    return expectations
+def missing_catalog_hints(text: str) -> list[str]:
+    normalized = text.casefold()
+    return [hint for hint in ISSUE3_TRACE_HINTS if hint.casefold() not in normalized]
 
 
 def audit(repo_root: Path) -> dict[str, object]:
     checks: list[dict[str, object]] = []
     missing = 0
 
-    for expectation in build_expectations():
+    for expectation in EXPECTATIONS:
         target = repo_root / expectation["path"]
         exists = target.is_file()
+        details: list[str] = []
+        present = False
+
         if exists:
             text = target.read_text(encoding="utf-8")
-            present = expectation["snippet"] in text
-        else:
-            present = False
+            if expectation["kind"] == "snippet":
+                snippet = expectation["snippet"]
+                present = snippet in text
+            else:
+                details = missing_catalog_hints(text)
+                present = not details
+
         if not present:
             missing += 1
+
         checks.append(
             {
                 **expectation,
                 "exists": exists,
                 "present": present,
+                "details": details,
             }
         )
 
     return {
         "repo_root": str(repo_root),
-        "expectation_count": len(checks),
+        "expectation_count": len(EXPECTATIONS),
         "missing_count": missing,
         "ok": missing == 0,
         "checks": checks,
@@ -132,7 +148,7 @@ def main() -> int:
         sys.stdout.write("\n")
     else:
         status = "PASS" if result["ok"] else "FAIL"
-        print(f"[{status}] issue #3 trace gate runtime audit")
+        print(f"[{status}] issue #3 trace-gate runtime audit")
         print(f"Repo root: {result['repo_root']}")
         print(
             f"Matched {result['expectation_count'] - result['missing_count']} of "
@@ -141,6 +157,12 @@ def main() -> int:
         for check in result["checks"]:
             marker = "ok" if check["present"] else "missing"
             print(f"- {marker}: {check['label']} ({check['path']})")
+            if check["details"]:
+                print("  Missing catalog hints:")
+                for item in check["details"]:
+                    print(f"  - {item}")
+            if not check["present"]:
+                print(f"  Why: {check['why']}")
 
     return 0 if result["ok"] else 1
 
