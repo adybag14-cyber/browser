@@ -155,6 +155,49 @@ class AttachedPagesSidecarAuditTests(unittest.TestCase):
         self.assertEqual("deeper/second.html", summary["first_missing_fixture"])
         self.assertEqual(["alpha.css", "beta.png"], summary["sample_assets"])
 
+    def test_selected_files_group_shared_missing_root_relative_path(self):
+        first = self.write_html(
+            "bundle/nested/first.html",
+            """<!doctype html>
+<html>
+  <head><link rel="stylesheet" href="/shared/export_files/alpha.css"></head>
+  <body>first</body>
+</html>
+""",
+        )
+        second = self.write_html(
+            "bundle/deeper/second.html",
+            """<!doctype html>
+<html>
+  <body><img src="/shared/export_files/beta.png"></body>
+</html>
+""",
+        )
+
+        audit = audit_module.build_sidecar_audit(selected_files=[first, second])
+        self.assertEqual(2, audit["fixture_count"])
+        self.assertEqual(2, audit["fixtures_with_missing_sidecars"])
+        self.assertEqual(1, audit["missing_sidecar_path_count"])
+        self.assertTrue(audit["bundle_root"].endswith("/bundle"))
+
+        summary = audit["missing_sidecar_paths"][0]
+        self.assertTrue(summary["expected_path"].endswith("/bundle/shared/export_files"))
+        self.assertEqual(2, summary["missing_fixture_count"])
+        self.assertEqual("deeper/second.html", summary["first_missing_fixture"])
+        self.assertEqual(["alpha.css", "beta.png"], summary["sample_assets"])
+
+    def test_selected_files_deduplicate_duplicate_inputs(self):
+        page = self.write_html(
+            "bundle/first.html",
+            """<!doctype html><html><body><img src="./first_files/logo.png"></body></html>""",
+        )
+
+        audit = audit_module.build_sidecar_audit(selected_files=[page, page])
+        self.assertEqual(1, audit["fixture_count"])
+        self.assertEqual("first.html", audit["fixtures"][0]["display_path"])
+        self.assertEqual(1, audit["fixtures_with_missing_sidecars"])
+        self.assertEqual(1, audit["missing_sidecar_path_count"])
+
     def test_cli_json_and_allow_missing_sidecars(self):
         self.write_html(
             "bundle/export.html",
