@@ -53,9 +53,34 @@ EXPECTATIONS = (
         "why": "Windows attached-page launches should keep their explicit local-path classification coverage.",
     },
     {
+        "label": "dotted_local_directory_test",
+        "snippet": 'const info = browseTargetInfo("fixtures.v1/attached-page.html");',
+        "why": "Local fixture folders with dotted names should stay on the local-path route instead of drifting into remote-host classification.",
+    },
+    {
         "label": "implicit_loopback_test",
         "snippet": 'const info = browseTargetInfo("localhost:8123/attached-page.html");',
         "why": "Scheme-less localhost launches are a first-line headed validation path and should stay classified as loopback.",
+    },
+    {
+        "label": "fully_qualified_loopback_test",
+        "snippet": 'const info = browseTargetInfo("localhost.:8123/attached-page.html");',
+        "why": "Fully qualified localhost variants should remain loopback so local headed probes do not flip to remote.",
+    },
+    {
+        "label": "ipv6_loopback_test",
+        "snippet": 'const info = browseTargetInfo("[::1]:8123/replay.xhtml?case=1");',
+        "why": "IPv6 loopback launches should stay pinned on the implicit loopback route for local validation coverage.",
+    },
+    {
+        "label": "loopback_userinfo_test",
+        "snippet": 'const info = browseTargetInfo("http://user:pass@localhost:9222/");',
+        "why": "Startup classification should keep stripping userinfo before loopback host detection.",
+    },
+    {
+        "label": "ipv6_loopback_userinfo_test",
+        "snippet": 'const info = browseTargetInfo("http://user:pass@[::1]:8080/");',
+        "why": "IPv6 loopback targets should keep working even when userinfo appears in the authority.",
     },
     {
         "label": "implicit_remote_test",
