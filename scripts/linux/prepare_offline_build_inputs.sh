@@ -8,7 +8,7 @@ Usage:
   scripts/linux/prepare_offline_build_inputs.sh \
     --browser-deps-archive /path/to/zig-browser-depo.tar.zip \
     --boringssl-archive /path/to/boringssl-zig-main.zip \
-    [--html5ever-archive /path/to/litefetch-html5ever-linux_x86_64-deps.zip] \
+    [--html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip] \
     [--browser-root /path/to/browser-repo] \
     [--check-only]
 
