@@ -1,0 +1,364 @@
+--- /tmp/browser_orig/browser-fork-headed-mode-foundation/src/browser/Page.zig	2026-04-06 12:35:42.000000000 +0100
++++ /tmp/browser_run/browser-fork-headed-mode-foundation/src/browser/Page.zig	2026-05-22 09:34:45.885203963 +0100
+@@ -287,10 +287,12 @@
+ 
+ _parent_notified: bool = false,
+ 
+-_type: enum { root, frame }, // only used for logs right now
+-_req_id: u32 = 0,
+-_navigated_options: ?NavigatedOpts = null,
+-_keyboard_text_suppression_depth: u32 = 0,
++_type: enum { root, frame }, // only used for logs right now
++_req_id: u32 = 0,
++_navigated_options: ?NavigatedOpts = null,
++_keyboard_text_suppression_depth: u32 = 0,
++_defer_native_text_input_enter_submit: bool = false,
++_pending_native_enter_submit: ?*Element.Html.Input = null,
+ 
+ pub fn init(self: *Page, frame_id: u32, session: *Session, parent: ?*Page) !void {
+     if (comptime IS_DEBUG) {
+@@ -4602,10 +4604,10 @@
+     return self.triggerKeyboardKeyPressWithCode(key, null, modifiers, repeat);
+ }
+ 
+-pub fn triggerKeyboardKeyPressWithCode(
+-    self: *Page,
+-    key: []const u8,
+-    code: ?[]const u8,
++pub fn triggerKeyboardKeyPressWithCode(
++    self: *Page,
++    key: []const u8,
++    code: ?[]const u8,
+     modifiers: KeyboardModifiers,
+     repeat: bool,
+ ) !bool {
+@@ -4617,14 +4619,36 @@
+         .metaKey = modifiers.meta,
+         .shiftKey = modifiers.shift,
+         .repeat = repeat,
+-    }, self);
+-    return self.triggerKeyboard(keyboard_event);
+-}
+-
+-pub fn triggerWindowBlur(self: *Page) !void {
+-    const active = self.document.getFocusedElement() orelse return;
+-    try active.blur(self);
+-}
++    }, self);
++    return self.triggerKeyboard(keyboard_event);
++}
++
++pub fn beginDeferredNativeTextInputEnterSubmit(self: *Page) void {
++    self._defer_native_text_input_enter_submit = true;
++    self._pending_native_enter_submit = null;
++}
++
++pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {
++    self._defer_native_text_input_enter_submit = false;
++    self._pending_native_enter_submit = null;
++}
++
++pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {
++    const input = self._pending_native_enter_submit orelse return;
++    self._pending_native_enter_submit = null;
++
++    const focused = self.document.getFocusedElement() orelse return;
++    if (focused.asNode() != input.asNode()) {
++        return;
++    }
++
++    try self.submitForm(input.asElement(), input.getForm(self), .{});
++}
++
++pub fn triggerWindowBlur(self: *Page) !void {
++    const active = self.document.getFocusedElement() orelse return;
++    try active.blur(self);
++}
+ 
+ pub fn triggerClipboardEvent(self: *Page, typ: []const u8) !bool {
+     const active = self.document.getFocusedElement() orelse return false;
+@@ -5290,11 +5314,17 @@
+                         const html_element = input.asElement().is(Element.Html).?;
+                         try html_element.click(self);
+                         return;
+-                    },
+-                    .radio, .checkbox => return,
+-                    else => return self.submitForm(input.asElement(), input.getForm(self), .{}),
+-                }
+-            }
++                    },
++                    .radio, .checkbox => return,
++                    else => {
++                        if (self._defer_native_text_input_enter_submit) {
++                            self._pending_native_enter_submit = input;
++                            return;
++                        }
++                        return self.submitForm(input.asElement(), input.getForm(self), .{});
++                    },
++                }
++            }
+ 
+             if (isKeyboardSpaceKey(key)) {
+                 switch (input_type) {
+@@ -6194,9 +6224,9 @@
+     try testing.expectString("BI||deleteContentBackward|0,IN|a||deleteContentBackward|0", events_actual);
+ }
+ 
+-test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {
+-    var page = try testing.pageTest("page/google_home_title_probe.html");
+-    defer page._session.removePage();
++test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {
++    var page = try testing.pageTest("page/google_home_title_probe.html");
++    defer page._session.removePage();
+ 
+     _ = page._session.wait(200);
+ 
+@@ -6225,11 +6255,36 @@
+ 
+     _ = try page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat("Enter", "Enter", .{}, false);
+ 
+-    const title = (try page.getTitle()) orelse return error.TestTitleMissing;
+-    try testing.expect(std.mem.startsWith(u8, title, "SUBMIT:n|"));
+-}
+-
+-test "getBoundingClientRect computes layout boxes for an unpresented consent card page" {
++    const title = (try page.getTitle()) orelse return error.TestTitleMissing;
++    try testing.expect(std.mem.startsWith(u8, title, "SUBMIT:n|"));
++}
++
++test "Page reduced Google fixture defers native Enter submit until keypress" {
++    var page = try testing.pageTest("page/google_home_title_probe.html");
++    defer page._session.removePage();
++
++    _ = page._session.wait(200);
++
++    _ = try page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat("n", "KeyN", .{}, false);
++    _ = try page.triggerKeyboardKeyPressWithCode("n", "KeyN", .{}, false);
++    try page.insertText("n");
++
++    page.beginDeferredNativeTextInputEnterSubmit();
++    defer page.endDeferredNativeTextInputEnterSubmit();
++
++    _ = try page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat("Enter", "Enter", .{}, false);
++
++    const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;
++    try testing.expect(std.mem.startsWith(u8, keydown_title, "KEYDOWN:n|"));
++
++    _ = try page.triggerKeyboardKeyPressWithCode("Enter", "Enter", .{}, false);
++    try page.applyDeferredNativeTextInputEnterSubmit();
++
++    const submit_title = (try page.getTitle()) orelse return error.TestTitleMissing;
++    try testing.expect(std.mem.startsWith(u8, submit_title, "SUBMIT:n|"));
++}
++
++test "getBoundingClientRect computes layout boxes for an unpresented consent card page" {
+     var page = try testing.pageTest("page/consent_card_center_layout.html");
+     defer page._session.removePage();
+ 
+--- /tmp/browser_orig/browser-fork-headed-mode-foundation/src/display/win32_backend.zig	2026-04-06 12:35:42.000000000 +0100
++++ /tmp/browser_run/browser-fork-headed-mode-foundation/src/display/win32_backend.zig	2026-05-22 09:36:09.097167490 +0100
+@@ -320,7 +320,7 @@
+     pending_high_surrogate: ?u16 = null,
+     ime_composing: bool = false,
+     suppress_wm_char_units: u32 = 0,
+-    pending_text_input_suppressions: u32 = 0,
++    pending_text_input_suppressions: std.ArrayListUnmanaged(TextInputEvent) = .{},
+     input_mailbox_path: ?[]u8 = null,
+     input_mailbox_offset: u64 = 0,
+ 
+@@ -862,6 +862,7 @@
+             deinitInputEvent(self, event);
+         }
+         self.input_events.deinit(self.allocator);
++        self.pending_text_input_suppressions.deinit(self.allocator);
+         if (self.app_data_path) |path| {
+             self.allocator.free(path);
+             self.app_data_path = null;
+@@ -1076,6 +1077,13 @@
+                         key_down.repeat,
+                     );
+                     var allow_text_input = default_allowed;
++                    const defer_enter_submit = std.mem.eql(u8, key, "Enter");
++                    if (defer_enter_submit) {
++                        page.beginDeferredNativeTextInputEnterSubmit();
++                    }
++                    defer if (defer_enter_submit) {
++                        page.endDeferredNativeTextInputEnterSubmit();
++                    };
+                     if (default_allowed and shouldDispatchKeyPress(key, key_down.modifiers)) {
+                         allow_text_input = try page.triggerKeyboardKeyPressWithCode(
+                             key,
+@@ -1088,7 +1096,7 @@
+                         if (allow_text_input) {
+                             try page.insertText(key);
+                         }
+-                        self.pending_text_input_suppressions +|= 1;
++                        queuePendingTextInputSuppression(self, key);
+                         if (runtimeInputTraceEnabled(page.url)) {
+                             var detail_buf: [320]u8 = undefined;
+                             const detail = std.fmt.bufPrint(
+@@ -1111,6 +1119,9 @@
+                         }
+                     }
+                     if (default_allowed) {
++                        if (defer_enter_submit and allow_text_input) {
++                            try page.applyDeferredNativeTextInputEnterSubmit();
++                        }
+                         if (clipboardShortcutAction(key_down.vk, key_down.modifiers)) |action| {
+                             try handleClipboardShortcut(self.allocator, page, action);
+                         }
+@@ -1137,11 +1148,10 @@
+                         log.warn(.app, "win text dispatch begin", .{
+                             .url = page.url,
+                             .text = text_input.bytes[0..text_input.len],
+-                            .suppressed = self.pending_text_input_suppressions,
++                            .suppressed = self.pending_text_input_suppressions.items.len,
+                         });
+                     }
+-                    if (self.pending_text_input_suppressions > 0) {
+-                        self.pending_text_input_suppressions -= 1;
++                    if (shouldSuppressPendingTextInput(self, text_input.bytes[0..text_input.len])) {
+                         continue;
+                     }
+                     const trace_google_input = googleInputTraceEnabled(page.url);
+@@ -1452,7 +1462,7 @@
+     self.pending_high_surrogate = null;
+     self.ime_composing = false;
+     self.suppress_wm_char_units = 0;
+-    self.pending_text_input_suppressions = 0;
++    self.pending_text_input_suppressions.clearRetainingCapacity();
+ }
+ 
+ fn inputEventsCanCoalesce(existing: Win32Backend.InputEvent, incoming: Win32Backend.InputEvent) bool {
+@@ -8209,6 +8219,47 @@
+     };
+ }
+ 
++fn makeTextInputEvent(bytes: []const u8) ?Win32Backend.TextInputEvent {
++    if (bytes.len == 0 or bytes.len > 4) {
++        return null;
++    }
++
++    var text_input: Win32Backend.TextInputEvent = .{
++        .bytes = undefined,
++        .len = @intCast(bytes.len),
++    };
++    @memcpy(text_input.bytes[0..bytes.len], bytes);
++    return text_input;
++}
++
++fn textInputEventMatches(expected: Win32Backend.TextInputEvent, actual: []const u8) bool {
++    return expected.len == actual.len and std.mem.eql(u8, expected.bytes[0..expected.len], actual);
++}
++
++fn queuePendingTextInputSuppression(self: *Win32Backend, bytes: []const u8) void {
++    const text_input = makeTextInputEvent(bytes) orelse return;
++    self.pending_text_input_suppressions.append(self.allocator, text_input) catch {};
++}
++
++fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool {
++    const items = self.pending_text_input_suppressions.items;
++    if (items.len == 0) {
++        return false;
++    }
++
++    for (items, 0..) |expected, idx| {
++        if (textInputEventMatches(expected, bytes)) {
++            const remaining = items[(idx + 1)..];
++            std.mem.copyForwards(Win32Backend.TextInputEvent, items[0..remaining.len], remaining);
++            self.pending_text_input_suppressions.items.len = remaining.len;
++            return true;
++        }
++    }
++
++    self.pending_text_input_suppressions.clearRetainingCapacity();
++    return false;
++}
++
+ fn queueTextCodePoint(backend: *Win32Backend, cp_in: u32) void {
+     if (cp_in == 0) {
+         return;
+@@ -9586,7 +9637,7 @@
+     try std.testing.expectEqual(@as(usize, 0), backend.input_events.items.len);
+ }
+ 
+-test "win32 dispatchInput suppresses later text_input after printable keydown across batches" {
++test "win32 dispatchInput suppresses matching later text_input after printable keydown across batches" {
+     var page = try testing.pageTest("page/flex_two_text_inputs_layout.html");
+     defer page._session.removePage();
+ 
+@@ -9606,12 +9657,72 @@
+     } });
+     try std.testing.expect(try backend.dispatchInput(page));
+     try testing.expectString("a", input.getValue());
+-    try std.testing.expectEqual(@as(u32, 1), backend.pending_text_input_suppressions);
++    try std.testing.expectEqual(@as(usize, 1), backend.pending_text_input_suppressions.items.len);
+ 
+     queueTextFromUtf16Unit(&backend, 'a');
+     try std.testing.expect(try backend.dispatchInput(page));
+     try testing.expectString("a", input.getValue());
+-    try std.testing.expectEqual(@as(u32, 0), backend.pending_text_input_suppressions);
++    try std.testing.expectEqual(@as(usize, 0), backend.pending_text_input_suppressions.items.len);
++}
++
++test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {
++    var page = try testing.pageTest("page/flex_two_text_inputs_layout.html");
++    defer page._session.removePage();
++
++    const input_element = page.window._document.getElementById("first", page) orelse return error.TestInputMissing;
++    const input = input_element.is(Element.Html.Input) orelse return error.TestInputMissing;
++    try input_element.focus(page);
++    try input.setValue("", page);
++
++    var backend = Win32Backend.init(std.testing.allocator, 1, 1);
++    defer backend.deinit();
++
++    queueInputEvent(&backend, .{ .key_down = .{
++        .vk = 'A',
++        .modifiers = .{},
++        .repeat = false,
++    } });
++    try std.testing.expect(try backend.dispatchInput(page));
++    try testing.expectString("a", input.getValue());
++    try std.testing.expectEqual(@as(usize, 1), backend.pending_text_input_suppressions.items.len);
++
++    queueTextFromUtf16Unit(&backend, 'x');
++    try std.testing.expect(try backend.dispatchInput(page));
++    try testing.expectString("ax", input.getValue());
++    try std.testing.expectEqual(@as(usize, 0), backend.pending_text_input_suppressions.items.len);
++}
++
++test "win32 dispatchInput suppresses matching text after stale entries drop out of order" {
++    var page = try testing.pageTest("page/flex_two_text_inputs_layout.html");
++    defer page._session.removePage();
++
++    const input_element = page.window._document.getElementById("first", page) orelse return error.TestInputMissing;
++    const input = input_element.is(Element.Html.Input) orelse return error.TestInputMissing;
++    try input_element.focus(page);
++    try input.setValue("", page);
++
++    var backend = Win32Backend.init(std.testing.allocator, 1, 1);
++    defer backend.deinit();
++
++    queueInputEvent(&backend, .{ .key_down = .{
++        .vk = 'A',
++        .modifiers = .{},
++        .repeat = false,
++    } });
++    try std.testing.expect(try backend.dispatchInput(page));
++    queueInputEvent(&backend, .{ .key_down = .{
++        .vk = 'B',
++        .modifiers = .{},
++        .repeat = false,
++    } });
++    try std.testing.expect(try backend.dispatchInput(page));
++    try testing.expectString("ab", input.getValue());
++    try std.testing.expectEqual(@as(usize, 2), backend.pending_text_input_suppressions.items.len);
++
++    queueTextFromUtf16Unit(&backend, 'b');
++    try std.testing.expect(try backend.dispatchInput(page));
++    try testing.expectString("ab", input.getValue());
++    try std.testing.expectEqual(@as(usize, 0), backend.pending_text_input_suppressions.items.len);
+ }
+ 
+ test "win32 queued control activation owns dom path independently of source command" {
