@@ -57,6 +57,20 @@ EXPECTATIONS = (
         "why": "The page runtime needs an apply helper that performs the delayed form submit.",
     },
     {
+        "label": "page_apply_deferred_submit_rechecks_focus",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "    const focused = self.document.getFocusedElement() orelse return;\n"
+            "    if (focused.asNode() != input.asNode()) {\n"
+            "        return;\n"
+            "    }\n"
+        ),
+        "why": (
+            "The deferred Enter apply helper should re-check the focused input so "
+            "a stale queued submit does not fire after focus has moved elsewhere."
+        ),
+    },
+    {
         "label": "page_enter_submit_queues_pending_input",
         "path": "src/browser/Page.zig",
         "snippet": (
@@ -124,6 +138,28 @@ EXPECTATIONS = (
         "why": (
             "The Win32 backend should match stale text by bytes so unrelated "
             "real input is not lost."
+        ),
+    },
+    {
+        "label": "win32_queue_helper_wiring_present",
+        "path": "src/display/win32_backend.zig",
+        "snippet": "                        queuePendingTextInputSuppression(self, key);",
+        "why": (
+            "The printable keydown dispatch path should actually queue the stale "
+            "text bytes instead of leaving the byte-aware helper unused."
+        ),
+    },
+    {
+        "label": "win32_text_input_suppression_uses_byte_match",
+        "path": "src/display/win32_backend.zig",
+        "snippet": (
+            "                    if (shouldSuppressPendingTextInput(self, text_input.bytes[0..text_input.len])) {\n"
+            "                        continue;\n"
+            "                    }\n"
+        ),
+        "why": (
+            "The text-input dispatch path should use byte-matched suppression so "
+            "real later WM_CHAR input is not dropped by a stale counter."
         ),
     },
     {
