@@ -51,6 +51,26 @@ class ConfigSchemelessRemoteHtmlInferenceAuditTests(unittest.TestCase):
             )
             self.assertTrue(failed["exists"])
 
+    def test_audit_reports_missing_headed_override_snippet(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.write_repo_file(
+                repo_root,
+                "src/Config.zig",
+                self.render_config_zig(
+                    missing_label="config_headed_remote_html_override_regression"
+                ),
+            )
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(1, result["missing_count"])
+            failed = next(check for check in result["checks"] if not check["present"])
+            self.assertEqual(
+                "config_headed_remote_html_override_regression",
+                failed["label"],
+            )
+
     def test_audit_reports_missing_config_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
@@ -60,7 +80,7 @@ class ConfigSchemelessRemoteHtmlInferenceAuditTests(unittest.TestCase):
             self.assertEqual(len(EXPECTATIONS), result["missing_count"])
             self.assertTrue(all(not check["exists"] for check in result["checks"]))
 
-    def test_audit_keeps_remote_and_loopback_regressions_in_scope(self) -> None:
+    def test_audit_keeps_remote_loopback_and_override_regressions_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertTrue(
             {
@@ -68,6 +88,7 @@ class ConfigSchemelessRemoteHtmlInferenceAuditTests(unittest.TestCase):
                 "config_scheme_less_remote_xhtml_fetch_regression",
                 "config_scheme_less_loopback_html_browse_regression",
                 "config_scheme_less_ipv4_loopback_html_browse_regression",
+                "config_headed_remote_html_override_regression",
             }.issubset(covered_labels)
         )
 
