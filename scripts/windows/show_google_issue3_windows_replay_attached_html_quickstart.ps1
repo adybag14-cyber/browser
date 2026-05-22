@@ -160,12 +160,14 @@ if (-not $RepoRoot -and -not [string]::IsNullOrWhiteSpace($env:LIGHTPANDA_REPO_R
 $sharedArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $sharedArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $sharedArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedArgument -Arguments $sharedArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 Add-SharedPathArrayArgument -Arguments $sharedArguments -Name InputPath -Values $InputPath
 
 $browserAwareSharedArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $browserAwareSharedArguments -Name RepoRoot -Value $RepoRoot
 Add-SharedArgument -Arguments $browserAwareSharedArguments -Name SummaryPath -Value $SummaryPath
 Add-SharedArgument -Arguments $browserAwareSharedArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $browserAwareSharedArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 Add-SharedPathArrayArgument -Arguments $browserAwareSharedArguments -Name InputPath -Values $InputPath
 
 $preferredInitialPageArguments = [System.Collections.Generic.List[string]]::new()
