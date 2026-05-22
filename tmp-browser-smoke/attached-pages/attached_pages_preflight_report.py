@@ -91,12 +91,25 @@ def build_command_hints(
 
     preflight_parts = ["python", str(preflight_rel), *common_flags]
     launch_parts = ["python", str(launcher_rel), *common_flags]
+    strict_manifest_parts = [
+        *launch_parts,
+        "--require-complete-sidecars",
+        "--require-complete-assets",
+        "--print-manifest",
+    ]
+    strict_launch_parts = [
+        *launch_parts,
+        "--require-complete-sidecars",
+        "--require-complete-assets",
+    ]
 
     return {
         "preflight_report_command": shell_join(preflight_parts),
         "sidecar_audit_command": shell_join([*launch_parts, "--audit-sidecars"]),
         "asset_audit_command": shell_join([*launch_parts, "--audit-assets"]),
         "manifest_command": shell_join([*launch_parts, "--print-manifest"]),
+        "strict_manifest_command": shell_join(strict_manifest_parts),
+        "strict_launch_command": shell_join(strict_launch_parts),
         "launch_command": shell_join(launch_parts),
     }
 
@@ -286,6 +299,8 @@ def render_text_report(report: dict[str, object]) -> str:
             f"- sidecar audit: {report['command_hints']['sidecar_audit_command']}",
             f"- asset audit: {report['command_hints']['asset_audit_command']}",
             f"- manifest: {report['command_hints']['manifest_command']}",
+            f"- strict manifest: {report['command_hints']['strict_manifest_command']}",
+            f"- strict launch: {report['command_hints']['strict_launch_command']}",
             f"- launch catalog: {report['command_hints']['launch_command']}",
             "",
         ]
