@@ -2,12 +2,21 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import tempfile
 import unittest
 
 
 def read_text(path: pathlib.Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def assert_explicit_headed_launch(testcase: unittest.TestCase, source: str, label: str) -> None:
+    pattern = re.compile(
+        r'Start-Process\s+-FilePath\s+\$[A-Za-z_:][A-Za-z0-9_:]*\s+-ArgumentList\s+.*?"browse".*?"--browser_mode".*?"headed"',
+        re.DOTALL,
+    )
+    testcase.assertRegex(source, pattern, f"{label} should launch browse with explicit headed mode")
 
 
 FIXTURE_FILES = {
@@ -150,6 +159,20 @@ $basePhaseArguments = @{
     TracePollMilliseconds = $TracePollMilliseconds
 }
 """,
+    "tmp-browser-smoke/google-investigation-next/chrome-google-home-enter-trace-probe.ps1": r"""
+$browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "960", "--window_height", "720", "--screenshot_png", $pngPath, $probeUrl)
+$titleAfterKeydown = Wait-TitleLike -ProcessId $browser.Id -Needle "KEYDOWN:" -Attempts 20
+$titleAfterKeypress = Wait-TitleLike -ProcessId $browser.Id -Needle "KEYPRESS:Enter:" -Attempts 20
+$titleAfterSubmit = Wait-TitleLike -ProcessId $browser.Id -Needle "SUBMIT:" -Attempts 80
+$traceArtifacts = Get-TraceArtifactPaths -Root $root
+""",
+    "tmp-browser-smoke/google-investigation-next/chrome-google-home-input-probe.ps1": r"""
+$browser = Start-Process -FilePath $BrowserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "1366", "--window_height", "768", "https://www.google.com/")
+$resultsNavigationLikely = ($traceText -match "google\.com/search") -or ($traceText -match "search\?q=")
+$runtimeInputLogs = @(Get-ChildItem -Path $root -Filter "runtime-input-backend-*.log")
+$wndprocLogs = @(Get-ChildItem -Path $root -Filter "wndproc-input-*.log")
+$browserGone = $false
+""",
 }
 
 
@@ -179,6 +202,12 @@ class GoogleTraceValidationSurfaceTest(unittest.TestCase):
         cls.main_runner = read_text(cls.repo_root / "scripts/windows/run_google_input_validation.ps1")
         cls.recommended_runner = read_text(
             cls.repo_root / "scripts/windows/run_google_issue3_recommended_validation.ps1"
+        )
+        cls.reduced_probe = read_text(
+            cls.repo_root / "tmp-browser-smoke/google-investigation-next/chrome-google-home-enter-trace-probe.ps1"
+        )
+        cls.live_probe = read_text(
+            cls.repo_root / "tmp-browser-smoke/google-investigation-next/chrome-google-home-input-probe.ps1"
         )
 
     def test_trace_flow_keeps_expected_step_order(self) -> None:
@@ -270,6 +299,28 @@ class GoogleTraceValidationSurfaceTest(unittest.TestCase):
             "TracePollMilliseconds = $TracePollMilliseconds",
         ):
             self.assertIn(fragment, self.recommended_runner)
+
+    def test_reduced_trace_probe_keeps_headed_launch_and_event_markers(self) -> None:
+        assert_explicit_headed_launch(self, self.reduced_probe, "reduced-home trace probe")
+        for fragment in (
+            '"--screenshot_png"',
+            'Needle "KEYDOWN:"',
+            'Needle "KEYPRESS:Enter:"',
+            'Needle "SUBMIT:"',
+            "Get-TraceArtifactPaths -Root $root",
+        ):
+            self.assertIn(fragment, self.reduced_probe)
+
+    def test_live_trace_probe_keeps_headed_launch_and_runtime_log_tails(self) -> None:
+        assert_explicit_headed_launch(self, self.live_probe, "live Google trace probe")
+        for fragment in (
+            "google\\.com/search",
+            'search\\?q=',
+            'runtime-input-backend-*.log',
+            'wndproc-input-*.log',
+            "$browserGone",
+        ):
+            self.assertIn(fragment, self.live_probe)
 
 
 if __name__ == "__main__":
