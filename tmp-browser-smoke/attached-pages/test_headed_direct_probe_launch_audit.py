@@ -23,15 +23,23 @@ class HeadedDirectProbeLaunchAuditTests(unittest.TestCase):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
+    def write_expectations(
+        self,
+        repo_root: Path,
+        expectations: tuple[dict[str, str], ...] | list[dict[str, str]],
+    ) -> None:
+        snippets_by_path: dict[str, list[str]] = {}
+        for expectation in expectations:
+            snippets_by_path.setdefault(expectation["path"], []).append(expectation["snippet"])
+
+        for relative_path, snippets in snippets_by_path.items():
+            body = "# synthetic fixture\n" + "\n".join(snippets) + "\n"
+            self.write_repo_file(repo_root, relative_path, body)
+
     def test_audit_passes_when_all_expected_launches_are_present(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
-            for expectation in EXPECTATIONS:
-                self.write_repo_file(
-                    repo_root,
-                    expectation["path"],
-                    f"# synthetic fixture\n{expectation['snippet']}\n",
-                )
+            self.write_expectations(repo_root, EXPECTATIONS)
 
             result = audit(repo_root)
             self.assertTrue(result["ok"])
@@ -40,13 +48,10 @@ class HeadedDirectProbeLaunchAuditTests(unittest.TestCase):
     def test_audit_reports_missing_snippet_for_existing_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
-            for index, expectation in enumerate(EXPECTATIONS):
-                snippet = expectation["snippet"] if index else "# missing headed launch"
-                self.write_repo_file(
-                    repo_root,
-                    expectation["path"],
-                    f"# synthetic fixture\n{snippet}\n",
-                )
+            expectations = list(EXPECTATIONS)
+            missing = expectations[0]
+            self.write_expectations(repo_root, expectations[1:])
+            self.write_repo_file(repo_root, missing["path"], "# synthetic fixture\n# missing headed launch\n")
 
             result = audit(repo_root)
             self.assertFalse(result["ok"])
@@ -57,12 +62,7 @@ class HeadedDirectProbeLaunchAuditTests(unittest.TestCase):
     def test_audit_reports_missing_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
-            for expectation in EXPECTATIONS[1:]:
-                self.write_repo_file(
-                    repo_root,
-                    expectation["path"],
-                    f"# synthetic fixture\n{expectation['snippet']}\n",
-                )
+            self.write_expectations(repo_root, EXPECTATIONS[1:])
 
             result = audit(repo_root)
             self.assertFalse(result["ok"])
@@ -76,9 +76,13 @@ class HeadedDirectProbeLaunchAuditTests(unittest.TestCase):
             {
                 "popup_script_blank_headed_launch",
                 "downloads_probe_headed_launch",
-                "stop_input_probe_headed_launch",
-                "duplicate_tab_headed_launch",
-                "canvas_render_headed_launch",
+                "find_probe_headed_launch",
+                "settings_restore_off_headed_launch",
+                "settings_restore_off_restart_headed_launch",
+                "bookmark_close_headed_launch",
+                "layout_flex_order_headed_launch",
+                "layout_background_size_headed_launch",
+                "layout_screenshot_load_complete_headed_launch",
             }.issubset(covered_labels)
         )
 
