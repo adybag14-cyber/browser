@@ -65,6 +65,18 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             self.assertEqual("page_enter_submit_queues_pending_input", failed["label"])
             self.assertTrue(failed["exists"])
 
+    def test_audit_reports_missing_page_keyboard_suppression_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.render_repo(repo_root, missing_label="page_printable_input_respects_suppression_depth")
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(1, result["missing_count"])
+            failed = next(check for check in result["checks"] if not check["present"])
+            self.assertEqual("page_printable_input_respects_suppression_depth", failed["label"])
+            self.assertTrue(failed["exists"])
+
     def test_audit_reports_missing_win32_queue_regression(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
@@ -97,6 +109,11 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertIn("page_end_deferred_submit_helper_present", covered_labels)
         self.assertIn("page_enter_submit_queues_pending_input", covered_labels)
+
+    def test_audit_keeps_page_keyboard_suppression_contract_in_scope(self) -> None:
+        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
+        self.assertIn("page_keyboard_text_suppression_depth_present", covered_labels)
+        self.assertIn("page_printable_input_respects_suppression_depth", covered_labels)
 
     def test_audit_keeps_win32_enter_deferral_bracket_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
