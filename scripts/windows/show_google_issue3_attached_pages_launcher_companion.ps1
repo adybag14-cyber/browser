@@ -2,7 +2,9 @@
 param(
     [string]$RepoRoot,
     [string[]]$InputPath,
+    [string]$SummaryPath,
     [string]$PreferredInitialPage,
+    [string]$BrowserExe,
     [switch]$Json
 )
 
@@ -138,6 +140,13 @@ Add-SharedArgument -Arguments $wrapperArguments -Name RepoRoot -Value $resolvedR
 Add-SharedPathArrayArgument -Arguments $wrapperArguments -Name InputPath -Values $InputPath
 Add-SharedArgument -Arguments $wrapperArguments -Name PreferredInitialPage -Value $PreferredInitialPage
 
+$replayArguments = [System.Collections.Generic.List[string]]::new()
+Add-SharedArgument -Arguments $replayArguments -Name RepoRoot -Value $resolvedRepoRoot
+Add-SharedArgument -Arguments $replayArguments -Name SummaryPath -Value $SummaryPath
+Add-SharedPathArrayArgument -Arguments $replayArguments -Name InputPath -Values $InputPath
+Add-SharedArgument -Arguments $replayArguments -Name PreferredInitialPage -Value $PreferredInitialPage
+Add-SharedArgument -Arguments $replayArguments -Name BrowserExe -Value $BrowserExe
+
 $surfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArguments -Name RepoRoot -Value $resolvedRepoRoot
 
@@ -146,7 +155,9 @@ $helper = [ordered]@{
     purpose = 'Keep the sidecar-first attached-pages launcher path visible beside the issue #3 Google attached localhost replay helpers so localhost bundle problems can be ruled out quickly before deeper headed-browser diagnosis, including the stricter sidecar and asset-gated launch path when the bundle still needs to fail fast before serving, the preferred-first-page wrapper handoff for the pinned three-page compatibility bundle, the pinned proof-entrypoint checker/helper pair when replay is already locked to the known three-page bundle, and the shorter replay re-entry helpers that hand control back into the replay-attached quickstart or the narrower replay-route shortcut without reopening the full route map first.'
     repo_root = $resolvedRepoRoot
     explicit_input_path_count = if ($InputPath) { @($InputPath).Count } else { 0 }
+    summary_path = $SummaryPath
     preferred_initial_page = $PreferredInitialPage
+    browser_exe = $BrowserExe
     recommended_next_key = 'wrapper_sidecar_audit'
     recommended_next_reason = 'The wrapper-backed sidecar audit is the cheapest honest preflight for issue #3 attached-page replay, so it should run before the broader asset audit, manifest print, strict-launch gates, or the narrower proof-only bundle follow-up.'
     surface_check_command = Format-HelperCommand -ScriptName 'check_google_issue3_attached_pages_launcher_companion_validation_surface.ps1' -Arguments $surfaceCheckArguments
@@ -164,9 +175,9 @@ $helper = [ordered]@{
         wrapper_google_strict_bundle = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle', 'RequireCompleteSidecars', 'RequireCompleteAssets')
         wrapper_google_launch = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $wrapperArguments -Switches @('GoogleStyle')
         proof_surface_check = Format-HelperCommand -ScriptName 'check_google_issue3_attached_html_target_bundle_proof_entrypoint_validation_surface.ps1' -Arguments $surfaceCheckArguments
-        proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $wrapperArguments
-        windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $wrapperArguments
-        replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $wrapperArguments
+        proof_entrypoint = Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_proof_entrypoint.ps1' -Arguments $replayArguments
+        windows_replay_quickstart = Format-HelperCommand -ScriptName 'show_google_issue3_windows_replay_attached_html_quickstart.ps1' -Arguments $replayArguments
+        replay_route_shortcut = Format-HelperCommand -ScriptName 'show_google_issue3_replay_route_shortcut_entrypoint.ps1' -Arguments $replayArguments
         python_sidecar_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-sidecars')
         python_asset_audit = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--audit-assets')
         python_print_manifest = Format-PythonLauncherCommand -RepoRootOverride $resolvedRepoRoot -InputValues $InputPath -PreferredInitialPage $PreferredInitialPage -Flags @('--print-manifest')
@@ -213,6 +224,15 @@ if (-not [string]::IsNullOrWhiteSpace($PreferredInitialPage)) {
     $helper.notes += 'The wrapper-backed launcher ladder now preserves -PreferredInitialPage through the sidecar audit, asset audit, manifest print, strict gates, and Google-style launch variants so the known bundle can stay pinned to one first page without hand-editing each command.'
     $helper.notes += 'The lower-level Python launcher ladder shown here now preserves the same preferred-first-page override, so cross-platform reruns can keep the pinned bundle order without hand-editing each command.'
 }
+if (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
+    $helper.notes += "Current summary path: $SummaryPath"
+}
+if (-not [string]::IsNullOrWhiteSpace($BrowserExe)) {
+    $helper.notes += "Current browser executable: $BrowserExe"
+}
+if (-not [string]::IsNullOrWhiteSpace($SummaryPath) -or -not [string]::IsNullOrWhiteSpace($BrowserExe)) {
+    $helper.notes += 'The replay re-entry helpers now preserve -SummaryPath and -BrowserExe when attached-page preflight hands control back into the Windows replay quickstart, the replay-route shortcut, or the pinned bundle proof helper.'
+}
 
 if ($Json) {
     $helper | ConvertTo-Json -Depth 5
@@ -227,8 +247,14 @@ if ($helper.repo_root) {
 if ($helper.explicit_input_path_count -gt 0) {
     Write-Host (("Input paths: {0}") -f $helper.explicit_input_path_count)
 }
+if (-not [string]::IsNullOrWhiteSpace($helper.summary_path)) {
+    Write-Host (("Summary path: {0}") -f $helper.summary_path)
+}
 if (-not [string]::IsNullOrWhiteSpace($helper.preferred_initial_page)) {
     Write-Host (("Preferred page: {0}") -f $helper.preferred_initial_page)
+}
+if (-not [string]::IsNullOrWhiteSpace($helper.browser_exe)) {
+    Write-Host (("Browser exe: {0}") -f $helper.browser_exe)
 }
 Write-Host (("Surface check:         {0}") -f $helper.surface_check_command)
 Write-Host (("Guard reason:          {0}") -f $helper.surface_check_reason)
