@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -244,7 +245,34 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Emit the full audit summary as JSON.",
     )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run an embedded audit self-test instead of reading a repository checkout.",
+    )
     return parser.parse_args()
+
+
+def render_file(relative_path: str, *, missing_label: str | None = None) -> str:
+    parts = [f"// synthetic {relative_path} fixture"]
+    for expectation in EXPECTATIONS:
+        if expectation["path"] != relative_path:
+            continue
+        if expectation["label"] == missing_label:
+            continue
+        parts.append(expectation["snippet"])
+    return "\n".join(parts) + "\n"
+
+
+def render_repo(repo_root: Path, *, missing_label: str | None = None) -> None:
+    grouped_paths = sorted({expectation["path"] for expectation in EXPECTATIONS})
+    for relative_path in grouped_paths:
+        target = repo_root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            render_file(relative_path, missing_label=missing_label),
+            encoding="utf-8",
+        )
 
 
 def audit(repo_root: Path) -> dict[str, object]:
@@ -278,8 +306,45 @@ def audit(repo_root: Path) -> dict[str, object]:
     }
 
 
+def run_self_test() -> tuple[bool, list[str]]:
+    details: list[str] = []
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        repo_root = Path(tmp_dir)
+        render_repo(repo_root)
+
+        pass_result = audit(repo_root)
+        if not pass_result["ok"]:
+            details.append("full synthetic fixture unexpectedly failed")
+
+        missing_label = "win32_enter_deferral_applies_after_keypress"
+        render_repo(repo_root, missing_label=missing_label)
+        fail_result = audit(repo_root)
+        if fail_result["ok"]:
+            details.append("missing-label synthetic fixture unexpectedly passed")
+        else:
+            failed = next(check for check in fail_result["checks"] if not check["present"])
+            if failed["label"] != missing_label:
+                details.append(
+                    f"missing-label synthetic fixture failed on {failed['label']} instead of {missing_label}"
+                )
+
+    return (len(details) == 0, details)
+
+
 def main() -> int:
     args = parse_args()
+
+    if args.self_test:
+        ok, details = run_self_test()
+        print(f"SELF_TEST={'pass' if ok else 'fail'}")
+        if ok:
+            print("DETAIL=synthetic full and missing-label fixtures behaved as expected")
+            return 0
+        for detail in details:
+            print(f"DETAIL={detail}")
+        return 1
+
     result = audit(args.repo_root.resolve())
 
     if args.json:
