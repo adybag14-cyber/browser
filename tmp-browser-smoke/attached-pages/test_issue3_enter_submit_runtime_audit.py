@@ -53,6 +53,18 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             self.assertEqual("page_apply_deferred_submit_helper_present", failed["label"])
             self.assertTrue(failed["exists"])
 
+    def test_audit_reports_missing_page_focus_recheck(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.render_repo(repo_root, missing_label="page_apply_deferred_submit_rechecks_focus")
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(1, result["missing_count"])
+            failed = next(check for check in result["checks"] if not check["present"])
+            self.assertEqual("page_apply_deferred_submit_rechecks_focus", failed["label"])
+            self.assertTrue(failed["exists"])
+
     def test_audit_reports_missing_page_pending_submit_branch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
@@ -87,6 +99,30 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             self.assertEqual(1, result["missing_count"])
             failed = next(check for check in result["checks"] if not check["present"])
             self.assertEqual("win32_suppression_queue_deinit_present", failed["label"])
+            self.assertTrue(failed["exists"])
+
+    def test_audit_reports_missing_win32_queue_wiring(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.render_repo(repo_root, missing_label="win32_queue_helper_wiring_present")
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(1, result["missing_count"])
+            failed = next(check for check in result["checks"] if not check["present"])
+            self.assertEqual("win32_queue_helper_wiring_present", failed["label"])
+            self.assertTrue(failed["exists"])
+
+    def test_audit_reports_missing_win32_byte_match_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.render_repo(repo_root, missing_label="win32_text_input_suppression_uses_byte_match")
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(1, result["missing_count"])
+            failed = next(check for check in result["checks"] if not check["present"])
+            self.assertEqual("win32_text_input_suppression_uses_byte_match", failed["label"])
             self.assertTrue(failed["exists"])
 
     def test_audit_reports_missing_win32_queue_reset(self) -> None:
@@ -134,6 +170,10 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         self.assertIn("page_end_deferred_submit_helper_present", covered_labels)
         self.assertIn("page_enter_submit_queues_pending_input", covered_labels)
 
+    def test_audit_keeps_page_focus_recheck_in_scope(self) -> None:
+        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
+        self.assertIn("page_apply_deferred_submit_rechecks_focus", covered_labels)
+
     def test_audit_keeps_page_keyboard_suppression_contract_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertIn("page_keyboard_text_suppression_depth_present", covered_labels)
@@ -143,6 +183,11 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertIn("win32_suppression_queue_deinit_present", covered_labels)
         self.assertIn("win32_suppression_queue_reset_present", covered_labels)
+
+    def test_audit_keeps_win32_suppression_queue_wiring_in_scope(self) -> None:
+        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
+        self.assertIn("win32_queue_helper_wiring_present", covered_labels)
+        self.assertIn("win32_text_input_suppression_uses_byte_match", covered_labels)
 
     def test_audit_keeps_win32_enter_deferral_bracket_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
