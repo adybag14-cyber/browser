@@ -21,6 +21,18 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
     def render_repo(self, repo_root: Path, *, missing_label: str | None = None) -> None:
         render_repo(repo_root, missing_label=missing_label)
 
+    def assert_missing_label_is_reported(self, missing_label: str) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.render_repo(repo_root, missing_label=missing_label)
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(1, result["missing_count"])
+            failed = next(check for check in result["checks"] if not check["present"])
+            self.assertEqual(missing_label, failed["label"])
+            self.assertTrue(failed["exists"])
+
     def test_audit_passes_when_all_expected_contracts_are_present(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
@@ -31,112 +43,67 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             self.assertEqual(0, result["missing_count"])
 
     def test_audit_reports_missing_page_helper(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="page_apply_deferred_submit_helper_present")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("page_apply_deferred_submit_helper_present", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("page_apply_deferred_submit_helper_present")
 
     def test_audit_reports_missing_page_focus_recheck(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="page_apply_deferred_submit_rechecks_focus")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("page_apply_deferred_submit_rechecks_focus", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("page_apply_deferred_submit_rechecks_focus")
 
     def test_audit_reports_missing_page_pending_submit_branch(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="page_enter_submit_queues_pending_input")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("page_enter_submit_queues_pending_input", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("page_enter_submit_queues_pending_input")
 
     def test_audit_reports_missing_page_keyboard_suppression_contract(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="page_printable_input_respects_suppression_depth")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("page_printable_input_respects_suppression_depth", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("page_printable_input_respects_suppression_depth")
 
     def test_audit_reports_missing_win32_queue_cleanup(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="win32_suppression_queue_deinit_present")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("win32_suppression_queue_deinit_present", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("win32_suppression_queue_deinit_present")
 
     def test_audit_reports_missing_win32_queue_wiring(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="win32_queue_helper_wiring_present")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("win32_queue_helper_wiring_present", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("win32_queue_helper_wiring_present")
 
     def test_audit_reports_missing_win32_byte_match_dispatch(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="win32_text_input_suppression_uses_byte_match")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("win32_text_input_suppression_uses_byte_match", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("win32_text_input_suppression_uses_byte_match")
 
     def test_audit_reports_missing_win32_queue_reset(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="win32_suppression_queue_reset_present")
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("win32_suppression_queue_reset_present", failed["label"])
-            self.assertTrue(failed["exists"])
+        self.assert_missing_label_is_reported("win32_suppression_queue_reset_present")
 
     def test_audit_reports_missing_win32_queue_regression(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-            self.render_repo(repo_root, missing_label="win32_out_of_order_stale_text_regression_present")
+        self.assert_missing_label_is_reported("win32_out_of_order_stale_text_regression_present")
 
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(1, result["missing_count"])
-            failed = next(check for check in result["checks"] if not check["present"])
-            self.assertEqual("win32_out_of_order_stale_text_regression_present", failed["label"])
-            self.assertTrue(failed["exists"])
+    def test_audit_reports_every_page_contract_label_in_isolation(self) -> None:
+        labels = [
+            "page_deferred_enter_fields_present",
+            "page_pending_enter_pointer_present",
+            "page_keyboard_text_suppression_depth_present",
+            "page_begin_deferred_submit_helper_present",
+            "page_end_deferred_submit_helper_present",
+            "page_apply_deferred_submit_helper_present",
+            "page_apply_deferred_submit_rechecks_focus",
+            "page_enter_submit_queues_pending_input",
+            "page_printable_input_respects_suppression_depth",
+            "page_enter_keypress_regression_present",
+        ]
+        for label in labels:
+            with self.subTest(label=label):
+                self.assert_missing_label_is_reported(label)
+
+    def test_audit_reports_every_win32_contract_label_in_isolation(self) -> None:
+        labels = [
+            "win32_suppression_queue_present",
+            "win32_suppression_queue_deinit_present",
+            "win32_queue_helper_present",
+            "win32_matching_suppression_helper_present",
+            "win32_queue_helper_wiring_present",
+            "win32_text_input_suppression_uses_byte_match",
+            "win32_suppression_queue_reset_present",
+            "win32_enter_deferral_begins_before_keypress",
+            "win32_enter_deferral_ends_after_dispatch",
+            "win32_enter_deferral_applies_after_keypress",
+            "win32_mismatched_stale_text_regression_present",
+            "win32_out_of_order_stale_text_regression_present",
+        ]
+        for label in labels:
+            with self.subTest(label=label):
+                self.assert_missing_label_is_reported(label)
 
     def test_audit_reports_missing_repo_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
