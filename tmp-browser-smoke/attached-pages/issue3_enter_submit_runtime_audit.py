@@ -103,6 +103,15 @@ EXPECTATIONS = (
         ),
     },
     {
+        "label": "win32_suppression_queue_deinit_present",
+        "path": "src/display/win32_backend.zig",
+        "snippet": "self.pending_text_input_suppressions.deinit(self.allocator);",
+        "why": (
+            "The Win32 backend should release queued stale-text suppression "
+            "storage during teardown so old queue state does not linger."
+        ),
+    },
+    {
         "label": "win32_queue_helper_present",
         "path": "src/display/win32_backend.zig",
         "snippet": "fn queuePendingTextInputSuppression(self: *Win32Backend, bytes: []const u8) void {",
@@ -115,6 +124,15 @@ EXPECTATIONS = (
         "why": (
             "The Win32 backend should match stale text by bytes so unrelated "
             "real input is not lost."
+        ),
+    },
+    {
+        "label": "win32_suppression_queue_reset_present",
+        "path": "src/display/win32_backend.zig",
+        "snippet": "self.pending_text_input_suppressions.clearRetainingCapacity();",
+        "why": (
+            "The Win32 backend should clear queued stale-text suppressions when "
+            "input state resets so old WM_CHAR matches do not bleed into later sessions."
         ),
     },
     {
