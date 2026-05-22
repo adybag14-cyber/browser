@@ -30,10 +30,29 @@ def assert_explicit_headed_launch(testcase: unittest.TestCase, source: str, labe
 
 FIXTURE_FILES = {
     "scripts/windows/show_headed_validation_suites.ps1": r"""
+function Get-AttachedHtmlRouteCommands {
+    return @(
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\start_attached_pages_catalog.ps1"
+    )
+}
+
+function Get-Issue3AttachedHtmlFollowUpCommands {
+    return @(
+        "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_attached_html_change_area_quickstart.ps1"
+    )
+}
+
 function Get-RenderingRouteCommands {
     return @(
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-layout-flex-center-probe.ps1",
         "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\layout-smoke\chrome-screenshot-load-complete-probe.ps1"
+    )
+}
+
+function Get-RenderingRouteNotes {
+    return @(
+        "Use these before attached-page replay when the change touched shared layout, paint, screenshot timing, or visible headed surface behavior.",
+        "The first-line layout-smoke probes now auto-resolve the repo root and zig-out\bin\lightpanda.exe from the current checkout; widen into older deeper helpers only when you need more coverage."
     )
 }
 
@@ -44,12 +63,19 @@ function Get-NetworkRouteCommands {
     )
 }
 
-Write-Route -Name "rendering" -Commands (Get-RenderingRouteCommands)
-Write-Route -Name "network" -Commands (Get-NetworkRouteCommands)
-Write-Route -Name "bounded-rendering" -Commands (Get-RenderingRouteCommands)
+function Get-NetworkRouteNotes {
+    return @(
+        "Use these before attached-page replay when the change touched shared subresource loading, authenticated asset fetches, or browser-managed request credentials.",
+        "These first-line stylesheet and fetch-credentials probes now auto-resolve the current checkout before widening into deeper network helpers."
+    )
+}
+
+Write-Route -Name "rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
+Write-Route -Name "network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
+Write-Route -Name "bounded-rendering" -Commands (Get-RenderingRouteCommands) -Notes (Get-RenderingRouteNotes)
 Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -TargetPreferredInitialPage $PreferredInitialPage)
 Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands)
-Write-Route -Name "bounded-network" -Commands (Get-NetworkRouteCommands)
+Write-Route -Name "bounded-network" -Commands (Get-NetworkRouteCommands) -Notes (Get-NetworkRouteNotes)
 Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtmlRouteCommands -TargetInputPath $InputPath -TargetPreferredInitialPage $PreferredInitialPage)
 Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands)
 """,
@@ -169,6 +195,17 @@ class RenderingNetworkValidationSurfaceTest(unittest.TestCase):
             2,
             "rendering and network change areas should both keep the issue #3 attached-html follow-up route",
         )
+
+    def test_rendering_and_network_notes_keep_headed_replay_guidance(self) -> None:
+        rendering_notes = extract_function_block(self.router, "Get-RenderingRouteNotes")
+        self.assertIn("before attached-page replay", rendering_notes)
+        self.assertIn("shared layout, paint, screenshot timing", rendering_notes)
+        self.assertIn("auto-resolve the repo root and zig-out\\bin\\lightpanda.exe", rendering_notes)
+
+        network_notes = extract_function_block(self.router, "Get-NetworkRouteNotes")
+        self.assertIn("before attached-page replay", network_notes)
+        self.assertIn("shared subresource loading, authenticated asset fetches", network_notes)
+        self.assertIn("auto-resolve the current checkout", network_notes)
 
     def test_rendering_probes_keep_explicit_headed_screenshot_launches(self) -> None:
         for label, source in (
