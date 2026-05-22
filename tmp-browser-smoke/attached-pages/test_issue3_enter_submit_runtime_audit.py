@@ -53,6 +53,18 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             self.assertEqual("page_apply_deferred_submit_helper_present", failed["label"])
             self.assertTrue(failed["exists"])
 
+    def test_audit_reports_missing_page_pending_submit_branch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            self.render_repo(repo_root, missing_label="page_enter_submit_queues_pending_input")
+
+            result = audit(repo_root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(1, result["missing_count"])
+            failed = next(check for check in result["checks"] if not check["present"])
+            self.assertEqual("page_enter_submit_queues_pending_input", failed["label"])
+            self.assertTrue(failed["exists"])
+
     def test_audit_reports_missing_win32_queue_regression(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
@@ -80,6 +92,16 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             {"src/browser/Page.zig", "src/display/win32_backend.zig"},
             covered_paths,
         )
+
+    def test_audit_keeps_page_deferred_submit_bracket_in_scope(self) -> None:
+        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
+        self.assertIn("page_end_deferred_submit_helper_present", covered_labels)
+        self.assertIn("page_enter_submit_queues_pending_input", covered_labels)
+
+    def test_audit_keeps_win32_enter_deferral_bracket_in_scope(self) -> None:
+        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
+        self.assertIn("win32_enter_deferral_begins_before_keypress", covered_labels)
+        self.assertIn("win32_enter_deferral_ends_after_dispatch", covered_labels)
 
     def test_audit_keeps_post_keypress_submit_apply_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
