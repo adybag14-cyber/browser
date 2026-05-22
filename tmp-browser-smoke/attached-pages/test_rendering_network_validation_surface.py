@@ -22,7 +22,7 @@ def extract_function_block(source: str, function_name: str) -> str:
 
 def assert_explicit_headed_launch(testcase: unittest.TestCase, source: str, label: str) -> None:
     pattern = re.compile(
-        r"Start-Process\s+-FilePath\s+\$[A-Za-z_:][A-Za-z0-9_:]*\s+-ArgumentList\s+.*?\"browse\".*?\"--browser_mode\".*?\"headed\"",
+        r'Start-Process\s+-FilePath\s+\$[A-Za-z:]+(?:Exe|BrowserExe)\s+-ArgumentList\s+.*?"browse".*?"--browser_mode".*?"headed"',
         re.DOTALL,
     )
     testcase.assertRegex(source, pattern, f"{label} should launch browse with explicit headed mode")
@@ -80,22 +80,44 @@ Write-Route -Name "attached-pages-catalog-follow-up" -Commands (Get-AttachedHtml
 Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands)
 """,
     "tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1": r"""
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+Reset-ProfileRoot $profileRoot
 $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","960","--window_height","720","--screenshot_png",$outPng
+Wait-Screenshot $outPng
+Find-ColorBounds $outPng { param($c) $c.R -ge 180 }
 """,
     "tmp-browser-smoke/layout-smoke/chrome-screenshot-load-complete-probe.ps1": r"""
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+Reset-ProfileRoot $profileRoot
 $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","420","--window_height","320","--screenshot_png",$outPng
+Wait-Screenshot $outPng
+$result.load_complete_screenshot_worked = $result.slow_image_visible -and $result.waited_for_load
 """,
     "tmp-browser-smoke/stylesheet-smoke/chrome-stylesheet-auth-probe.ps1": r"""
+$repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
+$browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+$ready = Wait-LightpandaHttpReady -Url $readyUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "960", "--window_height", "640", $pageUrl)
-""",
-    "tmp-browser-smoke/fetch-credentials/chrome-fetch-credentials-probe.ps1": r"""
-. (Join-Path $PSScriptRoot "FetchCredentialsProbeCommon.ps1")
-$browser = Start-FetchBrowser -StartupUrl $pageUrl -Stdout $browserOut -Stderr $browserErr
+$loaded = $true
 """,
     "tmp-browser-smoke/fetch-credentials/FetchCredentialsProbeCommon.ps1": r"""
+$script:Repo = Resolve-LightpandaRepoRoot $script:Root
+$script:BrowserExe = Resolve-LightpandaBrowserExe $script:Repo $null
+
 function Start-FetchBrowser([string]$StartupUrl, [string]$Stdout, [string]$Stderr) {
   return Start-Process -FilePath $script:BrowserExe -ArgumentList @("browse","--browser_mode","headed",$StartupUrl,"--window_width","960","--window_height","640") -WorkingDirectory $script:Repo -PassThru -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
 }
+""",
+    "tmp-browser-smoke/fetch-credentials/chrome-fetch-credentials-probe.ps1": r"""
+. (Join-Path $PSScriptRoot "FetchCredentialsProbeCommon.ps1")
+$pageServer = Start-FetchServer -Port $pagePort -PeerPort $crossPort -Stdout $pageServerOut -Stderr $pageServerErr
+$crossServer = Start-FetchServer -Port $crossPort -PeerPort $pagePort -Stdout $crossServerOut -Stderr $crossServerErr
+$ready = (Wait-FetchServer -Port $pagePort) -and (Wait-FetchServer -Port $crossPort)
+$browser = Start-FetchBrowser -StartupUrl $pageUrl -Stdout $browserOut -Stderr $browserErr
+$titles.final = Wait-TabTitle $browser.Id "Fetch Credentials Ready" 50
+Write-FetchProbeResult $result
 """,
 }
 
@@ -119,10 +141,9 @@ class RenderingNetworkValidationSurfaceTest(unittest.TestCase):
             cls.repo_root = build_fixture_repo()
         else:
             cls.repo_root = pathlib.Path(__file__).resolve().parents[2]
-
         cls.router = read_text(cls.repo_root / "scripts/windows/show_headed_validation_suites.ps1")
-        cls.layout_probe = read_text(cls.repo_root / "tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1")
-        cls.load_complete_probe = read_text(
+        cls.flex_probe = read_text(cls.repo_root / "tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1")
+        cls.screenshot_probe = read_text(
             cls.repo_root / "tmp-browser-smoke/layout-smoke/chrome-screenshot-load-complete-probe.ps1"
         )
         cls.stylesheet_probe = read_text(
@@ -135,45 +156,43 @@ class RenderingNetworkValidationSurfaceTest(unittest.TestCase):
             cls.repo_root / "tmp-browser-smoke/fetch-credentials/FetchCredentialsProbeCommon.ps1"
         )
 
-    def test_rendering_route_keeps_layout_and_screenshot_probes(self) -> None:
+    def test_rendering_route_keeps_layout_smoke_probes(self) -> None:
         commands_block = extract_function_block(self.router, "Get-RenderingRouteCommands")
         self.assertIn("tmp-browser-smoke\\layout-smoke\\chrome-layout-flex-center-probe.ps1", commands_block)
-        self.assertIn(
-            "tmp-browser-smoke\\layout-smoke\\chrome-screenshot-load-complete-probe.ps1",
-            commands_block,
-        )
-
-        default_surface = re.search(
+        self.assertIn("tmp-browser-smoke\\layout-smoke\\chrome-screenshot-load-complete-probe.ps1", commands_block)
+        self.assertRegex(
+            self.router,
             r'Write-Route\s+-Name\s+"rendering"\s+-Commands\s+\(Get-RenderingRouteCommands\)',
-            self.router,
         )
-        self.assertIsNotNone(default_surface, "default router should surface the rendering route")
-
-        change_area_surface = re.search(
+        self.assertRegex(
+            self.router,
             r'Write-Route\s+-Name\s+"bounded-rendering"\s+-Commands\s+\(Get-RenderingRouteCommands\)',
-            self.router,
-        )
-        self.assertIsNotNone(
-            change_area_surface,
-            "rendering change area should reuse the rendering route helper",
         )
 
-    def test_network_route_keeps_stylesheet_and_fetch_probes(self) -> None:
+    def test_network_route_keeps_stylesheet_and_fetch_credentials_probes(self) -> None:
         commands_block = extract_function_block(self.router, "Get-NetworkRouteCommands")
         self.assertIn("tmp-browser-smoke\\stylesheet-smoke\\chrome-stylesheet-auth-probe.ps1", commands_block)
         self.assertIn("tmp-browser-smoke\\fetch-credentials\\chrome-fetch-credentials-probe.ps1", commands_block)
-
-        default_surface = re.search(
+        self.assertRegex(
+            self.router,
             r'Write-Route\s+-Name\s+"network"\s+-Commands\s+\(Get-NetworkRouteCommands\)',
-            self.router,
         )
-        self.assertIsNotNone(default_surface, "default router should surface the network route")
-
-        change_area_surface = re.search(
+        self.assertRegex(
+            self.router,
             r'Write-Route\s+-Name\s+"bounded-network"\s+-Commands\s+\(Get-NetworkRouteCommands\)',
-            self.router,
         )
-        self.assertIsNotNone(change_area_surface, "network change area should reuse the network route helper")
+
+    def test_rendering_notes_keep_headed_surface_guidance(self) -> None:
+        notes_block = extract_function_block(self.router, "Get-RenderingRouteNotes")
+        self.assertIn("shared layout, paint, screenshot timing, or visible headed surface behavior", notes_block)
+        self.assertIn("auto-resolve the repo root and zig-out\\bin\\lightpanda.exe", notes_block)
+        self.assertIn("older deeper helpers", notes_block)
+
+    def test_network_notes_keep_subresource_and_credentials_guidance(self) -> None:
+        notes_block = extract_function_block(self.router, "Get-NetworkRouteNotes")
+        self.assertIn("shared subresource loading, authenticated asset fetches, or browser-managed request credentials", notes_block)
+        self.assertIn("auto-resolve the current checkout", notes_block)
+        self.assertIn("deeper network helpers", notes_block)
 
     def test_rendering_and_network_routes_keep_attached_html_follow_up(self) -> None:
         attached_follow_up = re.findall(
@@ -196,33 +215,42 @@ class RenderingNetworkValidationSurfaceTest(unittest.TestCase):
             "rendering and network change areas should both keep the issue #3 attached-html follow-up route",
         )
 
-    def test_rendering_and_network_notes_keep_headed_replay_guidance(self) -> None:
-        rendering_notes = extract_function_block(self.router, "Get-RenderingRouteNotes")
-        self.assertIn("before attached-page replay", rendering_notes)
-        self.assertIn("shared layout, paint, screenshot timing", rendering_notes)
-        self.assertIn("auto-resolve the repo root and zig-out\\bin\\lightpanda.exe", rendering_notes)
+    def test_rendering_probes_keep_auto_resolution_and_headed_launch(self) -> None:
+        self.assertIn("Resolve-LightpandaRepoRoot", self.flex_probe)
+        self.assertIn("Resolve-LightpandaBrowserExe", self.flex_probe)
+        self.assertIn("Reset-ProfileRoot", self.flex_probe)
+        assert_explicit_headed_launch(self, self.flex_probe, "layout flex-center probe")
 
-        network_notes = extract_function_block(self.router, "Get-NetworkRouteNotes")
-        self.assertIn("before attached-page replay", network_notes)
-        self.assertIn("shared subresource loading, authenticated asset fetches", network_notes)
-        self.assertIn("auto-resolve the current checkout", network_notes)
+        self.assertIn("Resolve-LightpandaRepoRoot", self.screenshot_probe)
+        self.assertIn("Resolve-LightpandaBrowserExe", self.screenshot_probe)
+        self.assertIn("Reset-ProfileRoot", self.screenshot_probe)
+        assert_explicit_headed_launch(self, self.screenshot_probe, "layout load-complete screenshot probe")
 
-    def test_rendering_probes_keep_explicit_headed_screenshot_launches(self) -> None:
-        for label, source in (
-            ("layout flex center probe", self.layout_probe),
-            ("load-complete screenshot probe", self.load_complete_probe),
-        ):
-            assert_explicit_headed_launch(self, source, label)
-            self.assertIn('"--screenshot_png"', source, f"{label} should still capture a screenshot")
+    def test_rendering_probes_keep_screenshot_and_layout_assertions(self) -> None:
+        self.assertIn('"--screenshot_png"', self.flex_probe)
+        self.assertIn("Wait-Screenshot", self.flex_probe)
+        self.assertIn("Find-ColorBounds", self.flex_probe)
+        self.assertIn('"--screenshot_png"', self.screenshot_probe)
+        self.assertIn("Wait-Screenshot", self.screenshot_probe)
+        self.assertIn("load_complete_screenshot_worked", self.screenshot_probe)
 
-    def test_network_probes_keep_explicit_headed_launch_entrypoints(self) -> None:
+    def test_stylesheet_probe_keeps_headed_launch_and_ready_gate(self) -> None:
+        self.assertIn("Resolve-LightpandaRepoRoot", self.stylesheet_probe)
+        self.assertIn("Resolve-LightpandaBrowserExe", self.stylesheet_probe)
+        self.assertIn("Wait-LightpandaHttpReady", self.stylesheet_probe)
         assert_explicit_headed_launch(self, self.stylesheet_probe, "stylesheet auth probe")
-        self.assertIn("Start-FetchBrowser -StartupUrl $pageUrl", self.fetch_probe)
 
-        fetch_browser = extract_function_block(self.fetch_common, "Start-FetchBrowser")
-        assert_explicit_headed_launch(self, fetch_browser, "fetch credentials helper")
-        self.assertIn('"--window_width"', fetch_browser)
-        self.assertIn('"--window_height"', fetch_browser)
+    def test_fetch_credentials_probe_keeps_auto_resolution_and_headed_launch(self) -> None:
+        self.assertIn("Resolve-LightpandaRepoRoot", self.fetch_common)
+        self.assertIn("Resolve-LightpandaBrowserExe", self.fetch_common)
+        assert_explicit_headed_launch(self, self.fetch_common, "fetch credentials common browser launcher")
+
+    def test_fetch_credentials_probe_keeps_dual_server_and_ready_title_flow(self) -> None:
+        self.assertIn("Start-FetchServer -Port $pagePort", self.fetch_probe)
+        self.assertIn("Start-FetchServer -Port $crossPort", self.fetch_probe)
+        self.assertIn("Wait-FetchServer -Port $pagePort", self.fetch_probe)
+        self.assertIn('Wait-TabTitle $browser.Id "Fetch Credentials Ready" 50', self.fetch_probe)
+        self.assertIn("Write-FetchProbeResult", self.fetch_probe)
 
 
 if __name__ == "__main__":
