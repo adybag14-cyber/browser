@@ -81,6 +81,23 @@ Write-Route -Name "issue3-attached-html-follow-up" -Commands @(
 Write-Route -Name "google-shared-enter-order" -Commands (Get-GoogleSharedEnterOrderCommands) -Notes @(
     "Use this when issue #3 is already narrowed to the reusable shared Enter-order ladder between the smaller bounded input probes and the later live Google pass."
 )
+
+Write-Route -Name "google-recommended" -Commands @(
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order",
+    "& `"$BrowserExe`" browse --headed `"https://www.google.com/`"",
+    (Format-HelperCommand -ScriptName 'show_attached_html_validation_flow.ps1' -Arguments $attachedHtmlFlowArguments),
+    (Format-HelperCommand -ScriptName 'show_google_attached_html_validation_flow.ps1' -Arguments $googleAttachedHtmlFlowArguments),
+    (Format-HelperCommand -ScriptName 'check_google_issue3_validation_router_attached_html_quickstart_surface.ps1' -Arguments $issue3AttachedHtmlSurfaceCheckArguments),
+    (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_change_area_quickstart.ps1' -Arguments $issue3AttachedHtmlArguments),
+    (Format-HelperCommand -ScriptName 'show_google_issue3_top_level_attached_html_quickstart.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
+    (Format-HelperCommand -ScriptName 'show_google_issue3_attached_html_target_bundle_suite_surface.ps1' -Arguments $issue3AttachedHtmlBrowserArguments),
+    (Format-HelperCommand -ScriptName 'show_google_issue3_attached_bundle_first_entrypoint.ps1' -Arguments $issue3AttachedHtmlBrowserArguments)
+) -Notes @(
+    "Use the bounded input probe first, then the dedicated Google form-controls Enter-order gate, then live Google, then the broader attached-page localhost flow and dedicated Google-shaped attached-page flow before the shorter issue #3 helper surface, the compact bundle-suite helper, or bundle-first replay.",
+    "Pass -InputPath when you already want the attached-page helpers, top-level attached-page quickstart, compact bundle-suite helper, or bundle-first helper pinned to a saved page or the current three-page compatibility bundle.",
+    "Run the validation-router attached-html surface checker before trusting the shorter issue #3 helper ladder so missing quickstart notes or downstream helper paths fail fast."
+)
 """,
     "tmp-browser-smoke/form-controls/enter-submit-probe.ps1": r"""
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "420", "--window_height", "520", "--screenshot_png", $pngPath, $probeUrl)
@@ -120,22 +137,16 @@ class InputGoogleValidationSurfaceTest(unittest.TestCase):
         )
 
     def test_default_and_google_input_routes_keep_bounded_input_probes(self) -> None:
-        default_surface = re.search(
-            r'Write-Route\s+-Name\s+"input"\s+-Commands\s+@\(\s*"powershell -ExecutionPolicy Bypass -File \\.\\tmp-browser-smoke\\form-controls\\enter-submit-probe\.ps1",\s*"powershell -ExecutionPolicy Bypass -File \\.\\tmp-browser-smoke\\form-controls\\label-click-probe\.ps1"\s*\)',
+        self.assertIn('Write-Route -Name "input" -Commands @(', self.router)
+        self.assertIn(
+            '"powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\form-controls\\enter-submit-probe.ps1"',
             self.router,
-            re.DOTALL,
         )
-        self.assertIsNotNone(default_surface, "default router should keep the bounded input route")
-
-        change_area_surface = re.search(
-            r'Write-Route\s+-Name\s+"bounded-input"\s+-Commands\s+@\(\s*"powershell -ExecutionPolicy Bypass -File \\.\\tmp-browser-smoke\\form-controls\\enter-submit-probe\.ps1",\s*"powershell -ExecutionPolicy Bypass -File \\.\\tmp-browser-smoke\\form-controls\\label-click-probe\.ps1"\s*\)',
+        self.assertIn(
+            '"powershell -ExecutionPolicy Bypass -File .\\tmp-browser-smoke\\form-controls\\label-click-probe.ps1"',
             self.router,
-            re.DOTALL,
         )
-        self.assertIsNotNone(
-            change_area_surface,
-            "google-input change area should keep the same bounded input probes",
-        )
+        self.assertIn('Write-Route -Name "bounded-input" -Commands @(', self.router)
 
     def test_google_form_controls_route_keeps_dedicated_helper_stack(self) -> None:
         commands_block = extract_function_block(self.router, "Get-GoogleFormControlsEnterOrderCommands")
@@ -189,6 +200,47 @@ class InputGoogleValidationSurfaceTest(unittest.TestCase):
             issue3_follow_up,
             "google-input change area should keep the issue #3 attached-html follow-up route",
         )
+
+    def test_google_recommended_route_keeps_staged_issue3_flow(self) -> None:
+        route_match = re.search(
+            r'Write-Route\s+-Name\s+"google-recommended"\s+-Commands\s+@\((?P<body>.*?)\)\s+-Notes',
+            self.router,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(route_match, "suite router should keep the google-recommended route")
+        route_body = route_match.group("body")
+
+        expected_steps = (
+            r'show_headed_validation_suites\.ps1 -ChangeArea input',
+            r'show_headed_validation_suites\.ps1 -ChangeArea google-form-controls-enter-order',
+            r'browse --headed `"https://www\.google\.com/',
+            r"show_attached_html_validation_flow\.ps1",
+            r"show_google_attached_html_validation_flow\.ps1",
+            r"check_google_issue3_validation_router_attached_html_quickstart_surface\.ps1",
+            r"show_google_issue3_attached_html_change_area_quickstart\.ps1",
+            r"show_google_issue3_top_level_attached_html_quickstart\.ps1",
+            r"show_google_issue3_attached_html_target_bundle_suite_surface\.ps1",
+            r"show_google_issue3_attached_bundle_first_entrypoint\.ps1",
+        )
+        for step in expected_steps:
+            self.assertRegex(route_body, step)
+
+    def test_google_recommended_notes_keep_router_guidance(self) -> None:
+        route_match = re.search(
+            r'Write-Route\s+-Name\s+"google-recommended"\s+-Commands\s+@\((?P<commands>.*?)\)\s+-Notes\s+@\((?P<notes>.*?)\)',
+            self.router,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(route_match, "google-recommended route should keep its notes")
+        route_notes = route_match.group("notes")
+
+        self.assertIn("bounded input probe first", route_notes)
+        self.assertIn("dedicated Google form-controls Enter-order gate", route_notes)
+        self.assertIn("broader attached-page localhost flow", route_notes)
+        self.assertIn("dedicated Google-shaped attached-page flow", route_notes)
+        self.assertIn("compact bundle-suite helper", route_notes)
+        self.assertIn("bundle-first replay", route_notes)
+        self.assertIn("validation-router attached-html surface checker", route_notes)
 
     def test_bounded_input_probes_keep_explicit_headed_screenshot_launches(self) -> None:
         for label, source in (
