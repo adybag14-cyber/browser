@@ -24,6 +24,12 @@ if ($InputPath -and @($InputPath).Count -gt 0) {
 }
 $matrix = @(
     [ordered]@{
+        start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html'
+        default_next_helper = 'show_google_issue3_suite_router_attached_html_quickstart.ps1'
+        command = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments
+        use_when = 'The next replay is already narrowed to attached-page compatibility follow-up, and you want the shorter suite-router attached-page quickstart visible immediately before deciding whether to widen into the broader attached-page flow helper, the top-level attached-page quickstart, the top-level attached-page bridge, replay shortcuts, the next-step matrix, the pinned bundle-first path, or the safe-route helper chain.'
+    }
+    [ordered]@{
         start_point = 'show_headed_validation_suites.ps1 -ChangeArea google-attached-html'
         default_next_helper = 'show_google_issue3_google_attached_html_entrypoint.ps1'
         command = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments
@@ -98,6 +104,7 @@ $helper = [ordered]@{
     google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'
     notes = @(
         'Use suite_router_surface_check before trusting the printed matrix when you want the helper surface to fail fast on missing route notes, checker scripts, or attached-page companion helpers.',
+        'Use attached_html_flow when the top-level attached HTML route is already visible but you want the broader attached-page helper surface printed before narrowing into the shorter attached quickstart, the top-level attached-page bridge, replay shortcuts, or the pinned bundle-first branch.',
         'Use suite_router_shortcut_entrypoint as the default next helper after the higher-level suite router when you want the shorter issue #3 bridge to decide between replay_shortcuts, contextual_flow, or attached_bundle_first without reopening the wider compact helpers first.',
         'Use contextual_flow as the default next helper whenever RepoRoot or SummaryPath is already in play and no pinned bundle inputs take precedence, so the next surface keeps that context aligned while you choose between the recommended runner, replay shortcuts, live trace, attached bundle, or later-stage follow-up commands.',
         'Use attached_bundle_first when the saved or attached pages are still the known three-page compatibility set and you want that route exercised before reopening the broader Google-only safe-route ladder.',
@@ -108,6 +115,7 @@ $helper = [ordered]@{
 Write-Host ((\"Recommended helper: {0}\") -f $helper.recommended_helper_command)
 Write-Host ((\"Why:                {0}\") -f $helper.recommended_helper_reason)
 Write-Host ((\"  Suite-router surface:       {0}\") -f $helper.suite_router_commands.suite_router_surface_check)
+Write-Host ((\"  Attached flow helper:       {0}\") -f $helper.suite_router_commands.attached_html_flow)
 Write-Host ((\"  Google attached surface:    {0}\") -f $helper.suite_router_commands.google_attached_html_surface_check)
 Write-Host ((\"  Issue-specific surface:     {0}\") -f $helper.suite_router_commands.google_issue3_attached_html_surface_check)
 Write-Host ((\"  Surface check:            {0}\") -f $helper.helper_commands.suite_router_surface_check)
@@ -143,6 +151,7 @@ $contentExpectations = @(
     @{ Path = "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"; Snippet = "show_google_issue3_suite_router_next_steps.ps1" },
     @{ Path = "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md"; Snippet = "check_google_issue3_suite_router_next_steps_validation_surface.ps1" },
     @{ Path = "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md"; Snippet = "show_google_issue3_suite_router_next_steps.ps1" },
+    @{ Path = "scripts/windows/show_google_issue3_suite_router_next_steps.ps1"; Snippet = "default_next_helper = 'show_google_issue3_suite_router_attached_html_quickstart.ps1'" },
     @{ Path = "scripts/windows/show_google_issue3_suite_router_next_steps.ps1"; Snippet = "default_next_helper = 'show_google_issue3_google_attached_html_entrypoint.ps1'" },
     @{ Path = "scripts/windows/show_google_issue3_suite_router_next_steps.ps1"; Snippet = "google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'" },
     @{ Path = "scripts/windows/show_google_issue3_suite_router_next_steps.ps1"; Snippet = "top_level_attached_html_companion_notes_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md'" }
@@ -259,8 +268,11 @@ class GoogleIssue3SuiteRouterNextStepsSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.next_steps)
 
-    def test_matrix_keeps_google_attached_html_and_bundle_entrypoints(self) -> None:
+    def test_matrix_keeps_attached_google_attached_and_bundle_entrypoints(self) -> None:
         for fragment in (
+            "start_point = 'show_headed_validation_suites.ps1 -ChangeArea attached-html'",
+            "default_next_helper = 'show_google_issue3_suite_router_attached_html_quickstart.ps1'",
+            "command = Format-HelperCommand -ScriptName 'show_google_issue3_suite_router_attached_html_quickstart.ps1' -Arguments $bundleArguments",
             "start_point = 'show_headed_validation_suites.ps1 -ChangeArea google-attached-html'",
             "default_next_helper = 'show_google_issue3_google_attached_html_entrypoint.ps1'",
             "command = Format-HelperCommand -ScriptName 'show_google_issue3_google_attached_html_entrypoint.ps1' -Arguments $bundleArguments",
@@ -269,9 +281,10 @@ class GoogleIssue3SuiteRouterNextStepsSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.next_steps)
 
-    def test_helper_maps_keep_surface_checks_and_later_stage_flows(self) -> None:
+    def test_helper_maps_keep_surface_checks_attached_flow_and_later_stage_flows(self) -> None:
         for fragment in (
             "suite_router_surface_check = $suiteRouterSurfaceCheckCommand",
+            "attached_html_flow = Format-HelperCommandWithRepoRootEnv -ScriptName 'show_attached_html_validation_flow.ps1'",
             "google_attached_html_surface_check = $googleAttachedHtmlSurfaceCheckCommand",
             "google_issue3_attached_html_surface_check = $googleIssue3AttachedHtmlSurfaceCheckCommand",
             "shared_enter_order = Format-HelperCommand -ScriptName 'show_google_shared_enter_order_validation_flow.ps1'",
@@ -283,6 +296,7 @@ class GoogleIssue3SuiteRouterNextStepsSurfaceTest(unittest.TestCase):
     def test_output_keeps_read_first_and_key_helper_surface_checks_visible(self) -> None:
         for fragment in (
             "Suite-router surface:",
+            "Attached flow helper:",
             "Google attached surface:",
             "Issue-specific surface:",
             "Surface check:",
@@ -291,26 +305,29 @@ class GoogleIssue3SuiteRouterNextStepsSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.next_steps)
 
-    def test_companion_notes_stay_visible_on_next_steps_surface(self) -> None:
+    def test_companion_notes_and_attached_flow_guidance_stay_visible_on_next_steps_surface(self) -> None:
         for fragment in (
             "top_level_attached_html_companion_notes_path = 'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md'",
             "google_attached_html_entrypoint_note_path = 'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md'",
             "Top-level attached companions:",
+            "Use attached_html_flow when the top-level attached HTML route is already visible",
         ):
             self.assertIn(fragment, self.next_steps)
 
     def test_surface_checker_keeps_helper_and_note_contracts(self) -> None:
         for fragment in (
-            'docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md',
-            'docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md',
-            'docs/ISSUE3_SUITE_ROUTER_NEXT_STEPS.md',
-            'docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md',
-            'docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md',
-            'scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1',
-            'scripts/windows/show_google_issue3_replay_route.ps1',
-            'scripts/windows/show_google_issue3_contextual_flow.ps1',
-            'scripts/windows/show_google_issue3_suite_router_next_steps.ps1',
-            'default_next_helper = \'show_google_issue3_google_attached_html_entrypoint.ps1\'',
+            "docs/ISSUE3_WINDOWS_REPLAY_QUICKSTART.md",
+            "docs/ISSUE3_REPLAY_DISCOVERY_HANDOFF.md",
+            "docs/ISSUE3_SUITE_ROUTER_NEXT_STEPS.md",
+            "docs/ISSUE3_TOP_LEVEL_ATTACHED_HTML_COMPANION_NOTES.md",
+            "docs/ISSUE3_GOOGLE_ATTACHED_HTML_ENTRYPOINT.md",
+            "scripts/windows/show_google_issue3_suite_router_shortcut_first_entrypoint.ps1",
+            "scripts/windows/show_google_issue3_suite_router_attached_html_quickstart.ps1",
+            "scripts/windows/show_google_issue3_replay_route.ps1",
+            "scripts/windows/show_google_issue3_contextual_flow.ps1",
+            "scripts/windows/show_google_issue3_suite_router_next_steps.ps1",
+            "default_next_helper = 'show_google_issue3_suite_router_attached_html_quickstart.ps1'",
+            "default_next_helper = 'show_google_issue3_google_attached_html_entrypoint.ps1'",
         ):
             self.assertIn(fragment, self.surface_check)
 
