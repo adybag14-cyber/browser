@@ -82,25 +82,49 @@ Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3Attached
     "tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1": r"""
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
 $browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+$python = Resolve-LightpandaPythonCommand
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port))
+Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
 Reset-ProfileRoot $profileRoot
 $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","960","--window_height","720","--screenshot_png",$outPng
 Wait-Screenshot $outPng
 Find-ColorBounds $outPng { param($c) $c.R -ge 180 }
+Stop-LightpandaOwnedProbeProcess $browser
+Stop-LightpandaOwnedProbeProcess $server
 """,
     "tmp-browser-smoke/layout-smoke/chrome-screenshot-load-complete-probe.ps1": r"""
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
 $browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+$python = Resolve-LightpandaPythonCommand
+$server = Start-Process -FilePath $python.FileName -ArgumentList ($python.Arguments + @($serverScript, $Port))
+Wait-LightpandaHttpReady -Url $pageUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
 Reset-ProfileRoot $profileRoot
+$started = Get-Date
 $browser = Start-Process -FilePath $browserExe -ArgumentList "browse","--browser_mode","headed",$pageUrl,"--window_width","420","--window_height","320","--screenshot_png",$outPng
 Wait-Screenshot $outPng
+$elapsedMs = [int]((Get-Date) - $started).TotalMilliseconds
 $result.load_complete_screenshot_worked = $result.slow_image_visible -and $result.waited_for_load
+Stop-LightpandaOwnedProbeProcess $browser
+Stop-LightpandaOwnedProbeProcess $server
 """,
     "tmp-browser-smoke/stylesheet-smoke/chrome-stylesheet-auth-probe.ps1": r"""
 $repo = if ($RepoRoot) { $RepoRoot } else { Resolve-LightpandaRepoRoot $PSScriptRoot }
 $browserExe = Resolve-LightpandaBrowserExe $repo $BrowserExe
+Seed-BrowserProfile $appDataRoot
 $ready = Wait-LightpandaHttpReady -Url $readyUrl -TimeoutSeconds $ServerReadyTimeoutSeconds -PollMilliseconds $PollMilliseconds
 $browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "960", "--window_height", "640", $pageUrl)
+$entries = Get-Content -LiteralPath $requestLog | ForEach-Object { $_ | ConvertFrom-Json }
+$cssEntries = @($entries | Where-Object { $_.path -eq "/private.css" })
+$loadedEntries = @($entries | Where-Object { $_.path -eq "/loaded" })
 $loaded = $true
+$result = [ordered]@{
+  stylesheet_allowed = [bool]$cssEntry.allowed
+  stylesheet_authorization = [string]$cssEntry.authorization
+  stylesheet_accept = [string]$cssEntry.accept
+  loaded_applied = [string]$loadedEntry.applied
+  browser_meta = $browserMeta
+  server_meta = $serverMeta
+}
 """,
     "tmp-browser-smoke/fetch-credentials/FetchCredentialsProbeCommon.ps1": r"""
 $script:Repo = Resolve-LightpandaRepoRoot $script:Root
@@ -116,7 +140,15 @@ $pageServer = Start-FetchServer -Port $pagePort -PeerPort $crossPort -Stdout $pa
 $crossServer = Start-FetchServer -Port $crossPort -PeerPort $pagePort -Stdout $crossServerOut -Stderr $crossServerErr
 $ready = (Wait-FetchServer -Port $pagePort) -and (Wait-FetchServer -Port $crossPort)
 $browser = Start-FetchBrowser -StartupUrl $pageUrl -Stdout $browserOut -Stderr $browserErr
+$hwnd = Wait-TabWindowHandle $browser.Id
+Show-SmokeWindow $hwnd
 $titles.final = Wait-TabTitle $browser.Id "Fetch Credentials Ready" 50
+$result = [ordered]@{
+  page_server_meta = Format-FetchProbeProcessMeta $pageServerMeta
+  cross_server_meta = Format-FetchProbeProcessMeta $crossServerMeta
+  browser_meta = Format-FetchProbeProcessMeta $browserMeta
+  browser_gone = $browserGone
+}
 Write-FetchProbeResult $result
 """,
 }
@@ -218,11 +250,15 @@ class RenderingNetworkValidationSurfaceTest(unittest.TestCase):
     def test_rendering_probes_keep_auto_resolution_and_headed_launch(self) -> None:
         self.assertIn("Resolve-LightpandaRepoRoot", self.flex_probe)
         self.assertIn("Resolve-LightpandaBrowserExe", self.flex_probe)
+        self.assertIn("Resolve-LightpandaPythonCommand", self.flex_probe)
+        self.assertIn("Wait-LightpandaHttpReady", self.flex_probe)
         self.assertIn("Reset-ProfileRoot", self.flex_probe)
         assert_explicit_headed_launch(self, self.flex_probe, "layout flex-center probe")
 
         self.assertIn("Resolve-LightpandaRepoRoot", self.screenshot_probe)
         self.assertIn("Resolve-LightpandaBrowserExe", self.screenshot_probe)
+        self.assertIn("Resolve-LightpandaPythonCommand", self.screenshot_probe)
+        self.assertIn("Wait-LightpandaHttpReady", self.screenshot_probe)
         self.assertIn("Reset-ProfileRoot", self.screenshot_probe)
         assert_explicit_headed_launch(self, self.screenshot_probe, "layout load-complete screenshot probe")
 
@@ -230,9 +266,15 @@ class RenderingNetworkValidationSurfaceTest(unittest.TestCase):
         self.assertIn('"--screenshot_png"', self.flex_probe)
         self.assertIn("Wait-Screenshot", self.flex_probe)
         self.assertIn("Find-ColorBounds", self.flex_probe)
+        self.assertIn("Stop-LightpandaOwnedProbeProcess $browser", self.flex_probe)
+        self.assertIn("Stop-LightpandaOwnedProbeProcess $server", self.flex_probe)
+
         self.assertIn('"--screenshot_png"', self.screenshot_probe)
         self.assertIn("Wait-Screenshot", self.screenshot_probe)
+        self.assertIn("$elapsedMs", self.screenshot_probe)
         self.assertIn("load_complete_screenshot_worked", self.screenshot_probe)
+        self.assertIn("Stop-LightpandaOwnedProbeProcess $browser", self.screenshot_probe)
+        self.assertIn("Stop-LightpandaOwnedProbeProcess $server", self.screenshot_probe)
 
     def test_stylesheet_probe_keeps_headed_launch_and_ready_gate(self) -> None:
         self.assertIn("Resolve-LightpandaRepoRoot", self.stylesheet_probe)
@@ -240,16 +282,34 @@ class RenderingNetworkValidationSurfaceTest(unittest.TestCase):
         self.assertIn("Wait-LightpandaHttpReady", self.stylesheet_probe)
         assert_explicit_headed_launch(self, self.stylesheet_probe, "stylesheet auth probe")
 
+    def test_stylesheet_probe_keeps_request_log_and_result_markers(self) -> None:
+        self.assertIn("Get-Content -LiteralPath $requestLog", self.stylesheet_probe)
+        self.assertIn('$_ .path -eq "/private.css"'.replace(" ", ""), self.stylesheet_probe.replace(" ", ""))
+        self.assertIn('$_ .path -eq "/loaded"'.replace(" ", ""), self.stylesheet_probe.replace(" ", ""))
+        self.assertIn("stylesheet_authorization", self.stylesheet_probe)
+        self.assertIn("stylesheet_accept", self.stylesheet_probe)
+        self.assertIn("loaded_applied", self.stylesheet_probe)
+        self.assertIn("browser_meta", self.stylesheet_probe)
+        self.assertIn("server_meta", self.stylesheet_probe)
+
     def test_fetch_credentials_probe_keeps_auto_resolution_and_headed_launch(self) -> None:
         self.assertIn("Resolve-LightpandaRepoRoot", self.fetch_common)
         self.assertIn("Resolve-LightpandaBrowserExe", self.fetch_common)
+        self.assertIn("-WorkingDirectory $script:Repo", self.fetch_common)
+        self.assertIn("-RedirectStandardOutput $Stdout", self.fetch_common)
+        self.assertIn("-RedirectStandardError $Stderr", self.fetch_common)
         assert_explicit_headed_launch(self, self.fetch_common, "fetch credentials common browser launcher")
 
     def test_fetch_credentials_probe_keeps_dual_server_and_ready_title_flow(self) -> None:
         self.assertIn("Start-FetchServer -Port $pagePort", self.fetch_probe)
         self.assertIn("Start-FetchServer -Port $crossPort", self.fetch_probe)
         self.assertIn("Wait-FetchServer -Port $pagePort", self.fetch_probe)
+        self.assertIn("Wait-TabWindowHandle $browser.Id", self.fetch_probe)
+        self.assertIn("Show-SmokeWindow $hwnd", self.fetch_probe)
         self.assertIn('Wait-TabTitle $browser.Id "Fetch Credentials Ready" 50', self.fetch_probe)
+        self.assertIn("Format-FetchProbeProcessMeta $pageServerMeta", self.fetch_probe)
+        self.assertIn("Format-FetchProbeProcessMeta $crossServerMeta", self.fetch_probe)
+        self.assertIn("Format-FetchProbeProcessMeta $browserMeta", self.fetch_probe)
         self.assertIn("Write-FetchProbeResult", self.fetch_probe)
 
 
