@@ -35,10 +35,30 @@ EXPECTATIONS = (
         "why": "The page runtime needs an explicit begin helper for deferred native Enter submit.",
     },
     {
+        "label": "page_end_deferred_submit_helper_present",
+        "path": "src/browser/Page.zig",
+        "snippet": "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {",
+        "why": "The page runtime should clear deferred native Enter state once the dispatch cycle ends.",
+    },
+    {
         "label": "page_apply_deferred_submit_helper_present",
         "path": "src/browser/Page.zig",
         "snippet": "pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {",
         "why": "The page runtime needs an apply helper that performs the delayed form submit.",
+    },
+    {
+        "label": "page_enter_submit_queues_pending_input",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "                        if (self._defer_native_text_input_enter_submit) {\n"
+            "                            self._pending_native_enter_submit = input;\n"
+            "                            return;\n"
+            "                        }\n"
+        ),
+        "why": (
+            "The page Enter path should queue the focused submit-capable input "
+            "instead of submitting immediately while native text input is deferred."
+        ),
     },
     {
         "label": "page_enter_keypress_regression_present",
@@ -71,6 +91,24 @@ EXPECTATIONS = (
         "why": (
             "The Win32 backend should match stale text by bytes so unrelated "
             "real input is not lost."
+        ),
+    },
+    {
+        "label": "win32_enter_deferral_begins_before_keypress",
+        "path": "src/display/win32_backend.zig",
+        "snippet": "                        page.beginDeferredNativeTextInputEnterSubmit();",
+        "why": (
+            "The Win32 backend should start the page-side Enter deferral before "
+            "keypress-compatible text handling runs."
+        ),
+    },
+    {
+        "label": "win32_enter_deferral_ends_after_dispatch",
+        "path": "src/display/win32_backend.zig",
+        "snippet": "                        page.endDeferredNativeTextInputEnterSubmit();",
+        "why": (
+            "The Win32 backend should always end the page-side Enter deferral "
+            "after the dispatch sequence, even when later steps return early."
         ),
     },
     {
