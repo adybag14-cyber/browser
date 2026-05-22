@@ -1,5 +1,6 @@
 import os
 import pathlib
+import re
 import tempfile
 import unittest
 
@@ -10,6 +11,14 @@ def read_text(path: pathlib.Path) -> str:
 
 def normalized_backslashes(source: str) -> str:
     return source.replace("\\\\", "\\")
+
+
+def assert_explicit_headed_launch(testcase: unittest.TestCase, source: str, label: str) -> None:
+    pattern = re.compile(
+        r'Start-Process\s+-FilePath\s+\$[A-Za-z_:][A-Za-z0-9_:]*\s+-ArgumentList\s+.*?"browse".*?"--browser_mode".*?"headed"',
+        re.DOTALL,
+    )
+    testcase.assertRegex(source, pattern, f"{label} should launch browse with explicit headed mode")
 
 
 FIXTURE_FILES = {
@@ -135,6 +144,95 @@ $flow = [ordered]@{
     )
 }
 """,
+    "scripts/windows/run_google_input_validation.ps1": r"""
+[CmdletBinding()]
+param(
+    [ValidateSet("localhost", "title", "home", "input-phase-localhost", "submit-timing", "quick", "shared", "shared-enter-order", "trace", "watch", "manual", "all")]
+    [string]$Phase = "all",
+    [switch]$IncludeWatch,
+    [switch]$IncludeSharedInput,
+    [switch]$IncludeSharedEnterOrder,
+    [switch]$IncludeTitleProbe,
+    [string[]]$ManualInputPath,
+    [switch]$ManualGoogleStyle
+)
+
+function Invoke-LocalhostSequence {}
+function Invoke-TitleSequence {}
+function Invoke-HomeSequence {}
+function Invoke-InputPhaseLocalhostSequence {}
+function Invoke-SubmitTimingSequence {}
+function Invoke-SharedInputSequence {}
+function Invoke-SharedEnterOrderSequence {}
+function Invoke-TraceSequence {}
+function Invoke-WatchSequence {}
+function Invoke-ManualHtmlSequence {}
+
+switch ($Phase) {
+    "localhost" { Invoke-LocalhostSequence }
+    "title" { Invoke-TitleSequence }
+    "home" { Invoke-HomeSequence }
+    "input-phase-localhost" { Invoke-InputPhaseLocalhostSequence }
+    "submit-timing" { Invoke-SubmitTimingSequence }
+    "quick" { Invoke-TitleSequence; Invoke-WatchSequence }
+    "shared" { Invoke-SharedInputSequence }
+    "shared-enter-order" { Invoke-SharedEnterOrderSequence }
+    "trace" { Invoke-TraceSequence }
+    "watch" { Invoke-WatchSequence }
+    "manual" { Invoke-ManualHtmlSequence }
+    "all" {
+        Invoke-LocalhostSequence
+        if ($IncludeTitleProbe) { Invoke-TitleSequence }
+        Invoke-HomeSequence
+        Invoke-InputPhaseLocalhostSequence
+        Invoke-SubmitTimingSequence
+        if ($IncludeSharedEnterOrder) {
+            Invoke-SharedEnterOrderSequence
+        } elseif ($IncludeSharedInput) {
+            Invoke-SharedInputSequence
+        }
+        if ($IncludeWatch) { Invoke-WatchSequence }
+        if (($ManualInputPath -and $ManualInputPath.Count -gt 0) -or $ManualGoogleStyle) {
+            Invoke-ManualHtmlSequence
+        }
+    }
+}
+""",
+    "tmp-browser-smoke/google-investigation-next/google-enter-order-localhost-probe.ps1": r"""
+[CmdletBinding()]
+param(
+  [string]$RepoRoot,
+  [string]$BrowserExe,
+  [string]$Host = "127.0.0.1",
+  [int]$Port = 8176,
+  [string]$InputText = "Q",
+  [string]$EnterMutationSuffix = "!",
+  [int]$ServerReadyTimeoutSeconds = 15,
+  [int]$WindowReadyAttempts = 60,
+  [int]$TitleWaitAttempts = 25,
+  [int]$PollMilliseconds = 250
+)
+
+$probeUrl = "http://$Host`:$Port/headed_google_enter_order_probe.html"
+$keypressTitle = "enter-keypress:$InputText$EnterMutationSuffix"
+$submitTitle = "submitted:$InputText$EnterMutationSuffix"
+$browser = Start-Process -FilePath $browserExe -ArgumentList @("browse", "--browser_mode", "headed", "--window_width", "900", "--window_height", "760", "--screenshot_png", $pngPath, $probeUrl)
+$typeResult = Invoke-GoogleProbeTypeWithFocusRecovery -Hwnd $hwnd -Text $InputText -TitlePattern ("typed:{0}" -f $InputText) -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
+Send-SmokeEnter
+$titleAfterKeypress = Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern $keypressTitle -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
+$titleAfterSubmit = Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern $submitTitle -Attempts $TitleWaitAttempts -PollMilliseconds $PollMilliseconds
+[ordered]@{
+  mode = "google-enter-order-localhost"
+  probe_url = $probeUrl
+  typed_worked = $typedWorked
+  keypress_worked = $keypressWorked
+  submitted_worked = $submittedWorked
+  title_after_type = $titleAfterType
+  title_after_keypress = $titleAfterKeypress
+  title_after_submit = $titleAfterSubmit
+  focus_strategy = $focusStrategy
+} | ConvertTo-Json -Depth 7
+""",
 }
 
 
@@ -160,6 +258,10 @@ class SavedPageGoogleValidationFlowSurfaceTest(unittest.TestCase):
 
         cls.flow = read_text(cls.repo_root / "scripts/windows/show_saved_page_google_validation_flow.ps1")
         cls.normalized_flow = normalized_backslashes(cls.flow)
+        cls.runner = read_text(cls.repo_root / "scripts/windows/run_google_input_validation.ps1")
+        cls.enter_order_probe = read_text(
+            cls.repo_root / "tmp-browser-smoke/google-investigation-next/google-enter-order-localhost-probe.ps1"
+        )
 
     def test_flow_keeps_expected_saved_page_google_steps(self) -> None:
         expected_steps = (
@@ -238,12 +340,12 @@ class SavedPageGoogleValidationFlowSurfaceTest(unittest.TestCase):
 
     def test_flow_keeps_manual_google_style_branch(self) -> None:
         expected_fragments = (
-            '} elseif ($ManualGoogleStyle) {',
-            r'.\scripts\windows\run_attached_html_localhost_validation.ps1$sharedGoogleArguments -Port $Port$preferredInitialPageArgument -GoogleStyle -Wait$leaveServerRunningArgument',
-            '-Phase manual -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument',
-            '-Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument',
-            'manual_google_style = [bool]$ManualGoogleStyle',
-            'leave_open = [bool]$LeaveOpen',
+            "} elseif ($ManualGoogleStyle) {",
+            r".\scripts\windows\run_attached_html_localhost_validation.ps1$sharedGoogleArguments -Port $Port$preferredInitialPageArgument -GoogleStyle -Wait$leaveServerRunningArgument",
+            "-Phase manual -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument",
+            "-Phase all -IncludeTitleProbe -IncludeSharedEnterOrder -IncludeWatch -ManualPort $Port$manualInitialPageArgument -ManualGoogleStyle$leaveOpenArgument",
+            "manual_google_style = [bool]$ManualGoogleStyle",
+            "leave_open = [bool]$LeaveOpen",
         )
         for fragment in expected_fragments:
             self.assertIn(fragment, self.normalized_flow)
@@ -266,6 +368,41 @@ class SavedPageGoogleValidationFlowSurfaceTest(unittest.TestCase):
         )
         for fragment in expected_notes:
             self.assertIn(fragment, self.flow)
+
+    def test_runner_keeps_phase_switch_and_manual_follow_up_gate(self) -> None:
+        expected_fragments = (
+            'ValidateSet("localhost", "title", "home", "input-phase-localhost", "submit-timing", "quick", "shared", "shared-enter-order", "trace", "watch", "manual", "all")',
+            "Invoke-LocalhostSequence",
+            "Invoke-TitleSequence",
+            "Invoke-HomeSequence",
+            "Invoke-InputPhaseLocalhostSequence",
+            "Invoke-SubmitTimingSequence",
+            "Invoke-SharedInputSequence",
+            "Invoke-SharedEnterOrderSequence",
+            "Invoke-TraceSequence",
+            "Invoke-WatchSequence",
+            "Invoke-ManualHtmlSequence",
+            'if (($ManualInputPath -and $ManualInputPath.Count -gt 0) -or $ManualGoogleStyle)',
+        )
+        for fragment in expected_fragments:
+            self.assertIn(fragment, self.runner)
+
+    def test_localhost_probe_keeps_headed_launch_and_enter_order_markers(self) -> None:
+        assert_explicit_headed_launch(self, self.enter_order_probe, "google enter-order localhost probe")
+        expected_fragments = (
+            "headed_google_enter_order_probe.html",
+            'Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern $keypressTitle',
+            'Wait-GoogleProbeTitleLike -Hwnd $hwnd -Pattern $submitTitle',
+            'mode = "google-enter-order-localhost"',
+            "typed_worked = $typedWorked",
+            "keypress_worked = $keypressWorked",
+            "submitted_worked = $submittedWorked",
+            "title_after_keypress = $titleAfterKeypress",
+            "title_after_submit = $titleAfterSubmit",
+            "focus_strategy = $focusStrategy",
+        )
+        for fragment in expected_fragments:
+            self.assertIn(fragment, self.enter_order_probe)
 
 
 if __name__ == "__main__":
