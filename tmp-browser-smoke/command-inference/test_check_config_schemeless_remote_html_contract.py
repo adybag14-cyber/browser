@@ -344,6 +344,30 @@ class ConfigSchemelessRemoteHtmlContractCheckerTest(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(reason, "missing function: inferLocalBrowseTarget")
 
+    def test_missing_file_url_guard_fails_cleanly(self) -> None:
+        broken = GUARDED_SOURCE.replace(
+            '    if (std.ascii.startsWithIgnoreCase(token, "file://")) {\n'
+            '        return true;\n'
+            '    }\n',
+            "",
+        )
+
+        ok, reason = self.checker.evaluate_contract(broken)
+        self.assertFalse(ok)
+        self.assertIn("file://", reason)
+
+    def test_missing_fully_qualified_url_short_circuit_fails_cleanly(self) -> None:
+        broken = GUARDED_SOURCE.replace(
+            '    if (std.mem.indexOf(u8, token, "://") != null) {\n'
+            '        return false;\n'
+            '    }\n',
+            "",
+        )
+
+        ok, reason = self.checker.evaluate_contract(broken)
+        self.assertFalse(ok)
+        self.assertIn("short-circuits fully qualified URLs", reason)
+
     def test_self_test_reports_pass(self) -> None:
         stream = io.StringIO()
         with contextlib.redirect_stdout(stream):
