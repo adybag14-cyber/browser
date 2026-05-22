@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
-from issue3_enter_submit_runtime_audit import EXPECTATIONS, audit
+from issue3_enter_submit_runtime_audit import EXPECTATIONS, audit, render_file, render_repo, run_self_test
 
 
 class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
@@ -14,23 +16,10 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         target.write_text(content, encoding="utf-8")
 
     def render_file(self, relative_path: str, *, missing_label: str | None = None) -> str:
-        parts = [f"// synthetic {relative_path} fixture"]
-        for expectation in EXPECTATIONS:
-            if expectation["path"] != relative_path:
-                continue
-            if expectation["label"] == missing_label:
-                continue
-            parts.append(expectation["snippet"])
-        return "\n".join(parts) + "\n"
+        return render_file(relative_path, missing_label=missing_label)
 
     def render_repo(self, repo_root: Path, *, missing_label: str | None = None) -> None:
-        grouped_paths = sorted({expectation["path"] for expectation in EXPECTATIONS})
-        for relative_path in grouped_paths:
-            self.write_repo_file(
-                repo_root,
-                relative_path,
-                self.render_file(relative_path, missing_label=missing_label),
-            )
+        render_repo(repo_root, missing_label=missing_label)
 
     def test_audit_passes_when_all_expected_contracts_are_present(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -197,6 +186,21 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
     def test_audit_keeps_post_keypress_submit_apply_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertIn("win32_enter_deferral_applies_after_keypress", covered_labels)
+
+    def test_render_file_can_drop_one_targeted_label(self) -> None:
+        rendered = self.render_file(
+            "src/display/win32_backend.zig",
+            missing_label="win32_enter_deferral_applies_after_keypress",
+        )
+        self.assertNotIn("try page.applyDeferredNativeTextInputEnterSubmit();", rendered)
+        self.assertIn("page.beginDeferredNativeTextInputEnterSubmit();", rendered)
+
+    def test_self_test_passes(self) -> None:
+        stream = io.StringIO()
+        with redirect_stdout(stream):
+            ok, details = run_self_test()
+        self.assertTrue(ok)
+        self.assertEqual([], details)
 
 
 if __name__ == "__main__":
