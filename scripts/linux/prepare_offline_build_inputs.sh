@@ -8,7 +8,7 @@ Usage:
   scripts/linux/prepare_offline_build_inputs.sh \
     --browser-deps-archive /path/to/zig-browser-depo.tar.zip \
     --boringssl-archive /path/to/boringssl-zig-main.zip \
-    [--html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip] \
+    [--html5ever-archive /path/to/litefetch-html5ever-linux_x86_64-deps.zip] \
     [--browser-root /path/to/browser-repo] \
     [--check-only]
 
@@ -224,8 +224,9 @@ fi
 ZIG_V8_BUILD_ZON_PATH="${WORKSPACE_ROOT}/zig-v8-fork/build.zig.zon"
 if [[ -n "${PREBUILT_V8_PATH}" ]]; then
     echo "Disabling zig-v8-fork depot_tools fetch because a prebuilt V8 archive is available"
-    ZIG_V8_BUILD_ZON_BACKUP="${ZIG_V8_BUILD_ZON_PATH}.before-offline"
-    if [[ ! -f "${ZIG_V8_BUILD_ZON_BACKUP}" ]]; then
+    ZIG_V8_BUILD_ZON_BACKUP="${ZIG_V8_BUILD_ZON_PATH}.remote-sources.bak"
+    LEGACY_ZIG_V8_BUILD_ZON_BACKUP="${ZIG_V8_BUILD_ZON_PATH}.before-offline"
+    if [[ ! -f "${ZIG_V8_BUILD_ZON_BACKUP}" && ! -f "${LEGACY_ZIG_V8_BUILD_ZON_BACKUP}" ]]; then
         cp "${ZIG_V8_BUILD_ZON_PATH}" "${ZIG_V8_BUILD_ZON_BACKUP}"
     fi
 
@@ -242,9 +243,13 @@ old = '''    .dependencies = .{
         },
     },'''
 new = '''    .dependencies = .{},'''
-if old not in text:
+if old in text:
+    path.write_text(text.replace(old, new))
+    print("rewrote zig-v8-fork/build.zig.zon for offline prebuilt-V8 use")
+elif new in text:
+    print("zig-v8-fork/build.zig.zon already points at offline-safe dependencies")
+else:
     raise SystemExit(f"Expected depot_tools dependency stanza was not found in {path}")
-path.write_text(text.replace(old, new))
 PY
 fi
 
@@ -270,8 +275,9 @@ if [[ -n "${HTML5EVER_ARCHIVE}" ]]; then
 fi
 
 BUILD_ZON_PATH="${BROWSER_ROOT}/build.zig.zon"
-BUILD_ZON_BACKUP="${BROWSER_ROOT}/build.zig.zon.before-offline"
-if [[ ! -f "${BUILD_ZON_BACKUP}" ]]; then
+BUILD_ZON_BACKUP="${BROWSER_ROOT}/build.zig.zon.remote-sources.bak"
+LEGACY_BUILD_ZON_BACKUP="${BROWSER_ROOT}/build.zig.zon.before-offline"
+if [[ ! -f "${BUILD_ZON_BACKUP}" && ! -f "${LEGACY_BUILD_ZON_BACKUP}" ]]; then
     cp "${BUILD_ZON_PATH}" "${BUILD_ZON_BACKUP}"
 fi
 
@@ -290,11 +296,18 @@ replacements = {
 
 updated = text
 for old, new in replacements.items():
-    if old not in updated:
-        raise SystemExit(f"Expected dependency stanza was not found in {path}")
-    updated = updated.replace(old, new)
+    if old in updated:
+        updated = updated.replace(old, new)
+        continue
+    if new in updated:
+        continue
+    raise SystemExit(f"Expected dependency stanza was not found in {path}")
 
-path.write_text(updated)
+if updated != text:
+    path.write_text(updated)
+    print("rewrote build.zig.zon to local offline dependency paths")
+else:
+    print("build.zig.zon already points at local paths")
 PY
 
 echo
