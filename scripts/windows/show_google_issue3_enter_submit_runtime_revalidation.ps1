@@ -76,10 +76,12 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedBrowserExe)) {
 }
 
 $buildCommand = "zig build -Dtarget=x86_64-windows-msvc --summary all"
+$focusedPageTestsCommand = "zig test src/browser/Page.zig"
+$focusedWin32TestsCommand = "zig test src/display/win32_backend.zig -target x86_64-windows-gnu"
 
 $route = [ordered]@{
     issue = "Google issue #3 Enter-submit runtime revalidation"
-    purpose = "Keep the shared Enter-submit ladder, the reduced Google title probe, the branch-local runtime revalidation note, and the live Google fallback on one Windows-first helper surface."
+    purpose = "Keep the shared Enter-submit ladder, the focused file-level regression commands, the reduced Google title probe, the branch-local runtime revalidation note, and the live Google fallback on one Windows-first helper surface."
     repo_root = $resolvedRepoRoot
     browser_exe = $resolvedBrowserExe
     note_path = "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md"
@@ -88,6 +90,7 @@ $route = [ordered]@{
         "src/display/win32_backend.zig"
     )
     related_files = @(
+        "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
         "tmp-browser-smoke/form-controls/enter-submit-probe.ps1",
         "tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1",
         "src/browser/tests/page/google_home_title_probe.html",
@@ -97,6 +100,8 @@ $route = [ordered]@{
     commands = [ordered]@{
         surface_check = Format-RepoRootCommand -ScriptPath "scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"
         build = $buildCommand
+        focused_page_tests = $focusedPageTestsCommand
+        focused_win32_tests = $focusedWin32TestsCommand
         shared_enter_default = Format-RepoRootCommand -ScriptPath "tmp-browser-smoke\form-controls\enter-submit-probe.ps1" -Arguments $sharedBrowserArguments
         shared_enter_deferred = Format-RepoRootCommand -ScriptPath "tmp-browser-smoke\form-controls\enter-submit-probe.ps1" -Arguments $sharedBrowserArguments -Switches @("DeferredEnter")
         shared_enter_google = Format-RepoRootCommand -ScriptPath "tmp-browser-smoke\form-controls\enter-submit-probe.ps1" -Arguments $sharedBrowserArguments -Switches @("GoogleEnterOrder")
@@ -113,11 +118,13 @@ $route = [ordered]@{
     )
     notes = @(
         "Run surface_check first when branch state may have moved and you want the note, helper, and probe files checked before replay.",
+        "Use focused_page_tests and focused_win32_tests only when the current checkout already has a branch-compatible Zig toolchain; the attached Zig 0.17 dev fallback can fail in untouched branch files before these focused assertions run.",
         "Use shared_enter_default to confirm the baseline Enter-submit path still works before narrowing into the Google-shaped ordering slices.",
         "Use shared_enter_deferred after changes that touch delayed native Enter submit without reopening the full Google-shaped route yet.",
         "Use shared_enter_google when the keypress-before-submit ordering is the main question but click-first focus is not required yet.",
         "Use shared_enter_google_click when reproducing the click-first path that most closely matches the real homepage boundary from issue #3.",
         "Use reduced_google_probe before live Google whenever the runtime patch touched Page.zig or win32_backend.zig and you want trace-ready output on the reduced fixture first.",
+        "If the focused Zig tests fail in untouched branch files before the new assertions run, fall back to the shared Enter-order ladder and reduced Google probe so the runtime boundary can still be narrowed honestly.",
         "Only jump to reduced_google_fixture or live_google after the shared Enter-order ladder and reduced Google probe agree on the same event ordering."
     )
 }
@@ -143,6 +150,8 @@ Write-Host "Replay route"
 Write-Host "============"
 Write-Host ("  Surface check:            {0}" -f $route.commands.surface_check)
 Write-Host ("  Windows build:            {0}" -f $route.commands.build)
+Write-Host ("  Focused Page.zig tests:   {0}" -f $route.commands.focused_page_tests)
+Write-Host ("  Focused Win32 tests:      {0}" -f $route.commands.focused_win32_tests)
 Write-Host ("  Shared Enter baseline:    {0}" -f $route.commands.shared_enter_default)
 Write-Host ("  Shared Enter deferred:    {0}" -f $route.commands.shared_enter_deferred)
 Write-Host ("  Shared Google ordering:   {0}" -f $route.commands.shared_enter_google)
