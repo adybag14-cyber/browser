@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the headed runtime activation logging contract in src/main.zig."""
+"""Audit the headed runtime activation and fallback logging contract in src/main.zig."""
 
 from __future__ import annotations
 
@@ -39,16 +39,48 @@ EXPECTATIONS = (
             "                    .port = opts.port,\n"
             "                    .requested = @tagName(requested_browser_mode),\n"
             "                    .runtime = @tagName(browser_mode),\n"
+            "                    .display_backend = display_backend,\n"
+            "                    .native_surface_expected = native_headed_surface_expected,\n"
+            "                    .native_surface_active = headed_runtime_active,\n"
             "                    .target_class = @tagName(lp.build_config.target_class),\n"
             "                    .os = @tagName(builtin.os.tag),\n"
             '                    .window = "enabled",\n'
             "                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),\n"
             "                    .window_width = args.windowWidth(),\n"
             "                    .window_height = args.windowHeight(),\n"
+            "                    .http_timeout_ms = effective_http_timeout_ms,\n"
+            "                    .http_timeout_source = http_timeout_source,\n"
             "                    .snapshot = app.snapshot.fromEmbedded(),\n"
             "                });"
         ),
         "why": "Serve mode should keep the full headed activation evidence on one info log line.",
+    },
+    {
+        "label": "serve_headed_fallback_log",
+        "path": "src/main.zig",
+        "snippet": (
+            'log.info(.app, "serve headed fallback", .{\n'
+            "                    .host = opts.host,\n"
+            "                    .port = opts.port,\n"
+            "                    .requested = @tagName(requested_browser_mode),\n"
+            "                    .runtime = @tagName(browser_mode),\n"
+            "                    .display_backend = display_backend,\n"
+            "                    .support_expected = info.support_expected,\n"
+            "                    .native_surface_expected = native_headed_surface_expected,\n"
+            "                    .native_surface_active = headed_runtime_active,\n"
+            "                    .target_class = @tagName(lp.build_config.target_class),\n"
+            "                    .os = @tagName(builtin.os.tag),\n"
+            '                    .window = "disabled",\n'
+            '                    .cdp_browser_runtime = "headless",\n'
+            "                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),\n"
+            "                    .window_width = args.windowWidth(),\n"
+            "                    .window_height = args.windowHeight(),\n"
+            "                    .http_timeout_ms = effective_http_timeout_ms,\n"
+            "                    .http_timeout_source = http_timeout_source,\n"
+            "                    .reason = info.reason,\n"
+            "                });"
+        ),
+        "why": "Serve mode should keep a dedicated headed-fallback log when startup resolves to headless.",
     },
     {
         "label": "browse_headed_runtime_log",
@@ -58,16 +90,62 @@ EXPECTATIONS = (
             "                    .url = url,\n"
             "                    .requested = @tagName(requested_browser_mode),\n"
             "                    .runtime = @tagName(browser_mode),\n"
+            "                    .display_backend = display_backend,\n"
+            "                    .native_surface_expected = native_headed_surface_expected,\n"
+            "                    .native_surface_active = headed_runtime_active,\n"
             "                    .target_class = @tagName(lp.build_config.target_class),\n"
             "                    .os = @tagName(builtin.os.tag),\n"
+            "                    .target_scheme = browse_target.scheme,\n"
+            "                    .target_scope = browse_target.scope,\n"
+            "                    .target_host = browse_target.host,\n"
+            "                    .target_port = browse_target.port,\n"
             '                    .window = "enabled",\n'
             "                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),\n"
             "                    .window_width = args.windowWidth(),\n"
             "                    .window_height = args.windowHeight(),\n"
+            "                    .http_timeout_ms = effective_http_timeout_ms,\n"
+            "                    .http_timeout_source = http_timeout_source,\n"
+            "                    .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),\n"
+            "                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, requested_browser_mode, browser_mode, false, false, true),\n"
+            "                    .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),\n"
+            "                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, requested_browser_mode, browser_mode, false, false, true),\n"
             "                    .snapshot = app.snapshot.fromEmbedded(),\n"
             "                });"
         ),
         "why": "Browse mode should keep the headed activation signal and target URL visible together.",
+    },
+    {
+        "label": "browse_headed_fallback_log",
+        "path": "src/main.zig",
+        "snippet": (
+            'log.info(.app, "browse headed fallback", .{\n'
+            "                    .url = url,\n"
+            "                    .requested = @tagName(requested_browser_mode),\n"
+            "                    .runtime = @tagName(browser_mode),\n"
+            "                    .display_backend = display_backend,\n"
+            "                    .support_expected = info.support_expected,\n"
+            "                    .native_surface_expected = native_headed_surface_expected,\n"
+            "                    .native_surface_active = headed_runtime_active,\n"
+            "                    .target_class = @tagName(lp.build_config.target_class),\n"
+            "                    .os = @tagName(builtin.os.tag),\n"
+            "                    .target_scheme = browse_target.scheme,\n"
+            "                    .target_scope = browse_target.scope,\n"
+            "                    .target_host = browse_target.host,\n"
+            "                    .target_port = browse_target.port,\n"
+            '                    .window = "disabled",\n'
+            "                    .profile_dir = resolvedProfileDirLabel(app.app_dir_path),\n"
+            "                    .window_width = args.windowWidth(),\n"
+            "                    .window_height = args.windowHeight(),\n"
+            "                    .http_timeout_ms = effective_http_timeout_ms,\n"
+            "                    .http_timeout_source = http_timeout_source,\n"
+            "                    .screenshot_bmp_path = resolvedOptionalPathLabel(opts.screenshot_bmp_path),\n"
+            "                    .screenshot_bmp_status = browseArtifactStatus(opts.screenshot_bmp_path, requested_browser_mode, browser_mode, false, false, true),\n"
+            "                    .screenshot_png_path = resolvedOptionalPathLabel(opts.screenshot_png_path),\n"
+            "                    .screenshot_png_status = browseArtifactStatus(opts.screenshot_png_path, requested_browser_mode, browser_mode, false, false, true),\n"
+            "                    .reason = info.reason,\n"
+            "                });"
+        ),
+        "why": "Browse mode should keep a headed-fallback log when a headed request falls back to headless.",
     },
 )
 
@@ -79,7 +157,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Check whether src/main.zig still exposes the headed runtime "
-            "activation helper and the paired serve/browse info logs."
+            "activation helper plus the serve and browse activation/fallback logs."
         )
     )
     parser.add_argument(
