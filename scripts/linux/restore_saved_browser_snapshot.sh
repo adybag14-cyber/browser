@@ -11,13 +11,15 @@ Usage:
     [--memory-root /path/to/workspace/memory] \
     [--archive /path/to/01-browser-fork-headed-mode-foundation.zip] \
     [--destination /path/to/extracted/browser-checkout] \
+    [--sync-helper-surface] \
     [--check-only] \
     [--json] \
     [--force]
 
 Restore the saved browser repo snapshot from Memory into a reusable local
-checkout for Linux or WSL validation work, or print the derived paths without
-extracting it.
+checkout for Linux or WSL validation work, print the derived paths without
+extracting it, or optionally overlay the current issue #3 helper surface into
+that restored checkout.
 
 Defaults:
   browser root  parent of this script
@@ -28,6 +30,8 @@ Defaults:
 
 Use --check-only to confirm the saved archive is present and to print the exact
 restore and follow-up commands without mutating the filesystem.
+Use --sync-helper-surface when the restored checkout should also carry the
+current issue #3 helper docs and route scripts from the live helper root.
 EOF
 }
 
@@ -49,10 +53,54 @@ print(json.dumps(sys.argv[1]))
 PY
 }
 
+sync_helper_surface() {
+    local source_root="$1"
+    local target_root="$2"
+    local relative_path=""
+
+    for relative_path in "${HELPER_SURFACE_PATHS[@]}"; do
+        local source_path="${source_root}/${relative_path}"
+        local target_path="${target_root}/${relative_path}"
+        if [[ ! -f "${source_path}" ]]; then
+            echo "Helper surface source file is missing: ${source_path}" >&2
+            exit 1
+        fi
+        mkdir -p "$(dirname "${target_path}")"
+        cp -p "${source_path}" "${target_path}"
+    done
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_ARCHIVE_NAME="01-browser-fork-headed-mode-foundation.zip"
 DEFAULT_DESTINATION_NAME="browser-memory-snapshot"
+
+declare -a HELPER_SURFACE_PATHS=(
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
+    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md"
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md"
+    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
+    "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md"
+    "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md"
+    "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
+    "scripts/check_issue3_saved_memory_inputs.py"
+    "scripts/check_linux_build_readiness.py"
+    "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh"
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
+    "scripts/linux/restore_saved_browser_snapshot.sh"
+    "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh"
+    "scripts/linux/show_issue3_linux_build_readiness_route.sh"
+    "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh"
+    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"
+    "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh"
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
+    "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh"
+    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
+    "scripts/linux/restore_saved_rust_toolchain.sh"
+    "scripts/linux/check_issue3_offline_build_inputs_route_surface.sh"
+    "scripts/linux/show_issue3_offline_build_inputs_route.sh"
+    "scripts/linux/prepare_offline_build_inputs.sh"
+)
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 HELPER_ROOT=""
@@ -62,6 +110,7 @@ DESTINATION=""
 CHECK_ONLY=false
 JSON=false
 FORCE_RESTORE=false
+SYNC_HELPER_SURFACE=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -95,6 +144,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --force)
             FORCE_RESTORE=true
+            shift
+            ;;
+        --sync-helper-surface)
+            SYNC_HELPER_SURFACE=true
             shift
             ;;
         -h|--help)
@@ -170,14 +223,23 @@ print(top_level)
 PY
 )"
 
-FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
-FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
-FOLLOW_UP_RUNTIME_ROUTE="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
+FOLLOW_UP_HELPER_ROOT="${HELPER_ROOT}"
+if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+    FOLLOW_UP_HELPER_ROOT="${DESTINATION}"
+fi
+SYNC_FLAG=""
+if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+    SYNC_FLAG=" --sync-helper-surface"
+fi
+FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
+FOLLOW_UP_RUNTIME_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 
 if [[ "${JSON}" == "true" ]]; then
     printf '{\n'
     printf '  "browser_root": %s,\n' "$(json_escape "${BROWSER_ROOT}")"
     printf '  "helper_root": %s,\n' "$(json_escape "${HELPER_ROOT}")"
+    printf '  "follow_up_helper_root": %s,\n' "$(json_escape "${FOLLOW_UP_HELPER_ROOT}")"
     printf '  "memory_root": %s,\n' "$(json_escape "${MEMORY_ROOT}")"
     printf '  "archive_path": %s,\n' "$(json_escape "${ARCHIVE_PATH}")"
     printf '  "destination": %s,\n' "$(json_escape "${DESTINATION}")"
@@ -187,6 +249,8 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "follow_up_runtime_route": %s,\n' "$(json_escape "${FOLLOW_UP_RUNTIME_ROUTE}")"
     printf '  "check_only": %s,\n' "$([[ "${CHECK_ONLY}" == "true" ]] && echo true || echo false)"
     printf '  "force_restore": %s,\n' "$([[ "${FORCE_RESTORE}" == "true" ]] && echo true || echo false)"
+    printf '  "sync_helper_surface": %s,\n' "$([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo true || echo false)"
+    printf '  "helper_surface_file_count": %s,\n' "${#HELPER_SURFACE_PATHS[@]}"
     printf '  "destination_exists": %s\n' "$([[ -e "${DESTINATION}" ]] && echo true || echo false)"
     printf '}\n'
     exit 0
@@ -194,19 +258,25 @@ fi
 
 if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo "Saved browser snapshot restore surface check passed."
-    echo "Browser root:       ${BROWSER_ROOT}"
-    echo "Helper root:        ${HELPER_ROOT}"
-    echo "Memory root:        ${MEMORY_ROOT}"
-    echo "Snapshot archive:   ${ARCHIVE_PATH}"
-    echo "Archive top level:  ${TOP_LEVEL_ENTRY}"
-    echo "Destination:        ${DESTINATION}"
+    echo "Browser root:          ${BROWSER_ROOT}"
+    echo "Live helper root:      ${HELPER_ROOT}"
+    echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
+    echo "Memory root:           ${MEMORY_ROOT}"
+    echo "Snapshot archive:      ${ARCHIVE_PATH}"
+    echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
+    echo "Destination:           ${DESTINATION}"
+    echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
+    if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+        echo "Helper surface files:  ${#HELPER_SURFACE_PATHS[@]}"
+    fi
     echo
     echo "Suggested restore command:"
-    printf "  bash %s --browser-root %s --helper-root %s --destination %s\n" \
+    printf "  bash %s --browser-root %s --helper-root %s --destination %s%s\n" \
         "$(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh")" \
         "$(format_shell_arg "${BROWSER_ROOT}")" \
         "$(format_shell_arg "${HELPER_ROOT}")" \
-        "$(format_shell_arg "${DESTINATION}")"
+        "$(format_shell_arg "${DESTINATION}")" \
+        "${SYNC_FLAG}"
     echo
     echo "Suggested follow-up checks:"
     printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
@@ -244,11 +314,20 @@ if [[ ! -f "${DESTINATION}/build.zig.zon" ]]; then
     exit 1
 fi
 
+if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+    sync_helper_surface "${HELPER_ROOT}" "${DESTINATION}"
+fi
+
 echo
 echo "Saved browser snapshot is ready."
-echo "Destination: ${DESTINATION}"
-echo "Helper root: ${HELPER_ROOT}"
-echo "Archive top level: ${TOP_LEVEL_ENTRY}"
+echo "Destination:           ${DESTINATION}"
+echo "Live helper root:      ${HELPER_ROOT}"
+echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
+echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
+echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
+if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+    echo "Helper surface files:  ${#HELPER_SURFACE_PATHS[@]}"
+fi
 echo
 echo "Suggested follow-up checks:"
 printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
