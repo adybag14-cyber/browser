@@ -86,6 +86,7 @@ fi
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SNAPSHOT_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_browser_snapshot_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 TOOLCHAIN_ROUTE_COMMAND="bash scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
+SAVED_RUST_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_rust_toolchain_route.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
 HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
 BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip"
@@ -120,6 +121,7 @@ print(json.dumps({
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
         "zig_toolchain_route": ${TOOLCHAIN_ROUTE_COMMAND@Q},
+        "saved_rust_route": ${SAVED_RUST_ROUTE_COMMAND@Q},
         "saved_archive_preflight": ${PREFLIGHT_COMMAND@Q},
         "offline_prepare_check_only": ${PREPARE_COMMAND@Q},
         "rust_restore_check_only": ${RUST_RESTORE_CHECK_COMMAND@Q},
@@ -132,9 +134,8 @@ print(json.dumps({
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
         "Run the saved_memory_inputs command before the broader saved-archive preflight when the route depends on the saved Memory repo snapshot and dependency bundles.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
+        "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
-        "Run rust_restore_check_only when you want to confirm the saved Rust archive and target directory before extracting it.",
-        "Use rust_restore to keep the saved Rust 1.79.0 toolchain restore on one branch-local helper surface instead of rebuilding the tar command by hand.",
         "Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only; it should not be treated as honest issue #3 validation evidence for this branch.",
         "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
     ]
@@ -156,6 +157,7 @@ Read first
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
   docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
+  docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
 
 Saved archives
@@ -178,6 +180,9 @@ Suggested route
 
   Zig toolchain recovery route:
     ${TOOLCHAIN_ROUTE_COMMAND}
+
+  Saved Rust toolchain route:
+    ${SAVED_RUST_ROUTE_COMMAND}
 
   Saved-archive preflight:
     ${PREFLIGHT_COMMAND}
@@ -203,6 +208,7 @@ Working rules
   - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
   - Run the saved Memory input preflight before the broader saved-archive preflight when the route depends on the saved repo snapshot and dependency bundles.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.
+  - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
   - Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only, not as honest issue #3 validation evidence for this branch.
   - Do not treat fallback Zig 0.17 dev failures in untouched branch files as issue #3 patch evidence.
