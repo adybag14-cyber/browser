@@ -12,10 +12,10 @@ Usage:
     [--json]
 
 Print the compact Linux or WSL helper surface for the direct issue #3
-Enter-submit runtime re-entry route. This route keeps the gate note, source
-contract check, saved-memory preflight, Linux build-readiness helpers, focused
-Zig commands, and the Windows follow-up replay ladder on one branch-local
-surface.
+Enter-submit runtime re-entry route. This route keeps the gate note, saved
+snapshot restore path, source contract check, saved-memory preflight, Linux
+build-readiness helpers, focused Zig commands, and the Windows follow-up replay
+ladder on one branch-local surface.
 EOF
 }
 
@@ -91,6 +91,8 @@ WIN32_SOURCE_PATH="${REPO_ROOT}/src/display/win32_backend.zig"
 RUNTIME_CONTRACT_CHECKER="${REPO_ROOT}/tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py"
 
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_BROWSER_SNAPSHOT_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_BROWSER_SNAPSHOT_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_browser_snapshot_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 CONTRACT_CHECK_COMMAND="python $(format_shell_arg "${RUNTIME_CONTRACT_CHECKER}") --page $(format_shell_arg "${PAGE_SOURCE_PATH}") --win32 $(format_shell_arg "${WIN32_SOURCE_PATH}")"
 CONTRACT_SELF_TEST_COMMAND="python $(format_shell_arg "${RUNTIME_CONTRACT_CHECKER}") --self-test"
 SAVED_MEMORY_PREFLIGHT_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root $(format_shell_arg "${REPO_ROOT}")"
@@ -105,6 +107,7 @@ REDUCED_GOOGLE_PROBE_COMMAND="powershell -ExecutionPolicy Bypass -File ./tmp-bro
 REDUCED_GOOGLE_FIXTURE_COMMAND="$(format_shell_arg "${BROWSER_EXE}") browse --headed --window_width 1366 --window_height 900 $(format_shell_arg "http://127.0.0.1:8123/src/browser/tests/page/google_home_title_probe.html?google-home-probe=1")"
 LIVE_GOOGLE_COMMAND="$(format_shell_arg "${BROWSER_EXE}") browse --headed --window_width 1366 --window_height 900 $(format_shell_arg "https://www.google.com/")"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    SAVED_BROWSER_SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_READINESS_SKIP_ZIG_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -120,6 +123,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  "read_first": [\n'
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_RUNTIME_REENTRY_GATES.md")"
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md")"
+    printf '    %s,\n' "$(json_escape "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md")"
     printf '    %s\n' "$(json_escape "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")"
     printf '  ],\n'
     printf '  "target_files": [\n'
@@ -128,6 +132,8 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  ],\n'
     printf '  "commands": {\n'
     printf '    "surface_check": %s,\n' "$(json_escape "${SURFACE_CHECK_COMMAND}")"
+    printf '    "saved_browser_snapshot_surface": %s,\n' "$(json_escape "${SAVED_BROWSER_SNAPSHOT_SURFACE_COMMAND}")"
+    printf '    "saved_browser_snapshot_route": %s,\n' "$(json_escape "${SAVED_BROWSER_SNAPSHOT_ROUTE_COMMAND}")"
     printf '    "contract_check": %s,\n' "$(json_escape "${CONTRACT_CHECK_COMMAND}")"
     printf '    "contract_self_test": %s,\n' "$(json_escape "${CONTRACT_SELF_TEST_COMMAND}")"
     printf '    "saved_memory_preflight": %s,\n' "$(json_escape "${SAVED_MEMORY_PREFLIGHT_COMMAND}")"
@@ -144,6 +150,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  },\n'
     printf '  "notes": [\n'
     printf '    %s,\n' "$(json_escape "Run surface_check first when the branch may have moved and you want the direct issue #3 docs and helper surfaces checked before replay.")"
+    printf '    %s,\n' "$(json_escape "If no reusable checkout exists yet, run saved_browser_snapshot_surface and then saved_browser_snapshot_route before trusting follow-up Linux or WSL helper output.")"
     printf '    %s,\n' "$(json_escape "Run contract_check before build or replay when you need a thin source-based yes-or-no answer about whether the Page.zig and win32_backend.zig bridge markers are present on the current branch.")"
     printf '    %s,\n' "$(json_escape "Run contract_self_test when you want to prove the checker still distinguishes vulnerable and guarded samples before pointing it at a real checkout.")"
     printf '    %s,\n' "$(json_escape "Run saved_memory_preflight before Linux or WSL build-readiness commands when the route depends on the saved Memory repo snapshot, dependency archives, and optional fallback Zig bundle.")"
@@ -169,6 +176,7 @@ Read first
 ==========
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
   docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md
+  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
 
 Target files
@@ -180,6 +188,10 @@ Suggested route
 ===============
   Surface check:
     ${SURFACE_CHECK_COMMAND}
+
+  If no reusable checkout exists yet, reopen the saved snapshot route first:
+    ${SAVED_BROWSER_SNAPSHOT_SURFACE_COMMAND}
+    ${SAVED_BROWSER_SNAPSHOT_ROUTE_COMMAND}
 
   Source contract check:
     ${CONTRACT_CHECK_COMMAND}
@@ -209,6 +221,7 @@ Suggested route
 Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before replay widens back out.
+  - If no reusable checkout exists yet, reopen the saved-browser-snapshot route before trusting follow-up Linux or WSL helper output.
   - Run the source contract check before blaming the runtime patch or reopening the direct Page.zig and win32_backend.zig edit path.
   - Run the saved-memory preflight before broader Linux or WSL build-readiness commands when the route depends on the saved repo snapshot and dependency archives.
   - Use --fallback-zig-archive when the restored checkout or helper workspace is not sitting beside the default agent_files location.
