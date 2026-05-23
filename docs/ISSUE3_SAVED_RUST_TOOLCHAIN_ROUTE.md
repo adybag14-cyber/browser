@@ -10,6 +10,7 @@ rebuild the Rust staging path by hand.
 
 Companion helpers:
 
+- `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/linux/restore_saved_rust_toolchain.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
@@ -27,6 +28,17 @@ Use this route when any of these are true:
   branch companion expected by the offline issue `#3` route
 - a run wants the exact restore and shell setup commands on one compact helper
   surface before reopening `zig build`
+
+## Run The Surface Check First
+
+From the browser repo root:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
+```
+
+Use `--json` when another helper wants the surface-check result as structured
+output.
 
 ## Run The Route
 
@@ -52,7 +64,8 @@ Use `--json` when another helper wants the route as structured output.
 
 The helper prints:
 
-1. the saved Rust archive location
+1. a fail-fast surface check command for
+   `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 2. a `--check-only` surface check for `restore_saved_rust_toolchain.sh`
 3. the restore command for the saved Rust `1.79.0` archive
 4. the exact `PATH`, `CARGO`, and `RUSTC` exports to reuse after restore
@@ -61,6 +74,9 @@ The helper prints:
 
 ## Working Rules
 
+- Run `bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+  first so missing route docs or helper drift fails before the saved archive is
+  blamed.
 - Run this route before blaming missing `cargo` or `rustc` on the source tree.
 - Keep the saved Rust restore on this helper surface instead of rebuilding the
   tar extraction command by hand.
