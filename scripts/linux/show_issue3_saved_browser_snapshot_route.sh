@@ -134,10 +134,18 @@ RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_s
 SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
+SYNC_SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface --check-only"
+SYNC_RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface"
+SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+SYNC_LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${DESTINATION}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
+SYNC_RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${DESTINATION}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNC_LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNC_RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
 if [[ "${JSON}" -eq 1 ]]; then
@@ -160,7 +168,12 @@ print(json.dumps({
         "restore": ${RESTORE_COMMAND@Q},
         "saved_memory_preflight": ${SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
         "linux_build_route": ${LINUX_BUILD_ROUTE_COMMAND@Q},
-        "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q}
+        "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q},
+        "sync_surface_check": ${SYNC_SURFACE_CHECK_COMMAND@Q},
+        "sync_restore": ${SYNC_RESTORE_COMMAND@Q},
+        "sync_saved_memory_preflight": ${SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
+        "sync_linux_build_route": ${SYNC_LINUX_BUILD_ROUTE_COMMAND@Q},
+        "sync_runtime_route": ${SYNC_RUNTIME_ROUTE_COMMAND@Q}
     },
     "notes": [
         "Run route_surface first so missing branch-local docs or helper drift fails fast before the restore helper is trusted.",
@@ -169,6 +182,7 @@ print(json.dumps({
         "Run saved_memory_preflight against the restored checkout before trusting broader build-readiness or runtime helper output.",
         "Keep helper_root pointed at the live branch-local helper surface when the restore should remain a clean historical snapshot.",
         "Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.",
+        "Prefer the sync_* commands when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface.",
         "Use linux_build_route when the next blocked step is still toolchain or offline dependency staging.",
         "Use runtime_route only after the saved checkout exists and the route is ready to reopen the narrowed Page.zig and win32_backend.zig lane."
     ]
@@ -206,6 +220,18 @@ Suggested route
   Restore the saved checkout:
     ${RESTORE_COMMAND}
 
+  Recommended synced restore when the archive helper surface is stale:
+    Synced restore helper surface check:
+      ${SYNC_SURFACE_CHECK_COMMAND}
+    Synced restore command:
+      ${SYNC_RESTORE_COMMAND}
+    Synced saved-Memory preflight:
+      ${SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND}
+    Synced Linux or WSL build-readiness route:
+      ${SYNC_LINUX_BUILD_ROUTE_COMMAND}
+    Synced direct runtime re-entry route:
+      ${SYNC_RUNTIME_ROUTE_COMMAND}
+
   Saved-Memory preflight against the restored checkout:
     ${SAVED_MEMORY_PREFLIGHT_COMMAND}
 
@@ -220,7 +246,8 @@ Working rules
   - Run the route surface check first so missing docs or helper drift fails fast before the restore helper is trusted.
   - Run the restore helper surface check next so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.
   - Use the restore step when the route needs a disposable checkout for helper validation without relying on live GitHub file publication.
-  - Keep the live branch-local helper surface when the restore should stay as a clean historical snapshot.
+  - Prefer the recommended synced restore when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
+  - Keep the live branch-local helper surface only when the restore should stay as a clean historical snapshot.
   - Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.
   - Run the saved-Memory preflight against the restored checkout before trusting broader build-readiness or runtime helper output.
   - Use the Linux or WSL build-readiness route when the next blocked step is still toolchain or offline dependency staging.
