@@ -1,7 +1,8 @@
 # Linux Offline Build Recovery
 
 Use this when Linux validation needs to run from saved dependency archives
-instead of live network fetches.
+instead of live network fetches, or when you want to confirm the saved-archive
+recovery path before mutating the checkout.
 
 ## Goal
 
@@ -22,6 +23,38 @@ If html5ever was saved as a vendor bundle, the repo root should also contain:
 
 - `.cargo/config.toml`
 - `vendor/`
+
+## Shared Readiness Helper
+
+Before rewriting anything, run the shared Python readiness helper from the
+browser checkout:
+
+```bash
+python3 scripts/check_linux_build_readiness.py \
+  --expect-saved-archives \
+  --expect-offline-deps \
+  --require-prebuilt-v8
+```
+
+What this helper is good at:
+
+1. reading `build.zig.zon` and printing the branch's minimum Zig line
+2. checking the active `zig`, `cargo`, and `rustc` binaries unless skipped
+3. confirming whether the sibling path dependencies already exist
+4. confirming whether `../offline-deps` and the prebuilt `libc_v8_*.a` archive
+   are already staged
+5. confirming whether the saved archive bundle is present and printing the
+   matching `prepare_offline_build_inputs.sh --check-only` command shape
+
+Use it as the first pass when you want an honest answer about what is still
+missing before running a destructive restore step. If the layout is still only
+partially staged, a failing result here is expected and more useful than a
+blind `zig build` attempt.
+
+The helper also treats Zig major/minor drift as a setup problem instead of a
+headed-mode regression. If it reports that the active Zig is `0.17.x` while the
+branch still expects `0.15.2`, switch toolchains before trusting any build
+result.
 
 ## Restore Helper
 
@@ -54,9 +87,13 @@ scripts/linux/prepare_offline_build_inputs.sh \
   --html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip
 ```
 
-## Preflight Check
+Add `--check-only` first when you want to verify the supplied archive paths and
+print the derived restore layout without changing the repo.
 
-Before running `zig build`, confirm that the checkout is actually ready:
+## Checkout Preflight Check
+
+After the restore path completes, confirm that the active checkout is ready for
+an actual build attempt:
 
 ```bash
 scripts/linux/check_offline_build_prereqs.sh
@@ -90,7 +127,7 @@ What it checks:
    `vendor/`, and a prebuilt `libc_v8_*.a` archive are present
 
 If the configured Zig binary is missing or the version is wrong, the preflight
-also scans nearby workspace roots for an exact-match Zig binary and prints
+also scans nearby workspace roots for an exact-match Zig and prints
 ready-to-rerun `--zig-binary` and `ZIG=...` hints for any candidates it finds.
 
 If the preflight fails, rerun `scripts/linux/restore_offline_build_inputs.sh`
@@ -99,9 +136,9 @@ stored outside the standard Memory layout.
 
 ## Validation
 
-After the restore helper completes, run the preflight checker first. When it
-passes, use the printed `-Dprebuilt_v8_path=...` value and run the same Zig
-binary that passed preflight:
+After the restore helper completes, run the checkout preflight checker first.
+When it passes, use the printed `-Dprebuilt_v8_path=...` value and run the same
+Zig binary that passed preflight:
 
 ```bash
 /absolute/path/to/zig build --summary all -Dprebuilt_v8_path=/absolute/path/to/libc_v8_...a
@@ -122,3 +159,8 @@ Expected result:
 - The original manifest is preserved at `build.zig.zon.remote-sources.bak` on
   the current path, with `build.zig.zon.before-offline` still accepted as a
   legacy backup name.
+- The attached Zig `0.17.x` fallback is still useful for narrow diagnostics,
+  but it should not be treated as a green light for Linux build validation
+  while the branch keeps `0.15.2` in `build.zig.zon`.
+- A good recovery order is: shared readiness helper, restore helper, checkout
+  preflight checker, then the real `zig build` or focused `zig test` command.
