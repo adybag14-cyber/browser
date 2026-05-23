@@ -71,6 +71,7 @@ if [[ -z "${RUST_TOOLCHAIN_DIR}" ]]; then
     RUST_TOOLCHAIN_DIR="$(cd "${REPO_ROOT}/.." && pwd)/toolchains/rust-1.79.0"
 fi
 
+SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
 HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
 BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip"
@@ -91,6 +92,7 @@ print(json.dumps({
     "saved_archives_root": ${SAVED_ARCHIVES_ROOT@Q},
     "rust_toolchain_dir": ${RUST_TOOLCHAIN_DIR@Q},
     "commands": {
+        "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "saved_archive_preflight": ${PREFLIGHT_COMMAND@Q},
         "offline_prepare_check_only": ${PREPARE_COMMAND@Q},
         "rust_restore": ${RUST_RESTORE_COMMAND@Q},
@@ -98,6 +100,7 @@ print(json.dumps({
         "full_readiness": ${FULL_READINESS_COMMAND@Q}
     },
     "notes": [
+        "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
         "Keep the saved Rust 1.79.0 toolchain on PATH before retrying cargo-backed build steps.",
         "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
@@ -118,7 +121,7 @@ Read first
 ==========
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
   docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md
-  docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md
+  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
 
 Saved archives
 ==============
@@ -129,6 +132,9 @@ Saved archives
 
 Suggested route
 ===============
+  Surface check:
+    ${SURFACE_CHECK_COMMAND}
+
   Saved-archive preflight:
     ${PREFLIGHT_COMMAND}
 
@@ -146,6 +152,7 @@ Suggested route
 
 Working rules
 =============
+  - Run the surface check first so missing docs or helper drift fails fast before offline staging starts.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
   - Do not treat fallback Zig 0.17 dev failures in untouched branch files as issue #3 patch evidence.
   - Prefer a Zig 0.15.2 toolchain for honest branch validation after the saved archives and Rust toolchain are staged.
