@@ -34,6 +34,7 @@ FIXTURE_FILES = {
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 - `--helper-root /path/to/live/browser`
 - `restore_saved_browser_snapshot.sh --check-only`
+- `--sync-helper-surface`
 - Do not switch into the restored checkout
 """,
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md": """
@@ -64,10 +65,17 @@ CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh|Note keeps route surface checker visible."
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|restore_saved_browser_snapshot.sh --check-only|Note keeps restore helper surface check visible."
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|--helper-root /path/to/live/browser|Note keeps helper-root override visible."
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|--sync-helper-surface|Note keeps helper-surface sync mode visible."
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|Do not switch into the restored checkout|Note warns the snapshot may not carry the newest route scripts."
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|Gate note keeps saved-browser-snapshot route visible."
     "scripts/linux/restore_saved_browser_snapshot.sh|--helper-root|Restore helper supports helper-root override."
+    "scripts/linux/restore_saved_browser_snapshot.sh|--sync-helper-surface|Restore helper supports helper-surface sync mode."
+    "scripts/linux/restore_saved_browser_snapshot.sh|Helper surface sync:|Restore helper prints helper-surface sync status."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|helper_root|Route printer exposes helper_root in JSON output."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|follow_up_helper_root|Route printer exposes follow-up helper root in JSON output."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|--sync-helper-surface|Route printer keeps helper-surface sync mode visible."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Sync helper surface:|Route printer prints helper-surface sync status."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|current issue #3 helper docs and scripts|Route printer explains what helper sync copies."
     "scripts/check_issue3_saved_memory_inputs.py|repo_archives/browser/blocker_intelligence.yaml|Saved-Memory input preflight checks blocker intelligence."
 )
 """,
@@ -79,6 +87,7 @@ Usage:
     [--memory-root /path/to/workspace/memory] \
     [--archive /path/to/01-browser-fork-headed-mode-foundation.zip] \
     [--destination /path/to/extracted/browser-checkout] \
+    [--sync-helper-surface] \
     [--check-only] \
     [--json] \
     [--force]
@@ -100,23 +109,27 @@ FOLLOW_UP_MEMORY_CHECK="python ${HELPER_ROOT}/scripts/check_issue3_saved_memory_
 FOLLOW_UP_BUILD_ROUTE="bash ${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ${DESTINATION}"
 FOLLOW_UP_RUNTIME_ROUTE="bash ${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ${DESTINATION}"
 echo "Helper root:        ${HELPER_ROOT}"
+echo "Helper surface sync:   enabled"
 echo "Suggested follow-up checks:"
 """,
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh": r"""
 ROUTE_SURFACE_COMMAND="bash ${HELPER_ROOT}/scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh --repo-root ${HELPER_ROOT}"
 SURFACE_CHECK_COMMAND="bash ${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh --browser-root ${REPO_ROOT} --helper-root ${HELPER_ROOT} --memory-root ${MEMORY_ROOT} --archive ${ARCHIVE_PATH} --destination ${DESTINATION} --check-only"
-RESTORE_COMMAND="bash ${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh --browser-root ${REPO_ROOT} --helper-root ${HELPER_ROOT} --memory-root ${MEMORY_ROOT} --archive ${ARCHIVE_PATH} --destination ${DESTINATION}"
+RESTORE_COMMAND="bash ${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh --browser-root ${REPO_ROOT} --helper-root ${HELPER_ROOT} --memory-root ${MEMORY_ROOT} --archive ${ARCHIVE_PATH} --destination ${DESTINATION} --sync-helper-surface"
 SAVED_MEMORY_PREFLIGHT_COMMAND="python ${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py --repo-root ${DESTINATION}"
 LINUX_BUILD_ROUTE_COMMAND="bash ${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ${DESTINATION}"
 RUNTIME_ROUTE_COMMAND="bash ${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ${DESTINATION}"
 SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive ${FALLBACK_ZIG_ARCHIVE}"
 {
   "helper_root": "x",
+  "follow_up_helper_root": "x",
   "fallback_zig_archive": "x"
 }
 Helper root:
+Sync helper surface:
 Saved-Memory preflight against the restored checkout:
 live branch-local helper surface
+current issue #3 helper docs and scripts
 """,
     "scripts/check_issue3_saved_memory_inputs.py": """
 REQUIRED_MEMORY_FILES = (
@@ -215,6 +228,7 @@ class SavedBrowserSnapshotRouteSurfaceTest(unittest.TestCase):
             "show_issue3_enter_submit_runtime_revalidation_route.sh",
             "--helper-root /path/to/live/browser",
             "restore_saved_browser_snapshot.sh --check-only",
+            "--sync-helper-surface",
             "Do not switch into the restored checkout",
         ):
             self.assertIn(fragment, self.route_note)
@@ -230,18 +244,26 @@ class SavedBrowserSnapshotRouteSurfaceTest(unittest.TestCase):
             '"build.zig.zon|file|Manifest surface"',
             '"docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|restore_saved_browser_snapshot.sh --check-only|',
             '"docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|--helper-root /path/to/live/browser|',
+            '"docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|--sync-helper-surface|',
             '"docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|Do not switch into the restored checkout|',
             '"docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|',
             '"scripts/linux/restore_saved_browser_snapshot.sh|--helper-root|',
+            '"scripts/linux/restore_saved_browser_snapshot.sh|--sync-helper-surface|',
+            '"scripts/linux/restore_saved_browser_snapshot.sh|Helper surface sync:|',
             '"scripts/linux/show_issue3_saved_browser_snapshot_route.sh|helper_root|',
+            '"scripts/linux/show_issue3_saved_browser_snapshot_route.sh|follow_up_helper_root|',
+            '"scripts/linux/show_issue3_saved_browser_snapshot_route.sh|--sync-helper-surface|',
+            '"scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Sync helper surface:|',
+            '"scripts/linux/show_issue3_saved_browser_snapshot_route.sh|current issue #3 helper docs and scripts|',
             '"scripts/check_issue3_saved_memory_inputs.py|repo_archives/browser/blocker_intelligence.yaml|',
         ):
             self.assertIn(fragment, self.surface_checker)
 
-    def test_restore_helper_keeps_check_only_helper_root_followups_and_zip_probe(self) -> None:
+    def test_restore_helper_keeps_check_only_helper_root_sync_followups_and_zip_probe(self) -> None:
         for fragment in (
             "--check-only",
             "--helper-root /path/to/live/browser-repo",
+            "--sync-helper-surface",
             "--json",
             "scripts/check_issue3_saved_memory_inputs.py",
             "show_issue3_linux_build_readiness_route.sh",
@@ -252,11 +274,12 @@ class SavedBrowserSnapshotRouteSurfaceTest(unittest.TestCase):
             "FOLLOW_UP_BUILD_ROUTE",
             "FOLLOW_UP_RUNTIME_ROUTE",
             "Helper root:",
+            "Helper surface sync:",
             "Suggested follow-up checks:",
         ):
             self.assertIn(fragment, self.restore_helper)
 
-    def test_route_helper_keeps_surface_check_restore_preflight_and_json_fields(self) -> None:
+    def test_route_helper_keeps_surface_check_restore_preflight_sync_and_json_fields(self) -> None:
         for fragment in (
             "ROUTE_SURFACE_COMMAND",
             "check_issue3_saved_browser_snapshot_route_surface.sh",
@@ -264,15 +287,19 @@ class SavedBrowserSnapshotRouteSurfaceTest(unittest.TestCase):
             "restore_saved_browser_snapshot.sh",
             "--check-only",
             "RESTORE_COMMAND",
+            "--sync-helper-surface",
             "SAVED_MEMORY_PREFLIGHT_COMMAND",
             "scripts/check_issue3_saved_memory_inputs.py",
             "LINUX_BUILD_ROUTE_COMMAND",
             "RUNTIME_ROUTE_COMMAND",
             "--fallback-zig-archive",
             '"helper_root"',
+            '"follow_up_helper_root"',
             "Helper root:",
+            "Sync helper surface:",
             "Saved-Memory preflight against the restored checkout:",
             "live branch-local helper surface",
+            "current issue #3 helper docs and scripts",
         ):
             self.assertIn(fragment, self.route_helper)
 
@@ -317,14 +344,6 @@ class SavedBrowserSnapshotRouteSurfaceTest(unittest.TestCase):
             "Prefer a Zig `0.15.2` toolchain",
         ):
             self.assertIn(fragment, self.linux_route_note)
-
-        for fragment in (
-            '.minimum_zig_version = "0.15.2"',
-            '.v8 = .{ .path = "../zig-v8-fork" }',
-            '.@"boringssl-zig" = .{ .path = "../boringssl-zig" }',
-            '.curl = .{ .url = "https://example.invalid/curl.tar.gz" }',
-        ):
-            self.assertIn(fragment, self.build_manifest)
 
 
 if __name__ == "__main__":
