@@ -22,6 +22,7 @@ Read this together with:
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
+- `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_linux_build_readiness.py`
 
 ## When To Use It
@@ -109,7 +110,14 @@ python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_run
    - `../zig-v8-fork`
    - `../boringssl-zig`
 6. If the run is using saved dependency bundles, stage them before invoking Zig.
-7. When the run depends on Linux or WSL staging, start with the direct runtime
+7. If the run depends on the saved Memory repo and dependency bundles, run the
+   saved-input preflight before the Linux or WSL build-readiness helpers:
+
+```bash
+python scripts/check_issue3_saved_memory_inputs.py --repo-root .
+```
+
+8. When the run is using Linux or WSL staging, start with the direct runtime
    Linux or WSL surface and then print the compact re-entry route so the source
    contract check, build-readiness route, and Windows follow-up commands stay on
    one branch-local surface:
@@ -119,18 +127,18 @@ bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
 ```
 
-8. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+9. Re-check Linux or WSL build readiness before trusting file-level Zig output:
 
 ```bash
 python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
-9. Only after a matching Zig line is actually staged, rerun the readiness helper
-   without the Zig skip and then validate the toolchain with the normal project
-   build flow before using focused file-level `zig test` as evidence.
-10. Only after those gates are green, reopen the direct code patch and the
+10. Only after a matching Zig line is actually staged, rerun the readiness helper
+    without the Zig skip and then validate the toolchain with the normal project
+    build flow before using focused file-level `zig test` as evidence.
+11. Only after those gates are green, reopen the direct code patch and the
     focused regression tests.
-11. After the focused tests are green, move back to the reduced Google probe and
+12. After the focused tests are green, move back to the reduced Google probe and
     then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
@@ -163,10 +171,10 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
-- keep using the Linux or WSL direct runtime surface check, the compact direct
-  runtime route, the build-readiness surface, the saved-archive Linux route,
-  and the readiness helper as the fast preflight set before widening back out to
-  larger replay plans
+- keep using the saved-memory preflight, the Linux or WSL direct runtime surface
+  check, the compact direct runtime route, the build-readiness surface, the
+  saved-archive Linux route, and the readiness helper as the fast preflight set
+  before widening back out to larger replay plans
 
 ## Working Rule
 
