@@ -135,7 +135,8 @@ PY
 )"
 
 FOLLOW_UP_MEMORY_CHECK="python scripts/check_issue3_saved_memory_inputs.py --repo-root '${DESTINATION}'"
-FOLLOW_UP_ROUTE="bash scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root '${DESTINATION}'"
+FOLLOW_UP_BUILD_ROUTE="bash scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root '${DESTINATION}'"
+FOLLOW_UP_RUNTIME_ROUTE="bash scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root '${DESTINATION}'"
 
 if [[ "${JSON}" == "true" ]]; then
     printf '{\n'
@@ -144,6 +145,9 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "archive_path": %s,\n' "$(json_escape "${ARCHIVE_PATH}")"
     printf '  "destination": %s,\n' "$(json_escape "${DESTINATION}")"
     printf '  "archive_top_level": %s,\n' "$(json_escape "${TOP_LEVEL_ENTRY}")"
+    printf '  "follow_up_memory_check": %s,\n' "$(json_escape "${FOLLOW_UP_MEMORY_CHECK}")"
+    printf '  "follow_up_build_route": %s,\n' "$(json_escape "${FOLLOW_UP_BUILD_ROUTE}")"
+    printf '  "follow_up_runtime_route": %s,\n' "$(json_escape "${FOLLOW_UP_RUNTIME_ROUTE}")"
     printf '  "check_only": %s,\n' "$([[ "${CHECK_ONLY}" == "true" ]] && echo true || echo false)"
     printf '  "force_restore": %s,\n' "$([[ "${FORCE_RESTORE}" == "true" ]] && echo true || echo false)"
     printf '  "destination_exists": %s\n' "$([[ -e "${DESTINATION}" ]] && echo true || echo false)"
@@ -164,7 +168,8 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo
     echo "Suggested follow-up checks:"
     printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
-    printf "  %s\n" "${FOLLOW_UP_ROUTE}"
+    printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
+    printf "  %s\n" "${FOLLOW_UP_RUNTIME_ROUTE}"
     exit 0
 fi
 
@@ -204,4 +209,5 @@ echo "Archive top level: ${TOP_LEVEL_ENTRY}"
 echo
 echo "Suggested follow-up checks:"
 printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
-printf "  %s\n" "${FOLLOW_UP_ROUTE}"
+printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
+printf "  %s\n" "${FOLLOW_UP_RUNTIME_ROUTE}"
