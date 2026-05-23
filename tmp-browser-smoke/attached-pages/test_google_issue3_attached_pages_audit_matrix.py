@@ -60,6 +60,18 @@ class GoogleIssue3AttachedPagesAuditMatrixTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tempdir.cleanup()
 
+    def test_default_specs_include_windows_full_use_route(self) -> None:
+        specs = helper.load_audit_specs()
+
+        self.assertEqual(
+            [
+                "launcher-companion",
+                "windows-replay-quickstart",
+                "windows-full-use-route",
+            ],
+            [spec["name"] for spec in specs],
+        )
+
     def test_build_matrix_recommends_surface_with_largest_gap(self) -> None:
         matrix = helper.build_attached_pages_audit_matrix(
             self.repo_root,
