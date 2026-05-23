@@ -25,6 +25,7 @@ SAVED_ARCHIVE_LABELS: dict[str, str] = {
     "browser_deps": "saved browser dependency archive",
 }
 
+ZIG_ARCHIVE_GLOBS = ("zig-*.tar.xz", "zig-*.zip")
 REQUIRED_ARCHIVE_KEYS = ("rust_toolchain", "boringssl", "browser_deps")
 OPTIONAL_ARCHIVE_KEYS = ("html5ever",)
 
@@ -40,6 +41,18 @@ def discover_saved_archives(saved_archives_root: pathlib.Path) -> dict[str, path
         if matches:
             discovered[key] = matches[0]
     return discovered
+
+
+def discover_default_zig_archive(repo_root: pathlib.Path) -> pathlib.Path | None:
+    agent_files_root = repo_root.parent / "agent_files"
+    if not agent_files_root.is_dir():
+        return None
+
+    for pattern in ZIG_ARCHIVE_GLOBS:
+        matches = sorted(agent_files_root.glob(pattern))
+        if matches:
+            return matches[0]
+    return None
 
 
 def build_readiness_command(
@@ -69,6 +82,17 @@ def build_readiness_command(
     return command
 
 
+def build_zig_archive_compat_command(repo_root: pathlib.Path, zig_archive: pathlib.Path) -> list[str]:
+    return [
+        "python",
+        "scripts/check_zig_archive_compat.py",
+        "--repo-root",
+        str(repo_root),
+        "--zig-archive",
+        str(zig_archive),
+    ]
+
+
 def build_prepare_command(
     repo_root: pathlib.Path,
     saved_archives: dict[str, pathlib.Path],
@@ -93,9 +117,15 @@ def build_prepare_command(
     return command
 
 
-def build_route(repo_root: pathlib.Path, saved_archives_root: pathlib.Path) -> dict[str, object]:
+def build_route(
+    repo_root: pathlib.Path,
+    saved_archives_root: pathlib.Path,
+    *,
+    zig_archive: pathlib.Path | None = None,
+) -> dict[str, object]:
     offline_deps_root = (repo_root.parent / "offline-deps").resolve()
     discovered = discover_saved_archives(saved_archives_root)
+    resolved_zig_archive = zig_archive.resolve() if zig_archive is not None else discover_default_zig_archive(repo_root)
     missing_required = [
         SAVED_ARCHIVE_LABELS[key]
         for key in REQUIRED_ARCHIVE_KEYS
@@ -111,13 +141,14 @@ def build_route(repo_root: pathlib.Path, saved_archives_root: pathlib.Path) -> d
     route: dict[str, object] = {
         "issue": "Google issue #3 Enter-submit runtime re-entry",
         "purpose": (
-            "Print the saved-archive, offline-restore, and Linux readiness "
-            "commands needed before reopening the direct Page.zig and "
-            "win32_backend.zig runtime patch."
+            "Print the saved-archive, offline-restore, Linux readiness, and Zig "
+            "archive compatibility commands needed before reopening the direct "
+            "Page.zig and win32_backend.zig runtime patch."
         ),
         "repo_root": str(repo_root),
         "saved_archives_root": str(saved_archives_root),
         "offline_deps_root": str(offline_deps_root),
+        "zig_archive_path": str(resolved_zig_archive) if resolved_zig_archive is not None else None,
         "read_first": [
             "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
             "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
@@ -172,10 +203,21 @@ def build_route(repo_root: pathlib.Path, saved_archives_root: pathlib.Path) -> d
         },
         "notes": [
             "Run the saved-archive preflight before assuming the Zig/toolchain gate is the first failure.",
+            "Run the Zig archive compatibility check before trusting a staged archive or a fallback toolchain filename.",
             "Run the restore check-only command before mutating build.zig.zon or sibling dependency paths.",
             "Only trust the focused Page.zig and win32_backend.zig tests after the post-restore full readiness command stops failing in untouched sources.",
         ],
     }
+
+    if resolved_zig_archive is not None:
+        route["commands"]["zig_archive_compat"] = quote_command(
+            build_zig_archive_compat_command(repo_root, resolved_zig_archive)
+        )
+    else:
+        route["commands"]["zig_archive_compat"] = (
+            "unavailable until a Zig archive path is supplied with --zig-archive "
+            "or staged under ../agent_files"
+        )
 
     if can_restore:
         route["commands"]["restore_check_only"] = quote_command(
@@ -198,6 +240,7 @@ def render_text(route: dict[str, object]) -> str:
     lines.append(f"Repo root:           {route['repo_root']}")
     lines.append(f"Saved archives root: {route['saved_archives_root']}")
     lines.append(f"Offline deps root:   {route['offline_deps_root']}")
+    lines.append(f"Zig archive:         {route['zig_archive_path'] or 'not supplied'}")
     lines.append("")
     lines.append("Read first")
     lines.append("==========")
@@ -250,6 +293,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--zig-archive",
+        default=None,
+        help=(
+            "Optional path to a Zig archive to validate against build.zig.zon; "
+            "defaults to the first zig-* archive under ../agent_files when present"
+        ),
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Print the route as JSON instead of text",
@@ -283,6 +334,12 @@ class Issue3LinuxReentryHelperTests(unittest.TestCase):
             "unavailable until the required saved archives are present",
         )
 
+    def test_route_marks_zig_archive_check_unavailable_without_archive(self) -> None:
+        with mock.patch(__name__ + ".discover_saved_archives", return_value={}):
+            with mock.patch(__name__ + ".discover_default_zig_archive", return_value=None):
+                route = build_route(pathlib.Path("/tmp/browser"), pathlib.Path("/tmp/memory/repo_archives/browser"))
+        self.assertIn("unavailable until a Zig archive path is supplied", route["commands"]["zig_archive_compat"])
+
     def test_route_builds_restore_commands_when_archives_exist(self) -> None:
         saved_archives = {
             "rust_toolchain": pathlib.Path("/tmp/memory/browser/01-rust.tar.xz"),
@@ -293,6 +350,22 @@ class Issue3LinuxReentryHelperTests(unittest.TestCase):
             route = build_route(pathlib.Path("/tmp/browser"), pathlib.Path("/tmp/memory/repo_archives/browser"))
         self.assertIn("prepare_offline_build_inputs.sh", route["commands"]["restore"])
         self.assertIn("--check-only", route["commands"]["restore_check_only"])
+
+    def test_route_builds_zig_archive_compat_command_when_archive_exists(self) -> None:
+        saved_archives = {
+            "rust_toolchain": pathlib.Path("/tmp/memory/browser/01-rust.tar.xz"),
+            "boringssl": pathlib.Path("/tmp/memory/browser/03-boringssl-zig-main.zip"),
+            "browser_deps": pathlib.Path("/tmp/memory/browser/04-zig-browser-depo.tar.zip"),
+        }
+        zig_archive = pathlib.Path("/tmp/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz")
+        with mock.patch(__name__ + ".discover_saved_archives", return_value=saved_archives):
+            route = build_route(
+                pathlib.Path("/tmp/browser"),
+                pathlib.Path("/tmp/memory/repo_archives/browser"),
+                zig_archive=zig_archive,
+            )
+        self.assertIn("scripts/check_zig_archive_compat.py", route["commands"]["zig_archive_compat"])
+        self.assertIn(str(zig_archive), route["commands"]["zig_archive_compat"])
 
 
 def main() -> int:
@@ -310,7 +383,8 @@ def main() -> int:
         if args.saved_archives_root
         else (repo_root.parent / "memory" / "repo_archives" / "browser" / "dependencies").resolve()
     )
-    route = build_route(repo_root, saved_archives_root)
+    zig_archive = pathlib.Path(args.zig_archive).resolve() if args.zig_archive else None
+    route = build_route(repo_root, saved_archives_root, zig_archive=zig_archive)
 
     if args.json:
         print(json.dumps(route, indent=2, sort_keys=False))
