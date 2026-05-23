@@ -11,12 +11,14 @@ helpers:
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
+- `scripts/check_issue3_saved_memory_inputs.py`
 
 ## Goal
 
 Give the next writable checkout one branch-local route for:
 
-- checking that the saved archives are still present
+- checking that the saved Memory repo snapshot, notes, blocker file, dependency
+  archives, and optional fallback Zig bundle are still present
 - checking that the Linux build-readiness note and helper surfaces still line up
 - staging the offline sibling dependencies expected by `build.zig.zon`
 - restoring the saved Rust `1.79.0` toolchain
@@ -34,9 +36,23 @@ bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
 Use `--json` when another helper needs the surface-check result as structured
 output.
 
+## Run The Saved-Memory Preflight Next
+
+After the surface check passes, confirm the saved Memory repo snapshot,
+dependency bundles, and fallback Zig surface before the broader Linux or WSL
+readiness helper:
+
+```bash
+python scripts/check_issue3_saved_memory_inputs.py --repo-root .
+```
+
+Use `--fallback-zig-archive` when the attached
+`zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` bundle lives somewhere other
+than the default `../agent_files/` location beside the repo workspace.
+
 ## Run The Helper
 
-After the surface check passes, print the saved-archive-first route:
+After the saved-memory preflight passes, print the saved-archive-first route:
 
 ```bash
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
@@ -64,19 +80,23 @@ The Linux route now stays short and ordered:
 
 1. A fail-fast surface check using
    `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
-2. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-3. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+2. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
+3. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+4. A `prepare_offline_build_inputs.sh --check-only` command for the offline
    dependency surface
-4. A saved Rust `1.79.0` restore command
-5. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-6. The attached fallback Zig archive location when it is present beside the repo
+5. A saved Rust `1.79.0` restore command
+6. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+7. The attached fallback Zig archive location when it is present beside the repo
    workspace, so runs can surface it without treating it as branch-compatible
    validation evidence
-7. A full readiness command that expects the saved archives, offline deps, and
+8. A full readiness command that expects the saved archives, offline deps, and
    prebuilt V8 archive to be staged before retrying `zig build`
 
 ## Working Rules
 
+- Run `python scripts/check_issue3_saved_memory_inputs.py --repo-root .` before
+  the broader readiness helper when the replay depends on the saved archives in
+  Memory.
 - Do not treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl`
   as source regressions before the offline restore route is staged.
 - Do not treat Zig `0.17` fallback failures in untouched branch files as issue
