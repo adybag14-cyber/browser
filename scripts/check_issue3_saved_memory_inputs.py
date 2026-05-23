@@ -47,6 +47,7 @@ OPTIONAL_MEMORY_FILES: tuple[tuple[str, str], ...] = (
 )
 
 DEFAULT_FALLBACK_ZIG = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+DEFAULT_RESTORED_CHECKOUT_NAME = "browser-memory-snapshot"
 EXPECTED_REPO_SNAPSHOT_PREFIX = "browser-fork-headed-mode-foundation/"
 
 
@@ -71,6 +72,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--agent-files-root",
         default=None,
         help="Path to the builder-attached files root (default: ../agent_files beside the repo workspace)",
+    )
+    parser.add_argument(
+        "--restored-checkout-root",
+        default=None,
+        help=(
+            "Optional path to the reusable restored checkout to probe "
+            "(default: ../browser-memory-snapshot beside the repo workspace)"
+        ),
     )
     parser.add_argument(
         "--fallback-zig-archive",
@@ -101,6 +110,12 @@ def resolve_default_memory_root(repo_root: Path) -> Path:
 
 def resolve_default_agent_files_root(repo_root: Path) -> Path:
     return (repo_root.parent / "agent_files").resolve()
+
+
+def resolve_default_restored_checkout_root(repo_root: Path) -> Path:
+    if (repo_root / "build.zig.zon").is_file():
+        return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
+    return (repo_root / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
 
 
 def archive_integrity_result(path: Path, label: str) -> dict[str, object]:
@@ -160,11 +175,37 @@ def check_file(path: Path, label: str, *, check_archive_integrity: bool) -> dict
     }
 
 
+def collect_restored_checkout_result(restored_checkout_root: Path) -> dict[str, object]:
+    exists = restored_checkout_root.is_dir()
+    build_manifest = restored_checkout_root / "build.zig.zon"
+    saved_memory_helper = restored_checkout_root / "scripts/check_issue3_saved_memory_inputs.py"
+    linux_route_helper = restored_checkout_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh"
+
+    has_build_manifest = build_manifest.is_file()
+    has_helper_surface = saved_memory_helper.is_file() and linux_route_helper.is_file()
+
+    if not exists:
+        status = "missing"
+    elif has_build_manifest:
+        status = "ready"
+    else:
+        status = "incomplete"
+
+    return {
+        "path": str(restored_checkout_root),
+        "exists": exists,
+        "has_build_manifest": has_build_manifest,
+        "has_helper_surface": has_helper_surface,
+        "status": status,
+    }
+
+
 def collect_results(
     *,
     repo_root: Path,
     memory_root: Path,
     agent_files_root: Path,
+    restored_checkout_root: Path,
     fallback_zig_archive: Path | None,
     check_archive_integrity: bool,
 ) -> dict[str, object]:
@@ -200,6 +241,7 @@ def collect_results(
         "repo_root": str(repo_root),
         "memory_root": str(memory_root),
         "agent_files_root": str(agent_files_root),
+        "restored_checkout": collect_restored_checkout_result(restored_checkout_root),
         "archive_integrity_checked": check_archive_integrity,
         "required_files": required_files,
         "optional_files": optional_files,
@@ -211,6 +253,24 @@ def emit_text(result: dict[str, object]) -> None:
     print(f"Repo root: {result['repo_root']}")
     print(f"Memory root: {result['memory_root']}")
     print(f"Agent files root: {result['agent_files_root']}")
+    restored_checkout = result["restored_checkout"]
+    checkout_status = {
+        "ready": "PASS",
+        "incomplete": "WARN",
+        "missing": "WARN",
+    }[restored_checkout["status"]]
+    print(
+        f"Reusable restored checkout: [{checkout_status}] "
+        f"{restored_checkout['path']}"
+    )
+    if restored_checkout["exists"]:
+        print(
+            "         "
+            f"build.zig.zon={'yes' if restored_checkout['has_build_manifest'] else 'no'}, "
+            f"helper surface={'yes' if restored_checkout['has_helper_surface'] else 'no'}"
+        )
+    else:
+        print("         status: missing; restore the saved browser snapshot route before Linux or WSL replay")
     print("Required Memory inputs:")
     for entry in result["required_files"]:
         status = "PASS" if entry["exists"] else "FAIL"
@@ -257,8 +317,20 @@ class SavedMemoryInputsTests(unittest.TestCase):
             repo_root = root / "browser"
             memory_root = root / "memory"
             agent_files_root = root / "agent_files"
+            restored_checkout_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
             repo_root.mkdir()
             agent_files_root.mkdir()
+            restored_checkout_root.mkdir()
+            (restored_checkout_root / "scripts/linux").mkdir(parents=True)
+            (restored_checkout_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            (restored_checkout_root / "scripts/check_issue3_saved_memory_inputs.py").write_text(
+                "pass",
+                encoding="utf-8",
+            )
+            (restored_checkout_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh").write_text(
+                "pass",
+                encoding="utf-8",
+            )
             for relative_path, _label in REQUIRED_MEMORY_FILES + OPTIONAL_MEMORY_FILES:
                 target = memory_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -282,6 +354,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 repo_root=repo_root,
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
+                restored_checkout_root=restored_checkout_root,
                 fallback_zig_archive=None,
                 check_archive_integrity=True,
             )
@@ -289,6 +362,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertTrue(result["fallback_zig_archive"]["exists"])
             self.assertTrue(result["required_files"][0]["archive_readable"])
+            self.assertEqual(result["restored_checkout"]["status"], "ready")
 
     def test_collect_results_fails_when_required_archive_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -307,6 +381,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 repo_root=repo_root,
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
+                restored_checkout_root=resolve_default_restored_checkout_root(repo_root),
                 fallback_zig_archive=None,
                 check_archive_integrity=False,
             )
@@ -345,6 +420,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 repo_root=repo_root,
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
+                restored_checkout_root=resolve_default_restored_checkout_root(repo_root),
                 fallback_zig_archive=None,
                 check_archive_integrity=True,
             )
@@ -353,10 +429,37 @@ class SavedMemoryInputsTests(unittest.TestCase):
             self.assertTrue(result["required_files"][0]["exists"])
             self.assertFalse(result["required_files"][0]["archive_readable"])
 
+    def test_restored_checkout_detection_handles_missing_and_incomplete_states(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            missing = collect_restored_checkout_result(root / DEFAULT_RESTORED_CHECKOUT_NAME)
+            self.assertEqual(missing["status"], "missing")
+
+            incomplete_root = root / "partial-checkout"
+            incomplete_root.mkdir()
+            incomplete = collect_restored_checkout_result(incomplete_root)
+            self.assertEqual(incomplete["status"], "incomplete")
+            self.assertFalse(incomplete["has_build_manifest"])
+
     def test_default_roots_follow_workspace_layout(self) -> None:
-        repo_root = Path("/tmp/workspace/browser")
-        self.assertEqual(resolve_default_memory_root(repo_root), Path("/tmp/workspace/memory"))
-        self.assertEqual(resolve_default_agent_files_root(repo_root), Path("/tmp/workspace/agent_files"))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+            (repo_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            self.assertEqual(resolve_default_memory_root(repo_root), Path(tmpdir) / "memory")
+            self.assertEqual(resolve_default_agent_files_root(repo_root), Path(tmpdir) / "agent_files")
+            self.assertEqual(
+                resolve_default_restored_checkout_root(repo_root),
+                Path(tmpdir) / "browser-memory-snapshot",
+            )
+
+        workspace_root = Path("/tmp/workspace")
+        self.assertEqual(resolve_default_memory_root(workspace_root), Path("/tmp/memory"))
+        self.assertEqual(resolve_default_agent_files_root(workspace_root), Path("/tmp/agent_files"))
+        self.assertEqual(
+            resolve_default_restored_checkout_root(workspace_root),
+            Path("/tmp/workspace/browser-memory-snapshot"),
+        )
 
 
 def main() -> int:
@@ -371,12 +474,18 @@ def main() -> int:
     agent_files_root = (
         Path(args.agent_files_root).resolve() if args.agent_files_root else resolve_default_agent_files_root(repo_root)
     )
+    restored_checkout_root = (
+        Path(args.restored_checkout_root).resolve()
+        if args.restored_checkout_root
+        else resolve_default_restored_checkout_root(repo_root)
+    )
     fallback_zig_archive = Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
 
     result = collect_results(
         repo_root=repo_root,
         memory_root=memory_root,
         agent_files_root=agent_files_root,
+        restored_checkout_root=restored_checkout_root,
         fallback_zig_archive=fallback_zig_archive,
         check_archive_integrity=not args.skip_archive_integrity_check,
     )
