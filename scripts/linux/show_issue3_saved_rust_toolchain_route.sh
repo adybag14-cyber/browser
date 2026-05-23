@@ -3,19 +3,19 @@
 set -euo pipefail
 
 usage() {
-    cat <<'EOF'
+    cat <<'EOF_USAGE'
 Usage:
   bash scripts/linux/show_issue3_saved_rust_toolchain_route.sh \
     [--browser-root /path/to/browser-repo] \
     [--dependencies-root /path/to/memory/repo_archives/browser/dependencies] \
-    [--toolchain-root /path/to/rust-1.79.0-x86_64-unknown-linux-gnu] \
-    [--toolchain-parent /path/to/parent-dir] \
+    [--toolchain-root /path/to/toolchains/rust-1.79.0] \
+    [--toolchain-parent /path/to/toolchains] \
     [--archive /path/to/rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz] \
     [--json]
 
 Print the compact saved Rust toolchain restore route used by the Linux or WSL
 issue #3 Enter-submit recovery path.
-EOF
+EOF_USAGE
 }
 
 format_shell_arg() {
@@ -29,8 +29,9 @@ PY
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0-x86_64-unknown-linux-gnu"
-DEFAULT_ARCHIVE_NAME="01-${DEFAULT_TOOLCHAIN_DIR_NAME}.tar.xz"
+DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0"
+DEFAULT_ARCHIVE_TOOLCHAIN_NAME="rust-1.79.0-x86_64-unknown-linux-gnu"
+DEFAULT_ARCHIVE_NAME="01-${DEFAULT_ARCHIVE_TOOLCHAIN_NAME}.tar.xz"
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 DEPENDENCIES_ROOT=""
@@ -78,11 +79,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
+WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 if [[ -z "${TOOLCHAIN_PARENT}" ]]; then
-    TOOLCHAIN_PARENT="$(cd "${BROWSER_ROOT}/.." && pwd)"
+    TOOLCHAIN_PARENT="${WORKSPACE_ROOT}/toolchains"
 fi
 if [[ -z "${DEPENDENCIES_ROOT}" ]]; then
-    DEPENDENCIES_ROOT="${TOOLCHAIN_PARENT}/memory/repo_archives/browser/dependencies"
+    DEPENDENCIES_ROOT="${WORKSPACE_ROOT}/memory/repo_archives/browser/dependencies"
 fi
 if [[ -z "${TOOLCHAIN_ROOT}" ]]; then
     TOOLCHAIN_ROOT="${TOOLCHAIN_PARENT}/${DEFAULT_TOOLCHAIN_DIR_NAME}"
@@ -123,14 +125,15 @@ print(json.dumps({
         "Run the surface_check command first so missing route docs or helper drift fails before the saved archive itself is blamed.",
         "Run the check_only command next when the saved archive location or target toolchain directory may have drifted.",
         "Use the restore command to keep the saved Rust 1.79.0 extraction path on one branch-local surface.",
-        "Reuse the PATH, CARGO, and RUSTC exports before rerunning Linux or WSL build-readiness checks."
+        "Reuse the PATH, CARGO, and RUSTC exports before rerunning Linux or WSL build-readiness checks.",
+        "By default this route now restores into ../toolchains/rust-1.79.0 so it matches the broader Linux build-readiness helper."
     ]
 }, indent=2))
 PY
     exit 0
 fi
 
-cat <<EOF
+cat <<EOF_ROUTE
 Google issue #3 saved Rust toolchain restore route
 
 Browser root:      ${BROWSER_ROOT}
@@ -169,4 +172,5 @@ Working rules
   - Run the restore helper surface check next when the archive or destination path may have drifted.
   - Use the restore command instead of rebuilding the tar extraction path by hand.
   - Reuse the exported PATH, CARGO, and RUSTC values before rerunning Linux or WSL build-readiness helpers.
-EOF
+  - The default restore location now matches the broader Linux build-readiness route: ../toolchains/rust-1.79.0.
+EOF_ROUTE
