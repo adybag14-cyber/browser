@@ -85,6 +85,7 @@ fi
 
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SNAPSHOT_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_browser_snapshot_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
+TOOLCHAIN_ROUTE_COMMAND="bash scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
 RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
 HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
 BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip"
@@ -98,6 +99,7 @@ RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/b
 FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --expect-offline-deps --require-prebuilt-v8"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    TOOLCHAIN_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_MEMORY_INPUTS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     FULL_READINESS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -117,6 +119,7 @@ print(json.dumps({
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
+        "zig_toolchain_route": ${TOOLCHAIN_ROUTE_COMMAND@Q},
         "saved_archive_preflight": ${PREFLIGHT_COMMAND@Q},
         "offline_prepare_check_only": ${PREPARE_COMMAND@Q},
         "rust_restore_check_only": ${RUST_RESTORE_CHECK_COMMAND@Q},
@@ -128,6 +131,7 @@ print(json.dumps({
         "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
         "Run the saved_memory_inputs command before the broader saved-archive preflight when the route depends on the saved Memory repo snapshot and dependency bundles.",
+        "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
         "Run rust_restore_check_only when you want to confirm the saved Rust archive and target directory before extracting it.",
         "Use rust_restore to keep the saved Rust 1.79.0 toolchain restore on one branch-local helper surface instead of rebuilding the tar command by hand.",
@@ -172,6 +176,9 @@ Suggested route
   Saved Memory input preflight:
     ${SAVED_MEMORY_INPUTS_COMMAND}
 
+  Zig toolchain recovery route:
+    ${TOOLCHAIN_ROUTE_COMMAND}
+
   Saved-archive preflight:
     ${PREFLIGHT_COMMAND}
 
@@ -195,6 +202,7 @@ Working rules
   - Run the surface check first so missing docs or helper drift fails fast before offline staging starts.
   - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
   - Run the saved Memory input preflight before the broader saved-archive preflight when the route depends on the saved repo snapshot and dependency bundles.
+  - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
   - Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only, not as honest issue #3 validation evidence for this branch.
   - Do not treat fallback Zig 0.17 dev failures in untouched branch files as issue #3 patch evidence.
