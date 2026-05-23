@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+
+"""Check whether the saved Memory inputs for issue #3 are present.
+
+This helper gives the issue #3 runtime and Linux build-readiness routes one
+small preflight for the saved Memory artifacts that scheduled runs depend on:
+the repo snapshot, README, blocker intelligence, dependency archives, and the
+optional attached fallback Zig bundle.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+
+REQUIRED_MEMORY_FILES: tuple[tuple[str, str], ...] = (
+    ("repo_archives/browser/01-browser-fork-headed-mode-foundation.zip", "saved repo snapshot"),
+    ("repo_archives/browser/README.md", "saved repo notes"),
+    ("repo_archives/browser/blocker_intelligence.yaml", "blocker intelligence"),
+    (
+        "repo_archives/browser/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz",
+        "saved Rust toolchain archive",
+    ),
+    (
+        "repo_archives/browser/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip",
+        "saved html5ever dependency archive",
+    ),
+    (
+        "repo_archives/browser/dependencies/03-boringssl-zig-main.zip",
+        "saved BoringSSL archive",
+    ),
+    (
+        "repo_archives/browser/dependencies/04-zig-browser-depo.tar.zip",
+        "saved browser dependency archive",
+    ),
+)
+
+OPTIONAL_MEMORY_FILES: tuple[tuple[str, str], ...] = (
+    ("repo_archives/browser/session_entry_register.yaml", "session entry register"),
+)
+
+DEFAULT_FALLBACK_ZIG = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Check that the saved Memory artifacts for the blocked issue #3 "
+            "runtime route are present before build-readiness or re-entry work."
+        )
+    )
+    parser.add_argument(
+        "--repo-root",
+        default=".",
+        help="Path to the browser checkout root (default: current directory)",
+    )
+    parser.add_argument(
+        "--memory-root",
+        default=None,
+        help="Path to the workspace memory root (default: ../memory beside the repo workspace)",
+    )
+    parser.add_argument(
+        "--agent-files-root",
+        default=None,
+        help="Path to the builder-attached files root (default: ../agent_files beside the repo workspace)",
+    )
+    parser.add_argument(
+        "--fallback-zig-archive",
+        default=None,
+        help="Optional explicit path to the fallback Zig archive to check instead of auto-discovery",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit structured JSON instead of line-oriented text",
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run focused helper tests and exit",
+    )
+    return parser
+
+
+def resolve_default_memory_root(repo_root: Path) -> Path:
+    return (repo_root.parent / "memory").resolve()
+
+
+def resolve_default_agent_files_root(repo_root: Path) -> Path:
+    return (repo_root.parent / "agent_files").resolve()
+
+
+def check_file(path: Path, label: str) -> dict[str, object]:
+    exists = path.is_file()
+    return {
+        "label": label,
+        "path": str(path),
+        "exists": exists,
+    }
+
+
+def collect_results(
+    *,
+    repo_root: Path,
+    memory_root: Path,
+    agent_files_root: Path,
+    fallback_zig_archive: Path | None,
+) -> dict[str, object]:
+    required_files = [
+        check_file(memory_root / relative_path, label)
+        for relative_path, label in REQUIRED_MEMORY_FILES
+    ]
+    optional_files = [
+        check_file(memory_root / relative_path, label)
+        for relative_path, label in OPTIONAL_MEMORY_FILES
+    ]
+
+    fallback_path = fallback_zig_archive
+    if fallback_path is None:
+        candidate = agent_files_root / DEFAULT_FALLBACK_ZIG
+        fallback_path = candidate if candidate.exists() else candidate
+    fallback_result = check_file(fallback_path, "fallback Zig archive")
+
+    missing_required = [entry for entry in required_files if not entry["exists"]]
+    ok = not missing_required
+
+    return {
+        "ok": ok,
+        "repo_root": str(repo_root),
+        "memory_root": str(memory_root),
+        "agent_files_root": str(agent_files_root),
+        "required_files": required_files,
+        "optional_files": optional_files,
+        "fallback_zig_archive": fallback_result,
+    }
+
+
+def emit_text(result: dict[str, object]) -> None:
+    print(f"Repo root: {result['repo_root']}")
+    print(f"Memory root: {result['memory_root']}")
+    print(f"Agent files root: {result['agent_files_root']}")
+    print("Required Memory inputs:")
+    for entry in result["required_files"]:
+        status = "PASS" if entry["exists"] else "FAIL"
+        print(f"  [{status}] {entry['label']}: {entry['path']}")
+    print("Optional Memory inputs:")
+    for entry in result["optional_files"]:
+        status = "PASS" if entry["exists"] else "WARN"
+        print(f"  [{status}] {entry['label']}: {entry['path']}")
+    fallback = result["fallback_zig_archive"]
+    fallback_status = "PASS" if fallback["exists"] else "WARN"
+    print(f"Fallback Zig archive: [{fallback_status}] {fallback['path']}")
+    if result["ok"]:
+        print("\nSaved Memory input check passed.")
+    else:
+        print("\nSaved Memory input check failed.", file=sys.stderr)
+        print(
+            "Suggested next step: restore or remount the saved repo and dependency archives before reopening the issue #3 runtime route.",
+            file=sys.stderr,
+        )
+
+
+class SavedMemoryInputsTests(unittest.TestCase):
+    def test_collect_results_passes_with_required_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = root / "browser"
+            memory_root = root / "memory"
+            agent_files_root = root / "agent_files"
+            repo_root.mkdir()
+            agent_files_root.mkdir()
+            for relative_path, _label in REQUIRED_MEMORY_FILES + OPTIONAL_MEMORY_FILES:
+                target = memory_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("x", encoding="utf-8")
+            (agent_files_root / DEFAULT_FALLBACK_ZIG).write_text("zig", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                fallback_zig_archive=None,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(result["fallback_zig_archive"]["exists"])
+
+    def test_collect_results_fails_when_required_archive_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = root / "browser"
+            memory_root = root / "memory"
+            agent_files_root = root / "agent_files"
+            repo_root.mkdir()
+            agent_files_root.mkdir()
+            for relative_path, _label in REQUIRED_MEMORY_FILES[1:]:
+                target = memory_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("x", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                fallback_zig_archive=None,
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertFalse(result["required_files"][0]["exists"])
+
+    def test_default_roots_follow_workspace_layout(self) -> None:
+        repo_root = Path("/tmp/workspace/browser")
+        self.assertEqual(resolve_default_memory_root(repo_root), Path("/tmp/workspace/memory"))
+        self.assertEqual(resolve_default_agent_files_root(repo_root), Path("/tmp/workspace/agent_files"))
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    if args.self_test:
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(SavedMemoryInputsTests)
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        return 0 if result.wasSuccessful() else 1
+
+    repo_root = Path(args.repo_root).resolve()
+    memory_root = Path(args.memory_root).resolve() if args.memory_root else resolve_default_memory_root(repo_root)
+    agent_files_root = (
+        Path(args.agent_files_root).resolve() if args.agent_files_root else resolve_default_agent_files_root(repo_root)
+    )
+    fallback_zig_archive = Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
+
+    result = collect_results(
+        repo_root=repo_root,
+        memory_root=memory_root,
+        agent_files_root=agent_files_root,
+        fallback_zig_archive=fallback_zig_archive,
+    )
+    if args.json:
+        print(json.dumps({"profile": "issue3-saved-memory-inputs", **result}, indent=2))
+    else:
+        emit_text(result)
+    return 0 if result["ok"] else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
