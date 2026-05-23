@@ -70,6 +70,14 @@ In `src/display/win32_backend.zig`, keep or add regression coverage for:
 - later real text still lands when stale suppression bytes do not match
 - matching text is still suppressed when stale entries drop out of order
 
+## Current live regression anchors
+
+These are the current on-branch anchors worth keeping visible while the runtime slice is reapplied:
+
+- `src/browser/Page.zig` already carries `test "Page reduced Google fixture accepts focused keyboard text and Enter submit"`
+- `src/display/win32_backend.zig` already carries `test "win32 dispatchInput suppresses later text_input after printable keydown across batches"`
+- the next writable checkout should extend those exact anchors rather than inventing a wider replay surface first
+
 ## Windows replay route
 
 Use the normal Windows headed build and then prefer the smaller Google title probe before jumping straight back to the live homepage:
@@ -101,6 +109,14 @@ The trace-heavy probe is still useful when the runtime diverges before submit:
 - inspect `runtime-input-backend-*.log`
 - inspect `wndproc-input-*.log`
 - compare the title transition around `KEYDOWN:` versus `SUBMIT:`
+
+## Validation caveats from scheduled reruns
+
+Recent scheduled reruns confirmed that the runtime slice still narrows cleanly, but the fallback Linux validation path has two non-issue-specific traps:
+
+- `zig test src/browser/Page.zig -O Debug` under the attached Zig `0.17.0-dev.299` fallback hits broader module-path and branch/toolchain compatibility errors before the issue-specific assertions run
+- `zig test src/display/win32_backend.zig -O Debug` under the same fallback hits the known preexisting Zig 0.17 syntax drift in untouched code (`[_]u16{0} ** ...`) before the focused suppression tests run
+- because of that, prefer the normal Windows MSVC build plus the reduced title probe or reduced fixture replay for honest issue-specific validation in this branch state
 
 ## Practical rule
 
