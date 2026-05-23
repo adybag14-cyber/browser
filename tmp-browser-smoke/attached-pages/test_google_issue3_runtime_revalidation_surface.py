@@ -20,9 +20,10 @@ Read this together with:
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
-- `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
-- `scripts/linux/show_issue3_linux_build_readiness_route.sh`
+- `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
+- `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
+- `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_linux_build_readiness.py`
 
 ### Gate 1: Writable publication path
@@ -41,8 +42,10 @@ zig test src/display/win32_backend.zig -target x86_64-windows-gnu
 ```
 
 ```bash
-bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
-bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+python scripts/check_issue3_saved_memory_inputs.py --repo-root .
+bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
+bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
+python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
 ## Practical Re-entry Order
@@ -53,10 +56,11 @@ bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 4. Re-check the branch-side runtime contract markers
 5. Stage the expected sibling-path dependencies
 6. If the run is using saved dependency bundles, stage them
-7. start with the fail-fast surface check
-8. Re-check Linux or WSL build readiness
-9. rerun the readiness helper without the Zig skip
-10. reopen the direct code patch
+7. Run the saved-input preflight before the Linux or WSL build-readiness helpers
+8. Start with the direct runtime Linux or WSL surface check
+9. Re-check Linux or WSL build readiness
+10. rerun the readiness helper without the Zig skip
+11. reopen the direct code patch
 
 ## Validation Ladder After The Gates Open
 
@@ -67,7 +71,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_valida
 ## If A Gate Is Still Closed
 
 - stay on a smaller create-only docs, diagnostics, or validation slice
-- keep using the runtime-contract checker
+- keep using the saved-memory preflight, the direct runtime Linux or WSL surface check, and the compact re-entry route before widening back out
 """,
     "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md": """
 # Issue #3 Enter-Submit Runtime Revalidation
@@ -121,8 +125,6 @@ bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
     "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1": r"""
 $runtimeContractCheckerPath = Join-Path $resolvedRepoRoot "tmp-browser-smoke\google-investigation-next\check_issue3_enter_submit_runtime_contract.py"
 $linuxBuildReadinessScriptPath = Join-Path $resolvedRepoRoot "scripts\check_linux_build_readiness.py"
-$linuxRouteSurfaceCheck = "scripts\linux\check_issue3_linux_build_readiness_route_surface.sh"
-$linuxRoutePrinter = "scripts\linux\show_issue3_linux_build_readiness_route.sh"
 $focusedPageTestsCommand = "zig test src/browser/Page.zig"
 $focusedWin32TestsCommand = "zig test src/display/win32_backend.zig -target x86_64-windows-gnu"
 $route = [ordered]@{
@@ -157,11 +159,9 @@ $route = [ordered]@{
         "Stale queued suppression entries do not drop real later text_input bytes."
     )
     notes = @(
-        "Run surface_check first when branch state may have moved.",
-        "Use contract_check before build or replay.",
-        "Use linux_build_readiness_skip_zig when the re-entry depends on Linux or WSL dependency staging.",
-        "Use focused_page_tests and focused_win32_tests only when the current checkout already has a branch-compatible Zig toolchain.",
-        "Use reduced_google_probe before live Google whenever the runtime patch touched Page.zig or win32_backend.zig."
+        "Use linux_build_readiness_skip_zig when the re-entry depends on Linux or WSL dependency staging and you need to confirm the saved inputs before trusting focused Zig output.",
+        "Use focused_page_tests and focused_win32_tests only when the current checkout already has a branch-compatible Zig toolchain; the attached Zig 0.17 dev fallback can fail in untouched branch files before these focused assertions run.",
+        "Use reduced_google_probe before live Google whenever the runtime patch touched Page.zig or win32_backend.zig and you want trace-ready output on the reduced fixture first."
     )
 }
 """,
@@ -175,8 +175,9 @@ $references = @(
 )
 
 $contentExpectations = @(
-    (New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "check_issue3_enter_submit_runtime_contract.py" -Purpose "The gate note keeps the source-based runtime contract checker visible."),
-    (New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/check_linux_build_readiness.py" -Purpose "The gate note keeps the build-readiness helper visible."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/check_issue3_saved_memory_inputs.py" -Purpose "The gate note keeps the saved-memory preflight visible."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh" -Purpose "The gate note keeps the direct runtime Linux or WSL surface check visible."),
+    (New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh" -Purpose "The gate note keeps the compact direct runtime route visible."),
     (New-ValidationContentExpectation -Path "docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md" -Snippet "check_google_issue3_enter_submit_runtime_revalidation_surface.ps1" -Purpose "The production guide keeps the fail-fast runtime surface checker visible."),
     (New-ValidationContentExpectation -Path "docs/HEADED_MODE_ROADMAP.md" -Snippet "show_google_issue3_enter_submit_runtime_revalidation.ps1" -Purpose "The roadmap quick routes keep the compact runtime revalidation helper visible."),
     (New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1" -Snippet 'linux_build_readiness_skip_zig = $linuxBuildReadinessSkipZigCommand' -Purpose "The helper prints the light preflight command."),
@@ -299,14 +300,15 @@ class GoogleIssue3RuntimeRevalidationSurfaceTest(unittest.TestCase):
             / "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py"
         )
 
-    def test_runtime_gates_keep_read_first_docs_and_linux_reentry_bridge(self) -> None:
+    def test_runtime_gates_keep_read_first_docs_and_direct_runtime_bridge(self) -> None:
         for fragment in (
             "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
             "show_google_issue3_enter_submit_runtime_revalidation.ps1",
-            "check_issue3_linux_build_readiness_route_surface.sh",
-            "show_issue3_linux_build_readiness_route.sh",
+            "check_issue3_enter_submit_runtime_revalidation_surface.sh",
+            "show_issue3_enter_submit_runtime_revalidation_route.sh",
             "check_issue3_enter_submit_runtime_contract.py",
+            "scripts/check_issue3_saved_memory_inputs.py",
             "scripts/check_linux_build_readiness.py",
             "Gate 1: Writable publication path",
             "Gate 2: Branch-compatible validation toolchain",
@@ -314,16 +316,19 @@ class GoogleIssue3RuntimeRevalidationSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.runtime_gates)
 
-    def test_runtime_gates_keep_reentry_order_and_closed_gate_rules(self) -> None:
+    def test_runtime_gates_keep_reentry_order_and_saved_input_preflight(self) -> None:
         for fragment in (
             "Confirm a writable publication path exists",
             "Re-check the branch-side runtime contract markers",
-            "start with the fail-fast surface check",
-            "rerun the readiness helper without the Zig skip",
+            "Run the saved-input preflight before the Linux or WSL build-readiness helpers",
+            "Start with the direct runtime Linux or WSL surface check",
+            "python scripts/check_issue3_saved_memory_inputs.py --repo-root .",
+            "bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
+            "bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+            "python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check",
             "show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order",
             "show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order",
             "stay on a smaller create-only docs, diagnostics, or validation slice",
-            "keep using the runtime-contract checker",
         ):
             self.assertIn(fragment, self.runtime_gates)
 
@@ -345,8 +350,6 @@ class GoogleIssue3RuntimeRevalidationSurfaceTest(unittest.TestCase):
     def test_windows_helper_keeps_runtime_contract_linux_readiness_and_replay_commands(self) -> None:
         for fragment in (
             "check_issue3_enter_submit_runtime_contract.py",
-            "check_issue3_linux_build_readiness_route_surface.sh",
-            "show_issue3_linux_build_readiness_route.sh",
             'surface_check = Format-RepoRootCommand -ScriptPath "scripts\\windows\\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"',
             "contract_check = $runtimeContractCheckCommand",
             "contract_self_test = $runtimeContractSelfTestCommand",
@@ -361,18 +364,20 @@ class GoogleIssue3RuntimeRevalidationSurfaceTest(unittest.TestCase):
             "live_google",
             "Stale queued suppression entries do not drop real later text_input bytes.",
             "Use linux_build_readiness_skip_zig",
+            "the attached Zig 0.17 dev fallback can fail in untouched branch files",
             "Use reduced_google_probe before live Google",
         ):
             self.assertIn(fragment, self.windows_helper)
 
-    def test_windows_surface_checker_keeps_helper_and_doc_contracts(self) -> None:
+    def test_windows_surface_checker_keeps_saved_input_and_direct_runtime_contracts(self) -> None:
         for fragment in (
             'New-ValidationReference -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"',
             'New-ValidationReference -Path "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md"',
             'New-ValidationReference -Path "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1"',
             'New-ValidationReference -Path "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py"',
-            'New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "check_issue3_enter_submit_runtime_contract.py"',
-            'New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/check_linux_build_readiness.py"',
+            'New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/check_issue3_saved_memory_inputs.py"',
+            'New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh"',
+            'New-ValidationContentExpectation -Path "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" -Snippet "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"',
             'New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1" -Snippet \'linux_build_readiness_skip_zig = $linuxBuildReadinessSkipZigCommand\'',
             'New-ValidationContentExpectation -Path "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1" -Snippet "Stale queued suppression entries do not drop real later text_input bytes."',
         ):
