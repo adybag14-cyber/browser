@@ -79,6 +79,15 @@ $runtimeContractCheckerPath = Join-Path $resolvedRepoRoot "tmp-browser-smoke\goo
 $pageSourcePath = Join-Path $resolvedRepoRoot "src\browser\Page.zig"
 $win32SourcePath = Join-Path $resolvedRepoRoot "src\display\win32_backend.zig"
 $linuxBuildReadinessScriptPath = Join-Path $resolvedRepoRoot "scripts\check_linux_build_readiness.py"
+$savedMemoryInputsScriptPath = Join-Path $resolvedRepoRoot "scripts\check_issue3_saved_memory_inputs.py"
+$linuxRuntimeSurfaceScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\check_issue3_enter_submit_runtime_revalidation_surface.sh"
+$linuxRuntimeRouteScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\show_issue3_enter_submit_runtime_revalidation_route.sh"
+$fallbackZigArchivePath = Join-Path (Split-Path -Parent $resolvedRepoRoot) "agent_files\zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+$resolvedFallbackZigArchive = if (Test-Path -LiteralPath $fallbackZigArchivePath -PathType Leaf) {
+    $fallbackZigArchivePath
+} else {
+    ""
+}
 
 $buildCommand = "zig build -Dtarget=x86_64-windows-msvc --summary all"
 $focusedPageTestsCommand = "zig test src/browser/Page.zig"
@@ -92,6 +101,20 @@ $runtimeContractCheckCommand = "python " +
 $runtimeContractSelfTestCommand = "python " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $runtimeContractCheckerPath) +
     " --self-test"
+$savedMemoryPreflightCommand = "python " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $savedMemoryInputsScriptPath) +
+    " --repo-root " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
+$linuxRuntimeSurfaceCommand = "bash " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $linuxRuntimeSurfaceScriptPath) +
+    " --repo-root " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
+$linuxRuntimeRouteCommand = "bash " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $linuxRuntimeRouteScriptPath) +
+    " --repo-root " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot) +
+    " --browser-exe " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedBrowserExe)
 $linuxBuildReadinessSkipZigCommand = "python " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $linuxBuildReadinessScriptPath) +
     " --repo-root " +
@@ -101,15 +124,28 @@ $linuxBuildReadinessFullCommand = "python " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $linuxBuildReadinessScriptPath) +
     " --repo-root " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
+if (-not [string]::IsNullOrWhiteSpace($resolvedFallbackZigArchive)) {
+    $escapedFallbackZigArchive = ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedFallbackZigArchive
+    $savedMemoryPreflightCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
+    $linuxRuntimeRouteCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
+    $linuxBuildReadinessSkipZigCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
+    $linuxBuildReadinessFullCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
+}
 
 $route = [ordered]@{
     issue = "Google issue #3 Enter-submit runtime revalidation"
-    purpose = "Keep the runtime re-entry gates note, the source-based runtime contract checker, the shared Enter-submit ladder, the focused file-level regression commands, the reduced Google title probe, the runtime-specific revalidation note, and the live Google fallback on one Windows-first helper surface."
+    purpose = "Keep the runtime re-entry gates note, the source-based runtime contract checker, the saved-memory preflight, the Linux re-entry helpers, the shared Enter-submit ladder, the focused file-level regression commands, the reduced Google title probe, the runtime-specific revalidation note, and the live Google fallback on one Windows-first helper surface."
     repo_root = $resolvedRepoRoot
     browser_exe = $resolvedBrowserExe
+    fallback_zig_archive = if ([string]::IsNullOrWhiteSpace($resolvedFallbackZigArchive)) {
+        "not found beside the repo workspace"
+    } else {
+        $resolvedFallbackZigArchive
+    }
     read_first = @(
         "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
-        "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md"
+        "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
     )
     target_files = @(
         "src/browser/Page.zig",
@@ -117,12 +153,16 @@ $route = [ordered]@{
     )
     related_files = @(
         "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
+        "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
+        "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+        "scripts/check_issue3_saved_memory_inputs.py",
         "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py",
         "tmp-browser-smoke/form-controls/enter-submit-probe.ps1",
         "tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1",
         "src/browser/tests/page/google_home_title_probe.html",
         "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
         "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
         "docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md",
         "docs/WINDOWS_FULL_USE.md",
         "scripts/check_linux_build_readiness.py"
@@ -131,6 +171,9 @@ $route = [ordered]@{
         surface_check = Format-RepoRootCommand -ScriptPath "scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"
         contract_check = $runtimeContractCheckCommand
         contract_self_test = $runtimeContractSelfTestCommand
+        saved_memory_preflight = $savedMemoryPreflightCommand
+        linux_runtime_surface = $linuxRuntimeSurfaceCommand
+        linux_runtime_route = $linuxRuntimeRouteCommand
         linux_build_readiness_skip_zig = $linuxBuildReadinessSkipZigCommand
         linux_build_readiness = $linuxBuildReadinessFullCommand
         build = $buildCommand
@@ -155,6 +198,8 @@ $route = [ordered]@{
         "Run surface_check first when branch state may have moved and you want the gate note, helper, and probe files checked before replay.",
         "Run contract_check before build or replay when you need a thin, source-based yes-or-no answer about whether the direct Page.zig and win32_backend.zig bridge markers are present on the current branch.",
         "Run contract_self_test when you want to prove the checker itself still distinguishes vulnerable and guarded samples before pointing it at a real checkout.",
+        "Run saved_memory_preflight before Linux or WSL build-readiness commands when the route depends on the saved Memory repo snapshot, dependency archives, and optional fallback Zig bundle.",
+        "Run linux_runtime_surface and then linux_runtime_route when the direct issue #3 runtime patch is still blocked earlier on Linux or WSL saved-checkout staging or helper drift.",
         "Use linux_build_readiness_skip_zig when the re-entry depends on Linux or WSL dependency staging and you need to confirm the saved inputs before trusting focused Zig output.",
         "Use linux_build_readiness only after a matching Zig line is staged and you want the full readiness helper to confirm the branch-compatible build path before using focused Page.zig or win32_backend.zig tests as evidence.",
         "Use focused_page_tests and focused_win32_tests only when the current checkout already has a branch-compatible Zig toolchain; the attached Zig 0.17 dev fallback can fail in untouched branch files before these focused assertions run.",
@@ -163,8 +208,8 @@ $route = [ordered]@{
         "Use shared_enter_google when the keypress-before-submit ordering is the main question but click-first focus is not required yet.",
         "Use shared_enter_google_click when reproducing the click-first path that most closely matches the real homepage boundary from issue #3.",
         "Use reduced_google_probe before live Google whenever the runtime patch touched Page.zig or win32_backend.zig and you want trace-ready output on the reduced fixture first.",
-        "If the focused Zig tests fail in untouched branch files before the new assertions run, fall back to contract_check, the shared Enter-order ladder, and the reduced Google probe so the runtime boundary can still be narrowed honestly.",
-        "Only jump to reduced_google_fixture or live_google after the source contract check, shared Enter-order ladder, and reduced Google probe agree on the same event ordering."
+        "If the focused Zig tests fail in untouched branch files before the new assertions run, fall back to contract_check, saved_memory_preflight, the Linux re-entry helpers, the shared Enter-order ladder, and the reduced Google probe so the runtime boundary can still be narrowed honestly.",
+        "Only jump to reduced_google_fixture or live_google after the source contract check, saved-memory preflight, Linux or WSL gating, shared Enter-order ladder, and reduced Google probe agree on the same event ordering."
     )
 }
 
@@ -175,8 +220,9 @@ if ($Json) {
 
 Write-Host "Google issue #3 Enter-submit runtime revalidation"
 Write-Host ""
-Write-Host ("Repo root:    {0}" -f $route.repo_root)
-Write-Host ("Browser exe:  {0}" -f $route.browser_exe)
+Write-Host ("Repo root:             {0}" -f $route.repo_root)
+Write-Host ("Browser exe:           {0}" -f $route.browser_exe)
+Write-Host ("Fallback Zig archive:  {0}" -f $route.fallback_zig_archive)
 Write-Host ""
 Write-Host "Read first"
 Write-Host "=========="
@@ -192,21 +238,24 @@ foreach ($path in $route.target_files) {
 Write-Host ""
 Write-Host "Replay route"
 Write-Host "============"
-Write-Host ("  Surface check:              {0}" -f $route.commands.surface_check)
-Write-Host ("  Source contract check:      {0}" -f $route.commands.contract_check)
-Write-Host ("  Checker self-test:          {0}" -f $route.commands.contract_self_test)
-Write-Host ("  Linux readiness (skip Zig): {0}" -f $route.commands.linux_build_readiness_skip_zig)
-Write-Host ("  Linux readiness (full):     {0}" -f $route.commands.linux_build_readiness)
-Write-Host ("  Windows build:              {0}" -f $route.commands.build)
-Write-Host ("  Focused Page.zig tests:     {0}" -f $route.commands.focused_page_tests)
-Write-Host ("  Focused Win32 tests:        {0}" -f $route.commands.focused_win32_tests)
-Write-Host ("  Shared Enter baseline:      {0}" -f $route.commands.shared_enter_default)
-Write-Host ("  Shared Enter deferred:      {0}" -f $route.commands.shared_enter_deferred)
-Write-Host ("  Shared Google ordering:     {0}" -f $route.commands.shared_enter_google)
-Write-Host ("  Shared click-first route:   {0}" -f $route.commands.shared_enter_google_click)
-Write-Host ("  Reduced Google probe:       {0}" -f $route.commands.reduced_google_probe)
-Write-Host ("  Reduced Google fixture:     {0}" -f $route.commands.reduced_google_fixture)
-Write-Host ("  Live Google:                {0}" -f $route.commands.live_google)
+Write-Host ("  Surface check:                  {0}" -f $route.commands.surface_check)
+Write-Host ("  Source contract check:          {0}" -f $route.commands.contract_check)
+Write-Host ("  Checker self-test:              {0}" -f $route.commands.contract_self_test)
+Write-Host ("  Saved-memory preflight:         {0}" -f $route.commands.saved_memory_preflight)
+Write-Host ("  Linux runtime surface:          {0}" -f $route.commands.linux_runtime_surface)
+Write-Host ("  Linux runtime route:            {0}" -f $route.commands.linux_runtime_route)
+Write-Host ("  Linux readiness (skip Zig):     {0}" -f $route.commands.linux_build_readiness_skip_zig)
+Write-Host ("  Linux readiness (full):         {0}" -f $route.commands.linux_build_readiness)
+Write-Host ("  Windows build:                  {0}" -f $route.commands.build)
+Write-Host ("  Focused Page.zig tests:         {0}" -f $route.commands.focused_page_tests)
+Write-Host ("  Focused Win32 tests:            {0}" -f $route.commands.focused_win32_tests)
+Write-Host ("  Shared Enter baseline:          {0}" -f $route.commands.shared_enter_default)
+Write-Host ("  Shared Enter deferred:          {0}" -f $route.commands.shared_enter_deferred)
+Write-Host ("  Shared Google ordering:         {0}" -f $route.commands.shared_enter_google)
+Write-Host ("  Shared click-first route:       {0}" -f $route.commands.shared_enter_google_click)
+Write-Host ("  Reduced Google probe:           {0}" -f $route.commands.reduced_google_probe)
+Write-Host ("  Reduced Google fixture:         {0}" -f $route.commands.reduced_google_fixture)
+Write-Host ("  Live Google:                    {0}" -f $route.commands.live_google)
 Write-Host ""
 Write-Host "Expected signals"
 Write-Host "================"
