@@ -41,6 +41,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_e
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1
 bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+bash ./scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell
@@ -68,6 +70,14 @@ restore path, offline-deps preflight, and Rust `1.79.0` recovery commands stay
 printed on one compact branch-local surface before the Windows runtime route is
 reopened.
 
+When that same direct issue `#3` replay is blocked even earlier because the
+next Linux or WSL follow-up still lacks a reusable checkout from the saved
+Memory repo archive, run the saved-browser-snapshot surface check first and then
+the saved-browser-snapshot route helper so the restore command, saved-memory
+preflight, and follow-up Linux build-readiness and runtime re-entry helpers
+stay printed on one compact branch-local surface before the Windows runtime
+route is reopened.
+
 When the replay is already narrowed to the attached-localhost lane, run the
 replay quickstart surface check first and then the replay quickstart helper so
 the launcher companion, the broader Google-shaped attached-page route, the
@@ -84,6 +94,7 @@ Current validation truth on this branch:
 - the router now surfaces a broader `google-shared-enter-order` gate when issue #3 replay should stay on the reusable shared Enter-order ladder before widening back out to live Google or attached-page follow-up
 - `scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1` and `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1` are the fail-fast surface check and compact direct runtime route when issue #3 replay is already narrowed to the `Page.zig` plus `win32_backend.zig` boundary
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`, `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`, and `scripts/linux/show_issue3_linux_build_readiness_route.sh` are the read-first and fail-fast Linux or WSL surfaces when issue #3 replay is blocked on saved-archive dependency staging or toolchain readiness before the Windows runtime route can resume
+- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`, `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`, and `scripts/linux/show_issue3_saved_browser_snapshot_route.sh` are the read-first and fail-fast restore surfaces when issue #3 replay still needs a disposable checkout before the Linux or WSL build-readiness or runtime helper routes can resume
 - the router now surfaces first-line `rendering` probes for shared layout, screenshot timing, and visible headed surface checks before attached-page replay
 - the router now surfaces first-line `network` probes for authenticated stylesheet and fetch-credentials regressions before attached-page replay
 - the router now surfaces checkout-portable `browser-shell` first-line probes for tabs and settings behavior on the real headed window
@@ -101,7 +112,11 @@ Current validation truth on this branch:
 - `docs/WINDOWS_FULL_USE.md` now also keeps a plain `python -m http.server 8139 --bind 127.0.0.1` fallback loop for the same three-page attached bundle, stable viewport, disposable profile root, and per-page navigation or interaction checks when a run starts from a plain checkout before the helper surfaces are reopened
 - saved or attached HTML follow-up should stay on the wrapper-backed localhost replay route in `docs/WINDOWS_FULL_USE.md`, not older wrapper-heavy note chains that predate the current router and launcher surfaces
 
-Use `rendering` before attached-page replay when the current change touched layout, paint, screenshot timing, or other visible headed-surface behavior. Use `network` before attached-page replay when the current change touched shared subresource loading, authenticated asset fetches, or browser-managed request credentials.
+Use `rendering` before attached-page replay when the current change touched
+layout, paint, screenshot timing, or other visible headed-surface behavior. Use
+`network` before attached-page replay when the current change touched shared
+subresource loading, authenticated asset fetches, or browser-managed request
+credentials.
 
 Before starting the attached-pages localhost server or blaming the browser for
 issue #3 replay, run the wrapper-backed launcher preflight from the current
