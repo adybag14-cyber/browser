@@ -283,25 +283,41 @@ fi
 
 python3 - "${BUILD_ZON_PATH}" <<'PY'
 import pathlib
+import re
 import sys
 
 path = pathlib.Path(sys.argv[1])
 text = path.read_text()
-replacements = {
-    '.brotli = .{\n            // v1.2.0\n            .url = "https://github.com/google/brotli/archive/028fb5a23661f123017c060daa546b55cf4bde29.tar.gz",\n            .hash = "N-V-__8AAJudKgCQCuIiH6MJjAiIJHfg_tT_Ew-0vZwVkCo_",\n        },': '.brotli = .{\n            .path = "../offline-deps/brotli",\n        },',
-    '.zlib = .{\n            .url = "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz",\n            .hash = "N-V-__8AAJ2cNgAgfBtAw33Bxfu1IWISDeKKSr3DAqoAysIJ",\n        },': '.zlib = .{\n            .path = "../offline-deps/zlib",\n        },',
-    '.nghttp2 = .{\n            .url = "https://github.com/nghttp2/nghttp2/releases/download/v1.68.0/nghttp2-1.68.0.tar.gz",\n            .hash = "N-V-__8AAL15vQCI63ZL6Zaz5hJg6JTEgYXGbLnMFSnf7FT3",\n        },': '.nghttp2 = .{\n            .path = "../offline-deps/nghttp2",\n        },',
-    '.curl = .{\n            .url = "https://github.com/curl/curl/releases/download/curl-8_18_0/curl-8.18.0.tar.gz",\n            .hash = "N-V-__8AALp9QAGn6CCHZ6fK_FfMyGtG824LSHYHHasM3w-y",\n        },': '.curl = .{\n            .path = "../offline-deps/curl",\n        },',
+replacement_paths = {
+    "brotli": "../offline-deps/brotli",
+    "zlib": "../offline-deps/zlib",
+    "nghttp2": "../offline-deps/nghttp2",
+    "curl": "../offline-deps/curl",
 }
 
 updated = text
-for old, new in replacements.items():
-    if old in updated:
-        updated = updated.replace(old, new)
-        continue
-    if new in updated:
-        continue
-    raise SystemExit(f"Expected dependency stanza was not found in {path}")
+for name, local_path in replacement_paths.items():
+    pattern = re.compile(
+        rf'(?ms)^(?P<indent>\s*)\.{re.escape(name)}\s*=\s*\.\{{\n.*?^\1\}},'
+    )
+    local_pattern = re.compile(
+        rf'(?ms)^\s*\.{re.escape(name)}\s*=\s*\.\{{\n\s*\.path = "{re.escape(local_path)}",\n\s*\}},'
+    )
+
+    def replace_block(match: re.Match[str]) -> str:
+        indent = match.group("indent")
+        return (
+            f"{indent}.{name} = .{{\n"
+            f'{indent}    .path = "{local_path}",\n'
+            f"{indent}}},"
+        )
+
+    candidate, count = pattern.subn(replace_block, updated, count=1)
+    if count == 0:
+        if local_pattern.search(updated):
+            continue
+        raise SystemExit(f"Expected dependency stanza for {name} was not found in {path}")
+    updated = candidate
 
 if updated != text:
     path.write_text(updated)
