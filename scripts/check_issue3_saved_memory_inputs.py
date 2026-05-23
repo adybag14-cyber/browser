@@ -14,8 +14,10 @@ import argparse
 import json
 from pathlib import Path
 import sys
+import tarfile
 import tempfile
 import unittest
+import zipfile
 
 
 REQUIRED_MEMORY_FILES: tuple[tuple[str, str], ...] = (
@@ -45,6 +47,7 @@ OPTIONAL_MEMORY_FILES: tuple[tuple[str, str], ...] = (
 )
 
 DEFAULT_FALLBACK_ZIG = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+EXPECTED_REPO_SNAPSHOT_PREFIX = "browser-fork-headed-mode-foundation/"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional explicit path to the fallback Zig archive to check instead of auto-discovery",
     )
     parser.add_argument(
+        "--skip-archive-integrity-check",
+        action="store_true",
+        help="Skip lightweight readability checks for the saved snapshot and dependency archives",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit structured JSON instead of line-oriented text",
@@ -95,7 +103,55 @@ def resolve_default_agent_files_root(repo_root: Path) -> Path:
     return (repo_root.parent / "agent_files").resolve()
 
 
-def check_file(path: Path, label: str) -> dict[str, object]:
+def archive_integrity_result(path: Path, label: str) -> dict[str, object]:
+    result: dict[str, object] = {
+        "label": label,
+        "path": str(path),
+        "exists": path.is_file(),
+        "archive_readable": False,
+        "archive_summary": None,
+        "archive_error": None,
+    }
+    if not result["exists"]:
+        return result
+
+    try:
+        suffixes = path.suffixes
+        if path.suffix == ".zip":
+            with zipfile.ZipFile(path) as archive:
+                names = archive.namelist()
+                bad_member = archive.testzip()
+                if bad_member is not None:
+                    raise zipfile.BadZipFile(f"CRC failure in {bad_member}")
+                summary = f"zip entries={len(names)}"
+                if label == "saved repo snapshot":
+                    if not any(name.startswith(EXPECTED_REPO_SNAPSHOT_PREFIX) for name in names):
+                        raise ValueError(
+                            "missing expected top-level folder "
+                            f"{EXPECTED_REPO_SNAPSHOT_PREFIX!r}"
+                        )
+                    summary += f"; top-level={EXPECTED_REPO_SNAPSHOT_PREFIX.rstrip('/')}"
+                result["archive_summary"] = summary
+        elif suffixes[-2:] == [".tar", ".xz"] or suffixes[-2:] == [".tar", ".gz"]:
+            with tarfile.open(path, mode="r:*") as archive:
+                members = archive.getmembers()
+                if not members:
+                    raise ValueError("archive has no members")
+                result["archive_summary"] = f"tar entries={len(members)}"
+        else:
+            result["archive_summary"] = "integrity check not defined for this file type"
+        result["archive_readable"] = True
+        return result
+    except (tarfile.TarError, zipfile.BadZipFile, ValueError, OSError) as exc:
+        result["archive_error"] = str(exc)
+        return result
+
+
+def check_file(path: Path, label: str, *, check_archive_integrity: bool) -> dict[str, object]:
+    if check_archive_integrity and (
+        path.suffix == ".zip" or path.suffixes[-2:] == [".tar", ".xz"] or path.suffixes[-2:] == [".tar", ".gz"]
+    ):
+        return archive_integrity_result(path, label)
     exists = path.is_file()
     return {
         "label": label,
@@ -110,13 +166,14 @@ def collect_results(
     memory_root: Path,
     agent_files_root: Path,
     fallback_zig_archive: Path | None,
+    check_archive_integrity: bool,
 ) -> dict[str, object]:
     required_files = [
-        check_file(memory_root / relative_path, label)
+        check_file(memory_root / relative_path, label, check_archive_integrity=check_archive_integrity)
         for relative_path, label in REQUIRED_MEMORY_FILES
     ]
     optional_files = [
-        check_file(memory_root / relative_path, label)
+        check_file(memory_root / relative_path, label, check_archive_integrity=check_archive_integrity)
         for relative_path, label in OPTIONAL_MEMORY_FILES
     ]
 
@@ -124,16 +181,26 @@ def collect_results(
     if fallback_path is None:
         candidate = agent_files_root / DEFAULT_FALLBACK_ZIG
         fallback_path = candidate if candidate.exists() else candidate
-    fallback_result = check_file(fallback_path, "fallback Zig archive")
+    fallback_result = check_file(
+        fallback_path,
+        "fallback Zig archive",
+        check_archive_integrity=check_archive_integrity,
+    )
 
     missing_required = [entry for entry in required_files if not entry["exists"]]
-    ok = not missing_required
+    unreadable_required = [
+        entry
+        for entry in required_files
+        if entry.get("exists") and "archive_readable" in entry and not entry["archive_readable"]
+    ]
+    ok = not missing_required and not unreadable_required
 
     return {
         "ok": ok,
         "repo_root": str(repo_root),
         "memory_root": str(memory_root),
         "agent_files_root": str(agent_files_root),
+        "archive_integrity_checked": check_archive_integrity,
         "required_files": required_files,
         "optional_files": optional_files,
         "fallback_zig_archive": fallback_result,
@@ -147,20 +214,38 @@ def emit_text(result: dict[str, object]) -> None:
     print("Required Memory inputs:")
     for entry in result["required_files"]:
         status = "PASS" if entry["exists"] else "FAIL"
+        if entry.get("exists") and "archive_readable" in entry and not entry["archive_readable"]:
+            status = "FAIL"
         print(f"  [{status}] {entry['label']}: {entry['path']}")
+        if entry.get("archive_summary"):
+            print(f"         summary: {entry['archive_summary']}")
+        if entry.get("archive_error"):
+            print(f"         archive error: {entry['archive_error']}")
     print("Optional Memory inputs:")
     for entry in result["optional_files"]:
         status = "PASS" if entry["exists"] else "WARN"
+        if entry.get("exists") and "archive_readable" in entry and not entry["archive_readable"]:
+            status = "WARN"
         print(f"  [{status}] {entry['label']}: {entry['path']}")
+        if entry.get("archive_summary"):
+            print(f"         summary: {entry['archive_summary']}")
+        if entry.get("archive_error"):
+            print(f"         archive error: {entry['archive_error']}")
     fallback = result["fallback_zig_archive"]
     fallback_status = "PASS" if fallback["exists"] else "WARN"
+    if fallback.get("exists") and "archive_readable" in fallback and not fallback["archive_readable"]:
+        fallback_status = "WARN"
     print(f"Fallback Zig archive: [{fallback_status}] {fallback['path']}")
+    if fallback.get("archive_summary"):
+        print(f"         summary: {fallback['archive_summary']}")
+    if fallback.get("archive_error"):
+        print(f"         archive error: {fallback['archive_error']}")
     if result["ok"]:
         print("\nSaved Memory input check passed.")
     else:
         print("\nSaved Memory input check failed.", file=sys.stderr)
         print(
-            "Suggested next step: restore or remount the saved repo and dependency archives before reopening the issue #3 runtime route.",
+            "Suggested next step: restore or remount readable saved repo and dependency archives before reopening the issue #3 runtime route.",
             file=sys.stderr,
         )
 
@@ -177,18 +262,33 @@ class SavedMemoryInputsTests(unittest.TestCase):
             for relative_path, _label in REQUIRED_MEMORY_FILES + OPTIONAL_MEMORY_FILES:
                 target = memory_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text("x", encoding="utf-8")
-            (agent_files_root / DEFAULT_FALLBACK_ZIG).write_text("zig", encoding="utf-8")
+                if target.suffix == ".zip":
+                    with zipfile.ZipFile(target, "w") as archive:
+                        member = "browser-fork-headed-mode-foundation/README.md" if "fork-headed-mode-foundation" in target.name else "placeholder.txt"
+                        archive.writestr(member, "x")
+                elif target.suffixes[-2:] == [".tar", ".xz"]:
+                    with tarfile.open(target, "w:xz") as archive:
+                        payload = root / "payload.txt"
+                        payload.write_text("x", encoding="utf-8")
+                        archive.add(payload, arcname="payload.txt")
+                else:
+                    target.write_text("x", encoding="utf-8")
+            with tarfile.open(agent_files_root / DEFAULT_FALLBACK_ZIG, "w:xz") as archive:
+                payload = root / "zig.txt"
+                payload.write_text("zig", encoding="utf-8")
+                archive.add(payload, arcname="zig.txt")
 
             result = collect_results(
                 repo_root=repo_root,
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
                 fallback_zig_archive=None,
+                check_archive_integrity=True,
             )
 
             self.assertTrue(result["ok"])
             self.assertTrue(result["fallback_zig_archive"]["exists"])
+            self.assertTrue(result["required_files"][0]["archive_readable"])
 
     def test_collect_results_fails_when_required_archive_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -208,10 +308,50 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
                 fallback_zig_archive=None,
+                check_archive_integrity=False,
             )
 
             self.assertFalse(result["ok"])
             self.assertFalse(result["required_files"][0]["exists"])
+
+    def test_collect_results_fails_when_repo_snapshot_is_unreadable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = root / "browser"
+            memory_root = root / "memory"
+            agent_files_root = root / "agent_files"
+            repo_root.mkdir()
+            agent_files_root.mkdir()
+
+            for relative_path, _label in REQUIRED_MEMORY_FILES[1:]:
+                target = memory_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.suffix == ".zip":
+                    with zipfile.ZipFile(target, "w") as archive:
+                        archive.writestr("placeholder.txt", "x")
+                elif target.suffixes[-2:] == [".tar", ".xz"]:
+                    with tarfile.open(target, "w:xz") as archive:
+                        payload = root / "payload.txt"
+                        payload.write_text("x", encoding="utf-8")
+                        archive.add(payload, arcname="payload.txt")
+                else:
+                    target.write_text("x", encoding="utf-8")
+
+            broken_repo_snapshot = memory_root / REQUIRED_MEMORY_FILES[0][0]
+            broken_repo_snapshot.parent.mkdir(parents=True, exist_ok=True)
+            broken_repo_snapshot.write_text("not-a-zip", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                fallback_zig_archive=None,
+                check_archive_integrity=True,
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertTrue(result["required_files"][0]["exists"])
+            self.assertFalse(result["required_files"][0]["archive_readable"])
 
     def test_default_roots_follow_workspace_layout(self) -> None:
         repo_root = Path("/tmp/workspace/browser")
@@ -238,6 +378,7 @@ def main() -> int:
         memory_root=memory_root,
         agent_files_root=agent_files_root,
         fallback_zig_archive=fallback_zig_archive,
+        check_archive_integrity=not args.skip_archive_integrity_check,
     )
     if args.json:
         print(json.dumps({"profile": "issue3-saved-memory-inputs", **result}, indent=2))
