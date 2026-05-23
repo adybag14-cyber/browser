@@ -4,6 +4,8 @@ param(
     [string]$BrowserExe,
     [string]$InputText = "n",
     [int]$Port = 9582,
+    [int]$ClickClientX = 683,
+    [int]$ClickClientY = 320,
     [int]$TimeoutSeconds = 90,
     [int]$PollMilliseconds = 250,
     [switch]$LeaveOpen
@@ -156,7 +158,10 @@ try {
             -RepoRoot $RepoRoot `
             -BrowserExe $BrowserExe `
             -Url $probeUrl `
-            -ExpectedTitleContainsAny @("A=INPUT:q::1", "FOCUSED|") `
+            -ExpectedTitleContains "|Q=INPUT:q:" `
+            -ExpectedClickTitleContainsAny @("FOCUSED|", "A=INPUT:q::1") `
+            -ClickClientX $ClickClientX `
+            -ClickClientY $ClickClientY `
             -InputText $InputText `
             -ExpectedTypedTitleContains ("TYPED:{0}" -f $InputText) `
             -SendEnter `
@@ -189,6 +194,7 @@ try {
     }
 
     $readyState = if ($helperResult) { $helperResult.ready_title_state } else { $null }
+    $clickState = if ($helperResult) { $helperResult.click_title_state } else { $null }
     $typedState = if ($helperResult) { $helperResult.typed_title_state } else { $null }
     $enterState = if ($helperResult) { $helperResult.enter_title_state } else { $null }
     $lastState = if ($helperResult) { $helperResult.last_title_state } else { $null }
@@ -201,9 +207,12 @@ try {
         helper_outcome = $helperOutcome
         helper_failure_stage = if ($helperResult) { $helperResult.failure_stage } else { $null }
         helper_matched_ready_marker = if ($helperResult) { $helperResult.matched_ready_marker } else { $null }
+        helper_matched_click_marker = if ($helperResult) { $helperResult.matched_click_marker } else { $null }
         helper_ready_observed_at_utc = if ($helperResult) { $helperResult.ready_observed_at_utc } else { $null }
+        helper_click_observed_at_utc = if ($helperResult) { $helperResult.click_observed_at_utc } else { $null }
         helper_typed_observed_at_utc = if ($helperResult) { $helperResult.typed_observed_at_utc } else { $null }
         helper_enter_observed_at_utc = if ($helperResult) { $helperResult.enter_observed_at_utc } else { $null }
+        helper_click_sent = if ($helperResult) { $helperResult.click_sent } else { $null }
         helper_input_sent_at_utc = if ($helperResult) { $helperResult.input_sent_at_utc } else { $null }
         helper_enter_sent_at_utc = if ($helperResult) { $helperResult.enter_sent_at_utc } else { $null }
         helper_ready_title = if ($helperResult) { $helperResult.ready_title } else { $null }
@@ -214,6 +223,18 @@ try {
         helper_ready_query_value = Get-StateField $readyState "query_value"
         helper_ready_selection = Get-StateField $readyState "selection"
         helper_ready_last_event = Get-StateField $readyState "last_event"
+        helper_click_requested = if ($helperResult) { $helperResult.click_requested } else { $null }
+        helper_click_client_x = if ($helperResult) { $helperResult.click_client_x } else { $null }
+        helper_click_client_y = if ($helperResult) { $helperResult.click_client_y } else { $null }
+        helper_click_title = if ($helperResult) { $helperResult.click_title } else { $null }
+        helper_click_title_state = $clickState
+        helper_click_marker = Get-StateField $clickState "marker"
+        helper_click_active_element = Get-StateField $clickState "active_element"
+        helper_click_query_element = Get-StateField $clickState "query_element"
+        helper_click_query_value = Get-StateField $clickState "query_value"
+        helper_click_selection = Get-StateField $clickState "selection"
+        helper_click_last_event = Get-StateField $clickState "last_event"
+        helper_title_at_click_send = if ($helperResult) { $helperResult.title_at_click_send } else { $null }
         helper_typed_title = if ($helperResult) { $helperResult.typed_title } else { $null }
         helper_typed_title_state = $typedState
         helper_typed_marker = Get-StateField $typedState "marker"
