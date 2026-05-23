@@ -81,6 +81,23 @@ restored checkout after extraction so the next Linux or WSL follow-up commands
 can target the restored checkout directly instead of staying anchored to a
 separate live checkout.
 
+## Recommended Self-Contained Restore
+
+Prefer the synced restore path when the restored checkout should become its own
+follow-up root for the next Linux or WSL replay:
+
+```bash
+bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface --check-only
+bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface
+python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
+```
+
+Prefer this self-contained route when the saved archive can lag the current
+branch-local helper surface and the follow-up commands should live inside the
+restored checkout instead of depending on a separate live helper root.
+
 ## Immediate Follow-up
 
 After the restore succeeds, choose one of these follow-up modes.
@@ -121,9 +138,9 @@ runtime re-entry route anchored to the restored checkout before the direct issue
   patch itself.
 - Prefer a disposable restored checkout for helper validation when the live
   branch still needs a safer publication path for large existing files.
-- Use `--sync-helper-surface` when the restored checkout should be more
+- Prefer `--sync-helper-surface` when the restored checkout should be more
   self-contained for the next Linux or WSL route replay.
-- Keep the follow-up helper root on the live branch-local surface when the
+- Keep the follow-up helper root on the live branch-local surface only when the
   restore should stay as a clean historical snapshot.
 - Treat this route as a setup step for build-readiness and runtime re-entry, not
   as proof that the branch is ready for focused Zig validation.
