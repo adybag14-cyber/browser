@@ -14,6 +14,9 @@ Read this together with:
   `src/display/win32_backend.zig`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md` when the current replay is
   staying on the direct issue `#3` Enter-submit runtime slice
+- `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md` when the current replay is
+  blocked on Linux or WSL dependency or toolchain staging for that same direct
+  issue `#3` runtime route
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` when the current
   localhost replay is narrowed to the issue `#3` attached-page route
 
@@ -50,7 +53,7 @@ Assume these are already in place unless a regression proves otherwise:
 - bounded headed probe coverage across the existing `tmp-browser-smoke/` suites
 - Windows/MSVC build success for the fork
 
-Do not spend time re-solving those unless they are broken again.
+Do not spend time re-solving those unless a regression proves otherwise.
 
 ## Architecture Map
 
@@ -154,6 +157,17 @@ What the branch expects today:
   the checkout is given an already-satisfied offline cache or a temporary local
   path rewrite in a throwaway build tree
 
+Start the current branch-local Linux or WSL re-entry route with:
+
+```bash
+bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+```
+
+Use that pair when the run needs the saved-archive restore path, offline-deps
+preflight, or saved Rust `1.79.0` recovery commands printed back on one compact
+surface before focused Zig output is trusted again.
+
 Practical rule:
 1. Keep the browser checkout, `zig-v8-fork`, and `boringssl-zig` under one
    shared parent directory so the sibling-path dependencies resolve without
@@ -193,8 +207,8 @@ Tasks:
 - ensure the main validation runbook tells future assistants which probe family
   to run for each subsystem change
 - keep the issue `#3` direct runtime re-entry path easy to reopen from the
-  top-level docs by surfacing the current gate note, runtime helper, and
-  reduced Google replay path
+  top-level docs by surfacing the current gate note, runtime helper, reduced
+  Google replay path, and Linux or WSL build-readiness recovery route
 - keep the issue `#3` attached-localhost route easy to reopen from the top-level
   docs by surfacing the current Google-style helper, guide, and Windows runbook
 
@@ -206,6 +220,14 @@ Issue `#3` direct runtime re-entry route:
   replay should stay on the focused Enter-submit runtime slice
 - start with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
 - then run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- if Linux or WSL dependency or toolchain staging is the blocker, start with
+  `bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
+- then run `bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh` so
+  the saved-archive restore path, offline-deps preflight, and Rust `1.79.0`
+  recovery commands stay printed on one branch-local surface
+- keep `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md` nearby when the reduced
+  Google replay is blocked on saved-archive staging or a missing branch-
+  compatible Zig line
 - keep `docs/WINDOWS_FULL_USE.md` nearby when the reduced Google probe or the
   shared Enter-order ladder needs to widen back out to the broader
   Windows-first route
