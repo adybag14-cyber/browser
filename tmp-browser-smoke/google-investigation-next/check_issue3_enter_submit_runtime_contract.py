@@ -10,6 +10,7 @@ binary or a branch-compatible Zig toolchain is unavailable.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -29,7 +30,7 @@ PAGE_REQUIRED_MARKERS = (
 WIN32_REQUIRED_MARKERS = (
     "pending_text_input_suppressions: std.ArrayListUnmanaged(TextInputEvent) = .{},",
     "self.pending_text_input_suppressions.deinit(self.allocator);",
-    "const defer_enter_submit = std.mem.eql(u8, key, \"Enter\");",
+    'const defer_enter_submit = std.mem.eql(u8, key, "Enter");',
     "page.beginDeferredNativeTextInputEnterSubmit();",
     "page.endDeferredNativeTextInputEnterSubmit();",
     "queuePendingTextInputSuppression(self, key);",
@@ -57,40 +58,92 @@ def find_missing_markers(source: str, markers: tuple[str, ...]) -> list[str]:
     return [marker for marker in markers if marker not in source]
 
 
-def evaluate_page_source(source: str) -> tuple[bool, str]:
-    missing = find_missing_markers(source, PAGE_REQUIRED_MARKERS)
-    if missing:
-        return False, f"Page.zig missing markers: {', '.join(missing[:3])}"
-
-    test_missing = find_missing_markers(source, PAGE_TEST_MARKERS)
-    if test_missing:
-        return False, f"Page.zig missing regression coverage markers: {', '.join(test_missing[:2])}"
-
-    return True, "Page.zig retains the deferred native Enter-submit bridge"
+def summarize_markers(markers: list[str], limit: int) -> str:
+    return " | ".join(markers[:limit])
 
 
-def evaluate_win32_source(source: str) -> tuple[bool, str]:
-    missing = find_missing_markers(source, WIN32_REQUIRED_MARKERS)
-    if missing:
-        return False, f"win32_backend.zig missing markers: {', '.join(missing[:3])}"
+def build_result(
+    *,
+    label: str,
+    required_markers: tuple[str, ...],
+    test_markers: tuple[str, ...],
+    source: str,
+    success_detail: str,
+) -> dict[str, object]:
+    missing_required = find_missing_markers(source, required_markers)
+    missing_tests = find_missing_markers(source, test_markers)
+    ok = not missing_required and not missing_tests
 
-    test_missing = find_missing_markers(source, WIN32_TEST_MARKERS)
-    if test_missing:
-        return False, f"win32_backend.zig missing regression coverage markers: {', '.join(test_missing[:2])}"
+    if missing_required:
+        detail = f"{label} missing markers: {summarize_markers(missing_required, 3)}"
+    elif missing_tests:
+        detail = f"{label} missing regression coverage markers: {summarize_markers(missing_tests, 2)}"
+    else:
+        detail = success_detail
 
-    return True, "win32_backend.zig retains the deferred Enter and byte-matched suppression bridge"
+    return {
+        "ok": ok,
+        "detail": detail,
+        "missing_required_markers": missing_required,
+        "missing_test_markers": missing_tests,
+        "required_marker_count": len(required_markers),
+        "test_marker_count": len(test_markers),
+        "matched_required_marker_count": len(required_markers) - len(missing_required),
+        "matched_test_marker_count": len(test_markers) - len(missing_tests),
+    }
 
 
-def evaluate_sources(page_source: str, win32_source: str) -> tuple[bool, list[str]]:
-    page_ok, page_reason = evaluate_page_source(page_source)
-    win32_ok, win32_reason = evaluate_win32_source(win32_source)
-    details = [
-        f"PAGE_RUNTIME_CONTRACT={'pass' if page_ok else 'fail'}",
-        f"PAGE_DETAIL={page_reason}",
-        f"WIN32_RUNTIME_CONTRACT={'pass' if win32_ok else 'fail'}",
-        f"WIN32_DETAIL={win32_reason}",
-    ]
-    return page_ok and win32_ok, details
+def evaluate_page_source(source: str) -> dict[str, object]:
+    return build_result(
+        label="Page.zig",
+        required_markers=PAGE_REQUIRED_MARKERS,
+        test_markers=PAGE_TEST_MARKERS,
+        source=source,
+        success_detail="Page.zig retains the deferred native Enter-submit bridge",
+    )
+
+
+def evaluate_win32_source(source: str) -> dict[str, object]:
+    return build_result(
+        label="win32_backend.zig",
+        required_markers=WIN32_REQUIRED_MARKERS,
+        test_markers=WIN32_TEST_MARKERS,
+        source=source,
+        success_detail="win32_backend.zig retains the deferred Enter and byte-matched suppression bridge",
+    )
+
+
+def evaluate_sources(page_source: str, win32_source: str) -> dict[str, object]:
+    page = evaluate_page_source(page_source)
+    win32 = evaluate_win32_source(win32_source)
+    ok = bool(page["ok"] and win32["ok"])
+    return {
+        "ok": ok,
+        "page": page,
+        "win32": win32,
+    }
+
+
+def emit_text_result(result: dict[str, object]) -> None:
+    page = result["page"]
+    win32 = result["win32"]
+    print(f"ISSUE3_ENTER_SUBMIT_RUNTIME_CONTRACT={'pass' if result['ok'] else 'fail'}")
+    print(f"PAGE_RUNTIME_CONTRACT={'pass' if page['ok'] else 'fail'}")
+    print(f"PAGE_DETAIL={page['detail']}")
+    print(f"PAGE_MISSING_REQUIRED_MARKER_COUNT={len(page['missing_required_markers'])}")
+    print(f"PAGE_MISSING_TEST_MARKER_COUNT={len(page['missing_test_markers'])}")
+    for marker in page["missing_required_markers"]:
+        print(f"PAGE_MISSING_REQUIRED_MARKER={marker}")
+    for marker in page["missing_test_markers"]:
+        print(f"PAGE_MISSING_TEST_MARKER={marker}")
+    print(f"WIN32_RUNTIME_CONTRACT={'pass' if win32['ok'] else 'fail'}")
+    print(f"WIN32_DETAIL={win32['detail']}")
+    print(f"WIN32_MISSING_REQUIRED_MARKER_COUNT={len(win32['missing_required_markers'])}")
+    print(f"WIN32_MISSING_TEST_MARKER_COUNT={len(win32['missing_test_markers'])}")
+    for marker in win32["missing_required_markers"]:
+        print(f"WIN32_MISSING_REQUIRED_MARKER={marker}")
+    for marker in win32["missing_test_markers"]:
+        print(f"WIN32_MISSING_TEST_MARKER={marker}")
 
 
 VULNERABLE_PAGE = """
@@ -181,26 +234,41 @@ test "win32 dispatchInput suppresses matching text after stale entries drop out 
 """
 
 
-def run_self_test() -> int:
-    bad_ok, bad_details = evaluate_sources(VULNERABLE_PAGE, VULNERABLE_WIN32)
-    good_ok, good_details = evaluate_sources(GUARDED_PAGE, GUARDED_WIN32)
+def run_self_test(json_output: bool) -> int:
+    bad_result = evaluate_sources(VULNERABLE_PAGE, VULNERABLE_WIN32)
+    good_result = evaluate_sources(GUARDED_PAGE, GUARDED_WIN32)
+    ok = (not bad_result["ok"]) and bool(good_result["ok"])
 
-    if bad_ok:
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "profile": "issue3-enter-submit-runtime-contract-self-test",
+                    "self_test": "pass" if ok else "fail",
+                    "vulnerable_sample": bad_result,
+                    "guarded_sample": good_result,
+                },
+                indent=2,
+            )
+        )
+        return 0 if ok else 1
+
+    if bad_result["ok"]:
         print("SELF_TEST=fail")
         print("DETAIL=vulnerable samples unexpectedly passed")
+        emit_text_result(bad_result)
         return 1
-    if not good_ok:
+    if not good_result["ok"]:
         print("SELF_TEST=fail")
         print("DETAIL=guarded samples unexpectedly failed")
-        for detail in good_details:
-            print(detail)
+        emit_text_result(good_result)
         return 1
 
     print("SELF_TEST=pass")
-    for detail in bad_details:
-        print(f"VULNERABLE_{detail}")
-    for detail in good_details:
-        print(f"GUARDED_{detail}")
+    print("VULNERABLE_SAMPLE_EXPECTATION=fail")
+    emit_text_result(bad_result)
+    print("GUARDED_SAMPLE_EXPECTATION=pass")
+    emit_text_result(good_result)
     return 0
 
 
@@ -218,22 +286,28 @@ def main() -> int:
         action="store_true",
         help="Run embedded vulnerable and guarded samples instead of reading files",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit structured JSON instead of line-oriented text",
+    )
     args = parser.parse_args()
 
     if args.self_test:
-        return run_self_test()
+        return run_self_test(args.json)
 
     if args.page is None or args.win32 is None:
         parser.error("either --self-test or both --page and --win32 are required")
 
-    ok, details = evaluate_sources(
+    result = evaluate_sources(
         args.page.read_text(encoding="utf-8"),
         args.win32.read_text(encoding="utf-8"),
     )
-    print(f"ISSUE3_ENTER_SUBMIT_RUNTIME_CONTRACT={'pass' if ok else 'fail'}")
-    for detail in details:
-        print(detail)
-    return 0 if ok else 1
+    if args.json:
+        print(json.dumps({"profile": "issue3-enter-submit-runtime-contract", **result}, indent=2))
+    else:
+        emit_text_result(result)
+    return 0 if result["ok"] else 1
 
 
 if __name__ == "__main__":
