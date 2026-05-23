@@ -17,6 +17,7 @@ helpers:
 - `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
+- `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/check_issue3_offline_build_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_offline_build_inputs_route.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
@@ -97,15 +98,18 @@ staged `../toolchains` candidates it can probe, and prints the exact
 
 ## Restore The Saved Rust Toolchain Before Broader Readiness
 
-When the route is reusing the saved archives, print the saved Rust toolchain
-route before relying on host `cargo` or `rustc`:
+When the route is reusing the saved archives, run the saved Rust surface check
+first and then print the saved Rust toolchain route before relying on host
+`cargo` or `rustc`:
 
 ```bash
+bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
 bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh
 ```
 
-That helper keeps the archive check, restore command, and shell exports on one
-compact surface before the broader build-readiness rerun.
+That pair keeps the route doc and helper surface aligned first, then keeps the
+archive check, restore command, and shell exports on one compact surface before
+the broader build-readiness rerun.
 
 ## Print The Offline Build-Inputs Route Before Raw Restore
 
@@ -158,21 +162,23 @@ The Linux route now stays short and ordered:
 3. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
 4. A Zig-line recovery helper using
    `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-5. A saved Rust restore route using
+5. A saved Rust route surface check using
+   `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+6. A saved Rust restore route using
    `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-6. A dedicated offline build-inputs route using
+7. A dedicated offline build-inputs route using
    `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-7. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-8. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+8. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+9. A `prepare_offline_build_inputs.sh --check-only` command for the offline
    dependency surface
-9. A saved Rust `1.79.0` restore command
-10. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-11. The attached fallback Zig archive location when it is present beside the repo
+10. A saved Rust `1.79.0` restore command
+11. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+12. The attached fallback Zig archive location when it is present beside the repo
     workspace, so runs can surface it without treating it as branch-compatible
     validation evidence
-12. A full readiness command that expects the saved archives, offline deps, and
+13. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-13. A direct handoff back to the smaller Windows runtime revalidation route once
+14. A direct handoff back to the smaller Windows runtime revalidation route once
     the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
@@ -203,6 +209,9 @@ attached-page or live-Google replay.
 - Run `bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh` when
   the route still only shows the attached Zig `0.17` fallback or when multiple
   staged Zig candidates need a quick `0.15.x` decision.
+- Run `bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+  before the saved Rust route when the doc and helper alignment should fail fast
+  before the archive is blamed.
 - Run `bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh` when the
   saved Rust archive and shell setup need to stay on one compact helper surface.
 - Run `bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh` when the
