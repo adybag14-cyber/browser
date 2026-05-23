@@ -7,6 +7,7 @@ usage() {
 Usage:
   bash scripts/linux/restore_saved_browser_snapshot.sh \
     [--browser-root /path/to/browser-repo] \
+    [--helper-root /path/to/live/browser-repo] \
     [--memory-root /path/to/workspace/memory] \
     [--archive /path/to/01-browser-fork-headed-mode-foundation.zip] \
     [--destination /path/to/extracted/browser-checkout] \
@@ -20,6 +21,7 @@ extracting it.
 
 Defaults:
   browser root  parent of this script
+  helper root   same as browser root
   memory root   <browser-root>/../memory
   archive       <memory-root>/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip
   destination   <browser-root>/../browser-memory-snapshot
@@ -27,6 +29,15 @@ Defaults:
 Use --check-only to confirm the saved archive is present and to print the exact
 restore and follow-up commands without mutating the filesystem.
 EOF
+}
+
+format_shell_arg() {
+    python3 - "$1" <<'PY'
+import shlex
+import sys
+
+print(shlex.quote(sys.argv[1]))
+PY
 }
 
 json_escape() {
@@ -44,6 +55,7 @@ DEFAULT_ARCHIVE_NAME="01-browser-fork-headed-mode-foundation.zip"
 DEFAULT_DESTINATION_NAME="browser-memory-snapshot"
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
+HELPER_ROOT=""
 MEMORY_ROOT=""
 ARCHIVE_PATH=""
 DESTINATION=""
@@ -55,6 +67,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --browser-root)
             BROWSER_ROOT="$2"
+            shift 2
+            ;;
+        --helper-root)
+            HELPER_ROOT="$2"
             shift 2
             ;;
         --memory-root)
@@ -94,6 +110,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
+if [[ -z "${HELPER_ROOT}" ]]; then
+    HELPER_ROOT="${BROWSER_ROOT}"
+fi
+HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
     MEMORY_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/memory"
 fi
@@ -106,6 +126,22 @@ fi
 
 if [[ ! -d "${BROWSER_ROOT}" ]]; then
     echo "Browser root does not exist: ${BROWSER_ROOT}" >&2
+    exit 1
+fi
+if [[ ! -d "${HELPER_ROOT}" ]]; then
+    echo "Helper root does not exist: ${HELPER_ROOT}" >&2
+    exit 1
+fi
+if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py" ]]; then
+    echo "Helper root is missing scripts/check_issue3_saved_memory_inputs.py: ${HELPER_ROOT}" >&2
+    exit 1
+fi
+if [[ ! -f "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh" ]]; then
+    echo "Helper root is missing scripts/linux/show_issue3_linux_build_readiness_route.sh: ${HELPER_ROOT}" >&2
+    exit 1
+fi
+if [[ ! -f "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh" ]]; then
+    echo "Helper root is missing scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh: ${HELPER_ROOT}" >&2
     exit 1
 fi
 if [[ ! -d "${MEMORY_ROOT}" ]]; then
@@ -134,13 +170,14 @@ print(top_level)
 PY
 )"
 
-FOLLOW_UP_MEMORY_CHECK="python scripts/check_issue3_saved_memory_inputs.py --repo-root '${DESTINATION}'"
-FOLLOW_UP_BUILD_ROUTE="bash scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root '${DESTINATION}'"
-FOLLOW_UP_RUNTIME_ROUTE="bash scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root '${DESTINATION}'"
+FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
+FOLLOW_UP_RUNTIME_ROUTE="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 
 if [[ "${JSON}" == "true" ]]; then
     printf '{\n'
     printf '  "browser_root": %s,\n' "$(json_escape "${BROWSER_ROOT}")"
+    printf '  "helper_root": %s,\n' "$(json_escape "${HELPER_ROOT}")"
     printf '  "memory_root": %s,\n' "$(json_escape "${MEMORY_ROOT}")"
     printf '  "archive_path": %s,\n' "$(json_escape "${ARCHIVE_PATH}")"
     printf '  "destination": %s,\n' "$(json_escape "${DESTINATION}")"
@@ -158,13 +195,18 @@ fi
 if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo "Saved browser snapshot restore surface check passed."
     echo "Browser root:       ${BROWSER_ROOT}"
+    echo "Helper root:        ${HELPER_ROOT}"
     echo "Memory root:        ${MEMORY_ROOT}"
     echo "Snapshot archive:   ${ARCHIVE_PATH}"
     echo "Archive top level:  ${TOP_LEVEL_ENTRY}"
     echo "Destination:        ${DESTINATION}"
     echo
     echo "Suggested restore command:"
-    printf "  bash scripts/linux/restore_saved_browser_snapshot.sh --browser-root '%s' --destination '%s'\n" "${BROWSER_ROOT}" "${DESTINATION}"
+    printf "  bash %s --browser-root %s --helper-root %s --destination %s\n" \
+        "$(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh")" \
+        "$(format_shell_arg "${BROWSER_ROOT}")" \
+        "$(format_shell_arg "${HELPER_ROOT}")" \
+        "$(format_shell_arg "${DESTINATION}")"
     echo
     echo "Suggested follow-up checks:"
     printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
@@ -205,6 +247,7 @@ fi
 echo
 echo "Saved browser snapshot is ready."
 echo "Destination: ${DESTINATION}"
+echo "Helper root: ${HELPER_ROOT}"
 echo "Archive top level: ${TOP_LEVEL_ENTRY}"
 echo
 echo "Suggested follow-up checks:"
