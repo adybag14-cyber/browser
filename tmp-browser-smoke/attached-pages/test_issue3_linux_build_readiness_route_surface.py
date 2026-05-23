@@ -23,14 +23,28 @@ bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 ```
 """,
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md": r"""
+If there is no reusable extracted checkout beside the workspace yet, print the
+saved-browser-snapshot route before reopening Linux or WSL staging from the live
+repo root:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+- Prefer the synced saved-browser-snapshot route when the restored checkout
+  should become its own follow-up root because the saved archive can lag the
+  current branch-local helper surface.
 1. A fail-fast surface check using
    `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
-2. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-3. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+2. A saved-browser-snapshot restore route using
+   `scripts/linux/show_issue3_saved_browser_snapshot_route.sh` when no reusable
+   checkout exists yet
+3. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+4. A `prepare_offline_build_inputs.sh --check-only` command for the offline
    dependency surface
-4. A saved Rust `1.79.0` restore command
-5. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-6. A full readiness command that expects the saved archives, offline deps, and
+5. A saved Rust `1.79.0` restore command
+6. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+7. A full readiness command that expects the saved archives, offline deps, and
    prebuilt V8 archive to be staged before retrying `zig build`
 
 - Do not treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl`
@@ -45,13 +59,20 @@ bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Read-first Linux or WSL build-readiness note for the blocked issue #3 runtime lane."
 "scripts/check_linux_build_readiness.py|file|Python helper that checks saved archives, sibling deps, offline deps, and toolchain readiness."
 "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Compact Linux route printer for the saved-archive-first recovery path."
+"scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Saved-browser-snapshot route printer that should stay visible when Linux or WSL staging still needs a disposable checkout."
 "scripts/linux/restore_saved_rust_toolchain.sh|file|Saved Rust restore helper that should keep the check-only and restore commands on one branch-local surface."
 "scripts/linux/prepare_offline_build_inputs.sh|file|Offline restore helper that stages zig-v8-fork, boringssl-zig, and offline-deps."
 "build.zig.zon|file|Manifest surface that defines the branch minimum Zig line and sibling path dependencies."
 
 "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|The gate note keeps the Linux build-readiness note in the direct issue #3 read-first surface."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The Linux route note keeps the saved-browser-snapshot route visible before broader staging."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|saved archive can lag the|The Linux route note explains why the synced saved-browser-snapshot route is safer when helper drift exists."
 "scripts/check_linux_build_readiness.py|saved Rust toolchain archive|The readiness helper still knows the saved Rust archive contract."
 "scripts/check_linux_build_readiness.py|saved browser dependency archive|The readiness helper still knows the saved browser dependency archive contract."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|saved_browser_snapshot_route_synced|The Linux route printer still exposes the synced saved-browser-snapshot command in JSON output."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|Recommended synced saved-browser-snapshot route when the archive helper surface may be stale:|The Linux route printer still prints the safer synced saved-browser-snapshot route."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|saved_browser_snapshot_route command|The Linux route printer still explains the standard saved-browser-snapshot follow-up."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|saved_browser_snapshot_route_synced command|The Linux route printer still explains when to prefer the synced saved-browser-snapshot follow-up."
 "scripts/linux/show_issue3_linux_build_readiness_route.sh|fallback-zig-archive|The Linux route printer still supports an explicit attached fallback Zig archive override."
 "scripts/linux/show_issue3_linux_build_readiness_route.sh|Fallback Zig archive:|The Linux route printer still prints the attached fallback Zig archive surface."
 "scripts/linux/restore_saved_rust_toolchain.sh|--check-only|The saved Rust restore helper still supports surface-only validation without extraction."
@@ -62,6 +83,8 @@ Usage:
   bash scripts/linux/show_issue3_linux_build_readiness_route.sh \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz]
 
+"saved_browser_snapshot_route": "bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
+"saved_browser_snapshot_route_synced": "bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh --sync-helper-surface"
 FALLBACK_ZIG_ARCHIVE=""
 PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --skip-zig-check --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies --fallback-zig-archive ${FALLBACK_ZIG_ARCHIVE}"
 PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root ${REPO_ROOT} --browser-deps-archive ${BROWSER_DEPS_ARCHIVE} --boringssl-archive ${BORINGSSL_ARCHIVE} --html5ever-archive ${HTML5EVER_ARCHIVE} --check-only"
@@ -71,8 +94,11 @@ RUST_PATH_COMMAND="export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:${RUST_TOOLCHAIN_
 FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies --expect-offline-deps --require-prebuilt-v8 --fallback-zig-archive ${FALLBACK_ZIG_ARCHIVE}"
 
 "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts."
+"Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface."
+"Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface."
 "Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only"
 "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
+"Recommended synced saved-browser-snapshot route when the archive helper surface may be stale:"
 "Fallback Zig archive:"
 """,
     "scripts/check_linux_build_readiness.py": r"""
@@ -211,6 +237,8 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
 
     def test_linux_route_note_keeps_saved_archive_and_toolchain_rules_visible(self) -> None:
         for fragment in (
+            "bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
+            "saved archive can lag the",
             "saved-archive preflight using `scripts/check_linux_build_readiness.py`",
             "`prepare_offline_build_inputs.sh --check-only` command",
             "saved Rust `1.79.0` restore command",
@@ -227,6 +255,12 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Read-first Linux or WSL build-readiness note",
             "scripts/check_linux_build_readiness.py|file|Python helper",
             "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Compact Linux route printer",
+            "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Saved-browser-snapshot route printer",
+            "saved archive can lag the",
+            "saved_browser_snapshot_route_synced",
+            "Recommended synced saved-browser-snapshot route when the archive helper surface may be stale:",
+            "saved_browser_snapshot_route command",
+            "saved_browser_snapshot_route_synced command",
             "scripts/linux/restore_saved_rust_toolchain.sh|file|Saved Rust restore helper",
             "scripts/linux/prepare_offline_build_inputs.sh|file|Offline restore helper",
             "build.zig.zon|file|Manifest surface",
@@ -239,10 +273,11 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.surface_checker)
 
-    def test_route_printer_keeps_saved_archive_commands_and_paths(self) -> None:
+    def test_route_printer_keeps_saved_archive_commands_paths_and_synced_snapshot_handoff(self) -> None:
         for fragment in (
             "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
-            "FALLBACK_ZIG_ARCHIVE",
+            "saved_browser_snapshot_route",
+            "saved_browser_snapshot_route_synced",
             "scripts/check_linux_build_readiness.py --repo-root",
             "--skip-zig-check --expect-saved-archives",
             "prepare_offline_build_inputs.sh --browser-root",
@@ -250,6 +285,9 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
             "--check-only",
             "RUST_PATH_COMMAND=\"export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:${RUST_TOOLCHAIN_DIR}/rustc/bin:$PATH\"",
             "--expect-offline-deps --require-prebuilt-v8",
+            "Use the saved_browser_snapshot_route command when no reusable checkout exists yet",
+            "Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface.",
+            "Recommended synced saved-browser-snapshot route when the archive helper surface may be stale:",
             "Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only",
             "Fallback Zig archive:",
             "Prefer a Zig 0.15.2 toolchain for honest branch validation",
