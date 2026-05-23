@@ -3,13 +3,13 @@
 set -euo pipefail
 
 usage() {
-    cat <<'EOF'
+    cat <<'EOF_USAGE'
 Usage:
   scripts/linux/restore_saved_rust_toolchain.sh \
     [--browser-root /path/to/browser-repo] \
     [--dependencies-root /path/to/dependencies] \
-    [--toolchain-root /path/to/toolchain-root] \
-    [--toolchain-parent /path/to/parent-dir] \
+    [--toolchain-root /path/to/toolchains/rust-1.79.0] \
+    [--toolchain-parent /path/to/toolchains] \
     [--archive /path/to/rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz] \
     [--check-only] \
     [--json] \
@@ -23,15 +23,15 @@ Defaults:
   browser root       parent of this script
   dependencies root  <browser-root>/../memory/repo_archives/browser/dependencies
   archive            <dependencies-root>/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz
-  toolchain root     <toolchain-parent>/rust-1.79.0-x86_64-unknown-linux-gnu
-  toolchain parent   parent of the browser root
+  toolchain root     <browser-root>/../toolchains/rust-1.79.0
+  toolchain parent   <browser-root>/../toolchains
 
 The archive extracts to:
   <toolchain-root>
 
 After restore, the script prints the exact PATH/CARGO/RUSTC commands to reuse
 with scripts/linux/check_offline_build_prereqs.sh and zig build.
-EOF
+EOF_USAGE
 }
 
 json_escape() {
@@ -45,8 +45,9 @@ PY
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0-x86_64-unknown-linux-gnu"
-DEFAULT_ARCHIVE_NAME="01-${DEFAULT_TOOLCHAIN_DIR_NAME}.tar.xz"
+DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0"
+DEFAULT_ARCHIVE_TOOLCHAIN_NAME="rust-1.79.0-x86_64-unknown-linux-gnu"
+DEFAULT_ARCHIVE_NAME="01-${DEFAULT_ARCHIVE_TOOLCHAIN_NAME}.tar.xz"
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 DEPENDENCIES_ROOT=""
@@ -103,20 +104,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 if [[ -z "${DEPENDENCIES_ROOT}" ]]; then
-    if [[ -z "${TOOLCHAIN_PARENT}" ]]; then
-        TOOLCHAIN_PARENT="$(cd "${BROWSER_ROOT}/.." && pwd)"
-    fi
-    DEPENDENCIES_ROOT="${TOOLCHAIN_PARENT}/memory/repo_archives/browser/dependencies"
-fi
-if [[ -z "${TOOLCHAIN_ROOT}" ]]; then
-    if [[ -z "${TOOLCHAIN_PARENT}" ]]; then
-        TOOLCHAIN_PARENT="$(cd "${BROWSER_ROOT}/.." && pwd)"
-    fi
-    TOOLCHAIN_ROOT="${TOOLCHAIN_PARENT}/${DEFAULT_TOOLCHAIN_DIR_NAME}"
+    DEPENDENCIES_ROOT="${WORKSPACE_ROOT}/memory/repo_archives/browser/dependencies"
 fi
 if [[ -z "${TOOLCHAIN_PARENT}" ]]; then
-    TOOLCHAIN_PARENT="$(cd "$(dirname "${TOOLCHAIN_ROOT}")" && pwd)"
+    TOOLCHAIN_PARENT="${WORKSPACE_ROOT}/toolchains"
+fi
+if [[ -z "${TOOLCHAIN_ROOT}" ]]; then
+    TOOLCHAIN_ROOT="${TOOLCHAIN_PARENT}/${DEFAULT_TOOLCHAIN_DIR_NAME}"
 fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${DEPENDENCIES_ROOT}/${DEFAULT_ARCHIVE_NAME}"
