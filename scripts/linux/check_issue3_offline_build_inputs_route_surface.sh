@@ -65,9 +65,12 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|show_issue3_offline_build_inputs_route.sh|The Linux build-readiness note still names the offline-inputs route printer explicitly."
     "scripts/linux/show_issue3_offline_build_inputs_route.sh|prepare_offline_build_inputs.sh|The offline build-inputs route still points at the raw restore helper."
     "scripts/linux/show_issue3_offline_build_inputs_route.sh|--saved-archives-root|The offline build-inputs route still supports a saved archives root override."
+    "scripts/linux/show_issue3_offline_build_inputs_route.sh|--offline-deps-root|The offline build-inputs route still supports an offline dependency root override."
     "scripts/linux/show_issue3_offline_build_inputs_route.sh|Saved Memory input preflight:|The offline build-inputs route still prints the saved-Memory preflight step."
     "scripts/linux/show_issue3_offline_build_inputs_route.sh|Restore offline inputs from the saved archives:|The offline build-inputs route still prints the real restore command."
     "scripts/linux/show_issue3_offline_build_inputs_route.sh|Post-stage readiness check:|The offline build-inputs route still prints the post-stage readiness step."
+    "scripts/linux/prepare_offline_build_inputs.sh|--offline-deps-root|The offline restore helper still supports an explicit offline dependency root override."
+    "scripts/linux/prepare_offline_build_inputs.sh|OFFLINE_DEPS_RELATIVE_ROOT|The offline restore helper still computes manifest-relative offline dependency paths from the resolved restore root."
 )
 
 json_escape() {
