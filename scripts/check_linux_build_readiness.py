@@ -269,6 +269,14 @@ def check_saved_archives_root(saved_archives_root: pathlib.Path) -> tuple[list[s
     return failures, discovered
 
 
+def check_optional_file(path: pathlib.Path, label: str) -> list[str]:
+    if not path.exists():
+        return [f"{label} does not exist: {path}"]
+    if not path.is_file():
+        return [f"{label} is not a file: {path}"]
+    return []
+
+
 def build_prepare_offline_command(
     repo_root: pathlib.Path,
     saved_archives: dict[str, pathlib.Path],
@@ -351,6 +359,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--saved-archives-root",
         default=None,
         help="Path to the saved archive root (default: ../memory/repo_archives/browser beside the repo workspace)",
+    )
+    parser.add_argument(
+        "--fallback-zig-archive",
+        default=None,
+        help="Optional path to the surfaced fallback Zig archive used by the Linux issue #3 recovery route",
     )
     parser.add_argument(
         "--self-test",
@@ -483,6 +496,37 @@ class ReadinessHelperTests(unittest.TestCase):
         self.assertIn("--html5ever-archive", command)
         self.assertEqual(command[-1], "--check-only")
 
+    def test_check_optional_file_reports_missing_path(self) -> None:
+        missing_path = pathlib.Path("/tmp/missing-zig.tar.xz")
+
+        failures = check_optional_file(missing_path, "fallback Zig archive")
+
+        self.assertEqual(failures, [f"fallback Zig archive does not exist: {missing_path}"])
+
+    def test_check_optional_file_accepts_existing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = pathlib.Path(tmpdir) / "zig.tar.xz"
+            archive_path.write_text("zig", encoding="utf-8")
+
+            failures = check_optional_file(archive_path, "fallback Zig archive")
+
+            self.assertEqual(failures, [])
+
+    def test_parser_accepts_fallback_zig_archive(self) -> None:
+        parser = build_parser()
+
+        args = parser.parse_args([
+            "--fallback-zig-archive",
+            "/tmp/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+            "--skip-zig-check",
+            "--skip-rust-check",
+        ])
+
+        self.assertEqual(
+            args.fallback_zig_archive,
+            "/tmp/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+        )
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -541,6 +585,10 @@ def main() -> int:
         elif all(key in discovered_saved_archives for key in ("browser_deps", "boringssl")):
             suggested_prepare_command = build_prepare_offline_command(repo_root, discovered_saved_archives)
 
+    fallback_zig_archive = pathlib.Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
+    if fallback_zig_archive is not None:
+        failures.extend(check_optional_file(fallback_zig_archive, "fallback Zig archive"))
+
     print(f"Repo root: {repo_root}")
     print(f"Minimum Zig from build.zig.zon: {minimum_zig}")
     if zig_version is not None:
@@ -586,6 +634,10 @@ def main() -> int:
         if suggested_prepare_command is not None:
             print("Suggested offline staging command:")
             print(f"  {format_shell_command(suggested_prepare_command)}")
+
+    if fallback_zig_archive is not None:
+        fallback_state = "ok" if fallback_zig_archive.is_file() else "missing"
+        print(f"Fallback Zig archive: {fallback_zig_archive} [{fallback_state}]")
 
     if url_deps:
         print("URL-backed dependencies still need network access or an offline cache:")
