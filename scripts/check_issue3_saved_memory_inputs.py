@@ -46,6 +46,18 @@ OPTIONAL_MEMORY_FILES: tuple[tuple[str, str], ...] = (
     ("repo_archives/browser/session_entry_register.yaml", "session entry register"),
 )
 
+REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
+    ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
+    (
+        "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+        "Linux build-readiness route helper",
+    ),
+    (
+        "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+        "runtime re-entry route helper",
+    ),
+)
+
 DEFAULT_FALLBACK_ZIG = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
 DEFAULT_RESTORED_CHECKOUT_NAME = "browser-memory-snapshot"
 EXPECTED_REPO_SNAPSHOT_PREFIX = "browser-fork-headed-mode-foundation/"
@@ -178,11 +190,22 @@ def check_file(path: Path, label: str, *, check_archive_integrity: bool) -> dict
 def collect_restored_checkout_result(restored_checkout_root: Path) -> dict[str, object]:
     exists = restored_checkout_root.is_dir()
     build_manifest = restored_checkout_root / "build.zig.zon"
-    saved_memory_helper = restored_checkout_root / "scripts/check_issue3_saved_memory_inputs.py"
-    linux_route_helper = restored_checkout_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh"
+
+    helper_surface_files = [
+        {
+            "label": label,
+            "path": str(restored_checkout_root / relative_path),
+            "relative_path": relative_path,
+            "exists": (restored_checkout_root / relative_path).is_file(),
+        }
+        for relative_path, label in REQUIRED_RESTORED_HELPER_FILES
+    ]
+    missing_helper_surface_files = [
+        entry["relative_path"] for entry in helper_surface_files if not entry["exists"]
+    ]
 
     has_build_manifest = build_manifest.is_file()
-    has_helper_surface = saved_memory_helper.is_file() and linux_route_helper.is_file()
+    has_helper_surface = exists and not missing_helper_surface_files
 
     if not exists:
         status = "missing"
@@ -196,6 +219,8 @@ def collect_restored_checkout_result(restored_checkout_root: Path) -> dict[str, 
         "exists": exists,
         "has_build_manifest": has_build_manifest,
         "has_helper_surface": has_helper_surface,
+        "helper_surface_files": helper_surface_files,
+        "missing_helper_surface_files": missing_helper_surface_files,
         "status": status,
     }
 
@@ -269,6 +294,9 @@ def emit_text(result: dict[str, object]) -> None:
             f"build.zig.zon={'yes' if restored_checkout['has_build_manifest'] else 'no'}, "
             f"helper surface={'yes' if restored_checkout['has_helper_surface'] else 'no'}"
         )
+        if restored_checkout["missing_helper_surface_files"]:
+            joined = ", ".join(restored_checkout["missing_helper_surface_files"])
+            print(f"         missing helper files: {joined}")
     else:
         print("         status: missing; restore the saved browser snapshot route before Linux or WSL replay")
     print("Required Memory inputs:")
@@ -331,6 +359,12 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 "pass",
                 encoding="utf-8",
             )
+            (
+                restored_checkout_root / "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"
+            ).write_text(
+                "pass",
+                encoding="utf-8",
+            )
             for relative_path, _label in REQUIRED_MEMORY_FILES + OPTIONAL_MEMORY_FILES:
                 target = memory_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -363,6 +397,8 @@ class SavedMemoryInputsTests(unittest.TestCase):
             self.assertTrue(result["fallback_zig_archive"]["exists"])
             self.assertTrue(result["required_files"][0]["archive_readable"])
             self.assertEqual(result["restored_checkout"]["status"], "ready")
+            self.assertTrue(result["restored_checkout"]["has_helper_surface"])
+            self.assertEqual(result["restored_checkout"]["missing_helper_surface_files"], [])
 
     def test_collect_results_fails_when_required_archive_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -440,6 +476,35 @@ class SavedMemoryInputsTests(unittest.TestCase):
             incomplete = collect_restored_checkout_result(incomplete_root)
             self.assertEqual(incomplete["status"], "incomplete")
             self.assertFalse(incomplete["has_build_manifest"])
+            self.assertFalse(incomplete["has_helper_surface"])
+            self.assertEqual(
+                incomplete["missing_helper_surface_files"],
+                [relative_path for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES],
+            )
+
+    def test_restored_checkout_helper_surface_requires_runtime_route(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            restored_checkout_root = Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
+            restored_checkout_root.mkdir()
+            (restored_checkout_root / "scripts/linux").mkdir(parents=True)
+            (restored_checkout_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            (restored_checkout_root / "scripts/check_issue3_saved_memory_inputs.py").write_text(
+                "pass",
+                encoding="utf-8",
+            )
+            (restored_checkout_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh").write_text(
+                "pass",
+                encoding="utf-8",
+            )
+
+            result = collect_restored_checkout_result(restored_checkout_root)
+
+            self.assertTrue(result["has_build_manifest"])
+            self.assertFalse(result["has_helper_surface"])
+            self.assertEqual(
+                result["missing_helper_surface_files"],
+                ["scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"],
+            )
 
     def test_default_roots_follow_workspace_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
