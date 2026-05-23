@@ -86,6 +86,7 @@ declare -a HELPER_SURFACE_PATHS=(
     "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md"
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
     "scripts/check_issue3_saved_memory_inputs.py"
+    "scripts/check_issue3_saved_archive_integrity.py"
     "scripts/check_linux_build_readiness.py"
     "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh"
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
@@ -202,6 +203,10 @@ if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py" ]]; then
     echo "Helper root is missing scripts/check_issue3_saved_memory_inputs.py: ${HELPER_ROOT}" >&2
     exit 1
 fi
+if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py" ]]; then
+    echo "Helper root is missing scripts/check_issue3_saved_archive_integrity.py: ${HELPER_ROOT}" >&2
+    exit 1
+fi
 if [[ ! -f "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh" ]]; then
     echo "Helper root is missing scripts/linux/show_issue3_linux_build_readiness_route.sh: ${HELPER_ROOT}" >&2
     exit 1
@@ -246,12 +251,14 @@ if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
 fi
 
 FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_RUNTIME_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 RESTORE_FALLBACK_FLAG=""
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     RESTORE_FALLBACK_FLAG=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     FOLLOW_UP_MEMORY_CHECK+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     FOLLOW_UP_BUILD_ROUTE+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     FOLLOW_UP_RUNTIME_ROUTE+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
@@ -267,6 +274,7 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
     printf '  "archive_top_level": %s,\n' "$(json_escape "${TOP_LEVEL_ENTRY}")"
     printf '  "follow_up_memory_check": %s,\n' "$(json_escape "${FOLLOW_UP_MEMORY_CHECK}")"
+    printf '  "follow_up_archive_integrity_check": %s,\n' "$(json_escape "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}")"
     printf '  "follow_up_build_route": %s,\n' "$(json_escape "${FOLLOW_UP_BUILD_ROUTE}")"
     printf '  "follow_up_runtime_route": %s,\n' "$(json_escape "${FOLLOW_UP_RUNTIME_ROUTE}")"
     printf '  "check_only": %s,\n' "$([[ "${CHECK_ONLY}" == "true" ]] && echo true || echo false)"
@@ -306,6 +314,7 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo
     echo "Suggested follow-up checks:"
     printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
+    printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
     printf "  %s\n" "${FOLLOW_UP_RUNTIME_ROUTE}"
     exit 0
@@ -358,5 +367,6 @@ fi
 echo
 echo "Suggested follow-up checks:"
 printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
+printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
 printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
 printf "  %s\n" "${FOLLOW_UP_RUNTIME_ROUTE}"
