@@ -9,8 +9,11 @@ helpers:
 
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
+- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
+- `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
@@ -39,6 +42,20 @@ bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
 
 Use `--json` when another helper needs the surface-check result as structured
 output.
+
+## Restore A Checkout First When Needed
+
+If there is no reusable extracted checkout beside the workspace yet, print the
+saved-browser-snapshot route before reopening Linux or WSL staging from the live
+repo root:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+That route keeps the saved snapshot surface check, the restore command, the
+saved-Memory preflight, and the first build-readiness/runtime follow-up commands
+on one branch-local helper surface.
 
 ## Run The Saved-Memory Preflight Next
 
@@ -98,22 +115,29 @@ The Linux route now stays short and ordered:
 
 1. A fail-fast surface check using
    `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
-2. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
-3. A Zig-line recovery helper using
+2. A saved-browser-snapshot restore route using
+   `scripts/linux/show_issue3_saved_browser_snapshot_route.sh` when no reusable
+   checkout exists yet
+3. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
+4. A Zig-line recovery helper using
    `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-4. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-5. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+5. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+6. A `prepare_offline_build_inputs.sh --check-only` command for the offline
    dependency surface
-6. A saved Rust `1.79.0` restore command
-7. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-8. The attached fallback Zig archive location when it is present beside the repo
+7. A saved Rust `1.79.0` restore command
+8. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+9. The attached fallback Zig archive location when it is present beside the repo
    workspace, so runs can surface it without treating it as branch-compatible
    validation evidence
-9. A full readiness command that expects the saved archives, offline deps, and
-   prebuilt V8 archive to be staged before retrying `zig build`
+10. A full readiness command that expects the saved archives, offline deps, and
+    prebuilt V8 archive to be staged before retrying `zig build`
 
 ## Working Rules
 
+- If there is no extracted checkout beside the workspace, run
+  `bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh` before the
+  broader readiness helper so the restore and its immediate follow-up commands
+  stay on one helper surface.
 - Run `python scripts/check_issue3_saved_memory_inputs.py --repo-root .` before
   the broader readiness helper when the replay depends on the saved archives in
   Memory.
