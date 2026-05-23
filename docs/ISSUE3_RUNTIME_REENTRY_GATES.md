@@ -15,6 +15,7 @@ Read this together with:
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/WINDOWS_FULL_USE.md`
+- `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
 - `scripts/check_linux_build_readiness.py`
 
@@ -73,8 +74,15 @@ Use this exact order before reopening the direct runtime patch.
 
 1. Reopen `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md` and confirm the
    target still stays narrowed to `Page.zig` plus `win32_backend.zig`.
-2. Confirm a writable publication path exists for those two existing files.
-3. Re-check the branch-side runtime contract markers before touching the patch:
+2. Print the helper surface when you want the current branch-local runtime
+   commands back on one Windows-first path:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1
+```
+
+3. Confirm a writable publication path exists for those two existing files.
+4. Re-check the branch-side runtime contract markers before touching the patch:
 
 ```bash
 python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py --self-test
@@ -83,29 +91,30 @@ python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_run
   --win32 src/display/win32_backend.zig
 ```
 
-4. Stage the expected sibling-path dependencies before blaming source changes:
+5. Stage the expected sibling-path dependencies before blaming source changes:
    - `../zig-v8-fork`
    - `../boringssl-zig`
-5. If the run is using saved dependency bundles, stage them before invoking Zig.
-6. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+6. If the run is using saved dependency bundles, stage them before invoking Zig.
+7. Re-check Linux or WSL build readiness before trusting file-level Zig output:
 
 ```bash
 python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
-7. Only after a matching Zig line is actually staged, rerun the readiness helper
+8. Only after a matching Zig line is actually staged, rerun the readiness helper
    without the Zig skip and then validate the toolchain with the normal project
    build flow before using focused file-level `zig test` as evidence.
-8. Only after those gates are green, reopen the direct code patch and the
+9. Only after those gates are green, reopen the direct code patch and the
    focused regression tests.
-9. After the focused tests are green, move back to the reduced Google probe and
-   then the broader Windows replay ladder.
+10. After the focused tests are green, move back to the reduced Google probe and
+    then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
 
 Once both gates are green, keep the replay narrow in this order:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1
 zig build -Dtarget=x86_64-windows-msvc --summary all
 powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\google-investigation-next\chrome-google-home-title-probe.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order
@@ -122,6 +131,8 @@ If the publication gate is still closed:
 
 - stay on a smaller create-only docs, diagnostics, or validation slice
 - do not hand-edit large existing file bodies through a brittle replacement path
+- keep `show_google_issue3_enter_submit_runtime_revalidation.ps1` as the shared
+  re-entry surface so the exact runtime route does not need to be rebuilt by hand
 
 If the toolchain gate is still closed:
 
@@ -139,6 +150,7 @@ The direct issue `#3` runtime patch is worth doing only when the run can both:
 - validate those changes with a branch-compatible toolchain and the reduced
   Google replay path
 
-Until then, preserve the narrowed runtime target, but spend scheduled cycles on
-smaller slices that improve the next real re-entry instead of repeating the same
-blocked attempt.
+Until then, preserve the narrowed runtime target, use the dedicated runtime
+helper to reopen the same branch-local route quickly, and spend scheduled cycles
+on smaller slices that improve the next real re-entry instead of repeating the
+same blocked attempt.
