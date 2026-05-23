@@ -1,0 +1,70 @@
+# Issue #3 Saved Browser Snapshot Restore Route
+
+Use this note when the saved Memory repo archive is present, but the next Linux
+or WSL build-readiness or runtime re-entry step still lacks a reusable local
+browser checkout.
+
+This route keeps the snapshot restore and the first follow-up checks on one
+small branch-local surface so future runs do not need to rebuild the extraction
+path by hand.
+
+## When To Use It
+
+Use this route when any of these are true:
+
+- `repo_archives/browser/01-browser-fork-headed-mode-foundation.zip` is present
+  in Memory, but there is no extracted checkout beside the workspace
+- a scheduled run needs to reopen the Linux build-readiness route before the
+  direct `Page.zig` plus `win32_backend.zig` patch can be retried
+- the next run needs a disposable local checkout for helper validation without
+  relying on remote GitHub file publication
+
+## Surface Check
+
+From the browser repo root:
+
+```bash
+bash ./scripts/linux/restore_saved_browser_snapshot.sh --check-only
+```
+
+That prints the saved archive location, the inferred top-level folder from the
+zip, the default restore destination, and the first follow-up commands.
+
+## Restore The Checkout
+
+Restore the saved repo snapshot into a reusable sibling checkout:
+
+```bash
+bash ./scripts/linux/restore_saved_browser_snapshot.sh
+```
+
+By default this extracts:
+
+- archive: `../memory/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip`
+- destination: `../browser-memory-snapshot`
+
+Use `--destination` when the checkout should live somewhere else, and use
+`--force` only when it is safe to replace an older extracted checkout.
+
+## Immediate Follow-up
+
+After the restore succeeds, run these checks from the current repo root against
+the extracted checkout:
+
+```bash
+python scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
+```
+
+That keeps the saved-Memory preflight and the Linux build-readiness route
+anchored to the restored checkout before the direct issue `#3` runtime lane is
+reopened again.
+
+## Working Rules
+
+- Use this restore route before blaming missing checkout state on the runtime
+  patch itself.
+- Prefer a disposable restored checkout for helper validation when the live
+  branch still needs a safer publication path for large existing files.
+- Treat this route as a setup step for build-readiness and runtime re-entry, not
+  as proof that the branch is ready for focused Zig validation.
