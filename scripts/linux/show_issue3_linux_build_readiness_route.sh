@@ -86,6 +86,7 @@ fi
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SNAPSHOT_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_browser_snapshot_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 TOOLCHAIN_ROUTE_COMMAND="bash scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
+SAVED_RUST_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_rust_toolchain_route.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 OFFLINE_ROUTE_COMMAND="bash scripts/linux/show_issue3_offline_build_inputs_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
 RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
@@ -123,6 +124,7 @@ print(json.dumps({
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
         "zig_toolchain_route": ${TOOLCHAIN_ROUTE_COMMAND@Q},
+        "saved_rust_surface_check": ${SAVED_RUST_SURFACE_COMMAND@Q},
         "saved_rust_route": ${SAVED_RUST_ROUTE_COMMAND@Q},
         "offline_build_inputs_route": ${OFFLINE_ROUTE_COMMAND@Q},
         "saved_archive_preflight": ${PREFLIGHT_COMMAND@Q},
@@ -137,6 +139,7 @@ print(json.dumps({
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
         "Run the saved_memory_inputs command before the broader saved-archive preflight when the route depends on the saved Memory repo snapshot and dependency bundles.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
+        "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the offline_build_inputs_route command when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
@@ -186,6 +189,9 @@ Suggested route
   Zig toolchain recovery route:
     ${TOOLCHAIN_ROUTE_COMMAND}
 
+  Saved Rust route surface check:
+    ${SAVED_RUST_SURFACE_COMMAND}
+
   Saved Rust toolchain route:
     ${SAVED_RUST_ROUTE_COMMAND}
 
@@ -216,6 +222,7 @@ Working rules
   - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
   - Run the saved Memory input preflight before the broader saved-archive preflight when the route depends on the saved repo snapshot and dependency bundles.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.
+  - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
   - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the offline build-inputs route when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
