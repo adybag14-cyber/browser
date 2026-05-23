@@ -48,6 +48,10 @@ OPTIONAL_MEMORY_FILES: tuple[tuple[str, str], ...] = (
 
 REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
+    (
+        "scripts/check_issue3_saved_archive_integrity.py",
+        "saved-archive integrity helper",
+    ),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness helper"),
     (
         "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
@@ -511,6 +515,10 @@ class SavedMemoryInputsTests(unittest.TestCase):
 
             self.assertTrue(result["has_build_manifest"])
             self.assertFalse(result["has_helper_surface"])
+            self.assertIn(
+                "scripts/check_issue3_saved_archive_integrity.py",
+                result["missing_helper_surface_files"],
+            )
             self.assertIn(
                 "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
                 result["missing_helper_surface_files"],
