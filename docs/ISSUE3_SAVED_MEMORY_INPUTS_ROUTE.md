@@ -26,6 +26,8 @@ Use this route when any of these are true:
 - the next Linux or WSL route depends on the saved repo snapshot and dependency
   archives, and the run wants the exact preflight command plus follow-up routes
   on one surface
+- a restored checkout may already exist, but the saved inputs still need a
+  fresh preflight before Linux or WSL helper output is trusted
 - the current checkout may not sit beside the default `memory/` or
   `agent_files/` folders and the run wants one helper that resolves those paths
   explicitly
@@ -49,14 +51,15 @@ From the browser repo root:
 bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
 ```
 
-If the checkout, Memory folder, or attached files live somewhere unusual,
-override the paths:
+If the checkout, Memory folder, attached files, or restored checkout root live
+somewhere unusual, override the paths:
 
 ```bash
 bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh \
   --repo-root /path/to/browser \
   --memory-root /path/to/memory \
-  --agent-files-root /path/to/agent_files
+  --agent-files-root /path/to/agent_files \
+  --restored-checkout-root /path/to/browser-memory-snapshot
 ```
 
 Use `--fallback-zig-archive` when the attached
@@ -67,34 +70,84 @@ workspace.
 Use `--json` when another helper wants the resolved command set as structured
 output.
 
-## What The Route Surfaces
+## Run The Saved-Memory Preflight
 
-The helper prints:
+Run the actual saved-input helper after the route surface is green:
 
-1. a fail-fast surface-check command for
-   `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
-2. the exact `scripts/check_issue3_saved_memory_inputs.py` command with the
-   resolved repo, Memory, and agent-files roots
-3. the resolved saved repo snapshot path
-4. the resolved blocker-intelligence path
-5. the resolved dependency-archive root
-6. the resolved fallback Zig archive path or a clear missing-state message
-7. the saved-browser-snapshot restore route for runs that still lack a reusable
-   checkout
-8. the Linux build-readiness route for runs that already have a usable checkout
-9. the direct runtime re-entry route for runs that have already cleared the
-   restore and toolchain gates
+```bash
+python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
+```
+
+That command checks:
+
+- `repo_archives/browser/01-browser-fork-headed-mode-foundation.zip`
+- `repo_archives/browser/README.md`
+- `repo_archives/browser/blocker_intelligence.yaml`
+- `repo_archives/browser/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz`
+- `repo_archives/browser/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip`
+- `repo_archives/browser/dependencies/03-boringssl-zig-main.zip`
+- `repo_archives/browser/dependencies/04-zig-browser-depo.tar.zip`
+- the optional session register and fallback Zig archive surface
+
+When the current run only needs a fast presence check before choosing another
+lane, use:
+
+```bash
+python ./scripts/check_issue3_saved_memory_inputs.py --repo-root . --skip-archive-integrity-check
+```
+
+If a reusable checkout already exists and the route should confirm both the
+saved inputs and the restored helper surface together, use the restored-
+checkout override:
+
+```bash
+python ./scripts/check_issue3_saved_memory_inputs.py \
+  --repo-root . \
+  --restored-checkout-root ../browser-memory-snapshot
+```
+
+## Immediate Follow-up
+
+After the saved-input preflight succeeds, choose the next route based on the
+actual missing step:
+
+If there is still no reusable checkout beside the workspace:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+If the checkout exists but Linux or WSL toolchain or dependency staging is
+still the blocker:
+
+```bash
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+```
+
+If the saved inputs are green and the run is specifically reopening the narrowed
+`Page.zig` plus `win32_backend.zig` lane:
+
+```bash
+bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
+```
+
+The route helper prints those same follow-up commands with the resolved repo,
+Memory, restored-checkout, and optional fallback Zig paths already filled in.
 
 ## Working Rules
 
-- Run the surface check first so missing docs or helper drift fails before the
-  run blames missing Memory inputs.
-- Run the saved-Memory preflight before restore, build-readiness, or runtime
-  helpers when the route depends on the saved repo snapshot and dependency
-  bundles.
+- Run the surface check first so helper drift fails fast before the run blames
+  missing Memory inputs.
+- Run the saved-input preflight before broader Linux or WSL helper output is
+  treated as trustworthy.
+- Use `--skip-archive-integrity-check` only for a quick presence-only branch
+  decision, not for honest archive validation.
+- Use the restored-checkout override when a reusable checkout already exists
+  and the route should confirm that helper surface before broader route output
+  is trusted.
 - Use the saved-browser-snapshot route when the saved archive exists but there
   is still no reusable checkout for Linux or WSL follow-up.
-- Use the Linux build-readiness route after the saved-Memory preflight passes
+- Use the Linux build-readiness route after the saved-input preflight passes
   and the next blocker is still Rust, Zig, offline dependency staging, or
   prebuilt V8 readiness.
 - Use the direct runtime re-entry route only after the saved checkout exists and
