@@ -53,6 +53,9 @@ bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
 ```
 
 Use `--json` when another helper needs the restore route as structured output.
+Use `--helper-root /path/to/live/browser` when the route should keep using a
+specific live checkout for its follow-up helpers instead of assuming the current
+repo root.
 
 ## Restore The Checkout
 
@@ -72,17 +75,22 @@ Use `--destination` when the checkout should live somewhere else, and use
 
 ## Immediate Follow-up
 
-After the restore succeeds, run these checks from the current repo root against
-the extracted checkout:
+After the restore succeeds, keep using the current repo root helper surface
+against the extracted checkout:
 
 ```bash
-python scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
+python ./scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
 
+The saved archive is a stable historical snapshot, so it may not contain the
+newest branch-local recovery helpers. Do not switch into the restored checkout
+and assume these route scripts exist there.
+
 The route helper prints those same commands with the resolved archive,
-destination, and optional fallback Zig archive surface already filled in.
+destination, helper-root, and optional fallback Zig archive surface already
+filled in.
 
 That keeps the saved-Memory preflight, the Linux build-readiness route, and the
 runtime re-entry route anchored to the restored checkout before the direct issue
@@ -94,5 +102,7 @@ runtime re-entry route anchored to the restored checkout before the direct issue
   patch itself.
 - Prefer a disposable restored checkout for helper validation when the live
   branch still needs a safer publication path for large existing files.
+- Keep the follow-up helper root on the live branch-local surface so those
+  commands do not depend on the restored snapshot carrying newer route scripts.
 - Treat this route as a setup step for build-readiness and runtime re-entry, not
   as proof that the branch is ready for focused Zig validation.
