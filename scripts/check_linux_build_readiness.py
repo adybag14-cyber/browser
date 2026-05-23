@@ -27,6 +27,7 @@ MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
 PATH_VALUE_RE = re.compile(r'\.path\s*=\s*"([^"]+)"')
 URL_VALUE_RE = re.compile(r'\.url\s*=\s*"([^"]+)"')
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
+FALLBACK_ZIG_ARCHIVE_VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
 OFFLINE_DEP_NAMES = ("brotli", "zlib", "nghttp2", "curl")
 PREBUILT_V8_GLOB = "libc_v8_*.a"
 SAVED_ARCHIVE_GLOBS: dict[str, str] = {
@@ -103,6 +104,19 @@ def parse_semver(version_text: str) -> tuple[int, int, int]:
     return tuple(int(part) for part in match.groups())
 
 
+def same_version_line(expected_version: str, actual_version: str) -> bool:
+    expected_parts = parse_semver(expected_version)
+    actual_parts = parse_semver(actual_version)
+    return actual_parts[:2] == expected_parts[:2]
+
+
+def infer_archive_semver(path: pathlib.Path) -> str | None:
+    match = FALLBACK_ZIG_ARCHIVE_VERSION_RE.search(path.name)
+    if match is None:
+        return None
+    return match.group(1)
+
+
 def load_build_metadata(repo_root: pathlib.Path) -> tuple[str, list[tuple[str, pathlib.Path]], list[str]]:
     zon_path = repo_root / "build.zig.zon"
     text = zon_path.read_text(encoding="utf-8")
@@ -156,7 +170,7 @@ def check_zig_version(minimum_zig: str, zig_cmd: str) -> tuple[list[str], str | 
         failures.append(f"zig {installed} is older than the branch minimum {minimum_zig}")
         return failures, installed
 
-    if installed_parts[:2] != minimum_parts[:2]:
+    if not same_version_line(minimum_zig, installed):
         failures.append(
             f"zig {installed} does not match the branch's expected {minimum_parts[0]}.{minimum_parts[1]}.x line"
         )
@@ -275,6 +289,37 @@ def check_optional_file(path: pathlib.Path, label: str) -> list[str]:
     if not path.is_file():
         return [f"{label} is not a file: {path}"]
     return []
+
+
+def describe_fallback_zig_archive(
+    minimum_zig: str,
+    fallback_zig_archive: pathlib.Path,
+) -> tuple[list[str], str | None, str]:
+    failures = check_optional_file(fallback_zig_archive, "fallback Zig archive")
+    if failures:
+        return failures, None, "missing"
+
+    inferred_version = infer_archive_semver(fallback_zig_archive)
+    if inferred_version is None:
+        return (
+            [
+                "could not infer a Zig semantic version from "
+                f"fallback Zig archive name: {fallback_zig_archive.name}"
+            ],
+            None,
+            "unknown version",
+        )
+
+    if same_version_line(minimum_zig, inferred_version):
+        expected_parts = parse_semver(minimum_zig)
+        return [], inferred_version, f"matches expected {expected_parts[0]}.{expected_parts[1]}.x line"
+
+    expected_parts = parse_semver(minimum_zig)
+    return (
+        [],
+        inferred_version,
+        f"mismatched: expected {expected_parts[0]}.{expected_parts[1]}.x line",
+    )
 
 
 def build_prepare_offline_command(
@@ -512,6 +557,36 @@ class ReadinessHelperTests(unittest.TestCase):
 
             self.assertEqual(failures, [])
 
+    def test_same_version_line_matches_major_minor_only(self) -> None:
+        self.assertTrue(same_version_line("0.15.2", "0.15.7"))
+        self.assertFalse(same_version_line("0.15.2", "0.17.0-dev.299+a76ce7710"))
+
+    def test_infer_archive_semver_from_fallback_name(self) -> None:
+        archive_path = pathlib.Path("/tmp/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz")
+        self.assertEqual(infer_archive_semver(archive_path), "0.17.0")
+
+    def test_describe_fallback_zig_archive_reports_mismatched_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = pathlib.Path(tmpdir) / "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+            archive_path.write_text("zig", encoding="utf-8")
+
+            failures, version, status = describe_fallback_zig_archive("0.15.2", archive_path)
+
+            self.assertEqual(failures, [])
+            self.assertEqual(version, "0.17.0")
+            self.assertIn("mismatched", status)
+
+    def test_describe_fallback_zig_archive_reports_matching_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = pathlib.Path(tmpdir) / "zig-x86_64-linux-0.15.2.tar.xz"
+            archive_path.write_text("zig", encoding="utf-8")
+
+            failures, version, status = describe_fallback_zig_archive("0.15.2", archive_path)
+
+            self.assertEqual(failures, [])
+            self.assertEqual(version, "0.15.2")
+            self.assertIn("matches expected 0.15.x line", status)
+
     def test_parser_accepts_fallback_zig_archive(self) -> None:
         parser = build_parser()
 
@@ -586,8 +661,27 @@ def main() -> int:
             suggested_prepare_command = build_prepare_offline_command(repo_root, discovered_saved_archives)
 
     fallback_zig_archive = pathlib.Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
+    fallback_zig_version: str | None = None
+    fallback_zig_status: str | None = None
     if fallback_zig_archive is not None:
-        failures.extend(check_optional_file(fallback_zig_archive, "fallback Zig archive"))
+        fallback_failures, fallback_zig_version, fallback_zig_status = describe_fallback_zig_archive(
+            minimum_zig,
+            fallback_zig_archive,
+        )
+        failures.extend(fallback_failures)
+        if (
+            not args.skip_zig_check
+            and zig_version is None
+            and fallback_zig_status is not None
+            and fallback_zig_version is not None
+            and fallback_zig_status.startswith("mismatched:")
+        ):
+            expected_parts = parse_semver(minimum_zig)
+            failures.append(
+                "fallback Zig archive "
+                f"{fallback_zig_archive.name} surfaces Zig {fallback_zig_version}, "
+                f"which does not match the branch's expected {expected_parts[0]}.{expected_parts[1]}.x line"
+            )
 
     print(f"Repo root: {repo_root}")
     print(f"Minimum Zig from build.zig.zon: {minimum_zig}")
@@ -638,6 +732,8 @@ def main() -> int:
     if fallback_zig_archive is not None:
         fallback_state = "ok" if fallback_zig_archive.is_file() else "missing"
         print(f"Fallback Zig archive: {fallback_zig_archive} [{fallback_state}]")
+        if fallback_zig_version is not None and fallback_zig_status is not None:
+            print(f"Fallback Zig archive version line: {fallback_zig_version} [{fallback_zig_status}]")
 
     if url_deps:
         print("URL-backed dependencies still need network access or an offline cache:")
