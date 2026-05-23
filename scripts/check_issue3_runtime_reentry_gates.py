@@ -457,7 +457,7 @@ def emit_text(result: dict[str, object]) -> None:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
-    if args.self-test:
+    if args.self_test:
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(RuntimeReentryGateTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
