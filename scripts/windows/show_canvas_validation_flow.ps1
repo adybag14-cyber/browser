@@ -71,42 +71,58 @@ function Write-Route {
 }
 
 Write-Section "canvas-validation"
-Write-Host "Use the smallest canvas smoke probe that matches the change, then widen into the broader rendering lane."
+Write-Host "Use the checkout-portable canvas ladder first, then widen into broader rendering or older deeper canvas probes."
 Write-Host ("Repo root: {0}" -f $RepoRoot)
 if ($isCustomBrowserExe) {
     Write-Host ("Browser exe: {0}" -f $BrowserExe)
 }
 
-Write-Route -Name "canvas-2d" -Commands @(
+Write-Route -Name "portable-surface" -Commands @(
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_canvas_validation_surface.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_canvas_validation.ps1"
+) -Notes @(
+    "Start here when you want the current branch-safe canvas surface check plus the bounded render, text, drawImage, and WebGL clear ladder on one runner.",
+    "Use the dedicated runner before older individual probe scripts so the current checkout-safe route stays first in the validation order."
+)
+
+Write-Route -Name "portable-canvas-2d" -Commands @(
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-render-probe.ps1",
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-text-probe.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-drawimage-checkout-probe.ps1"
+) -Notes @(
+    "Use these when you want the smallest checkout-portable 2D canvas proof without widening into the full runner.",
+    "Prefer the checkout drawImage probe here because it resolves the current repo root and browser binary instead of assuming the original Windows checkout path."
+)
+
+Write-Route -Name "portable-webgl" -Commands @(
+    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-webgl-clear-probe.ps1"
+) -Notes @(
+    "Use this for the first visible WebGL clear-state proof on the current checkout before you reopen broader rendering follow-up."
+)
+
+Write-Route -Name "deeper-follow-up" -Commands @(
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-path-probe.ps1",
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-drawimage-probe.ps1",
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-drawimage-image-probe.ps1",
     "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-measuretext-probe.ps1"
 ) -Notes @(
-    "Start here for 2D canvas draw, text, path, image, and measureText changes.",
-    "Run only the first probe that matches the shared path you changed, then widen if that smaller checkpoint is green."
-)
-
-Write-Route -Name "webgl" -Commands @(
-    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-webgl-clear-probe.ps1",
-    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-webgl-triangle-probe.ps1",
-    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-webgl-indexed-probe.ps1",
-    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-webgl-varying-probe.ps1",
-    "powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\canvas-smoke\chrome-canvas-webgl-dimensions-probe.ps1"
-) -Notes @(
-    "Use these when the change touched WebGL clear state, geometry, indexed draw paths, shader varyings, or viewport sizing.",
-    "Keep the triangle probe early in the ladder when you want one quick visible proof before widening across the rest of the WebGL helpers."
+    "Use these only after the checkout-portable surface is green or when you intentionally want the older deeper canvas helpers.",
+    "Some of these deeper helpers still reflect the original Windows checkout layout, so normalize repo-root or browser-exe assumptions before treating a path failure as a browser regression."
 )
 
 Write-Route -Name "follow-up" -Commands @(
     "powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering",
     "& `\"$BrowserExe\"` browse --headed `\"http://127.0.0.1:8166/index.html`\""
 ) -Notes @(
-    "Use the broader rendering route after the matching canvas probe is green and you want the shared headed surface checks reopened.",
+    "Use the broader rendering route after the matching canvas probe or the bounded canvas runner is green and you want the shared headed surface checks reopened.",
     "Use the manual browse command only while a local canvas-smoke server is already running."
 )
 
+if ($isCustomBrowserExe) {
+    Write-Host ""
+    Write-Host ("Current browser override is pinned to: {0}" -f $BrowserExe)
+    Write-Host "Rerun run_canvas_validation.ps1 with -BrowserExe if you want the same non-default binary kept across the full canvas ladder."
+}
+
 Write-Host ""
-Write-Host "Use docs/HEADED_MODE_VALIDATION_MATRIX.md for the broader subsystem-to-probe map after the canvas ladder stays green."
+Write-Host "Use docs/HEADED_MODE_VALIDATION_MATRIX.md for the broader subsystem-to-probe map after the checkout-portable canvas ladder stays green."
