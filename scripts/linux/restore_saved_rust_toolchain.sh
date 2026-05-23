@@ -10,6 +10,7 @@ Usage:
     [--dependencies-root /path/to/dependencies] \
     [--toolchain-root /path/to/toolchains/rust-1.79.0] \
     [--toolchain-parent /path/to/toolchains] \
+    [--offline-deps-root /path/to/offline-deps] \
     [--archive /path/to/rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz] \
     [--check-only] \
     [--json] \
@@ -25,6 +26,7 @@ Defaults:
   archive            <dependencies-root>/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz
   toolchain root     <browser-root>/../toolchains/rust-1.79.0
   toolchain parent   <browser-root>/../toolchains
+  offline deps root  <browser-root>/../offline-deps
 
 The archive extracts to:
   <toolchain-root>
@@ -48,11 +50,13 @@ DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0"
 DEFAULT_ARCHIVE_TOOLCHAIN_NAME="rust-1.79.0-x86_64-unknown-linux-gnu"
 DEFAULT_ARCHIVE_NAME="01-${DEFAULT_ARCHIVE_TOOLCHAIN_NAME}.tar.xz"
+PREBUILT_V8_GLOB="libc_v8_*.a"
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 DEPENDENCIES_ROOT=""
 TOOLCHAIN_ROOT=""
 TOOLCHAIN_PARENT=""
+OFFLINE_DEPS_ROOT=""
 ARCHIVE_PATH=""
 CHECK_ONLY=false
 JSON=false
@@ -74,6 +78,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --toolchain-parent)
             TOOLCHAIN_PARENT="$2"
+            shift 2
+            ;;
+        --offline-deps-root)
+            OFFLINE_DEPS_ROOT="$2"
             shift 2
             ;;
         --archive)
@@ -114,6 +122,9 @@ fi
 if [[ -z "${TOOLCHAIN_ROOT}" ]]; then
     TOOLCHAIN_ROOT="${TOOLCHAIN_PARENT}/${DEFAULT_TOOLCHAIN_DIR_NAME}"
 fi
+if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+    OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
+fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${DEPENDENCIES_ROOT}/${DEFAULT_ARCHIVE_NAME}"
 fi
@@ -132,6 +143,17 @@ if [[ ! -f "${ARCHIVE_PATH}" ]]; then
 fi
 
 mkdir -p "${TOOLCHAIN_PARENT}"
+OFFLINE_DEPS_ROOT="$(python3 - "${OFFLINE_DEPS_ROOT}" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+)"
+PREBUILT_V8_PATH=""
+if [[ -d "${OFFLINE_DEPS_ROOT}" ]]; then
+    PREBUILT_V8_PATH="$(find "${OFFLINE_DEPS_ROOT}" -maxdepth 1 -type f -name "${PREBUILT_V8_GLOB}" | sort | head -n 1 || true)"
+fi
 CARGO_BIN="${TOOLCHAIN_ROOT}/cargo/bin/cargo"
 RUSTC_BIN="${TOOLCHAIN_ROOT}/rustc/bin/rustc"
 RUSTDOC_BIN="${TOOLCHAIN_ROOT}/rust-docs/bin/rustdoc"
@@ -167,6 +189,16 @@ import json,sys
 print(json.dumps(sys.argv[1]))
 PY
 )"
+    printf '  "offline_deps_root": %s,\n' "$(python3 - "$OFFLINE_DEPS_ROOT" <<'PY'
+import json,sys
+print(json.dumps(sys.argv[1]))
+PY
+)"
+    printf '  "prebuilt_v8_path": %s,\n' "$(python3 - "$PREBUILT_V8_PATH" <<'PY'
+import json,sys
+print(json.dumps(sys.argv[1]))
+PY
+)"
     printf '  "cargo_bin": %s,\n' "$(python3 - "$CARGO_BIN" <<'PY'
 import json,sys
 print(json.dumps(sys.argv[1]))
@@ -196,6 +228,8 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo "Rust archive:       ${ARCHIVE_PATH}"
     echo "Toolchain parent:   ${TOOLCHAIN_PARENT}"
     echo "Toolchain root:     ${TOOLCHAIN_ROOT}"
+    echo "Offline deps root:  ${OFFLINE_DEPS_ROOT}"
+    echo "Prebuilt V8 archive:${PREBUILT_V8_PATH:- not found}"
     echo
     echo "Suggested shell setup:"
     printf "  export PATH='%s:\$PATH'\n" "${TOOLCHAIN_PATH}"
@@ -234,6 +268,8 @@ fi
 echo
 echo "Saved Rust toolchain is ready."
 echo "Toolchain root: ${TOOLCHAIN_ROOT}"
+echo "Offline deps root: ${OFFLINE_DEPS_ROOT}"
+echo "Prebuilt V8 archive: ${PREBUILT_V8_PATH:-not found}"
 echo "cargo: ${CARGO_BIN}"
 echo "rustc: ${RUSTC_BIN}"
 echo "cargo version: $("${CARGO_BIN}" --version | tr -d '\r')"
@@ -248,4 +284,9 @@ echo "Suggested preflight:"
 printf "  ZIG=/absolute/path/to/zig CARGO='%s' RUSTC='%s' scripts/linux/check_offline_build_prereqs.sh\n" "${CARGO_BIN}" "${RUSTC_BIN}"
 echo
 echo "Suggested build:"
-printf "  ZIG=/absolute/path/to/zig CARGO='%s' RUSTC='%s' zig build --summary all -Dprebuilt_v8_path='../offline-deps/libc_v8_14.0.365.4_linux_x86_64 (1).a'\n" "${CARGO_BIN}" "${RUSTC_BIN}"
+if [[ -n "${PREBUILT_V8_PATH}" ]]; then
+    printf "  ZIG=/absolute/path/to/zig CARGO='%s' RUSTC='%s' zig build --summary all -Dprebuilt_v8_path='%s'\n" "${CARGO_BIN}" "${RUSTC_BIN}" "${PREBUILT_V8_PATH}"
+else
+    printf "  ZIG=/absolute/path/to/zig CARGO='%s' RUSTC='%s' zig build --summary all\n" "${CARGO_BIN}" "${RUSTC_BIN}"
+    echo "  Note: no prebuilt V8 archive was found under ${OFFLINE_DEPS_ROOT}; run the offline build-inputs route first if this branch still expects one."
+fi
