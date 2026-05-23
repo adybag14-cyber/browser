@@ -17,6 +17,8 @@ Read this together with:
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
+- `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
@@ -72,12 +74,12 @@ wiring, or older dependency surfaces, treat that as an environment problem
 first, not as proof that the issue `#3` patch itself is wrong.
 
 When the run is using Linux or WSL validation with the saved Memory bundles,
-start with the branch-local surface check and then print the saved-archive
-re-entry route:
+start with the direct runtime surface check and then print the compact re-entry
+route before trusting focused Zig output:
 
 ```bash
-bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
-bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
+bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
 ```
 
 ## Practical Re-entry Order
@@ -107,13 +109,14 @@ python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_run
    - `../zig-v8-fork`
    - `../boringssl-zig`
 6. If the run is using saved dependency bundles, stage them before invoking Zig.
-7. When the run depends on Linux or WSL staging, start with the fail-fast
-   surface check and then print the saved-archive route so the Memory bundle
-   restore commands stay explicit:
+7. When the run depends on Linux or WSL staging, start with the direct runtime
+   Linux or WSL surface and then print the compact re-entry route so the source
+   contract check, build-readiness route, and Windows follow-up commands stay on
+   one branch-local surface:
 
 ```bash
-bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
-bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
+bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
 ```
 
 8. Re-check Linux or WSL build readiness before trusting file-level Zig output:
@@ -160,9 +163,10 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
-- keep using the runtime-contract checker, the fail-fast Linux surface check,
-  the saved-archive Linux route, and the readiness helper as the fast preflight
-  set before widening back out to larger replay plans
+- keep using the Linux or WSL direct runtime surface check, the compact direct
+  runtime route, the build-readiness surface, the saved-archive Linux route,
+  and the readiness helper as the fast preflight set before widening back out to
+  larger replay plans
 
 ## Working Rule
 
