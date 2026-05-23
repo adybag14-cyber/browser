@@ -15,6 +15,8 @@ Read this together with:
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/WINDOWS_FULL_USE.md`
+- `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
+- `scripts/check_linux_build_readiness.py`
 
 ## When To Use It
 
@@ -72,15 +74,31 @@ Use this exact order before reopening the direct runtime patch.
 1. Reopen `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md` and confirm the
    target still stays narrowed to `Page.zig` plus `win32_backend.zig`.
 2. Confirm a writable publication path exists for those two existing files.
-3. Stage the expected sibling-path dependencies before blaming source changes:
+3. Re-check the branch-side runtime contract markers before touching the patch:
+
+```bash
+python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py --self-test
+python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py \
+  --page src/browser/Page.zig \
+  --win32 src/display/win32_backend.zig
+```
+
+4. Stage the expected sibling-path dependencies before blaming source changes:
    - `../zig-v8-fork`
    - `../boringssl-zig`
-4. If the run is using saved dependency bundles, stage them before invoking Zig.
-5. Validate the toolchain itself with the normal project build flow before using
-   focused file-level `zig test` as evidence.
-6. Only after those gates are green, reopen the direct code patch and the
+5. If the run is using saved dependency bundles, stage them before invoking Zig.
+6. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+
+```bash
+python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
+```
+
+7. Only after a matching Zig line is actually staged, rerun the readiness helper
+   without the Zig skip and then validate the toolchain with the normal project
+   build flow before using focused file-level `zig test` as evidence.
+8. Only after those gates are green, reopen the direct code patch and the
    focused regression tests.
-7. After the focused tests are green, move back to the reduced Google probe and
+9. After the focused tests are green, move back to the reduced Google probe and
    then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
@@ -110,6 +128,8 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
+- keep using the runtime-contract checker and the readiness helper as the fast
+  preflight pair before widening back out to larger replay plans
 
 ## Working Rule
 
