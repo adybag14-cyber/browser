@@ -234,8 +234,10 @@ def collect_restored_checkout_result(restored_checkout_root: Path) -> dict[str, 
 
     if not exists:
         status = "missing"
-    elif has_build_manifest:
+    elif has_build_manifest and has_helper_surface:
         status = "ready"
+    elif has_build_manifest:
+        status = "incomplete-helper-surface"
     else:
         status = "incomplete"
 
@@ -306,6 +308,7 @@ def emit_text(result: dict[str, object]) -> None:
     restored_checkout = result["restored_checkout"]
     checkout_status = {
         "ready": "PASS",
+        "incomplete-helper-surface": "WARN",
         "incomplete": "WARN",
         "missing": "WARN",
     }[restored_checkout["status"]]
@@ -319,6 +322,8 @@ def emit_text(result: dict[str, object]) -> None:
             f"build.zig.zon={'yes' if restored_checkout['has_build_manifest'] else 'no'}, "
             f"helper surface={'yes' if restored_checkout['has_helper_surface'] else 'no'}"
         )
+        if restored_checkout["status"] == "incomplete-helper-surface":
+            print("         status: restore looks usable, but sync the helper surface before follow-up route commands run from this checkout")
         if restored_checkout["missing_helper_surface_files"]:
             joined = ", ".join(restored_checkout["missing_helper_surface_files"])
             print(f"         missing helper files: {joined}")
@@ -513,6 +518,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
 
             result = collect_restored_checkout_result(restored_checkout_root)
 
+            self.assertEqual(result["status"], "incomplete-helper-surface")
             self.assertTrue(result["has_build_manifest"])
             self.assertFalse(result["has_helper_surface"])
             self.assertIn(
