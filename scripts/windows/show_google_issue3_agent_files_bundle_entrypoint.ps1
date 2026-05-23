@@ -165,6 +165,22 @@ Add-SharedPathArrayArgument -Arguments $bundleCheckArguments -Name InputPath -Va
 $surfaceCheckArguments = [System.Collections.Generic.List[string]]::new()
 Add-SharedArgument -Arguments $surfaceCheckArguments -Name RepoRoot -Value $resolvedRepoRoot
 
+$broaderSuiteArguments = [System.Collections.Generic.List[string]]::new()
+$broaderSuiteArguments.Add('-ChangeArea')
+$broaderSuiteArguments.Add('attached-html')
+Add-SharedArgument -Arguments $broaderSuiteArguments -Name RepoRoot -Value $resolvedRepoRoot
+Add-SharedArgument -Arguments $broaderSuiteArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $broaderSuiteArguments -Name PreferredInitialPage -Value $preferredInitialPage
+Add-SharedPathArrayArgument -Arguments $broaderSuiteArguments -Name InputPath -Values @($resolvedInputPaths.ToArray())
+
+$googleSuiteArguments = [System.Collections.Generic.List[string]]::new()
+$googleSuiteArguments.Add('-ChangeArea')
+$googleSuiteArguments.Add('google-attached-html')
+Add-SharedArgument -Arguments $googleSuiteArguments -Name RepoRoot -Value $resolvedRepoRoot
+Add-SharedArgument -Arguments $googleSuiteArguments -Name BrowserExe -Value $BrowserExe
+Add-SharedArgument -Arguments $googleSuiteArguments -Name PreferredInitialPage -Value $preferredInitialPage
+Add-SharedPathArrayArgument -Arguments $googleSuiteArguments -Name InputPath -Values @($resolvedInputPaths.ToArray())
+
 $helper = [ordered]@{
     issue = 'Google issue #3 builder-attached bundle entrypoint'
     repo_root = $resolvedRepoRoot
@@ -178,8 +194,8 @@ $helper = [ordered]@{
     missing_bundle_files = @($missingFiles.ToArray())
     commands = [ordered]@{
         attached_bundle_suite = Format-HelperCommand -ScriptName 'show_headed_validation_suites.ps1' -Arguments $bundleArguments
-        broader_attached_suite = Format-HelperCommand -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([System.Collections.Generic.List[string]]@('-ChangeArea', 'attached-html', '-RepoRoot', (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot), '-BrowserExe', (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe), '-PreferredInitialPage', (ConvertTo-PowerShellSingleQuotedLiteral -Value $preferredInitialPage), '-InputPath') + ($resolvedInputPaths | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }))
-        google_attached_suite = Format-HelperCommand -ScriptName 'show_headed_validation_suites.ps1' -Arguments ([System.Collections.Generic.List[string]]@('-ChangeArea', 'google-attached-html', '-RepoRoot', (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot), '-BrowserExe', (ConvertTo-PowerShellSingleQuotedLiteral -Value $BrowserExe), '-PreferredInitialPage', (ConvertTo-PowerShellSingleQuotedLiteral -Value $preferredInitialPage), '-InputPath') + ($resolvedInputPaths | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral -Value $_ }))
+        broader_attached_suite = Format-HelperCommand -ScriptName 'show_headed_validation_suites.ps1' -Arguments $broaderSuiteArguments
+        google_attached_suite = Format-HelperCommand -ScriptName 'show_headed_validation_suites.ps1' -Arguments $googleSuiteArguments
         bundle_surface_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle_validation_surface.ps1' -Arguments $surfaceCheckArguments
         bundle_check = Format-HelperCommand -ScriptName 'check_attached_html_target_bundle.ps1' -Arguments $bundleCheckArguments
         strict_sidecar_audit = Format-HelperCommand -ScriptName 'start_attached_pages_catalog.ps1' -Arguments $bundleArguments -Switches @('AuditSidecars')
