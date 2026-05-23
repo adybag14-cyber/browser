@@ -61,10 +61,20 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz|The Zig recovery note still names the attached fallback Zig bundle."
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|0.15.2|The Zig recovery note still names the expected branch-compatible Zig line."
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|show_issue3_zig_toolchain_recovery_route.sh|The Linux build-readiness note still points at the Zig recovery route."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|check_issue3_zig_toolchain_recovery_route_surface.sh|The Zig recovery route still points back to its dedicated surface checker."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|build.zig.zon|The Zig recovery route still reads the branch minimum Zig line from build.zig.zon."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|check_linux_build_readiness.py|The Zig recovery route still points back to the readiness helper."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|--toolchains-root|The Zig recovery route still supports an explicit toolchains root override."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|--saved-archives-root|The Zig recovery route still supports an explicit saved-archives root override."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|--offline-deps-root|The Zig recovery route still supports an explicit offline dependency root override."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|--fallback-zig-archive|The Zig recovery route still supports an explicit fallback Zig archive override."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|surface_check|The Zig recovery route JSON output still carries the fail-fast surface-check command."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|matching_readiness|The Zig recovery route still exposes the full matching-line readiness command when a compatible Zig candidate is staged."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|Discovered Zig candidates: none|The Zig recovery route still prints a clear empty-candidate state when no staged Zig toolchains are available."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|No branch-compatible Zig candidate is staged yet.|The Zig recovery route still prints a clear no-match state when only older or mismatched Zig candidates are present."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz|The Zig recovery route still surfaces the attached fallback Zig archive."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|Saved archives root:|The Zig recovery route still prints the saved archives root used for discovery and readiness reruns."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|Offline deps root:|The Zig recovery route still prints the offline dependency root used for full readiness reruns."
 )
 
 json_escape() {
