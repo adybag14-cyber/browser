@@ -8,6 +8,7 @@ This helper is intentionally lightweight:
 - checks Rust tool availability unless told to skip it
 - verifies the sibling checkout layout required by this fork
 - can verify the offline dependency layout and prebuilt V8 archive staging
+- can verify the saved archive bundle needed to restore offline build inputs
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from __future__ import annotations
 import argparse
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -27,6 +29,20 @@ URL_VALUE_RE = re.compile(r'\.url\s*=\s*"([^"]+)"')
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
 OFFLINE_DEP_NAMES = ("brotli", "zlib", "nghttp2", "curl")
 PREBUILT_V8_GLOB = "libc_v8_*.a"
+SAVED_ARCHIVE_GLOBS: dict[str, str] = {
+    "rust_toolchain": "01-rust-*.tar.xz",
+    "html5ever": "02-litefetch-html5ever-*.zip",
+    "boringssl": "03-boringssl-zig-main.zip",
+    "browser_deps": "04-zig-browser-depo.tar.zip",
+}
+SAVED_ARCHIVE_LABELS: dict[str, str] = {
+    "rust_toolchain": "saved Rust toolchain archive",
+    "html5ever": "saved html5ever dependency archive",
+    "boringssl": "saved BoringSSL archive",
+    "browser_deps": "saved browser dependency archive",
+}
+REQUIRED_SAVED_ARCHIVE_KEYS = ("rust_toolchain", "boringssl", "browser_deps")
+OPTIONAL_SAVED_ARCHIVE_KEYS = ("html5ever",)
 
 DEPENDENCY_MARKERS: dict[str, tuple[str, ...]] = {
     "v8": ("build.zig", "build.zig.zon", "src/v8.zig"),
@@ -223,6 +239,60 @@ def check_offline_deps_root(
     return failures, staged_dirs, prebuilt_archives
 
 
+def discover_saved_archives(saved_archives_root: pathlib.Path) -> dict[str, pathlib.Path]:
+    discovered: dict[str, pathlib.Path] = {}
+    for key, pattern in SAVED_ARCHIVE_GLOBS.items():
+        matches = sorted(saved_archives_root.glob(pattern))
+        if matches:
+            discovered[key] = matches[0]
+    return discovered
+
+
+def check_saved_archives_root(saved_archives_root: pathlib.Path) -> tuple[list[str], dict[str, pathlib.Path]]:
+    failures: list[str] = []
+
+    if not saved_archives_root.exists():
+        failures.append(f"saved archive root is missing: expected {saved_archives_root}")
+        return failures, {}
+    if not saved_archives_root.is_dir():
+        failures.append(f"saved archive root is not a directory: {saved_archives_root}")
+        return failures, {}
+
+    discovered = discover_saved_archives(saved_archives_root)
+    for key in REQUIRED_SAVED_ARCHIVE_KEYS:
+        if key in discovered:
+            continue
+        failures.append(
+            f"missing {SAVED_ARCHIVE_LABELS[key]} under {saved_archives_root} (expected {SAVED_ARCHIVE_GLOBS[key]})"
+        )
+
+    return failures, discovered
+
+
+def build_prepare_offline_command(
+    repo_root: pathlib.Path,
+    saved_archives: dict[str, pathlib.Path],
+) -> list[str]:
+    command = [
+        str(repo_root / "scripts" / "linux" / "prepare_offline_build_inputs.sh"),
+        "--browser-root",
+        str(repo_root),
+        "--browser-deps-archive",
+        str(saved_archives["browser_deps"]),
+        "--boringssl-archive",
+        str(saved_archives["boringssl"]),
+    ]
+    html5ever_archive = saved_archives.get("html5ever")
+    if html5ever_archive is not None:
+        command.extend(("--html5ever-archive", str(html5ever_archive)))
+    command.append("--check-only")
+    return command
+
+
+def format_shell_command(command: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in command)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Check Zig toolchain, Rust tools, and dependency staging for Linux/WSL validation."
@@ -271,6 +341,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--require-prebuilt-v8",
         action="store_true",
         help="Require a prebuilt libc_v8_*.a archive under the offline dependency root",
+    )
+    parser.add_argument(
+        "--expect-saved-archives",
+        action="store_true",
+        help="Verify the saved dependency archives needed for prepare_offline_build_inputs.sh",
+    )
+    parser.add_argument(
+        "--saved-archives-root",
+        default=None,
+        help="Path to the saved archive root (default: ../memory/repo_archives/browser beside the repo workspace)",
     )
     parser.add_argument(
         "--self-test",
@@ -358,6 +438,51 @@ class ReadinessHelperTests(unittest.TestCase):
             self.assertEqual([name for name, _ in staged_dirs], list(OFFLINE_DEP_NAMES))
             self.assertEqual(prebuilt_archives, [prebuilt_archive])
 
+    def test_saved_archives_root_finds_required_archives(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            (root / "01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz").write_text("rust", encoding="utf-8")
+            html5ever = root / "02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
+            html5ever.write_text("html5ever", encoding="utf-8")
+            boringssl = root / "03-boringssl-zig-main.zip"
+            boringssl.write_text("boringssl", encoding="utf-8")
+            browser_deps = root / "04-zig-browser-depo.tar.zip"
+            browser_deps.write_text("browser-deps", encoding="utf-8")
+
+            failures, discovered = check_saved_archives_root(root)
+
+            self.assertEqual(failures, [])
+            self.assertIn("rust_toolchain", discovered)
+            self.assertEqual(discovered["html5ever"], html5ever)
+            self.assertEqual(discovered["boringssl"], boringssl)
+            self.assertEqual(discovered["browser_deps"], browser_deps)
+
+    def test_saved_archives_root_reports_missing_required_archives(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            failures, discovered = check_saved_archives_root(root)
+
+            self.assertEqual(discovered, {})
+            self.assertEqual(len(failures), 3)
+            self.assertIn("saved Rust toolchain archive", failures[0])
+            self.assertIn("saved BoringSSL archive", failures[1])
+            self.assertIn("saved browser dependency archive", failures[2])
+
+    def test_prepare_command_includes_optional_html5ever_archive(self) -> None:
+        repo_root = pathlib.Path("/tmp/browser")
+        saved_archives = {
+            "browser_deps": pathlib.Path("/tmp/memory/repo_archives/browser/04-zig-browser-depo.tar.zip"),
+            "boringssl": pathlib.Path("/tmp/memory/repo_archives/browser/03-boringssl-zig-main.zip"),
+            "html5ever": pathlib.Path(
+                "/tmp/memory/repo_archives/browser/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
+            ),
+        }
+
+        command = build_prepare_offline_command(repo_root, saved_archives)
+
+        self.assertIn("--html5ever-archive", command)
+        self.assertEqual(command[-1], "--check-only")
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -400,6 +525,22 @@ def main() -> int:
         )
         failures.extend(offline_failures)
 
+    saved_archives_root = None
+    discovered_saved_archives: dict[str, pathlib.Path] = {}
+    suggested_prepare_command = None
+    if args.expect_saved_archives:
+        saved_archives_root = pathlib.Path(args.saved_archives_root).resolve() if args.saved_archives_root else (
+            repo_root.parent / "memory" / "repo_archives" / "browser"
+        ).resolve()
+        saved_archive_failures, discovered_saved_archives = check_saved_archives_root(saved_archives_root)
+        failures.extend(saved_archive_failures)
+
+        prepare_script_path = repo_root / "scripts" / "linux" / "prepare_offline_build_inputs.sh"
+        if not prepare_script_path.is_file():
+            failures.append(f"offline prepare script is missing: expected {prepare_script_path}")
+        elif all(key in discovered_saved_archives for key in ("browser_deps", "boringssl")):
+            suggested_prepare_command = build_prepare_offline_command(repo_root, discovered_saved_archives)
+
     print(f"Repo root: {repo_root}")
     print(f"Minimum Zig from build.zig.zon: {minimum_zig}")
     if zig_version is not None:
@@ -435,6 +576,17 @@ def main() -> int:
         elif args.require_prebuilt_v8:
             print("Prebuilt V8 archives: none found")
 
+    if saved_archives_root is not None:
+        print(f"Saved archive root: {saved_archives_root}")
+        for key in (*REQUIRED_SAVED_ARCHIVE_KEYS, *OPTIONAL_SAVED_ARCHIVE_KEYS):
+            archive_path = discovered_saved_archives.get(key)
+            state = "ok" if archive_path is not None else "optional missing" if key in OPTIONAL_SAVED_ARCHIVE_KEYS else "missing"
+            location = str(archive_path) if archive_path is not None else SAVED_ARCHIVE_GLOBS[key]
+            print(f"  - {SAVED_ARCHIVE_LABELS[key]}: {location} [{state}]")
+        if suggested_prepare_command is not None:
+            print("Suggested offline staging command:")
+            print(f"  {format_shell_command(suggested_prepare_command)}")
+
     if url_deps:
         print("URL-backed dependencies still need network access or an offline cache:")
         for name in url_deps:
@@ -444,10 +596,12 @@ def main() -> int:
         print("\nReadiness check failed:", file=sys.stderr)
         for failure in failures:
             print(f"  - {failure}", file=sys.stderr)
-        print(
-            "\nSuggested next step: stage sibling dependencies plus ../offline-deps with scripts/linux/prepare_offline_build_inputs.sh, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain.",
-            file=sys.stderr,
+        next_step = (
+            "run the saved-archive restore command above, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain."
+            if suggested_prepare_command is not None
+            else "stage sibling dependencies plus ../offline-deps with scripts/linux/prepare_offline_build_inputs.sh, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain."
         )
+        print(f"\nSuggested next step: {next_step}", file=sys.stderr)
         return 1
 
     print("\nReadiness check passed.")
