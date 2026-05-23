@@ -10,8 +10,8 @@ Usage:
     [--json]
 
 Verify that the branch-local saved-archive-integrity route for the blocked
-issue #3 restore and build-readiness path still has its required docs, helpers,
-and command snippets in place.
+issue #3 recovery work still has its required note, helper, and follow-up
+surfaces in place before a run trusts the saved Memory bundles.
 EOF
 }
 
@@ -46,28 +46,34 @@ done
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
-    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|file|Read-first saved-archive-integrity note for the blocked issue #3 restore and build-readiness path."
-    "scripts/check_issue3_saved_archive_integrity.py|file|Checksum helper that verifies the saved repo snapshot and dependency bundles by SHA-256."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|file|Read-first saved-archive-integrity note for the blocked issue #3 recovery path."
     "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh|file|Fail-fast surface checker for the saved-archive-integrity route."
-    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|file|Compact route printer for the saved-archive-integrity helper flow."
-    "scripts/check_issue3_saved_memory_inputs.py|file|Presence-only saved-Memory preflight that should stay paired with the integrity helper."
-    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Companion saved-browser-snapshot route printer for the next restore step."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Companion Linux build-readiness route printer for the next offline staging step."
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|file|Compact route printer for the saved-archive-integrity path."
+    "scripts/check_issue3_saved_archive_integrity.py|file|SHA-256 helper that verifies the saved repo and dependency bundle fingerprints."
+    "scripts/check_issue3_saved_memory_inputs.py|file|Presence preflight that should follow the checksum route before restore or build work."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Saved-browser-snapshot restore route that should stay reachable after archive verification."
+    "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Linux or WSL build-readiness route that should stay reachable after archive verification."
+    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|file|Direct runtime re-entry route that should stay reachable after archive verification."
+    "build.zig.zon|file|Manifest surface that should still exist before deeper validation begins."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
-    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|scripts/check_issue3_saved_archive_integrity.py|The route note keeps the checksum helper visible."
-    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|--require-fallback-zig|The route note keeps the strict fallback Zig option visible."
-    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The route note keeps the saved-browser-snapshot follow-up visible."
-    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The route note keeps the Linux build-readiness follow-up visible."
-    "scripts/check_issue3_saved_archive_integrity.py|DEFAULT_FALLBACK_ZIG_SHA256|The checksum helper keeps the fallback Zig fingerprint surfaced."
-    "scripts/check_issue3_saved_archive_integrity.py|Saved archive integrity check passed.|The checksum helper reports a clear pass surface."
-    "scripts/check_issue3_saved_archive_integrity.py|--require-fallback-zig|The checksum helper still supports strict fallback Zig enforcement."
-    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|check_issue3_saved_archive_integrity_route_surface.sh|The route printer points back to the fail-fast surface checker."
-    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|check_issue3_saved_archive_integrity.py|The route printer still prints the checksum helper invocation."
-    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|show_issue3_saved_browser_snapshot_route.sh|The route printer keeps the saved-browser-snapshot follow-up visible."
-    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|show_issue3_linux_build_readiness_route.sh|The route printer keeps the Linux build-readiness follow-up visible."
-    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|Fallback Zig archive:|The route printer still prints the fallback Zig surface."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh|The route note keeps the dedicated route surface checker visible."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|scripts/linux/show_issue3_saved_archive_integrity_route.sh|The route note keeps the compact route printer visible."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|scripts/check_issue3_saved_archive_integrity.py|The route note keeps the SHA-256 helper visible."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|--require-fallback-zig|The route note keeps the strict fallback Zig mode visible."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|The route note keeps the saved-Memory presence preflight visible after checksum verification."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The route note keeps the restore route visible after checksum verification."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The route note keeps the build-readiness route visible after checksum verification."
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|show_issue3_enter_submit_runtime_revalidation_route.sh|The route note keeps the runtime re-entry route visible after checksum verification."
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|check_issue3_saved_archive_integrity.py|The route printer still prints the SHA-256 verification command."
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|--require-fallback-zig|The route printer still supports strict fallback Zig verification."
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|show_issue3_saved_browser_snapshot_route.sh|The route printer still prints the saved-browser-snapshot follow-up route."
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|show_issue3_linux_build_readiness_route.sh|The route printer still prints the Linux or WSL build-readiness follow-up route."
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|show_issue3_enter_submit_runtime_revalidation_route.sh|The route printer still prints the runtime re-entry follow-up route."
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|Saved-Memory presence preflight:|The route printer still prints the post-checksum presence preflight."
+    "scripts/check_issue3_saved_archive_integrity.py|DEFAULT_FALLBACK_ZIG_SHA256|The SHA-256 helper still exposes the expected fallback Zig fingerprint."
+    "scripts/check_issue3_saved_archive_integrity.py|Suggested next step: refresh the mismatched archive|The SHA-256 helper still reports the mismatch recovery guidance."
 )
 
 json_escape() {
@@ -177,4 +183,5 @@ if [[ "${missing_count}" -gt 0 ]]; then
 fi
 
 echo
-echo "All saved-archive-integrity route surfaces are present."
+
+echo "All saved archive integrity route surfaces are present."
