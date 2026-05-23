@@ -64,7 +64,24 @@ switch ($true) {
     }
 }
 """,
-    "scripts/windows/check_google_shared_enter_order_validation_surface.ps1": "# placeholder\n",
+    "scripts/windows/check_google_shared_enter_order_validation_surface.ps1": r"""
+New-ValidationReference -Path "docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the shared Enter-order ladder."
+New-ValidationReference -Path "docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md" -Kind "file" -Purpose "Read-first note for the final shared form-controls gate."
+New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Windows headed runbook that routes into the shared Enter-order helpers."
+New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Shared headed validation suite router that should keep the google-shared-enter-order slice reachable from the broader catalog."
+New-ValidationReference -Path "scripts/windows/show_google_shared_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the shared Enter-order slice."
+New-ValidationReference -Path "scripts/windows/run_google_shared_enter_order_validation.ps1" -Kind "file" -Purpose "One-command shared Enter-order runner."
+New-ValidationReference -Path "scripts/windows/check_google_form_controls_enter_order_validation_surface.ps1" -Kind "file" -Purpose "Dedicated fail-fast checker for the final shared form-controls gate."
+New-ValidationReference -Path "scripts/windows/show_google_form_controls_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Printed command ladder for the final shared form-controls gate."
+New-ValidationReference -Path "scripts/windows/run_google_form_controls_enter_order_validation.ps1" -Kind "file" -Purpose "Dedicated shared form-controls Enter-order runner."
+New-ValidationReference -Path "scripts/windows/run_google_input_validation.ps1" -Kind "file" -Purpose "Shared baseline runner used before the stricter Enter-order probes."
+New-ValidationReference -Path "tmp-browser-smoke/google-investigation-next/chrome-google-title-probe.ps1" -Kind "file" -Purpose "Reduced localhost Google title probe used before the Enter-order wrapper."
+New-ValidationReference -Path "tmp-browser-smoke/google-home/chrome-google-home-keypress-submit-probe.ps1" -Kind "file" -Purpose "Reduced homepage keypress-before-submit probe."
+New-ValidationReference -Path "tmp-browser-smoke/google-investigation-next/google-enter-order-localhost-probe.ps1" -Kind "file" -Purpose "Localhost Enter-order wrapper used before broader replay."
+New-ValidationReference -Path "tmp-browser-smoke/form-controls/google-enter-order-probe.ps1" -Kind "file" -Purpose "Smallest shared form-controls Enter-order probe on the real headed surface."
+New-ValidationReference -Path "tmp-browser-smoke/form-controls/enter-submit-probe.ps1" -Kind "file" -Purpose "Reusable click-first shared probe that mirrors the Google-shaped Enter path before the dedicated form-controls gate."
+New-ValidationReference -Path "tmp-browser-smoke/form-controls/README.md" -Kind "file" -Purpose "Shared form-controls suite note for the final bounded gate."
+""",
     "scripts/windows/show_google_shared_enter_order_validation_flow.ps1": r"""
 $suiteRouterNextSteps = '.\scripts\windows\show_google_issue3_suite_router_next_steps.ps1'
 $replayRoute = '.\scripts\windows\show_google_issue3_replay_route.ps1'
@@ -77,32 +94,63 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
-        "Use powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus -InputText 'Q' -Port 8157 when you want the reusable shared page to replay the same click-first Google-shaped path before you hand off to the dedicated form-controls ladder.",
-        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1 when you want only the dedicated shared form-controls gate printed with the same repo-root, browser, host, shared input, and timing context before you run it.",
-        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1 when you want the dedicated gate markers translated into click-focus, typed-text, keypress, and submit failure stages without reconstructing the current shared Enter-order context by hand.",
-        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 when you want this stack folded back into the broader localhost-first issue #3 flow with the same repo-root, browser, host, shared input, Enter mutation, and timing settings.",
-        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1 when you want the later live-trace handoff reopened with the same repo-root, browser, host, shared input, and bounded wait settings before the next real Google capture.",
         "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 when you want the higher-level issue #3 next-step matrix reopened with the same repo-root, saved summary, pinned input paths, browser override, host, and shared input context before choosing between replay shortcuts, the attached bundle branch, or the safe-route wrapper chain.",
         "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 when you want the broader issue #3 replay bridge reopened with the same repo-root, saved summary, and pinned input-path context before you widen back out from the shared Enter-order slice.",
-        "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, shared click-first fallback, and both Enter-order probes stay green together.",
-        "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1 when you want the later live-trace handoff reopened with the same repo-root, browser, host, shared input, and bounded wait settings before the next real Google capture."
     )
     notes = @(
         "The printed next-step commands now preserve the current repo root, custom browser path, host, shared input, Enter mutation, and timing settings where those later helpers support them, including the live-trace handoff.",
-        "When SummaryPath or InputPath are supplied, the suite-router next-step and replay-route helpers now keep that same saved-summary or pinned-bundle context attached instead of dropping back to generic route defaults.",
-        "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, shared click-first fallback, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
-        "The localhost wrapper, the shared click-first fallback, and the dedicated form-controls probe all default to the shared Enter-order port on purpose so one port override keeps the whole Enter-order slice aligned.",
-        "The higher-level issue #3 route helpers reopened from this flow now also keep the current browser override and host context where those downstream helpers support them."
+        "When SummaryPath or InputPath are supplied, the suite-router next-step and replay-route helpers now keep that same saved-summary or pinned-bundle context attached instead of dropping back to generic route defaults."
     )
 }
 """,
-    "scripts/windows/run_google_shared_enter_order_validation.ps1": "# placeholder\n",
+    "scripts/windows/run_google_shared_enter_order_validation.ps1": r"""
+$surfaceCheck = Join-Path $scriptRoot "check_google_shared_enter_order_validation_surface.ps1"
+$sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"
+$googleTitleProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\chrome-google-title-probe.ps1"
+$reducedHomeKeypressProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-home\chrome-google-home-keypress-submit-probe.ps1"
+$localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\google-investigation-next\google-enter-order-localhost-probe.ps1"
+$formControlsEnterOrderSurfaceCheck = Join-Path $scriptRoot "check_google_form_controls_enter_order_validation_surface.ps1"
+$formControlsEnterOrderRunner = Join-Path $scriptRoot "run_google_form_controls_enter_order_validation.ps1"
+
+Write-Host "=== google-shared-enter-order-surface ==="
+& $surfaceCheck @surfaceCheckArgs
+
+Write-Host ""
+& $sharedRunner @sharedArgs
+
+Write-Host ""
+Write-Host "=== google-title-localhost ==="
+Write-Host ("Script: {0}" -f $googleTitleProbe)
+& $googleTitleProbe @titleProbeArgs
+
+Write-Host ""
+Write-Host "=== google-home-keypress-submit ==="
+Write-Host ("Script: {0}" -f $reducedHomeKeypressProbe)
+& $reducedHomeKeypressProbe @reducedHomeKeypressArgs
+
+Write-Host ""
+Write-Host "=== google-enter-order-localhost ==="
+Write-Host ("Script: {0}" -f $localhostEnterOrderProbe)
+& $localhostEnterOrderProbe @localhostEnterOrderArgs
+
+Write-Host ""
+Write-Host "=== form-controls-google-enter-order-surface ==="
+Write-Host ("Script: {0}" -f $formControlsEnterOrderSurfaceCheck)
+& $formControlsEnterOrderSurfaceCheck @formControlsEnterOrderSurfaceCheckArgs
+
+Write-Host ""
+Write-Host "=== form-controls-google-enter-order ==="
+Write-Host ("Script: {0}" -f $formControlsEnterOrderRunner)
+& $formControlsEnterOrderRunner @formControlsEnterOrderArgs
+
+Write-Host ""
+Write-Host "Next: if the shared surface check, shared gates, localhost title probe, reduced-home keypress-before-submit probe, localhost Enter-order wrapper, dedicated shared form-controls surface check, and dedicated shared form-controls Google enter-order runner stay green, move on to the smallest live Google manual pass."
+""",
     "scripts/windows/show_google_form_controls_enter_order_validation_flow.ps1": "# placeholder\n",
     "scripts/windows/show_google_form_controls_enter_order_trace_guide.ps1": "# placeholder\n",
     "scripts/windows/check_google_form_controls_enter_order_validation_surface.ps1": "# placeholder\n",
     "scripts/windows/run_google_form_controls_enter_order_validation.ps1": "# placeholder\n",
-    "scripts/windows/run_google_issue3_recommended_validation.ps1": "# placeholder\n",
-    "scripts/windows/show_google_attached_html_validation_flow.ps1": "# placeholder\n",
     "scripts/windows/show_google_input_validation_flow.ps1": r"""
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order"
 $formControlsEnterOrderSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1"
@@ -172,12 +220,18 @@ class GoogleSharedEnterOrderValidationSurfaceTest(unittest.TestCase):
             cls.repo_root = pathlib.Path(__file__).resolve().parents[2]
 
         cls.router = read_text(cls.repo_root / "scripts/windows/show_headed_validation_suites.ps1")
+        cls.surface_check = read_text(
+            cls.repo_root / "scripts/windows/check_google_shared_enter_order_validation_surface.ps1"
+        )
         cls.google_input_flow = read_text(
             cls.repo_root / "scripts/windows/show_google_input_validation_flow.ps1"
         )
         cls.main_runner = read_text(cls.repo_root / "scripts/windows/run_google_input_validation.ps1")
         cls.shared_flow = read_text(
             cls.repo_root / "scripts/windows/show_google_shared_enter_order_validation_flow.ps1"
+        )
+        cls.shared_runner = read_text(
+            cls.repo_root / "scripts/windows/run_google_shared_enter_order_validation.ps1"
         )
         cls.shared_probe = read_text(cls.repo_root / "tmp-browser-smoke/form-controls/enter-submit-probe.ps1")
 
@@ -228,6 +282,27 @@ class GoogleSharedEnterOrderValidationSurfaceTest(unittest.TestCase):
         ):
             self.assertTrue((self.repo_root / relative_path).exists(), f"{relative_path} should exist")
 
+    def test_shared_surface_checker_keeps_docs_and_probe_references(self) -> None:
+        for fragment in (
+            "docs/GOOGLE_SHARED_ENTER_ORDER_VALIDATION.md",
+            "docs/GOOGLE_FORM_CONTROLS_ENTER_ORDER_VALIDATION.md",
+            "docs/WINDOWS_FULL_USE.md",
+            "show_headed_validation_suites.ps1",
+            "show_google_shared_enter_order_validation_flow.ps1",
+            "run_google_shared_enter_order_validation.ps1",
+            "check_google_form_controls_enter_order_validation_surface.ps1",
+            "show_google_form_controls_enter_order_validation_flow.ps1",
+            "run_google_form_controls_enter_order_validation.ps1",
+            "run_google_input_validation.ps1",
+            "chrome-google-title-probe.ps1",
+            "chrome-google-home-keypress-submit-probe.ps1",
+            "google-enter-order-localhost-probe.ps1",
+            "google-enter-order-probe.ps1",
+            "enter-submit-probe.ps1",
+            "tmp-browser-smoke/form-controls/README.md",
+        ):
+            self.assertIn(fragment, self.surface_check)
+
     def test_google_input_flow_keeps_shared_enter_order_and_dedicated_form_controls_handoff(self) -> None:
         for fragment in (
             "shared-enter-order",
@@ -268,25 +343,24 @@ class GoogleSharedEnterOrderValidationSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.shared_flow)
 
-    def test_shared_flow_keeps_click_focus_dedicated_and_recommended_next_steps(self) -> None:
+    def test_shared_runner_keeps_surface_to_dedicated_probe_sequence(self) -> None:
         for fragment in (
-            "enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus",
-            "show_google_form_controls_enter_order_validation_flow.ps1",
-            "show_google_form_controls_enter_order_trace_guide.ps1",
-            "run_google_issue3_recommended_validation.ps1",
-            "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, shared click-first fallback, and both Enter-order probes stay green together.",
-            r".\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up",
+            '$surfaceCheck = Join-Path $scriptRoot "check_google_shared_enter_order_validation_surface.ps1"',
+            '$sharedRunner = Join-Path $scriptRoot "run_google_input_validation.ps1"',
+            '$googleTitleProbe = Join-Path $RepoRoot "tmp-browser-smoke\\google-investigation-next\\chrome-google-title-probe.ps1"',
+            '$reducedHomeKeypressProbe = Join-Path $RepoRoot "tmp-browser-smoke\\google-home\\chrome-google-home-keypress-submit-probe.ps1"',
+            '$localhostEnterOrderProbe = Join-Path $RepoRoot "tmp-browser-smoke\\google-investigation-next\\google-enter-order-localhost-probe.ps1"',
+            '$formControlsEnterOrderSurfaceCheck = Join-Path $scriptRoot "check_google_form_controls_enter_order_validation_surface.ps1"',
+            '$formControlsEnterOrderRunner = Join-Path $scriptRoot "run_google_form_controls_enter_order_validation.ps1"',
+            '=== google-shared-enter-order-surface ===',
+            '=== google-title-localhost ===',
+            '=== google-home-keypress-submit ===',
+            '=== google-enter-order-localhost ===',
+            '=== form-controls-google-enter-order-surface ===',
+            '=== form-controls-google-enter-order ===',
+            "shared surface check, shared gates, localhost title probe, reduced-home keypress-before-submit probe, localhost Enter-order wrapper, dedicated shared form-controls surface check, and dedicated shared form-controls Google enter-order runner stay green",
         ):
-            self.assertIn(fragment, self.shared_flow)
-
-    def test_shared_flow_notes_keep_shared_input_port_and_host_context_guidance(self) -> None:
-        for fragment in (
-            "same SharedInputText across the whole stack",
-            "shared click-first fallback",
-            "shared Enter-order port on purpose",
-            "current browser override and host context",
-        ):
-            self.assertIn(fragment, self.shared_flow)
+            self.assertIn(fragment, self.shared_runner)
 
     def test_shared_click_focus_probe_keeps_explicit_headed_launch(self) -> None:
         assert_explicit_headed_launch(self, self.shared_probe, "shared click-focus probe")
