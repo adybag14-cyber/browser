@@ -6,7 +6,7 @@ This helper condenses the two hard gates from docs/ISSUE3_RUNTIME_REENTRY_GATES.
 into one command:
 
 1. publication gate: can this checkout safely carry a direct Page.zig and
-   win32_backend.zig edit?
+   win32_backend.zig edit, or does a reusable restored checkout exist?
 2. toolchain gate: does the checkout have the saved inputs, a matching Zig line,
    and the sibling dependency shape needed for honest Linux/WSL validation?
 """
@@ -31,6 +31,22 @@ SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
 PAGE_PATH = "src/browser/Page.zig"
 WIN32_PATH = "src/display/win32_backend.zig"
 DEFAULT_MEMORY_CHECKER = "scripts/check_issue3_saved_memory_inputs.py"
+DEFAULT_RESTORED_CHECKOUT_NAME = "browser-memory-snapshot"
+HELPER_SURFACE = (
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+    "scripts/check_issue3_saved_memory_inputs.py",
+    "scripts/check_linux_build_readiness.py",
+    "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
+    "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
+    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+    "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
+    "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
+    "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py",
+)
 
 
 def parse_semver(text: str) -> tuple[int, int, int]:
@@ -113,13 +129,42 @@ def discover_zig_candidates(toolchains_root: Path, minimum_zig: str) -> tuple[li
     return reports, first_match
 
 
-def check_publication_gate(repo_root: Path) -> dict[str, object]:
+def helper_surface_missing(repo_root: Path) -> list[str]:
+    return [relative_path for relative_path in HELPER_SURFACE if not (repo_root / relative_path).is_file()]
+
+
+def default_restored_checkout_root(repo_root: Path) -> Path:
+    return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
+
+
+def restored_checkout_status(restored_checkout_root: Path) -> dict[str, object]:
+    build_manifest = restored_checkout_root / "build.zig.zon"
+    exists = restored_checkout_root.is_dir()
+    ready = exists and build_manifest.is_file()
+    reasons: list[str] = []
+    if not exists:
+        reasons.append(f"restored checkout is missing: {restored_checkout_root}")
+    elif not build_manifest.is_file():
+        reasons.append(f"restored checkout is incomplete: {build_manifest} is missing")
+    return {
+        "path": str(restored_checkout_root),
+        "exists": exists,
+        "ready": ready,
+        "reasons": reasons,
+    }
+
+
+def current_checkout_publication_status(repo_root: Path) -> dict[str, object]:
     target_files = [repo_root / PAGE_PATH, repo_root / WIN32_PATH]
     missing = [str(path.relative_to(repo_root)) for path in target_files if not path.is_file()]
-    not_writable = [str(path.relative_to(repo_root)) for path in target_files if path.exists() and not path.stat().st_mode & 0o200]
+    not_writable = [
+        str(path.relative_to(repo_root))
+        for path in target_files
+        if path.exists() and not path.stat().st_mode & 0o200
+    ]
     git_dir = repo_root / ".git"
     build_zon = repo_root / "build.zig.zon"
-    passed = not missing and not not_writable and git_dir.exists() and build_zon.is_file()
+    ready = not missing and not not_writable and git_dir.exists() and build_zon.is_file()
 
     reasons: list[str] = []
     if missing:
@@ -131,15 +176,41 @@ def check_publication_gate(repo_root: Path) -> dict[str, object]:
     if not build_zon.is_file():
         reasons.append("build.zig.zon is missing from the repo root")
 
-    next_step = (
-        "publication gate open"
-        if passed
-        else "restore or switch into a writable checkout before retrying the direct Page.zig and win32_backend.zig patch"
-    )
+    return {
+        "ready": ready,
+        "reasons": reasons,
+        "target_files": [PAGE_PATH, WIN32_PATH],
+    }
+
+
+def check_publication_gate(repo_root: Path, restored_checkout_root: Path) -> dict[str, object]:
+    current_checkout = current_checkout_publication_status(repo_root)
+    restored_checkout = restored_checkout_status(restored_checkout_root)
+    missing_helpers = helper_surface_missing(repo_root)
+    passed = not missing_helpers and (current_checkout["ready"] or restored_checkout["ready"])
+
+    reasons = list(current_checkout["reasons"]) + list(restored_checkout["reasons"])
+    if missing_helpers:
+        reasons.append("missing runtime helper surface: " + ", ".join(missing_helpers))
+
+    if passed:
+        next_step = "publication gate open"
+    elif current_checkout["ready"] and missing_helpers:
+        next_step = "restore the missing runtime helper files before retrying the direct runtime patch"
+    elif restored_checkout["ready"] and not missing_helpers:
+        next_step = "switch into the reusable restored checkout before retrying the direct runtime patch"
+    else:
+        next_step = (
+            "restore or switch into a writable checkout, then confirm the helper surface before retrying "
+            "the direct Page.zig and win32_backend.zig patch"
+        )
+
     return {
         "passed": passed,
         "reasons": reasons,
-        "target_files": [PAGE_PATH, WIN32_PATH],
+        "current_checkout": current_checkout,
+        "restored_checkout": restored_checkout,
+        "helper_surface_missing": missing_helpers,
         "next_step": next_step,
     }
 
@@ -173,8 +244,9 @@ def check_toolchain_gate(repo_root: Path, toolchains_root: Path, memory_checker:
     if not installed_ok:
         reasons.append(f"configured zig probe failed: {installed_version}")
     elif not installed_matches:
+        expected = parse_semver(minimum_zig)
         reasons.append(
-            f"configured zig is on {installed_version}, which does not match the branch's {parse_semver(minimum_zig)[0]}.{parse_semver(minimum_zig)[1]}.x line"
+            f"configured zig is on {installed_version}, which does not match the branch's {expected[0]}.{expected[1]}.x line"
         )
     if matching_candidate is None:
         reasons.append(f"no staged Zig candidate under {toolchains_root} matches the branch's {minimum_zig} line")
@@ -204,8 +276,14 @@ def check_toolchain_gate(repo_root: Path, toolchains_root: Path, memory_checker:
     }
 
 
-def build_result(repo_root: Path, toolchains_root: Path, memory_checker: Path, zig_cmd: str) -> dict[str, object]:
-    publication_gate = check_publication_gate(repo_root)
+def build_result(
+    repo_root: Path,
+    toolchains_root: Path,
+    memory_checker: Path,
+    zig_cmd: str,
+    restored_checkout_root: Path,
+) -> dict[str, object]:
+    publication_gate = check_publication_gate(repo_root, restored_checkout_root)
     toolchain_gate = check_toolchain_gate(repo_root, toolchains_root, memory_checker, zig_cmd)
     return {
         "repo_root": str(repo_root),
@@ -230,6 +308,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--memory-checker",
         default=None,
         help="Path to scripts/check_issue3_saved_memory_inputs.py (default: branch-local helper)",
+    )
+    parser.add_argument(
+        "--restored-checkout-root",
+        default=None,
+        help=f"Path to the reusable restored checkout (default: ../{DEFAULT_RESTORED_CHECKOUT_NAME} beside the repo root)",
     )
     parser.add_argument("--json", action="store_true", help="Emit structured JSON output")
     parser.add_argument("--self-test", action="store_true", help="Run focused unit tests and exit")
@@ -256,21 +339,38 @@ class RuntimeReentryGateTests(unittest.TestCase):
         )
         (repo_root / PAGE_PATH).write_text("// page", encoding="utf-8")
         (repo_root / WIN32_PATH).write_text("// win32", encoding="utf-8")
+        for relative_path in HELPER_SURFACE:
+            target = repo_root / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("helper", encoding="utf-8")
         return repo_root
 
     def test_publication_gate_passes_for_writable_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = self.create_repo(Path(tmpdir))
-            result = check_publication_gate(repo_root)
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            result = check_publication_gate(repo_root, root / "missing-checkout")
             self.assertTrue(result["passed"])
 
-    def test_publication_gate_fails_without_git_dir(self) -> None:
+    def test_publication_gate_uses_restored_checkout_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = self.create_repo(Path(tmpdir))
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
             (repo_root / ".git").rmdir()
-            result = check_publication_gate(repo_root)
+            restored_checkout = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            restored_checkout.mkdir()
+            (restored_checkout / "build.zig.zon").write_text("{}", encoding="utf-8")
+            result = check_publication_gate(repo_root, restored_checkout)
+            self.assertTrue(result["passed"])
+
+    def test_publication_gate_reports_missing_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            (repo_root / "docs/ISSUE3_RUNTIME_REENTRY_GATES.md").unlink()
+            result = check_publication_gate(repo_root, root / "missing-checkout")
             self.assertFalse(result["passed"])
-            self.assertIn("local .git directory", result["reasons"][0])
+            self.assertIn("ISSUE3_RUNTIME_REENTRY_GATES.md", result["helper_surface_missing"][0])
 
     def test_discover_zig_candidates_finds_matching_line(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -314,7 +414,13 @@ class RuntimeReentryGateTests(unittest.TestCase):
             repo_root = self.create_repo(root)
             checker = root / "checker.py"
             checker.write_text("import sys\nsys.exit(1)\n", encoding="utf-8")
-            result = build_result(repo_root, root / "toolchains", checker, "zig")
+            result = build_result(
+                repo_root,
+                root / "toolchains",
+                checker,
+                "zig",
+                root / "missing-checkout",
+            )
             self.assertFalse(result["ready_for_direct_issue3_runtime_patch"])
 
 
@@ -323,19 +429,17 @@ def emit_text(result: dict[str, object]) -> None:
     toolchain_gate = result["toolchain_gate"]
     print(f"Repo root: {result['repo_root']}")
     print("Issue #3 runtime re-entry gates:")
-    print(
-        f"  - publication gate: {'PASS' if publication_gate['passed'] else 'FAIL'}"
-    )
+    print(f"  - publication gate: {'PASS' if publication_gate['passed'] else 'FAIL'}")
+    print(f"    current checkout ready: {publication_gate['current_checkout']['ready']}")
+    print(f"    restored checkout ready: {publication_gate['restored_checkout']['ready']}")
+    if publication_gate["helper_surface_missing"]:
+        print("    missing helper surface: " + ", ".join(publication_gate["helper_surface_missing"]))
     for reason in publication_gate["reasons"]:
         print(f"    {reason}")
     print(f"    next: {publication_gate['next_step']}")
-    print(
-        f"  - toolchain gate: {'PASS' if toolchain_gate['passed'] else 'FAIL'}"
-    )
+    print(f"  - toolchain gate: {'PASS' if toolchain_gate['passed'] else 'FAIL'}")
     print(f"    minimum zig: {toolchain_gate['minimum_zig']}")
-    print(
-        f"    configured zig: {toolchain_gate['configured_zig']['version']}"
-    )
+    print(f"    configured zig: {toolchain_gate['configured_zig']['version']}")
     if toolchain_gate["matching_candidate"] is not None:
         print(
             "    matching staged zig: "
@@ -347,16 +451,13 @@ def emit_text(result: dict[str, object]) -> None:
     print(f"    next: {toolchain_gate['next_step']}")
     print()
     ready = result["ready_for_direct_issue3_runtime_patch"]
-    print(
-        "Direct issue #3 runtime patch readiness: "
-        + ("READY" if ready else "BLOCKED")
-    )
+    print("Direct issue #3 runtime patch readiness: " + ("READY" if ready else "BLOCKED"))
 
 
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
-    if args.self_test:
+    if args.self-test:
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(RuntimeReentryGateTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
@@ -372,7 +473,12 @@ def main() -> int:
         if args.memory_checker
         else (repo_root / DEFAULT_MEMORY_CHECKER).resolve()
     )
-    result = build_result(repo_root, toolchains_root, memory_checker, args.zig)
+    restored_checkout_root = (
+        Path(args.restored_checkout_root).resolve()
+        if args.restored_checkout_root
+        else default_restored_checkout_root(repo_root)
+    )
+    result = build_result(repo_root, toolchains_root, memory_checker, args.zig, restored_checkout_root)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
