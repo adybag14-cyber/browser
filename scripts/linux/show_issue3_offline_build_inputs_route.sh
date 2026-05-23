@@ -90,8 +90,8 @@ HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/02-litefetch-html5ever-linux-x86_64-de
 
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_offline_build_inputs_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_MEMORY_INPUTS_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root $(format_shell_arg "${REPO_ROOT}")"
-PREPARE_CHECK_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}") --html5ever-archive $(format_shell_arg "${HTML5EVER_ARCHIVE}") --check-only"
-PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}") --html5ever-archive $(format_shell_arg "${HTML5EVER_ARCHIVE}")"
+PREPARE_CHECK_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}") --html5ever-archive $(format_shell_arg "${HTML5EVER_ARCHIVE}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --check-only"
+PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}") --html5ever-archive $(format_shell_arg "${HTML5EVER_ARCHIVE}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_rust_toolchain_route.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 ZIG_ROUTE_COMMAND="bash scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 POST_STAGE_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --expect-offline-deps --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
@@ -125,6 +125,7 @@ print(json.dumps({
         "Run the saved_memory_inputs command before the restore commands when the route depends on the saved repo snapshot and dependency bundles.",
         "Use the prepare_check_only command to confirm the archive paths and the resolved zig-v8-fork, boringssl-zig, and offline-deps targets before mutating the workspace.",
         "Use the prepare_restore command to stage the sibling dependency layout expected by build.zig.zon from the saved archives.",
+        "Keep a caller-provided offline-deps root on this route so the restore commands and the post-stage readiness check stay aligned on the same staged location.",
         "After staging completes, use the saved_rust_route and zig_toolchain_route helpers before trusting any focused Zig result.",
         "Use the post_stage_readiness command to confirm the saved archives and offline-dependency layout before reopening broader build-readiness or runtime re-entry work."
     ]
@@ -181,6 +182,7 @@ Working rules
   - Run the surface check first so missing docs or helper drift fails before the route starts blaming archive or dependency state.
   - Run the saved Memory input preflight before the restore commands when the route depends on the saved repo snapshot and dependency bundles.
   - Use the offline restore surface check before mutation so the resolved zig-v8-fork, boringssl-zig, and offline-deps targets are visible on one helper surface.
+  - Keep a caller-provided offline-deps root on this route so the restore commands and the post-stage readiness check point at the same staged location.
   - Keep the raw restore command on this route instead of rebuilding the archive arguments by hand.
   - After staging finishes, move to the saved Rust toolchain route and the Zig toolchain recovery route before trusting focused Zig output.
   - Do not treat missing sibling dependencies or offline-deps folders as a source regression before this route has been replayed.
