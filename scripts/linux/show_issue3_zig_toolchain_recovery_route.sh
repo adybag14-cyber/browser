@@ -8,6 +8,8 @@ Usage:
   bash scripts/linux/show_issue3_zig_toolchain_recovery_route.sh \
     [--repo-root /path/to/browser-repo] \
     [--toolchains-root /path/to/toolchains] \
+    [--saved-archives-root /path/to/memory/repo_archives/browser/dependencies] \
+    [--offline-deps-root /path/to/offline-deps] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
@@ -21,6 +23,8 @@ SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
 TOOLCHAINS_ROOT=""
+SAVED_ARCHIVES_ROOT=""
+OFFLINE_DEPS_ROOT=""
 FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
@@ -32,6 +36,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --toolchains-root)
             TOOLCHAINS_ROOT="$2"
+            shift 2
+            ;;
+        --saved-archives-root)
+            SAVED_ARCHIVES_ROOT="$2"
+            shift 2
+            ;;
+        --offline-deps-root)
+            OFFLINE_DEPS_ROOT="$2"
             shift 2
             ;;
         --fallback-zig-archive)
@@ -58,6 +70,12 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
     TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
 fi
+if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser/dependencies"
+fi
+if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+    OFFLINE_DEPS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/offline-deps"
+fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
@@ -65,7 +83,7 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     fi
 fi
 
-python3 - "${REPO_ROOT}" "${TOOLCHAINS_ROOT}" "${FALLBACK_ZIG_ARCHIVE}" "${JSON}" <<'PY'
+python3 - "${REPO_ROOT}" "${TOOLCHAINS_ROOT}" "${SAVED_ARCHIVES_ROOT}" "${OFFLINE_DEPS_ROOT}" "${FALLBACK_ZIG_ARCHIVE}" "${JSON}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -77,8 +95,10 @@ import sys
 
 repo_root = pathlib.Path(sys.argv[1]).resolve()
 toolchains_root = pathlib.Path(sys.argv[2]).resolve()
-fallback_zig_archive = sys.argv[3]
-emit_json = sys.argv[4] == "1"
+saved_archives_root = pathlib.Path(sys.argv[3]).resolve()
+offline_deps_root = pathlib.Path(sys.argv[4]).resolve()
+fallback_zig_archive = sys.argv[5]
+emit_json = sys.argv[6] == "1"
 
 build_zon = repo_root / "build.zig.zon"
 if not build_zon.is_file():
@@ -110,6 +130,10 @@ def classify(actual: str) -> str:
     if actual_parts[:2] == minimum_parts[:2]:
         return "matches-expected-line"
     return "mismatched-line"
+
+
+def format_command(parts: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in parts)
 
 
 patterns = ("zig*/zig", "zig*/bin/zig", "*/zig", "*/bin/zig", "zig")
@@ -148,28 +172,59 @@ matching_candidate = next(
     None,
 )
 
-surface_check_command = (
-    "bash scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh "
-    f"--repo-root {shlex.quote(str(repo_root))}"
+surface_check_command = format_command(
+    [
+        "bash",
+        "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+        "--repo-root",
+        str(repo_root),
+    ]
 )
-discovery_command = (
-    "python scripts/check_linux_build_readiness.py "
-    f"--repo-root {shlex.quote(str(repo_root))} "
-    "--skip-zig-check --skip-rust-check --expect-saved-archives"
-)
+discovery_parts = [
+    "python",
+    "scripts/check_linux_build_readiness.py",
+    "--repo-root",
+    str(repo_root),
+    "--skip-zig-check",
+    "--skip-rust-check",
+    "--expect-saved-archives",
+    "--saved-archives-root",
+    str(saved_archives_root),
+    "--toolchains-root",
+    str(toolchains_root),
+]
+if fallback_zig_archive:
+    discovery_parts.extend(("--fallback-zig-archive", fallback_zig_archive))
+discovery_command = format_command(discovery_parts)
 matching_readiness_command = None
 if matching_candidate is not None:
-    matching_readiness_command = (
-        "python scripts/check_linux_build_readiness.py "
-        f"--repo-root {shlex.quote(str(repo_root))} "
-        f"--zig {shlex.quote(matching_candidate['path'])} "
-        "--expect-saved-archives --expect-offline-deps --require-prebuilt-v8"
-    )
+    matching_parts = [
+        "python",
+        "scripts/check_linux_build_readiness.py",
+        "--repo-root",
+        str(repo_root),
+        "--zig",
+        matching_candidate["path"],
+        "--expect-saved-archives",
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--expect-offline-deps",
+        "--offline-deps-root",
+        str(offline_deps_root),
+        "--require-prebuilt-v8",
+        "--toolchains-root",
+        str(toolchains_root),
+    ]
+    if fallback_zig_archive:
+        matching_parts.extend(("--fallback-zig-archive", fallback_zig_archive))
+    matching_readiness_command = format_command(matching_parts)
 
 result = {
     "issue": "Google issue #3 Zig toolchain recovery route",
     "repo_root": str(repo_root),
     "toolchains_root": str(toolchains_root),
+    "saved_archives_root": str(saved_archives_root),
+    "offline_deps_root": str(offline_deps_root),
     "minimum_zig": minimum_zig,
     "fallback_zig_archive": fallback_zig_archive,
     "matching_candidate": matching_candidate["path"] if matching_candidate else "",
@@ -191,6 +246,8 @@ print("Google issue #3 Zig toolchain recovery route")
 print()
 print(f"Repo root:            {repo_root}")
 print(f"Toolchains root:      {toolchains_root}")
+print(f"Saved archives root:  {saved_archives_root}")
+print(f"Offline deps root:    {offline_deps_root}")
 print(f"Minimum Zig line:     {minimum_zig}")
 print(
     "Fallback Zig archive: "
@@ -261,8 +318,8 @@ if matching_readiness_command is not None:
         f"{minimum_zig.rsplit('.', 1)[0]}.x Zig line."
     )
     print(
-        "  - Keep the saved-archive and offline-dependency checks in place when "
-        "rerunning readiness with the matching toolchain."
+        "  - Keep the saved-archive, offline-dependency, and fallback-Zig path "
+        "surfaces aligned with the current workspace when rerunning readiness."
     )
     print(
         "  - Only reopen the direct Page.zig plus win32_backend.zig runtime "
