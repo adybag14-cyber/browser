@@ -7,7 +7,11 @@ param(
     [string[]]$ExpectedTitleContainsAny = @(),
     [string]$ExpectedTypedTitleContains,
     [string]$ExpectedEnterTitleContains,
+    [string]$ExpectedClickTitleContains,
+    [string[]]$ExpectedClickTitleContainsAny = @(),
     [string]$InputText,
+    [int]$ClickClientX = -1,
+    [int]$ClickClientY = -1,
     [int]$TimeoutSeconds = 90,
     [int]$PollMilliseconds = 250,
     [switch]$SendEnter,
@@ -53,6 +57,21 @@ foreach ($marker in $ExpectedTitleContainsAny) {
     }
 }
 
+$clickMarkers = New-Object System.Collections.Generic.List[string]
+if (-not [string]::IsNullOrWhiteSpace($ExpectedClickTitleContains)) {
+    $clickMarkers.Add($ExpectedClickTitleContains)
+}
+foreach ($marker in $ExpectedClickTitleContainsAny) {
+    if ([string]::IsNullOrWhiteSpace($marker)) {
+        continue
+    }
+    if (-not $clickMarkers.Contains($marker)) {
+        $clickMarkers.Add($marker)
+    }
+}
+
+$clickRequested = $ClickClientX -ge 0 -and $ClickClientY -ge 0
+
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = $BrowserExe
 $psi.Arguments = "browse --browser_mode headed --window_width 1366 --window_height 768 `"$Url`""
@@ -71,6 +90,8 @@ $stderrTask = $process.StandardError.ReadToEndAsync()
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $lastTitle = ""
 $matchedReady = ($readyMarkers.Count -eq 0)
+$clickSent = -not $clickRequested
+$matchedClick = -not $clickRequested
 $matchedTyped = [string]::IsNullOrEmpty($InputText)
 $matchedEnter = -not $SendEnter
 $inputSent = [string]::IsNullOrEmpty($InputText)
@@ -81,6 +102,11 @@ $readyMarkerMatched = $null
 $readyObservedAtUtc = $null
 $readyTitle = $null
 $readyTitleState = $null
+$clickMarkerMatched = $null
+$clickObservedAtUtc = $null
+$clickTitle = $null
+$clickTitleState = $null
+$titleAtClickSend = $null
 $inputSentAtUtc = $null
 $titleAtInputSend = $null
 $typedObservedAtUtc = $null
@@ -138,6 +164,12 @@ Write-Host ("Watching headed probe at {0}" -f $Url)
 if ($readyMarkers.Count -gt 0) {
     Write-Host ("Expected ready title markers: {0}" -f ($readyMarkers -join " | "))
 }
+if ($clickRequested) {
+    Write-Host ("Click coordinates: {0},{1}" -f $ClickClientX, $ClickClientY)
+}
+if ($clickMarkers.Count -gt 0) {
+    Write-Host ("Expected click title markers: {0}" -f ($clickMarkers -join " | "))
+}
 if ($InputText) {
     Write-Host ("Input text: {0}" -f $InputText)
 }
@@ -145,7 +177,7 @@ if ($ExpectedTypedTitleContains) {
     Write-Host ("Expected typed title marker: {0}" -f $ExpectedTypedTitleContains)
 }
 if ($SendEnter) {
-    Write-Host "Enter will be sent after the ready or typed condition is met."
+    Write-Host "Enter will be sent after the ready, click, or typed condition is met."
 }
 if ($ExpectedEnterTitleContains) {
     Write-Host ("Expected enter title marker: {0}" -f $ExpectedEnterTitleContains)
@@ -166,6 +198,8 @@ while ((Get-Date) -lt $deadline) {
         $preparedWindow = $true
         if (-not $matchedReady) {
             $failureStage = "ready_marker"
+        } elseif (-not $matchedClick) {
+            $failureStage = "click_marker"
         } elseif (-not $matchedTyped) {
             $failureStage = "typed_marker"
         } elseif (-not $matchedEnter) {
@@ -195,6 +229,49 @@ while ((Get-Date) -lt $deadline) {
                 $readyObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
                 $readyTitle = $title
                 $readyTitleState = $titleState
+                if (-not $matchedClick) {
+                    $failureStage = "click_marker"
+                } elseif (-not $matchedTyped) {
+                    $failureStage = "typed_marker"
+                } elseif (-not $matchedEnter) {
+                    $failureStage = "enter_marker"
+                } else {
+                    $failureStage = $null
+                }
+                break
+            }
+        }
+    }
+
+    if ($matchedReady -and -not $clickSent) {
+        [void](Invoke-SmokeClientClick -Hwnd ([IntPtr]$process.MainWindowHandle) -X $ClickClientX -Y $ClickClientY)
+        $clickSent = $true
+        $titleAtClickSend = $title
+        if ($clickMarkers.Count -eq 0) {
+            $matchedClick = $true
+            $clickObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+            $clickTitle = $title
+            $clickTitleState = $titleState
+            if (-not $matchedTyped) {
+                $failureStage = "typed_marker"
+            } elseif (-not $matchedEnter) {
+                $failureStage = "enter_marker"
+            } else {
+                $failureStage = $null
+            }
+        } else {
+            $failureStage = "click_marker"
+        }
+    }
+
+    if ($clickSent -and -not $matchedClick -and $title) {
+        foreach ($marker in $clickMarkers) {
+            if ($title.Contains($marker)) {
+                $matchedClick = $true
+                $clickMarkerMatched = $marker
+                $clickObservedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+                $clickTitle = $title
+                $clickTitleState = $titleState
                 if (-not $matchedTyped) {
                     $failureStage = "typed_marker"
                 } elseif (-not $matchedEnter) {
@@ -207,7 +284,7 @@ while ((Get-Date) -lt $deadline) {
         }
     }
 
-    if ($matchedReady -and -not $inputSent) {
+    if ($matchedReady -and $matchedClick -and -not $inputSent) {
         Send-SmokeAsciiText $InputText
         $inputSent = $true
         $inputSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
@@ -237,7 +314,7 @@ while ((Get-Date) -lt $deadline) {
         }
     }
 
-    if ($matchedReady -and $matchedTyped -and -not $enterSent) {
+    if ($matchedReady -and $matchedClick -and $matchedTyped -and -not $enterSent) {
         Send-SmokeEnter
         $enterSent = $true
         $enterSentAtUtc = (Get-Date).ToUniversalTime().ToString("o")
@@ -259,14 +336,14 @@ while ((Get-Date) -lt $deadline) {
         $failureStage = $null
     }
 
-    if ($matchedReady -and $matchedTyped -and $matchedEnter -and -not $LeaveOpen) {
+    if ($matchedReady -and $matchedClick -and $matchedTyped -and $matchedEnter -and -not $LeaveOpen) {
         break
     }
 
     Start-Sleep -Milliseconds $PollMilliseconds
 }
 
-if ($process.HasExited -and -not ($matchedReady -and $matchedTyped -and $matchedEnter)) {
+if ($process.HasExited -and -not ($matchedReady -and $matchedClick -and $matchedTyped -and $matchedEnter)) {
     $failureStage = "process_exit"
 }
 
@@ -283,17 +360,29 @@ $result = [pscustomobject]@{
     url = $Url
     expected_title_contains = $ExpectedTitleContains
     expected_title_contains_any = $readyMarkers
+    expected_click_title_contains = $ExpectedClickTitleContains
+    expected_click_title_contains_any = $clickMarkers
     expected_typed_title_contains = $ExpectedTypedTitleContains
     expected_enter_title_contains = $ExpectedEnterTitleContains
     input_text = $InputText
+    click_requested = $clickRequested
+    click_client_x = $ClickClientX
+    click_client_y = $ClickClientY
     send_enter = [bool]$SendEnter
     matched_ready = $matchedReady
+    matched_click = $matchedClick
     matched_typed = $matchedTyped
     matched_enter = $matchedEnter
     matched_ready_marker = $readyMarkerMatched
+    matched_click_marker = $clickMarkerMatched
     ready_observed_at_utc = $readyObservedAtUtc
     ready_title = $readyTitle
     ready_title_state = $readyTitleState
+    click_sent = $clickSent
+    click_observed_at_utc = $clickObservedAtUtc
+    click_title = $clickTitle
+    click_title_state = $clickTitleState
+    title_at_click_send = $titleAtClickSend
     typed_observed_at_utc = $typedObservedAtUtc
     typed_title = $typedTitle
     typed_title_state = $typedTitleState
@@ -321,6 +410,6 @@ $result = [pscustomobject]@{
 $result | ConvertTo-Json -Depth 6 | Set-Content -Path $tracePath -Encoding Ascii
 $result | ConvertTo-Json -Depth 6
 
-if (-not ($matchedReady -and $matchedTyped -and $matchedEnter)) {
+if (-not ($matchedReady -and $matchedClick -and $matchedTyped -and $matchedEnter)) {
     throw "headed probe did not observe the expected title markers"
 }
