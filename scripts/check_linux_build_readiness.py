@@ -14,6 +14,7 @@ This helper is intentionally lightweight:
 from __future__ import annotations
 
 import argparse
+import os
 import pathlib
 import re
 import shlex
@@ -30,6 +31,14 @@ SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
 FALLBACK_ZIG_ARCHIVE_VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
 OFFLINE_DEP_NAMES = ("brotli", "zlib", "nghttp2", "curl")
 PREBUILT_V8_GLOB = "libc_v8_*.a"
+DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+DEFAULT_ZIG_TOOLCHAIN_GLOBS = (
+    "zig*/zig",
+    "zig*/bin/zig",
+    "*/zig",
+    "*/bin/zig",
+    "zig",
+)
 SAVED_ARCHIVE_GLOBS: dict[str, str] = {
     "rust_toolchain": "01-rust-*.tar.xz",
     "html5ever": "02-litefetch-html5ever-*.zip",
@@ -117,6 +126,43 @@ def infer_archive_semver(path: pathlib.Path) -> str | None:
     return match.group(1)
 
 
+def resolve_default_agent_files_root(repo_root: pathlib.Path) -> pathlib.Path:
+    return (repo_root.parent / "agent_files").resolve()
+
+
+def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
+    return (repo_root.parent / "toolchains").resolve()
+
+
+def resolve_fallback_zig_archive(
+    repo_root: pathlib.Path,
+    fallback_zig_archive: pathlib.Path | None,
+) -> pathlib.Path | None:
+    if fallback_zig_archive is not None:
+        return fallback_zig_archive
+
+    candidate = resolve_default_agent_files_root(repo_root) / DEFAULT_FALLBACK_ZIG_ARCHIVE
+    return candidate if candidate.is_file() else None
+
+
+def discover_toolchain_zig_candidates(toolchains_root: pathlib.Path) -> list[pathlib.Path]:
+    if not toolchains_root.exists() or not toolchains_root.is_dir():
+        return []
+
+    candidates: list[pathlib.Path] = []
+    seen: set[pathlib.Path] = set()
+    for pattern in DEFAULT_ZIG_TOOLCHAIN_GLOBS:
+        for path in sorted(toolchains_root.glob(pattern)):
+            if not path.is_file():
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            candidates.append(resolved)
+    return candidates
+
+
 def load_build_metadata(repo_root: pathlib.Path) -> tuple[str, list[tuple[str, pathlib.Path]], list[str]]:
     zon_path = repo_root / "build.zig.zon"
     text = zon_path.read_text(encoding="utf-8")
@@ -175,6 +221,23 @@ def check_zig_version(minimum_zig: str, zig_cmd: str) -> tuple[list[str], str | 
             f"zig {installed} does not match the branch's expected {minimum_parts[0]}.{minimum_parts[1]}.x line"
         )
     return failures, installed
+
+
+def describe_zig_toolchain_candidate(
+    minimum_zig: str,
+    zig_path: pathlib.Path,
+) -> tuple[list[str], str | None, str]:
+    failures, installed = run_version_command(str(zig_path), ["version"], f"zig candidate {zig_path}")
+    if failures or installed is None:
+        return failures, None, "unusable"
+
+    minimum_parts = parse_semver(minimum_zig)
+    installed_parts = parse_semver(installed)
+    if installed_parts < minimum_parts:
+        return [], installed, "older than minimum"
+    if same_version_line(minimum_zig, installed):
+        return [], installed, f"matches expected {minimum_parts[0]}.{minimum_parts[1]}.x line"
+    return [], installed, f"mismatched: expected {minimum_parts[0]}.{minimum_parts[1]}.x line"
 
 
 def check_rust_tools(cargo_cmd: str, rustc_cmd: str) -> tuple[list[str], dict[str, str]]:
@@ -411,6 +474,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional path to the surfaced fallback Zig archive used by the Linux issue #3 recovery route",
     )
     parser.add_argument(
+        "--toolchains-root",
+        default=None,
+        help="Path to a staged Zig toolchains root (default: ../toolchains beside the repo workspace)",
+    )
+    parser.add_argument(
         "--self-test",
         action="store_true",
         help="Run the helper's focused unit tests and exit",
@@ -587,6 +655,69 @@ class ReadinessHelperTests(unittest.TestCase):
             self.assertEqual(version, "0.15.2")
             self.assertIn("matches expected 0.15.x line", status)
 
+    def test_default_roots_follow_workspace_layout(self) -> None:
+        repo_root = pathlib.Path("/tmp/workspace/browser")
+        self.assertEqual(resolve_default_agent_files_root(repo_root), Path("/tmp/workspace/agent_files"))
+        self.assertEqual(resolve_default_toolchains_root(repo_root), Path("/tmp/workspace/toolchains"))
+
+    def test_resolve_fallback_zig_archive_prefers_default_agent_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            repo_root = root / "browser"
+            agent_files_root = root / "agent_files"
+            repo_root.mkdir()
+            agent_files_root.mkdir()
+            fallback_archive = agent_files_root / DEFAULT_FALLBACK_ZIG_ARCHIVE
+            fallback_archive.write_text("zig", encoding="utf-8")
+
+            self.assertEqual(resolve_fallback_zig_archive(repo_root, None), fallback_archive)
+
+    def test_discover_toolchain_zig_candidates_and_describe_versions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            toolchains_root = pathlib.Path(tmpdir)
+            matching_candidate = toolchains_root / "zig-0.15.7" / "zig"
+            mismatched_candidate = toolchains_root / "zig-0.17.0" / "bin" / "zig"
+            older_candidate = toolchains_root / "zig-0.14.1" / "zig"
+            duplicate_candidate = toolchains_root / "zig"
+
+            for candidate, version in (
+                (matching_candidate, "0.15.7"),
+                (mismatched_candidate, "0.17.0-dev.299+a76ce7710"),
+                (older_candidate, "0.14.1"),
+                (duplicate_candidate, "0.15.7"),
+            ):
+                candidate.parent.mkdir(parents=True, exist_ok=True)
+                candidate.write_text(f"#!/usr/bin/env bash\necho {version}\n", encoding="utf-8")
+                os.chmod(candidate, 0o755)
+
+            candidates = discover_toolchain_zig_candidates(toolchains_root)
+
+            self.assertEqual(len(candidates), 4)
+
+            matching_failures, matching_version, matching_status = describe_zig_toolchain_candidate(
+                "0.15.2",
+                matching_candidate,
+            )
+            self.assertEqual(matching_failures, [])
+            self.assertEqual(matching_version, "0.15.7")
+            self.assertIn("matches expected 0.15.x line", matching_status)
+
+            mismatched_failures, mismatched_version, mismatched_status = describe_zig_toolchain_candidate(
+                "0.15.2",
+                mismatched_candidate,
+            )
+            self.assertEqual(mismatched_failures, [])
+            self.assertEqual(mismatched_version, "0.17.0-dev.299+a76ce7710")
+            self.assertIn("mismatched", mismatched_status)
+
+            older_failures, older_version, older_status = describe_zig_toolchain_candidate(
+                "0.15.2",
+                older_candidate,
+            )
+            self.assertEqual(older_failures, [])
+            self.assertEqual(older_version, "0.14.1")
+            self.assertEqual(older_status, "older than minimum")
+
     def test_parser_accepts_fallback_zig_archive(self) -> None:
         parser = build_parser()
 
@@ -631,6 +762,34 @@ def main() -> int:
 
     failures.extend(check_path_dependencies(path_deps))
 
+    toolchains_root = pathlib.Path(args.toolchains_root).resolve() if args.toolchains_root else resolve_default_toolchains_root(repo_root)
+    discovered_zig_candidates = discover_toolchain_zig_candidates(toolchains_root)
+    zig_candidate_reports: list[dict[str, pathlib.Path | str | None]] = []
+    matching_zig_candidates: list[pathlib.Path] = []
+    for candidate in discovered_zig_candidates:
+        candidate_failures, candidate_version, candidate_status = describe_zig_toolchain_candidate(minimum_zig, candidate)
+        failures.extend(candidate_failures)
+        zig_candidate_reports.append(
+            {
+                "path": candidate,
+                "version": candidate_version,
+                "status": candidate_status,
+            }
+        )
+        if candidate_version is not None and candidate_status.startswith("matches expected"):
+            matching_zig_candidates.append(candidate)
+
+    if (
+        not args.skip_zig_check
+        and matching_zig_candidates
+        and (zig_version is None or not same_version_line(minimum_zig, zig_version))
+    ):
+        failures.append(
+            "discovered a staged Zig candidate at "
+            f"{matching_zig_candidates[0]}; rerun with `--zig {matching_zig_candidates[0]}` "
+            "to use the branch-compatible toolchain"
+        )
+
     offline_deps_root = None
     staged_offline_dirs: list[tuple[str, pathlib.Path]] = []
     prebuilt_archives: list[pathlib.Path] = []
@@ -661,6 +820,7 @@ def main() -> int:
             suggested_prepare_command = build_prepare_offline_command(repo_root, discovered_saved_archives)
 
     fallback_zig_archive = pathlib.Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
+    fallback_zig_archive = resolve_fallback_zig_archive(repo_root, fallback_zig_archive)
     fallback_zig_version: str | None = None
     fallback_zig_status: str | None = None
     if fallback_zig_archive is not None:
@@ -701,6 +861,17 @@ def main() -> int:
             elif find_missing_markers(name, dep_path):
                 state = "incomplete"
             print(f"  - {name}: {dep_path} [{state}]")
+
+    print(f"Toolchains root: {toolchains_root}")
+    if zig_candidate_reports:
+        print("Discovered Zig candidates:")
+        for candidate_report in zig_candidate_reports:
+            version_text = candidate_report["version"] or "unknown"
+            print(
+                f"  - {candidate_report['path']} [{version_text}; {candidate_report['status']}]"
+            )
+    else:
+        print("Discovered Zig candidates: none")
 
     if offline_deps_root is not None:
         print(f"Offline dependency root: {offline_deps_root}")
