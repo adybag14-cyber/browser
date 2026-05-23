@@ -48,14 +48,49 @@ EXPECTATIONS = (
     {
         "label": "page_end_deferred_submit_helper_present",
         "path": "src/browser/Page.zig",
-        "snippet": "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {",
+        "snippet": (
+            "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {\n"
+            "    self._defer_native_text_input_enter_submit = false;\n"
+        ),
         "why": "The page runtime should clear deferred native Enter state once the dispatch cycle ends.",
+    },
+    {
+        "label": "page_end_deferred_submit_clears_pending_input",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {\n"
+            "    self._defer_native_text_input_enter_submit = false;\n"
+            "    self._pending_native_enter_submit = null;\n"
+            "}\n"
+        ),
+        "why": (
+            "The page-side deferral bracket should clear any queued submit when "
+            "native Enter dispatch ends so stale pending submits do not leak "
+            "into later input cycles."
+        ),
     },
     {
         "label": "page_apply_deferred_submit_helper_present",
         "path": "src/browser/Page.zig",
-        "snippet": "pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {",
+        "snippet": (
+            "pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {\n"
+            "    const input = self._pending_native_enter_submit orelse return;\n"
+        ),
         "why": "The page runtime needs an apply helper that performs the delayed form submit.",
+    },
+    {
+        "label": "page_apply_deferred_submit_clears_pending_input_before_focus_recheck",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {\n"
+            "    const input = self._pending_native_enter_submit orelse return;\n"
+            "    self._pending_native_enter_submit = null;\n"
+        ),
+        "why": (
+            "The deferred Enter apply helper should clear the queued submit "
+            "before any later guard returns so stale pending state cannot fire "
+            "again after focus or dispatch changes."
+        ),
     },
     {
         "label": "page_apply_deferred_submit_rechecks_focus",
@@ -317,7 +352,7 @@ def run_self_test() -> tuple[bool, list[str]]:
         if not pass_result["ok"]:
             details.append("full synthetic fixture unexpectedly failed")
 
-        missing_label = "win32_enter_deferral_applies_after_keypress"
+        missing_label = "page_apply_deferred_submit_clears_pending_input_before_focus_recheck"
         render_repo(repo_root, missing_label=missing_label)
         fail_result = audit(repo_root)
         if fail_result["ok"]:
