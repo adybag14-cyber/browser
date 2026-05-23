@@ -179,7 +179,7 @@ def build_inventory(repo_root: Path, group_filter: set[str]) -> list[dict[str, o
 
 
 def render_text_report(repo_root: Path, inventory: list[dict[str, object]], missing_only: bool) -> int:
-    visible_rows = [row for row in inventory if row["exists"] or not missing_only]
+    visible_rows = [row for row in inventory if (not row["exists"]) or not missing_only]
     grouped: dict[str, list[dict[str, object]]] = {}
     for row in visible_rows:
         grouped.setdefault(str(row["group"]), []).append(row)
