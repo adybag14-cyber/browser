@@ -38,6 +38,14 @@ DEFAULT_AUDIT_SPECS = (
 )
 
 
+def normalize_selected_surface_names(
+    selected_names: set[str] | list[str] | tuple[str, ...] | None,
+) -> set[str]:
+    if not selected_names:
+        return set()
+    return {name.strip() for name in selected_names if name and name.strip()}
+
+
 def resolve_repo_root(root: str | None) -> Path:
     candidate = Path.cwd() if root is None else Path(root)
     resolved = candidate.expanduser().resolve()
@@ -46,10 +54,16 @@ def resolve_repo_root(root: str | None) -> Path:
     return resolved
 
 
-def build_repo_root_error_matrix(root: str | None, message: str) -> dict[str, object]:
+def build_repo_root_error_matrix(
+    root: str | None,
+    message: str,
+    *,
+    selected_names: set[str] | list[str] | tuple[str, ...] | None = None,
+) -> dict[str, object]:
     repo_root = str(Path.cwd()) if root is None else str(Path(root).expanduser())
     return {
         "repo_root": repo_root,
+        "selected_surfaces": sorted(normalize_selected_surface_names(selected_names)),
         "surface_count": 0,
         "failing_surface_count": 0,
         "total_missing_count": None,
@@ -60,11 +74,37 @@ def build_repo_root_error_matrix(root: str | None, message: str) -> dict[str, ob
     }
 
 
+def build_invalid_surface_selection_matrix(
+    root: str | None,
+    selected_names: set[str] | list[str] | tuple[str, ...],
+    available_names: set[str] | list[str] | tuple[str, ...],
+) -> dict[str, object]:
+    normalized_selected = normalize_selected_surface_names(selected_names)
+    normalized_available = normalize_selected_surface_names(available_names)
+    unknown_names = sorted(normalized_selected - normalized_available)
+    repo_root = str(Path.cwd()) if root is None else str(Path(root).expanduser())
+    return {
+        "repo_root": repo_root,
+        "selected_surfaces": sorted(normalized_selected),
+        "available_surfaces": sorted(normalized_available),
+        "surface_count": 0,
+        "failing_surface_count": 0,
+        "total_missing_count": None,
+        "recommended_focus": None,
+        "surfaces": [],
+        "error_type": "invalid_surface_selection",
+        "error": "unknown surface selection: " + ", ".join(unknown_names),
+    }
+
+
 def load_audit_specs(
     audit_specs: tuple[dict[str, object], ...] | list[dict[str, object]] | None = None,
+    *,
+    selected_names: set[str] | list[str] | tuple[str, ...] | None = None,
 ) -> list[dict[str, object]]:
     specs = DEFAULT_AUDIT_SPECS if audit_specs is None else audit_specs
-    return [
+    normalized_selected = normalize_selected_surface_names(selected_names)
+    loaded_specs = [
         {
             "name": str(spec["name"]),
             "label": str(spec["label"]),
@@ -74,6 +114,9 @@ def load_audit_specs(
         }
         for spec in specs
     ]
+    if not normalized_selected:
+        return loaded_specs
+    return [spec for spec in loaded_specs if spec["name"] in normalized_selected]
 
 
 def resolve_audit_builder(spec: dict[str, object]):
@@ -192,12 +235,15 @@ def summarize_surface(name: str, label: str, audit: dict[str, object]) -> dict[s
 def build_attached_pages_audit_matrix(
     repo_root: Path,
     audits: tuple[dict[str, object], ...] | list[dict[str, object]] | None = None,
+    *,
+    selected_names: set[str] | list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, object]:
+    normalized_selected = normalize_selected_surface_names(selected_names)
     surfaces: list[dict[str, object]] = []
     total_missing_count = 0
     failing_surface_count = 0
 
-    for audit_spec in load_audit_specs(audits):
+    for audit_spec in load_audit_specs(audits, selected_names=normalized_selected):
         try:
             audit = resolve_audit_builder(audit_spec)(repo_root)
             surface = summarize_surface(audit_spec["name"], audit_spec["label"], audit)
@@ -224,6 +270,7 @@ def build_attached_pages_audit_matrix(
 
     return {
         "repo_root": str(repo_root),
+        "selected_surfaces": sorted(normalized_selected),
         "surface_count": len(surfaces),
         "failing_surface_count": failing_surface_count,
         "total_missing_count": total_missing_count,
@@ -250,8 +297,16 @@ def render_text_report(matrix: dict[str, object]) -> str:
         "",
         f"Repo root: {matrix['repo_root']}",
     ]
+    selected_surfaces = matrix.get("selected_surfaces") or []
+    lines.append(
+        "Selected surfaces: all"
+        if not selected_surfaces
+        else "Selected surfaces: " + ", ".join(selected_surfaces)
+    )
 
     if matrix.get("error_type"):
+        if matrix.get("available_surfaces"):
+            lines.append("Available surfaces: " + ", ".join(matrix["available_surfaces"]))
         lines.extend([f"Error: {matrix['error']}", ""])
         return "\n".join(lines).rstrip() + "\n"
 
@@ -317,23 +372,50 @@ def main(argv: list[str] | None = None) -> int:
         help="Lightpanda repo root to inspect. Defaults to the current directory.",
     )
     parser.add_argument(
+        "--surface",
+        action="append",
+        default=[],
+        help=(
+            "Limit the audit matrix to one or more surface names such as "
+            "branch-inventory or windows-full-use-route."
+        ),
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Print structured JSON instead of text.",
     )
     args = parser.parse_args(argv)
 
-    try:
-        repo_root = resolve_repo_root(args.repo_root)
-        matrix = build_attached_pages_audit_matrix(repo_root)
-    except FileNotFoundError as exc:
-        matrix = build_repo_root_error_matrix(args.repo_root, str(exc))
+    selected_names = normalize_selected_surface_names(args.surface)
+    available_names = {spec["name"] for spec in load_audit_specs()}
+    if selected_names and not selected_names.issubset(available_names):
+        matrix = build_invalid_surface_selection_matrix(
+            args.repo_root,
+            selected_names,
+            available_names,
+        )
+    else:
+        try:
+            repo_root = resolve_repo_root(args.repo_root)
+            matrix = build_attached_pages_audit_matrix(
+                repo_root,
+                selected_names=selected_names,
+            )
+        except FileNotFoundError as exc:
+            matrix = build_repo_root_error_matrix(
+                args.repo_root,
+                str(exc),
+                selected_names=selected_names,
+            )
 
     if args.json:
         print(json.dumps(matrix, indent=2))
     else:
         print(render_text_report(matrix), end="")
 
+    if matrix.get("error_type") == "invalid_surface_selection":
+        return 2
     return 0 if not matrix.get("error_type") and not matrix.get("failing_surface_count") else 1
 
 
