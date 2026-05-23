@@ -17,6 +17,12 @@ DEFAULT_AUDIT_SPECS = (
         "module": "google_issue3_windows_replay_attached_html_quickstart_audit",
         "builder_name": "build_replay_attached_quickstart_audit",
     },
+    {
+        "name": "windows-full-use-route",
+        "label": "Windows full-use route",
+        "module": "google_issue3_windows_full_use_attached_html_route_audit",
+        "builder_name": "build_route_audit",
+    },
 )
 
 
@@ -247,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Summarize the issue #3 attached-pages audit surfaces so the next "
-            "headed replay slice can target the largest real drift first."
+            "headed validation slice can target the largest real drift first."
         )
     )
     parser.add_argument(
