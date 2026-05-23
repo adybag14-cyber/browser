@@ -47,6 +47,13 @@ OPTIONAL_MEMORY_FILES: tuple[tuple[str, str], ...] = (
 )
 
 REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
+    ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime re-entry guide"),
+    ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "Enter-submit runtime revalidation guide"),
+    ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved-browser-snapshot restore guide"),
+    ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness guide"),
+    ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery guide"),
+    ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build inputs guide"),
+    ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain guide"),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     (
         "scripts/check_issue3_saved_archive_integrity.py",
@@ -80,6 +87,38 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
         "runtime re-entry route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+        "Zig toolchain recovery surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        "Zig toolchain recovery route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+        "saved Rust toolchain surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+        "saved Rust toolchain route helper",
+    ),
+    (
+        "scripts/linux/restore_saved_rust_toolchain.sh",
+        "saved Rust toolchain restore helper",
+    ),
+    (
+        "scripts/linux/check_issue3_offline_build_inputs_route_surface.sh",
+        "offline build inputs surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_offline_build_inputs_route.sh",
+        "offline build inputs route helper",
+    ),
+    (
+        "scripts/linux/prepare_offline_build_inputs.sh",
+        "offline build inputs preparation helper",
     ),
 )
 
@@ -501,7 +540,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 [relative_path for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES],
             )
 
-    def test_restored_checkout_helper_surface_requires_saved_snapshot_checker(self) -> None:
+    def test_restored_checkout_helper_surface_requires_current_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             restored_checkout_root = Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
             restored_checkout_root.mkdir()
@@ -522,6 +561,10 @@ class SavedMemoryInputsTests(unittest.TestCase):
             self.assertTrue(result["has_build_manifest"])
             self.assertFalse(result["has_helper_surface"])
             self.assertIn(
+                "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
                 "scripts/check_issue3_saved_archive_integrity.py",
                 result["missing_helper_surface_files"],
             )
@@ -531,6 +574,14 @@ class SavedMemoryInputsTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/check_linux_build_readiness.py",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/prepare_offline_build_inputs.sh",
                 result["missing_helper_surface_files"],
             )
 
