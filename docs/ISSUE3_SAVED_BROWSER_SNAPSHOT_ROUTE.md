@@ -8,6 +8,14 @@ This route keeps the snapshot restore and the first follow-up checks on one
 small branch-local surface so future runs do not need to rebuild the extraction
 path by hand.
 
+Companion helpers:
+
+- `scripts/linux/restore_saved_browser_snapshot.sh`
+- `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/linux/show_issue3_linux_build_readiness_route.sh`
+- `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
+
 ## When To Use It
 
 Use this route when any of these are true:
@@ -29,6 +37,15 @@ bash ./scripts/linux/restore_saved_browser_snapshot.sh --check-only
 
 That prints the saved archive location, the inferred top-level folder from the
 zip, the default restore destination, and the first follow-up commands.
+
+When you want the whole restore route on one compact command surface instead,
+print the route helper:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+Use `--json` when another helper needs the restore route as structured output.
 
 ## Restore The Checkout
 
@@ -54,11 +71,15 @@ the extracted checkout:
 ```bash
 python scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
+bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
 
-That keeps the saved-Memory preflight and the Linux build-readiness route
-anchored to the restored checkout before the direct issue `#3` runtime lane is
-reopened again.
+The route helper prints those same commands with the resolved archive,
+destination, and optional fallback Zig archive surface already filled in.
+
+That keeps the saved-Memory preflight, the Linux build-readiness route, and the
+runtime re-entry route anchored to the restored checkout before the direct issue
+`#3` runtime lane is reopened again.
 
 ## Working Rules
 
