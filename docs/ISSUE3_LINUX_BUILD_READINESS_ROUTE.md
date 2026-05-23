@@ -39,6 +39,8 @@ Give the next writable checkout one branch-local route for:
 - replaying the offline build-inputs restore route through one compact helper
   surface before a raw archive command is trusted
 - rerunning the readiness helper before trusting focused Zig output
+- handing control back to the narrow Windows runtime revalidation route as soon
+  as Linux or WSL staging is no longer the blocker
 
 ## Run The Surface Check First
 
@@ -170,6 +172,24 @@ The Linux route now stays short and ordered:
     validation evidence
 12. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
+13. A direct handoff back to the smaller Windows runtime revalidation route once
+    the saved-archive and toolchain checks stop being the blocker
+
+## Hand Back To The Windows Runtime Route
+
+When the Linux or WSL build-readiness route stops failing on missing archives,
+missing offline deps, Rust setup, or Zig-line mismatch, move back to the direct
+issue `#3` Windows runtime surface before reopening a broader replay:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1
+```
+
+Use that pair first so the next run rechecks the direct `Page.zig` plus
+`win32_backend.zig` route, the shared Enter-order ladder, the reduced Google
+fixture, and the current helper-note chain before it widens back out to larger
+attached-page or live-Google replay.
 
 ## Working Rules
 
@@ -188,6 +208,11 @@ The Linux route now stays short and ordered:
 - Run `bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh` when the
   offline dependency restore and its immediate follow-up checks need to stay on
   one compact helper surface before the raw restore command is trusted.
+- Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, rerun
+  `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
+  and then
+  `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1`
+  before widening back out to larger replay routes.
 - Do not treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl`
   as source regressions before the offline restore route is staged.
 - Do not treat Zig `0.17` fallback failures in untouched branch files as issue
