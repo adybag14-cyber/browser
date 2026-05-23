@@ -6,6 +6,18 @@ from pathlib import Path
 
 DEFAULT_AUDIT_SPECS = (
     {
+        "name": "branch-inventory",
+        "label": "Branch inventory",
+        "module": "google_issue3_attached_pages_audit_matrix",
+        "builder_name": "build_branch_inventory_audit",
+    },
+    {
+        "name": "live-surface-inventory",
+        "label": "Live surface inventory",
+        "module": "google_issue3_attached_pages_audit_matrix",
+        "builder_name": "build_live_surface_inventory_audit",
+    },
+    {
         "name": "launcher-companion",
         "label": "Launcher companion",
         "module": "google_issue3_attached_pages_launcher_companion_audit",
@@ -70,6 +82,50 @@ def resolve_audit_builder(spec: dict[str, object]):
         return builder
     module = importlib.import_module(str(spec["module"]))
     return getattr(module, str(spec["builder_name"]))
+
+
+def summarize_inventory_rows(
+    rows: list[dict[str, object]],
+    *,
+    missing_snippet_prefix: str,
+) -> dict[str, object]:
+    missing_rows = [row for row in rows if not row.get("exists")]
+    return {
+        "expectation_count": len(rows),
+        "missing_count": len(missing_rows),
+        "missing_path_count": len(missing_rows),
+        "missing_paths": [
+            {
+                "path": row.get("path"),
+                "first_missing_purpose": row.get("purpose"),
+                "first_missing_snippet": (
+                    f"{missing_snippet_prefix}: {row.get('kind', 'path')} missing"
+                ),
+            }
+            for row in missing_rows
+        ],
+    }
+
+
+def build_branch_inventory_audit(repo_root: Path) -> dict[str, object]:
+    module = importlib.import_module("google_issue3_attached_pages_branch_inventory_audit")
+    inventory = module.build_inventory(
+        repo_root,
+        [dict(target) for target in module.DEFAULT_TARGETS],
+    )
+    return summarize_inventory_rows(
+        inventory["results"],
+        missing_snippet_prefix="Branch inventory drift",
+    )
+
+
+def build_live_surface_inventory_audit(repo_root: Path) -> dict[str, object]:
+    module = importlib.import_module("google_issue3_attached_pages_live_surface_inventory")
+    inventory = module.build_inventory(repo_root, set())
+    return summarize_inventory_rows(
+        inventory,
+        missing_snippet_prefix="Live surface inventory drift",
+    )
 
 
 def build_error_surface(name: str, label: str, error: Exception) -> dict[str, object]:
