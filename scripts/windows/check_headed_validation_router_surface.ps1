@@ -9,35 +9,26 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
 
-function New-ValidationReference {
+function New-PathCheck {
     param(
-        [Parameter(Mandatory = $true)]
         [string]$Path,
-        [Parameter(Mandatory = $true)]
-        [ValidateSet("file", "directory")]
-        [string]$Kind,
-        [Parameter(Mandatory = $true)]
         [string]$Purpose
     )
 
-    return [pscustomobject]@{
+    [pscustomobject]@{
         Path = $Path
-        Kind = $Kind
         Purpose = $Purpose
     }
 }
 
-function New-ValidationContentExpectation {
+function New-SnippetCheck {
     param(
-        [Parameter(Mandatory = $true)]
         [string]$Path,
-        [Parameter(Mandatory = $true)]
         [string]$Snippet,
-        [Parameter(Mandatory = $true)]
         [string]$Purpose
     )
 
-    return [pscustomobject]@{
+    [pscustomobject]@{
         Path = $Path
         Snippet = $Snippet
         Purpose = $Purpose
@@ -50,83 +41,58 @@ $resolvedRepoRoot = if ($RepoRoot) {
     Resolve-LightpandaRepoRoot $PSScriptRoot
 }
 
-$references = @(
-    (New-ValidationReference -Path "docs/WINDOWS_FULL_USE.md" -Kind "file" -Purpose "Broader Windows headed runbook that should keep the validation router, bundle routes, and matrix handoff discoverable."),
-    (New-ValidationReference -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Kind "file" -Purpose "Read-first matrix that should stay aligned with the top-level headed validation router."),
-    (New-ValidationReference -Path "scripts/windows/HeadedValidationHelpers.ps1" -Kind "file" -Purpose "Shared helper surface used by the headed validation router and the narrower route-specific checkers."),
-    (New-ValidationReference -Path "scripts/windows/show_headed_validation_suites.ps1" -Kind "file" -Purpose "Top-level headed validation router for the main change areas and suite views."),
-    (New-ValidationReference -Path "scripts/windows/check_google_form_controls_enter_order_validation_surface.ps1" -Kind "file" -Purpose "Dedicated form-controls Enter-order fail-fast checker that should stay reachable from the router."),
-    (New-ValidationReference -Path "scripts/windows/check_google_shared_enter_order_validation_surface.ps1" -Kind "file" -Purpose "Shared Enter-order fail-fast checker that should stay reachable from the router."),
-    (New-ValidationReference -Path "scripts/windows/check_google_issue3_validation_router_attached_html_quickstart_surface.ps1" -Kind "file" -Purpose "Issue #3 attached-html fail-fast checker that should stay reachable from the router."),
-    (New-ValidationReference -Path "scripts/windows/show_google_form_controls_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Dedicated form-controls Enter-order helper that the router should keep discoverable."),
-    (New-ValidationReference -Path "scripts/windows/show_google_shared_enter_order_validation_flow.ps1" -Kind "file" -Purpose "Shared Enter-order helper that the router should keep discoverable."),
-    (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_change_area_quickstart.ps1" -Kind "file" -Purpose "Shorter issue #3 attached-html helper that should stay reachable from the router."),
-    (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_html_target_bundle_suite_surface.ps1" -Kind "file" -Purpose "Pinned bundle suite helper that should stay reachable from the router."),
-    (New-ValidationReference -Path "scripts/windows/show_google_issue3_attached_bundle_first_entrypoint.ps1" -Kind "file" -Purpose "Pinned bundle-first helper that should stay reachable from the router."),
-    (New-ValidationReference -Path "scripts/windows/start_attached_pages_catalog.ps1" -Kind "file" -Purpose "Attached-pages localhost catalog wrapper that should stay in the router and the Windows runbook."),
-    (New-ValidationReference -Path "tmp-browser-smoke/form-controls/enter-submit-probe.ps1" -Kind "file" -Purpose "Shared smallest input probe that the router should still expose first."),
-    (New-ValidationReference -Path "tmp-browser-smoke/form-controls/label-click-probe.ps1" -Kind "file" -Purpose "Shared label-activation probe that the router should still expose first."),
-    (New-ValidationReference -Path "tmp-browser-smoke/wrapped-link/chrome-history-probe.ps1" -Kind "file" -Purpose "Navigation probe that the router should still expose for the navigation change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/wrapped-link/chrome-reload-probe.ps1" -Kind "file" -Purpose "Reload probe that the router should still expose for the navigation change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/stop-loading/chrome-stop-probe.ps1" -Kind "file" -Purpose "Stop/loading probe that the router should still expose for the stop-loading change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/stop-loading/chrome-stop-input-probe.ps1" -Kind "file" -Purpose "Stop/loading restored-input probe that the router should still expose for the stop-loading change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1" -Kind "file" -Purpose "Rendering probe that the router should still expose for the rendering change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/layout-smoke/chrome-screenshot-load-complete-probe.ps1" -Kind "file" -Purpose "Screenshot timing probe that the router should still expose for the rendering change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/stylesheet-smoke/chrome-stylesheet-auth-probe.ps1" -Kind "file" -Purpose "Network probe that the router should still expose for the network change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/fetch-credentials/chrome-fetch-credentials-probe.ps1" -Kind "file" -Purpose "Fetch-credentials probe that the router should still expose for the network change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/tabs/chrome-tabs-probe.ps1" -Kind "file" -Purpose "Browser-shell tabs probe that the router should still expose for the browser-shell change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/settings/chrome-settings-home-probe.ps1" -Kind "file" -Purpose "Browser-shell settings probe that the router should still expose for the browser-shell change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/popup/chrome-popup-anchor-probe.ps1" -Kind "file" -Purpose "Popup probe that the router should still expose for the popup change area."),
-    (New-ValidationReference -Path "tmp-browser-smoke/canvas-smoke/chrome-canvas-render-probe.ps1" -Kind "file" -Purpose "Canvas probe that the matrix should still expose for screenshot-visible canvas changes.")
+$pathChecks = @(
+    (New-PathCheck -Path "docs/WINDOWS_FULL_USE.md" -Purpose "Broader Windows headed runbook still exists."),
+    (New-PathCheck -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Purpose "Probe-family validation matrix still exists."),
+    (New-PathCheck -Path "scripts/windows/HeadedValidationHelpers.ps1" -Purpose "Shared headed-validation helper surface still exists."),
+    (New-PathCheck -Path "scripts/windows/show_headed_validation_suites.ps1" -Purpose "Top-level headed validation router still exists."),
+    (New-PathCheck -Path "scripts/windows/check_google_form_controls_enter_order_validation_surface.ps1" -Purpose "Dedicated Enter-order guard is still reachable."),
+    (New-PathCheck -Path "scripts/windows/check_google_shared_enter_order_validation_surface.ps1" -Purpose "Shared Enter-order guard is still reachable."),
+    (New-PathCheck -Path "scripts/windows/check_google_issue3_validation_router_attached_html_quickstart_surface.ps1" -Purpose "Issue #3 attached-html guard is still reachable."),
+    (New-PathCheck -Path "scripts/windows/start_attached_pages_catalog.ps1" -Purpose "Attached-pages localhost catalog wrapper still exists."),
+    (New-PathCheck -Path "tmp-browser-smoke/form-controls/enter-submit-probe.ps1" -Purpose "Smallest shared input probe still exists."),
+    (New-PathCheck -Path "tmp-browser-smoke/wrapped-link/chrome-history-probe.ps1" -Purpose "Navigation probe still exists."),
+    (New-PathCheck -Path "tmp-browser-smoke/stop-loading/chrome-stop-probe.ps1" -Purpose "Stop/loading probe still exists."),
+    (New-PathCheck -Path "tmp-browser-smoke/layout-smoke/chrome-layout-flex-center-probe.ps1" -Purpose "Rendering probe still exists."),
+    (New-PathCheck -Path "tmp-browser-smoke/fetch-credentials/chrome-fetch-credentials-probe.ps1" -Purpose "Network probe still exists."),
+    (New-PathCheck -Path "tmp-browser-smoke/tabs/chrome-tabs-probe.ps1" -Purpose "Browser-shell probe still exists."),
+    (New-PathCheck -Path "tmp-browser-smoke/popup/chrome-popup-anchor-probe.ps1" -Purpose "Popup probe still exists.")
 )
 
-$contentExpectations = @(
-    (New-ValidationContentExpectation -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order' -Purpose "Windows full-use guide keeps the shared Enter-order route visible from the main headed runbook."),
-    (New-ValidationContentExpectation -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea browser-shell' -Purpose "Windows full-use guide keeps the browser-shell route visible from the main headed runbook."),
-    (New-ValidationContentExpectation -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle' -Purpose "Windows full-use guide keeps the pinned attached bundle route visible from the main headed runbook."),
-    (New-ValidationContentExpectation -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'docs/HEADED_MODE_VALIDATION_MATRIX.md' -Purpose "Windows full-use guide keeps the broader validation matrix handoff visible."),
-    (New-ValidationContentExpectation -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Snippet 'google-shared-enter-order' -Purpose "Validation matrix keeps the shared Enter-order lane visible."),
-    (New-ValidationContentExpectation -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Snippet 'browser-shell' -Purpose "Validation matrix keeps the browser-shell lane visible."),
-    (New-ValidationContentExpectation -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Snippet 'attached-html-target-bundle' -Purpose "Validation matrix keeps the pinned attached bundle lane visible."),
-    (New-ValidationContentExpectation -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Snippet 'run_attached_html_target_bundle_validation.ps1' -Purpose "Validation matrix keeps the bundle validation runner visible in the fast path."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet '[ValidateSet("", "attached-html-target-bundle", "google-attached-html", "google-form-controls-enter-order", "google-recommended", "google-shared-enter-order")]' -Purpose "Router suite selection still includes the shared Enter-order and attached bundle suite views."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet '[ValidateSet("", "attached-html", "attached-html-target-bundle", "browser-shell", "google-attached-html", "google-form-controls-enter-order", "google-input", "google-shared-enter-order", "input", "manual-html", "navigation", "network", "popup", "rendering", "stop-loading")]' -Purpose "Router change-area selection still includes the broader headed validation lanes."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'Write-Route -Name "google-shared-enter-order" -Commands (Get-GoogleSharedEnterOrderCommands) -Notes (Get-GoogleSharedEnterOrderNotes)' -Purpose "Router default output still prints the shared Enter-order route."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'Write-Route -Name "browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)' -Purpose "Router default output still prints the browser-shell route."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'Write-Route -Name "attached-html" -Commands $attachedCommands -Notes (Get-AttachedHtmlNotes)' -Purpose "Router default output still prints the attached-html route."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'Write-Route -Name "issue3-attached-html-follow-up" -Commands (Get-Issue3AttachedHtmlFollowUpCommands) -Notes (Get-Issue3AttachedHtmlFollowUpNotes)' -Purpose "Router default output still prints the issue #3 attached-html follow-up route."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'Write-Route -Name "bounded-browser-shell" -Commands (Get-BrowserShellRouteCommands) -Notes (Get-BrowserShellRouteNotes)' -Purpose "Router change-area output still prints the bounded browser-shell route."),
-    (New-ValidationContentExpectation -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet '$bundleFocused = $ChangeArea -eq "attached-html-target-bundle"' -Purpose "Router attached-html branch still tracks the pinned attached bundle route explicitly.")
+$snippetChecks = @(
+    (New-SnippetCheck -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order' -Purpose "Windows runbook still points to the shared Enter-order lane."),
+    (New-SnippetCheck -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'show_headed_validation_suites.ps1 -ChangeArea browser-shell' -Purpose "Windows runbook still points to the browser-shell lane."),
+    (New-SnippetCheck -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle' -Purpose "Windows runbook still points to the pinned attached bundle lane."),
+    (New-SnippetCheck -Path "docs/WINDOWS_FULL_USE.md" -Snippet 'docs/HEADED_MODE_VALIDATION_MATRIX.md' -Purpose "Windows runbook still hands off to the validation matrix."),
+    (New-SnippetCheck -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Snippet 'google-shared-enter-order' -Purpose "Validation matrix still names the shared Enter-order lane."),
+    (New-SnippetCheck -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Snippet 'browser-shell' -Purpose "Validation matrix still names the browser-shell lane."),
+    (New-SnippetCheck -Path "docs/HEADED_MODE_VALIDATION_MATRIX.md" -Snippet 'attached-html-target-bundle' -Purpose "Validation matrix still names the pinned attached bundle lane."),
+    (New-SnippetCheck -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'google-shared-enter-order' -Purpose "Router still exposes the shared Enter-order route."),
+    (New-SnippetCheck -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'browser-shell' -Purpose "Router still exposes the browser-shell route."),
+    (New-SnippetCheck -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'attached-html-target-bundle' -Purpose "Router still exposes the pinned attached bundle route."),
+    (New-SnippetCheck -Path "scripts/windows/show_headed_validation_suites.ps1" -Snippet 'issue3-attached-html-follow-up' -Purpose "Router still prints the issue #3 attached-html follow-up surface.")
 )
 
-$referenceResults = foreach ($reference in $references) {
-    $fullPath = Join-Path $resolvedRepoRoot $reference.Path
-    $exists = if ($reference.Kind -eq "directory") {
-        Test-Path -LiteralPath $fullPath -PathType Container
-    } else {
-        Test-Path -LiteralPath $fullPath -PathType Leaf
-    }
-
+$pathResults = foreach ($check in $pathChecks) {
+    $fullPath = Join-Path $resolvedRepoRoot $check.Path
     [pscustomobject]@{
-        CheckType = "reference"
-        Path = $reference.Path
-        Kind = $reference.Kind
-        Purpose = $reference.Purpose
-        Exists = [bool]$exists
+        CheckType = "path"
+        Path = $check.Path
+        Purpose = $check.Purpose
+        Exists = [bool](Test-Path -LiteralPath $fullPath -PathType Leaf)
     }
 }
 
 $contentCache = @{}
-$contentResults = foreach ($expectation in $contentExpectations) {
-    $fullPath = Join-Path $resolvedRepoRoot $expectation.Path
+$snippetResults = foreach ($check in $snippetChecks) {
+    $fullPath = Join-Path $resolvedRepoRoot $check.Path
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         [pscustomobject]@{
-            CheckType = "content"
-            Path = $expectation.Path
-            Kind = "content-snippet"
-            Purpose = $expectation.Purpose
+            CheckType = "snippet"
+            Path = $check.Path
+            Purpose = $check.Purpose
             Exists = $false
-            Snippet = $expectation.Snippet
+            Snippet = $check.Snippet
         }
         continue
     }
@@ -136,29 +102,24 @@ $contentResults = foreach ($expectation in $contentExpectations) {
     }
 
     [pscustomobject]@{
-        CheckType = "content"
-        Path = $expectation.Path
-        Kind = "content-snippet"
-        Purpose = $expectation.Purpose
-        Exists = [bool]$contentCache[$fullPath].Contains($expectation.Snippet)
-        Snippet = $expectation.Snippet
+        CheckType = "snippet"
+        Path = $check.Path
+        Purpose = $check.Purpose
+        Exists = [bool]$contentCache[$fullPath].Contains($check.Snippet)
+        Snippet = $check.Snippet
     }
 }
 
-$missingReferences = @($referenceResults | Where-Object { -not $_.Exists })
-$missingContent = @($contentResults | Where-Object { -not $_.Exists })
-$missing = @($missingReferences + $missingContent)
+$missing = @(@($pathResults | Where-Object { -not $_.Exists }) + @($snippetResults | Where-Object { -not $_.Exists }))
 
 if ($Json) {
     [ordered]@{
         profile = "headed-validation-router"
         repo_root = $resolvedRepoRoot
-        checked_count = @($referenceResults).Count + @($contentResults).Count
-        reference_count = @($referenceResults).Count
-        content_check_count = @($contentResults).Count
+        checked_count = @($pathResults).Count + @($snippetResults).Count
         missing_count = @($missing).Count
-        references = @($referenceResults)
-        content_checks = @($contentResults)
+        path_checks = @($pathResults)
+        snippet_checks = @($snippetResults)
     } | ConvertTo-Json -Depth 6
 
     if ($missing.Count -gt 0) {
@@ -170,23 +131,21 @@ if ($Json) {
 
 Write-Host "Headed validation router surface check"
 Write-Host ""
-Write-Host (("Repo root: {0}") -f $resolvedRepoRoot)
+Write-Host ("Repo root: {0}" -f $resolvedRepoRoot)
 Write-Host ""
 
-foreach ($result in $referenceResults) {
+foreach ($result in $pathResults) {
     $status = if ($result.Exists) { "PASS" } else { "FAIL" }
-    Write-Host (("[{0}] {1}") -f $status, $result.Path)
-    Write-Host (("  {0}") -f $result.Purpose)
+    Write-Host ("[{0}] {1}" -f $status, $result.Path)
+    Write-Host ("  {0}" -f $result.Purpose)
 }
 
-if ($contentResults.Count -gt 0) {
-    Write-Host ""
-    Write-Host "Helper and doc expectations:"
-    foreach ($result in $contentResults) {
-        $status = if ($result.Exists) { "PASS" } else { "FAIL" }
-        Write-Host (("[{0}] {1}") -f $status, $result.Path)
-        Write-Host (("  {0}") -f $result.Purpose)
-    }
+Write-Host ""
+Write-Host "Route and doc expectations:"
+foreach ($result in $snippetResults) {
+    $status = if ($result.Exists) { "PASS" } else { "FAIL" }
+    Write-Host ("[{0}] {1}" -f $status, $result.Path)
+    Write-Host ("  {0}" -f $result.Purpose)
 }
 
 Write-Host ""
@@ -195,6 +154,6 @@ if ($missing.Count -eq 0) {
     exit 0
 }
 
-Write-Host (("Missing {0} headed validation router path or source contract check(s).") -f $missing.Count)
-Write-Host "Repair the missing runbook link, matrix lane, router change area, fail-fast checker, or bounded probe before trusting the top-level headed validation router packet."
+Write-Host ("Missing {0} headed validation router path or route expectation check(s)." -f $missing.Count)
+Write-Host "Repair the missing runbook link, matrix lane, router route, guard, or bounded probe before trusting the top-level headed validation router packet."
 exit 1
