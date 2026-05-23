@@ -148,6 +148,10 @@ matching_candidate = next(
     None,
 )
 
+surface_check_command = (
+    "bash scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh "
+    f"--repo-root {shlex.quote(str(repo_root))}"
+)
 discovery_command = (
     "python scripts/check_linux_build_readiness.py "
     f"--repo-root {shlex.quote(str(repo_root))} "
@@ -171,6 +175,7 @@ result = {
     "matching_candidate": matching_candidate["path"] if matching_candidate else "",
     "matching_candidate_version": matching_candidate["version"] if matching_candidate else "",
     "commands": {
+        "surface_check": surface_check_command,
         "discovery": discovery_command,
     },
     "candidates": candidates,
@@ -194,8 +199,13 @@ print(
 print()
 print("Read first")
 print("==========")
+print("  docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md")
 print("  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")
 print("  docs/ISSUE3_RUNTIME_REENTRY_GATES.md")
+print()
+print("Surface check")
+print("=============")
+print(f"  {surface_check_command}")
 print()
 print("Candidate discovery")
 print("===================")
@@ -207,6 +217,10 @@ if not candidates:
     print()
     print("Working rules")
     print("=============")
+    print(
+        "  - Run the surface check first so missing docs or helper drift fails "
+        "before the route blames the fallback Zig bundle."
+    )
     print(
         f"  - Stage a Zig {minimum_zig.rsplit('.', 1)[0]}.x toolchain under "
         f"{toolchains_root} before reopening focused Linux or WSL validation."
@@ -239,6 +253,10 @@ if matching_readiness_command is not None:
     print("Working rules")
     print("=============")
     print(
+        "  - Run the surface check first so missing docs or helper drift fails "
+        "before the route blames the fallback Zig bundle."
+    )
+    print(
         f"  - Prefer {matching_candidate['path']} because it matches the branch's "
         f"{minimum_zig.rsplit('.', 1)[0]}.x Zig line."
     )
@@ -256,6 +274,10 @@ else:
     print()
     print("Working rules")
     print("=============")
+    print(
+        "  - Run the surface check first so missing docs or helper drift fails "
+        "before the route blames the fallback Zig bundle."
+    )
     print(
         f"  - Ignore candidates above that are older than {minimum_zig} or that "
         "live on a different major/minor Zig line."
