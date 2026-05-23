@@ -5,7 +5,8 @@
 This helper keeps one small build-readiness check focused on the builder-attached
 fallback Zig bundle. It reads the branch minimum Zig line from build.zig.zon,
 finds the fallback archive beside the repo workspace by default, and reports
-whether that archive matches the branch's expected major.minor line.
+whether that archive both opens cleanly and matches the branch's expected
+major.minor line.
 """
 
 from __future__ import annotations
@@ -15,8 +16,10 @@ import json
 from pathlib import Path
 import re
 import sys
+import tarfile
 import tempfile
 import unittest
+import zipfile
 
 
 MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
@@ -107,6 +110,28 @@ def infer_archive_semver(path: Path) -> str | None:
     return match.group(1)
 
 
+def inspect_archive_readability(path: Path) -> tuple[bool, str | None, str | None]:
+    try:
+        if path.suffix == ".zip":
+            with zipfile.ZipFile(path) as archive:
+                names = archive.namelist()
+                if not names:
+                    raise ValueError("archive has no entries")
+                bad_member = archive.testzip()
+                if bad_member is not None:
+                    raise zipfile.BadZipFile(f"CRC failure in {bad_member}")
+                return True, f"zip entries={len(names)}", None
+        if path.suffixes[-2:] in ([".tar", ".xz"], [".tar", ".gz"]):
+            with tarfile.open(path, mode="r:*") as archive:
+                members = archive.getmembers()
+                if not members:
+                    raise ValueError("archive has no members")
+                return True, f"tar entries={len(members)}", None
+        return True, "integrity check not defined for this archive type", None
+    except (tarfile.TarError, zipfile.BadZipFile, ValueError, OSError) as exc:
+        return False, None, str(exc)
+
+
 def describe_archive_status(minimum_zig: str, archive_path: Path) -> dict[str, object]:
     result: dict[str, object] = {
         "path": str(archive_path),
@@ -114,8 +139,19 @@ def describe_archive_status(minimum_zig: str, archive_path: Path) -> dict[str, o
         "version": None,
         "status": "missing",
         "matches_expected_line": None,
+        "archive_readable": None,
+        "archive_summary": None,
+        "archive_error": None,
     }
     if not archive_path.is_file():
+        return result
+
+    archive_readable, archive_summary, archive_error = inspect_archive_readability(archive_path)
+    result["archive_readable"] = archive_readable
+    result["archive_summary"] = archive_summary
+    result["archive_error"] = archive_error
+    if not archive_readable:
+        result["status"] = "unreadable"
         return result
 
     archive_version = infer_archive_semver(archive_path)
@@ -168,9 +204,22 @@ def emit_text(result: dict[str, object]) -> None:
     print(f"Fallback Zig archive discovery: {result['archive_discovery_mode']}")
     print(f"Fallback Zig archive: {archive['path']}")
     print(f"Archive present: {'yes' if archive['exists'] else 'no'}")
+    if archive["archive_readable"] is not None:
+        print(f"Archive readable: {'yes' if archive['archive_readable'] else 'no'}")
+    if archive["archive_summary"] is not None:
+        print(f"Archive summary: {archive['archive_summary']}")
+    if archive["archive_error"] is not None:
+        print(f"Archive error: {archive['archive_error']}")
     if archive["version"] is not None:
         print(f"Archive version line: {archive['version']}")
     print(f"Archive status: {archive['status']}")
+
+
+def create_tar_archive(path: Path) -> None:
+    payload = path.parent / "payload.txt"
+    payload.write_text("zig", encoding="utf-8")
+    with tarfile.open(path, "w:xz") as archive:
+        archive.add(payload, arcname="payload.txt")
 
 
 class FallbackZigArchiveTests(unittest.TestCase):
@@ -189,7 +238,7 @@ class FallbackZigArchiveTests(unittest.TestCase):
                 '.{ .minimum_zig_version = "0.15.2", .dependencies = .{}, .paths = .{""}, }\n',
                 encoding="utf-8",
             )
-            (agent_files_root / DEFAULT_FALLBACK_ZIG).write_text("zig", encoding="utf-8")
+            create_tar_archive(agent_files_root / DEFAULT_FALLBACK_ZIG)
 
             result = collect_result(
                 repo_root=repo_root,
@@ -200,6 +249,7 @@ class FallbackZigArchiveTests(unittest.TestCase):
             archive = result["fallback_zig_archive"]
             self.assertEqual(result["archive_discovery_mode"], "auto")
             self.assertTrue(archive["exists"])
+            self.assertTrue(archive["archive_readable"])
             self.assertEqual(archive["version"], "0.17.0")
             self.assertFalse(archive["matches_expected_line"])
             self.assertIn("mismatched", archive["status"])
@@ -216,7 +266,7 @@ class FallbackZigArchiveTests(unittest.TestCase):
                 '.{ .minimum_zig_version = "0.15.2", .dependencies = .{}, .paths = .{""}, }\n',
                 encoding="utf-8",
             )
-            explicit_archive.write_text("zig", encoding="utf-8")
+            create_tar_archive(explicit_archive)
 
             result = collect_result(
                 repo_root=repo_root,
@@ -227,6 +277,7 @@ class FallbackZigArchiveTests(unittest.TestCase):
             archive = result["fallback_zig_archive"]
             self.assertEqual(result["archive_discovery_mode"], "explicit")
             self.assertTrue(archive["exists"])
+            self.assertTrue(archive["archive_readable"])
             self.assertEqual(archive["version"], "0.15.2")
             self.assertTrue(archive["matches_expected_line"])
             self.assertIn("matches expected 0.15.x line", archive["status"])
@@ -252,6 +303,32 @@ class FallbackZigArchiveTests(unittest.TestCase):
             archive = result["fallback_zig_archive"]
             self.assertFalse(archive["exists"])
             self.assertEqual(archive["status"], "missing")
+
+    def test_collect_result_marks_broken_archive_as_unreadable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = root / "browser"
+            agent_files_root = root / "agent_files"
+            broken_archive = agent_files_root / DEFAULT_FALLBACK_ZIG
+            repo_root.mkdir()
+            agent_files_root.mkdir()
+            (repo_root / "build.zig.zon").write_text(
+                '.{ .minimum_zig_version = "0.15.2", .dependencies = .{}, .paths = .{""}, }\n',
+                encoding="utf-8",
+            )
+            broken_archive.write_text("not a real archive", encoding="utf-8")
+
+            result = collect_result(
+                repo_root=repo_root,
+                agent_files_root=agent_files_root,
+                fallback_zig_archive=None,
+            )
+
+            archive = result["fallback_zig_archive"]
+            self.assertTrue(archive["exists"])
+            self.assertFalse(archive["archive_readable"])
+            self.assertIsNotNone(archive["archive_error"])
+            self.assertEqual(archive["status"], "unreadable")
 
 
 def main() -> int:
