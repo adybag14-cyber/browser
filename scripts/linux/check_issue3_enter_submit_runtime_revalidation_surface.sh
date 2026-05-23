@@ -65,6 +65,8 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|scripts/check_issue3_saved_memory_inputs.py|The gate note keeps the saved-memory preflight visible before Linux or WSL build-readiness commands are trusted."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|check_issue3_enter_submit_runtime_contract.py|The Linux or WSL runtime helper prints the source-based runtime contract check."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|check_issue3_saved_memory_inputs.py|The Linux or WSL runtime helper prints the saved-memory preflight before broader build-readiness commands."
+    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|fallback-zig-archive|The Linux or WSL runtime helper supports an explicit fallback Zig archive override during saved-checkout re-entry."
+    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|Fallback Zig archive:|The Linux or WSL runtime helper prints the surfaced fallback Zig archive before Linux or WSL follow-up commands."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|check_issue3_linux_build_readiness_route_surface.sh|The Linux or WSL runtime helper keeps the build-readiness surface check visible before focused Zig output is trusted."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|show_issue3_linux_build_readiness_route.sh|The Linux or WSL runtime helper keeps the build-readiness route printer visible when the toolchain gate is still closed."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|chrome-google-home-title-probe.ps1|The Linux or WSL runtime helper still prints the reduced Google Windows follow-up probe."
