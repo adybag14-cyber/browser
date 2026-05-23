@@ -12,8 +12,9 @@ Usage:
 
 Print the compact Linux or WSL helper surface for the direct issue #3
 Enter-submit runtime re-entry route. This route keeps the gate note, source
-contract check, Linux build-readiness helpers, focused Zig commands, and the
-Windows follow-up replay ladder on one branch-local surface.
+contract check, saved-memory preflight, Linux build-readiness helpers, focused
+Zig commands, and the Windows follow-up replay ladder on one branch-local
+surface.
 EOF
 }
 
@@ -80,6 +81,7 @@ RUNTIME_CONTRACT_CHECKER="${REPO_ROOT}/tmp-browser-smoke/google-investigation-ne
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 CONTRACT_CHECK_COMMAND="python $(format_shell_arg "${RUNTIME_CONTRACT_CHECKER}") --page $(format_shell_arg "${PAGE_SOURCE_PATH}") --win32 $(format_shell_arg "${WIN32_SOURCE_PATH}")"
 CONTRACT_SELF_TEST_COMMAND="python $(format_shell_arg "${RUNTIME_CONTRACT_CHECKER}") --self-test"
+SAVED_MEMORY_PREFLIGHT_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root $(format_shell_arg "${REPO_ROOT}")"
 LINUX_BUILD_SURFACE_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 LINUX_BUILD_ROUTE_COMMAND="bash scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 LINUX_BUILD_READINESS_SKIP_ZIG_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check"
@@ -109,6 +111,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    "surface_check": %s,\n' "$(json_escape "${SURFACE_CHECK_COMMAND}")"
     printf '    "contract_check": %s,\n' "$(json_escape "${CONTRACT_CHECK_COMMAND}")"
     printf '    "contract_self_test": %s,\n' "$(json_escape "${CONTRACT_SELF_TEST_COMMAND}")"
+    printf '    "saved_memory_preflight": %s,\n' "$(json_escape "${SAVED_MEMORY_PREFLIGHT_COMMAND}")"
     printf '    "linux_build_surface": %s,\n' "$(json_escape "${LINUX_BUILD_SURFACE_COMMAND}")"
     printf '    "linux_build_route": %s,\n' "$(json_escape "${LINUX_BUILD_ROUTE_COMMAND}")"
     printf '    "linux_build_readiness_skip_zig": %s,\n' "$(json_escape "${LINUX_BUILD_READINESS_SKIP_ZIG_COMMAND}")"
@@ -124,6 +127,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    %s,\n' "$(json_escape "Run surface_check first when the branch may have moved and you want the direct issue #3 docs and helper surfaces checked before replay.")"
     printf '    %s,\n' "$(json_escape "Run contract_check before build or replay when you need a thin source-based yes-or-no answer about whether the Page.zig and win32_backend.zig bridge markers are present on the current branch.")"
     printf '    %s,\n' "$(json_escape "Run contract_self_test when you want to prove the checker still distinguishes vulnerable and guarded samples before pointing it at a real checkout.")"
+    printf '    %s,\n' "$(json_escape "Run saved_memory_preflight before Linux or WSL build-readiness commands when the route depends on the saved Memory repo snapshot, dependency archives, and optional fallback Zig bundle.")"
     printf '    %s,\n' "$(json_escape "If the toolchain gate is still closed, run linux_build_surface and then linux_build_route before treating focused Zig output as issue-specific evidence.")"
     printf '    %s,\n' "$(json_escape "Use linux_build_readiness_skip_zig when the saved archives or sibling dependencies may still be missing and you want a fast environment check before staging a branch-compatible Zig line.")"
     printf '    %s,\n' "$(json_escape "Use linux_build_readiness only after a matching Zig line is actually staged.")"
@@ -162,6 +166,9 @@ Suggested route
   Checker self-test:
     ${CONTRACT_SELF_TEST_COMMAND}
 
+  Saved-memory preflight:
+    ${SAVED_MEMORY_PREFLIGHT_COMMAND}
+
   If the toolchain gate is still closed, reopen Linux or WSL build readiness:
     ${LINUX_BUILD_SURFACE_COMMAND}
     ${LINUX_BUILD_ROUTE_COMMAND}
@@ -182,6 +189,7 @@ Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before replay widens back out.
   - Run the source contract check before blaming the runtime patch or reopening the direct Page.zig and win32_backend.zig edit path.
+  - Run the saved-memory preflight before broader Linux or WSL build-readiness commands when the route depends on the saved repo snapshot and dependency archives.
   - If the toolchain gate is still closed, use the Linux or WSL build-readiness route before trusting focused Zig output.
   - Do not treat fallback Zig 0.17 dev failures in untouched branch files as issue #3 patch evidence.
   - Use the Windows build and reduced Google probe only after the Linux or WSL gate agrees that the environment is no longer the blocker.
