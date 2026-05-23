@@ -15,6 +15,7 @@ Read this together with:
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
+- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
 - `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
@@ -46,6 +47,9 @@ The direct issue `#3` runtime fix still lands in two large existing files.
 Treat the patch as blocked until at least one of these is true:
 
 - a writable checkout of `fork/headed-mode-foundation` is available
+- the saved-browser-snapshot restore route has already produced a disposable
+  checkout that the live helper surface can target for the next Linux or WSL
+  validation pass
 - the current publication path can safely materialize the exact live file bodies,
   apply a small patch, and republish them without manual full-body drift
 - the current runtime can publish low-level blob/tree/commit updates from the
@@ -110,14 +114,22 @@ python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_run
    - `../zig-v8-fork`
    - `../boringssl-zig`
 6. If the run is using saved dependency bundles, stage them before invoking Zig.
-7. If the run depends on the saved Memory repo and dependency bundles, run the
+7. If the current run does not yet have a reusable checkout beside the
+   workspace, print the saved-browser-snapshot route and restore a disposable
+   checkout before trusting Linux or WSL validation commands:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+8. If the run depends on the saved Memory repo and dependency bundles, run the
    saved-input preflight before the Linux or WSL build-readiness helpers:
 
 ```bash
 python scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
 
-8. When the run is using Linux or WSL staging, start with the direct runtime
+9. When the run is using Linux or WSL staging, start with the direct runtime
    Linux or WSL surface and then print the compact re-entry route so the source
    contract check, build-readiness route, and Windows follow-up commands stay on
    one branch-local surface:
@@ -127,18 +139,18 @@ bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
 ```
 
-9. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+10. Re-check Linux or WSL build readiness before trusting file-level Zig output:
 
 ```bash
 python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
-10. Only after a matching Zig line is actually staged, rerun the readiness helper
+11. Only after a matching Zig line is actually staged, rerun the readiness helper
     without the Zig skip and then validate the toolchain with the normal project
     build flow before using focused file-level `zig test` as evidence.
-11. Only after those gates are green, reopen the direct code patch and the
+12. Only after those gates are green, reopen the direct code patch and the
     focused regression tests.
-12. After the focused tests are green, move back to the reduced Google probe and
+13. After the focused tests are green, move back to the reduced Google probe and
     then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
@@ -165,6 +177,8 @@ If the publication gate is still closed:
 - do not hand-edit large existing file bodies through a brittle replacement path
 - keep `show_google_issue3_enter_submit_runtime_revalidation.ps1` as the shared
   re-entry surface so the exact runtime route does not need to be rebuilt by hand
+- use `show_issue3_saved_browser_snapshot_route.sh` first when the missing piece
+  is still the disposable checkout for the next Linux or WSL validation pass
 
 If the toolchain gate is still closed:
 
@@ -186,6 +200,7 @@ The direct issue `#3` runtime patch is worth doing only when the run can both:
 
 Until then, preserve the narrowed runtime target, use the dedicated runtime
 helper to reopen the same branch-local route quickly, use the Linux build-
-readiness route when the saved archives must be restaged, and spend scheduled
-cycles on smaller slices that improve the next real re-entry instead of
-repeating the same blocked attempt.
+readiness route when the saved archives must be restaged, use the saved-browser-
+snapshot route when the next run still lacks a reusable checkout, and spend
+scheduled cycles on smaller slices that improve the next real re-entry instead
+of repeating the same blocked attempt.
