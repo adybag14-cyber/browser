@@ -127,6 +127,7 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     FULL_READINESS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
+SNAPSHOT_SYNC_ROUTE_COMMAND="${SNAPSHOT_ROUTE_COMMAND} --sync-helper-surface"
 
 if [[ "${JSON}" -eq 1 ]]; then
     python3 - <<PY
@@ -150,6 +151,7 @@ print(json.dumps({
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
+        "saved_browser_snapshot_route_synced": ${SNAPSHOT_SYNC_ROUTE_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
         "zig_toolchain_route": ${TOOLCHAIN_ROUTE_COMMAND@Q},
         "saved_rust_surface_check": ${SAVED_RUST_SURFACE_COMMAND@Q},
@@ -167,6 +169,7 @@ print(json.dumps({
     "notes": [
         "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
+        "Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface.",
         "Run the saved_memory_inputs command before the broader saved-archive preflight when the route depends on the saved Memory repo snapshot and dependency bundles.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
         "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
@@ -216,6 +219,9 @@ Suggested route
   Saved-browser-snapshot route when no reusable checkout exists yet:
     ${SNAPSHOT_ROUTE_COMMAND}
 
+  Recommended synced saved-browser-snapshot route when the archive helper surface may be stale:
+    ${SNAPSHOT_SYNC_ROUTE_COMMAND}
+
   Saved Memory input preflight:
     ${SAVED_MEMORY_INPUTS_COMMAND}
 
@@ -259,6 +265,7 @@ Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before offline staging starts.
   - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
+  - Prefer the synced saved-browser-snapshot route when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
   - Run the saved Memory input preflight before the broader saved-archive preflight when the route depends on the saved repo snapshot and dependency bundles.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.
   - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
