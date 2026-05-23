@@ -3,29 +3,32 @@
 """Check whether the issue #3 runtime re-entry path is ready to reopen.
 
 This helper is intentionally lightweight and cross-platform. It does not try to
-build the browser by itself. Instead it answers three practical questions:
+build the browser by itself. Instead it answers four practical questions:
 
-1. Are the branch-local docs and helper surfaces for the narrowed issue #3 path
+1. Is there a real writable checkout for landing the narrowed runtime patch?
+2. Are the branch-local docs and helper surfaces for the narrowed issue #3 path
    present?
-2. Does the current source tree already contain the direct Page.zig and Win32
+3. Does the current source tree already contain the direct Page.zig and Win32
    runtime bridge markers?
-3. Is the Linux/WSL preflight surface ready enough to trust a later Zig-driven
+4. Is the Linux/WSL preflight surface ready enough to trust a later Zig-driven
    replay?
 
 That gives future runs one compact place to check the re-entry route before
-touching the blocked Page.zig and win32_backend.zig patch again.
+reopening the blocked Page.zig and win32_backend.zig patch again.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from unittest import mock
 
 
 REFERENCE_FILES = (
@@ -94,6 +97,13 @@ def run_command(command: list[str], cwd: Path) -> tuple[bool, str]:
     return completed.returncode == 0, summary
 
 
+def relative_to_repo(repo_root: Path, path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(repo_root.resolve()))
+    except ValueError:
+        return str(path)
+
+
 def check_reference_files(repo_root: Path) -> list[CheckResult]:
     results: list[CheckResult] = []
     for relative_path, purpose in REFERENCE_FILES:
@@ -106,6 +116,69 @@ def check_reference_files(repo_root: Path) -> list[CheckResult]:
             )
         )
     return results
+
+
+def check_publication_path(repo_root: Path, page_path: Path, win32_path: Path) -> CheckResult:
+    targets = (page_path, win32_path)
+    missing_targets = [relative_to_repo(repo_root, path) for path in targets if not path.is_file()]
+    if missing_targets:
+        return CheckResult(
+            name="publication_path",
+            ok=False,
+            detail="missing direct runtime targets: " + ", ".join(missing_targets),
+        )
+
+    git_dir = repo_root / ".git"
+    if not git_dir.exists():
+        writable_targets = [
+            relative_to_repo(repo_root, path) for path in targets if os.access(path, os.W_OK)
+        ]
+        detail = (
+            "repo root is missing .git; this looks like a restored archive or loose snapshot, "
+            "so the direct issue #3 patch still lacks a writable checkout"
+        )
+        if writable_targets:
+            detail += "; writable targets alone are not enough: " + ", ".join(writable_targets)
+        return CheckResult(name="publication_path", ok=False, detail=detail)
+
+    git_probe = ["git", "rev-parse", "--is-inside-work-tree"]
+    ok, detail = run_command(git_probe, cwd=repo_root)
+    if not ok:
+        return CheckResult(
+            name="publication_path",
+            ok=False,
+            detail=f"git checkout probe failed: {detail}",
+            command=" ".join(git_probe),
+        )
+    if detail.strip().lower() != "true":
+        return CheckResult(
+            name="publication_path",
+            ok=False,
+            detail=f"git checkout probe returned unexpected output: {detail}",
+            command=" ".join(git_probe),
+        )
+
+    unwritable_targets = [
+        relative_to_repo(repo_root, path) for path in targets if not os.access(path, os.W_OK)
+    ]
+    if unwritable_targets:
+        return CheckResult(
+            name="publication_path",
+            ok=False,
+            detail="git checkout exists but direct runtime targets are not writable: "
+            + ", ".join(unwritable_targets),
+            command=" ".join(git_probe),
+        )
+
+    branch_probe = ["git", "branch", "--show-current"]
+    branch_ok, branch_detail = run_command(branch_probe, cwd=repo_root)
+    branch_suffix = f" on branch {branch_detail}" if branch_ok and branch_detail else ""
+    return CheckResult(
+        name="publication_path",
+        ok=True,
+        detail=f"git checkout present{branch_suffix} and direct runtime targets are writable",
+        command=" ".join(git_probe),
+    )
 
 
 def check_runtime_contract(repo_root: Path, page_path: Path, win32_path: Path) -> CheckResult:
@@ -261,6 +334,36 @@ class Issue3RuntimeReentryTests(unittest.TestCase):
             resolved = repo_root_from(nested)
             self.assertEqual(resolved, root.resolve())
 
+    def test_publication_path_requires_git_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            page = root / "src/browser/Page.zig"
+            win32 = root / "src/display/win32_backend.zig"
+            page.parent.mkdir(parents=True)
+            win32.parent.mkdir(parents=True)
+            page.write_text("// page\n", encoding="utf-8")
+            win32.write_text("// win32\n", encoding="utf-8")
+            result = check_publication_path(root, page, win32)
+            self.assertFalse(result.ok)
+            self.assertIn("missing .git", result.detail)
+
+    def test_publication_path_accepts_writable_git_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            page = root / "src/browser/Page.zig"
+            win32 = root / "src/display/win32_backend.zig"
+            page.parent.mkdir(parents=True)
+            win32.parent.mkdir(parents=True)
+            page.write_text("// page\n", encoding="utf-8")
+            win32.write_text("// win32\n", encoding="utf-8")
+            (root / ".git").mkdir()
+            with mock.patch(__name__ + ".run_command") as mocked_run:
+                mocked_run.side_effect = [(True, "true"), (True, "fork/headed-mode-foundation")]
+                result = check_publication_path(root, page, win32)
+            self.assertTrue(result.ok)
+            self.assertIn("writable", result.detail)
+            self.assertIn("fork/headed-mode-foundation", result.detail)
+
     def test_summarize_counts_pass_and_fail(self) -> None:
         summary = summarize(
             [
@@ -296,6 +399,7 @@ def main() -> int:
     browser_exe = Path(args.browser_exe).resolve() if args.browser_exe else None
 
     results = check_reference_files(repo_root)
+    results.append(check_publication_path(repo_root, page_path, win32_path))
     results.append(check_runtime_contract(repo_root, page_path, win32_path))
     results.append(check_linux_readiness(repo_root, saved_archives_root, args.include_zig_check))
 
