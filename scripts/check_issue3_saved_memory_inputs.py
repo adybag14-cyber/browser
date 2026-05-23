@@ -48,9 +48,30 @@ OPTIONAL_MEMORY_FILES: tuple[tuple[str, str], ...] = (
 
 REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
+    ("scripts/check_linux_build_readiness.py", "Linux build-readiness helper"),
+    (
+        "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
+        "saved-browser-snapshot route surface checker",
+    ),
+    (
+        "scripts/linux/restore_saved_browser_snapshot.sh",
+        "saved-browser-snapshot restore helper",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
+        "saved-browser-snapshot route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
+        "Linux build-readiness surface checker",
+    ),
     (
         "scripts/linux/show_issue3_linux_build_readiness_route.sh",
         "Linux build-readiness route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
+        "runtime re-entry surface checker",
     ),
     (
         "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
@@ -349,22 +370,11 @@ class SavedMemoryInputsTests(unittest.TestCase):
             repo_root.mkdir()
             agent_files_root.mkdir()
             restored_checkout_root.mkdir()
-            (restored_checkout_root / "scripts/linux").mkdir(parents=True)
             (restored_checkout_root / "build.zig.zon").write_text("{}", encoding="utf-8")
-            (restored_checkout_root / "scripts/check_issue3_saved_memory_inputs.py").write_text(
-                "pass",
-                encoding="utf-8",
-            )
-            (restored_checkout_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh").write_text(
-                "pass",
-                encoding="utf-8",
-            )
-            (
-                restored_checkout_root / "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"
-            ).write_text(
-                "pass",
-                encoding="utf-8",
-            )
+            for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES:
+                target = restored_checkout_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("pass", encoding="utf-8")
             for relative_path, _label in REQUIRED_MEMORY_FILES + OPTIONAL_MEMORY_FILES:
                 target = memory_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -482,28 +492,32 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 [relative_path for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES],
             )
 
-    def test_restored_checkout_helper_surface_requires_runtime_route(self) -> None:
+    def test_restored_checkout_helper_surface_requires_saved_snapshot_checker(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             restored_checkout_root = Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
             restored_checkout_root.mkdir()
-            (restored_checkout_root / "scripts/linux").mkdir(parents=True)
             (restored_checkout_root / "build.zig.zon").write_text("{}", encoding="utf-8")
-            (restored_checkout_root / "scripts/check_issue3_saved_memory_inputs.py").write_text(
-                "pass",
-                encoding="utf-8",
-            )
-            (restored_checkout_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh").write_text(
-                "pass",
-                encoding="utf-8",
-            )
+            legacy_helper_paths = {
+                "scripts/check_issue3_saved_memory_inputs.py",
+                "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+                "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+            }
+            for relative_path in legacy_helper_paths:
+                target = restored_checkout_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("pass", encoding="utf-8")
 
             result = collect_restored_checkout_result(restored_checkout_root)
 
             self.assertTrue(result["has_build_manifest"])
             self.assertFalse(result["has_helper_surface"])
-            self.assertEqual(
+            self.assertIn(
+                "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
                 result["missing_helper_surface_files"],
-                ["scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"],
+            )
+            self.assertIn(
+                "scripts/check_linux_build_readiness.py",
+                result["missing_helper_surface_files"],
             )
 
     def test_default_roots_follow_workspace_layout(self) -> None:
