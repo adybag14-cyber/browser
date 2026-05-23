@@ -10,6 +10,7 @@ path by hand.
 
 Companion helpers:
 
+- `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
 - `scripts/linux/restore_saved_browser_snapshot.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
@@ -32,11 +33,17 @@ Use this route when any of these are true:
 From the browser repo root:
 
 ```bash
+bash ./scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --check-only
 ```
 
-That prints the saved archive location, the inferred top-level folder from the
-zip, the default restore destination, and the first follow-up commands.
+The first command verifies that the restore note, route printer, and follow-up
+helpers are still present on the branch-local surface before the route tries to
+extract anything.
+
+The second command prints the saved archive location, the inferred top-level
+folder from the zip, the default restore destination, and the first follow-up
+commands.
 
 When you want the whole restore route on one compact command surface instead,
 print the route helper:
