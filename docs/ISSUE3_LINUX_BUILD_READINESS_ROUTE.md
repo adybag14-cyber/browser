@@ -23,6 +23,7 @@ helpers:
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/check_issue3_saved_archive_integrity.py`
 
 ## Goal
 
@@ -30,6 +31,8 @@ Give the next writable checkout one branch-local route for:
 
 - checking that the saved Memory repo snapshot, notes, blocker file, dependency
   archives, and optional fallback Zig bundle are still present
+- checking that the saved repo snapshot and dependency bundles still match the
+  expected exact artifacts before a restore or offline staging step trusts them
 - checking that the Linux build-readiness note and helper surfaces still line up
 - staging the offline sibling dependencies expected by `build.zig.zon`
 - restoring the saved Rust `1.79.0` toolchain through one compact helper route
@@ -81,6 +84,23 @@ python scripts/check_issue3_saved_memory_inputs.py --repo-root .
 Use `--fallback-zig-archive` when the attached
 `zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` bundle lives somewhere other
 than the default `../agent_files/` location beside the repo workspace.
+
+## Verify Archive Integrity Before Offline Staging
+
+After the saved-Memory preflight passes, confirm the saved repo snapshot and
+dependency bundles still match the expected SHA-256 fingerprints before offline
+staging or restore commands trust them:
+
+```bash
+python scripts/check_issue3_saved_archive_integrity.py --repo-root .
+```
+
+Use `--fallback-zig-archive` when the attached
+`zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` bundle lives somewhere other
+than the default `../agent_files/` location beside the repo workspace.
+Use `--require-fallback-zig` only when the route needs the fallback Zig archive
+itself to be present and fingerprint-matched before later recovery steps can
+trust it.
 
 ## Reopen The Zig Line Before Trusting Fallback Zig
 
@@ -160,25 +180,27 @@ The Linux route now stays short and ordered:
    `scripts/linux/show_issue3_saved_browser_snapshot_route.sh` when no reusable
    checkout exists yet
 3. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
-4. A Zig-line recovery helper using
+4. A saved-archive integrity preflight using
+   `scripts/check_issue3_saved_archive_integrity.py`
+5. A Zig-line recovery helper using
    `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-5. A saved Rust route surface check using
+6. A saved Rust route surface check using
    `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-6. A saved Rust restore route using
+7. A saved Rust restore route using
    `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-7. A dedicated offline build-inputs route using
+8. A dedicated offline build-inputs route using
    `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-8. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-9. A `prepare_offline_build_inputs.sh --check-only` command for the offline
-   dependency surface
-10. A saved Rust `1.79.0` restore command
-11. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-12. The attached fallback Zig archive location when it is present beside the repo
+9. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+10. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+    dependency surface
+11. A saved Rust `1.79.0` restore command
+12. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+13. The attached fallback Zig archive location when it is present beside the repo
     workspace, so runs can surface it without treating it as branch-compatible
     validation evidence
-13. A full readiness command that expects the saved archives, offline deps, and
+14. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-14. A direct handoff back to the smaller Windows runtime revalidation route once
+15. A direct handoff back to the smaller Windows runtime revalidation route once
     the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
@@ -206,6 +228,10 @@ attached-page or live-Google replay.
 - Run `python scripts/check_issue3_saved_memory_inputs.py --repo-root .` before
   the broader readiness helper when the replay depends on the saved archives in
   Memory.
+- Run `python scripts/check_issue3_saved_archive_integrity.py --repo-root .`
+  after the saved-Memory preflight when the route needs to prove the saved repo
+  and dependency bundles still match the expected exact artifacts before offline
+  staging starts.
 - Run `bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh` when
   the route still only shows the attached Zig `0.17` fallback or when multiple
   staged Zig candidates need a quick `0.15.x` decision.
@@ -225,7 +251,7 @@ attached-page or live-Google replay.
 - Do not treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl`
   as source regressions before the offline restore route is staged.
 - Do not treat Zig `0.17` fallback failures in untouched branch files as issue
-  `#3` patch evidence.
+  `#3` evidence.
 - Treat the attached `zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` bundle
   as a surfaced fallback artifact only; do not treat its Zig `0.17` dev line as
   honest issue `#3` validation evidence for this branch.
