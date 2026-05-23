@@ -91,11 +91,17 @@ SAVED_RUST_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_rust_toolchain_ro
 OFFLINE_ROUTE_COMMAND="bash scripts/linux/show_issue3_offline_build_inputs_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
 RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
 HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
+HTML5EVER_ARCHIVE_ARGUMENT=""
+HTML5EVER_ARCHIVE_DISPLAY="not present under saved archives root"
+if [[ -f "${HTML5EVER_ARCHIVE}" ]]; then
+    HTML5EVER_ARCHIVE_ARGUMENT=" --html5ever-archive $(format_shell_arg "${HTML5EVER_ARCHIVE}")"
+    HTML5EVER_ARCHIVE_DISPLAY="${HTML5EVER_ARCHIVE}"
+fi
 BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip"
 BROWSER_DEPS_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/04-zig-browser-depo.tar.zip"
 SAVED_MEMORY_INPUTS_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
-PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}") --html5ever-archive $(format_shell_arg "${HTML5EVER_ARCHIVE}") --check-only"
+PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}")${HTML5EVER_ARCHIVE_ARGUMENT} --check-only"
 RUST_RESTORE_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 RUST_RESTORE_CHECK_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --check-only"
 RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/bin"):$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/rustc/bin"):\$PATH"
@@ -121,15 +127,6 @@ print(json.dumps({
     "saved_archives_root": ${SAVED_ARCHIVES_ROOT@Q},
     "rust_toolchain_dir": ${RUST_TOOLCHAIN_DIR@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
-    "read_first": [
-        "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
-        "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
-        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
-        "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
-        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
-        "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
-        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
-    ],
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
@@ -155,8 +152,9 @@ print(json.dumps({
         "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the offline_build_inputs_route command when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.",
+        "The saved html5ever bundle is optional on this route and is only added to the offline restore surface check when it is actually present under the saved archives root.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
-        "Once the saved-archive, offline-inputs, Rust, and Zig-line gates pass, run windows_runtime_surface and then windows_runtime_route before wider replay or direct runtime edits.",
+        "Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, run windows_runtime_surface and then windows_runtime_route before wider replay or direct runtime edits.",
         "Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only; it should not be treated as honest issue #3 validation evidence for this branch.",
         "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
     ]
@@ -186,7 +184,7 @@ Read first
 Saved archives
 ==============
   Rust toolchain:    ${RUST_ARCHIVE}
-  html5ever bundle:  ${HTML5EVER_ARCHIVE}
+  html5ever bundle:  ${HTML5EVER_ARCHIVE_DISPLAY}
   BoringSSL bundle:  ${BORINGSSL_ARCHIVE}
   Browser deps:      ${BROWSER_DEPS_ARCHIVE}
 
@@ -246,6 +244,7 @@ Working rules
   - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
   - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the offline build-inputs route when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.
+  - The saved html5ever bundle is optional on this route and is only threaded into the offline restore surface check when it is actually present.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
   - Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, run the Windows runtime surface handoff and then the Windows runtime route handoff before wider replay or direct runtime edits.
   - Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only, not as honest issue #3 validation evidence for this branch.
