@@ -35,6 +35,8 @@ bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 
 - Do not treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl`
   as source regressions before the offline restore route is staged.
+- Treat the attached `zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` bundle
+  as a surfaced fallback input only.
 - Prefer a Zig `0.15.2` toolchain for honest branch validation after the saved
   archives and Rust toolchain are staged.
 """,
@@ -43,27 +45,35 @@ bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Read-first Linux or WSL build-readiness note for the blocked issue #3 runtime lane."
 "scripts/check_linux_build_readiness.py|file|Python helper that checks saved archives, sibling deps, offline deps, and toolchain readiness."
 "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Compact Linux route printer for the saved-archive-first recovery path."
+"scripts/linux/restore_saved_rust_toolchain.sh|file|Saved Rust restore helper that should keep the check-only and restore commands on one branch-local surface."
 "scripts/linux/prepare_offline_build_inputs.sh|file|Offline restore helper that stages zig-v8-fork, boringssl-zig, and offline-deps."
 "build.zig.zon|file|Manifest surface that defines the branch minimum Zig line and sibling path dependencies."
 
 "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|The gate note keeps the Linux build-readiness note in the direct issue #3 read-first surface."
 "scripts/check_linux_build_readiness.py|saved Rust toolchain archive|The readiness helper still knows the saved Rust archive contract."
 "scripts/check_linux_build_readiness.py|saved browser dependency archive|The readiness helper still knows the saved browser dependency archive contract."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|fallback-zig-archive|The Linux route printer still supports an explicit attached fallback Zig archive override."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|Fallback Zig archive:|The Linux route printer still prints the attached fallback Zig archive surface."
+"scripts/linux/restore_saved_rust_toolchain.sh|--check-only|The saved Rust restore helper still supports surface-only validation without extraction."
 "scripts/linux/prepare_offline_build_inputs.sh|--check-only|The offline prep helper still supports surface-only validation without mutation."
 """,
     "scripts/linux/show_issue3_linux_build_readiness_route.sh": r"""
-RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
-HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
-BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip"
-BROWSER_DEPS_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/04-zig-browser-depo.tar.zip"
-PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --skip-zig-check --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies"
+Usage:
+  bash scripts/linux/show_issue3_linux_build_readiness_route.sh \
+    [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz]
+
+FALLBACK_ZIG_ARCHIVE=""
+PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --skip-zig-check --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies --fallback-zig-archive ${FALLBACK_ZIG_ARCHIVE}"
 PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root ${REPO_ROOT} --browser-deps-archive ${BROWSER_DEPS_ARCHIVE} --boringssl-archive ${BORINGSSL_ARCHIVE} --html5ever-archive ${HTML5EVER_ARCHIVE} --check-only"
-RUST_RESTORE_COMMAND="mkdir -p ${RUST_TOOLCHAIN_DIR} && tar -xf ${RUST_ARCHIVE} -C ${RUST_TOOLCHAIN_DIR} --strip-components=1"
-RUST_PATH_COMMAND="export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:$PATH"
-FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies --expect-offline-deps --require-prebuilt-v8"
+RUST_RESTORE_CHECK_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root ${REPO_ROOT} --dependencies-root ${SAVED_ARCHIVES_ROOT}/dependencies --toolchain-root ${RUST_TOOLCHAIN_DIR} --check-only"
+RUST_RESTORE_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root ${REPO_ROOT} --dependencies-root ${SAVED_ARCHIVES_ROOT}/dependencies --toolchain-root ${RUST_TOOLCHAIN_DIR}"
+RUST_PATH_COMMAND="export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:${RUST_TOOLCHAIN_DIR}/rustc/bin:$PATH"
+FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies --expect-offline-deps --require-prebuilt-v8 --fallback-zig-archive ${FALLBACK_ZIG_ARCHIVE}"
 
 "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts."
+"Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only"
 "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
+"Fallback Zig archive:"
 """,
     "scripts/check_linux_build_readiness.py": r"""
 SAVED_ARCHIVE_GLOBS: dict[str, str] = {
@@ -78,6 +88,8 @@ SAVED_ARCHIVE_LABELS: dict[str, str] = {
     "boringssl": "saved BoringSSL archive",
     "browser_deps": "saved browser dependency archive",
 }
+REQUIRED_SAVED_ARCHIVE_KEYS = ("rust_toolchain", "boringssl", "browser_deps")
+OPTIONAL_SAVED_ARCHIVE_KEYS = ("html5ever",)
 OFFLINE_DEP_NAMES = ("brotli", "zlib", "nghttp2", "curl")
 PREBUILT_V8_GLOB = "libc_v8_*.a"
 --expect-offline-deps
@@ -85,7 +97,20 @@ PREBUILT_V8_GLOB = "libc_v8_*.a"
 --expect-saved-archives
 --saved-archives-root
 --skip-zig-check
-zig {installed} does not match the branch's expected
+--fallback-zig-archive
+def check_optional_file(path: pathlib.Path, label: str) -> list[str]:
+does not match the branch's expected
+""",
+    "scripts/linux/restore_saved_rust_toolchain.sh": r"""
+Usage:
+  bash scripts/linux/restore_saved_rust_toolchain.sh \
+    --browser-root /path/to/browser-repo \
+    --dependencies-root /path/to/memory/repo_archives/browser/dependencies \
+    --toolchain-root /path/to/toolchains/rust-1.79.0 \
+    [--check-only]
+
+Suggested shell setup:
+  export PATH=/toolchains/rust-1.79.0/cargo/bin:/toolchains/rust-1.79.0/rustc/bin:$PATH
 """,
     "scripts/linux/prepare_offline_build_inputs.sh": r"""
 Usage:
@@ -115,16 +140,16 @@ layout without mutating the repo or extracting any archives.
     .path = "../boringssl-zig",
 },
 .brotli = .{
-    .url = "https://github.com/google/brotli/archive/028fb5a23661f123017c060daa546b55cf4bde29.tar.gz",
+    .url = "https://github.com/google/brotli/archive/",
 },
 .zlib = .{
-    .url = "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz",
+    .url = "https://github.com/madler/zlib/releases/download/",
 },
 .nghttp2 = .{
-    .url = "https://github.com/nghttp2/nghttp2/releases/download/v1.68.0/nghttp2-1.68.0.tar.gz",
+    .url = "https://github.com/nghttp2/nghttp2/releases/download/",
 },
 .curl = .{
-    .url = "https://github.com/curl/curl/releases/download/curl-8_18_0/curl-8.18.0.tar.gz",
+    .url = "https://github.com/curl/curl/releases/download/",
 },
 """,
 }
@@ -165,6 +190,9 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
         cls.readiness_helper = read_text(
             cls.repo_root / "scripts/check_linux_build_readiness.py"
         )
+        cls.rust_restore_helper = read_text(
+            cls.repo_root / "scripts/linux/restore_saved_rust_toolchain.sh"
+        )
         cls.offline_prepare = read_text(
             cls.repo_root / "scripts/linux/prepare_offline_build_inputs.sh"
         )
@@ -188,6 +216,7 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
             "saved Rust `1.79.0` restore command",
             "prebuilt V8 archive to be staged before retrying `zig build`",
             "Do not treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl`",
+            "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
             "Prefer a Zig `0.15.2` toolchain for honest branch validation",
         ):
             self.assertIn(fragment, self.linux_route_note)
@@ -198,27 +227,31 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Read-first Linux or WSL build-readiness note",
             "scripts/check_linux_build_readiness.py|file|Python helper",
             "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Compact Linux route printer",
+            "scripts/linux/restore_saved_rust_toolchain.sh|file|Saved Rust restore helper",
             "scripts/linux/prepare_offline_build_inputs.sh|file|Offline restore helper",
             "build.zig.zon|file|Manifest surface",
             "saved Rust toolchain archive",
             "saved browser dependency archive",
-            "--check-only",
+            "fallback-zig-archive",
+            "Fallback Zig archive:",
+            "scripts/linux/restore_saved_rust_toolchain.sh|--check-only",
+            "scripts/linux/prepare_offline_build_inputs.sh|--check-only",
         ):
             self.assertIn(fragment, self.surface_checker)
 
     def test_route_printer_keeps_saved_archive_commands_and_paths(self) -> None:
         for fragment in (
-            "01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz",
-            "02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip",
-            "03-boringssl-zig-main.zip",
-            "04-zig-browser-depo.tar.zip",
+            "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+            "FALLBACK_ZIG_ARCHIVE",
             "scripts/check_linux_build_readiness.py --repo-root",
             "--skip-zig-check --expect-saved-archives",
             "prepare_offline_build_inputs.sh --browser-root",
+            "restore_saved_rust_toolchain.sh --browser-root",
             "--check-only",
-            "tar -xf ${RUST_ARCHIVE}",
-            "export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:$PATH",
+            "RUST_PATH_COMMAND=\"export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:${RUST_TOOLCHAIN_DIR}/rustc/bin:$PATH\"",
             "--expect-offline-deps --require-prebuilt-v8",
+            "Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only",
+            "Fallback Zig archive:",
             "Prefer a Zig 0.15.2 toolchain for honest branch validation",
         ):
             self.assertIn(fragment, self.route_printer)
@@ -231,6 +264,8 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
             '"browser_deps": "04-zig-browser-depo.tar.zip"',
             '"rust_toolchain": "saved Rust toolchain archive"',
             '"browser_deps": "saved browser dependency archive"',
+            'REQUIRED_SAVED_ARCHIVE_KEYS = ("rust_toolchain", "boringssl", "browser_deps")',
+            'OPTIONAL_SAVED_ARCHIVE_KEYS = ("html5ever",)',
             'OFFLINE_DEP_NAMES = ("brotli", "zlib", "nghttp2", "curl")',
             'PREBUILT_V8_GLOB = "libc_v8_*.a"',
             "--expect-offline-deps",
@@ -238,11 +273,23 @@ class Issue3LinuxBuildReadinessRouteSurfaceTest(unittest.TestCase):
             "--expect-saved-archives",
             "--saved-archives-root",
             "--skip-zig-check",
+            "--fallback-zig-archive",
+            "def check_optional_file(path: pathlib.Path, label: str) -> list[str]:",
             "does not match the branch's expected",
         ):
             self.assertIn(fragment, self.readiness_helper)
 
-    def test_offline_prepare_helper_and_build_manifest_keep_the_same_restore_shape(self) -> None:
+    def test_rust_restore_helper_and_build_manifest_keep_the_same_restore_shape(self) -> None:
+        for fragment in (
+            "--browser-root /path/to/browser-repo",
+            "--dependencies-root /path/to/memory/repo_archives/browser/dependencies",
+            "--toolchain-root /path/to/toolchains/rust-1.79.0",
+            "--check-only",
+            "Suggested shell setup:",
+            "/cargo/bin:/toolchains/rust-1.79.0/rustc/bin:$PATH",
+        ):
+            self.assertIn(fragment, self.rust_restore_helper)
+
         for fragment in (
             "--browser-deps-archive /path/to/zig-browser-depo.tar.zip",
             "--boringssl-archive /path/to/boringssl-zig-main.zip",
