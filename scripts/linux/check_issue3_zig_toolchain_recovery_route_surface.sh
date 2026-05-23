@@ -48,20 +48,28 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|file|Read-first Zig line recovery note for the blocked issue #3 Linux or WSL route."
+    "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md|file|Archive-staging companion note for putting a Zig toolchain under ../toolchains before the route reruns discovery."
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Linux build-readiness companion that should still point runs at the Zig line recovery helper."
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the Linux build-readiness lane visible before the direct runtime patch is reopened."
     "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh|file|Fail-fast surface checker for the Zig toolchain recovery route."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|file|Compact Zig line recovery route printer."
+    "scripts/linux/restore_issue3_fallback_zig_toolchain.sh|file|Fallback Zig restore helper for staging the attached archive under ../toolchains."
+    "scripts/linux/restore_zig_toolchain_archive.sh|file|Generic Zig archive restore helper for staging a real 0.15.x archive under ../toolchains."
     "scripts/check_linux_build_readiness.py|file|Readiness helper that reads build.zig.zon and classifies staged Zig candidates."
     "build.zig.zon|file|Manifest surface that defines the branch minimum Zig line."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|The Zig recovery note still points at the compact route helper."
+    "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|scripts/linux/restore_issue3_fallback_zig_toolchain.sh|The Zig recovery note keeps the fallback restore helper visible."
+    "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md|The Zig recovery note keeps the archive-staging companion visible for real 0.15.x archives."
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz|The Zig recovery note still names the attached fallback Zig bundle."
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|0.15.2|The Zig recovery note still names the expected branch-compatible Zig line."
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|show_issue3_zig_toolchain_recovery_route.sh|The Linux build-readiness note still points at the Zig recovery route."
+    "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md|restore_zig_toolchain_archive.sh|The archive-staging companion note still points at the generic Zig archive restore helper."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|check_issue3_zig_toolchain_recovery_route_surface.sh|The Zig recovery route still points back to its dedicated surface checker."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md|The Zig recovery route still points at the archive-staging companion note."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|restore_issue3_fallback_zig_toolchain.sh|The Zig recovery route still points at the fallback restore helper."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|build.zig.zon|The Zig recovery route still reads the branch minimum Zig line from build.zig.zon."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|check_linux_build_readiness.py|The Zig recovery route still points back to the readiness helper."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|--toolchains-root|The Zig recovery route still supports an explicit toolchains root override."
@@ -70,11 +78,16 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|--fallback-zig-archive|The Zig recovery route still supports an explicit fallback Zig archive override."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|surface_check|The Zig recovery route JSON output still carries the fail-fast surface-check command."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|matching_readiness|The Zig recovery route still exposes the full matching-line readiness command when a compatible Zig candidate is staged."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|fallback_restore_check|The Zig recovery route JSON output still carries the fallback restore surface-check command when the attached archive is visible."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|fallback_restore|The Zig recovery route JSON output still carries the fallback restore command when the attached archive is visible."
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|Fallback archive staging|The Zig recovery route still prints the fallback archive staging section when the attached archive is visible."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|Discovered Zig candidates: none|The Zig recovery route still prints a clear empty-candidate state when no staged Zig toolchains are available."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|No branch-compatible Zig candidate is staged yet.|The Zig recovery route still prints a clear no-match state when only older or mismatched Zig candidates are present."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz|The Zig recovery route still surfaces the attached fallback Zig archive."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|Saved archives root:|The Zig recovery route still prints the saved archives root used for discovery and readiness reruns."
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh|Offline deps root:|The Zig recovery route still prints the offline dependency root used for full readiness reruns."
+    "scripts/linux/restore_issue3_fallback_zig_toolchain.sh|--check-only|The fallback restore helper still supports surface-only validation without extraction."
+    "scripts/linux/restore_zig_toolchain_archive.sh|--check-only|The generic Zig archive restore helper still supports surface-only validation without extraction."
 )
 
 json_escape() {
