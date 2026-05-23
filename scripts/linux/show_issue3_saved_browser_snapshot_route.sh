@@ -7,6 +7,7 @@ usage() {
 Usage:
   bash scripts/linux/show_issue3_saved_browser_snapshot_route.sh \
     [--repo-root /path/to/browser-repo] \
+    [--helper-root /path/to/live/browser-repo] \
     [--memory-root /path/to/workspace/memory] \
     [--archive /path/to/01-browser-fork-headed-mode-foundation.zip] \
     [--destination /path/to/extracted/browser-checkout] \
@@ -42,6 +43,7 @@ DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_DESTINATION_NAME="browser-memory-snapshot"
 DEFAULT_ARCHIVE_NAME="01-browser-fork-headed-mode-foundation.zip"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
+HELPER_ROOT=""
 MEMORY_ROOT=""
 ARCHIVE_PATH=""
 DESTINATION=""
@@ -52,6 +54,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --repo-root)
             REPO_ROOT="$2"
+            shift 2
+            ;;
+        --helper-root)
+            HELPER_ROOT="$2"
             shift 2
             ;;
         --memory-root)
@@ -87,6 +93,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+if [[ -z "${HELPER_ROOT}" ]]; then
+    HELPER_ROOT="${DEFAULT_REPO_ROOT}"
+fi
+HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
     MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
 fi
@@ -97,18 +107,18 @@ if [[ -z "${DESTINATION}" ]]; then
     DESTINATION="$(cd "${REPO_ROOT}/.." && pwd)/${DEFAULT_DESTINATION_NAME}"
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${HELPER_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
 fi
 
-ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
-SURFACE_CHECK_COMMAND="bash scripts/linux/restore_saved_browser_snapshot.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --check-only"
-RESTORE_COMMAND="bash scripts/linux/restore_saved_browser_snapshot.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")"
-SAVED_MEMORY_PREFLIGHT_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root $(format_shell_arg "${DESTINATION}")"
-LINUX_BUILD_ROUTE_COMMAND="bash scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root $(format_shell_arg "${DESTINATION}")"
-RUNTIME_ROUTE_COMMAND="bash scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root $(format_shell_arg "${DESTINATION}")"
+ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --check-only"
+RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")"
+SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
+RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -122,6 +132,7 @@ import json
 print(json.dumps({
     "issue": "Google issue #3 saved browser snapshot restore route",
     "repo_root": ${REPO_ROOT@Q},
+    "helper_root": ${HELPER_ROOT@Q},
     "memory_root": ${MEMORY_ROOT@Q},
     "archive_path": ${ARCHIVE_PATH@Q},
     "destination": ${DESTINATION@Q},
@@ -139,6 +150,7 @@ print(json.dumps({
         "Run surface_check next so the saved archive path, top-level folder, and follow-up commands are confirmed before extraction.",
         "Use restore only when the route really needs a disposable checkout for Linux or WSL helper validation.",
         "Run saved_memory_preflight against the restored checkout before trusting broader build-readiness or runtime helper output.",
+        "Keep helper_root pointed at the live branch-local helper surface so follow-up commands do not depend on the older restored snapshot carrying newer route scripts.",
         "Use linux_build_route when the next blocked step is still toolchain or offline dependency staging.",
         "Use runtime_route only after the saved checkout exists and the route is ready to reopen the narrowed Page.zig and win32_backend.zig lane."
     ]
@@ -151,6 +163,7 @@ cat <<EOF
 Google issue #3 saved browser snapshot restore route
 
 Repo root:            ${REPO_ROOT}
+Helper root:          ${HELPER_ROOT}
 Memory root:          ${MEMORY_ROOT}
 Snapshot archive:     ${ARCHIVE_PATH}
 Restore destination:  ${DESTINATION}
@@ -187,6 +200,7 @@ Working rules
   - Run the route surface check first so missing docs or helper drift fails fast before the restore helper is trusted.
   - Run the restore helper surface check next so the saved archive path, top-level folder, and follow-up commands are confirmed before extraction.
   - Use the restore step when the route needs a disposable checkout for helper validation without relying on live GitHub file publication.
+  - Keep the helper root on the live branch-local helper surface so the follow-up commands do not depend on the restored snapshot carrying newer route scripts.
   - Run the saved-Memory preflight against the restored checkout before trusting broader build-readiness or runtime helper output.
   - Use the Linux or WSL build-readiness route when the next blocked step is still toolchain or offline dependency staging.
   - Reopen the direct Page.zig plus win32_backend.zig runtime lane only after the restored checkout exists and the branch-compatible validation gate is no longer the blocker.
