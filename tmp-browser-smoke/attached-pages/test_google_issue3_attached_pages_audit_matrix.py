@@ -60,16 +60,50 @@ class GoogleIssue3AttachedPagesAuditMatrixTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tempdir.cleanup()
 
-    def test_default_specs_include_windows_full_use_route(self) -> None:
+    def test_default_specs_include_inventory_surfaces(self) -> None:
         specs = helper.load_audit_specs()
 
         self.assertEqual(
             [
+                "branch-inventory",
+                "live-surface-inventory",
                 "launcher-companion",
                 "windows-replay-quickstart",
                 "windows-full-use-route",
             ],
             [spec["name"] for spec in specs],
+        )
+
+    def test_summarize_inventory_rows_tracks_missing_paths(self) -> None:
+        summary = helper.summarize_inventory_rows(
+            [
+                {
+                    "path": "docs/present.md",
+                    "purpose": "Present surface.",
+                    "kind": "file",
+                    "exists": True,
+                },
+                {
+                    "path": "docs/missing.md",
+                    "purpose": "Missing surface.",
+                    "kind": "file",
+                    "exists": False,
+                },
+            ],
+            missing_snippet_prefix="Inventory drift",
+        )
+
+        self.assertEqual(2, summary["expectation_count"])
+        self.assertEqual(1, summary["missing_count"])
+        self.assertEqual(1, summary["missing_path_count"])
+        self.assertEqual("docs/missing.md", summary["missing_paths"][0]["path"])
+        self.assertEqual(
+            "Missing surface.",
+            summary["missing_paths"][0]["first_missing_purpose"],
+        )
+        self.assertEqual(
+            "Inventory drift: file missing",
+            summary["missing_paths"][0]["first_missing_snippet"],
         )
 
     def test_build_matrix_recommends_surface_with_largest_gap(self) -> None:
