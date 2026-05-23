@@ -21,6 +21,7 @@ SYNCED_HELPER_PATHS: tuple[str, ...] = (
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
     "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md",
     "scripts/check_issue3_saved_memory_inputs.py",
     "scripts/check_linux_build_readiness.py",
     "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
@@ -38,6 +39,15 @@ SYNCED_HELPER_PATHS: tuple[str, ...] = (
     "scripts/linux/check_issue3_offline_build_inputs_route_surface.sh",
     "scripts/linux/show_issue3_offline_build_inputs_route.sh",
     "scripts/linux/prepare_offline_build_inputs.sh",
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+    "scripts/windows/HeadedValidationHelpers.ps1",
+    "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
+    "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
+    "scripts/windows/show_headed_validation_suites.ps1",
+    "tmp-browser-smoke/form-controls/enter-submit-probe.ps1",
+    "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py",
+    "tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1",
+    "src/browser/tests/page/google_home_title_probe.html",
 )
 
 
