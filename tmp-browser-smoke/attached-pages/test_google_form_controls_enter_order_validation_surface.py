@@ -77,8 +77,18 @@ $flow = [ordered]@{
     )
     notes = @(
         "Use the shared click-first fallback when you want to compare the reusable Google-shaped page against the dedicated gate before widening back to the broader shared Enter-order ladder.",
+        "Keep SharedInputText aligned with the broader issue #3 shared probes so the dedicated form-controls gate reports the same expected query string.",
         "Port 8157 is shared on purpose with the broader Enter-order helpers, so one override keeps the dedicated gate, the shared click-first fallback, and the wider stack in sync.",
+        "The shared click-first fallback reuses -GoogleEnterOrder -ClickFocus with the same repo root, browser path, host, shared input text, shared Enter-order port, and timing settings as the dedicated gate.",
+        "The printed next-step commands now preserve the current repo root, browser path, host, shared input text, shared Enter-order port, and timing settings where those later helpers support them.",
         "Use the raw probe command only when you need the direct script surface; otherwise prefer the dedicated wrapper so the runbook and issue comments stay consistent."
+    )
+    next_steps = @(
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1 when you want the dedicated probe markers translated into quick failure stages before widening again.",
+        "Use powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus -InputText 'Q' -Port 8157 when you want the reusable shared page to replay the same click-first Google-shaped path before you commit to the dedicated form-controls gate.",
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_form_controls_enter_order_validation.ps1 when you want to execute the dedicated gate directly after the surface check passes.",
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_shared_enter_order_validation_flow.ps1 when the dedicated gate is green and you want the reduced homepage, localhost wrapper, and shared Enter-order ladder printed together with the same repo-root, browser, host, shared input, port, and timing context.",
+        "Move on to the smallest live Google manual pass only after the dedicated form-controls gate and the shared click-first fallback stay green together."
     )
 }
 """,
@@ -235,6 +245,17 @@ class GoogleFormControlsEnterOrderValidationSurfaceTest(unittest.TestCase):
         self.assertIn("Port 8157 is shared on purpose", self.flow)
         self.assertIn("dedicated wrapper so the runbook and issue comments stay consistent", self.flow)
 
+    def test_dedicated_flow_keeps_context_preserving_notes_and_next_steps(self) -> None:
+        for fragment in (
+            "repo root, browser path, host, shared input text, shared Enter-order port, and timing settings",
+            "The shared click-first fallback reuses -GoogleEnterOrder -ClickFocus",
+            "show_google_form_controls_enter_order_trace_guide.ps1 when you want the dedicated probe markers translated into quick failure stages",
+            r".\tmp-browser-smoke\form-controls\enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus -InputText 'Q' -Port 8157",
+            "show_google_shared_enter_order_validation_flow.ps1 when the dedicated gate is green",
+            "Move on to the smallest live Google manual pass only after the dedicated form-controls gate and the shared click-first fallback stay green together.",
+        ):
+            self.assertIn(fragment, self.flow)
+
     def test_trace_guide_keeps_keydown_and_keypress_diagnosis(self) -> None:
         self.assertIn("No title_after_click or no FOCUS marker", self.trace_guide)
         self.assertIn("submit_phase = keydown", self.trace_guide)
@@ -242,10 +263,10 @@ class GoogleFormControlsEnterOrderValidationSurfaceTest(unittest.TestCase):
 
     def test_runner_keeps_surface_check_then_dedicated_probe(self) -> None:
         self.assertIn('Write-Host "=== google-form-controls-enter-order-surface ==="', self.runner)
-        self.assertIn('& $surfaceCheck @surfaceCheckArgs', self.runner)
+        self.assertIn("& $surfaceCheck @surfaceCheckArgs", self.runner)
         self.assertIn('Write-Host "=== google-form-controls-enter-order ==="', self.runner)
         self.assertIn(r'tmp-browser-smoke\form-controls\google-enter-order-probe.ps1', self.runner)
-        self.assertIn('& $runner @arguments', self.runner)
+        self.assertIn("& $runner @arguments", self.runner)
 
     def test_shared_flow_keeps_form_controls_follow_up_bridge(self) -> None:
         self.assertIn('name = "form-controls-flow"', self.shared_flow)
