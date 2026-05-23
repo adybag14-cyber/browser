@@ -100,6 +100,8 @@ RUST_RESTORE_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --brows
 RUST_RESTORE_CHECK_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --check-only"
 RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/bin"):$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/rustc/bin"):\$PATH"
 FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --expect-offline-deps --require-prebuilt-v8"
+WINDOWS_RUNTIME_SURFACE_COMMAND="powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"
+WINDOWS_RUNTIME_ROUTE_COMMAND="powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_enter_submit_runtime_revalidation.ps1"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     TOOLCHAIN_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -132,7 +134,9 @@ print(json.dumps({
         "rust_restore_check_only": ${RUST_RESTORE_CHECK_COMMAND@Q},
         "rust_restore": ${RUST_RESTORE_COMMAND@Q},
         "rust_path": ${RUST_PATH_COMMAND@Q},
-        "full_readiness": ${FULL_READINESS_COMMAND@Q}
+        "full_readiness": ${FULL_READINESS_COMMAND@Q},
+        "windows_runtime_surface": ${WINDOWS_RUNTIME_SURFACE_COMMAND@Q},
+        "windows_runtime_route": ${WINDOWS_RUNTIME_ROUTE_COMMAND@Q}
     },
     "notes": [
         "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
@@ -143,6 +147,7 @@ print(json.dumps({
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the offline_build_inputs_route command when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
+        "Once the saved-archive, offline-inputs, Rust, and Zig-line gates pass, run windows_runtime_surface and then windows_runtime_route before wider replay or direct runtime edits.",
         "Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only; it should not be treated as honest issue #3 validation evidence for this branch.",
         "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
     ]
@@ -216,6 +221,12 @@ Suggested route
   Full Linux/WSL readiness check after offline staging:
     ${FULL_READINESS_COMMAND}
 
+  Windows runtime surface handoff:
+    ${WINDOWS_RUNTIME_SURFACE_COMMAND}
+
+  Windows runtime route handoff:
+    ${WINDOWS_RUNTIME_ROUTE_COMMAND}
+
 Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before offline staging starts.
@@ -226,6 +237,7 @@ Working rules
   - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the offline build-inputs route when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
+  - Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, run the Windows runtime surface handoff and then the Windows runtime route handoff before wider replay or direct runtime edits.
   - Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only, not as honest issue #3 validation evidence for this branch.
   - Do not treat fallback Zig 0.17 dev failures in untouched branch files as issue #3 patch evidence.
   - Prefer a Zig 0.15.2 toolchain for honest branch validation after the saved archives and Rust toolchain are staged.
