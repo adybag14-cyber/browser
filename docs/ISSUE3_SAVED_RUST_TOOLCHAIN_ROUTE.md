@@ -6,7 +6,9 @@ build-readiness helper can be trusted.
 
 This route keeps the saved Rust archive check, the restore command, and the
 shell handoff on one branch-local surface so future reruns do not need to
-rebuild the Rust staging path by hand.
+rebuild the Rust staging path by hand. It now defaults to the same restored
+location used by the broader Linux build-readiness helper:
+`../toolchains/rust-1.79.0` beside the repo workspace.
 
 Companion helpers:
 
@@ -55,7 +57,7 @@ unusual, override the paths:
 bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh \
   --browser-root /path/to/browser \
   --dependencies-root /path/to/memory/repo_archives/browser/dependencies \
-  --toolchain-root /path/to/rust-1.79.0-x86_64-unknown-linux-gnu
+  --toolchain-root /path/to/toolchains/rust-1.79.0
 ```
 
 Use `--json` when another helper wants the route as structured output.
@@ -71,6 +73,9 @@ The helper prints:
 4. the exact `PATH`, `CARGO`, and `RUSTC` exports to reuse after restore
 5. the matching `check_linux_build_readiness.py` preflight to rerun after the
    toolchain is restored
+6. the aligned default restore destination under `../toolchains/rust-1.79.0`
+   so the saved-Rust route and the broader build-readiness route point at the
+   same toolchain tree
 
 ## Working Rules
 
