@@ -13,8 +13,7 @@ Usage:
     [--require-fallback-zig] \
     [--json]
 
-Print the saved-archive-integrity route for the blocked issue #3 restore and
-Linux build-readiness path.
+Print the saved-archive-integrity route for the blocked issue #3 recovery path.
 EOF
 }
 
@@ -24,6 +23,15 @@ import shlex
 import sys
 
 print(shlex.quote(sys.argv[1]))
+PY
+}
+
+json_escape() {
+    python3 - "$1" <<'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1]))
 PY
 }
 
@@ -89,20 +97,19 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     fi
 fi
 
-SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-INTEGRITY_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
-PRESENCE_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+VERIFY_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+STRICT_VERIFY_COMMAND="${VERIFY_COMMAND} --require-fallback-zig"
+PRESENCE_PREFLIGHT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+RESTORE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-
+RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
-    PRESENCE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
-    SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    VERIFY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    STRICT_VERIFY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    PRESENCE_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
-fi
-if [[ "${REQUIRE_FALLBACK_ZIG}" -eq 1 ]]; then
-    INTEGRITY_COMMAND+=" --require-fallback-zig"
+    RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
 if [[ "${JSON}" -eq 1 ]]; then
@@ -117,19 +124,22 @@ print(json.dumps({
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "require_fallback_zig": ${REQUIRE_FALLBACK_ZIG},
     "commands": {
-        "surface_check": ${SURFACE_CHECK_COMMAND@Q},
-        "saved_archive_integrity": ${INTEGRITY_COMMAND@Q},
-        "saved_memory_presence": ${PRESENCE_COMMAND@Q},
-        "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
-        "linux_build_readiness_route": ${BUILD_ROUTE_COMMAND@Q}
+        "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
+        "verify": ${VERIFY_COMMAND@Q},
+        "verify_strict": ${STRICT_VERIFY_COMMAND@Q},
+        "presence_preflight": ${PRESENCE_PREFLIGHT_COMMAND@Q},
+        "restore_route": ${RESTORE_ROUTE_COMMAND@Q},
+        "build_route": ${BUILD_ROUTE_COMMAND@Q},
+        "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q}
     },
     "notes": [
-        "Run surface_check first so missing docs or helper drift fails fast before checksum work starts.",
-        "Run saved_archive_integrity next when the route needs proof that the saved snapshot and dependency bundles still match the expected SHA-256 fingerprints.",
-        "Use --require-fallback-zig when the attached Zig bundle is part of the route contract rather than an optional fallback.",
-        "Run saved_memory_presence after checksum success when the route still needs the broader saved-file presence surface in one helper step.",
-        "Move to saved_browser_snapshot_route when the next step is extracting a disposable checkout from the verified snapshot.",
-        "Move to linux_build_readiness_route when the next step is offline staging, toolchain recovery, or readiness checks against the verified archives."
+        "Run route_surface first so missing note, helper, or follow-up drift fails fast before the route is trusted.",
+        "Run verify next to confirm the saved repo snapshot and dependency bundles match their expected SHA-256 fingerprints.",
+        "Use verify_strict when the fallback Zig archive must also exist and match before the route is considered green.",
+        "Run presence_preflight after checksum verification so path and readability checks complement the exact archive fingerprints.",
+        "Use restore_route when the next blocked step still needs a disposable restored checkout from Memory.",
+        "Use build_route when the next blocked step is Linux or WSL dependency staging or toolchain recovery.",
+        "Use runtime_route only after the saved archives are trusted and the next run is ready to reopen the narrowed Page.zig plus win32_backend.zig lane."
     ]
 }, indent=2))
 PY
@@ -139,40 +149,46 @@ fi
 cat <<EOF
 Google issue #3 saved archive integrity route
 
-Repo root:             ${REPO_ROOT}
-Memory root:           ${MEMORY_ROOT}
-Agent files root:      ${AGENT_FILES_ROOT}
-Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
-Require fallback Zig:  $([[ "${REQUIRE_FALLBACK_ZIG}" -eq 1 ]] && echo yes || echo no)
+Repo root:            ${REPO_ROOT}
+Memory root:          ${MEMORY_ROOT}
+Agent files root:     ${AGENT_FILES_ROOT}
+Fallback Zig archive: ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
+Require fallback Zig: $([[ "${REQUIRE_FALLBACK_ZIG}" -eq 1 ]] && echo yes || echo no)
 
 Read first
 ==========
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
-  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
+  docs/ISSUE3_RUNTIME_REENTRY_GATES.md
 
 Suggested route
 ===============
-  Surface check:
-    ${SURFACE_CHECK_COMMAND}
+  Route surface check:
+    ${ROUTE_SURFACE_COMMAND}
 
-  Saved archive integrity check:
-    ${INTEGRITY_COMMAND}
+  Verify saved archive SHA-256 fingerprints:
+    ${VERIFY_COMMAND}
 
-  Saved Memory presence check:
-    ${PRESENCE_COMMAND}
+  Strict archive verification when fallback Zig must also match:
+    ${STRICT_VERIFY_COMMAND}
 
-  Saved-browser-snapshot route:
-    ${SNAPSHOT_ROUTE_COMMAND}
+  Saved-Memory presence preflight:
+    ${PRESENCE_PREFLIGHT_COMMAND}
 
-  Linux build-readiness route:
+  Saved-browser-snapshot restore route:
+    ${RESTORE_ROUTE_COMMAND}
+
+  Linux or WSL build-readiness route:
     ${BUILD_ROUTE_COMMAND}
+
+  Direct runtime re-entry route:
+    ${RUNTIME_ROUTE_COMMAND}
 
 Working rules
 =============
-  - Run the surface check first so missing docs or helper drift fails fast before checksum work starts.
-  - Treat checksum mismatch as an input problem first, not as proof that the source tree or toolchain regressed.
-  - Use --require-fallback-zig only when the attached Zig bundle is a real route requirement rather than an optional fallback surface.
-  - Move to the saved-browser-snapshot route when the next step is extracting a disposable checkout from the verified snapshot.
-  - Move to the Linux build-readiness route when the next step is offline staging, toolchain recovery, or broader readiness checks against the verified archives.
+  - Run the route surface check first so missing note or helper drift fails fast before the route is trusted.
+  - Run the SHA-256 verification before the saved-Memory presence preflight when the run needs to trust the exact archive contents.
+  - Use the strict verification form when fallback Zig must be present for the next route replay.
+  - Treat checksum mismatch as an environment problem first, not as proof that the issue #3 runtime patch regressed.
+  - Continue into the restore, build-readiness, or runtime routes only after the checksum and presence checks agree.
 EOF
