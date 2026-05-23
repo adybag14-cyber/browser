@@ -657,8 +657,8 @@ class ReadinessHelperTests(unittest.TestCase):
 
     def test_default_roots_follow_workspace_layout(self) -> None:
         repo_root = pathlib.Path("/tmp/workspace/browser")
-        self.assertEqual(resolve_default_agent_files_root(repo_root), Path("/tmp/workspace/agent_files"))
-        self.assertEqual(resolve_default_toolchains_root(repo_root), Path("/tmp/workspace/toolchains"))
+        self.assertEqual(resolve_default_agent_files_root(repo_root), pathlib.Path("/tmp/workspace/agent_files"))
+        self.assertEqual(resolve_default_toolchains_root(repo_root), pathlib.Path("/tmp/workspace/toolchains"))
 
     def test_resolve_fallback_zig_archive_prefers_default_agent_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -736,7 +736,7 @@ class ReadinessHelperTests(unittest.TestCase):
 
 def main() -> int:
     args = build_parser().parse_args()
-    if args.self_test:
+    if args.self-test:
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(ReadinessHelperTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
@@ -751,12 +751,12 @@ def main() -> int:
     failures: list[str] = []
 
     zig_version: str | None = None
-    if not args.skip_zig_check:
+    if not args.skip-zig-check:
         zig_failures, zig_version = check_zig_version(minimum_zig, args.zig)
         failures.extend(zig_failures)
 
     rust_versions: dict[str, str] = {}
-    if not args.skip_rust_check:
+    if not args.skip-rust-check:
         rust_failures, rust_versions = check_rust_tools(args.cargo, args.rustc)
         failures.extend(rust_failures)
 
@@ -780,7 +780,7 @@ def main() -> int:
             matching_zig_candidates.append(candidate)
 
     if (
-        not args.skip_zig_check
+        not args.skip-zig-check
         and matching_zig_candidates
         and (zig_version is None or not same_version_line(minimum_zig, zig_version))
     ):
@@ -793,7 +793,7 @@ def main() -> int:
     offline_deps_root = None
     staged_offline_dirs: list[tuple[str, pathlib.Path]] = []
     prebuilt_archives: list[pathlib.Path] = []
-    if args.expect_offline_deps or args.require_prebuilt_v8:
+    if args.expect-offline-deps or args.require-prebuilt-v8:
         offline_deps_root = pathlib.Path(args.offline_deps_root).resolve() if args.offline_deps_root else (
             repo_root.parent / "offline-deps"
         ).resolve()
@@ -806,7 +806,7 @@ def main() -> int:
     saved_archives_root = None
     discovered_saved_archives: dict[str, pathlib.Path] = {}
     suggested_prepare_command = None
-    if args.expect_saved_archives:
+    if args.expect-saved-archives:
         saved_archives_root = pathlib.Path(args.saved_archives_root).resolve() if args.saved_archives_root else (
             repo_root.parent / "memory" / "repo_archives" / "browser"
         ).resolve()
@@ -830,7 +830,7 @@ def main() -> int:
         )
         failures.extend(fallback_failures)
         if (
-            not args.skip_zig_check
+            not args.skip-zig-check
             and zig_version is None
             and fallback_zig_status is not None
             and fallback_zig_version is not None
@@ -886,7 +886,7 @@ def main() -> int:
             print("Prebuilt V8 archives:")
             for archive_path in prebuilt_archives:
                 print(f"  - {archive_path}")
-        elif args.require_prebuilt_v8:
+        elif args.require-prebuilt-v8:
             print("Prebuilt V8 archives: none found")
 
     if saved_archives_root is not None:
