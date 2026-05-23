@@ -219,6 +219,35 @@ if matching_candidate is not None:
         matching_parts.extend(("--fallback-zig-archive", fallback_zig_archive))
     matching_readiness_command = format_command(matching_parts)
 
+fallback_restore_check_command = None
+fallback_restore_command = None
+if fallback_zig_archive:
+    fallback_restore_check_command = format_command(
+        [
+            "bash",
+            "scripts/linux/restore_issue3_fallback_zig_toolchain.sh",
+            "--browser-root",
+            str(repo_root),
+            "--toolchains-root",
+            str(toolchains_root),
+            "--archive",
+            fallback_zig_archive,
+            "--check-only",
+        ]
+    )
+    fallback_restore_command = format_command(
+        [
+            "bash",
+            "scripts/linux/restore_issue3_fallback_zig_toolchain.sh",
+            "--browser-root",
+            str(repo_root),
+            "--toolchains-root",
+            str(toolchains_root),
+            "--archive",
+            fallback_zig_archive,
+        ]
+    )
+
 result = {
     "issue": "Google issue #3 Zig toolchain recovery route",
     "repo_root": str(repo_root),
@@ -237,6 +266,10 @@ result = {
 }
 if matching_readiness_command is not None:
     result["commands"]["matching_readiness"] = matching_readiness_command
+if fallback_restore_check_command is not None:
+    result["commands"]["fallback_restore_check"] = fallback_restore_check_command
+if fallback_restore_command is not None:
+    result["commands"]["fallback_restore"] = fallback_restore_command
 
 if emit_json:
     print(json.dumps(result, indent=2))
@@ -257,6 +290,7 @@ print()
 print("Read first")
 print("==========")
 print("  docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md")
+print("  docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md")
 print("  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")
 print("  docs/ISSUE3_RUNTIME_REENTRY_GATES.md")
 print()
@@ -267,6 +301,13 @@ print()
 print("Candidate discovery")
 print("===================")
 print(f"  {discovery_command}")
+
+if fallback_restore_check_command is not None and fallback_restore_command is not None:
+    print()
+    print("Fallback archive staging")
+    print("========================")
+    print(f"  {fallback_restore_check_command}")
+    print(f"  {fallback_restore_command}")
 
 if not candidates:
     print()
@@ -282,6 +323,12 @@ if not candidates:
         f"  - Stage a Zig {minimum_zig.rsplit('.', 1)[0]}.x toolchain under "
         f"{toolchains_root} before reopening focused Linux or WSL validation."
     )
+    if fallback_restore_command is not None:
+        print(
+            "  - If the only available archive is the attached Zig 0.17 fallback, "
+            "use the fallback restore helper above so later reruns can probe it "
+            "consistently from the shared toolchains area."
+        )
     print(
         "  - Treat the attached Zig 0.17 dev bundle as a surfaced fallback "
         "only; it is not branch-compatible validation evidence for this checkout."
@@ -317,6 +364,12 @@ if matching_readiness_command is not None:
         f"  - Prefer {matching_candidate['path']} because it matches the branch's "
         f"{minimum_zig.rsplit('.', 1)[0]}.x Zig line."
     )
+    if fallback_restore_command is not None:
+        print(
+            "  - Keep the fallback restore helper above as the branch-local way "
+            "to restage the attached Zig archive when toolchains/ is empty on a "
+            "future rerun."
+        )
     print(
         "  - Keep the saved-archive, offline-dependency, and fallback-Zig path "
         "surfaces aligned with the current workspace when rerunning readiness."
@@ -343,6 +396,12 @@ else:
         f"  - Stage a Zig {minimum_zig.rsplit('.', 1)[0]}.x toolchain under "
         f"{toolchains_root}, then rerun the discovery command."
     )
+    if fallback_restore_command is not None:
+        print(
+            "  - If the only available archive is the attached Zig 0.17 fallback, "
+            "use the fallback restore helper above to keep that staging step on a "
+            "branch-local route instead of rebuilding the extraction command by hand."
+        )
     print(
         "  - Treat the attached Zig 0.17 dev bundle as a surfaced fallback "
         "only; it is not honest issue #3 validation evidence for this branch."
