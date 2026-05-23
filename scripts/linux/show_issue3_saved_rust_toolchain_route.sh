@@ -91,6 +91,7 @@ if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${DEPENDENCIES_ROOT}/${DEFAULT_ARCHIVE_NAME}"
 fi
 
+SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
 CHECK_ONLY_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --check-only"
 RESTORE_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}")"
 PATH_COMMAND="export PATH=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin"):$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin"):\$PATH"
@@ -110,6 +111,7 @@ print(json.dumps({
     "toolchain_root": ${TOOLCHAIN_ROOT@Q},
     "archive_path": ${ARCHIVE_PATH@Q},
     "commands": {
+        "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "check_only": ${CHECK_ONLY_COMMAND@Q},
         "restore": ${RESTORE_COMMAND@Q},
         "path": ${PATH_COMMAND@Q},
@@ -118,7 +120,8 @@ print(json.dumps({
         "preflight": ${PREFLIGHT_COMMAND@Q}
     },
     "notes": [
-        "Run the check_only command first when the saved archive location or target toolchain directory may have drifted.",
+        "Run the surface_check command first so missing route docs or helper drift fails before the saved archive itself is blamed.",
+        "Run the check_only command next when the saved archive location or target toolchain directory may have drifted.",
         "Use the restore command to keep the saved Rust 1.79.0 extraction path on one branch-local surface.",
         "Reuse the PATH, CARGO, and RUSTC exports before rerunning Linux or WSL build-readiness checks."
     ]
@@ -144,6 +147,9 @@ Read first
 Suggested route
 ===============
   Surface check:
+    ${SURFACE_CHECK_COMMAND}
+
+  Saved Rust restore surface check:
     ${CHECK_ONLY_COMMAND}
 
   Restore the saved Rust 1.79.0 toolchain:
@@ -159,7 +165,8 @@ Suggested route
 
 Working rules
 =============
-  - Run the surface check first when the archive or destination path may have drifted.
+  - Run the surface check first so missing route docs or helper drift fails before the saved archive itself is blamed.
+  - Run the restore helper surface check next when the archive or destination path may have drifted.
   - Use the restore command instead of rebuilding the tar extraction path by hand.
   - Reuse the exported PATH, CARGO, and RUSTC values before rerunning Linux or WSL build-readiness helpers.
 EOF
