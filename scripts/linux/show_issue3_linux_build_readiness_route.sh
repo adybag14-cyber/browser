@@ -18,12 +18,12 @@ EOF
 }
 
 format_shell_arg() {
-    python3 - "$1" <<'PY'
+    python3 - "$1" <<'PY2'
 import shlex
 import sys
 
 print(shlex.quote(sys.argv[1]))
-PY
+PY2
 }
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -90,6 +90,7 @@ SAVED_RUST_SURFACE_SCRIPT_PATH="${REPO_ROOT}/scripts/linux/check_issue3_saved_ru
 SAVED_RUST_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
 OFFLINE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_offline_build_inputs_route.sh"
 SAVED_MEMORY_INPUTS_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_memory_inputs.py"
+SAVED_ARCHIVE_INTEGRITY_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py"
 LINUX_BUILD_READINESS_SCRIPT="${REPO_ROOT}/scripts/check_linux_build_readiness.py"
 PREPARE_OFFLINE_SCRIPT="${REPO_ROOT}/scripts/linux/prepare_offline_build_inputs.sh"
 RESTORE_SAVED_RUST_SCRIPT="${REPO_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh"
@@ -111,6 +112,7 @@ fi
 BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip"
 BROWSER_DEPS_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/04-zig-browser-depo.tar.zip"
 SAVED_MEMORY_INPUTS_COMMAND="python $(format_shell_arg "${SAVED_MEMORY_INPUTS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${SAVED_ARCHIVE_INTEGRITY_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PREFLIGHT_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
 PREPARE_COMMAND="bash $(format_shell_arg "${PREPARE_OFFLINE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}")${HTML5EVER_ARCHIVE_ARGUMENT} --check-only"
 RUST_RESTORE_COMMAND="bash $(format_shell_arg "${RESTORE_SAVED_RUST_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
@@ -124,13 +126,14 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     TOOLCHAIN_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     OFFLINE_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_MEMORY_INPUTS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     FULL_READINESS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 SNAPSHOT_SYNC_ROUTE_COMMAND="${SNAPSHOT_ROUTE_COMMAND} --sync-helper-surface"
 
 if [[ "${JSON}" -eq 1 ]]; then
-    python3 - <<PY
+    python3 - <<PY3
 import json
 
 print(json.dumps({
@@ -153,6 +156,7 @@ print(json.dumps({
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
         "saved_browser_snapshot_route_synced": ${SNAPSHOT_SYNC_ROUTE_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
+        "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "zig_toolchain_route": ${TOOLCHAIN_ROUTE_COMMAND@Q},
         "saved_rust_surface_check": ${SAVED_RUST_SURFACE_COMMAND@Q},
         "saved_rust_route": ${SAVED_RUST_ROUTE_COMMAND@Q},
@@ -171,6 +175,7 @@ print(json.dumps({
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
         "Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface.",
         "Run the saved_memory_inputs command before the broader saved-archive preflight when the route depends on the saved Memory repo snapshot and dependency bundles.",
+        "Run the saved_archive_integrity command after the saved-memory preflight when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
         "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
@@ -182,7 +187,7 @@ print(json.dumps({
         "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
     ]
 }, indent=2))
-PY
+PY3
     exit 0
 fi
 
@@ -224,6 +229,9 @@ Suggested route
 
   Saved Memory input preflight:
     ${SAVED_MEMORY_INPUTS_COMMAND}
+
+  Saved archive integrity preflight:
+    ${SAVED_ARCHIVE_INTEGRITY_COMMAND}
 
   Zig toolchain recovery route:
     ${TOOLCHAIN_ROUTE_COMMAND}
@@ -267,6 +275,7 @@ Working rules
   - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
   - Prefer the synced saved-browser-snapshot route when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
   - Run the saved Memory input preflight before the broader saved-archive preflight when the route depends on the saved repo snapshot and dependency bundles.
+  - Run the saved archive integrity preflight after the saved Memory input preflight when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.
   - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
   - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
