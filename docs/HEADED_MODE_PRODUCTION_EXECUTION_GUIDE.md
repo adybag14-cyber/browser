@@ -9,6 +9,11 @@ Read this together with:
 - `docs/FULL_BROWSER_MASTER_TRACKER.md`
 - `docs/HEADED_MODE_ROADMAP.md`
 - `docs/WINDOWS_FULL_USE.md`
+- `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` when the current replay is narrowed to
+  the direct issue `#3` runtime route in `src/browser/Page.zig` and
+  `src/display/win32_backend.zig`
+- `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md` when the current replay is
+  staying on the direct issue `#3` Enter-submit runtime slice
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md` when the current
   localhost replay is narrowed to the issue `#3` attached-page route
 
@@ -187,8 +192,23 @@ Tasks:
 - separate warm-build expectations from cold-build expectations in docs
 - ensure the main validation runbook tells future assistants which probe family
   to run for each subsystem change
+- keep the issue `#3` direct runtime re-entry path easy to reopen from the
+  top-level docs by surfacing the current gate note, runtime helper, and
+  reduced Google replay path
 - keep the issue `#3` attached-localhost route easy to reopen from the top-level
   docs by surfacing the current Google-style helper, guide, and Windows runbook
+
+Issue `#3` direct runtime re-entry route:
+- use `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` as the read-first note when the
+  replay is narrowed to the direct `Page.zig` plus `win32_backend.zig` runtime
+  boundary
+- keep `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md` nearby when the
+  replay should stay on the focused Enter-submit runtime slice
+- start with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
+- then run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- keep `docs/WINDOWS_FULL_USE.md` nearby when the reduced Google probe or the
+  shared Enter-order ladder needs to widen back out to the broader
+  Windows-first route
 
 Issue `#3` attached-localhost validation route:
 - use `docs/ISSUE3_WINDOWS_REPLAY_ATTACHED_HTML_QUICKSTART.md` as the read-first
