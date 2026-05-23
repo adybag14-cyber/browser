@@ -11,6 +11,7 @@ Usage:
     [--memory-root /path/to/workspace/memory] \
     [--archive /path/to/01-browser-fork-headed-mode-foundation.zip] \
     [--destination /path/to/extracted/browser-checkout] \
+    [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--sync-helper-surface] \
     [--check-only] \
     [--json] \
@@ -74,6 +75,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_ARCHIVE_NAME="01-browser-fork-headed-mode-foundation.zip"
 DEFAULT_DESTINATION_NAME="browser-memory-snapshot"
+DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME="zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
 
 declare -a HELPER_SURFACE_PATHS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
@@ -107,6 +109,7 @@ HELPER_ROOT=""
 MEMORY_ROOT=""
 ARCHIVE_PATH=""
 DESTINATION=""
+FALLBACK_ZIG_ARCHIVE=""
 CHECK_ONLY=false
 JSON=false
 FORCE_RESTORE=false
@@ -132,6 +135,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --destination)
             DESTINATION="$2"
+            shift 2
+            ;;
+        --fallback-zig-archive)
+            FALLBACK_ZIG_ARCHIVE="$2"
             shift 2
             ;;
         --check-only)
@@ -175,6 +182,12 @@ if [[ -z "${ARCHIVE_PATH}" ]]; then
 fi
 if [[ -z "${DESTINATION}" ]]; then
     DESTINATION="$(cd "${BROWSER_ROOT}/.." && pwd)/${DEFAULT_DESTINATION_NAME}"
+fi
+if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${HELPER_ROOT}/.." && pwd)/agent_files/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}"
+    if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
+    fi
 fi
 
 if [[ ! -d "${BROWSER_ROOT}" ]]; then
@@ -234,6 +247,13 @@ fi
 FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_RUNTIME_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
+RESTORE_FALLBACK_FLAG=""
+if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    RESTORE_FALLBACK_FLAG=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    FOLLOW_UP_MEMORY_CHECK+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    FOLLOW_UP_BUILD_ROUTE+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    FOLLOW_UP_RUNTIME_ROUTE+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+fi
 
 if [[ "${JSON}" == "true" ]]; then
     printf '{\n'
@@ -243,6 +263,7 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "memory_root": %s,\n' "$(json_escape "${MEMORY_ROOT}")"
     printf '  "archive_path": %s,\n' "$(json_escape "${ARCHIVE_PATH}")"
     printf '  "destination": %s,\n' "$(json_escape "${DESTINATION}")"
+    printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
     printf '  "archive_top_level": %s,\n' "$(json_escape "${TOP_LEVEL_ENTRY}")"
     printf '  "follow_up_memory_check": %s,\n' "$(json_escape "${FOLLOW_UP_MEMORY_CHECK}")"
     printf '  "follow_up_build_route": %s,\n' "$(json_escape "${FOLLOW_UP_BUILD_ROUTE}")"
@@ -263,6 +284,7 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
     echo "Memory root:           ${MEMORY_ROOT}"
     echo "Snapshot archive:      ${ARCHIVE_PATH}"
+    echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the helper root}"
     echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
     echo "Destination:           ${DESTINATION}"
     echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
@@ -271,11 +293,12 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     fi
     echo
     echo "Suggested restore command:"
-    printf "  bash %s --browser-root %s --helper-root %s --destination %s%s\n" \
+    printf "  bash %s --browser-root %s --helper-root %s --destination %s%s%s\n" \
         "$(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh")" \
         "$(format_shell_arg "${BROWSER_ROOT}")" \
         "$(format_shell_arg "${HELPER_ROOT}")" \
         "$(format_shell_arg "${DESTINATION}")" \
+        "${RESTORE_FALLBACK_FLAG}" \
         "${SYNC_FLAG}"
     echo
     echo "Suggested follow-up checks:"
@@ -323,6 +346,7 @@ echo "Saved browser snapshot is ready."
 echo "Destination:           ${DESTINATION}"
 echo "Live helper root:      ${HELPER_ROOT}"
 echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
+echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the helper root}"
 echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
 echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
 if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
