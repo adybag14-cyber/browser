@@ -115,11 +115,14 @@ python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_run
    - `../boringssl-zig`
 6. If the run is using saved dependency bundles, stage them before invoking Zig.
 7. If the current run does not yet have a reusable checkout beside the
-   workspace, print the saved-browser-snapshot route and restore a disposable
-   checkout before trusting Linux or WSL validation commands:
+   workspace, print the saved-browser-snapshot route first. Prefer the synced
+   helper-surface route when the restored checkout should become its own
+   follow-up root because the saved archive can lag the current branch-local
+   helper surface:
 
 ```bash
 bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh --sync-helper-surface
 ```
 
 8. If the run depends on the saved Memory repo and dependency bundles, run the
@@ -179,6 +182,9 @@ If the publication gate is still closed:
   re-entry surface so the exact runtime route does not need to be rebuilt by hand
 - use `show_issue3_saved_browser_snapshot_route.sh` first when the missing piece
   is still the disposable checkout for the next Linux or WSL validation pass
+- prefer `show_issue3_saved_browser_snapshot_route.sh --sync-helper-surface`
+  when the restored checkout should become its own follow-up root because the
+  saved archive can lag the current branch-local helper surface
 
 If the toolchain gate is still closed:
 
@@ -201,6 +207,8 @@ The direct issue `#3` runtime patch is worth doing only when the run can both:
 Until then, preserve the narrowed runtime target, use the dedicated runtime
 helper to reopen the same branch-local route quickly, use the Linux build-
 readiness route when the saved archives must be restaged, use the saved-browser-
-snapshot route when the next run still lacks a reusable checkout, and spend
-scheduled cycles on smaller slices that improve the next real re-entry instead
-of repeating the same blocked attempt.
+snapshot route when the next run still lacks a reusable checkout, prefer the
+synced helper-surface restore when the restored checkout should become its own
+follow-up root because the saved archive can lag the current branch-local
+helper surface, and spend scheduled cycles on smaller slices that improve the
+next real re-entry instead of repeating the same blocked attempt.
