@@ -2,7 +2,9 @@ param(
     [string]$RepoRoot = $env:LIGHTPANDA_REPO_ROOT,
     [switch]$CleanBuildCaches,
     [switch]$CleanDependencyCaches,
-    [switch]$CleanSliceOutputs
+    [switch]$CleanSliceOutputs,
+    [switch]$ListKnownBuildProcesses,
+    [switch]$StopKnownBuildProcesses
 )
 
 Set-StrictMode -Version Latest
@@ -69,6 +71,65 @@ function Format-Size {
     return "{0} B" -f $Bytes
 }
 
+function Get-KnownBuildProcessNames {
+    return @("zig", "cargo", "ninja", "build", "cl", "link", "lld-link")
+}
+
+function Get-KnownBuildProcesses {
+    $processes = @()
+    foreach ($name in (Get-KnownBuildProcessNames)) {
+        $processes += Get-CimInstance Win32_Process -Filter ("Name = '{0}.exe'" -f $name) -ErrorAction SilentlyContinue
+    }
+
+    return @($processes | Sort-Object ProcessId -Unique)
+}
+
+function New-BuildProcessRecord {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Process
+    )
+
+    [pscustomobject]@{
+        Name = $Process.Name
+        ProcessId = [int]$Process.ProcessId
+        ParentProcessId = [int]$Process.ParentProcessId
+        CommandLine = if ([string]::IsNullOrWhiteSpace($Process.CommandLine)) { "<unavailable>" } else { $Process.CommandLine }
+    }
+}
+
+function Show-KnownBuildProcesses {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Processes
+    )
+
+    Write-Host "Known build process report"
+    Write-Host ""
+
+    if ($Processes.Count -eq 0) {
+        Write-Host "No matching build processes are currently running."
+        return
+    }
+
+    $Processes |
+        ForEach-Object { New-BuildProcessRecord -Process $_ } |
+        Format-Table -AutoSize | Out-String -Width 220 |
+        Write-Host
+}
+
+function Stop-KnownBuildProcessesInternal {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Processes
+    )
+
+    foreach ($process in $Processes) {
+        Write-Host ("Stopping {0} ({1})" -f $process.Name, $process.ProcessId)
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+    }
+}
+
 function New-ArtifactRecord {
     param(
         [Parameter(Mandatory = $true)]
@@ -125,6 +186,20 @@ function Remove-Artifact {
 
 $RepoRoot = Resolve-RepoRoot -Candidate $RepoRoot
 
+if ($ListKnownBuildProcesses -or $StopKnownBuildProcesses) {
+    $knownBuildProcesses = Get-KnownBuildProcesses
+    Show-KnownBuildProcesses -Processes $knownBuildProcesses
+
+    if ($StopKnownBuildProcesses -and $knownBuildProcesses.Count -gt 0) {
+        Write-Host ""
+        Write-Host ("Stopping {0} matching build process(es)." -f $knownBuildProcesses.Count)
+        Stop-KnownBuildProcessesInternal -Processes $knownBuildProcesses
+
+        Write-Host ""
+        Show-KnownBuildProcesses -Processes (Get-KnownBuildProcesses)
+    }
+}
+
 $artifacts = @(
     (New-ArtifactRecord -Path (Join-Path $RepoRoot ".zig-cache") -Category "Build cache" -DefaultClean $true -Reason "Transient Zig local cache. Safe to delete; next build will be cold." -Kind "directory"),
     (New-ArtifactRecord -Path (Join-Path $RepoRoot ".zig-cache-next") -Category "Build cache" -DefaultClean $true -Reason "Alternate transient Zig cache from local slice builds. Safe to delete." -Kind "directory"),
@@ -147,7 +222,7 @@ Write-Host "Lightpanda build artifact report"
 Write-Host ""
 $artifacts |
     Sort-Object @{ Expression = "SizeBytes"; Descending = $true }, Name |
-    Select-Object Name,Category,Exists,DefaultClean,Size,Reason |
+    Select-Object Name, Category, Exists, DefaultClean, Size, Reason |
     Format-Table -AutoSize | Out-String -Width 220 |
     Write-Host
 
@@ -165,7 +240,7 @@ if ($CleanDependencyCaches) {
 $toRemove = @($toRemove | Sort-Object Path -Unique)
 
 if ($toRemove.Count -eq 0) {
-    Write-Host "No cleanup requested. Use -CleanBuildCaches, -CleanSliceOutputs, and/or -CleanDependencyCaches."
+    Write-Host "No artifact cleanup requested. Use -CleanBuildCaches, -CleanSliceOutputs, and/or -CleanDependencyCaches."
     exit 0
 }
 
