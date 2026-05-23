@@ -77,13 +77,22 @@ $flow = [ordered]@{
         }
     )
     next_steps = @(
+        "Use powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\form-controls\enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus -InputText 'Q' -Port 8157 when you want the reusable shared page to replay the same click-first Google-shaped path before you hand off to the dedicated form-controls ladder.",
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_validation_flow.ps1 when you want only the dedicated shared form-controls gate printed with the same repo-root, browser, host, shared input, and timing context before you run it.",
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_form_controls_enter_order_trace_guide.ps1 when you want the dedicated gate markers translated into click-focus, typed-text, keypress, and submit failure stages without reconstructing the current shared Enter-order context by hand.",
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_issue3_recommended_validation.ps1 when you want this stack folded back into the broader localhost-first issue #3 flow with the same repo-root, browser, host, shared input, Enter mutation, and timing settings.",
+        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1 when you want the later live-trace handoff reopened with the same repo-root, browser, host, shared input, and bounded wait settings before the next real Google capture.",
         "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_suite_router_next_steps.ps1 when you want the higher-level issue #3 next-step matrix reopened with the same repo-root, saved summary, pinned input paths, browser override, host, and shared input context before choosing between replay shortcuts, the attached bundle branch, or the safe-route wrapper chain.",
         "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_replay_route.ps1 when you want the broader issue #3 replay bridge reopened with the same repo-root, saved summary, and pinned input-path context before you widen back out from the shared Enter-order slice.",
-        "Use powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_trace_validation_flow.ps1 when you want the later live-trace handoff reopened with the same repo-root, browser, host, shared input, and bounded wait settings before the next real Google capture."
+        "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, shared click-first fallback, and both Enter-order probes stay green together.",
+        "Use .\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up when the shared Enter-order stack is already green."
     )
     notes = @(
         "The printed next-step commands now preserve the current repo root, custom browser path, host, shared input, Enter mutation, and timing settings where those later helpers support them, including the live-trace handoff.",
-        "When SummaryPath or InputPath are supplied, the suite-router next-step and replay-route helpers now keep that same saved-summary or pinned-bundle context attached instead of dropping back to generic route defaults."
+        "When SummaryPath or InputPath are supplied, the suite-router next-step and replay-route helpers now keep that same saved-summary or pinned-bundle context attached instead of dropping back to generic route defaults.",
+        "Keep the same SharedInputText across the whole stack so the localhost title probe, reduced-home probe, shared click-first fallback, localhost wrapper, and dedicated form-controls gate all report the same expected value.",
+        "The localhost wrapper, the shared click-first fallback, and the dedicated form-controls probe all default to the shared Enter-order port on purpose so one port override keeps the whole Enter-order slice aligned.",
+        "The higher-level issue #3 route helpers reopened from this flow now also keep the current browser override and host context where those downstream helpers support them."
     )
 }
 """,
@@ -92,6 +101,8 @@ $flow = [ordered]@{
     "scripts/windows/show_google_form_controls_enter_order_trace_guide.ps1": "# placeholder\n",
     "scripts/windows/check_google_form_controls_enter_order_validation_surface.ps1": "# placeholder\n",
     "scripts/windows/run_google_form_controls_enter_order_validation.ps1": "# placeholder\n",
+    "scripts/windows/run_google_issue3_recommended_validation.ps1": "# placeholder\n",
+    "scripts/windows/show_google_attached_html_validation_flow.ps1": "# placeholder\n",
     "scripts/windows/show_google_input_validation_flow.ps1": r"""
 $sharedEnterOrderCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_google_input_validation.ps1 -Phase shared-enter-order"
 $formControlsEnterOrderSurfaceCheckCommand = "powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_form_controls_enter_order_validation_surface.ps1"
@@ -212,6 +223,8 @@ class GoogleSharedEnterOrderValidationSurfaceTest(unittest.TestCase):
             "scripts/windows/run_google_form_controls_enter_order_validation.ps1",
             "scripts/windows/show_google_input_validation_flow.ps1",
             "scripts/windows/run_google_input_validation.ps1",
+            "scripts/windows/run_google_issue3_recommended_validation.ps1",
+            "scripts/windows/show_google_attached_html_validation_flow.ps1",
         ):
             self.assertTrue((self.repo_root / relative_path).exists(), f"{relative_path} should exist")
 
@@ -252,6 +265,26 @@ class GoogleSharedEnterOrderValidationSurfaceTest(unittest.TestCase):
             "saved summary, pinned input paths, browser override, host, and shared input context",
             "saved-summary or pinned-bundle context attached",
             "including the live-trace handoff",
+        ):
+            self.assertIn(fragment, self.shared_flow)
+
+    def test_shared_flow_keeps_click_focus_dedicated_and_recommended_next_steps(self) -> None:
+        for fragment in (
+            "enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus",
+            "show_google_form_controls_enter_order_validation_flow.ps1",
+            "show_google_form_controls_enter_order_trace_guide.ps1",
+            "run_google_issue3_recommended_validation.ps1",
+            "Move on to the smallest live Google manual pass only after the localhost title probe, reduced-home keypress probe, shared click-first fallback, and both Enter-order probes stay green together.",
+            r".\scripts\windows\show_google_attached_html_validation_flow.ps1 before the saved-page localhost follow-up",
+        ):
+            self.assertIn(fragment, self.shared_flow)
+
+    def test_shared_flow_notes_keep_shared_input_port_and_host_context_guidance(self) -> None:
+        for fragment in (
+            "same SharedInputText across the whole stack",
+            "shared click-first fallback",
+            "shared Enter-order port on purpose",
+            "current browser override and host context",
         ):
             self.assertIn(fragment, self.shared_flow)
 
