@@ -37,6 +37,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea input
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell
@@ -49,6 +51,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_windows_replay_attached_html_quickstart.ps1 -InputPath "<saved-html-or-folder>"
 ```
+
+When the replay is already narrowed to the direct issue `#3` runtime route in
+`src/browser/Page.zig` plus `src/display/win32_backend.zig`, run the direct
+runtime surface check first and then the runtime revalidation helper so the gate
+note, reduced Google probe, shared Enter-order ladder, and focused file-level
+commands stay printed on one compact surface before the route widens back out
+again.
 
 When the replay is already narrowed to the attached-localhost lane, run the
 replay quickstart surface check first and then the replay quickstart helper so
@@ -64,6 +73,7 @@ Current validation truth on this branch:
 - direct attached-page startup now accepts saved local `.html`, `.htm`, and `.xhtml` paths before the replay route widens into the wrapper-backed localhost helper lane
 - the router now surfaces a dedicated `google-form-controls-enter-order` gate for the smallest issue #3 shared Enter-submit checkpoint on the real headed surface
 - the router now surfaces a broader `google-shared-enter-order` gate when issue #3 replay should stay on the reusable shared Enter-order ladder before widening back out to live Google or attached-page follow-up
+- `scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1` and `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1` are the fail-fast surface check and compact direct runtime route when issue #3 replay is already narrowed to the `Page.zig` plus `win32_backend.zig` boundary
 - the router now surfaces first-line `rendering` probes for shared layout, screenshot timing, and visible headed surface checks before attached-page replay
 - the router now surfaces first-line `network` probes for authenticated stylesheet and fetch-credentials regressions before attached-page replay
 - the router now surfaces checkout-portable `browser-shell` first-line probes for tabs and settings behavior on the real headed window
