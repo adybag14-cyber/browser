@@ -48,14 +48,16 @@ class HeadedRuntimeActivationLogAuditTests(unittest.TestCase):
             self.assertFalse(result["checks"][0]["exists"])
             self.assertFalse(result["checks"][0]["present"])
 
-    def test_audit_keeps_both_command_surfaces_in_scope(self) -> None:
+    def test_audit_keeps_runtime_and_fallback_command_surfaces_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertTrue(
             {
                 "headed_runtime_helper",
                 "headed_runtime_binding",
                 "serve_headed_runtime_log",
+                "serve_headed_fallback_log",
                 "browse_headed_runtime_log",
+                "browse_headed_fallback_log",
             }.issubset(covered_labels)
         )
 
