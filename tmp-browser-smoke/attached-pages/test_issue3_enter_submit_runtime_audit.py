@@ -42,11 +42,16 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(0, result["missing_count"])
 
-    def test_audit_reports_missing_page_helper(self) -> None:
-        self.assert_missing_label_is_reported("page_apply_deferred_submit_helper_present")
-
     def test_audit_reports_missing_page_focus_recheck(self) -> None:
         self.assert_missing_label_is_reported("page_apply_deferred_submit_rechecks_focus")
+
+    def test_audit_reports_missing_page_pending_submit_cleanup_before_focus_recheck(self) -> None:
+        self.assert_missing_label_is_reported(
+            "page_apply_deferred_submit_clears_pending_input_before_focus_recheck"
+        )
+
+    def test_audit_reports_missing_page_pending_submit_cleanup_on_deferral_end(self) -> None:
+        self.assert_missing_label_is_reported("page_end_deferred_submit_clears_pending_input")
 
     def test_audit_reports_missing_page_pending_submit_branch(self) -> None:
         self.assert_missing_label_is_reported("page_enter_submit_queues_pending_input")
@@ -75,8 +80,8 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             "page_pending_enter_pointer_present",
             "page_keyboard_text_suppression_depth_present",
             "page_begin_deferred_submit_helper_present",
-            "page_end_deferred_submit_helper_present",
-            "page_apply_deferred_submit_helper_present",
+            "page_end_deferred_submit_clears_pending_input",
+            "page_apply_deferred_submit_clears_pending_input_before_focus_recheck",
             "page_apply_deferred_submit_rechecks_focus",
             "page_enter_submit_queues_pending_input",
             "page_printable_input_respects_suppression_depth",
@@ -126,6 +131,14 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         self.assertIn("page_end_deferred_submit_helper_present", covered_labels)
         self.assertIn("page_enter_submit_queues_pending_input", covered_labels)
 
+    def test_audit_keeps_page_pending_submit_cleanup_in_scope(self) -> None:
+        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
+        self.assertIn("page_end_deferred_submit_clears_pending_input", covered_labels)
+        self.assertIn(
+            "page_apply_deferred_submit_clears_pending_input_before_focus_recheck",
+            covered_labels,
+        )
+
     def test_audit_keeps_page_focus_recheck_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertIn("page_apply_deferred_submit_rechecks_focus", covered_labels)
@@ -156,11 +169,17 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
 
     def test_render_file_can_drop_one_targeted_label(self) -> None:
         rendered = self.render_file(
-            "src/display/win32_backend.zig",
-            missing_label="win32_enter_deferral_applies_after_keypress",
+            "src/browser/Page.zig",
+            missing_label="page_end_deferred_submit_clears_pending_input",
         )
-        self.assertNotIn("try page.applyDeferredNativeTextInputEnterSubmit();", rendered)
-        self.assertIn("page.beginDeferredNativeTextInputEnterSubmit();", rendered)
+        self.assertNotIn(
+            "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {\n"
+            "    self._defer_native_text_input_enter_submit = false;\n"
+            "    self._pending_native_enter_submit = null;\n"
+            "}\n",
+            rendered,
+        )
+        self.assertIn("const input = self._pending_native_enter_submit orelse return;", rendered)
 
     def test_self_test_passes(self) -> None:
         stream = io.StringIO()
