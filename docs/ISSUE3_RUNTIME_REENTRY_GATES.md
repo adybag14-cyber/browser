@@ -14,8 +14,10 @@ Read this together with:
 
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
+- `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
 - `scripts/check_linux_build_readiness.py`
 
@@ -68,6 +70,13 @@ If a fallback Zig build fails immediately in untouched branch files, import
 wiring, or older dependency surfaces, treat that as an environment problem
 first, not as proof that the issue `#3` patch itself is wrong.
 
+When the run is using Linux or WSL validation with the saved Memory bundles,
+print the saved-archive re-entry route first:
+
+```bash
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+```
+
 ## Practical Re-entry Order
 
 Use this exact order before reopening the direct runtime patch.
@@ -95,18 +104,25 @@ python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_run
    - `../zig-v8-fork`
    - `../boringssl-zig`
 6. If the run is using saved dependency bundles, stage them before invoking Zig.
-7. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+7. When the run depends on Linux or WSL staging, print the saved-archive route
+   first so the Memory bundle restore commands stay explicit:
+
+```bash
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+```
+
+8. Re-check Linux or WSL build readiness before trusting file-level Zig output:
 
 ```bash
 python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
-8. Only after a matching Zig line is actually staged, rerun the readiness helper
+9. Only after a matching Zig line is actually staged, rerun the readiness helper
    without the Zig skip and then validate the toolchain with the normal project
    build flow before using focused file-level `zig test` as evidence.
-9. Only after those gates are green, reopen the direct code patch and the
-   focused regression tests.
-10. After the focused tests are green, move back to the reduced Google probe and
+10. Only after those gates are green, reopen the direct code patch and the
+    focused regression tests.
+11. After the focused tests are green, move back to the reduced Google probe and
     then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
@@ -139,8 +155,9 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
-- keep using the runtime-contract checker and the readiness helper as the fast
-  preflight pair before widening back out to larger replay plans
+- keep using the runtime-contract checker, the saved-archive Linux route, and
+  the readiness helper as the fast preflight trio before widening back out to
+  larger replay plans
 
 ## Working Rule
 
@@ -151,6 +168,7 @@ The direct issue `#3` runtime patch is worth doing only when the run can both:
   Google replay path
 
 Until then, preserve the narrowed runtime target, use the dedicated runtime
-helper to reopen the same branch-local route quickly, and spend scheduled cycles
-on smaller slices that improve the next real re-entry instead of repeating the
-same blocked attempt.
+helper to reopen the same branch-local route quickly, use the Linux build-
+readiness route when the saved archives must be restaged, and spend scheduled
+cycles on smaller slices that improve the next real re-entry instead of
+repeating the same blocked attempt.
