@@ -1,78 +1,56 @@
 #!/usr/bin/env python3
 
-"""Summarize whether the direct issue #3 runtime patch is ready to reopen.
-
-This helper keeps the two hard gates from docs/ISSUE3_RUNTIME_REENTRY_GATES.md
-on one compact surface:
-- Gate 1: safe publication path for Page.zig and win32_backend.zig
-- Gate 2: branch-compatible validation toolchain and dependency staging
-"""
+"""Summarize whether issue #3 runtime re-entry is ready or still blocked."""
 
 from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import re
-import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 
 MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
+ZIG_VERSION_IN_NAME_RE = re.compile(r"(\d+\.\d+\.\d+)")
 
-TARGET_FILES: tuple[str, ...] = (
-    "src/browser/Page.zig",
-    "src/display/win32_backend.zig",
+DEFAULT_FALLBACK_ZIG = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+DEFAULT_ZIG_TOOLCHAIN_GLOBS = (
+    "zig*/zig",
+    "zig*/bin/zig",
+    "*/zig",
+    "*/bin/zig",
+    "zig",
 )
 
-ROUTE_HELPERS: tuple[str, ...] = (
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
-    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
-    "scripts/check_issue3_saved_memory_inputs.py",
-    "scripts/check_linux_build_readiness.py",
-    "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
-    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+REQUIRED_MEMORY_FILES: tuple[str, ...] = (
+    "repo_archives/browser/01-browser-fork-headed-mode-foundation.zip",
+    "repo_archives/browser/README.md",
+    "repo_archives/browser/blocker_intelligence.yaml",
+    "repo_archives/browser/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz",
+    "repo_archives/browser/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip",
+    "repo_archives/browser/dependencies/03-boringssl-zig-main.zip",
+    "repo_archives/browser/dependencies/04-zig-browser-depo.tar.zip",
 )
 
-PATH_DEPS: tuple[tuple[str, str], ...] = (
-    ("zig-v8-fork", "../zig-v8-fork"),
-    ("boringssl-zig", "../boringssl-zig"),
+PAGE_MARKERS: tuple[str, ...] = (
+    "_defer_native_text_input_enter_submit: bool = false",
+    "_pending_native_enter_submit: ?*Element.Html.Input = null",
+    "pub fn beginDeferredNativeTextInputEnterSubmit(self: *Page) void {",
+    "pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {",
+    'test "Page reduced Google fixture defers native Enter submit until keypress" {',
 )
 
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Report whether the direct issue #3 Page.zig + win32_backend.zig "
-            "runtime patch is ready to reopen from this checkout."
-        )
-    )
-    parser.add_argument(
-        "--repo-root",
-        default=".",
-        help="Path to the browser checkout root (default: current directory)",
-    )
-    parser.add_argument(
-        "--expected-branch",
-        default="fork/headed-mode-foundation",
-        help="Expected git branch for a publishable checkout",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Emit structured JSON instead of line-oriented text",
-    )
-    parser.add_argument(
-        "--self-test",
-        action="store_true",
-        help="Run focused helper tests and exit",
-    )
-    return parser
+WIN32_MARKERS: tuple[str, ...] = (
+    "pending_text_input_suppressions: std.ArrayListUnmanaged(TextInputEvent) = .{},",
+    'const defer_enter_submit = std.mem.eql(u8, key, "Enter");',
+    "try page.applyDeferredNativeTextInputEnterSubmit();",
+    "fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool {",
+    'test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {',
+)
 
 
 def parse_semver(version_text: str) -> tuple[int, int, int]:
@@ -82,363 +60,416 @@ def parse_semver(version_text: str) -> tuple[int, int, int]:
     return tuple(int(part) for part in match.groups())
 
 
-def load_minimum_zig_version(repo_root: Path) -> tuple[str | None, list[str]]:
+def same_version_line(expected_version: str, actual_version: str) -> bool:
+    expected_parts = parse_semver(expected_version)
+    actual_parts = parse_semver(actual_version)
+    return actual_parts[:2] == expected_parts[:2]
+
+
+def infer_archive_semver(path: Path) -> str | None:
+    match = ZIG_VERSION_IN_NAME_RE.search(path.name)
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def resolve_default_memory_root(repo_root: Path) -> Path:
+    return (repo_root.parent / "memory").resolve()
+
+
+def resolve_default_agent_files_root(repo_root: Path) -> Path:
+    return (repo_root.parent / "agent_files").resolve()
+
+
+def resolve_default_toolchains_root(repo_root: Path) -> Path:
+    return (repo_root.parent / "toolchains").resolve()
+
+
+def load_minimum_zig(repo_root: Path) -> str:
     zon_path = repo_root / "build.zig.zon"
-    if not zon_path.is_file():
-        return None, [f"missing build.zig.zon at {zon_path}"]
     text = zon_path.read_text(encoding="utf-8")
     match = MINIMUM_ZIG_RE.search(text)
     if match is None:
-        return None, [f"could not find .minimum_zig_version in {zon_path}"]
-    return match.group(1), []
+        raise ValueError(f"Could not find minimum_zig_version in {zon_path}")
+    return match.group(1)
 
 
-def run_command(command: list[str]) -> tuple[bool, str]:
-    try:
-        completed = subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError:
-        return False, "not found"
-    except subprocess.CalledProcessError as exc:
-        output = exc.stdout.strip() or exc.stderr.strip() or f"exit {exc.returncode}"
-        return False, output
+def discover_toolchain_zig_candidates(toolchains_root: Path) -> list[Path]:
+    if not toolchains_root.exists() or not toolchains_root.is_dir():
+        return []
 
-    output = completed.stdout.strip() or completed.stderr.strip() or "ok"
-    return True, output
-
-
-def collect_route_helper_checks(repo_root: Path) -> list[dict[str, object]]:
-    checks = []
-    for relative_path in ROUTE_HELPERS:
-        path = repo_root / relative_path
-        checks.append(
-            {
-                "path": relative_path,
-                "exists": path.is_file(),
-            }
-        )
-    return checks
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+    for pattern in DEFAULT_ZIG_TOOLCHAIN_GLOBS:
+        for path in sorted(toolchains_root.glob(pattern)):
+            if not path.is_file():
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            candidates.append(resolved)
+    return candidates
 
 
-def collect_target_file_checks(repo_root: Path) -> list[dict[str, object]]:
-    checks = []
-    for relative_path in TARGET_FILES:
-        path = repo_root / relative_path
-        checks.append(
-            {
-                "path": relative_path,
-                "exists": path.is_file(),
-                "writable": path.exists() and os_access_write(path),
-            }
-        )
-    return checks
-
-
-def os_access_write(path: Path) -> bool:
-    try:
-        return path.exists() and os_access(path)
-    except OSError:
-        return False
-
-
-def os_access(path: Path) -> bool:
-    import os
-
-    return os.access(path, os.W_OK)
-
-
-def collect_git_status(repo_root: Path, expected_branch: str) -> dict[str, object]:
-    git_dir = repo_root / ".git"
-    if not git_dir.exists():
-        return {
-            "present": False,
-            "branch": None,
-            "origin": None,
-            "expected_branch": expected_branch,
-            "branch_matches_expected": False,
-            "origin_matches_repo": False,
-        }
-
-    branch_ok, branch_output = run_command(
-        ["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "HEAD"]
-    )
-    origin_ok, origin_output = run_command(
-        ["git", "-C", str(repo_root), "remote", "get-url", "origin"]
-    )
-    branch = branch_output if branch_ok else None
-    origin = origin_output if origin_ok else None
-    return {
-        "present": True,
-        "branch": branch,
-        "origin": origin,
-        "expected_branch": expected_branch,
-        "branch_matches_expected": branch == expected_branch,
-        "origin_matches_repo": bool(origin) and "adybag14-cyber/browser" in origin,
-    }
-
-
-def collect_path_dep_checks(repo_root: Path) -> list[dict[str, object]]:
-    checks = []
-    for label, relative_path in PATH_DEPS:
-        path = (repo_root / relative_path).resolve()
-        checks.append(
-            {
-                "label": label,
-                "path": str(path),
-                "exists": path.is_dir(),
-            }
-        )
-    return checks
-
-
-def collect_zig_status(repo_root: Path, minimum_zig: str | None) -> dict[str, object]:
-    zig_path = shutil.which("zig")
-    if zig_path is None:
-        return {
-            "found": False,
-            "path": None,
-            "version": None,
-            "meets_minimum": False,
-            "matches_expected_line": False,
-        }
-
-    ok, output = run_command([zig_path, "version"])
-    version = output if ok else None
-    if not ok or minimum_zig is None or version is None:
-        return {
-            "found": True,
-            "path": zig_path,
-            "version": version,
-            "meets_minimum": False,
-            "matches_expected_line": False,
-        }
-
-    installed_parts = parse_semver(version)
-    minimum_parts = parse_semver(minimum_zig)
-    return {
-        "found": True,
-        "path": zig_path,
-        "version": version,
-        "meets_minimum": installed_parts >= minimum_parts,
-        "matches_expected_line": installed_parts[:2] == minimum_parts[:2],
-    }
-
-
-def evaluate_publication_gate(
-    git_status: dict[str, object],
-    target_file_checks: list[dict[str, object]],
-) -> tuple[str, list[str]]:
-    reasons: list[str] = []
-    if not git_status["present"]:
-        reasons.append("no git metadata is present in this checkout")
-    if not git_status["branch_matches_expected"]:
-        reasons.append(
-            f"current branch is {git_status['branch']!r}, expected {git_status['expected_branch']!r}"
-        )
-    if not git_status["origin_matches_repo"]:
-        reasons.append("git origin does not point at adybag14-cyber/browser")
-    missing_targets = [entry["path"] for entry in target_file_checks if not entry["exists"]]
-    if missing_targets:
-        reasons.append("missing target files: " + ", ".join(missing_targets))
-    non_writable = [entry["path"] for entry in target_file_checks if entry["exists"] and not entry["writable"]]
-    if non_writable:
-        reasons.append("target files are not writable: " + ", ".join(non_writable))
-    if reasons:
-        return "closed", reasons
-    return "green", ["git checkout, target branch, origin, and writable target files are present"]
-
-
-def evaluate_toolchain_gate(
-    minimum_zig: str | None,
-    route_helper_checks: list[dict[str, object]],
-    path_dep_checks: list[dict[str, object]],
-    zig_status: dict[str, object],
-) -> tuple[str, list[str]]:
-    reasons: list[str] = []
-    missing_helpers = [entry["path"] for entry in route_helper_checks if not entry["exists"]]
-    if missing_helpers:
-        reasons.append("missing route helpers: " + ", ".join(missing_helpers))
-    if minimum_zig is None:
-        reasons.append("branch minimum Zig version could not be read from build.zig.zon")
-    missing_deps = [entry["label"] for entry in path_dep_checks if not entry["exists"]]
-    if missing_deps:
-        reasons.append("missing sibling dependencies: " + ", ".join(missing_deps))
-    if not zig_status["found"]:
-        reasons.append("zig is not available on PATH")
+def describe_zig_candidate(minimum_zig: str, path: Path) -> dict[str, object]:
+    version = infer_archive_semver(path.parent if path.name == "zig" else path)
+    if version is None:
+        version = infer_archive_semver(path)
+    if version is None:
+        status = "unknown version"
+    elif same_version_line(minimum_zig, version):
+        status = "matches expected line"
+    elif parse_semver(version) < parse_semver(minimum_zig):
+        status = "older than minimum"
     else:
-        if not zig_status["meets_minimum"]:
-            reasons.append(
-                f"zig {zig_status['version']!r} does not meet the branch minimum {minimum_zig!r}"
-            )
-        if not zig_status["matches_expected_line"]:
-            reasons.append(
-                f"zig {zig_status['version']!r} is not on the branch's expected {minimum_zig} line"
-            )
-    if reasons:
-        return "closed", reasons
-    return "green", ["route helpers, path dependencies, and a matching Zig line are present"]
-
-
-def build_next_steps(publication_status: str, toolchain_status: str) -> list[str]:
-    steps: list[str] = []
-    if publication_status != "green":
-        steps.append(
-            "Reopen the direct runtime patch only from a writable fork/headed-mode-foundation checkout with the real target files present."
-        )
-    if toolchain_status != "green":
-        steps.append(
-            "Use the Linux build-readiness route and a Zig 0.15.2-compatible toolchain before trusting focused Page.zig or win32_backend.zig tests."
-        )
-    if publication_status == "green" and toolchain_status == "green":
-        steps.append(
-            "Both hard gates are green; the direct issue #3 runtime patch can be retried from this checkout."
-        )
-    return steps
-
-
-def collect_status(repo_root: Path, expected_branch: str) -> dict[str, object]:
-    minimum_zig, minimum_zig_errors = load_minimum_zig_version(repo_root)
-    route_helper_checks = collect_route_helper_checks(repo_root)
-    target_file_checks = collect_target_file_checks(repo_root)
-    git_status = collect_git_status(repo_root, expected_branch)
-    path_dep_checks = collect_path_dep_checks(repo_root)
-    zig_status = collect_zig_status(repo_root, minimum_zig)
-    publication_state, publication_reasons = evaluate_publication_gate(
-        git_status, target_file_checks
-    )
-    toolchain_state, toolchain_reasons = evaluate_toolchain_gate(
-        minimum_zig, route_helper_checks, path_dep_checks, zig_status
-    )
+        status = "mismatched line"
     return {
+        "path": str(path),
+        "version": version,
+        "status": status,
+        "matches_expected_line": status == "matches expected line",
+    }
+
+
+def collect_memory_status(memory_root: Path) -> dict[str, object]:
+    required_files = []
+    missing = []
+    for relative_path in REQUIRED_MEMORY_FILES:
+        path = memory_root / relative_path
+        exists = path.is_file()
+        required_files.append({"path": str(path), "exists": exists})
+        if not exists:
+            missing.append(relative_path)
+    return {
+        "ok": not missing,
+        "root": str(memory_root),
+        "missing_required_files": missing,
+        "required_files": required_files,
+    }
+
+
+def evaluate_runtime_contract(repo_root: Path) -> dict[str, object]:
+    page_path = repo_root / "src/browser/Page.zig"
+    win32_path = repo_root / "src/display/win32_backend.zig"
+    if not page_path.is_file() or not win32_path.is_file():
+        return {
+            "ok": False,
+            "reason": "runtime target files are missing",
+            "page_missing_markers": PAGE_MARKERS,
+            "win32_missing_markers": WIN32_MARKERS,
+        }
+
+    page_source = page_path.read_text(encoding="utf-8")
+    win32_source = win32_path.read_text(encoding="utf-8")
+    page_missing = [marker for marker in PAGE_MARKERS if marker not in page_source]
+    win32_missing = [marker for marker in WIN32_MARKERS if marker not in win32_source]
+    ok = not page_missing and not win32_missing
+    if ok:
+        reason = "runtime bridge markers are present"
+    else:
+        reason = "runtime bridge markers are still missing"
+    return {
+        "ok": ok,
+        "reason": reason,
+        "page_missing_markers": page_missing,
+        "win32_missing_markers": win32_missing,
+    }
+
+
+def summarize_status(
+    *,
+    repo_root: Path,
+    memory_root: Path,
+    agent_files_root: Path,
+    toolchains_root: Path,
+    fallback_zig_archive: Path | None,
+) -> dict[str, object]:
+    repo_has_manifest = (repo_root / "build.zig.zon").is_file()
+    git_checkout_present = (repo_root / ".git").exists()
+    target_files_present = (
+        (repo_root / "src/browser/Page.zig").is_file()
+        and (repo_root / "src/display/win32_backend.zig").is_file()
+    )
+
+    memory_status = collect_memory_status(memory_root)
+    minimum_zig = load_minimum_zig(repo_root) if repo_has_manifest else None
+
+    zig_candidates: list[dict[str, object]] = []
+    matching_candidates: list[dict[str, object]] = []
+    if minimum_zig is not None:
+        for candidate in discover_toolchain_zig_candidates(toolchains_root):
+            report = describe_zig_candidate(minimum_zig, candidate)
+            zig_candidates.append(report)
+            if report["matches_expected_line"]:
+                matching_candidates.append(report)
+
+    fallback_status = None
+    if fallback_zig_archive is None:
+        candidate = agent_files_root / DEFAULT_FALLBACK_ZIG
+        fallback_zig_archive = candidate if candidate.exists() else candidate
+    if minimum_zig is not None:
+        fallback_version = infer_archive_semver(fallback_zig_archive) if fallback_zig_archive else None
+        fallback_status = {
+            "path": str(fallback_zig_archive),
+            "exists": bool(fallback_zig_archive and fallback_zig_archive.is_file()),
+            "version": fallback_version,
+            "matches_expected_line": bool(
+                fallback_version is not None and same_version_line(minimum_zig, fallback_version)
+            ),
+        }
+
+    runtime_contract = evaluate_runtime_contract(repo_root) if target_files_present else {
+        "ok": False,
+        "reason": "runtime target files are missing",
+        "page_missing_markers": list(PAGE_MARKERS),
+        "win32_missing_markers": list(WIN32_MARKERS),
+    }
+
+    publication_gate_open = git_checkout_present and target_files_present
+    toolchain_gate_open = bool(matching_candidates)
+
+    if not repo_has_manifest or not target_files_present:
+        recommended_lane = "Build and dependency readiness"
+        recommendation_reason = "Restore or point at a usable checkout before reopening runtime work."
+    elif not memory_status["ok"]:
+        recommended_lane = "Build and dependency readiness"
+        recommendation_reason = "Saved Memory inputs are incomplete, so replay recovery should start there."
+    elif not publication_gate_open:
+        recommended_lane = "Build and dependency readiness"
+        recommendation_reason = "The direct runtime patch still lacks a writable checkout surface."
+    elif not toolchain_gate_open:
+        recommended_lane = "Build and dependency readiness"
+        recommendation_reason = "A branch-compatible Zig 0.15.x line is not staged yet."
+    elif runtime_contract["ok"]:
+        recommended_lane = "Validation and regression control"
+        recommendation_reason = "The narrowed runtime bridge is already present, so the next honest step is replay validation."
+    else:
+        recommended_lane = "Headed runtime bring-up"
+        recommendation_reason = "The checkout and toolchain gates are open, so the runtime bridge can be edited directly."
+
+    next_steps = []
+    if not repo_has_manifest or not publication_gate_open:
+        next_steps.append("bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh")
+    if not memory_status["ok"]:
+        next_steps.append("python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .")
+    if repo_has_manifest and not toolchain_gate_open:
+        next_steps.append("bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh")
+        next_steps.append("bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh")
+    if repo_has_manifest and toolchain_gate_open and not runtime_contract["ok"]:
+        next_steps.append("bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh")
+    if repo_has_manifest and toolchain_gate_open and runtime_contract["ok"]:
+        next_steps.append(
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_enter_submit_runtime_revalidation.ps1"
+        )
+
+    return {
+        "profile": "issue3-runtime-reentry-gate-status",
         "repo_root": str(repo_root),
-        "expected_branch": expected_branch,
+        "memory_root": str(memory_root),
+        "agent_files_root": str(agent_files_root),
+        "toolchains_root": str(toolchains_root),
         "minimum_zig": minimum_zig,
-        "minimum_zig_errors": minimum_zig_errors,
+        "git_checkout_present": git_checkout_present,
+        "target_files_present": target_files_present,
+        "memory_status": memory_status,
+        "zig_candidates": zig_candidates,
+        "fallback_zig_archive": fallback_status,
+        "runtime_contract": runtime_contract,
         "publication_gate": {
-            "state": publication_state,
-            "reasons": publication_reasons,
+            "open": publication_gate_open,
+            "reason": "writable checkout present" if publication_gate_open else "no writable checkout detected",
         },
         "toolchain_gate": {
-            "state": toolchain_state,
-            "reasons": toolchain_reasons,
+            "open": toolchain_gate_open,
+            "reason": "matching Zig candidate discovered"
+            if toolchain_gate_open
+            else "no staged Zig candidate matches the branch line",
         },
-        "git_status": git_status,
-        "target_files": target_file_checks,
-        "route_helpers": route_helper_checks,
-        "path_dependencies": path_dep_checks,
-        "zig_status": zig_status,
-        "next_steps": build_next_steps(publication_state, toolchain_state),
+        "recommended_lane": recommended_lane,
+        "recommendation_reason": recommendation_reason,
+        "next_steps": next_steps,
     }
 
 
 def emit_text(result: dict[str, object]) -> None:
-    print("Issue #3 runtime re-entry gate status")
-    print()
     print(f"Repo root: {result['repo_root']}")
-    print(f"Expected branch: {result['expected_branch']}")
-    print(f"Minimum Zig: {result['minimum_zig'] or 'unavailable'}")
-    print()
-    print(f"Publication gate: {result['publication_gate']['state'].upper()}")
-    for reason in result["publication_gate"]["reasons"]:
-        print(f"  - {reason}")
-    print()
-    print(f"Toolchain gate: {result['toolchain_gate']['state'].upper()}")
-    for reason in result["toolchain_gate"]["reasons"]:
-        print(f"  - {reason}")
-    print()
+    print(f"Recommended lane: {result['recommended_lane']}")
+    print(f"Why: {result['recommendation_reason']}")
+    print(f"Publication gate: {'open' if result['publication_gate']['open'] else 'closed'}")
+    print(f"Toolchain gate: {'open' if result['toolchain_gate']['open'] else 'closed'}")
+    print(f"Runtime contract: {'ready' if result['runtime_contract']['ok'] else 'missing markers'}")
+    if result["minimum_zig"] is not None:
+        print(f"Minimum Zig: {result['minimum_zig']}")
     print("Next steps:")
     for step in result["next_steps"]:
         print(f"  - {step}")
 
 
-class GateStatusTests(unittest.TestCase):
-    def test_parse_semver(self) -> None:
-        self.assertEqual(parse_semver("0.15.2"), (0, 15, 2))
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Summarize whether issue #3 should reopen the direct runtime lane "
+            "or stay on build-readiness recovery."
+        )
+    )
+    parser.add_argument("--repo-root", default=".")
+    parser.add_argument("--memory-root", default=None)
+    parser.add_argument("--agent-files-root", default=None)
+    parser.add_argument("--toolchains-root", default=None)
+    parser.add_argument("--fallback-zig-archive", default=None)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--self-test", action="store_true")
+    return parser
 
-    def test_green_when_checkout_is_ready(self) -> None:
+
+class RuntimeGateStatusTests(unittest.TestCase):
+    def test_prefers_build_readiness_without_git_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             repo_root = root / "browser"
-            repo_root.mkdir()
-            (repo_root / ".git").mkdir()
-            (repo_root / "build.zig.zon").write_text(
-                '.{ .minimum_zig_version = "0.15.2", .dependencies = .{} }',
-                encoding="utf-8",
-            )
-            for relative_path in TARGET_FILES + ROUTE_HELPERS:
-                target = repo_root / relative_path
+            memory_root = root / "memory"
+            toolchains_root = root / "toolchains"
+            agent_files_root = root / "agent_files"
+            (repo_root / "src/browser").mkdir(parents=True)
+            (repo_root / "src/display").mkdir(parents=True)
+            memory_root.mkdir()
+            toolchains_root.mkdir()
+            agent_files_root.mkdir()
+
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"\n', encoding="utf-8")
+            (repo_root / "src/browser/Page.zig").write_text("\n".join(PAGE_MARKERS), encoding="utf-8")
+            (repo_root / "src/display/win32_backend.zig").write_text("\n".join(WIN32_MARKERS), encoding="utf-8")
+            for relative_path in REQUIRED_MEMORY_FILES:
+                target = memory_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text("x", encoding="utf-8")
-            for _label, relative_path in PATH_DEPS:
-                (repo_root / relative_path).resolve().mkdir(parents=True, exist_ok=True)
 
-            original_run_command = globals()["run_command"]
-            original_which = shutil.which
-            try:
-                globals()["run_command"] = lambda command: (
-                    (True, "fork/headed-mode-foundation")
-                    if "rev-parse" in command
-                    else (True, "git@github.com:adybag14-cyber/browser.git")
-                    if "get-url" in command
-                    else (True, "0.15.2")
-                )
-                shutil.which = lambda name: "/usr/bin/zig" if name == "zig" else None
-                result = collect_status(repo_root, "fork/headed-mode-foundation")
-            finally:
-                globals()["run_command"] = original_run_command
-                shutil.which = original_which
+            zig = toolchains_root / "zig-0.15.7" / "zig"
+            zig.parent.mkdir(parents=True, exist_ok=True)
+            zig.write_text("", encoding="utf-8")
 
-            self.assertEqual(result["publication_gate"]["state"], "green")
-            self.assertEqual(result["toolchain_gate"]["state"], "green")
+            result = summarize_status(
+                repo_root=repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                toolchains_root=toolchains_root,
+                fallback_zig_archive=None,
+            )
 
-    def test_closed_when_snapshot_lacks_git(self) -> None:
+            self.assertEqual(result["recommended_lane"], "Build and dependency readiness")
+            self.assertFalse(result["publication_gate"]["open"])
+
+    def test_prefers_validation_when_runtime_markers_and_toolchain_are_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             repo_root = root / "browser"
-            repo_root.mkdir()
-            (repo_root / "build.zig.zon").write_text(
-                '.{ .minimum_zig_version = "0.15.2", .dependencies = .{} }',
-                encoding="utf-8",
-            )
-            for relative_path in TARGET_FILES + ROUTE_HELPERS:
-                target = repo_root / relative_path
+            memory_root = root / "memory"
+            toolchains_root = root / "toolchains"
+            agent_files_root = root / "agent_files"
+            (repo_root / ".git").mkdir(parents=True)
+            (repo_root / "src/browser").mkdir(parents=True)
+            (repo_root / "src/display").mkdir(parents=True)
+            memory_root.mkdir()
+            toolchains_root.mkdir()
+            agent_files_root.mkdir()
+
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"\n', encoding="utf-8")
+            (repo_root / "src/browser/Page.zig").write_text("\n".join(PAGE_MARKERS), encoding="utf-8")
+            (repo_root / "src/display/win32_backend.zig").write_text("\n".join(WIN32_MARKERS), encoding="utf-8")
+            for relative_path in REQUIRED_MEMORY_FILES:
+                target = memory_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text("x", encoding="utf-8")
 
-            original_which = shutil.which
-            try:
-                shutil.which = lambda name: None
-                result = collect_status(repo_root, "fork/headed-mode-foundation")
-            finally:
-                shutil.which = original_which
+            zig = toolchains_root / "zig-0.15.7" / "zig"
+            zig.parent.mkdir(parents=True, exist_ok=True)
+            zig.write_text("", encoding="utf-8")
 
-            self.assertEqual(result["publication_gate"]["state"], "closed")
-            self.assertEqual(result["toolchain_gate"]["state"], "closed")
+            result = summarize_status(
+                repo_root=repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                toolchains_root=toolchains_root,
+                fallback_zig_archive=None,
+            )
+
+            self.assertEqual(result["recommended_lane"], "Validation and regression control")
+            self.assertTrue(result["publication_gate"]["open"])
+            self.assertTrue(result["toolchain_gate"]["open"])
+            self.assertTrue(result["runtime_contract"]["ok"])
+
+    def test_prefers_runtime_when_checkout_is_ready_but_markers_are_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = root / "browser"
+            memory_root = root / "memory"
+            toolchains_root = root / "toolchains"
+            agent_files_root = root / "agent_files"
+            (repo_root / ".git").mkdir(parents=True)
+            (repo_root / "src/browser").mkdir(parents=True)
+            (repo_root / "src/display").mkdir(parents=True)
+            memory_root.mkdir()
+            toolchains_root.mkdir()
+            agent_files_root.mkdir()
+
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"\n', encoding="utf-8")
+            (repo_root / "src/browser/Page.zig").write_text("placeholder", encoding="utf-8")
+            (repo_root / "src/display/win32_backend.zig").write_text("placeholder", encoding="utf-8")
+            for relative_path in REQUIRED_MEMORY_FILES:
+                target = memory_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("x", encoding="utf-8")
+
+            zig = toolchains_root / "zig-0.15.7" / "zig"
+            zig.parent.mkdir(parents=True, exist_ok=True)
+            zig.write_text("", encoding="utf-8")
+
+            result = summarize_status(
+                repo_root=repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                toolchains_root=toolchains_root,
+                fallback_zig_archive=None,
+            )
+
+            self.assertEqual(result["recommended_lane"], "Headed runtime bring-up")
+            self.assertFalse(result["runtime_contract"]["ok"])
 
 
 def main() -> int:
     args = build_parser().parse_args()
     if args.self_test:
-        suite = unittest.defaultTestLoader.loadTestsFromTestCase(GateStatusTests)
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(RuntimeGateStatusTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
 
     repo_root = Path(args.repo_root).resolve()
-    result = collect_status(repo_root, args.expected_branch)
+    memory_root = Path(args.memory_root).resolve() if args.memory_root else resolve_default_memory_root(repo_root)
+    agent_files_root = (
+        Path(args.agent_files_root).resolve()
+        if args.agent_files_root
+        else resolve_default_agent_files_root(repo_root)
+    )
+    toolchains_root = (
+        Path(args.toolchains_root).resolve()
+        if args.toolchains_root
+        else resolve_default_toolchains_root(repo_root)
+    )
+    fallback_zig_archive = Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
+
+    result = summarize_status(
+        repo_root=repo_root,
+        memory_root=memory_root,
+        agent_files_root=agent_files_root,
+        toolchains_root=toolchains_root,
+        fallback_zig_archive=fallback_zig_archive,
+    )
     if args.json:
         print(json.dumps(result, indent=2))
     else:
         emit_text(result)
-    if (
-        result["publication_gate"]["state"] == "green"
-        and result["toolchain_gate"]["state"] == "green"
-    ):
-        return 0
-    return 1
+    return 0
 
 
 if __name__ == "__main__":
