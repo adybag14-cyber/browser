@@ -54,6 +54,7 @@ declare -a REFERENCE_PATHS=(
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|file|Compact Linux or WSL route printer for the direct issue #3 runtime lane."
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh|file|Fail-fast Linux build-readiness checker used before offline staging is blamed on source changes."
     "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Linux build-readiness route printer used before focused Zig output is trusted."
+    "scripts/check_issue3_saved_memory_inputs.py|file|Saved-Memory preflight helper for the repo snapshot, dependency archives, and fallback Zig bundle used by the runtime re-entry route."
     "scripts/check_linux_build_readiness.py|file|Branch-local build-readiness helper used by the Linux or WSL recovery route."
     "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py|file|Source-based checker for the direct Page.zig and win32_backend.zig runtime bridge markers."
 )
@@ -61,7 +62,9 @@ declare -a REFERENCE_PATHS=(
 declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh|The gate note keeps the Linux or WSL runtime surface checker visible before the direct runtime patch is reopened."
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|The gate note keeps the compact Linux or WSL runtime helper visible before the direct runtime patch is reopened."
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|scripts/check_issue3_saved_memory_inputs.py|The gate note keeps the saved-memory preflight visible before Linux or WSL build-readiness commands are trusted."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|check_issue3_enter_submit_runtime_contract.py|The Linux or WSL runtime helper prints the source-based runtime contract check."
+    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|check_issue3_saved_memory_inputs.py|The Linux or WSL runtime helper prints the saved-memory preflight before broader build-readiness commands."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|check_issue3_linux_build_readiness_route_surface.sh|The Linux or WSL runtime helper keeps the build-readiness surface check visible before focused Zig output is trusted."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|show_issue3_linux_build_readiness_route.sh|The Linux or WSL runtime helper keeps the build-readiness route printer visible when the toolchain gate is still closed."
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|chrome-google-home-title-probe.ps1|The Linux or WSL runtime helper still prints the reduced Google Windows follow-up probe."
