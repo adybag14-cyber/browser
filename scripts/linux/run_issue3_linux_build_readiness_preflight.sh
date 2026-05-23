@@ -7,7 +7,7 @@ usage() {
 Usage:
   bash scripts/linux/run_issue3_linux_build_readiness_preflight.sh \
     [--repo-root /path/to/browser-repo] \
-    [--saved-archives-root /path/to/memory/repo_archives/browser] \
+    [--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]] \
     [--rust-toolchain-dir /path/to/toolchains/rust-1.79.0] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz]
 
@@ -30,6 +30,15 @@ import sys
 
 print(shlex.quote(sys.argv[1]))
 PY
+}
+
+normalize_dependencies_root() {
+    local root="$1"
+    if [[ "$(basename "${root}")" == "dependencies" ]]; then
+        printf '%s\n' "${root}"
+        return 0
+    fi
+    printf '%s/dependencies\n' "${root}"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -76,6 +85,10 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
     SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
 fi
+DEPENDENCIES_ROOT="$(normalize_dependencies_root "${SAVED_ARCHIVES_ROOT}")"
+if [[ "$(basename "${SAVED_ARCHIVES_ROOT}")" == "dependencies" ]]; then
+    SAVED_ARCHIVES_ROOT="$(dirname "${SAVED_ARCHIVES_ROOT}")"
+fi
 
 if [[ -z "${RUST_TOOLCHAIN_DIR}" ]]; then
     RUST_TOOLCHAIN_DIR="$(cd "${REPO_ROOT}/.." && pwd)/toolchains/rust-1.79.0"
@@ -88,7 +101,6 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     fi
 fi
 
-DEPENDENCIES_ROOT="${SAVED_ARCHIVES_ROOT}/dependencies"
 HTML5EVER_ARCHIVE="${DEPENDENCIES_ROOT}/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
 BORINGSSL_ARCHIVE="${DEPENDENCIES_ROOT}/03-boringssl-zig-main.zip"
 BROWSER_DEPS_ARCHIVE="${DEPENDENCIES_ROOT}/04-zig-browser-depo.tar.zip"
@@ -168,6 +180,7 @@ echo "Issue #3 Linux build-readiness preflight"
 echo
 echo "Repo root: ${REPO_ROOT}"
 echo "Saved archive root: ${SAVED_ARCHIVES_ROOT}"
+echo "Saved dependency root: ${DEPENDENCIES_ROOT}"
 echo "Rust toolchain dir: ${RUST_TOOLCHAIN_DIR}"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     echo "Fallback Zig archive: ${FALLBACK_ZIG_ARCHIVE}"
