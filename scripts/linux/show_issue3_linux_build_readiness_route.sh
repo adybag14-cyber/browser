@@ -121,6 +121,15 @@ print(json.dumps({
     "saved_archives_root": ${SAVED_ARCHIVES_ROOT@Q},
     "rust_toolchain_dir": ${RUST_TOOLCHAIN_DIR@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
+    "read_first": [
+        "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+        "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
+        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+        "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
+    ],
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
@@ -170,6 +179,7 @@ Read first
   docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
   docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
+  docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
   docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
 
