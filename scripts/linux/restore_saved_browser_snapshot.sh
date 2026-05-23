@@ -133,12 +133,12 @@ while [[ $# -gt 0 ]]; do
             ARCHIVE_PATH="$2"
             shift 2
             ;;
-        --destination)
-            DESTINATION="$2"
-            shift 2
-            ;;
         --fallback-zig-archive)
             FALLBACK_ZIG_ARCHIVE="$2"
+            shift 2
+            ;;
+        --destination)
+            DESTINATION="$2"
             shift 2
             ;;
         --check-only)
@@ -244,6 +244,7 @@ SYNC_FLAG=""
 if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
     SYNC_FLAG=" --sync-helper-surface"
 fi
+
 FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_RUNTIME_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -293,10 +294,12 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     fi
     echo
     echo "Suggested restore command:"
-    printf "  bash %s --browser-root %s --helper-root %s --destination %s%s%s\n" \
+    printf "  bash %s --browser-root %s --helper-root %s --memory-root %s --archive %s --destination %s%s%s\n" \
         "$(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh")" \
         "$(format_shell_arg "${BROWSER_ROOT}")" \
         "$(format_shell_arg "${HELPER_ROOT}")" \
+        "$(format_shell_arg "${MEMORY_ROOT}")" \
+        "$(format_shell_arg "${ARCHIVE_PATH}")" \
         "$(format_shell_arg "${DESTINATION}")" \
         "${RESTORE_FALLBACK_FLAG}" \
         "${SYNC_FLAG}"
