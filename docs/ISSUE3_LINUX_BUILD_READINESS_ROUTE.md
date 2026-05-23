@@ -10,19 +10,32 @@ helpers:
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 
 ## Goal
 
 Give the next writable checkout one branch-local route for:
 
 - checking that the saved archives are still present
+- checking that the Linux build-readiness note and helper surfaces still line up
 - staging the offline sibling dependencies expected by `build.zig.zon`
 - restoring the saved Rust `1.79.0` toolchain
 - rerunning the readiness helper before trusting focused Zig output
 
-## Run The Helper
+## Run The Surface Check First
 
 From the browser repo root:
+
+```bash
+bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
+```
+
+Use `--json` when another helper needs the surface-check result as structured
+output.
+
+## Run The Helper
+
+After the surface check passes, print the saved-archive-first route:
 
 ```bash
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
@@ -40,16 +53,18 @@ bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh \
 
 Use `--json` when another helper needs the command set as structured output.
 
-## What The Helper Prints
+## What The Route Surfaces
 
-The helper keeps the build-readiness route short and ordered:
+The Linux route now stays short and ordered:
 
-1. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-2. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+1. A fail-fast surface check using
+   `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
+2. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+3. A `prepare_offline_build_inputs.sh --check-only` command for the offline
    dependency surface
-3. A saved Rust `1.79.0` restore command
-4. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-5. A full readiness command that expects the saved archives, offline deps, and
+4. A saved Rust `1.79.0` restore command
+5. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+6. A full readiness command that expects the saved archives, offline deps, and
    prebuilt V8 archive to be staged before retrying `zig build`
 
 ## Working Rules
