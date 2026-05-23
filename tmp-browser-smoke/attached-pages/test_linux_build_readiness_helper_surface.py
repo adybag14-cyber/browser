@@ -28,12 +28,14 @@ FIXTURE_FILES = {
 
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
+- `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_linux_build_readiness.py`
 """,
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md": """
 # Issue #3 Linux Build-Readiness Route
 
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
+- `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_linux_build_readiness.py`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - restore the saved Rust `1.79.0` toolchain
@@ -41,16 +43,20 @@ FIXTURE_FILES = {
 """,
     "scripts/linux/show_issue3_linux_build_readiness_route.sh": r"""
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh --repo-root ${REPO_ROOT}"
+SAVED_MEMORY_INPUTS_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root ${REPO_ROOT}"
 PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --skip-zig-check --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies"
 PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root ${REPO_ROOT} --browser-deps-archive ${BROWSER_DEPS_ARCHIVE} --boringssl-archive ${BORINGSSL_ARCHIVE} --html5ever-archive ${HTML5EVER_ARCHIVE} --check-only"
 RUST_RESTORE_COMMAND="mkdir -p ${RUST_TOOLCHAIN_DIR} && tar -xf ${RUST_ARCHIVE} -C ${RUST_TOOLCHAIN_DIR} --strip-components=1"
 RUST_PATH_COMMAND="export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:$PATH"
 FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies --expect-offline-deps --require-prebuilt-v8"
+Saved Memory input preflight:
+Fallback Zig archive:
 """,
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh": r"""
 REFERENCE_PATHS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note"
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Read-first Linux note"
+    "scripts/check_issue3_saved_memory_inputs.py|file|Saved Memory input preflight"
     "scripts/check_linux_build_readiness.py|file|Python helper"
     "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Route printer"
     "scripts/linux/prepare_offline_build_inputs.sh|file|Offline restore helper"
@@ -58,6 +64,10 @@ REFERENCE_PATHS=(
 )
 CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|Gate note keeps Linux route visible."
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|scripts/check_issue3_saved_memory_inputs.py|Gate note keeps saved-Memory preflight visible."
+    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|Linux note keeps saved-Memory preflight visible."
+    "scripts/linux/show_issue3_linux_build_readiness_route.sh|scripts/check_issue3_saved_memory_inputs.py|Route printer points at saved-Memory preflight."
+    "scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved Memory input preflight:|Route printer prints saved-Memory preflight label."
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_linux_build_readiness.py|Linux note keeps readiness helper visible."
     "scripts/linux/show_issue3_linux_build_readiness_route.sh|check_issue3_linux_build_readiness_route_surface.sh|Route printer points back to surface checker."
     "scripts/check_linux_build_readiness.py|saved Rust toolchain archive|Readiness helper knows saved Rust archive contract."
@@ -84,7 +94,6 @@ SAVED_ARCHIVE_LABELS = {
 }
 REQUIRED_SAVED_ARCHIVE_KEYS = ("rust_toolchain", "boringssl", "browser_deps")
 OPTIONAL_SAVED_ARCHIVE_KEYS = ("html5ever",)
-
 def build_parser():
     parser.add_argument("--skip-zig-check")
     parser.add_argument("--expect-offline-deps")
@@ -92,7 +101,6 @@ def build_parser():
     parser.add_argument("--expect-saved-archives")
     parser.add_argument("--saved-archives-root")
     parser.add_argument("--self-test")
-
 def build_prepare_offline_command(repo_root, saved_archives):
     command = [
         str(repo_root / "scripts" / "linux" / "prepare_offline_build_inputs.sh"),
@@ -157,9 +165,10 @@ class LinuxBuildReadinessHelperSurfaceTest(unittest.TestCase):
         )
         cls.build_manifest = read_text(cls.repo_root / "build.zig.zon")
 
-    def test_route_note_keeps_saved_archive_and_toolchain_guidance(self) -> None:
+    def test_route_note_keeps_saved_memory_archive_and_toolchain_guidance(self) -> None:
         for fragment in (
             "check_issue3_linux_build_readiness_route_surface.sh",
+            "scripts/check_issue3_saved_memory_inputs.py",
             "scripts/check_linux_build_readiness.py",
             "scripts/linux/show_issue3_linux_build_readiness_route.sh",
             "saved Rust `1.79.0` toolchain",
@@ -167,11 +176,13 @@ class LinuxBuildReadinessHelperSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.route_note)
 
-    def test_route_helper_keeps_surface_preflight_restore_and_full_readiness_commands(self) -> None:
+    def test_route_helper_keeps_saved_memory_surface_preflight_restore_and_full_readiness_commands(self) -> None:
         for fragment in (
             'SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh',
+            'SAVED_MEMORY_INPUTS_COMMAND="python scripts/check_issue3_saved_memory_inputs.py',
+            "Saved Memory input preflight:",
             'PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py',
-            '--skip-zig-check --expect-saved-archives',
+            "--skip-zig-check --expect-saved-archives",
             'PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh',
             "--browser-deps-archive",
             "--boringssl-archive",
@@ -181,17 +192,23 @@ class LinuxBuildReadinessHelperSurfaceTest(unittest.TestCase):
             'RUST_PATH_COMMAND="export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:$PATH"',
             'FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py',
             "--expect-offline-deps --require-prebuilt-v8",
+            "Fallback Zig archive:",
         ):
             self.assertIn(fragment, self.route_helper)
 
-    def test_surface_checker_keeps_route_and_saved_archive_expectations(self) -> None:
+    def test_surface_checker_keeps_route_saved_memory_and_archive_expectations(self) -> None:
         for fragment in (
             '"docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|',
             '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|',
+            '"scripts/check_issue3_saved_memory_inputs.py|file|',
             '"scripts/check_linux_build_readiness.py|file|',
             '"scripts/linux/show_issue3_linux_build_readiness_route.sh|file|',
             '"build.zig.zon|file|Manifest surface"',
             '"docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|',
+            '"docs/ISSUE3_RUNTIME_REENTRY_GATES.md|scripts/check_issue3_saved_memory_inputs.py|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|scripts/check_issue3_saved_memory_inputs.py|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved Memory input preflight:|',
             '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_linux_build_readiness.py|',
             '"scripts/linux/show_issue3_linux_build_readiness_route.sh|check_issue3_linux_build_readiness_route_surface.sh|',
             '"scripts/check_linux_build_readiness.py|saved Rust toolchain archive|',
@@ -238,6 +255,7 @@ class LinuxBuildReadinessHelperSurfaceTest(unittest.TestCase):
         for fragment in (
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
             "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+            "scripts/check_issue3_saved_memory_inputs.py",
             "scripts/check_linux_build_readiness.py",
         ):
             self.assertIn(fragment, self.runtime_gates)
