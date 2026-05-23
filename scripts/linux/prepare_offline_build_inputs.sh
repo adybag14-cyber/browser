@@ -106,8 +106,16 @@ WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
     OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
 fi
-mkdir -p "${OFFLINE_DEPS_ROOT}"
-OFFLINE_DEPS_ROOT="$(cd "${OFFLINE_DEPS_ROOT}" && pwd)"
+if [[ "${CHECK_ONLY}" -eq 0 ]]; then
+    mkdir -p "${OFFLINE_DEPS_ROOT}"
+fi
+OFFLINE_DEPS_ROOT="$(python3 - "${OFFLINE_DEPS_ROOT}" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+)"
 OFFLINE_DEPS_RELATIVE_ROOT="$(python3 - "${OFFLINE_DEPS_ROOT}" "${BROWSER_ROOT}" <<'PY'
 import os
 import sys
@@ -115,8 +123,6 @@ import sys
 print(os.path.relpath(sys.argv[1], sys.argv[2]))
 PY
 )"
-TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "${TMP_DIR}"' EXIT
 
 find_zip_match() {
     local archive_path="$1"
@@ -200,6 +206,9 @@ if [[ "${CHECK_ONLY}" -eq 1 ]]; then
     fi
     exit 0
 fi
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "${TMP_DIR}"' EXIT
 
 echo "Restoring zig-v8-fork under ${WORKSPACE_ROOT}/zig-v8-fork"
 extract_nested_tarball "${BROWSER_DEPS_ARCHIVE}" '^zig-v8-fork-.*\.tar\.gz$' "${WORKSPACE_ROOT}/zig-v8-fork"
