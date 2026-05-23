@@ -8,7 +8,7 @@ Usage:
   bash scripts/linux/show_issue3_linux_build_readiness_route.sh \
     [--repo-root /path/to/browser-repo] \
     [--saved-archives-root /path/to/memory/repo_archives/browser] \
-    [--rust-toolchain-dir /path/to/rust-toolchain-dir] \
+    [--rust-toolchain-dir /path/to/toolchains/rust-1.79.0] \
     [--json]
 
 Print the saved-archive-first Linux/WSL build-readiness route for the blocked
@@ -78,8 +78,9 @@ BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip
 BROWSER_DEPS_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/04-zig-browser-depo.tar.zip"
 PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
 PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}") --html5ever-archive $(format_shell_arg "${HTML5EVER_ARCHIVE}") --check-only"
-RUST_RESTORE_COMMAND="mkdir -p $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") && tar -xf $(format_shell_arg "${RUST_ARCHIVE}") -C $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --strip-components=1"
-RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/bin"):\$PATH"
+RUST_RESTORE_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
+RUST_RESTORE_CHECK_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --check-only"
+RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/bin"):$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/rustc/bin"):\$PATH"
 FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --expect-offline-deps --require-prebuilt-v8"
 
 if [[ "${JSON}" -eq 1 ]]; then
@@ -95,6 +96,7 @@ print(json.dumps({
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "saved_archive_preflight": ${PREFLIGHT_COMMAND@Q},
         "offline_prepare_check_only": ${PREPARE_COMMAND@Q},
+        "rust_restore_check_only": ${RUST_RESTORE_CHECK_COMMAND@Q},
         "rust_restore": ${RUST_RESTORE_COMMAND@Q},
         "rust_path": ${RUST_PATH_COMMAND@Q},
         "full_readiness": ${FULL_READINESS_COMMAND@Q}
@@ -102,7 +104,8 @@ print(json.dumps({
     "notes": [
         "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
-        "Keep the saved Rust 1.79.0 toolchain on PATH before retrying cargo-backed build steps.",
+        "Run rust_restore_check_only when you want to confirm the saved Rust archive and target directory before extracting it.",
+        "Use rust_restore to keep the saved Rust 1.79.0 toolchain restore on one branch-local helper surface instead of rebuilding the tar command by hand.",
         "Prefer a Zig 0.15.2 toolchain for honest branch validation; the fallback Zig 0.17 dev line is known to fail in untouched branch files."
     ]
 }, indent=2))
@@ -140,6 +143,9 @@ Suggested route
 
   Offline restore surface check:
     ${PREPARE_COMMAND}
+
+  Saved Rust restore surface check:
+    ${RUST_RESTORE_CHECK_COMMAND}
 
   Restore the saved Rust 1.79.0 toolchain:
     ${RUST_RESTORE_COMMAND}
