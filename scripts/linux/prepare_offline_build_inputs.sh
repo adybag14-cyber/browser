@@ -10,13 +10,14 @@ Usage:
     --boringssl-archive /path/to/boringssl-zig-main.zip \
     [--html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip] \
     [--browser-root /path/to/browser-repo] \
+    [--offline-deps-root /path/to/offline-deps] \
     [--check-only]
 
 This helper restores the sibling dependency layout that build.zig.zon expects
 for offline Linux validation:
   ../zig-v8-fork
   ../boringssl-zig
-  ../offline-deps/{brotli,zlib,nghttp2,curl}
+  ../offline-deps/{brotli,zlib,nghttp2,curl} by default
 
 It also rewrites build.zig.zon from remote URL dependencies to local path
 dependencies, optionally restores .cargo/config.toml plus vendor/ from the
@@ -36,6 +37,7 @@ BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 BROWSER_DEPS_ARCHIVE=""
 BORINGSSL_ARCHIVE=""
 HTML5EVER_ARCHIVE=""
+OFFLINE_DEPS_ROOT=""
 CHECK_ONLY=0
 
 while [[ $# -gt 0 ]]; do
@@ -54,6 +56,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --html5ever-archive)
             HTML5EVER_ARCHIVE="$2"
+            shift 2
+            ;;
+        --offline-deps-root)
+            OFFLINE_DEPS_ROOT="$2"
             shift 2
             ;;
         --check-only)
@@ -95,12 +101,22 @@ if [[ ! -f "${BROWSER_ROOT}/build.zig.zon" ]]; then
     exit 1
 fi
 
+BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
-OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
+if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+    OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
+fi
+mkdir -p "${OFFLINE_DEPS_ROOT}"
+OFFLINE_DEPS_ROOT="$(cd "${OFFLINE_DEPS_ROOT}" && pwd)"
+OFFLINE_DEPS_RELATIVE_ROOT="$(python3 - "${OFFLINE_DEPS_ROOT}" "${BROWSER_ROOT}" <<'PY'
+import os
+import sys
+
+print(os.path.relpath(sys.argv[1], sys.argv[2]))
+PY
+)"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
-
-mkdir -p "${OFFLINE_DEPS_ROOT}"
 
 find_zip_match() {
     local archive_path="$1"
@@ -163,6 +179,7 @@ if [[ "${CHECK_ONLY}" -eq 1 ]]; then
     echo "  zig-v8-fork -> ${WORKSPACE_ROOT}/zig-v8-fork"
     echo "  boringssl-zig -> ${WORKSPACE_ROOT}/boringssl-zig"
     echo "  offline deps -> ${OFFLINE_DEPS_ROOT}"
+    echo "  build.zig.zon offline root -> ${OFFLINE_DEPS_RELATIVE_ROOT}"
     echo "Archive contents:"
     echo "  zig-v8-fork tarball -> ${ZIG_V8_ARCHIVE_PATH}"
     echo "  brotli tarball -> ${BROTLI_ARCHIVE_PATH}"
@@ -281,18 +298,19 @@ if [[ ! -f "${BUILD_ZON_BACKUP}" && ! -f "${LEGACY_BUILD_ZON_BACKUP}" ]]; then
     cp "${BUILD_ZON_PATH}" "${BUILD_ZON_BACKUP}"
 fi
 
-python3 - "${BUILD_ZON_PATH}" <<'PY'
+python3 - "${BUILD_ZON_PATH}" "${OFFLINE_DEPS_RELATIVE_ROOT}" <<'PY'
 import pathlib
 import re
 import sys
 
 path = pathlib.Path(sys.argv[1])
+offline_deps_relative_root = sys.argv[2]
 text = path.read_text()
 replacement_paths = {
-    "brotli": "../offline-deps/brotli",
-    "zlib": "../offline-deps/zlib",
-    "nghttp2": "../offline-deps/nghttp2",
-    "curl": "../offline-deps/curl",
+    "brotli": f"{offline_deps_relative_root}/brotli",
+    "zlib": f"{offline_deps_relative_root}/zlib",
+    "nghttp2": f"{offline_deps_relative_root}/nghttp2",
+    "curl": f"{offline_deps_relative_root}/curl",
 }
 
 updated = text
@@ -329,6 +347,7 @@ PY
 echo
 echo "Offline dependency layout is ready."
 echo "Sibling workspace root: ${WORKSPACE_ROOT}"
+echo "Resolved offline deps root: ${OFFLINE_DEPS_ROOT}"
 echo "Updated build manifest: ${BUILD_ZON_PATH}"
 if [[ -n "${PREBUILT_V8_PATH}" ]]; then
     echo "Suggested validation command:"
