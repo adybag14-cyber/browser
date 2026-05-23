@@ -11,7 +11,8 @@ Usage:
 
 Verify that the branch-local saved-browser-snapshot restore route for the
 blocked issue #3 runtime lane still has its required docs, helpers, and command
-snippets in place before a run tries to extract the saved checkout.
+snippets in place before a run reopens restore, build-readiness, or runtime
+re-entry work.
 EOF
 }
 
@@ -49,6 +50,7 @@ declare -a REFERENCE_PATHS=(
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|file|Read-first saved-browser-snapshot restore note for the blocked issue #3 runtime lane."
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Companion Linux or WSL build-readiness note that should follow the restore route."
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the saved-checkout route visible before reopening focused runtime work."
+    "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh|file|Fail-fast surface checker for the saved-browser-snapshot restore route."
     "scripts/linux/restore_saved_browser_snapshot.sh|file|Saved browser snapshot restore helper that should keep the check-only and extraction commands on one branch-local surface."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Compact route printer for the saved-browser-snapshot restore path."
     "scripts/check_issue3_saved_memory_inputs.py|file|Saved Memory input preflight that checks the repo snapshot, notes, blocker file, and dependency bundles before route replay."
@@ -58,6 +60,8 @@ declare -a REFERENCE_PATHS=(
 )
 
 declare -a CONTENT_EXPECTATIONS=(
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh|The saved-browser-snapshot note keeps the dedicated route surface checker visible."
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|bash ./scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh|The saved-browser-snapshot note prints the dedicated route surface-check command."
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|restore_saved_browser_snapshot.sh --check-only|The saved-browser-snapshot note keeps the restore helper surface check visible."
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The saved-browser-snapshot note keeps the compact route printer visible."
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|The saved-browser-snapshot note keeps the saved-Memory input preflight visible."
@@ -67,6 +71,7 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/linux/restore_saved_browser_snapshot.sh|--check-only|The restore helper still supports surface-only validation without extraction."
     "scripts/linux/restore_saved_browser_snapshot.sh|--json|The restore helper still supports structured output for other helpers."
     "scripts/linux/restore_saved_browser_snapshot.sh|Suggested follow-up checks:|The restore helper still prints its next-step checks."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|check_issue3_saved_browser_snapshot_route_surface.sh|The route printer points back to the dedicated route surface checker."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|restore_saved_browser_snapshot.sh --browser-root|The route printer still prints the exact restore helper invocation."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Saved-Memory preflight against the restored checkout:|The route printer still prints the saved-Memory preflight step."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|show_issue3_linux_build_readiness_route.sh --repo-root|The route printer still prints the Linux or WSL build-readiness follow-up."
