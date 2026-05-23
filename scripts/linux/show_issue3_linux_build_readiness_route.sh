@@ -84,6 +84,7 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
 fi
 
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_linux_build_readiness_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SNAPSHOT_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_browser_snapshot_route.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
 HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
 BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/03-boringssl-zig-main.zip"
@@ -96,6 +97,7 @@ RUST_RESTORE_CHECK_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh -
 RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/bin"):$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/rustc/bin"):\$PATH"
 FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --expect-offline-deps --require-prebuilt-v8"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_MEMORY_INPUTS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     FULL_READINESS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -113,6 +115,7 @@ print(json.dumps({
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
+        "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
         "saved_archive_preflight": ${PREFLIGHT_COMMAND@Q},
         "offline_prepare_check_only": ${PREPARE_COMMAND@Q},
@@ -123,6 +126,7 @@ print(json.dumps({
     },
     "notes": [
         "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
+        "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
         "Run the saved_memory_inputs command before the broader saved-archive preflight when the route depends on the saved Memory repo snapshot and dependency bundles.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
         "Run rust_restore_check_only when you want to confirm the saved Rust archive and target directory before extracting it.",
@@ -147,6 +151,7 @@ Read first
 ==========
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
   docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md
+  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
 
 Saved archives
@@ -160,6 +165,9 @@ Suggested route
 ===============
   Surface check:
     ${SURFACE_CHECK_COMMAND}
+
+  Saved-browser-snapshot route when no reusable checkout exists yet:
+    ${SNAPSHOT_ROUTE_COMMAND}
 
   Saved Memory input preflight:
     ${SAVED_MEMORY_INPUTS_COMMAND}
@@ -185,6 +193,7 @@ Suggested route
 Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before offline staging starts.
+  - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
   - Run the saved Memory input preflight before the broader saved-archive preflight when the route depends on the saved repo snapshot and dependency bundles.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
   - Treat the attached zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz bundle as a surfaced fallback input only, not as honest issue #3 validation evidence for this branch.
