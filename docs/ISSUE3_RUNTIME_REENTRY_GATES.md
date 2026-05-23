@@ -17,6 +17,7 @@ Read this together with:
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
 - `scripts/check_linux_build_readiness.py`
@@ -71,9 +72,11 @@ wiring, or older dependency surfaces, treat that as an environment problem
 first, not as proof that the issue `#3` patch itself is wrong.
 
 When the run is using Linux or WSL validation with the saved Memory bundles,
-print the saved-archive re-entry route first:
+start with the branch-local surface check and then print the saved-archive
+re-entry route:
 
 ```bash
+bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 ```
 
@@ -104,10 +107,12 @@ python tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_run
    - `../zig-v8-fork`
    - `../boringssl-zig`
 6. If the run is using saved dependency bundles, stage them before invoking Zig.
-7. When the run depends on Linux or WSL staging, print the saved-archive route
-   first so the Memory bundle restore commands stay explicit:
+7. When the run depends on Linux or WSL staging, start with the fail-fast
+   surface check and then print the saved-archive route so the Memory bundle
+   restore commands stay explicit:
 
 ```bash
+bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 ```
 
@@ -155,9 +160,9 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
-- keep using the runtime-contract checker, the saved-archive Linux route, and
-  the readiness helper as the fast preflight trio before widening back out to
-  larger replay plans
+- keep using the runtime-contract checker, the fail-fast Linux surface check,
+  the saved-archive Linux route, and the readiness helper as the fast preflight
+  set before widening back out to larger replay plans
 
 ## Working Rule
 
