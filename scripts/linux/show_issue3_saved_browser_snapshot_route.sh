@@ -112,6 +112,7 @@ RUNTIME_ROUTE_COMMAND="bash scripts/linux/show_issue3_enter_submit_runtime_reval
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
 if [[ "${JSON}" -eq 1 ]]; then
