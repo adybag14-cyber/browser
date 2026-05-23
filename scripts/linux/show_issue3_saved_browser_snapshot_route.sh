@@ -103,6 +103,7 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     fi
 fi
 
+ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SURFACE_CHECK_COMMAND="bash scripts/linux/restore_saved_browser_snapshot.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --check-only"
 RESTORE_COMMAND="bash scripts/linux/restore_saved_browser_snapshot.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")"
 SAVED_MEMORY_PREFLIGHT_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -125,6 +126,7 @@ print(json.dumps({
     "destination": ${DESTINATION@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "commands": {
+        "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "restore": ${RESTORE_COMMAND@Q},
         "saved_memory_preflight": ${SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
@@ -132,7 +134,8 @@ print(json.dumps({
         "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q}
     },
     "notes": [
-        "Run the surface_check command first so the saved archive path, top-level folder, and follow-up commands are confirmed before extraction.",
+        "Run route_surface first so missing branch-local docs or helper drift fails fast before the restore helper is trusted.",
+        "Run surface_check next so the saved archive path, top-level folder, and follow-up commands are confirmed before extraction.",
         "Use restore only when the route really needs a disposable checkout for Linux or WSL helper validation.",
         "Run saved_memory_preflight against the restored checkout before trusting broader build-readiness or runtime helper output.",
         "Use linux_build_route when the next blocked step is still toolchain or offline dependency staging.",
@@ -160,7 +163,10 @@ Read first
 
 Suggested route
 ===============
-  Surface check:
+  Route surface check:
+    ${ROUTE_SURFACE_COMMAND}
+
+  Restore helper surface check:
     ${SURFACE_CHECK_COMMAND}
 
   Restore the saved checkout:
@@ -177,7 +183,8 @@ Suggested route
 
 Working rules
 =============
-  - Run the surface check first so the saved archive path, top-level folder, and follow-up commands are confirmed before extraction.
+  - Run the route surface check first so missing docs or helper drift fails fast before the restore helper is trusted.
+  - Run the restore helper surface check next so the saved archive path, top-level folder, and follow-up commands are confirmed before extraction.
   - Use the restore step when the route needs a disposable checkout for helper validation without relying on live GitHub file publication.
   - Run the saved-Memory preflight against the restored checkout before trusting broader build-readiness or runtime helper output.
   - Use the Linux or WSL build-readiness route when the next blocked step is still toolchain or offline dependency staging.
