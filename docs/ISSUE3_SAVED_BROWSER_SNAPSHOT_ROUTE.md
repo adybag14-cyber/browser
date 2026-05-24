@@ -13,6 +13,7 @@ Companion helpers:
 - `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
 - `scripts/linux/restore_saved_browser_snapshot.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
@@ -90,6 +91,7 @@ follow-up root for the next Linux or WSL replay:
 ```bash
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface --check-only
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface
+python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot --helper-root . --expect-helper-surface
 python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
@@ -107,6 +109,7 @@ After the restore succeeds, choose one of these follow-up modes.
 Keep using the current repo root helper surface against the extracted checkout:
 
 ```bash
+python ./scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot
 python ./scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 python ./scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
@@ -117,13 +120,18 @@ Or restore with `--sync-helper-surface` and then switch the follow-up helpers
 into the restored checkout itself:
 
 ```bash
+python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot --helper-root . --expect-helper-surface
 python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
 
-Run the saved-Memory preflight first so missing archives or helper drift fail
+Run the restored-checkout readiness check first so missing `build.zig.zon`,
+missing helper-surface files, or helper drift fail before the saved-Memory and
+saved-archive preflights.
+
+Run the saved-Memory preflight next so missing archives or helper drift fail
 before deeper staging. Run the saved-archive integrity check immediately after
 that when the route needs to prove the repo snapshot and dependency bundles
 still match the expected exact artifacts before broader Linux or WSL staging.
@@ -137,9 +145,10 @@ The route helper prints those same commands with the resolved archive,
 destination, helper-root, optional helper-surface sync mode, and optional
 fallback Zig archive surface already filled in.
 
-That keeps the saved-Memory preflight, the saved-archive integrity check, the
-Linux build-readiness route, and the runtime re-entry route anchored to the
-restored checkout before the direct issue `#3` runtime lane is reopened again.
+That keeps the restored-checkout readiness check, the saved-Memory preflight,
+the saved-archive integrity check, the Linux build-readiness route, and the
+runtime re-entry route anchored to the restored checkout before the direct issue
+`#3` runtime lane is reopened again.
 
 ## Working Rules
 
@@ -147,6 +156,8 @@ restored checkout before the direct issue `#3` runtime lane is reopened again.
   patch itself.
 - Prefer a disposable restored checkout for helper validation when the live
   branch still needs a safer publication path for large existing files.
+- Run `check_issue3_restored_checkout.py` immediately after restore so missing
+  repo surfaces or helper drift fail before the archive-focused preflights.
 - Prefer `--sync-helper-surface` when the restored checkout should be more
   self-contained for the next Linux or WSL route replay.
 - Keep the follow-up helper root on the live branch-local surface only when the
