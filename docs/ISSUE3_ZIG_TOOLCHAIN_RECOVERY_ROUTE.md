@@ -11,6 +11,7 @@ that still expects Zig `0.15.2`.
 Companion helpers:
 
 - `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
+- `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/linux/restore_issue3_fallback_zig_toolchain.sh`
 - `scripts/linux/restore_zig_toolchain_archive.sh`
@@ -75,7 +76,8 @@ bash ./scripts/linux/restore_issue3_fallback_zig_toolchain.sh
 That helper stages the attached `0.17` archive under the shared toolchains area
 so the recovery route can probe it consistently on later reruns.
 
-Use `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md` and
+Use `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`,
+`bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`, and
 `restore_zig_toolchain_archive.sh` instead when a real Zig `0.15.x` archive is
 available and the next run wants to stage that matching line under
 `../toolchains` before rerunning recovery.
@@ -86,17 +88,21 @@ The helper prints:
 
 1. a fail-fast surface check command for
    `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
-2. the branch minimum Zig line from `build.zig.zon`
-3. the staged `../toolchains` search root
-4. the attached fallback Zig archive location when it is present beside the repo
+2. a fail-fast archive-restore surface check command for
+   `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
+3. the branch minimum Zig line from `build.zig.zon`
+4. the staged `../toolchains` search root
+5. the attached fallback Zig archive location when it is present beside the repo
    workspace
-5. a lightweight discovery command for `scripts/check_linux_build_readiness.py`
-6. a fallback archive staging section that reuses
+6. a lightweight discovery command for `scripts/check_linux_build_readiness.py`
+7. a fallback archive staging section that reuses
    `scripts/linux/restore_issue3_fallback_zig_toolchain.sh` when the attached
    archive exists but is not staged yet
-7. every staged Zig candidate it can probe, including the version line and
+8. every staged Zig candidate it can probe, including the version line and
    whether that candidate matches the branch's expected major/minor line
-8. the exact full readiness command to rerun once a matching Zig candidate is
+9. the preferred saved-archive restore surface-check and restore commands when a
+   real `0.15.x` Zig archive is already visible under the saved dependencies
+10. the exact full readiness command to rerun once a matching Zig candidate is
    available
 
 ## Working Rules
@@ -104,6 +110,9 @@ The helper prints:
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
   first so missing docs or helper drift fails before the route blames the
   fallback Zig bundle.
+- Run `bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
+  before restaging a real Zig archive so route drift fails fast before toolchain
+  staging starts.
 - Prefer a Zig `0.15.2` or other `0.15.x` toolchain for honest validation on
   this branch.
 - Treat the attached Zig `0.17` dev bundle as a surfaced fallback input only.
@@ -111,9 +120,9 @@ The helper prints:
   is present, use `restore_issue3_fallback_zig_toolchain.sh` before rebuilding
   tar extraction commands by hand.
 - If a real Zig `0.15.x` archive becomes available, use
-  `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md` and
-  `restore_zig_toolchain_archive.sh` to stage it under `../toolchains` before
-  reopening the broader readiness helper.
+  `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`, run the archive-restore
+  surface checker, and then use `restore_zig_toolchain_archive.sh` to stage it
+  under `../toolchains` before reopening the broader readiness helper.
 - Do not reopen the direct `Page.zig` plus `win32_backend.zig` runtime patch
   until the matching-line readiness command stops reporting the environment as
   the blocker.
