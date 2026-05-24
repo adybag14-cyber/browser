@@ -70,6 +70,18 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness helper"),
     (
+        "scripts/windows/HeadedValidationHelpers.ps1",
+        "Windows headed validation helper",
+    ),
+    (
+        "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
+        "Windows runtime re-entry surface checker",
+    ),
+    (
+        "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
+        "Windows runtime re-entry route helper",
+    ),
+    (
         "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
         "saved-browser-snapshot route surface checker",
     ),
