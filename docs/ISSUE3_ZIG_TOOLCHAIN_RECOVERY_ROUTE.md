@@ -11,6 +11,7 @@ that still expects Zig `0.15.2`.
 Companion helpers:
 
 - `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
+- `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/linux/restore_issue3_fallback_zig_toolchain.sh`
@@ -41,6 +42,24 @@ bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh
 
 Use `--json` when another helper wants the surface-check result as structured
 output.
+
+## Fail Fast On The Matching Line
+
+After the route surface passes, run the dedicated matching-line gate before a
+broader Linux or WSL readiness rerun trusts the staged toolchains directory:
+
+```bash
+bash ./scripts/linux/check_issue3_zig_toolchain_match.sh
+```
+
+Use `--json` when another helper wants the staged-candidate result as structured
+output.
+
+This helper passes only when at least one staged Zig executable under
+`../toolchains` matches the branch's expected `0.15.x` line. When the only
+visible input is the attached `0.17` fallback archive, the helper fails fast
+and points the run back at the broader recovery route instead of treating that
+fallback as honest validation evidence.
 
 ## Print The Route
 
@@ -88,28 +107,34 @@ The helper prints:
 
 1. a fail-fast surface check command for
    `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
-2. a fail-fast archive-restore surface check command for
+2. a dedicated matching-line gate for
+   `scripts/linux/check_issue3_zig_toolchain_match.sh`
+3. a fail-fast archive-restore surface check command for
    `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-3. the branch minimum Zig line from `build.zig.zon`
-4. the staged `../toolchains` search root
-5. the attached fallback Zig archive location when it is present beside the repo
+4. the branch minimum Zig line from `build.zig.zon`
+5. the staged `../toolchains` search root
+6. the attached fallback Zig archive location when it is present beside the repo
    workspace
-6. a lightweight discovery command for `scripts/check_linux_build_readiness.py`
-7. a fallback archive staging section that reuses
+7. a lightweight discovery command for `scripts/check_linux_build_readiness.py`
+8. a fallback archive staging section that reuses
    `scripts/linux/restore_issue3_fallback_zig_toolchain.sh` when the attached
    archive exists but is not staged yet
-8. every staged Zig candidate it can probe, including the version line and
+9. every staged Zig candidate it can probe, including the version line and
    whether that candidate matches the branch's expected major/minor line
-9. the preferred saved-archive restore surface-check and restore commands when a
-   real `0.15.x` Zig archive is already visible under the saved dependencies
-10. the exact full readiness command to rerun once a matching Zig candidate is
-   available
+10. the preferred saved-archive restore surface-check and restore commands when a
+    real `0.15.x` Zig archive is already visible under the saved dependencies
+11. the exact full readiness command to rerun once a matching Zig candidate is
+    available
 
 ## Working Rules
 
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
   first so missing docs or helper drift fails before the route blames the
   fallback Zig bundle.
+- Run `bash ./scripts/linux/check_issue3_zig_toolchain_match.sh` right after the
+  route surface check so the staged toolchains directory has to prove a real
+  `0.15.x` candidate exists before the broader Linux or WSL readiness helper is
+  trusted again.
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
   before restaging a real Zig archive so route drift fails fast before toolchain
   staging starts.
