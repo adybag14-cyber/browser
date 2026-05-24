@@ -137,6 +137,7 @@ def format_command(parts: list[str]) -> str:
 
 
 route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_recovery_route_surface.sh"
+archive_restore_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_archive_restore_route_surface.sh"
 readiness_script = repo_root / "scripts" / "check_linux_build_readiness.py"
 fallback_restore_script = repo_root / "scripts" / "linux" / "restore_issue3_fallback_zig_toolchain.sh"
 archive_restore_script = repo_root / "scripts" / "linux" / "restore_zig_toolchain_archive.sh"
@@ -233,6 +234,14 @@ surface_check_command = format_command(
     [
         "bash",
         str(route_surface_script),
+        "--repo-root",
+        str(repo_root),
+    ]
+)
+archive_restore_surface_check_command = format_command(
+    [
+        "bash",
+        str(archive_restore_surface_script),
         "--repo-root",
         str(repo_root),
     ]
@@ -348,6 +357,7 @@ result = {
     "preferred_saved_archive_version": preferred_saved_archive["version"] if preferred_saved_archive else "",
     "commands": {
         "surface_check": surface_check_command,
+        "archive_restore_surface_check": archive_restore_surface_check_command,
         "discovery": discovery_command,
     },
     "candidates": candidates,
@@ -391,6 +401,10 @@ print("Surface check")
 print("=============")
 print(f"  {surface_check_command}")
 print()
+print("Archive restore surface check")
+print("=============================")
+print(f"  {archive_restore_surface_check_command}")
+print()
 print("Candidate discovery")
 print("===================")
 print(f"  {discovery_command}")
@@ -428,6 +442,10 @@ if not candidates:
     print(
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
+    )
+    print(
+        "  - Run the archive restore surface check before restoring any saved or "
+        "manual Zig archive so route drift fails fast before toolchain staging starts."
     )
     if preferred_saved_archive is not None:
         print(
@@ -475,6 +493,10 @@ if matching_readiness_command is not None:
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
     )
+    print(
+        "  - Run the archive restore surface check before restaging a saved Zig "
+        "archive so route drift fails fast before toolchain staging starts."
+    )
     if preferred_saved_archive is not None:
         print(
             "  - Keep the preferred saved-archive restore commands above as the "
@@ -507,6 +529,10 @@ else:
     print(
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
+    )
+    print(
+        "  - Run the archive restore surface check before restoring a saved or "
+        "manual Zig archive so route drift fails fast before toolchain staging starts."
     )
     if preferred_saved_archive is not None:
         print(
