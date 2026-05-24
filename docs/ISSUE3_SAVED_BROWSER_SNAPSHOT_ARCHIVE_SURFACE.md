@@ -2,19 +2,27 @@
 
 Use this helper when the saved Memory snapshot exists, but the next Linux or
 WSL replay needs to know whether that archive already contains the current issue
-#3 restore-route helper surface.
+#3 restore and runtime helper surface.
 
 This keeps one repeat blocker on a small branch-local command surface:
 
-- the saved repo snapshot can lag the newer helper docs and route scripts
+- the saved repo snapshot can lag newer helper docs and route scripts even when
+  the zip is still readable
 - a plain restore can look valid even when the restored checkout is missing the
   helper surface needed for the next follow-up commands
 - future runs should know up front when `--sync-helper-surface` is the safer
   restore mode
 
-Companion helper:
+Companion helpers:
 
 - `scripts/check_issue3_saved_browser_snapshot_archive_surface.py`
+- `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
+- `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/check_issue3_restored_checkout.py`
+- `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
+- `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 
 ## Usage
 
@@ -40,17 +48,25 @@ The helper inspects the saved archive and reports:
 
 The required helper surface currently includes:
 
+- `build.zig.zon`
+- `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
+- `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
+- `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
+- `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
+- `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/check_issue3_restored_checkout.py`
+- `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/linux/restore_saved_browser_snapshot.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
-- `scripts/check_issue3_saved_memory_inputs.py`
-- `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 
 ## Working Rules
 
 - Prefer a plain restore only when the helper reports that the archive already
-  contains the current restore-route helper surface.
+  contains the current restore and runtime helper surface.
 - Prefer `--sync-helper-surface` when one or more helper paths are missing from
   the saved archive.
 - Keep the live helper root for the next follow-up commands whenever the archive
