@@ -103,6 +103,13 @@ Prefer this self-contained route when the saved archive can lag the current
 branch-local helper surface and the follow-up commands should live inside the
 restored checkout instead of depending on a separate live helper root.
 
+A concrete stale-archive symptom is a restored checkout that still looks like a
+browser repo but is missing newer helper files such as
+`scripts/check_issue3_saved_memory_inputs.py` or
+`scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`.
+Treat that as archive age, not restore corruption, and rerun the restore with
+`--sync-helper-surface` before Linux or WSL follow-up work.
+
 Use `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md` when the restore itself is
 already working and the next question is whether the restored checkout is ready
 to trust before the saved-Memory preflight, saved-archive integrity check, Linux
