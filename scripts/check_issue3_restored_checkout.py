@@ -32,6 +32,7 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime re-entry gate note"),
     ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "runtime revalidation note"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved snapshot restore note"),
+    ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity note"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
@@ -39,7 +40,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain note"),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
+    ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
+    ("scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh", "saved-archive integrity surface check"),
+    ("scripts/linux/show_issue3_saved_archive_integrity_route.sh", "saved-archive integrity route printer"),
     ("scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh", "saved snapshot surface check"),
     ("scripts/linux/show_issue3_saved_browser_snapshot_route.sh", "saved snapshot route printer"),
     ("scripts/linux/restore_saved_browser_snapshot.sh", "saved snapshot restore helper"),
@@ -295,6 +299,64 @@ class RestoredCheckoutTests(unittest.TestCase):
 
             self.assertFalse(result["ok"])
             self.assertFalse(result["helper_surface"][0]["matches_helper_root"])
+
+    def test_archive_integrity_surface_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", missing)
+
+    def test_restored_checkout_checker_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue3_restored_checkout.py":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/check_issue3_restored_checkout.py", missing)
 
 
 def main() -> int:
