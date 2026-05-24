@@ -88,6 +88,7 @@ SAVED_BROWSER_SNAPSHOT_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_save
 SAVED_ARCHIVE_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh"
 SAVED_ARCHIVE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh"
 ZIG_TOOLCHAIN_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
+ZIG_ARCHIVE_RESTORE_SCRIPT="${REPO_ROOT}/scripts/linux/restore_zig_toolchain_archive.sh"
 SAVED_RUST_SURFACE_SCRIPT_PATH="${REPO_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh"
 SAVED_RUST_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
 OFFLINE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_offline_build_inputs_route.sh"
@@ -102,6 +103,7 @@ SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_BROWSER_SNAPSHOT_ROUTE_
 SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 TOOLCHAIN_ROUTE_COMMAND="bash $(format_shell_arg "${ZIG_TOOLCHAIN_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
+ZIG_ARCHIVE_RESTORE_CHECK_COMMAND="bash $(format_shell_arg "${ZIG_ARCHIVE_RESTORE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --archive /path/to/zig-0.15.2.tar.xz --check-only"
 SAVED_RUST_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_SURFACE_SCRIPT_PATH}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ROUTE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 OFFLINE_ROUTE_COMMAND="bash $(format_shell_arg "${OFFLINE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
@@ -154,6 +156,7 @@ print(json.dumps({
         "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
         "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
         "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
         "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
         "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
     ],
@@ -166,6 +169,7 @@ print(json.dumps({
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
         "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "zig_toolchain_route": ${TOOLCHAIN_ROUTE_COMMAND@Q},
+        "zig_archive_restore_check": ${ZIG_ARCHIVE_RESTORE_CHECK_COMMAND@Q},
         "saved_rust_surface_check": ${SAVED_RUST_SURFACE_COMMAND@Q},
         "saved_rust_route": ${SAVED_RUST_ROUTE_COMMAND@Q},
         "offline_build_inputs_route": ${OFFLINE_ROUTE_COMMAND@Q},
@@ -186,6 +190,7 @@ print(json.dumps({
         "Run the saved_archive_route_surface command and then the saved_archive_route command when the route needs the dedicated checksum route back on one compact helper surface before offline staging starts.",
         "Run the saved_archive_integrity command after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
+        "Run the zig_archive_restore_check command when a real 0.15.x archive exists but has not been staged under ../toolchains yet.",
         "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the offline_build_inputs_route command when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.",
@@ -216,6 +221,7 @@ Read first
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
   docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
+  docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md
   docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
 
@@ -251,6 +257,9 @@ Suggested route
 
   Zig toolchain recovery route:
     ${TOOLCHAIN_ROUTE_COMMAND}
+
+  Zig archive restore route when a real 0.15.x archive exists but is not staged yet:
+    ${ZIG_ARCHIVE_RESTORE_CHECK_COMMAND}
 
   Saved Rust route surface check:
     ${SAVED_RUST_SURFACE_COMMAND}
@@ -294,6 +303,7 @@ Working rules
   - Run the saved archive integrity route surface check and then the saved archive integrity route when the route needs the dedicated checksum helper chain surfaced before offline staging starts.
   - Run the saved archive integrity preflight after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.
+  - Run the Zig archive restore route when a real 0.15.x archive exists but has not been staged under ../toolchains yet.
   - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
   - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the offline build-inputs route when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.
