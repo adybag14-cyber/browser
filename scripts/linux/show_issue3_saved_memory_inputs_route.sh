@@ -95,11 +95,12 @@ if [[ -z "${HELPER_ROOT}" ]]; then
     HELPER_ROOT="${REPO_ROOT}"
 fi
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
+HELPER_WORKSPACE_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)/memory"
+    MEMORY_ROOT="${HELPER_WORKSPACE_ROOT}/memory"
 fi
 if [[ -z "${AGENT_FILES_ROOT}" ]]; then
-    AGENT_FILES_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)/agent_files"
+    AGENT_FILES_ROOT="${HELPER_WORKSPACE_ROOT}/agent_files"
 fi
 if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
     RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/${DEFAULT_RESTORED_CHECKOUT_NAME}"
@@ -114,13 +115,16 @@ fi
 REPO_SNAPSHOT_PATH="${MEMORY_ROOT}/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip"
 BLOCKER_INTELLIGENCE_PATH="${MEMORY_ROOT}/repo_archives/browser/blocker_intelligence.yaml"
 DEPENDENCIES_ROOT="${MEMORY_ROOT}/repo_archives/browser/dependencies"
+SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
+RUST_TOOLCHAIN_DIR="${HELPER_WORKSPACE_ROOT}/toolchains/rust-1.79.0"
+OFFLINE_DEPS_ROOT="${HELPER_WORKSPACE_ROOT}/offline-deps"
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SAVED_INPUT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
 QUICK_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --skip-archive-integrity-check"
 RESTORED_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --destination $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
-BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${MEMORY_ROOT}/repo_archives/browser")"
+BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --rust-toolchain-dir $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
@@ -168,6 +172,7 @@ print(json.dumps({
         "Use quick_saved_input_preflight only for a fast branch decision when archive integrity is not the question.",
         "Use restored_checkout_saved_input_preflight when a reusable checkout already exists and the route should confirm both saved inputs and the restored helper surface together.",
         "Point helper_root at the live branch-local helper surface when repo_root is a restored checkout that should reuse newer route helpers.",
+        "Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots threaded into the nested Linux build-readiness route so restored follow-up runs do not fall back to guessed sibling paths.",
         "Use saved_browser_snapshot_route when the saved inputs are green but there is still no restored checkout.",
         "Use linux_build_readiness_route when the next blocker is still Zig-line selection, Rust restore, or offline dependency staging.",
         "Use runtime_reentry_route only after the saved inputs are green and the direct Page.zig plus win32_backend.zig lane is truly ready to reopen."
@@ -228,6 +233,7 @@ Working rules
   - Use the quick presence-only command for branch selection only; it is not honest archive validation.
   - Use the restored-checkout preflight when a reusable checkout already exists and the route should confirm that surface before broader helper output is trusted.
   - Point --helper-root at the live branch-local helper surface when repo_root is a restored checkout that should still reuse newer helper notes and scripts.
+  - Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots aligned when handing off to the Linux or WSL build-readiness route.
   - Use the restore route when the saved archive exists but there is still no reusable checkout for Linux or WSL follow-up.
   - Use the Linux or WSL build-readiness route after the saved-Memory preflight passes and the next blocker is still Rust, Zig, offline dependency staging, or prebuilt V8 readiness.
   - Use the direct runtime re-entry route only after the saved checkout exists and the environment gates are no longer the blocker.
