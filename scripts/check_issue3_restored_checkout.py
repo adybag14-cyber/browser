@@ -43,6 +43,15 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
     ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
+    ("scripts/windows/HeadedValidationHelpers.ps1", "Windows headed validation helper"),
+    (
+        "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
+        "Windows runtime re-entry surface checker",
+    ),
+    (
+        "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
+        "Windows runtime re-entry route helper",
+    ),
     ("scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh", "saved-archive integrity surface check"),
     ("scripts/linux/show_issue3_saved_archive_integrity_route.sh", "saved-archive integrity route printer"),
     ("scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh", "saved snapshot surface check"),
