@@ -13,9 +13,10 @@ Usage:
 
 Print the compact Linux or WSL helper surface for the direct issue #3
 Enter-submit runtime re-entry route. This route keeps the gate note, saved
-snapshot restore path, saved archive integrity path, source contract check,
-saved-memory preflight, Linux build-readiness helpers, focused Zig commands,
-and the Windows follow-up replay ladder on one branch-local surface.
+snapshot restore path, restored-checkout readiness check, saved archive
+integrity path, source contract check, saved-memory preflight, Linux
+build-readiness helpers, focused Zig commands, and the Windows follow-up replay
+ladder on one branch-local surface.
 EOF
 }
 
@@ -86,12 +87,14 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     fi
 fi
 
+RESTORED_CHECKOUT_DESTINATION="$(cd "${REPO_ROOT}/.." && pwd)/browser-memory-snapshot"
 PAGE_SOURCE_PATH="${REPO_ROOT}/src/browser/Page.zig"
 WIN32_SOURCE_PATH="${REPO_ROOT}/src/display/win32_backend.zig"
 RUNTIME_CONTRACT_CHECKER="${REPO_ROOT}/tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py"
 RUNTIME_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh"
 SAVED_BROWSER_SNAPSHOT_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh"
 SAVED_BROWSER_SNAPSHOT_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
+RESTORED_CHECKOUT_HELPER="${REPO_ROOT}/scripts/check_issue3_restored_checkout.py"
 SAVED_ARCHIVE_INTEGRITY_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh"
 SAVED_ARCHIVE_INTEGRITY_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh"
 SAVED_ARCHIVE_INTEGRITY_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py"
@@ -103,6 +106,8 @@ LINUX_BUILD_READINESS_SCRIPT="${REPO_ROOT}/scripts/check_linux_build_readiness.p
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${RUNTIME_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_BROWSER_SNAPSHOT_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_BROWSER_SNAPSHOT_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_BROWSER_SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_BROWSER_SNAPSHOT_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${RESTORED_CHECKOUT_HELPER}") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_DESTINATION}")"
+SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${RESTORED_CHECKOUT_DESTINATION}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_DESTINATION}") --helper-root $(format_shell_arg "${REPO_ROOT}") --expect-helper-surface"
 SAVED_ARCHIVE_INTEGRITY_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_INTEGRITY_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_INTEGRITY_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${SAVED_ARCHIVE_INTEGRITY_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
@@ -139,6 +144,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_RUNTIME_REENTRY_GATES.md")"
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md")"
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md")"
+    printf '    %s,\n' "$(json_escape "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md")"
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md")"
     printf '    %s\n' "$(json_escape "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")"
     printf '  ],\n'
@@ -150,6 +156,8 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    "surface_check": %s,\n' "$(json_escape "${SURFACE_CHECK_COMMAND}")"
     printf '    "saved_browser_snapshot_surface": %s,\n' "$(json_escape "${SAVED_BROWSER_SNAPSHOT_SURFACE_COMMAND}")"
     printf '    "saved_browser_snapshot_route": %s,\n' "$(json_escape "${SAVED_BROWSER_SNAPSHOT_ROUTE_COMMAND}")"
+    printf '    "restored_checkout_check": %s,\n' "$(json_escape "${RESTORED_CHECKOUT_CHECK_COMMAND}")"
+    printf '    "synced_restored_checkout_check": %s,\n' "$(json_escape "${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND}")"
     printf '    "saved_archive_integrity_surface": %s,\n' "$(json_escape "${SAVED_ARCHIVE_INTEGRITY_SURFACE_COMMAND}")"
     printf '    "saved_archive_integrity_route": %s,\n' "$(json_escape "${SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND}")"
     printf '    "saved_archive_integrity": %s,\n' "$(json_escape "${SAVED_ARCHIVE_INTEGRITY_COMMAND}")"
@@ -170,6 +178,8 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  "notes": [\n'
     printf '    %s,\n' "$(json_escape "Run surface_check first when the branch may have moved and you want the direct issue #3 docs and helper surfaces checked before replay.")"
     printf '    %s,\n' "$(json_escape "If no reusable checkout exists yet, run saved_browser_snapshot_surface and then saved_browser_snapshot_route before trusting follow-up Linux or WSL helper output.")"
+    printf '    %s,\n' "$(json_escape "If that saved snapshot route is creating or reusing ../browser-memory-snapshot, run restored_checkout_check before the saved-memory preflight so checkout drift is caught before the route widens again.")"
+    printf '    %s,\n' "$(json_escape "Use synced_restored_checkout_check after a helper-surface sync restore when the restored checkout should become its own follow-up root.")"
     printf '    %s,\n' "$(json_escape "If the route still depends on the saved repo snapshot or dependency bundles, run saved_archive_integrity_surface and then saved_archive_integrity_route before trusting Linux or WSL build-readiness output.")"
     printf '    %s,\n' "$(json_escape "Run saved_archive_integrity when you need the exact SHA-256 verification step without reopening the broader archive helper first.")"
     printf '    %s,\n' "$(json_escape "Run contract_check before build or replay when you need a thin source-based yes-or-no answer about whether the Page.zig and win32_backend.zig bridge markers are present on the current branch.")"
@@ -198,6 +208,7 @@ Read first
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
   docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
+  docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
 
@@ -214,6 +225,12 @@ Suggested route
   If no reusable checkout exists yet, reopen the saved snapshot route first:
     ${SAVED_BROWSER_SNAPSHOT_SURFACE_COMMAND}
     ${SAVED_BROWSER_SNAPSHOT_ROUTE_COMMAND}
+
+  Restored-checkout readiness after saved snapshot restore:
+    ${RESTORED_CHECKOUT_CHECK_COMMAND}
+
+  Synced restored-checkout readiness after saved snapshot restore:
+    ${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND}
 
   If the route still depends on the saved repo snapshot or dependency bundles, reopen the saved archive integrity path:
     ${SAVED_ARCHIVE_INTEGRITY_SURFACE_COMMAND}
@@ -249,6 +266,8 @@ Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before replay widens back out.
   - If no reusable checkout exists yet, reopen the saved-browser-snapshot route before trusting follow-up Linux or WSL helper output.
+  - If that saved snapshot route is creating or reusing ../browser-memory-snapshot, run the restored-checkout readiness step before saved-memory or archive-focused preflights.
+  - Use the synced restored-checkout step after a helper-surface sync restore when the restored checkout should become its own follow-up root.
   - If the route still depends on the saved repo snapshot or dependency bundles, reopen the saved-archive-integrity path before trusting Linux or WSL build-readiness output.
   - Run the source contract check before blaming the runtime patch or reopening the direct Page.zig and win32_backend.zig edit path.
   - Run the saved-memory preflight before broader Linux or WSL build-readiness commands when the route depends on the saved repo snapshot and dependency archives.
