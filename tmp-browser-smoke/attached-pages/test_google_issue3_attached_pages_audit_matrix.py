@@ -68,11 +68,25 @@ class GoogleIssue3AttachedPagesAuditMatrixTests(unittest.TestCase):
                 "branch-inventory",
                 "live-surface-inventory",
                 "launcher-companion",
+                "target-bundle-proof-entrypoint",
                 "windows-replay-quickstart",
                 "windows-full-use-route",
             ],
             [spec["name"] for spec in specs],
         )
+
+    def test_load_audit_specs_filters_target_bundle_proof_entrypoint(self) -> None:
+        specs = helper.load_audit_specs(
+            selected_names={"target-bundle-proof-entrypoint"},
+        )
+
+        self.assertEqual(1, len(specs))
+        self.assertEqual("target-bundle-proof-entrypoint", specs[0]["name"])
+        self.assertEqual(
+            "google_issue3_attached_html_target_bundle_proof_entrypoint_audit",
+            specs[0]["module"],
+        )
+        self.assertEqual("build_proof_entrypoint_audit", specs[0]["builder_name"])
 
     def test_summarize_inventory_rows_tracks_missing_paths(self) -> None:
         summary = helper.summarize_inventory_rows(
