@@ -127,12 +127,24 @@ import zipfile
 archive_path = pathlib.Path(sys.argv[1])
 
 def first_top_level(parts: list[str]) -> str:
-    names = [name for name in parts if name and not name.startswith("__MACOSX/")]
+    names: list[str] = []
+    for raw_name in parts:
+        if not raw_name or raw_name.startswith("__MACOSX/"):
+            continue
+        normalized = raw_name[2:] if raw_name.startswith("./") else raw_name
+        if normalized:
+            names.append(normalized)
     if not names:
         raise SystemExit("archive has no entries")
-    top_level = names[0].split("/", 1)[0]
-    if not top_level:
+    top_levels = sorted({name.rstrip("/").split("/", 1)[0] for name in names if name.rstrip("/")})
+    if not top_levels:
         raise SystemExit("could not determine archive top-level folder")
+    if len(top_levels) != 1:
+        joined = ", ".join(top_levels)
+        raise SystemExit(f"archive must contain exactly one top-level directory, found: {joined}")
+    top_level = top_levels[0]
+    if not any(name.startswith(f"{top_level}/") for name in names):
+        raise SystemExit(f"archive top-level entry is not a directory: {top_level}")
     return top_level
 
 if zipfile.is_zipfile(archive_path):
