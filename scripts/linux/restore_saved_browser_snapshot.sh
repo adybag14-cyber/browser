@@ -103,6 +103,8 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh"
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
     "scripts/linux/restore_saved_browser_snapshot.sh"
+    "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh"
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh"
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh"
     "scripts/linux/show_issue3_linux_build_readiness_route.sh"
     "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh"
