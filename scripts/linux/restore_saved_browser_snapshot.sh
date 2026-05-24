@@ -87,6 +87,7 @@ declare -a HELPER_SURFACE_PATHS=(
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
     "scripts/check_issue3_saved_memory_inputs.py"
     "scripts/check_issue3_saved_archive_integrity.py"
+    "scripts/check_issue3_restored_checkout.py"
     "scripts/check_linux_build_readiness.py"
     "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh"
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
@@ -207,6 +208,10 @@ if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py" ]]; 
     echo "Helper root is missing scripts/check_issue3_saved_archive_integrity.py: ${HELPER_ROOT}" >&2
     exit 1
 fi
+if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py" ]]; then
+    echo "Helper root is missing scripts/check_issue3_restored_checkout.py: ${HELPER_ROOT}" >&2
+    exit 1
+fi
 if [[ ! -f "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh" ]]; then
     echo "Helper root is missing scripts/linux/show_issue3_linux_build_readiness_route.sh: ${HELPER_ROOT}" >&2
     exit 1
@@ -250,6 +255,10 @@ if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
     SYNC_FLAG=" --sync-helper-surface"
 fi
 
+FOLLOW_UP_RESTORED_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+    FOLLOW_UP_RESTORED_CHECK+=" --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
+fi
 FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -273,6 +282,7 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "destination": %s,\n' "$(json_escape "${DESTINATION}")"
     printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
     printf '  "archive_top_level": %s,\n' "$(json_escape "${TOP_LEVEL_ENTRY}")"
+    printf '  "follow_up_restored_checkout_check": %s,\n' "$(json_escape "${FOLLOW_UP_RESTORED_CHECK}")"
     printf '  "follow_up_memory_check": %s,\n' "$(json_escape "${FOLLOW_UP_MEMORY_CHECK}")"
     printf '  "follow_up_archive_integrity_check": %s,\n' "$(json_escape "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}")"
     printf '  "follow_up_build_route": %s,\n' "$(json_escape "${FOLLOW_UP_BUILD_ROUTE}")"
@@ -313,6 +323,7 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
         "${SYNC_FLAG}"
     echo
     echo "Suggested follow-up checks:"
+    printf "  %s\n" "${FOLLOW_UP_RESTORED_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
@@ -358,7 +369,7 @@ echo "Saved browser snapshot is ready."
 echo "Destination:           ${DESTINATION}"
 echo "Live helper root:      ${HELPER_ROOT}"
 echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
-echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the helper root}"
+echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo helper root}"
 echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
 echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
 if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
@@ -366,6 +377,7 @@ if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
 fi
 echo
 echo "Suggested follow-up checks:"
+printf "  %s\n" "${FOLLOW_UP_RESTORED_CHECK}"
 printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
 printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
 printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
