@@ -51,6 +51,7 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime re-entry guide"),
     ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "Enter-submit runtime revalidation guide"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved-browser-snapshot restore guide"),
+    ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity guide"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness guide"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery guide"),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build inputs guide"),
@@ -76,6 +77,14 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
         "saved-browser-snapshot route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh",
+        "saved-archive integrity route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_archive_integrity_route.sh",
+        "saved-archive integrity route helper",
     ),
     (
         "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
