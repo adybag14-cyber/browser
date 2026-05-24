@@ -1,22 +1,24 @@
 # Issue #3 Restored Helper-Surface Sync Route
 
-Use this note when `../browser-memory-snapshot` already exists, but the issue
-`#3` helper surface inside that restored checkout is stale, incomplete, or out
-of sync with the current live helper root.
+Use this note when the saved browser snapshot already exists at
+`../browser-memory-snapshot`, but the next Linux or WSL follow-up still cannot
+trust it because the issue `#3` helper surface is stale, missing, or drifted
+against the live helper checkout.
 
-This route exists for one narrow recovery path:
+This route exists for a specific recovery path:
 
-- the saved browser snapshot restore already worked
-- the restored checkout still looks like a browser repo
-- `scripts/check_issue3_restored_checkout.py` reports `stale-helper-surface`,
-  `helper-surface-drift`, or `partial-helper-surface-and-drift`
-- the next Linux or WSL run wants to repair only the helper docs and route
-  scripts in place instead of re-extracting the full repo archive
+- the saved snapshot restore already succeeded once
+- the restored checkout should stay reusable instead of being re-extracted from
+  scratch
+- the next run needs the current helper docs and helper scripts copied into that
+  restored checkout before restored-checkout checks, saved-memory preflights,
+  or Linux build-readiness helpers are trustworthy again
 
 Keep these nearby:
 
-- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
+- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
 - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/linux/restore_saved_browser_snapshot.sh`
@@ -30,23 +32,42 @@ Keep these nearby:
 
 Use this route when all of these are true:
 
-- the restored checkout already exists at `../browser-memory-snapshot` or an
-  equivalent destination
-- the saved repo archive itself does not need to be replaced
-- the missing piece is the branch-local helper surface, not the underlying
-  browser checkout files
-- the next run wants the restored checkout to become a usable follow-up root
+- `../browser-memory-snapshot` already exists
+- the live helper checkout has newer issue `#3` docs or route helpers than the
+  restored checkout
+- a restored-checkout readiness check failed because helper-surface files were
+  missing or drifted
+- the right fix is to refresh the helper surface in place instead of replacing
+  the restored checkout with a fresh extraction
+
+## Why This Route Matters
+
+The restore helper already supports `--sync-helper-surface` and `--sync-only`,
+but that path is easy to miss when the next run starts from a half-ready
+restored checkout.
+
+Without a compact sync route, a future run can waste time by:
+
+- rerunning a full restore when only the helper surface drifted
+- calling saved-memory or build-readiness helpers from a restored checkout that
+  still carries stale route docs
+- comparing a synced follow-up root against the live helper checkout without a
+  dedicated refresh step in between
+
+This route makes the refresh path explicit: surface check, sync-only command,
+restored-checkout verification, saved-memory preflight, saved-archive
+integrity, Linux build-readiness, then the direct runtime route.
 
 ## Practical Order
 
-1. Run the helper-surface sync route surface check and print the compact route:
+1. Run the sync-route surface check and print the compact route first:
 
 ```bash
 bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh
 bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh
 ```
 
-2. Confirm the stale-surface diagnosis against the restored checkout:
+2. Confirm the current restored checkout needs a helper refresh:
 
 ```bash
 python ./scripts/check_issue3_restored_checkout.py \
@@ -55,7 +76,9 @@ python ./scripts/check_issue3_restored_checkout.py \
   --expect-helper-surface
 ```
 
-3. Print the sync-only helper route before mutating the restored checkout:
+3. Print the restore helper in check-only mode with sync-only enabled so the
+   exact live helper root, Memory root, snapshot archive path, and restored
+   checkout destination are visible before anything mutates:
 
 ```bash
 bash ./scripts/linux/restore_saved_browser_snapshot.sh \
@@ -80,51 +103,70 @@ bash ./scripts/linux/restore_saved_browser_snapshot.sh \
   --sync-only
 ```
 
-5. Re-run the restored-checkout readiness check:
+5. Re-run the restored-checkout helper and require the synced helper surface:
 
 ```bash
-python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py \
+python ./scripts/check_issue3_restored_checkout.py \
   --repo-root ../browser-memory-snapshot \
   --helper-root . \
   --expect-helper-surface
 ```
 
-6. Re-run the saved-Memory preflight and saved-archive integrity helper:
+6. Re-run the saved-memory preflight against the refreshed restored checkout:
 
 ```bash
-python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py \
-  --repo-root ../browser-memory-snapshot
-python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py \
+python ./scripts/check_issue3_saved_memory_inputs.py \
+  --repo-root ../browser-memory-snapshot \
+  --helper-root . \
+  --memory-root ../memory \
+  --restored-checkout-root ../browser-memory-snapshot
+```
+
+7. If the route still depends on the exact saved archives, verify them next:
+
+```bash
+python ./scripts/check_issue3_saved_archive_integrity.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-7. Only after the repaired helper surface is green, widen back into Linux or WSL
-   build readiness and the direct runtime re-entry route:
+8. Once the refreshed checkout is trusted again, move into Linux or WSL
+   build-readiness and then the narrowed runtime route:
 
 ```bash
-bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh \
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh \
   --repo-root ../browser-memory-snapshot
-bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh \
+bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh \
   --repo-root ../browser-memory-snapshot
 ```
 
-## If Sync-Only Is Not Enough
+## Healthy Signals
 
-If `--sync-only` fails because the destination is missing, incomplete, or no
-longer trustworthy as a browser checkout:
+Treat the helper-surface refresh as complete only when all of these are true:
 
-- fall back to the full synced restore route from
-  `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
-- rerun `restore_saved_browser_snapshot.sh --sync-helper-surface`
-- only then return to the restored-checkout readiness check
+- the sync-route surface checker passes
+- `scripts/check_issue3_restored_checkout.py` no longer reports stale helper
+  surface or helper drift
+- `scripts/check_issue3_saved_memory_inputs.py` passes against the refreshed
+  restored checkout
+- Linux or WSL follow-up route printers no longer depend on stale helper files
 
-Treat `--sync-only` as a helper-surface repair path, not as a substitute for the
-full restore when the checkout itself is broken.
+## If The Refresh Fails
+
+If the sync-only helper refresh fails:
+
+- do not trust later helper output from `../browser-memory-snapshot` yet
+- rerun the saved-browser-snapshot route in full restore mode only if the
+  restored checkout itself is corrupted or missing required repo files
+- keep using the live helper root for route commands until the restored
+  checkout passes the helper-surface comparison again
 
 ## Working Rule
 
-When the saved archive is still fine but the restored helper surface has aged
-out, prefer `restore_saved_browser_snapshot.sh --sync-only` over a full
-re-extract. Repair the helper surface first, prove it with
-`check_issue3_restored_checkout.py`, and only then return to saved-input,
-archive-integrity, build-readiness, and direct runtime re-entry work.
+When the restored checkout already exists and only the issue `#3` helper
+surface drifted, prefer the sync-only refresh route over a full snapshot
+re-extract.
+
+Run the sync-route surface checker and route printer first, refresh with
+`restore_saved_browser_snapshot.sh --sync-only`, re-run the restored-checkout
+helper, and only then widen back out to saved inputs, archive integrity, Linux
+build readiness, and the direct runtime re-entry route.
