@@ -69,13 +69,20 @@ for path in "${required_paths[@]}"; do
 done
 
 if [[ "${JSON}" -eq 1 ]]; then
-    python3 - <<PY
+    python3 - "${REPO_ROOT}" "${required_paths[@]}" -- "${missing_paths[@]}" <<'PY'
 import json
+import sys
+
+args = sys.argv[1:]
+separator = args.index("--")
+repo_root = args[0]
+required_paths = args[1:separator]
+missing_paths = args[separator + 1 :]
 print(json.dumps({
-    "ok": ${#missing_paths[@]} == 0,
-    "repo_root": ${REPO_ROOT@Q},
-    "required_paths": ${required_paths[@]+[]},
-    "missing_paths": ${missing_paths[@]+[]},
+    "ok": not missing_paths,
+    "repo_root": repo_root,
+    "required_paths": required_paths,
+    "missing_paths": missing_paths,
 }, indent=2))
 PY
     exit $([[ ${#missing_paths[@]} -eq 0 ]] && echo 0 || echo 1)
