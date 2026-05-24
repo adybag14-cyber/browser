@@ -24,6 +24,7 @@ Read this together with:
 - `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
+- `scripts/linux/show_issue3_windows_runtime_handoff_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
@@ -196,6 +197,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-form-controls-enter-order
 ```
 
+If Linux or WSL staging has already cleared both gates and the next operator
+needs the narrower Windows-only replay ladder back on one surface, print the
+compact handoff route first:
+
+```bash
+bash ./scripts/linux/show_issue3_windows_runtime_handoff_route.sh
+```
+
+Use that handoff after the reduced Google probe when the next step is the
+Windows build, reduced fixture, live Google, and trace-inspection ladder on one
+compact bridge.
+
 Only widen back out to live Google or the attached localhost bundle after the
 reduced Google probe and the shared Enter-order ladder agree on the same
 keydown/keypress/text-input ordering.
@@ -243,6 +256,8 @@ snapshot route when the next run still lacks a reusable checkout, use the
 restored-checkout route when the saved snapshot already exists but the follow-up
 root still needs a quick readiness answer, prefer the synced helper-surface
 restore when the restored checkout should become its own follow-up root because
- the saved archive can lag the current branch-local helper surface, and spend
-scheduled cycles on smaller slices that improve the next real re-entry instead
-of repeating the same blocked attempt.
+the saved archive can lag the current branch-local helper surface, use the
+Linux-or-WSL-to-Windows handoff route when the gates are green and the next
+operator needs the Windows-only replay ladder reopened from a Linux or WSL
+staging pass, and spend scheduled cycles on smaller slices that improve the
+next real re-entry instead of repeating the same blocked attempt.
