@@ -16,6 +16,7 @@ from pathlib import Path
 
 
 PAGE_REQUIRED_MARKERS = (
+    "_keyboard_text_suppression_depth: u32 = 0",
     "_defer_native_text_input_enter_submit: bool = false",
     "_pending_native_enter_submit: ?*Element.Html.Input = null",
     (
@@ -31,11 +32,18 @@ PAGE_REQUIRED_MARKERS = (
         "}\n"
     ),
     "pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {",
+    "const input = self._pending_native_enter_submit orelse return;",
+    "self._pending_native_enter_submit = null;",
     "const focused = self.document.getFocusedElement() orelse return;",
     "if (focused.asNode() != input.asNode()) {",
     "try self.submitForm(input.asElement(), input.getForm(self), .{});",
     "if (self._defer_native_text_input_enter_submit) {",
     "self._pending_native_enter_submit = input;",
+    (
+        "if (!suppress_text and key.isPrintable() and !blocksTextInsertion(keyboard_event)) {\n"
+        "            try input.innerInsert(key.asString(), self);\n"
+        "        }\n"
+    ),
 )
 
 WIN32_REQUIRED_MARKERS = (
@@ -63,6 +71,7 @@ PAGE_TEST_MARKERS = (
     'test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {',
     'test "Page reduced Google fixture defers native Enter submit until keypress" {',
     "page.beginDeferredNativeTextInputEnterSubmit();",
+    "defer page.endDeferredNativeTextInputEnterSubmit();",
     "const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;",
     'try testing.expect(std.mem.startsWith(u8, keydown_title, "KEYDOWN:n|"));',
     '_ = try page.triggerKeyboardKeyPressWithCode("Enter", "Enter", .{}, false);',
@@ -215,9 +224,14 @@ fn submitCurrentInput(self: *Page, input: *Element.Html.Input) !void {
     return self.submitForm(input.asElement(), input.getForm(self), .{});
 }
 
+if (!suppress_text and key.isPrintable() and !blocksTextInsertion(keyboard_event)) {
+            try input.innerInsert(key.asString(), self);
+        }
+
 test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {}
 test "Page reduced Google fixture defers native Enter submit until keypress" {
     page.beginDeferredNativeTextInputEnterSubmit();
+    defer page.endDeferredNativeTextInputEnterSubmit();
     const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;
     try testing.expect(std.mem.startsWith(u8, keydown_title, "KEYDOWN:n|"));
     _ = try page.triggerKeyboardKeyPressWithCode("Enter", "Enter", .{}, false);
