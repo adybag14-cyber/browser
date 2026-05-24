@@ -130,6 +130,7 @@ PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND}"
 if [[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]]; then
     PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}"
 fi
+SYNC_ONLY_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND} --sync-only"
 
 if [[ "${JSON}" -eq 1 ]]; then
     python3 - <<PY
@@ -147,6 +148,7 @@ print(json.dumps({
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "saved_snapshot_route": ${SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
         "synced_saved_snapshot_route": ${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
+        "sync_only_saved_snapshot_route": ${SYNC_ONLY_SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
         "preferred_saved_snapshot_route": ${PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
         "restored_checkout_check": ${RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "synced_restored_checkout_check": ${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
@@ -160,6 +162,7 @@ print(json.dumps({
         "Run route_surface first so missing route docs or helper drift fails before the restored checkout is trusted.",
         "Use preferred_saved_snapshot_route when the reusable checkout is still missing or needs to be refreshed from Memory.",
         "When expect_helper_surface is set, preferred_saved_snapshot_route switches to the synced restore path so the next helper-surface comparison does not immediately fail.",
+        "Use sync_only_saved_snapshot_route when the restored checkout already exists and only the helper surface needs to be refreshed in place.",
         "Run restored_checkout_check immediately after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.",
         "Run synced_restored_checkout_check when the restored checkout was rebuilt with --sync-helper-surface and should be compared against the live helper root for drift.",
         "Run saved_memory_preflight against the restored checkout after the restored-checkout check.",
@@ -202,6 +205,9 @@ Suggested route
   Synced saved-browser-snapshot restore route:
     ${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}
 
+  Helper-surface refresh-only route:
+    ${SYNC_ONLY_SAVED_SNAPSHOT_ROUTE_COMMAND}
+
   Preferred restored-checkout check:
     ${PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND}
 
@@ -228,6 +234,7 @@ Working rules
   - Run the route surface check first so missing docs or helper drift fails fast before the restored checkout is trusted.
   - Use the preferred saved-browser-snapshot restore route when the reusable checkout is still missing or needs to be refreshed from Memory.
   - When --expect-helper-surface is set, prefer the synced saved-browser-snapshot restore route so the restored checkout actually carries the helper surface that the next comparison expects.
+  - Use the helper-surface refresh-only route when the restored checkout already exists and only the synced issue #3 helper surface needs to be refreshed in place.
   - Run the restored-checkout readiness check right after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.
   - Use the synced helper-surface restored-checkout check when the restored checkout was rebuilt with --sync-helper-surface.
   - Run the saved-Memory preflight against the restored checkout after the restored-checkout readiness check and before trusting broader helper output.
