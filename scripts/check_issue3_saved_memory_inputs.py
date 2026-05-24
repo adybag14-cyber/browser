@@ -149,6 +149,7 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
 DEFAULT_FALLBACK_ZIG = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
 DEFAULT_RESTORED_CHECKOUT_NAME = "browser-memory-snapshot"
 EXPECTED_REPO_SNAPSHOT_PREFIX = "browser-fork-headed-mode-foundation/"
+REQUIRED_REPO_ROOT_FILE = "build.zig.zon"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -225,9 +226,29 @@ def resolve_default_agent_files_root(repo_root: Path) -> Path:
 
 
 def resolve_default_restored_checkout_root(repo_root: Path) -> Path:
-    if (repo_root / "build.zig.zon").is_file():
+    if (repo_root / REQUIRED_REPO_ROOT_FILE).is_file():
         return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
     return (repo_root / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
+
+
+def collect_repo_root_result(repo_root: Path) -> dict[str, object]:
+    exists = repo_root.is_dir()
+    required_file_path = repo_root / REQUIRED_REPO_ROOT_FILE
+    has_required_file = required_file_path.is_file()
+    if not exists:
+        status = "missing"
+    elif has_required_file:
+        status = "ready"
+    else:
+        status = "missing-build-manifest"
+    return {
+        "path": str(repo_root),
+        "exists": exists,
+        "required_file": REQUIRED_REPO_ROOT_FILE,
+        "required_file_path": str(required_file_path),
+        "has_required_file": has_required_file,
+        "status": status,
+    }
 
 
 def archive_integrity_result(path: Path, label: str) -> dict[str, object]:
@@ -289,7 +310,7 @@ def check_file(path: Path, label: str, *, check_archive_integrity: bool) -> dict
 
 def collect_restored_checkout_result(restored_checkout_root: Path) -> dict[str, object]:
     exists = restored_checkout_root.is_dir()
-    build_manifest = restored_checkout_root / "build.zig.zon"
+    build_manifest = restored_checkout_root / REQUIRED_REPO_ROOT_FILE
 
     helper_surface_files = [
         {
@@ -415,6 +436,7 @@ def collect_results(
     fallback_zig_archive: Path | None,
     check_archive_integrity: bool,
 ) -> dict[str, object]:
+    repo_root_result = collect_repo_root_result(repo_root)
     required_files = [
         check_file(memory_root / relative_path, label, check_archive_integrity=check_archive_integrity)
         for relative_path, label in REQUIRED_MEMORY_FILES
@@ -441,11 +463,18 @@ def collect_results(
         if entry.get("exists") and "archive_readable" in entry and not entry["archive_readable"]
     ]
     helper_surface_sync = collect_helper_surface_sync_result(helper_root, restored_checkout_root)
-    ok = not missing_required and not unreadable_required and helper_surface_sync["ok"]
+    ok = (
+        repo_root_result["exists"]
+        and repo_root_result["has_required_file"]
+        and not missing_required
+        and not unreadable_required
+        and helper_surface_sync["ok"]
+    )
 
     return {
         "ok": ok,
         "repo_root": str(repo_root),
+        "repo_root_result": repo_root_result,
         "helper_root": str(helper_root),
         "memory_root": str(memory_root),
         "agent_files_root": str(agent_files_root),
@@ -460,6 +489,23 @@ def collect_results(
 
 def emit_text(result: dict[str, object]) -> None:
     print(f"Repo root: {result['repo_root']}")
+    repo_root_result = result["repo_root_result"]
+    repo_root_status = {
+        "ready": "PASS",
+        "missing": "FAIL",
+        "missing-build-manifest": "FAIL",
+    }[repo_root_result["status"]]
+    print(
+        f"Browser checkout root: [{repo_root_status}] "
+        f"{repo_root_result['path']}"
+    )
+    if repo_root_result["status"] == "missing":
+        print("         status: missing; point --repo-root at a live or restored browser checkout before trusting this preflight")
+    elif repo_root_result["status"] == "missing-build-manifest":
+        print(
+            "         status: invalid checkout root; expected "
+            f"{repo_root_result['required_file_path']}"
+        )
     print(f"Helper root: {result['helper_root']}")
     print(f"Memory root: {result['memory_root']}")
     print(f"Agent files root: {result['agent_files_root']}")
@@ -549,7 +595,7 @@ def emit_text(result: dict[str, object]) -> None:
     else:
         print("\nSaved Memory input check failed.", file=sys.stderr)
         print(
-            "Suggested next step: restore or remount readable saved repo and dependency archives before reopening the issue #3 runtime route.",
+            "Suggested next step: point --repo-root at a real browser checkout, restore or remount readable saved repo and dependency archives, and rerun the helper before reopening the issue #3 runtime route.",
             file=sys.stderr,
         )
 
@@ -563,9 +609,10 @@ class SavedMemoryInputsTests(unittest.TestCase):
             agent_files_root = root / "agent_files"
             restored_checkout_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
             repo_root.mkdir()
+            (repo_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
             agent_files_root.mkdir()
             restored_checkout_root.mkdir()
-            (restored_checkout_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            (restored_checkout_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
             for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES:
                 target = restored_checkout_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -600,12 +647,85 @@ class SavedMemoryInputsTests(unittest.TestCase):
             )
 
             self.assertTrue(result["ok"])
+            self.assertTrue(result["repo_root_result"]["exists"])
+            self.assertTrue(result["repo_root_result"]["has_required_file"])
             self.assertTrue(result["fallback_zig_archive"]["exists"])
             self.assertTrue(result["required_files"][0]["archive_readable"])
             self.assertEqual(result["restored_checkout"]["status"], "ready")
             self.assertTrue(result["restored_checkout"]["has_helper_surface"])
             self.assertEqual(result["restored_checkout"]["missing_helper_surface_files"], [])
             self.assertEqual(result["helper_surface_sync"]["status"], "synced")
+
+    def test_collect_results_fails_when_repo_root_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            missing_repo_root = root / "missing-browser"
+            memory_root = root / "memory"
+            agent_files_root = root / "agent_files"
+            agent_files_root.mkdir()
+            for relative_path, _label in REQUIRED_MEMORY_FILES:
+                target = memory_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.suffix == ".zip":
+                    with zipfile.ZipFile(target, "w") as archive:
+                        member = "browser-fork-headed-mode-foundation/README.md" if "fork-headed-mode-foundation" in target.name else "placeholder.txt"
+                        archive.writestr(member, "x")
+                elif target.suffixes[-2:] == [".tar", ".xz"]:
+                    with tarfile.open(target, "w:xz") as archive:
+                        payload = root / "payload.txt"
+                        payload.write_text("x", encoding="utf-8")
+                        archive.add(payload, arcname="payload.txt")
+                else:
+                    target.write_text("x", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=missing_repo_root,
+                helper_root=missing_repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                restored_checkout_root=resolve_default_restored_checkout_root(missing_repo_root),
+                fallback_zig_archive=None,
+                check_archive_integrity=True,
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["repo_root_result"]["status"], "missing")
+
+    def test_collect_results_fails_when_repo_root_lacks_build_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = root / "browser"
+            memory_root = root / "memory"
+            agent_files_root = root / "agent_files"
+            repo_root.mkdir()
+            agent_files_root.mkdir()
+            for relative_path, _label in REQUIRED_MEMORY_FILES:
+                target = memory_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.suffix == ".zip":
+                    with zipfile.ZipFile(target, "w") as archive:
+                        member = "browser-fork-headed-mode-foundation/README.md" if "fork-headed-mode-foundation" in target.name else "placeholder.txt"
+                        archive.writestr(member, "x")
+                elif target.suffixes[-2:] == [".tar", ".xz"]:
+                    with tarfile.open(target, "w:xz") as archive:
+                        payload = root / "payload.txt"
+                        payload.write_text("x", encoding="utf-8")
+                        archive.add(payload, arcname="payload.txt")
+                else:
+                    target.write_text("x", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=repo_root,
+                memory_root=memory_root,
+                agent_files_root=agent_files_root,
+                restored_checkout_root=resolve_default_restored_checkout_root(repo_root),
+                fallback_zig_archive=None,
+                check_archive_integrity=True,
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["repo_root_result"]["status"], "missing-build-manifest")
 
     def test_collect_results_fails_when_required_archive_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -614,6 +734,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
             memory_root = root / "memory"
             agent_files_root = root / "agent_files"
             repo_root.mkdir()
+            (repo_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
             agent_files_root.mkdir()
             for relative_path, _label in REQUIRED_MEMORY_FILES[1:]:
                 target = memory_root / relative_path
@@ -640,6 +761,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
             memory_root = root / "memory"
             agent_files_root = root / "agent_files"
             repo_root.mkdir()
+            (repo_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
             agent_files_root.mkdir()
 
             for relative_path, _label in REQUIRED_MEMORY_FILES[1:]:
@@ -695,7 +817,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             restored_checkout_root = Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
             restored_checkout_root.mkdir()
-            (restored_checkout_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            (restored_checkout_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
             legacy_helper_paths = {
                 "scripts/check_issue3_saved_memory_inputs.py",
                 "scripts/linux/show_issue3_linux_build_readiness_route.sh",
@@ -747,6 +869,8 @@ class SavedMemoryInputsTests(unittest.TestCase):
             restored_checkout_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
             helper_root.mkdir()
             restored_checkout_root.mkdir()
+            (helper_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (restored_checkout_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
 
             for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES:
                 helper_target = helper_root / relative_path
@@ -779,6 +903,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             helper_root = Path(tmpdir) / "browser"
             helper_root.mkdir()
+            (helper_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
 
             result = collect_helper_surface_sync_result(
                 helper_root, Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
@@ -791,7 +916,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser"
             repo_root.mkdir()
-            (repo_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            (repo_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
             self.assertEqual(resolve_default_helper_root(repo_root), repo_root)
             self.assertEqual(resolve_default_memory_root(repo_root), Path(tmpdir) / "memory")
             self.assertEqual(resolve_default_agent_files_root(repo_root), Path(tmpdir) / "agent_files")
