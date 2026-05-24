@@ -100,6 +100,7 @@ fi
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 VERIFY_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 STRICT_VERIFY_COMMAND="${VERIFY_COMMAND} --require-fallback-zig"
+SNAPSHOT_SURFACE_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_browser_snapshot_archive_surface.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PRESENCE_PREFLIGHT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 RESTORE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
@@ -127,6 +128,7 @@ print(json.dumps({
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "verify": ${VERIFY_COMMAND@Q},
         "verify_strict": ${STRICT_VERIFY_COMMAND@Q},
+        "snapshot_surface": ${SNAPSHOT_SURFACE_COMMAND@Q},
         "presence_preflight": ${PRESENCE_PREFLIGHT_COMMAND@Q},
         "restore_route": ${RESTORE_ROUTE_COMMAND@Q},
         "build_route": ${BUILD_ROUTE_COMMAND@Q},
@@ -136,7 +138,8 @@ print(json.dumps({
         "Run route_surface first so missing note, helper, or follow-up drift fails fast before the route is trusted.",
         "Run verify next to confirm the saved repo snapshot and dependency bundles match their expected SHA-256 fingerprints.",
         "Use verify_strict when the fallback Zig archive must also exist and match before the route is considered green.",
-        "Run presence_preflight after checksum verification so path and readability checks complement the exact archive fingerprints.",
+        "Run snapshot_surface after checksum verification to confirm the saved snapshot zip already carries the current issue #3 restore and runtime helper surface.",
+        "Run presence_preflight after the checksum and snapshot-surface checks so path and readability checks complement the exact archive fingerprints and helper-surface drift check.",
         "Use restore_route when the next blocked step still needs a disposable restored checkout from Memory.",
         "Use build_route when the next blocked step is Linux or WSL dependency staging or toolchain recovery.",
         "Use runtime_route only after the saved archives are trusted and the next run is ready to reopen the narrowed Page.zig plus win32_backend.zig lane."
@@ -158,6 +161,7 @@ Require fallback Zig: $([[ "${REQUIRE_FALLBACK_ZIG}" -eq 1 ]] && echo yes || ech
 Read first
 ==========
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
+  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
 
@@ -171,6 +175,9 @@ Suggested route
 
   Strict archive verification when fallback Zig must also match:
     ${STRICT_VERIFY_COMMAND}
+
+  Saved snapshot archive surface:
+    ${SNAPSHOT_SURFACE_COMMAND}
 
   Saved-Memory presence preflight:
     ${PRESENCE_PREFLIGHT_COMMAND}
@@ -187,8 +194,9 @@ Suggested route
 Working rules
 =============
   - Run the route surface check first so missing note or helper drift fails fast before the route is trusted.
-  - Run the SHA-256 verification before the saved-Memory presence preflight when the run needs to trust the exact archive contents.
+  - Run the SHA-256 verification before the saved-snapshot archive-surface check when the run needs to trust the exact archive contents.
   - Use the strict verification form when fallback Zig must be present for the next route replay.
+  - Run the saved-snapshot archive-surface check before the saved-Memory presence preflight so a readable but stale snapshot fails fast.
   - Treat checksum mismatch as an environment problem first, not as proof that the issue #3 runtime patch regressed.
-  - Continue into the restore, build-readiness, or runtime routes only after the checksum and presence checks agree.
+  - Continue into the restore, build-readiness, or runtime routes only after the checksum, snapshot-surface, and presence checks agree.
 EOF
