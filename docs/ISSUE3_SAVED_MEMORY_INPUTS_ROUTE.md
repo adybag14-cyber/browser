@@ -6,14 +6,19 @@ readiness, or the direct issue `#3` runtime lane.
 
 This route keeps the saved repo snapshot, notes, blocker file, dependency
 archives, optional fallback Zig bundle, the low-volume progress-tracker handoff,
-and the immediate next helper routes on one compact branch-local surface.
+the dedicated saved-archive integrity handoff, and the immediate next helper
+routes on one compact branch-local surface.
 
 Companion helpers:
 
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
+- `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
+- `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
+- `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
@@ -33,8 +38,9 @@ Use this route when any of these are true:
   `agent_files/` folders and the run wants one helper that resolves those paths
   explicitly
 - the direct issue `#3` runtime patch is still blocked and the run needs the
-  progress-tracker handoff back on one compact helper surface before it widens
-  into restore or build-readiness follow-up
+  progress-tracker handoff plus the dedicated saved-archive integrity route back
+  on one compact helper surface before it widens into restore or build-
+  readiness follow-up
 
 ## Run The Surface Check First
 
@@ -128,6 +134,13 @@ environment gates are still closed.
 After the saved-input preflight succeeds, choose the next route based on the
 actual missing step:
 
+If exact archive trust, checksum drift, or saved-snapshot helper-surface drift
+is still the blocker:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
+```
+
 If there is still no reusable checkout beside the workspace:
 
 ```bash
@@ -165,6 +178,9 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
 - Keep `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md` visible whenever the route is
   still working in the Linux or WSL re-entry lane so start and completion
   updates go to issue `#11`.
+- Use the saved-archive integrity route when the saved-input preflight passes
+  but the next question is still whether the exact saved bundles and snapshot
+  helper surface are trustworthy enough for restore or staging.
 - Use the saved-browser-snapshot route when the saved archive exists but there
   is still no reusable checkout for Linux or WSL follow-up.
 - Use the Linux build-readiness route after the saved-input preflight passes
