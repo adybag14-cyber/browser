@@ -103,6 +103,24 @@ Prefer this self-contained route when the saved archive can lag the current
 branch-local helper surface and the follow-up commands should live inside the
 restored checkout instead of depending on a separate live helper root.
 
+If `../browser-memory-snapshot` already exists and only the helper docs and
+route scripts are stale, refresh them in place without re-extracting the saved
+repo archive:
+
+```bash
+bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-only --check-only
+bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-only
+python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot --helper-root . --expect-helper-surface
+python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
+```
+
+`--sync-only` implies `--sync-helper-surface`, preserves the existing restored
+checkout contents, and only refreshes the branch-local issue #3 helper surface
+inside that checkout.
+
 A concrete stale-archive symptom is a restored checkout that still looks like a
 browser repo but is missing newer helper files such as
 `scripts/check_issue3_saved_memory_inputs.py` or
@@ -152,7 +170,7 @@ still match the expected exact artifacts before broader Linux or WSL staging.
 The saved archive is a stable historical snapshot, so it may not contain the
 newest branch-local recovery helpers. Do not switch into the restored checkout
 and assume these route scripts exist there unless the restore used
-`--sync-helper-surface`.
+`--sync-helper-surface` or a later `--sync-only` refresh.
 
 The route helper prints those same commands with the resolved archive,
 destination, helper-root, optional helper-surface sync mode, and optional
@@ -173,6 +191,8 @@ runtime re-entry route anchored to the restored checkout before the direct issue
   repo surfaces or helper drift fail before the archive-focused preflights.
 - Prefer `--sync-helper-surface` when the restored checkout should be more
   self-contained for the next Linux or WSL route replay.
+- Prefer `--sync-only` when the restored checkout already exists and only the
+  helper surface needs to be refreshed.
 - Keep the follow-up helper root on the live branch-local surface only when the
   restore should stay as a clean historical snapshot.
 - Treat this route as a setup step for build-readiness and runtime re-entry, not
