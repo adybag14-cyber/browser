@@ -403,7 +403,7 @@ def main() -> int:
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
 
-    repo_root = Path(args.repo-root).resolve()
+    repo_root = Path(args.repo_root).resolve()
     helper_root = Path(args.helper_root).resolve() if args.helper_root else repo_root
     restored_checkout_root = (
         Path(args.restored_checkout_root).resolve()
