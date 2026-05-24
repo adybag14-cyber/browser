@@ -150,10 +150,15 @@ if [[ "${EXPECT_SYNCED_HELPER_SURFACE}" -eq 1 ]]; then
     done
 fi
 
-SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+FOLLOW_UP_ROOT="${HELPER_ROOT}"
+if [[ "${EXPECT_SYNCED_HELPER_SURFACE}" -eq 1 ]]; then
+    FOLLOW_UP_ROOT="${REPO_ROOT}"
+fi
+
+SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${FOLLOW_UP_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${FOLLOW_UP_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -167,6 +172,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  "profile": %s,\n' "$(json_escape "issue3-restored-checkout-follow-up")"
     printf '  "repo_root": %s,\n' "$(json_escape "${REPO_ROOT}")"
     printf '  "helper_root": %s,\n' "$(json_escape "${HELPER_ROOT}")"
+    printf '  "follow_up_root": %s,\n' "$(json_escape "${FOLLOW_UP_ROOT}")"
     printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
     printf '  "expect_synced_helper_surface": %s,\n' "$([[ "${EXPECT_SYNCED_HELPER_SURFACE}" -eq 1 ]] && echo true || echo false)"
     printf '  "missing_count": %d,\n' "${missing_count}"
@@ -198,6 +204,7 @@ echo "Issue #3 restored checkout follow-up"
 echo
 echo "Restored checkout:      ${REPO_ROOT}"
 echo "Helper root:            ${HELPER_ROOT}"
+echo "Follow-up root:         ${FOLLOW_UP_ROOT}"
 echo "Fallback Zig archive:   ${FALLBACK_ZIG_ARCHIVE:-not found beside the helper root}"
 echo "Expect synced surface:  $([[ "${EXPECT_SYNCED_HELPER_SURFACE}" -eq 1 ]] && echo yes || echo no)"
 echo
