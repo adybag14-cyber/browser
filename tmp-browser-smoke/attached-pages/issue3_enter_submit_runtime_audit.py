@@ -520,7 +520,7 @@ def run_self_test() -> tuple[bool, list[str]]:
 def main() -> int:
     args = parse_args()
 
-    if args.self-test:
+    if args.self_test:
         ok, details = run_self_test()
         print(f"SELF_TEST={'pass' if ok else 'fail'}")
         if ok:
