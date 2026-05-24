@@ -90,3 +90,36 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\run_headed_probe_suit
   `graphics`
 - Release-candidate validation:
   `release-gates`
+
+## Focused follow-up
+
+When `browser-shell` or popup work fails its first suite pass, switch to the
+bounded follow-up ladders in `docs/HEADED_BROWSER_SHELL_POPUP_VALIDATION.md`
+instead of jumping straight to a large manual headed replay.
+
+For browser-shell changes, start here after the suite-level route:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-start-shell-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-tabs-recovery-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-home-restore-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\browser-pages\chrome-browser-pages-title-fidelity-probe.ps1
+```
+
+For popup-path changes, reopen the popup-specific router surface first, then
+choose the smallest direct proof that matches the symptom:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea popup
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-anchor-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-named-anchor-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-form-enter-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-script-policy-probe.ps1
+powershell -ExecutionPolicy Bypass -File .\tmp-browser-smoke\popup\chrome-popup-script-policy-block-probe.ps1
+```
+
+Keep the full browser-shell and popup ladder in the companion guide nearby when
+work touches restore, reopen, settings persistence, named targets, popup
+policy, or launcher callbacks, because those routes are deliberately narrower
+than the broad suite runner.
