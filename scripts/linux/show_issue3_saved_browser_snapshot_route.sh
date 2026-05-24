@@ -13,6 +13,7 @@ Usage:
     [--destination /path/to/extracted/browser-checkout] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--sync-helper-surface] \
+    [--sync-only] \
     [--json]
 
 Print the saved-browser-snapshot restore route for the blocked issue #3 Linux or
@@ -50,6 +51,7 @@ ARCHIVE_PATH=""
 DESTINATION=""
 FALLBACK_ZIG_ARCHIVE=""
 SYNC_HELPER_SURFACE=0
+SYNC_ONLY=0
 JSON=0
 
 while [[ $# -gt 0 ]]; do
@@ -82,6 +84,10 @@ while [[ $# -gt 0 ]]; do
             SYNC_HELPER_SURFACE=1
             shift
             ;;
+        --sync-only)
+            SYNC_ONLY=1
+            shift
+            ;;
         --json)
             JSON=1
             shift
@@ -97,6 +103,10 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ "${SYNC_ONLY}" -eq 1 ]]; then
+    SYNC_HELPER_SURFACE=1
+fi
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${HELPER_ROOT}" ]]; then
@@ -124,13 +134,17 @@ if [[ "${SYNC_HELPER_SURFACE}" -eq 1 ]]; then
     FOLLOW_UP_HELPER_ROOT="${DESTINATION}"
 fi
 SYNC_FLAG=""
-if [[ "${SYNC_HELPER_SURFACE}" -eq 1 ]]; then
+if [[ "${SYNC_HELPER_SURFACE}" -eq 1 && "${SYNC_ONLY}" -eq 0 ]]; then
     SYNC_FLAG=" --sync-helper-surface"
+fi
+SYNC_ONLY_FLAG=""
+if [[ "${SYNC_ONLY}" -eq 1 ]]; then
+    SYNC_ONLY_FLAG=" --sync-only"
 fi
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
-SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG} --check-only"
-RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG}"
+SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG}${SYNC_ONLY_FLAG} --check-only"
+RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG}${SYNC_ONLY_FLAG}"
 RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 if [[ "${SYNC_HELPER_SURFACE}" -eq 1 ]]; then
     RESTORED_CHECKOUT_CHECK_COMMAND+=" --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
@@ -141,6 +155,8 @@ LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scr
 RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface --check-only"
 SYNC_RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface"
+SYNC_ONLY_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-only --check-only"
+SYNC_ONLY_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-only"
 SYNC_RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${DESTINATION}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
 SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -171,6 +187,7 @@ print(json.dumps({
     "destination": ${DESTINATION@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "sync_helper_surface": ${SYNC_HELPER_SURFACE},
+    "sync_only": ${SYNC_ONLY},
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
@@ -182,6 +199,8 @@ print(json.dumps({
         "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q},
         "sync_surface_check": ${SYNC_SURFACE_CHECK_COMMAND@Q},
         "sync_restore": ${SYNC_RESTORE_COMMAND@Q},
+        "sync_only_check": ${SYNC_ONLY_CHECK_COMMAND@Q},
+        "sync_only_refresh": ${SYNC_ONLY_COMMAND@Q},
         "sync_restored_checkout_check": ${SYNC_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "sync_saved_memory_preflight": ${SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
         "sync_saved_archive_integrity": ${SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
@@ -197,6 +216,7 @@ print(json.dumps({
         "Run saved_archive_integrity after the saved-memory preflight when the route needs to prove the restored checkout still points back to the exact saved repo and dependency bundles before broader staging begins.",
         "Keep helper_root pointed at the live branch-local helper surface when the restore should remain a clean historical snapshot.",
         "Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.",
+        "Use --sync-only when the restored checkout already exists and only the helper surface needs to be refreshed in place.",
         "Prefer the sync_* commands when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface.",
         "Use linux_build_route when the next blocked step is still toolchain or offline dependency staging.",
         "Use runtime_route only after the saved checkout exists and the route is ready to reopen the narrowed Page.zig and win32_backend.zig lane."
@@ -217,6 +237,7 @@ Snapshot archive:      ${ARCHIVE_PATH}
 Restore destination:   ${DESTINATION}
 Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
 Sync helper surface:   $([[ "${SYNC_HELPER_SURFACE}" -eq 1 ]] && echo enabled || echo disabled)
+Sync only:             $([[ "${SYNC_ONLY}" -eq 1 ]] && echo enabled || echo disabled)
 
 Read first
 ==========
@@ -240,6 +261,10 @@ Suggested route
       ${SYNC_SURFACE_CHECK_COMMAND}
     Synced restore command:
       ${SYNC_RESTORE_COMMAND}
+    Synced helper-surface refresh check for an existing restored checkout:
+      ${SYNC_ONLY_CHECK_COMMAND}
+    Synced helper-surface refresh command for an existing restored checkout:
+      ${SYNC_ONLY_COMMAND}
     Synced restored-checkout readiness check:
       ${SYNC_RESTORED_CHECKOUT_CHECK_COMMAND}
     Synced saved-Memory preflight:
@@ -273,8 +298,10 @@ Working rules
   - Use the restore step when the route needs a disposable checkout for helper validation without relying on live GitHub file publication.
   - Run the restored-checkout readiness check right after restore so missing build.zig.zon, helper-surface omissions, or sync drift fail before the archive-focused preflights.
   - Prefer the recommended synced restore when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
+  - Use the helper-surface refresh commands when the restored checkout already exists and only the branch-local docs and route scripts need to be refreshed in place.
   - Keep the live branch-local helper surface only when the restore should stay as a clean historical snapshot.
   - Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.
+  - Use --sync-only when the restored checkout already exists and only the helper surface needs repair.
   - Run the saved-Memory preflight against the restored checkout after the restored-checkout readiness check and before trusting broader build-readiness or runtime helper output.
   - Run the saved-archive integrity preflight after the saved-Memory preflight when the route needs to prove the repo snapshot and dependency bundles still match the expected exact saved artifacts.
   - Use the Linux or WSL build-readiness route when the next blocked step is still toolchain or offline dependency staging.
