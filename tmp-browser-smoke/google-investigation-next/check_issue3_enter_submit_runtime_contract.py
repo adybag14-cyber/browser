@@ -43,12 +43,14 @@ WIN32_REQUIRED_MARKERS = (
 )
 
 PAGE_TEST_MARKERS = (
+    'test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {',
     'test "Page reduced Google fixture defers native Enter submit until keypress" {',
     "page.beginDeferredNativeTextInputEnterSubmit();",
     "try page.applyDeferredNativeTextInputEnterSubmit();",
 )
 
 WIN32_TEST_MARKERS = (
+    'test "win32 dispatchInput suppresses later text_input after printable keydown across batches" {',
     'test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {',
     'test "win32 dispatchInput suppresses matching text after stale entries drop out of order" {',
 )
@@ -193,6 +195,7 @@ fn submitCurrentInput(self: *Page, input: *Element.Html.Input) !void {
     return self.submitForm(input.asElement(), input.getForm(self), .{});
 }
 
+test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {}
 test "Page reduced Google fixture defers native Enter submit until keypress" {
     page.beginDeferredNativeTextInputEnterSubmit();
     try page.applyDeferredNativeTextInputEnterSubmit();
@@ -229,6 +232,7 @@ if (shouldSuppressPendingTextInput(self, text_input.bytes[0..text_input.len])) {
 fn queuePendingTextInputSuppression(self: *Win32Backend, bytes: []const u8) void {}
 fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool { return false; }
 
+test "win32 dispatchInput suppresses later text_input after printable keydown across batches" {}
 test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {}
 test "win32 dispatchInput suppresses matching text after stale entries drop out of order" {}
 """
