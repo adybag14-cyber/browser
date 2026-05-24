@@ -24,6 +24,12 @@ DEFAULT_AUDIT_SPECS = (
         "builder_name": "build_launcher_companion_audit",
     },
     {
+        "name": "target-bundle-proof-entrypoint",
+        "label": "Target bundle proof entrypoint",
+        "module": "google_issue3_attached_html_target_bundle_proof_entrypoint_audit",
+        "builder_name": "build_proof_entrypoint_audit",
+    },
+    {
         "name": "windows-replay-quickstart",
         "label": "Windows replay quickstart",
         "module": "google_issue3_windows_replay_attached_html_quickstart_audit",
@@ -417,7 +423,3 @@ def main(argv: list[str] | None = None) -> int:
     if matrix.get("error_type") == "invalid_surface_selection":
         return 2
     return 0 if not matrix.get("error_type") and not matrix.get("failing_surface_count") else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
