@@ -53,7 +53,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-REPO_ROOT="$(cd "${REPO_ROOT}")" && pwd)
+REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that decides whether a run should stay on helper recovery work instead of reopening the blocked runtime patch."
