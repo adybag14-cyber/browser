@@ -5,11 +5,12 @@ saved Memory inputs are present before it reopens checkout restore, build-
 readiness, or the direct issue `#3` runtime lane.
 
 This route keeps the saved repo snapshot, notes, blocker file, dependency
-archives, optional fallback Zig bundle, and the immediate next helper routes on
-one compact branch-local surface.
+archives, optional fallback Zig bundle, the low-volume progress-tracker handoff,
+and the immediate next helper routes on one compact branch-local surface.
 
 Companion helpers:
 
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
@@ -31,6 +32,9 @@ Use this route when any of these are true:
 - the current checkout may not sit beside the default `memory/` or
   `agent_files/` folders and the run wants one helper that resolves those paths
   explicitly
+- the direct issue `#3` runtime patch is still blocked and the run needs the
+  progress-tracker handoff back on one compact helper surface before it widens
+  into restore or build-readiness follow-up
 
 ## Run The Surface Check First
 
@@ -106,6 +110,19 @@ python ./scripts/check_issue3_saved_memory_inputs.py \
   --restored-checkout-root ../browser-memory-snapshot
 ```
 
+## Keep The Progress Tracker Visible
+
+If this run is still working in the Linux or WSL re-entry lane and the direct
+runtime patch is not ready to reopen yet, keep the lower-volume tracker visible:
+
+```text
+docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
+```
+
+That note redirects scheduled-run start and completion updates onto issue `#11`
+so the run does not retry the capped issue `#2` or issue `#3` threads while the
+environment gates are still closed.
+
 ## Immediate Follow-up
 
 After the saved-input preflight succeeds, choose the next route based on the
@@ -145,6 +162,9 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
 - Use the restored-checkout override when a reusable checkout already exists
   and the route should confirm that helper surface before broader route output
   is trusted.
+- Keep `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md` visible whenever the route is
+  still working in the Linux or WSL re-entry lane so start and completion
+  updates go to issue `#11`.
 - Use the saved-browser-snapshot route when the saved archive exists but there
   is still no reusable checkout for Linux or WSL follow-up.
 - Use the Linux build-readiness route after the saved-input preflight passes
