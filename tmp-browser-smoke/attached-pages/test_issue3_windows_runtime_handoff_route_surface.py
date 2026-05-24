@@ -11,6 +11,14 @@ def read_text(path: pathlib.Path) -> str:
 
 
 FIXTURE_FILES = {
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md": r"""
+    # Issue #3 Runtime Re-entry Gates
+    scripts/linux/show_issue3_windows_runtime_handoff_route.sh
+    If Linux or WSL staging has already cleared both gates and the next operator needs the narrower Windows-only replay ladder back on one surface, print the compact handoff route first:
+    bash ./scripts/linux/show_issue3_windows_runtime_handoff_route.sh
+    Use that handoff after the reduced Google probe when the next step is the Windows build, reduced fixture, live Google, and trace-inspection ladder on one compact bridge.
+    use the Linux-or-WSL-to-Windows handoff route when the gates are green and the next operator needs the Windows-only replay ladder reopened from a Linux or WSL staging pass
+    """,
     "scripts/linux/show_issue3_windows_runtime_handoff_route.sh": r"""
     #!/usr/bin/env bash
     WINDOWS_SURFACE_SCRIPT='.\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1'
@@ -109,6 +117,7 @@ class Issue3WindowsRuntimeHandoffRouteSurfaceTest(unittest.TestCase):
         else:
             cls.repo_root = pathlib.Path(__file__).resolve().parents[2]
 
+        cls.runtime_gates = read_text(cls.repo_root / "docs/ISSUE3_RUNTIME_REENTRY_GATES.md")
         cls.handoff_route = read_text(
             cls.repo_root / "scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
         )
@@ -131,6 +140,16 @@ class Issue3WindowsRuntimeHandoffRouteSurfaceTest(unittest.TestCase):
             cls.repo_root
             / "tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1"
         )
+
+    def test_runtime_gates_keep_the_windows_handoff_route_visible(self) -> None:
+        for fragment in (
+            "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+            "If Linux or WSL staging has already cleared both gates and the next operator needs the narrower Windows-only replay ladder back on one surface, print the compact handoff route first:",
+            "bash ./scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+            "Use that handoff after the reduced Google probe when the next step is the Windows build, reduced fixture, live Google, and trace-inspection ladder on one compact bridge.",
+            "use the Linux-or-WSL-to-Windows handoff route when the gates are green and the next operator needs the Windows-only replay ladder reopened from a Linux or WSL staging pass",
+        ):
+            self.assertIn(fragment, self.runtime_gates)
 
     def test_handoff_route_keeps_read_first_docs_and_windows_commands_visible(self) -> None:
         for fragment in (
