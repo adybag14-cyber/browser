@@ -5,13 +5,13 @@ set -euo pipefail
 usage() {
     cat <<'EOF'
 Usage:
-  bash scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh \
+  bash check_issue3_restored_checkout_reentry_route_surface.sh \
     [--repo-root /path/to/browser-repo] \
     [--json]
 
 Verify that the branch-local restored-checkout re-entry route for the blocked
-issue #3 Linux or WSL path still has its note, helper, and follow-up surfaces
-in place before a run trusts a restored checkout.
+issue #3 Linux or WSL path still has its required docs, helpers, and route
+printer surface in place before a run trusts the restored checkout.
 EOF
 }
 
@@ -46,42 +46,43 @@ done
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|file|Read-first restored-checkout re-entry note for the blocked issue #3 Linux or WSL lane."
-    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|file|Saved-browser-snapshot note that should stay visible before the restored-checkout checkpoint runs."
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the restored-checkout checkpoint visible before direct runtime replay widens."
-    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|file|Saved-archive note that should stay visible after the restored-checkout checkpoint passes."
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Linux or WSL build-readiness note that should follow the restored-checkout checkpoint."
-    "scripts/check_issue3_restored_checkout.py|file|Python helper that verifies restored-checkout shape and optional synced-helper drift."
-    "scripts/check_issue3_saved_memory_inputs.py|file|Saved-Memory preflight that should follow the restored-checkout checkpoint."
-    "scripts/check_issue3_saved_archive_integrity.py|file|Saved-archive integrity helper that should follow the restored-checkout checkpoint when exact bundle provenance still matters."
-    "scripts/linux/restore_saved_browser_snapshot.sh|file|Restore helper that should remain the source of the restored checkout before this checkpoint runs."
-    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Saved-browser-snapshot route printer that should stay reachable before this checkpoint runs."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Linux or WSL build-readiness route printer that should stay reachable after this checkpoint passes."
-    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|file|Direct runtime route printer that should stay reachable after this checkpoint passes."
-    "build.zig.zon|file|Manifest surface that should exist in a healthy restored checkout before deeper validation starts."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|file|Read-first restored-checkout note that should anchor the post-restore Linux or WSL route."
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|file|Restore route note that should stay paired with the restored-checkout route."
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the restored-checkout route in the broader issue #3 re-entry ladder."
+    "scripts/check_issue3_restored_checkout.py|file|Restored-checkout readiness helper that proves the restored snapshot is safe to trust."
+    "scripts/check_issue3_saved_memory_inputs.py|file|Saved Memory preflight that should run after the restored-checkout readiness check."
+    "scripts/check_issue3_saved_archive_integrity.py|file|Saved-archive integrity helper that should run after the restored-checkout and saved-memory checks."
+    "scripts/linux/restore_saved_browser_snapshot.sh|file|Restore helper that materializes the reusable saved snapshot checkout."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Compact restore route printer that should stay visible before restored-checkout follow-up commands."
+    "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh|file|Linux build-readiness surface checker that should remain the next stop after the restored checkout is ready."
+    "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Compact Linux build-readiness route printer that should stay visible after the restored checkout is ready."
+    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|file|Compact runtime re-entry route printer that should stay visible after the restored checkout and Linux build-readiness routes pass."
+    "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh|file|Fail-fast restored-checkout re-entry surface checker."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|file|Compact restored-checkout re-entry route printer."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|scripts/check_issue3_restored_checkout.py|The route note keeps the restored-checkout readiness helper visible."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The route note keeps the saved-browser-snapshot route visible before the restored-checkout checkpoint."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|restore_saved_browser_snapshot.sh|The route note keeps the restore helper visible before the restored-checkout checkpoint."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The route note keeps the Linux or WSL build-readiness route visible after the restored-checkout checkpoint."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|show_issue3_enter_submit_runtime_revalidation_route.sh|The route note keeps the direct runtime route visible after the restored-checkout checkpoint."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|python ./scripts/check_issue3_restored_checkout.py|The route note keeps the restored-checkout check command visible."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|--helper-root .|The route note keeps the synced helper-root comparison visible."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|--expect-helper-surface|The route note keeps the synced helper-surface requirement visible."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|saved-memory preflight|The route note keeps the saved-memory follow-up visible."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|saved-archive integrity helper|The route note keeps the saved-archive integrity follow-up visible."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|The route note keeps the direct runtime follow-up command visible."
-    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|scripts/check_issue3_restored_checkout.py|The saved-browser-snapshot note keeps the restored-checkout helper visible."
-    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|Run the restored-checkout readiness check first|The saved-browser-snapshot note still enforces the restored-checkout checkpoint before archive-focused preflights."
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|The gate note keeps the restored-checkout route note visible before runtime re-entry."
-    "scripts/check_issue3_restored_checkout.py|--expect-helper-surface|The helper still supports explicit synced-helper validation."
-    "scripts/check_issue3_restored_checkout.py|matches_helper_root|The helper still reports helper-root drift state."
-    "scripts/check_issue3_restored_checkout.py|Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface|The helper still reports synced-restore recovery guidance."
-    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Restored-checkout readiness check:|The saved-browser-snapshot route printer still prints the restored-checkout checkpoint."
-    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Synced restored-checkout readiness check:|The saved-browser-snapshot route printer still prints the synced restored-checkout checkpoint."
-    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|follow_up_helper_root|The saved-browser-snapshot route printer still exposes the follow-up helper root for downstream tooling."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|scripts/check_issue3_restored_checkout.py|The restored-checkout note still names the readiness helper explicitly."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The restored-checkout note still points back to the saved-browser-snapshot route."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|The restored-checkout note still points at the saved-Memory preflight."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|scripts/check_issue3_saved_archive_integrity.py|The restored-checkout note still points at the saved-archive integrity helper."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The restored-checkout note still points at the Linux build-readiness route."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|show_issue3_enter_submit_runtime_revalidation_route.sh|The restored-checkout note still points at the direct runtime re-entry route."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|The route printer keeps the restored-checkout note in its read-first list."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|show_issue3_saved_browser_snapshot_route.sh|The route printer keeps the saved-browser-snapshot route visible before restored-checkout follow-up commands."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|--memory-root|The route printer still threads the explicit Memory root through the saved-browser-snapshot route and saved-memory preflight."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|--restored-checkout-root|The route printer still threads the explicit restored-checkout root through the saved-memory preflight."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|RESTORED_CHECKOUT_CHECK_COMMAND|The route printer still emits a dedicated restored-checkout readiness command."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND|The route printer still emits an explicit preferred restored-checkout check based on sync expectations."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|SAVED_MEMORY_PREFLIGHT_COMMAND|The route printer still emits a saved-Memory preflight against the restored checkout."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|SAVED_ARCHIVE_INTEGRITY_COMMAND|The route printer still emits a saved-archive integrity preflight against the restored checkout."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|LINUX_BUILD_ROUTE_COMMAND|The route printer still emits the next Linux build-readiness route."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|RUNTIME_ROUTE_COMMAND|The route printer still emits the direct runtime re-entry route."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|Restored-checkout readiness check:|The route printer still prints a human-readable restored-checkout readiness step."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|Saved-Memory preflight against the restored checkout:|The route printer still prints the saved-Memory step after the restored-checkout check."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|Saved-archive integrity preflight against the restored checkout:|The route printer still prints the saved-archive integrity step."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|Linux or WSL build-readiness route from the restored checkout:|The route printer still prints the Linux build-readiness handoff."
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh|Direct runtime re-entry route from the restored checkout:|The route printer still prints the direct runtime handoff."
 )
 
 json_escape() {
@@ -161,7 +162,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     exit 0
 fi
 
-echo "Issue #3 restored checkout re-entry route surface check"
+echo "Issue #3 restored-checkout re-entry route surface check"
 echo
 echo "Repo root: ${REPO_ROOT}"
 echo
@@ -191,4 +192,5 @@ if [[ "${missing_count}" -gt 0 ]]; then
 fi
 
 echo
-echo "All restored checkout re-entry route surfaces are present."
+
+echo "All restored-checkout re-entry surfaces are present."
