@@ -47,6 +47,7 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|file|Read-first saved-Memory-inputs route note for the blocked issue #3 recovery path."
+    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|file|Low-volume issue #11 progress-tracker handoff note for Linux or WSL re-entry work that is still blocked on environment gates."
     "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh|file|Fail-fast surface checker for the saved-Memory-inputs route."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|file|Compact route printer for the saved-Memory-inputs preflight."
     "scripts/check_issue3_saved_memory_inputs.py|file|Saved Memory input preflight helper that checks the repo snapshot, notes, blocker file, dependency bundles, and fallback Zig surface."
@@ -56,6 +57,8 @@ declare -a REFERENCE_PATHS=(
 )
 
 declare -a CONTENT_EXPECTATIONS=(
+    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|The saved-Memory-inputs note keeps the issue #11 handoff note visible."
+    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|issue `#11`|The saved-Memory-inputs note keeps issue #11 visible as the scheduled-run progress target while the runtime lane is still blocked."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|check_issue3_saved_memory_inputs_route_surface.sh|The saved-Memory-inputs note keeps the dedicated route surface checker visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_saved_memory_inputs_route.sh|The saved-Memory-inputs note keeps the compact route printer visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .|The saved-Memory-inputs note keeps the main preflight command visible."
@@ -65,6 +68,9 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The saved-Memory-inputs note keeps the Linux or WSL build-readiness follow-up route visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_enter_submit_runtime_revalidation_route.sh|The saved-Memory-inputs note keeps the direct runtime follow-up route visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz|The saved-Memory-inputs note still names the fallback Zig bundle."
+    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|issue `#11`|The progress-tracker handoff note still points scheduled Linux or WSL re-entry work at issue #11."
+    "scripts/linux/show_issue3_saved_memory_inputs_route.sh|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|The route printer keeps the issue #11 handoff note in the read-first surface."
+    "scripts/linux/show_issue3_saved_memory_inputs_route.sh|issue #11 progress-update handoff|The route printer keeps the issue #11 progress handoff visible in its working rules."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|check_issue3_saved_memory_inputs_route_surface.sh|The route printer points back to the dedicated route surface checker."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|check_issue3_saved_memory_inputs.py|The route printer still prints the saved-input preflight command."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|--skip-archive-integrity-check|The route printer still supports the quick presence-only mode."
