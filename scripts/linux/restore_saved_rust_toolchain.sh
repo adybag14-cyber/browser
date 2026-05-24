@@ -112,6 +112,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ ! -d "${BROWSER_ROOT}" ]]; then
+    echo "Browser root does not exist: ${BROWSER_ROOT}" >&2
+    exit 1
+fi
+BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 if [[ -z "${DEPENDENCIES_ROOT}" ]]; then
     DEPENDENCIES_ROOT="${WORKSPACE_ROOT}/memory/repo_archives/browser/dependencies"
@@ -129,10 +134,6 @@ if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${DEPENDENCIES_ROOT}/${DEFAULT_ARCHIVE_NAME}"
 fi
 
-if [[ ! -d "${BROWSER_ROOT}" ]]; then
-    echo "Browser root does not exist: ${BROWSER_ROOT}" >&2
-    exit 1
-fi
 if [[ ! -d "${DEPENDENCIES_ROOT}" ]]; then
     echo "Dependencies root does not exist: ${DEPENDENCIES_ROOT}" >&2
     exit 1
@@ -142,7 +143,20 @@ if [[ ! -f "${ARCHIVE_PATH}" ]]; then
     exit 1
 fi
 
-mkdir -p "${TOOLCHAIN_PARENT}"
+TOOLCHAIN_PARENT="$(python3 - "${TOOLCHAIN_PARENT}" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+)"
+TOOLCHAIN_ROOT="$(python3 - "${TOOLCHAIN_ROOT}" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+)"
 OFFLINE_DEPS_ROOT="$(python3 - "${OFFLINE_DEPS_ROOT}" <<'PY'
 import pathlib
 import sys
@@ -150,6 +164,9 @@ import sys
 print(pathlib.Path(sys.argv[1]).resolve())
 PY
 )"
+if [[ "${CHECK_ONLY}" != "true" ]]; then
+    mkdir -p "${TOOLCHAIN_PARENT}"
+fi
 PREBUILT_V8_PATH=""
 if [[ -d "${OFFLINE_DEPS_ROOT}" ]]; then
     PREBUILT_V8_PATH="$(find "${OFFLINE_DEPS_ROOT}" -maxdepth 1 -type f -name "${PREBUILT_V8_GLOB}" | sort | head -n 1 || true)"
