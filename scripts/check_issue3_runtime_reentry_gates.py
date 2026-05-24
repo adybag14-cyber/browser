@@ -36,7 +36,9 @@ HELPER_SURFACE = (
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
     "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
     "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
+    "docs/ISSUE3_LINUX_REENTRY_DECISION_TREE.md",
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
     "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
@@ -44,10 +46,13 @@ HELPER_SURFACE = (
     "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
     "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md",
     "scripts/check_issue3_saved_memory_inputs.py",
+    "scripts/check_issue3_restored_checkout.py",
     "scripts/check_issue3_saved_archive_integrity.py",
     "scripts/check_linux_build_readiness.py",
     "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
+    "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh",
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
     "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh",
     "scripts/linux/show_issue3_saved_archive_integrity_route.sh",
     "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
@@ -387,6 +392,7 @@ class RuntimeReentryGateTests(unittest.TestCase):
             target.write_text("helper", encoding="utf-8")
         return repo_root
 
+
     def create_restored_checkout(self, root: Path) -> Path:
         restored_checkout = root / DEFAULT_RESTORED_CHECKOUT_NAME
         (restored_checkout / "src/browser").mkdir(parents=True)
@@ -500,6 +506,45 @@ class RuntimeReentryGateTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+                result["helper_surface_missing"],
+            )
+
+    def test_publication_gate_requires_restored_checkout_route_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            (repo_root / "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md").unlink()
+            (repo_root / "scripts/check_issue3_restored_checkout.py").unlink()
+            (repo_root / "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh").unlink()
+            (repo_root / "scripts/linux/show_issue3_restored_checkout_reentry_route.sh").unlink()
+            result = check_publication_gate(repo_root, root / "missing-checkout")
+            self.assertFalse(result["passed"])
+            self.assertIn(
+                "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_restored_checkout.py",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
+                result["helper_surface_missing"],
+            )
+
+    def test_publication_gate_requires_linux_decision_tree_note(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            (repo_root / "docs/ISSUE3_LINUX_REENTRY_DECISION_TREE.md").unlink()
+            result = check_publication_gate(repo_root, root / "missing-checkout")
+            self.assertFalse(result["passed"])
+            self.assertIn(
+                "docs/ISSUE3_LINUX_REENTRY_DECISION_TREE.md",
                 result["helper_surface_missing"],
             )
 
