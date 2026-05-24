@@ -133,6 +133,11 @@ def helper_surface_missing(repo_root: Path) -> list[str]:
     return [relative_path for relative_path in HELPER_SURFACE if not (repo_root / relative_path).is_file()]
 
 
+def target_runtime_files_missing(repo_root: Path) -> list[str]:
+    targets = (PAGE_PATH, WIN32_PATH)
+    return [relative_path for relative_path in targets if not (repo_root / relative_path).is_file()]
+
+
 def default_restored_checkout_root(repo_root: Path) -> Path:
     return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
 
@@ -140,16 +145,31 @@ def default_restored_checkout_root(repo_root: Path) -> Path:
 def restored_checkout_status(restored_checkout_root: Path) -> dict[str, object]:
     build_manifest = restored_checkout_root / "build.zig.zon"
     exists = restored_checkout_root.is_dir()
-    ready = exists and build_manifest.is_file()
+    missing_targets = target_runtime_files_missing(restored_checkout_root) if exists else [PAGE_PATH, WIN32_PATH]
+    missing_helper_surface = helper_surface_missing(restored_checkout_root) if exists else list(HELPER_SURFACE)
+    ready = exists and build_manifest.is_file() and not missing_targets and not missing_helper_surface
     reasons: list[str] = []
     if not exists:
         reasons.append(f"restored checkout is missing: {restored_checkout_root}")
-    elif not build_manifest.is_file():
-        reasons.append(f"restored checkout is incomplete: {build_manifest} is missing")
+    else:
+        if not build_manifest.is_file():
+            reasons.append(f"restored checkout is incomplete: {build_manifest} is missing")
+        if missing_targets:
+            reasons.append(
+                "restored checkout is missing runtime target files: "
+                + ", ".join(missing_targets)
+            )
+        if missing_helper_surface:
+            reasons.append(
+                "restored checkout is missing helper surface: "
+                + ", ".join(missing_helper_surface)
+            )
     return {
         "path": str(restored_checkout_root),
         "exists": exists,
         "ready": ready,
+        "missing_target_files": missing_targets,
+        "missing_helper_surface": missing_helper_surface,
         "reasons": reasons,
     }
 
@@ -345,6 +365,19 @@ class RuntimeReentryGateTests(unittest.TestCase):
             target.write_text("helper", encoding="utf-8")
         return repo_root
 
+    def create_restored_checkout(self, root: Path) -> Path:
+        restored_checkout = root / DEFAULT_RESTORED_CHECKOUT_NAME
+        (restored_checkout / "src/browser").mkdir(parents=True)
+        (restored_checkout / "src/display").mkdir(parents=True)
+        (restored_checkout / "build.zig.zon").write_text("{}", encoding="utf-8")
+        (restored_checkout / PAGE_PATH).write_text("// page", encoding="utf-8")
+        (restored_checkout / WIN32_PATH).write_text("// win32", encoding="utf-8")
+        for relative_path in HELPER_SURFACE:
+            target = restored_checkout / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("helper", encoding="utf-8")
+        return restored_checkout
+
     def test_publication_gate_passes_for_writable_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -357,9 +390,7 @@ class RuntimeReentryGateTests(unittest.TestCase):
             root = Path(tmpdir)
             repo_root = self.create_repo(root)
             (repo_root / ".git").rmdir()
-            restored_checkout = root / DEFAULT_RESTORED_CHECKOUT_NAME
-            restored_checkout.mkdir()
-            (restored_checkout / "build.zig.zon").write_text("{}", encoding="utf-8")
+            restored_checkout = self.create_restored_checkout(root)
             result = check_publication_gate(repo_root, restored_checkout)
             self.assertTrue(result["passed"])
 
@@ -371,6 +402,22 @@ class RuntimeReentryGateTests(unittest.TestCase):
             result = check_publication_gate(repo_root, root / "missing-checkout")
             self.assertFalse(result["passed"])
             self.assertIn("ISSUE3_RUNTIME_REENTRY_GATES.md", result["helper_surface_missing"][0])
+
+    def test_restored_checkout_requires_runtime_targets_and_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            (repo_root / ".git").rmdir()
+            restored_checkout = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            restored_checkout.mkdir()
+            (restored_checkout / "build.zig.zon").write_text("{}", encoding="utf-8")
+            result = check_publication_gate(repo_root, restored_checkout)
+            self.assertFalse(result["passed"])
+            self.assertIn(PAGE_PATH, result["restored_checkout"]["missing_target_files"])
+            self.assertIn(
+                "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+                result["restored_checkout"]["missing_helper_surface"],
+            )
 
     def test_discover_zig_candidates_finds_matching_line(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
