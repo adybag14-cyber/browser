@@ -40,8 +40,9 @@ Give the next writable checkout one branch-local route for:
   builder-attached Zig `0.17` dev bundle is available
 - surfacing staged Zig candidates under `../toolchains` before the fallback Zig
   `0.17` path is blamed for branch behavior
-- replaying the offline build-inputs restore route through one compact helper
-  surface before a raw archive command is trusted
+- replaying the offline build-inputs restore route, including its saved-archive
+  integrity preflight, through one compact helper surface before a raw archive
+  command is trusted
 - rerunning the readiness helper before trusting focused Zig output
 - handing control back to the narrow Windows runtime revalidation route as soon
   as Linux or WSL staging is no longer the blocker
@@ -141,10 +142,10 @@ the raw archive command:
 bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh
 ```
 
-That helper keeps the saved-Memory preflight, the `prepare_offline_build_inputs.sh`
-`--check-only` command, the real restore command, the saved Rust follow-up, the
-Zig recovery follow-up, and the first post-stage readiness rerun on one compact
-surface.
+That helper keeps the saved-Memory preflight, the saved-archive integrity
+preflight, the `prepare_offline_build_inputs.sh` `--check-only` command, the
+real restore command, the saved Rust follow-up, the Zig recovery follow-up, and
+the first post-stage readiness rerun on one compact surface.
 
 ## Run The Helper
 
@@ -241,8 +242,9 @@ attached-page or live-Google replay.
 - Run `bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh` when the
   saved Rust archive and shell setup need to stay on one compact helper surface.
 - Run `bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh` when the
-  offline dependency restore and its immediate follow-up checks need to stay on
-  one compact helper surface before the raw restore command is trusted.
+  offline dependency restore, its saved-archive integrity preflight, and its
+  immediate follow-up checks need to stay on one compact helper surface before
+  the raw restore command is trusted.
 - Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, rerun
   `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
   and then
