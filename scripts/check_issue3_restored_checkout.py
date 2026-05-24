@@ -57,6 +57,14 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh", "saved snapshot surface check"),
     ("scripts/linux/show_issue3_saved_browser_snapshot_route.sh", "saved snapshot route printer"),
     ("scripts/linux/restore_saved_browser_snapshot.sh", "saved snapshot restore helper"),
+    (
+        "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh",
+        "restored-checkout re-entry route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
+        "restored-checkout re-entry route printer",
+    ),
     ("scripts/linux/check_issue3_linux_build_readiness_route_surface.sh", "Linux build-readiness surface check"),
     ("scripts/linux/show_issue3_linux_build_readiness_route.sh", "Linux build-readiness route printer"),
     ("scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh", "runtime revalidation surface check"),
