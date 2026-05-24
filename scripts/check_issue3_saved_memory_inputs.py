@@ -51,9 +51,11 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime re-entry guide"),
     ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "Enter-submit runtime revalidation guide"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved-browser-snapshot restore guide"),
+    ("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry guide"),
     ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity guide"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness guide"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery guide"),
+    ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore guide"),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build inputs guide"),
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain guide"),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
@@ -109,6 +111,14 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
         "Zig toolchain recovery route helper",
+    ),
+    (
+        "scripts/linux/restore_issue3_fallback_zig_toolchain.sh",
+        "fallback Zig restore helper",
+    ),
+    (
+        "scripts/linux/restore_zig_toolchain_archive.sh",
+        "saved Zig archive restore helper",
     ),
     (
         "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
