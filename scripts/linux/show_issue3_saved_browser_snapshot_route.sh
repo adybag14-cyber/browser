@@ -100,7 +100,7 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${HELPER_ROOT}" ]]; then
-    HELPER_ROOT="${DEFAULT_REPO_ROOT}"
+    HELPER_ROOT="${REPO_ROOT}"
 fi
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
