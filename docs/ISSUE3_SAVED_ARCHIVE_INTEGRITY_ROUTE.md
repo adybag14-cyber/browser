@@ -1,16 +1,13 @@
 # Issue #3 Saved Archive Integrity Route
 
-Use this route when the saved Memory repo snapshot and dependency bundles are
-present, but the next restore or Linux build-readiness run still needs proof
-that those files are the expected artifacts instead of stale or manually edited
-lookalikes.
+Use this route before the saved-browser-snapshot restore path, Linux or WSL
+build-readiness work, or direct issue `#3` runtime re-entry when the run needs
+to confirm that the saved repo and dependency bundles are the exact expected
+artifacts rather than merely present at the right paths.
 
-This route complements the existing presence-only helper
-`scripts/check_issue3_saved_memory_inputs.py`.
-
-Use the presence helper first when the question is "are the required saved files
-mounted at all?" Use this integrity helper when the question is "are these the
-exact saved files the route expects before restore or offline staging starts?"
+This route turns the existing SHA-256 helper into a standard branch-local
+surface so future runs can fail fast on stale or damaged archives before they
+reopen deeper headed-mode work.
 
 Companion helpers:
 
@@ -20,17 +17,17 @@ Companion helpers:
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
+- `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 
 ## When To Use It
 
 Use this route when any of these are true:
 
-- the saved archive paths exist, but a run needs to rule out silent drift before
-  extracting the snapshot or staging dependencies
-- the saved-browser-snapshot restore path is about to be reused after a manual
-  archive copy, sync, or workspace move
-- the Linux or WSL build-readiness route needs a fast checksum gate before a
-  mismatch gets mistaken for a source or toolchain problem
+- the run depends on the saved Memory repo snapshot or dependency bundles
+- the saved-browser-snapshot restore route is about to extract a local checkout
+- Linux or WSL build-readiness work is about to trust the saved offline inputs
+- the direct `Page.zig` plus `win32_backend.zig` runtime lane is still blocked
+  on environment uncertainty and the run needs to rule out archive drift first
 
 ## Surface Check
 
@@ -38,54 +35,78 @@ From the browser repo root:
 
 ```bash
 bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
-python ./scripts/check_issue3_saved_archive_integrity.py --repo-root .
 ```
 
-The first command verifies that the route note, route printer, checksum helper,
-and companion restore/build-readiness helpers are still present on the branch.
+This verifies that the route note, route printer, SHA-256 helper, saved-Memory
+preflight, and the restore or follow-up helpers are still present on the
+branch-local helper surface before the run trusts the archive-integrity route.
 
-The second command computes the SHA-256 fingerprints for the saved repo
-snapshot and the saved dependency archives under `../memory`.
+## Print The Route
 
-If the attached fallback Zig bundle should also be treated as required, add:
-
-```bash
-python ./scripts/check_issue3_saved_archive_integrity.py --repo-root . --require-fallback-zig
-```
-
-## Compact Route
-
-When the route should stay on one helper surface instead of rebuilding the
-commands by hand, print the route helper:
+When the run wants the archive-integrity commands on one compact surface:
 
 ```bash
 bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
 ```
 
-Use `--json` when another helper needs the route as structured output.
-Use `--fallback-zig-archive /path/to/archive` when the fallback Zig bundle lives
-outside the default attached-files location.
+Use `--json` when another helper needs the route as structured output. Use
+`--require-fallback-zig` when the fallback Zig archive must exist and match its
+expected SHA-256 before the route is considered green.
 
-## Immediate Follow-up
+## Verify The Saved Archives
 
-After the integrity check passes, continue with the next matching route:
+Run the SHA-256 helper directly once the route surface is green:
 
 ```bash
-python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
-bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh --repo-root .
-bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root .
+python ./scripts/check_issue3_saved_archive_integrity.py --repo-root .
 ```
 
-If the checksums fail, replace or remount the mismatched archive before
-trusting restore, offline staging, or focused issue `#3` re-entry work.
+When the fallback Zig bundle is required for the next route replay, run the
+strict form:
+
+```bash
+python ./scripts/check_issue3_saved_archive_integrity.py \
+  --repo-root . \
+  --require-fallback-zig
+```
+
+The helper verifies:
+
+- `repo_archives/browser/01-browser-fork-headed-mode-foundation.zip`
+- `repo_archives/browser/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz`
+- `repo_archives/browser/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip`
+- `repo_archives/browser/dependencies/03-boringssl-zig-main.zip`
+- `repo_archives/browser/dependencies/04-zig-browser-depo.tar.zip`
+- the fallback Zig archive when it is explicitly required
+
+## Recommended Order
+
+Keep the early recovery checks in this order:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
+python ./scripts/check_issue3_saved_archive_integrity.py --repo-root .
+python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+After the archive-integrity helper is green, continue into whichever downstream
+route the run actually needs:
+
+- `bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh`
+- `bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 
 ## Working Rules
 
-- Use this route before blaming a broken restore or Linux build-readiness replay
-  on the source tree when the saved archives may have drifted.
-- Treat checksum mismatch as an input problem first, not as proof that the
-  branch or toolchain regressed.
-- Keep this route narrow: it verifies saved archive identity, not full toolchain
-  or dependency usability.
-- Move to the saved-browser-snapshot route or Linux build-readiness route only
-  after the presence and integrity gates both pass.
+- Use archive integrity as the first trust check when the saved offline inputs
+  are part of the plan.
+- Treat checksum mismatch as an environment problem first, not as proof that the
+  headed runtime patch regressed.
+- Run the saved-Memory presence preflight after the checksum route, not instead
+  of it.
+- Do not reopen Linux or WSL build-readiness or direct runtime validation on
+  top of mismatched saved archives.
+- Prefer this route when the current run needs a small, publishable recovery
+  step without touching the blocked large runtime files.
