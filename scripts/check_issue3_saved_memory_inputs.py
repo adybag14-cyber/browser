@@ -4,8 +4,9 @@
 
 This helper gives the issue #3 runtime and Linux build-readiness routes one
 small preflight for the saved Memory artifacts that scheduled runs depend on:
-the repo snapshot, README, blocker intelligence, dependency archives, and the
-optional attached fallback Zig bundle.
+the repo snapshot, README, blocker intelligence, dependency archives, the
+optional attached fallback Zig bundle, and the attached-page validation helper
+surface that later replay helpers expect to find after restore.
 """
 
 from __future__ import annotations
@@ -59,6 +60,10 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore guide"),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build inputs guide"),
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain guide"),
+    (
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md",
+        "Google-shaped attached-page validation flow guide",
+    ),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     (
         "scripts/check_issue3_saved_archive_integrity.py",
@@ -80,6 +85,26 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
         "Windows runtime re-entry route helper",
+    ),
+    (
+        "scripts/windows/check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+        "Windows attached-page replay surface checker",
+    ),
+    (
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Windows attached-page replay route helper",
+    ),
+    (
+        "scripts/windows/start_attached_pages_catalog.ps1",
+        "Windows attached-pages catalog launcher",
+    ),
+    (
+        "tmp-browser-smoke/attached-pages/README.md",
+        "attached-pages launcher runbook",
+    ),
+    (
+        "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
+        "attached-pages catalog launcher",
     ),
     (
         "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
@@ -898,6 +923,53 @@ class SavedMemoryInputsTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/linux/prepare_offline_build_inputs.sh",
+                result["missing_helper_surface_files"],
+            )
+
+    def test_restored_checkout_helper_surface_flags_missing_attached_page_routes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            restored_checkout_root = Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
+            restored_checkout_root.mkdir()
+            (restored_checkout_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES:
+                if relative_path in {
+                    "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md",
+                    "scripts/windows/check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+                    "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+                    "scripts/windows/start_attached_pages_catalog.ps1",
+                    "tmp-browser-smoke/attached-pages/README.md",
+                    "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
+                }:
+                    continue
+                target = restored_checkout_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("pass", encoding="utf-8")
+
+            result = collect_restored_checkout_result(restored_checkout_root)
+
+            self.assertEqual(result["status"], "incomplete-helper-surface")
+            self.assertIn(
+                "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/windows/check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/windows/start_attached_pages_catalog.ps1",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "tmp-browser-smoke/attached-pages/README.md",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
                 result["missing_helper_surface_files"],
             )
 
