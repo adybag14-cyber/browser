@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Inspect the saved browser snapshot archive for issue #3 helper-surface drift."""
+"""Inspect the saved browser snapshot archive for current issue #3 helper-surface drift."""
 
 from __future__ import annotations
 
@@ -19,8 +19,44 @@ REQUIRED_PATHS = [
         "Snapshot manifest expected in a reusable restored checkout.",
     ),
     (
+        "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+        "Runtime re-entry gate note that current issue #3 follow-up runs expect before reopening the direct runtime lane.",
+    ),
+    (
+        "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
+        "Direct issue #3 runtime revalidation note for the narrowed Page.zig and win32_backend.zig path.",
+    ),
+    (
+        "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
+        "Saved-archive integrity note that should stay available before restore or runtime follow-up trust the saved snapshot.",
+    ),
+    (
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
         "Read-first saved-browser-snapshot restore note for the blocked issue #3 runtime lane.",
+    ),
+    (
+        "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
+        "Restored-checkout re-entry note that should stay available after restore succeeds.",
+    ),
+    (
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+        "Linux or WSL build-readiness note that current follow-up runs expect after restore.",
+    ),
+    (
+        "scripts/check_issue3_saved_memory_inputs.py",
+        "Saved-Memory preflight that checks the repo archive, blocker file, and dependency bundles.",
+    ),
+    (
+        "scripts/check_issue3_restored_checkout.py",
+        "Restored-checkout readiness helper that should stay available after restore.",
+    ),
+    (
+        "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
+        "Windows runtime re-entry helper that should stay available when the restored helper surface is current.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_archive_integrity_route.sh",
+        "Compact route printer for the saved-archive-integrity path.",
     ),
     (
         "scripts/linux/restore_saved_browser_snapshot.sh",
@@ -29,14 +65,6 @@ REQUIRED_PATHS = [
     (
         "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
         "Compact route printer for the saved-browser-snapshot restore path.",
-    ),
-    (
-        "scripts/check_issue3_saved_memory_inputs.py",
-        "Saved-Memory preflight that checks the repo archive, blocker file, and dependency bundles.",
-    ),
-    (
-        "scripts/linux/show_issue3_linux_build_readiness_route.sh",
-        "Companion Linux or WSL build-readiness route printer after restore.",
     ),
     (
         "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
@@ -141,9 +169,10 @@ def human_output(archive_path: str, top_level_folder: str, statuses: list[PathSt
         [
             "",
             "Working rules:",
-            "  - Prefer a plain restore only when the saved archive already contains the current helper surface.",
+            "  - Prefer a plain restore only when the saved archive already contains the current restore and runtime helper surface.",
             "  - Use --sync-helper-surface when any helper path above is missing from the archive.",
             "  - Keep the live helper root for the next follow-up commands when the archive helper surface is stale.",
+            "  - Treat this helper as a quick trust check for the saved snapshot archive, not as proof that build or runtime validation is already green.",
         ]
     )
     if missing:
@@ -172,6 +201,10 @@ def main() -> int:
         return 1
 
     with zipfile.ZipFile(archive_path) as archive:
+        bad_member = archive.testzip()
+        if bad_member is not None:
+            print(f"Snapshot archive failed CRC validation at: {bad_member}", file=sys.stderr)
+            return 1
         names = set(archive.namelist())
 
     top_level_folder = infer_top_level_folder(names)
