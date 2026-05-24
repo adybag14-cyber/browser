@@ -14,6 +14,7 @@ Companion helpers:
 - `scripts/linux/restore_saved_browser_snapshot.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 
@@ -90,6 +91,7 @@ follow-up root for the next Linux or WSL replay:
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface --check-only
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface
 python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
@@ -106,6 +108,7 @@ Keep using the current repo root helper surface against the extracted checkout:
 
 ```bash
 python ./scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
+python ./scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
@@ -115,9 +118,15 @@ into the restored checkout itself:
 
 ```bash
 python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
+
+Run the saved-Memory preflight first so missing archives or helper drift fail
+before deeper staging. Run the saved-archive integrity check immediately after
+that when the route needs to prove the repo snapshot and dependency bundles
+still match the expected exact artifacts before broader Linux or WSL staging.
 
 The saved archive is a stable historical snapshot, so it may not contain the
 newest branch-local recovery helpers. Do not switch into the restored checkout
@@ -128,9 +137,9 @@ The route helper prints those same commands with the resolved archive,
 destination, helper-root, optional helper-surface sync mode, and optional
 fallback Zig archive surface already filled in.
 
-That keeps the saved-Memory preflight, the Linux build-readiness route, and the
-runtime re-entry route anchored to the restored checkout before the direct issue
-`#3` runtime lane is reopened again.
+That keeps the saved-Memory preflight, the saved-archive integrity check, the
+Linux build-readiness route, and the runtime re-entry route anchored to the
+restored checkout before the direct issue `#3` runtime lane is reopened again.
 
 ## Working Rules
 
@@ -144,3 +153,6 @@ runtime re-entry route anchored to the restored checkout before the direct issue
   restore should stay as a clean historical snapshot.
 - Treat this route as a setup step for build-readiness and runtime re-entry, not
   as proof that the branch is ready for focused Zig validation.
+- When exact saved inputs matter, run `check_issue3_saved_archive_integrity.py`
+  right after the saved-Memory preflight instead of assuming the mounted
+  archives are still the expected copies.
