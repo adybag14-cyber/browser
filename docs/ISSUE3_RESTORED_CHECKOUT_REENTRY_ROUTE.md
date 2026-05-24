@@ -81,14 +81,33 @@ bash ./scripts/linux/restore_saved_browser_snapshot.sh \
   --destination ../browser-memory-snapshot
 ```
 
-5. Run the restored-checkout readiness helper before anything wider:
+5. If the restored checkout already exists and only the helper surface drifted or stayed stale, refresh it in place instead of re-extracting the whole snapshot:
+
+```bash
+bash ./scripts/linux/show_issue3_restored_checkout_reentry_route.sh \
+  --repo-root . \
+  --helper-root . \
+  --restored-checkout-root ../browser-memory-snapshot \
+  --memory-root ../memory \
+  --expect-helper-surface
+
+bash ./scripts/linux/restore_saved_browser_snapshot.sh \
+  --browser-root . \
+  --helper-root . \
+  --memory-root ../memory \
+  --archive ../memory/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip \
+  --destination ../browser-memory-snapshot \
+  --sync-only
+```
+
+6. Run the restored-checkout readiness helper before anything wider:
 
 ```bash
 python ./scripts/check_issue3_restored_checkout.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-6. If the restore used the synced helper-surface mode, keep the live checkout as the comparison root and require the helper surface explicitly:
+7. If the restore used the synced helper-surface mode, keep the live checkout as the comparison root and require the helper surface explicitly:
 
 ```bash
 python ./scripts/check_issue3_restored_checkout.py \
@@ -97,28 +116,28 @@ python ./scripts/check_issue3_restored_checkout.py \
   --expect-helper-surface
 ```
 
-7. Only after the restored checkout passes, run the saved-memory preflight:
+8. Only after the restored checkout passes, run the saved-memory preflight:
 
 ```bash
 python ./scripts/check_issue3_saved_memory_inputs.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-8. If the route still depends on the exact saved archives, run the saved-archive integrity helper next:
+9. If the route still depends on the exact saved archives, run the saved-archive integrity helper next:
 
 ```bash
 python ./scripts/check_issue3_saved_archive_integrity.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-9. When the restored checkout and saved inputs are both green, move into Linux or WSL build readiness:
+10. When the restored checkout and saved inputs are both green, move into Linux or WSL build readiness:
 
 ```bash
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh \
   --repo-root ../browser-memory-snapshot
 ```
 
-10. Reopen the narrowed runtime route only after the restored checkout, saved inputs, and build-readiness surfaces agree:
+11. Reopen the narrowed runtime route only after the restored checkout, saved inputs, and build-readiness surfaces agree:
 
 ```bash
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh \
@@ -140,6 +159,7 @@ If the restored-checkout helper fails:
 
 - do not treat later Linux or WSL helper output as trustworthy yet
 - rerun the snapshot restore in synced helper-surface mode when the restored checkout should become its own follow-up root
+- use the `--sync-only` refresh route when the restored checkout already exists and only the helper surface needs to be repaired in place
 - keep using the live helper root when the restored checkout should remain a clean historical snapshot
 - fix the checkout-state problem before blaming the direct `Page.zig` plus `win32_backend.zig` runtime slice
 
