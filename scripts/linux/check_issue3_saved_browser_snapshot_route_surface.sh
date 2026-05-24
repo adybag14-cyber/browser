@@ -116,7 +116,7 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|sync_restored_checkout_check|The route printer still exposes the synced restored-checkout check in JSON output for downstream tooling."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|sync_saved_archive_integrity|The route printer still exposes the synced saved-archive integrity check in JSON output for downstream tooling."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|follow_up_helper_root|The route printer still exposes the follow-up helper root in JSON output for downstream tooling."
-    "scripts/linux/show_issue3_saved_BROWSER_snapshot_route.sh|Sync helper surface:|The route printer still prints whether helper-surface sync is enabled."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Sync helper surface:|The route printer still prints whether helper-surface sync is enabled."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Recommended synced restore when the archive helper surface is stale:|The route printer keeps the safer synced restore path visible when the archive lags live helpers."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Synced saved-Memory preflight:|The route printer keeps the synced saved-Memory preflight visible for self-contained restores."
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|Synced Linux or WSL build-readiness route:|The route printer keeps the synced Linux follow-up route visible for self-contained restores."
