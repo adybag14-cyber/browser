@@ -6,8 +6,9 @@ usage() {
     cat <<'EOF'
 Usage:
   scripts/linux/prepare_offline_build_inputs.sh \
-    --browser-deps-archive /path/to/zig-browser-depo.tar.zip \
-    --boringssl-archive /path/to/boringssl-zig-main.zip \
+    [--saved-archives-root /path/to/memory/repo_archives/browser/dependencies] \
+    [--browser-deps-archive /path/to/zig-browser-depo.tar.zip] \
+    [--boringssl-archive /path/to/boringssl-zig-main.zip] \
     [--html5ever-archive /path/to/litefetch-html5ever-linux-x86_64-deps.zip] \
     [--browser-root /path/to/browser-repo] \
     [--offline-deps-root /path/to/offline-deps] \
@@ -25,6 +26,10 @@ saved html5ever dependency bundle, and when a prebuilt V8 archive is available
 it rewrites ../zig-v8-fork/build.zig.zon to skip the unused depot_tools fetch
 that would otherwise block offline validation.
 
+Use --saved-archives-root to auto-resolve the standard saved browser, BoringSSL,
+and optional html5ever archive filenames under the Memory dependency folder.
+Explicit archive arguments still win when both forms are supplied.
+
 Use --check-only to validate the supplied paths and print the derived restore
 layout without mutating the repo or extracting any archives.
 EOF
@@ -34,6 +39,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
+SAVED_ARCHIVES_ROOT=""
 BROWSER_DEPS_ARCHIVE=""
 BORINGSSL_ARCHIVE=""
 HTML5EVER_ARCHIVE=""
@@ -44,6 +50,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --browser-root)
             BROWSER_ROOT="$2"
+            shift 2
+            ;;
+        --saved-archives-root)
+            SAVED_ARCHIVES_ROOT="$2"
             shift 2
             ;;
         --browser-deps-archive)
@@ -78,13 +88,47 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ ! -e "${BROWSER_ROOT}" ]]; then
+    echo "Browser root does not exist: ${BROWSER_ROOT}" >&2
+    exit 1
+fi
+
+if [[ ! -f "${BROWSER_ROOT}/build.zig.zon" ]]; then
+    echo "Browser root does not contain build.zig.zon: ${BROWSER_ROOT}" >&2
+    exit 1
+fi
+
+BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
+WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
+
+if [[ -n "${SAVED_ARCHIVES_ROOT}" ]]; then
+    if [[ ! -d "${SAVED_ARCHIVES_ROOT}" ]]; then
+        echo "Saved archives root is not a directory: ${SAVED_ARCHIVES_ROOT}" >&2
+        exit 1
+    fi
+    SAVED_ARCHIVES_ROOT="$(cd "${SAVED_ARCHIVES_ROOT}" && pwd)"
+
+    if [[ -z "${BROWSER_DEPS_ARCHIVE}" ]]; then
+        BROWSER_DEPS_ARCHIVE="${SAVED_ARCHIVES_ROOT}/04-zig-browser-depo.tar.zip"
+    fi
+    if [[ -z "${BORINGSSL_ARCHIVE}" ]]; then
+        BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/03-boringssl-zig-main.zip"
+    fi
+    if [[ -z "${HTML5EVER_ARCHIVE}" ]]; then
+        SAVED_HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
+        if [[ -f "${SAVED_HTML5EVER_ARCHIVE}" ]]; then
+            HTML5EVER_ARCHIVE="${SAVED_HTML5EVER_ARCHIVE}"
+        fi
+    fi
+fi
+
 if [[ -z "${BROWSER_DEPS_ARCHIVE}" || -z "${BORINGSSL_ARCHIVE}" ]]; then
-    echo "Both --browser-deps-archive and --boringssl-archive are required." >&2
+    echo "Provide --saved-archives-root or pass both --browser-deps-archive and --boringssl-archive." >&2
     usage >&2
     exit 1
 fi
 
-for required_path in "${BROWSER_ROOT}" "${BROWSER_DEPS_ARCHIVE}" "${BORINGSSL_ARCHIVE}"; do
+for required_path in "${BROWSER_DEPS_ARCHIVE}" "${BORINGSSL_ARCHIVE}"; do
     if [[ ! -e "${required_path}" ]]; then
         echo "Required path does not exist: ${required_path}" >&2
         exit 1
@@ -96,13 +140,6 @@ if [[ -n "${HTML5EVER_ARCHIVE}" && ! -e "${HTML5EVER_ARCHIVE}" ]]; then
     exit 1
 fi
 
-if [[ ! -f "${BROWSER_ROOT}/build.zig.zon" ]]; then
-    echo "Browser root does not contain build.zig.zon: ${BROWSER_ROOT}" >&2
-    exit 1
-fi
-
-BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
-WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
     OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
 fi
@@ -181,11 +218,22 @@ if [[ "${CHECK_ONLY}" -eq 1 ]]; then
     echo "Offline dependency surface check passed."
     echo "Browser root: ${BROWSER_ROOT}"
     echo "Workspace root: ${WORKSPACE_ROOT}"
+    if [[ -n "${SAVED_ARCHIVES_ROOT}" ]]; then
+        echo "Saved archives root: ${SAVED_ARCHIVES_ROOT}"
+    fi
     echo "Resolved restore targets:"
     echo "  zig-v8-fork -> ${WORKSPACE_ROOT}/zig-v8-fork"
     echo "  boringssl-zig -> ${WORKSPACE_ROOT}/boringssl-zig"
     echo "  offline deps -> ${OFFLINE_DEPS_ROOT}"
     echo "  build.zig.zon offline root -> ${OFFLINE_DEPS_RELATIVE_ROOT}"
+    echo "Archive sources:"
+    echo "  browser deps archive -> ${BROWSER_DEPS_ARCHIVE}"
+    echo "  BoringSSL archive -> ${BORINGSSL_ARCHIVE}"
+    if [[ -n "${HTML5EVER_ARCHIVE}" ]]; then
+        echo "  html5ever archive -> ${HTML5EVER_ARCHIVE}"
+    else
+        echo "  html5ever archive -> not supplied"
+    fi
     echo "Archive contents:"
     echo "  zig-v8-fork tarball -> ${ZIG_V8_ARCHIVE_PATH}"
     echo "  brotli tarball -> ${BROTLI_ARCHIVE_PATH}"
@@ -198,11 +246,6 @@ if [[ "${CHECK_ONLY}" -eq 1 ]]; then
         printf "  zig build --summary all -Dprebuilt_v8_path='%s/%s'\n" "${OFFLINE_DEPS_ROOT}" "$(basename "${PREBUILT_V8_ARCHIVE}")"
     else
         echo "  prebuilt V8 archive -> not present"
-    fi
-    if [[ -n "${HTML5EVER_ARCHIVE}" ]]; then
-        echo "  html5ever archive -> ${HTML5EVER_ARCHIVE}"
-    else
-        echo "  html5ever archive -> not supplied"
     fi
     exit 0
 fi
