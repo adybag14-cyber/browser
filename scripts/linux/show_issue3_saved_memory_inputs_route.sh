@@ -7,6 +7,7 @@ usage() {
 Usage:
   bash scripts/linux/show_issue3_saved_memory_inputs_route.sh \
     [--repo-root /path/to/browser-repo] \
+    [--helper-root /path/to/live/helper/browser-repo] \
     [--memory-root /path/to/workspace/memory] \
     [--agent-files-root /path/to/agent_files] \
     [--restored-checkout-root /path/to/browser-memory-snapshot] \
@@ -35,6 +36,7 @@ DEFAULT_RESTORED_CHECKOUT_NAME="browser-memory-snapshot"
 DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME="zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
 
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
+HELPER_ROOT=""
 MEMORY_ROOT=""
 AGENT_FILES_ROOT=""
 RESTORED_CHECKOUT_ROOT=""
@@ -46,6 +48,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --repo-root)
             REPO_ROOT="$2"
+            shift 2
+            ;;
+        --helper-root)
+            HELPER_ROOT="$2"
             shift 2
             ;;
         --memory-root)
@@ -85,11 +91,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+if [[ -z "${HELPER_ROOT}" ]]; then
+    HELPER_ROOT="${REPO_ROOT}"
+fi
+HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
+    MEMORY_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)/memory"
 fi
 if [[ -z "${AGENT_FILES_ROOT}" ]]; then
-    AGENT_FILES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/agent_files"
+    AGENT_FILES_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)/agent_files"
 fi
 if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
     RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/${DEFAULT_RESTORED_CHECKOUT_NAME}"
@@ -105,13 +115,13 @@ REPO_SNAPSHOT_PATH="${MEMORY_ROOT}/repo_archives/browser/01-browser-fork-headed-
 BLOCKER_INTELLIGENCE_PATH="${MEMORY_ROOT}/repo_archives/browser/blocker_intelligence.yaml"
 DEPENDENCIES_ROOT="${MEMORY_ROOT}/repo_archives/browser/dependencies"
 
-ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-SAVED_INPUT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
+ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+SAVED_INPUT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
 QUICK_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --skip-archive-integrity-check"
 RESTORED_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
-SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --destination $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
-BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${MEMORY_ROOT}/repo_archives/browser")"
-RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --destination $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${MEMORY_ROOT}/repo_archives/browser")"
+RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_INPUT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -134,6 +144,7 @@ import json
 print(json.dumps({
     "issue": "Google issue #3 saved Memory inputs route",
     "repo_root": ${REPO_ROOT@Q},
+    "helper_root": ${HELPER_ROOT@Q},
     "memory_root": ${MEMORY_ROOT@Q},
     "agent_files_root": ${AGENT_FILES_ROOT@Q},
     "restored_checkout_root": ${RESTORED_CHECKOUT_ROOT@Q},
@@ -156,6 +167,7 @@ print(json.dumps({
         "Use saved_input_preflight for the normal archive readability and presence check.",
         "Use quick_saved_input_preflight only for a fast branch decision when archive integrity is not the question.",
         "Use restored_checkout_saved_input_preflight when a reusable checkout already exists and the route should confirm both saved inputs and the restored helper surface together.",
+        "Point helper_root at the live branch-local helper surface when repo_root is a restored checkout that should reuse newer route helpers.",
         "Use saved_browser_snapshot_route when the saved inputs are green but there is still no restored checkout.",
         "Use linux_build_readiness_route when the next blocker is still Zig-line selection, Rust restore, or offline dependency staging.",
         "Use runtime_reentry_route only after the saved inputs are green and the direct Page.zig plus win32_backend.zig lane is truly ready to reopen."
@@ -169,6 +181,7 @@ cat <<EOF
 Google issue #3 saved Memory inputs route
 
 Repo root:               ${REPO_ROOT}
+Live helper root:        ${HELPER_ROOT}
 Memory root:             ${MEMORY_ROOT}
 Agent files root:        ${AGENT_FILES_ROOT}
 Restored checkout root:  ${RESTORED_CHECKOUT_ROOT}
@@ -214,6 +227,7 @@ Working rules
   - Run the saved-Memory preflight before restore, build-readiness, or runtime helpers when the route depends on the saved repo snapshot and dependency bundles.
   - Use the quick presence-only command for branch selection only; it is not honest archive validation.
   - Use the restored-checkout preflight when a reusable checkout already exists and the route should confirm that surface before broader helper output is trusted.
+  - Point --helper-root at the live branch-local helper surface when repo_root is a restored checkout that should still reuse newer helper notes and scripts.
   - Use the restore route when the saved archive exists but there is still no reusable checkout for Linux or WSL follow-up.
   - Use the Linux or WSL build-readiness route after the saved-Memory preflight passes and the next blocker is still Rust, Zig, offline dependency staging, or prebuilt V8 readiness.
   - Use the direct runtime re-entry route only after the saved checkout exists and the environment gates are no longer the blocker.
