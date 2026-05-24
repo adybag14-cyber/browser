@@ -153,9 +153,10 @@ fi
 DESTINATION_PARENT_RAW="$(dirname "${DESTINATION}")"
 mkdir -p "${DESTINATION_PARENT_RAW}"
 DESTINATION_PARENT="$(cd "${DESTINATION_PARENT_RAW}" && pwd)"
-
-FOLLOW_UP_DISCOVERY="bash scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}'"
-FOLLOW_UP_BUILD_READINESS_TEMPLATE="python scripts/check_linux_build_readiness.py --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}' --zig <restored-zig-path>"
+FOLLOW_UP_DISCOVERY_SCRIPT="${BROWSER_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
+FOLLOW_UP_BUILD_READINESS_SCRIPT="${BROWSER_ROOT}/scripts/check_linux_build_readiness.py"
+FOLLOW_UP_DISCOVERY="bash '${FOLLOW_UP_DISCOVERY_SCRIPT}' --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}'"
+FOLLOW_UP_BUILD_READINESS_TEMPLATE="python '${FOLLOW_UP_BUILD_READINESS_SCRIPT}' --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}' --zig <restored-zig-path>"
 
 if [[ "${JSON}" == "true" ]]; then
     printf '{\n'
@@ -239,5 +240,5 @@ echo "zig version: $("${ZIG_BIN}" version | tr -d '\r')"
 echo
 echo "Suggested follow-up commands:"
 printf "  %s\n" "${FOLLOW_UP_DISCOVERY}"
-printf "  python scripts/check_linux_build_readiness.py --repo-root '%s' --toolchains-root '%s' --zig '%s'\n" \
-    "${BROWSER_ROOT}" "${TOOLCHAINS_ROOT}" "${ZIG_BIN}"
+printf "  python '%s' --repo-root '%s' --toolchains-root '%s' --zig '%s'\n" \
+    "${FOLLOW_UP_BUILD_READINESS_SCRIPT}" "${BROWSER_ROOT}" "${TOOLCHAINS_ROOT}" "${ZIG_BIN}"
