@@ -6,22 +6,15 @@ usage() {
     cat <<'EOF'
 Usage:
   bash scripts/linux/show_issue3_restored_checkout_route.sh \
+    [--repo-root /path/to/browser-repo] \
     [--helper-root /path/to/live/browser-repo] \
-    [--restored-root /path/to/restored/browser-checkout] \
+    [--restored-checkout-root /path/to/restored/browser-checkout] \
+    [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
-Print the smallest issue #3 Linux or WSL follow-up route for an already
-restored browser snapshot checkout.
+Print the restored-checkout replay route for the blocked issue #3 Linux or WSL
+re-entry path after a saved snapshot checkout already exists.
 EOF
-}
-
-json_escape() {
-    python3 - "$1" <<'PY'
-import json
-import sys
-
-print(json.dumps(sys.argv[1]))
-PY
 }
 
 format_shell_arg() {
@@ -35,20 +28,30 @@ PY
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
-DEFAULT_HELPER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-DEFAULT_RESTORED_ROOT="$(cd "${DEFAULT_HELPER_ROOT}/.." && pwd)/browser-memory-snapshot"
-HELPER_ROOT="${DEFAULT_HELPER_ROOT}"
-RESTORED_ROOT="${DEFAULT_RESTORED_ROOT}"
+DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+DEFAULT_RESTORED_CHECKOUT_NAME="browser-memory-snapshot"
+REPO_ROOT="${DEFAULT_REPO_ROOT}"
+HELPER_ROOT=""
+RESTORED_CHECKOUT_ROOT=""
+FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --repo-root)
+            REPO_ROOT="$2"
+            shift 2
+            ;;
         --helper-root)
             HELPER_ROOT="$2"
             shift 2
             ;;
-        --restored-root)
-            RESTORED_ROOT="$2"
+        --restored-checkout-root)
+            RESTORED_CHECKOUT_ROOT="$2"
+            shift 2
+            ;;
+        --fallback-zig-archive)
+            FALLBACK_ZIG_ARCHIVE="$2"
             shift 2
             ;;
         --json)
@@ -67,152 +70,136 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+if [[ -z "${HELPER_ROOT}" ]]; then
+    HELPER_ROOT="${REPO_ROOT}"
+fi
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
-RESTORED_ROOT="$(cd "$(dirname "${RESTORED_ROOT}")" && pwd)/$(basename "${RESTORED_ROOT}")"
-
-declare -a REQUIRED_RESTORED_FILES=(
-    "build.zig.zon"
-    "src/browser/Page.zig"
-    "src/display/win32_backend.zig"
-)
-
-declare -a REQUIRED_HELPER_FILES=(
-    "scripts/check_issue3_saved_memory_inputs.py"
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh"
-    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"
-)
-
-restored_exists=0
-[[ -d "${RESTORED_ROOT}" ]] && restored_exists=1
-
-restored_missing=0
-for relative_path in "${REQUIRED_RESTORED_FILES[@]}"; do
-    [[ -f "${RESTORED_ROOT}/${relative_path}" ]] || restored_missing=$((restored_missing + 1))
-done
-
-restored_helper_missing=0
-for relative_path in "${REQUIRED_HELPER_FILES[@]}"; do
-    [[ -f "${RESTORED_ROOT}/${relative_path}" ]] || restored_helper_missing=$((restored_helper_missing + 1))
-done
-
-live_helper_missing=0
-for relative_path in "${REQUIRED_HELPER_FILES[@]}"; do
-    [[ -f "${HELPER_ROOT}/${relative_path}" ]] || live_helper_missing=$((live_helper_missing + 1))
-done
-
-surface_check_command="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_restored_checkout_surface.sh") --helper-root $(format_shell_arg "${HELPER_ROOT}") --restored-root $(format_shell_arg "${RESTORED_ROOT}")"
-restore_surface_check_command="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${HELPER_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --destination $(format_shell_arg "${RESTORED_ROOT}") --check-only"
-restore_command="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${HELPER_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --destination $(format_shell_arg "${RESTORED_ROOT}")"
-sync_refresh_check_command="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${HELPER_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --destination $(format_shell_arg "${RESTORED_ROOT}") --sync-helper-surface --check-only"
-sync_refresh_command="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${HELPER_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --destination $(format_shell_arg "${RESTORED_ROOT}") --sync-helper-surface --force"
-
-status="blocked"
-follow_up_mode="blocked"
-follow_up_helper_root=""
-
-if [[ "${restored_exists}" -eq 1 && "${restored_missing}" -eq 0 ]]; then
-    if [[ "${restored_helper_missing}" -eq 0 ]]; then
-        status="ready"
-        follow_up_mode="self-contained"
-        follow_up_helper_root="${RESTORED_ROOT}"
-    elif [[ "${live_helper_missing}" -eq 0 ]]; then
-        status="ready"
-        follow_up_mode="live-helper-root"
-        follow_up_helper_root="${HELPER_ROOT}"
+if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
+    RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/${DEFAULT_RESTORED_CHECKOUT_NAME}"
+fi
+if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${HELPER_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
 fi
 
-saved_memory_preflight_command=""
-linux_build_route_command=""
-runtime_route_command=""
-if [[ -n "${follow_up_helper_root}" ]]; then
-    saved_memory_preflight_command="python $(format_shell_arg "${follow_up_helper_root}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${RESTORED_ROOT}")"
-    linux_build_route_command="bash $(format_shell_arg "${follow_up_helper_root}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${RESTORED_ROOT}")"
-    runtime_route_command="bash $(format_shell_arg "${follow_up_helper_root}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${RESTORED_ROOT}")"
+ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_restored_checkout_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
+SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SYNCED_SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SYNCED_SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SYNCED_LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SYNCED_RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+
+if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNCED_SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNCED_SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNCED_LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNCED_RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
 if [[ "${JSON}" -eq 1 ]]; then
-    printf '{\n'
-    printf '  "profile": %s,\n' "$(json_escape "issue3-restored-checkout-route")"
-    printf '  "helper_root": %s,\n' "$(json_escape "${HELPER_ROOT}")"
-    printf '  "restored_root": %s,\n' "$(json_escape "${RESTORED_ROOT}")"
-    printf '  "restored_checkout_exists": %s,\n' "$([[ "${restored_exists}" -eq 1 ]] && echo true || echo false)"
-    printf '  "restored_missing_count": %d,\n' "${restored_missing}"
-    printf '  "restored_helper_missing_count": %d,\n' "${restored_helper_missing}"
-    printf '  "live_helper_missing_count": %d,\n' "${live_helper_missing}"
-    printf '  "status": %s,\n' "$(json_escape "${status}")"
-    printf '  "follow_up_mode": %s,\n' "$(json_escape "${follow_up_mode}")"
-    printf '  "follow_up_helper_root": %s,\n' "$(json_escape "${follow_up_helper_root}")"
-    printf '  "commands": {\n'
-    printf '    "surface_check": %s,\n' "$(json_escape "${surface_check_command}")"
-    printf '    "restore_surface_check": %s,\n' "$(json_escape "${restore_surface_check_command}")"
-    printf '    "restore": %s,\n' "$(json_escape "${restore_command}")"
-    printf '    "sync_refresh_surface_check": %s,\n' "$(json_escape "${sync_refresh_check_command}")"
-    printf '    "sync_refresh": %s,\n' "$(json_escape "${sync_refresh_command}")"
-    printf '    "saved_memory_preflight": %s,\n' "$(json_escape "${saved_memory_preflight_command}")"
-    printf '    "linux_build_route": %s,\n' "$(json_escape "${linux_build_route_command}")"
-    printf '    "runtime_route": %s\n' "$(json_escape "${runtime_route_command}")"
-    printf '  }\n'
-    printf '}\n'
-    [[ "${status}" == "ready" ]] && exit 0
-    exit 1
-fi
+    python3 - <<PY
+import json
 
-cat <<EOF
-Issue #3 restored checkout reuse route
-
-Live helper root:  ${HELPER_ROOT}
-Restored checkout: ${RESTORED_ROOT}
-
-Recommended first check
-=======================
-  ${surface_check_command}
-EOF
-
-if [[ "${status}" == "ready" ]]; then
-    cat <<EOF
-
-Ready state
-===========
-  Mode: ${follow_up_mode}
-
-Suggested follow-up commands
-============================
-  ${saved_memory_preflight_command}
-  ${linux_build_route_command}
-  ${runtime_route_command}
-EOF
-
-    if [[ "${follow_up_mode}" == "live-helper-root" ]]; then
-        cat <<EOF
-
-Optional self-contained refresh
-===============================
-  Surface check:
-    ${sync_refresh_check_command}
-  Refresh the restored checkout with the current helper surface:
-    ${sync_refresh_command}
-EOF
-    fi
-
+print(json.dumps({
+    "issue": "Google issue #3 restored checkout replay route",
+    "repo_root": ${REPO_ROOT@Q},
+    "helper_root": ${HELPER_ROOT@Q},
+    "restored_checkout_root": ${RESTORED_CHECKOUT_ROOT@Q},
+    "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
+    "commands": {
+        "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
+        "restored_checkout_check": ${RESTORED_CHECKOUT_CHECK_COMMAND@Q},
+        "synced_restored_checkout_check": ${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
+        "saved_memory_preflight": ${SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
+        "synced_saved_memory_preflight": ${SYNCED_SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
+        "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
+        "synced_saved_archive_integrity": ${SYNCED_SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
+        "linux_build_route": ${LINUX_BUILD_ROUTE_COMMAND@Q},
+        "synced_linux_build_route": ${SYNCED_LINUX_BUILD_ROUTE_COMMAND@Q},
+        "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q},
+        "synced_runtime_route": ${SYNCED_RUNTIME_ROUTE_COMMAND@Q}
+    },
+    "notes": [
+        "Run route_surface first so missing branch-local helpers fail fast before the restored checkout is trusted.",
+        "Run restored_checkout_check right after restore when the restored checkout is still using the live helper root.",
+        "Run synced_restored_checkout_check when the restored checkout was created with a self-contained synced helper surface.",
+        "Use the live-helper commands when the restored checkout should stay a clean historical snapshot.",
+        "Use the synced commands only when the restored checkout carries the current issue #3 helper docs and scripts.",
+        "Run the saved-Memory preflight after the restored-checkout check and before trusting build-readiness or runtime route output.",
+        "Run saved-archive integrity after the saved-Memory preflight when the route still depends on the exact saved repo and dependency bundles.",
+        "Use the Linux build route when the next blocker is still toolchain or offline dependency staging.",
+        "Use the direct runtime route only after the restored checkout exists and the publication and toolchain gates are green."
+    ]
+}, indent=2))
+PY
     exit 0
 fi
 
 cat <<EOF
+Google issue #3 restored checkout replay route
 
-Restore path
-============
-  Surface check:
-    ${restore_surface_check_command}
-  Restore the saved snapshot:
-    ${restore_command}
+Repo root:                ${REPO_ROOT}
+Live helper root:         ${HELPER_ROOT}
+Restored checkout root:   ${RESTORED_CHECKOUT_ROOT}
+Fallback Zig archive:     ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
 
-If the restored checkout already exists but still lacks the current helper surface,
-refresh it as a self-contained checkout:
-  Surface check:
-    ${sync_refresh_check_command}
-  Refresh command:
-    ${sync_refresh_command}
+Read first
+==========
+  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
+  docs/ISSUE3_RUNTIME_REENTRY_GATES.md
+
+Suggested route
+===============
+  Route surface check:
+    ${ROUTE_SURFACE_COMMAND}
+
+  Restored-checkout readiness check:
+    ${RESTORED_CHECKOUT_CHECK_COMMAND}
+
+  Saved-Memory preflight against the restored checkout:
+    ${SAVED_MEMORY_PREFLIGHT_COMMAND}
+
+  Saved-archive integrity preflight against the restored checkout:
+    ${SAVED_ARCHIVE_INTEGRITY_COMMAND}
+
+  Linux or WSL build-readiness route from the restored checkout:
+    ${LINUX_BUILD_ROUTE_COMMAND}
+
+  Direct runtime re-entry route from the restored checkout:
+    ${RUNTIME_ROUTE_COMMAND}
+
+  Restored checkout with a self-contained synced helper surface:
+    Synced restored-checkout readiness check:
+      ${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND}
+    Synced saved-Memory preflight:
+      ${SYNCED_SAVED_MEMORY_PREFLIGHT_COMMAND}
+    Synced saved-archive integrity preflight:
+      ${SYNCED_SAVED_ARCHIVE_INTEGRITY_COMMAND}
+    Synced Linux or WSL build-readiness route:
+      ${SYNCED_LINUX_BUILD_ROUTE_COMMAND}
+    Synced direct runtime re-entry route:
+      ${SYNCED_RUNTIME_ROUTE_COMMAND}
+
+Working rules
+=============
+  - Run the route surface check first so missing branch-local helpers fail before the restored checkout is trusted.
+  - Run the restored-checkout readiness check immediately after restore so missing repo surfaces or helper drift fail before broader preflights.
+  - Use the live-helper commands when the restored checkout should stay a clean historical snapshot.
+  - Use the self-contained synced helper surface commands only when the restored checkout carries the current issue #3 helper docs and scripts.
+  - Run the saved-Memory preflight after the restored-checkout check and before trusting build-readiness or runtime route output.
+  - Run the saved-archive integrity preflight after the saved-Memory preflight when the route still depends on the exact saved repo and dependency bundles.
+  - Use the Linux or WSL build-readiness route when the next blocker is still toolchain or offline dependency staging.
+  - Reopen the direct Page.zig plus win32_backend.zig lane only after the restored checkout exists and the publication and toolchain gates are green.
 EOF
-
-exit 1
