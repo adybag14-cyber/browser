@@ -93,13 +93,13 @@ if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${DEPENDENCIES_ROOT}/${DEFAULT_ARCHIVE_NAME}"
 fi
 
-SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
-CHECK_ONLY_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --check-only"
-RESTORE_COMMAND="bash scripts/linux/restore_saved_rust_toolchain.sh --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}")"
+SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
+CHECK_ONLY_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --check-only"
+RESTORE_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}")"
 PATH_COMMAND="export PATH=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin"):$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin"):\$PATH"
 CARGO_COMMAND="export CARGO=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin/cargo")"
 RUSTC_COMMAND="export RUSTC=$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin/rustc")"
-PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${BROWSER_ROOT}") --skip-zig-check"
+PREFLIGHT_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_linux_build_readiness.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --skip-zig-check"
 
 if [[ "${JSON}" -eq 1 ]]; then
     python3 - <<PY
