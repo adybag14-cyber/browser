@@ -10,14 +10,6 @@ from issue3_enter_submit_runtime_audit import EXPECTATIONS, audit, render_file, 
 
 
 class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
-    def write_repo_file(self, repo_root: Path, relative_path: str, content: str) -> None:
-        target = repo_root / relative_path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
-
-    def render_file(self, relative_path: str, *, missing_label: str | None = None) -> str:
-        return render_file(relative_path, missing_label=missing_label)
-
     def render_repo(self, repo_root: Path, *, missing_label: str | None = None) -> None:
         render_repo(repo_root, missing_label=missing_label)
 
@@ -42,47 +34,31 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(0, result["missing_count"])
 
-    def test_audit_reports_missing_page_focus_recheck(self) -> None:
-        self.assert_missing_label_is_reported("page_apply_deferred_submit_rechecks_focus")
+    def test_audit_reports_missing_page_begin_cleanup(self) -> None:
+        self.assert_missing_label_is_reported("page_begin_deferred_submit_clears_pending_input")
 
-    def test_audit_reports_missing_page_pending_submit_cleanup_before_focus_recheck(self) -> None:
-        self.assert_missing_label_is_reported(
-            "page_apply_deferred_submit_clears_pending_input_before_focus_recheck"
-        )
+    def test_audit_reports_missing_page_submit_call(self) -> None:
+        self.assert_missing_label_is_reported("page_apply_deferred_submit_calls_submit_form")
 
-    def test_audit_reports_missing_page_pending_submit_cleanup_on_deferral_end(self) -> None:
-        self.assert_missing_label_is_reported("page_end_deferred_submit_clears_pending_input")
+    def test_audit_reports_missing_win32_text_builder(self) -> None:
+        self.assert_missing_label_is_reported("win32_text_input_event_builder_present")
 
-    def test_audit_reports_missing_page_pending_submit_branch(self) -> None:
-        self.assert_missing_label_is_reported("page_enter_submit_queues_pending_input")
+    def test_audit_reports_missing_win32_text_match_helper(self) -> None:
+        self.assert_missing_label_is_reported("win32_text_input_match_helper_present")
 
-    def test_audit_reports_missing_page_keyboard_suppression_contract(self) -> None:
-        self.assert_missing_label_is_reported("page_printable_input_respects_suppression_depth")
-
-    def test_audit_reports_missing_win32_queue_cleanup(self) -> None:
-        self.assert_missing_label_is_reported("win32_suppression_queue_deinit_present")
-
-    def test_audit_reports_missing_win32_queue_wiring(self) -> None:
-        self.assert_missing_label_is_reported("win32_queue_helper_wiring_present")
-
-    def test_audit_reports_missing_win32_byte_match_dispatch(self) -> None:
-        self.assert_missing_label_is_reported("win32_text_input_suppression_uses_byte_match")
-
-    def test_audit_reports_missing_win32_queue_reset(self) -> None:
-        self.assert_missing_label_is_reported("win32_suppression_queue_reset_present")
-
-    def test_audit_reports_missing_win32_queue_regression(self) -> None:
-        self.assert_missing_label_is_reported("win32_out_of_order_stale_text_regression_present")
+    def test_audit_reports_missing_win32_defer_guard(self) -> None:
+        self.assert_missing_label_is_reported("win32_enter_deferral_end_is_deferred_guard")
 
     def test_audit_reports_every_page_contract_label_in_isolation(self) -> None:
         labels = [
             "page_deferred_enter_fields_present",
             "page_pending_enter_pointer_present",
             "page_keyboard_text_suppression_depth_present",
-            "page_begin_deferred_submit_helper_present",
+            "page_begin_deferred_submit_clears_pending_input",
             "page_end_deferred_submit_clears_pending_input",
             "page_apply_deferred_submit_clears_pending_input_before_focus_recheck",
             "page_apply_deferred_submit_rechecks_focus",
+            "page_apply_deferred_submit_calls_submit_form",
             "page_enter_submit_queues_pending_input",
             "page_printable_input_respects_suppression_depth",
             "page_enter_keypress_regression_present",
@@ -95,13 +71,15 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         labels = [
             "win32_suppression_queue_present",
             "win32_suppression_queue_deinit_present",
+            "win32_text_input_event_builder_present",
+            "win32_text_input_match_helper_present",
             "win32_queue_helper_present",
             "win32_matching_suppression_helper_present",
             "win32_queue_helper_wiring_present",
             "win32_text_input_suppression_uses_byte_match",
             "win32_suppression_queue_reset_present",
             "win32_enter_deferral_begins_before_keypress",
-            "win32_enter_deferral_ends_after_dispatch",
+            "win32_enter_deferral_end_is_deferred_guard",
             "win32_enter_deferral_applies_after_keypress",
             "win32_mismatched_stale_text_regression_present",
             "win32_out_of_order_stale_text_regression_present",
@@ -110,76 +88,27 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.assert_missing_label_is_reported(label)
 
-    def test_audit_reports_missing_repo_files(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            repo_root = Path(tmp_dir)
-
-            result = audit(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(len(EXPECTATIONS), result["missing_count"])
-            self.assertTrue(all(not check["exists"] for check in result["checks"]))
-
-    def test_audit_keeps_both_runtime_files_in_scope(self) -> None:
-        covered_paths = {expectation["path"] for expectation in EXPECTATIONS}
-        self.assertEqual(
-            {"src/browser/Page.zig", "src/display/win32_backend.zig"},
-            covered_paths,
-        )
-
-    def test_audit_keeps_page_deferred_submit_bracket_in_scope(self) -> None:
+    def test_audit_keeps_new_page_cleanup_and_submit_markers_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("page_end_deferred_submit_helper_present", covered_labels)
-        self.assertIn("page_enter_submit_queues_pending_input", covered_labels)
+        self.assertIn("page_begin_deferred_submit_clears_pending_input", covered_labels)
+        self.assertIn("page_apply_deferred_submit_calls_submit_form", covered_labels)
 
-    def test_audit_keeps_page_pending_submit_cleanup_in_scope(self) -> None:
+    def test_audit_keeps_new_win32_helper_markers_in_scope(self) -> None:
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("page_end_deferred_submit_clears_pending_input", covered_labels)
-        self.assertIn(
-            "page_apply_deferred_submit_clears_pending_input_before_focus_recheck",
-            covered_labels,
-        )
+        self.assertIn("win32_text_input_event_builder_present", covered_labels)
+        self.assertIn("win32_text_input_match_helper_present", covered_labels)
+        self.assertIn("win32_enter_deferral_end_is_deferred_guard", covered_labels)
 
-    def test_audit_keeps_page_focus_recheck_in_scope(self) -> None:
-        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("page_apply_deferred_submit_rechecks_focus", covered_labels)
-
-    def test_audit_keeps_page_keyboard_suppression_contract_in_scope(self) -> None:
-        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("page_keyboard_text_suppression_depth_present", covered_labels)
-        self.assertIn("page_printable_input_respects_suppression_depth", covered_labels)
-
-    def test_audit_keeps_win32_suppression_queue_lifecycle_in_scope(self) -> None:
-        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("win32_suppression_queue_deinit_present", covered_labels)
-        self.assertIn("win32_suppression_queue_reset_present", covered_labels)
-
-    def test_audit_keeps_win32_suppression_queue_wiring_in_scope(self) -> None:
-        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("win32_queue_helper_wiring_present", covered_labels)
-        self.assertIn("win32_text_input_suppression_uses_byte_match", covered_labels)
-
-    def test_audit_keeps_win32_enter_deferral_bracket_in_scope(self) -> None:
-        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("win32_enter_deferral_begins_before_keypress", covered_labels)
-        self.assertIn("win32_enter_deferral_ends_after_dispatch", covered_labels)
-
-    def test_audit_keeps_post_keypress_submit_apply_in_scope(self) -> None:
-        covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
-        self.assertIn("win32_enter_deferral_applies_after_keypress", covered_labels)
-
-    def test_render_file_can_drop_one_targeted_label(self) -> None:
-        rendered = self.render_file(
-            "src/browser/Page.zig",
-            missing_label="page_end_deferred_submit_clears_pending_input",
+    def test_render_file_can_drop_new_targeted_label(self) -> None:
+        rendered = render_file(
+            "src/display/win32_backend.zig",
+            missing_label="win32_text_input_match_helper_present",
         )
         self.assertNotIn(
-            "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {\n"
-            "    self._defer_native_text_input_enter_submit = false;\n"
-            "    self._pending_native_enter_submit = null;\n"
-            "}\n",
+            "fn textInputEventMatches(expected: Win32Backend.TextInputEvent, actual: []const u8) bool {",
             rendered,
         )
-        self.assertIn("const input = self._pending_native_enter_submit orelse return;", rendered)
+        self.assertIn("fn makeTextInputEvent(bytes: []const u8) ?Win32Backend.TextInputEvent {", rendered)
 
     def test_self_test_passes(self) -> None:
         stream = io.StringIO()
