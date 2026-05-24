@@ -9,6 +9,8 @@ Keep these nearby:
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
+- `scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh`
+- `scripts/linux/show_issue3_restored_checkout_reentry_route.sh`
 - `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
@@ -43,13 +45,20 @@ That is why `scripts/check_issue3_restored_checkout.py` should run immediately a
 
 Use this order when the run is reopening from a saved snapshot:
 
-1. Print the saved-browser-snapshot route first:
+1. Run the restored-checkout route surface check first and print the compact re-entry route before anything wider:
+
+```bash
+bash ./scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh
+bash ./scripts/linux/show_issue3_restored_checkout_reentry_route.sh
+```
+
+2. Print the saved-browser-snapshot route first:
 
 ```bash
 bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
 ```
 
-2. Run the restore helper in check-only mode so the archive path, destination, and sync mode are confirmed before extraction:
+3. Run the restore helper in check-only mode so the archive path, destination, and sync mode are confirmed before extraction:
 
 ```bash
 bash ./scripts/linux/restore_saved_browser_snapshot.sh \
@@ -61,7 +70,7 @@ bash ./scripts/linux/restore_saved_browser_snapshot.sh \
   --check-only
 ```
 
-3. Restore the checkout when the surface check is green:
+4. Restore the checkout when the surface check is green:
 
 ```bash
 bash ./scripts/linux/restore_saved_browser_snapshot.sh \
@@ -72,14 +81,14 @@ bash ./scripts/linux/restore_saved_browser_snapshot.sh \
   --destination ../browser-memory-snapshot
 ```
 
-4. Run the restored-checkout readiness helper before anything wider:
+5. Run the restored-checkout readiness helper before anything wider:
 
 ```bash
 python ./scripts/check_issue3_restored_checkout.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-5. If the restore used the synced helper-surface mode, keep the live checkout as the comparison root and require the helper surface explicitly:
+6. If the restore used the synced helper-surface mode, keep the live checkout as the comparison root and require the helper surface explicitly:
 
 ```bash
 python ./scripts/check_issue3_restored_checkout.py \
@@ -88,28 +97,28 @@ python ./scripts/check_issue3_restored_checkout.py \
   --expect-helper-surface
 ```
 
-6. Only after the restored checkout passes, run the saved-memory preflight:
+7. Only after the restored checkout passes, run the saved-memory preflight:
 
 ```bash
 python ./scripts/check_issue3_saved_memory_inputs.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-7. If the route still depends on the exact saved archives, run the saved-archive integrity helper next:
+8. If the route still depends on the exact saved archives, run the saved-archive integrity helper next:
 
 ```bash
 python ./scripts/check_issue3_saved_archive_integrity.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-8. When the restored checkout and saved inputs are both green, move into Linux or WSL build readiness:
+9. When the restored checkout and saved inputs are both green, move into Linux or WSL build readiness:
 
 ```bash
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh \
   --repo-root ../browser-memory-snapshot
 ```
 
-9. Reopen the narrowed runtime route only after the restored checkout, saved inputs, and build-readiness surfaces agree:
+10. Reopen the narrowed runtime route only after the restored checkout, saved inputs, and build-readiness surfaces agree:
 
 ```bash
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh \
@@ -138,4 +147,4 @@ If the restored-checkout helper fails:
 
 For saved-snapshot re-entry, the first meaningful checkpoint after restore is not the saved-memory preflight. It is the restored-checkout readiness check.
 
-Run `scripts/check_issue3_restored_checkout.py` first, then widen into saved inputs, archive integrity, Linux build readiness, and finally the direct issue `#3` runtime route.
+Run the restored-checkout route surface checker and route printer first, then `scripts/check_issue3_restored_checkout.py`, then widen into saved inputs, archive integrity, Linux build readiness, and finally the direct issue `#3` runtime route.
