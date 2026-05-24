@@ -96,6 +96,7 @@ fi
 
 SURFACE_CHECK_COMMAND="bash scripts/linux/check_issue3_offline_build_inputs_route_surface.sh --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_MEMORY_INPUTS_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_ARCHIVE_INTEGRITY_COMMAND="python scripts/check_issue3_saved_archive_integrity.py --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PREPARE_CHECK_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}")${HTML5EVER_ARCHIVE_ARGUMENT} --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --check-only"
 PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}")${HTML5EVER_ARCHIVE_ARGUMENT} --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_rust_toolchain_route.sh --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
@@ -103,6 +104,7 @@ ZIG_ROUTE_COMMAND="bash scripts/linux/show_issue3_zig_toolchain_recovery_route.s
 POST_STAGE_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --expect-offline-deps --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_MEMORY_INPUTS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     ZIG_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     POST_STAGE_READINESS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
@@ -120,6 +122,7 @@ print(json.dumps({
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
+        "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "prepare_check_only": ${PREPARE_CHECK_COMMAND@Q},
         "prepare_restore": ${PREPARE_COMMAND@Q},
         "saved_rust_route": ${SAVED_RUST_ROUTE_COMMAND@Q},
@@ -129,6 +132,7 @@ print(json.dumps({
     "notes": [
         "Run the surface_check command first so missing route files fail fast before archive staging starts.",
         "Run the saved_memory_inputs command before the restore commands when the route depends on the saved repo snapshot and dependency bundles.",
+        "Run the saved_archive_integrity command after the presence preflight when the route needs to trust the exact saved archive contents before offline staging starts.",
         "Use the prepare_check_only command to confirm the archive paths and the resolved zig-v8-fork, boringssl-zig, and offline-deps targets before mutating the workspace.",
         "Use the prepare_restore command to stage the sibling dependency layout expected by build.zig.zon from the saved archives.",
         "Keep a caller-provided offline-deps root on this route so the restore commands and the post-stage readiness check stay aligned on the same staged location.",
@@ -152,6 +156,7 @@ Fallback Zig archive: ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspac
 Read first
 ==========
   docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md
+  docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
 
@@ -168,6 +173,9 @@ Suggested route
 
   Saved Memory input preflight:
     ${SAVED_MEMORY_INPUTS_COMMAND}
+
+  Saved archive integrity preflight:
+    ${SAVED_ARCHIVE_INTEGRITY_COMMAND}
 
   Offline restore surface check:
     ${PREPARE_CHECK_COMMAND}
@@ -188,6 +196,7 @@ Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails before the route starts blaming archive or dependency state.
   - Run the saved Memory input preflight before the restore commands when the route depends on the saved repo snapshot and dependency bundles.
+  - Run the saved archive integrity preflight after the saved Memory input preflight when the route needs to trust the exact saved archive contents before offline staging starts.
   - Use the offline restore surface check before mutation so the resolved zig-v8-fork, boringssl-zig, and offline-deps targets are visible on one helper surface.
   - Keep a caller-provided offline-deps root on this route so the restore commands and the post-stage readiness check point at the same staged location.
   - The saved html5ever bundle is optional on this route and is only threaded into the restore commands when it is actually present.
