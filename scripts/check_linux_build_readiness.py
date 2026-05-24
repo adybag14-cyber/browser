@@ -325,6 +325,13 @@ def discover_saved_archives(saved_archives_root: pathlib.Path) -> dict[str, path
     return discovered
 
 
+def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.Path:
+    dependencies_root = saved_archives_root / "dependencies"
+    if dependencies_root.is_dir():
+        return dependencies_root.resolve()
+    return saved_archives_root.resolve()
+
+
 def check_saved_archives_root(saved_archives_root: pathlib.Path) -> tuple[list[str], dict[str, pathlib.Path]]:
     failures: list[str] = []
 
@@ -466,7 +473,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--saved-archives-root",
         default=None,
-        help="Path to the saved archive root (default: ../memory/repo_archives/browser beside the repo workspace)",
+        help=(
+            "Path to the saved archive root (default: ../memory/repo_archives/browser beside the repo workspace; "
+            "either that root or its dependencies subdirectory is accepted)"
+        ),
     )
     parser.add_argument(
         "--fallback-zig-archive",
@@ -582,6 +592,22 @@ class ReadinessHelperTests(unittest.TestCase):
             self.assertEqual(discovered["html5ever"], html5ever)
             self.assertEqual(discovered["boringssl"], boringssl)
             self.assertEqual(discovered["browser_deps"], browser_deps)
+
+    def test_normalize_saved_archives_root_uses_dependencies_subdirectory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            dependencies_root = root / "dependencies"
+            dependencies_root.mkdir()
+            (dependencies_root / "01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz").write_text("rust", encoding="utf-8")
+            (dependencies_root / "03-boringssl-zig-main.zip").write_text("boringssl", encoding="utf-8")
+            (dependencies_root / "04-zig-browser-depo.tar.zip").write_text("browser-deps", encoding="utf-8")
+
+            normalized_root = normalize_saved_archives_root(root)
+            failures, discovered = check_saved_archives_root(normalized_root)
+
+            self.assertEqual(normalized_root, dependencies_root.resolve())
+            self.assertEqual(failures, [])
+            self.assertIn("rust_toolchain", discovered)
 
     def test_saved_archives_root_reports_missing_required_archives(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -810,6 +836,7 @@ def main() -> int:
         saved_archives_root = pathlib.Path(args.saved_archives_root).resolve() if args.saved_archives_root else (
             repo_root.parent / "memory" / "repo_archives" / "browser"
         ).resolve()
+        saved_archives_root = normalize_saved_archives_root(saved_archives_root)
         saved_archive_failures, discovered_saved_archives = check_saved_archives_root(saved_archives_root)
         failures.extend(saved_archive_failures)
 
