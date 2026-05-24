@@ -13,14 +13,15 @@ Usage:
     [--destination /path/to/extracted/browser-checkout] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--sync-helper-surface] \
+    [--sync-only] \
     [--check-only] \
     [--json] \
     [--force]
 
 Restore the saved browser repo snapshot from Memory into a reusable local
 checkout for Linux or WSL validation work, print the derived paths without
-extracting it, or optionally overlay the current issue #3 helper surface into
-that restored checkout.
+extracting it, or optionally overlay the current issue #3 helper surface into a
+new or existing restored checkout.
 
 Defaults:
   browser root  parent of this script
@@ -33,6 +34,8 @@ Use --check-only to confirm the saved archive is present and to print the exact
 restore and follow-up commands without mutating the filesystem.
 Use --sync-helper-surface when the restored checkout should also carry the
 current issue #3 helper docs and route scripts from the live helper root.
+Use --sync-only to refresh that helper surface inside an existing restored
+checkout without re-extracting the saved repo archive.
 EOF
 }
 
@@ -88,13 +91,10 @@ declare -a HELPER_SURFACE_PATHS=(
     "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md"
     "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md"
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
-    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md"
     "scripts/check_issue3_saved_memory_inputs.py"
     "scripts/check_issue3_saved_archive_integrity.py"
     "scripts/check_issue3_restored_checkout.py"
     "scripts/check_linux_build_readiness.py"
-    "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
-    "scripts/linux/show_issue3_saved_memory_inputs_route.sh"
     "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh"
     "scripts/linux/show_issue3_saved_archive_integrity_route.sh"
     "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh"
@@ -126,6 +126,7 @@ CHECK_ONLY=false
 JSON=false
 FORCE_RESTORE=false
 SYNC_HELPER_SURFACE=false
+SYNC_ONLY=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -169,6 +170,10 @@ while [[ $# -gt 0 ]]; do
             SYNC_HELPER_SURFACE=true
             shift
             ;;
+        --sync-only)
+            SYNC_ONLY=true
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -180,6 +185,10 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ "${SYNC_ONLY}" == "true" ]]; then
+    SYNC_HELPER_SURFACE=true
+fi
 
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 if [[ -z "${HELPER_ROOT}" ]]; then
@@ -247,8 +256,12 @@ if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
     FOLLOW_UP_HELPER_ROOT="${DESTINATION}"
 fi
 SYNC_FLAG=""
-if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+if [[ "${SYNC_HELPER_SURFACE}" == "true" && "${SYNC_ONLY}" != "true" ]]; then
     SYNC_FLAG=" --sync-helper-surface"
+fi
+SYNC_ONLY_FLAG=""
+if [[ "${SYNC_ONLY}" == "true" ]]; then
+    SYNC_ONLY_FLAG=" --sync-only"
 fi
 
 FOLLOW_UP_RESTORED_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -286,6 +299,7 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "check_only": %s,\n' "$([[ "${CHECK_ONLY}" == "true" ]] && echo true || echo false)"
     printf '  "force_restore": %s,\n' "$([[ "${FORCE_RESTORE}" == "true" ]] && echo true || echo false)"
     printf '  "sync_helper_surface": %s,\n' "$([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo true || echo false)"
+    printf '  "sync_only": %s,\n' "$([[ "${SYNC_ONLY}" == "true" ]] && echo true || echo false)"
     printf '  "helper_surface_file_count": %s,\n' "${#HELPER_SURFACE_PATHS[@]}"
     printf '  "destination_exists": %s\n' "$([[ -e "${DESTINATION}" ]] && echo true || echo false)"
     printf '}\n'
@@ -303,12 +317,17 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
     echo "Destination:           ${DESTINATION}"
     echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
+    echo "Sync-only refresh:     $([[ "${SYNC_ONLY}" == "true" ]] && echo enabled || echo disabled)"
     if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
         echo "Helper surface files:  ${#HELPER_SURFACE_PATHS[@]}"
     fi
     echo
-    echo "Suggested restore command:"
-    printf "  bash %s --browser-root %s --helper-root %s --memory-root %s --archive %s --destination %s%s%s\n" \
+    if [[ "${SYNC_ONLY}" == "true" ]]; then
+        echo "Suggested helper-surface refresh command:"
+    else
+        echo "Suggested restore command:"
+    fi
+    printf "  bash %s --browser-root %s --helper-root %s --memory-root %s --archive %s --destination %s%s%s%s\n" \
         "$(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh")" \
         "$(format_shell_arg "${BROWSER_ROOT}")" \
         "$(format_shell_arg "${HELPER_ROOT}")" \
@@ -316,7 +335,20 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
         "$(format_shell_arg "${ARCHIVE_PATH}")" \
         "$(format_shell_arg "${DESTINATION}")" \
         "${RESTORE_FALLBACK_FLAG}" \
-        "${SYNC_FLAG}"
+        "${SYNC_FLAG}" \
+        "${SYNC_ONLY_FLAG}"
+    if [[ "${SYNC_ONLY}" != "true" && "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+        echo
+        echo "Suggested helper-surface refresh command after the destination already exists:"
+        printf "  bash %s --browser-root %s --helper-root %s --memory-root %s --archive %s --destination %s%s --sync-only\n" \
+            "$(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh")" \
+            "$(format_shell_arg "${BROWSER_ROOT}")" \
+            "$(format_shell_arg "${HELPER_ROOT}")" \
+            "$(format_shell_arg "${MEMORY_ROOT}")" \
+            "$(format_shell_arg "${ARCHIVE_PATH}")" \
+            "$(format_shell_arg "${DESTINATION}")" \
+            "${RESTORE_FALLBACK_FLAG}"
+    fi
     echo
     echo "Suggested follow-up checks:"
     printf "  %s\n" "${FOLLOW_UP_RESTORED_CHECK}"
@@ -330,12 +362,43 @@ fi
 DESTINATION_PARENT="$(cd "$(dirname "${DESTINATION}")" && pwd)"
 mkdir -p "${DESTINATION_PARENT}"
 
+if [[ "${SYNC_ONLY}" == "true" ]]; then
+    if [[ ! -d "${DESTINATION}" ]]; then
+        echo "Destination does not exist for helper-surface refresh: ${DESTINATION}" >&2
+        echo "Run the restore route first or drop --sync-only to create a restored checkout." >&2
+        exit 1
+    fi
+    if [[ ! -f "${DESTINATION}/build.zig.zon" ]]; then
+        echo "Existing destination is missing build.zig.zon: ${DESTINATION}/build.zig.zon" >&2
+        exit 1
+    fi
+    sync_helper_surface "${HELPER_ROOT}" "${DESTINATION}"
+    echo
+    echo "Saved browser snapshot helper surface is refreshed."
+    echo "Destination:           ${DESTINATION}"
+    echo "Live helper root:      ${HELPER_ROOT}"
+    echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
+    echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo helper root}"
+    echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
+    echo "Helper surface sync:   enabled"
+    echo "Sync-only refresh:     enabled"
+    echo "Helper surface files:  ${#HELPER_SURFACE_PATHS[@]}"
+    echo
+    echo "Suggested follow-up checks:"
+    printf "  %s\n" "${FOLLOW_UP_RESTORED_CHECK}"
+    printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
+    printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
+    printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
+    printf "  %s\n" "${FOLLOW_UP_RUNTIME_ROUTE}"
+    exit 0
+fi
+
 if [[ -e "${DESTINATION}" ]]; then
     if [[ "${FORCE_RESTORE}" == "true" ]]; then
         rm -rf "${DESTINATION}"
     else
         echo "Destination already exists: ${DESTINATION}" >&2
-        echo "Use --force to replace the existing restored checkout." >&2
+        echo "Use --force to replace the existing restored checkout or --sync-only to refresh the helper surface in place." >&2
         exit 1
     fi
 fi
@@ -368,6 +431,7 @@ echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
 echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo helper root}"
 echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
 echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
+echo "Sync-only refresh:     disabled"
 if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
     echo "Helper surface files:  ${#HELPER_SURFACE_PATHS[@]}"
 fi
