@@ -39,6 +39,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build-inputs note"),
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain note"),
+    (
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md",
+        "Google-shaped attached-page validation flow note",
+    ),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
     ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
@@ -51,6 +55,26 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     (
         "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
         "Windows runtime re-entry route helper",
+    ),
+    (
+        "scripts/windows/check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+        "Windows attached-page replay surface checker",
+    ),
+    (
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Windows attached-page replay route helper",
+    ),
+    (
+        "scripts/windows/start_attached_pages_catalog.ps1",
+        "Windows attached-pages catalog launcher",
+    ),
+    (
+        "tmp-browser-smoke/attached-pages/README.md",
+        "attached-pages launcher runbook",
+    ),
+    (
+        "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
+        "attached-pages catalog launcher",
     ),
     ("scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh", "saved-archive integrity surface check"),
     ("scripts/linux/show_issue3_saved_archive_integrity_route.sh", "saved-archive integrity route printer"),
@@ -375,6 +399,35 @@ class RestoredCheckoutTests(unittest.TestCase):
                 if not entry["exists"]
             }
             self.assertIn("scripts/check_issue3_restored_checkout.py", missing)
+
+    def test_attached_pages_launcher_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/windows/start_attached_pages_catalog.ps1":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/windows/start_attached_pages_catalog.ps1", missing)
 
 
 def main() -> int:
