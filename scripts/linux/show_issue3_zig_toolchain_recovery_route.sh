@@ -8,7 +8,7 @@ Usage:
   bash scripts/linux/show_issue3_zig_toolchain_recovery_route.sh \
     [--repo-root /path/to/browser-repo] \
     [--toolchains-root /path/to/toolchains] \
-    [--saved-archives-root /path/to/memory/repo_archives/browser/dependencies] \
+    [--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]] \
     [--offline-deps-root /path/to/offline-deps] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
@@ -16,6 +16,21 @@ Usage:
 Print the issue #3 Linux or WSL Zig toolchain recovery route for the blocked
 Enter-submit runtime lane.
 EOF
+}
+
+normalize_saved_archives_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    if [[ -d "${raw_root}" ]]; then
+        (
+            cd "${raw_root}"
+            pwd
+        )
+        return 0
+    fi
+    printf '%s\n' "${raw_root}"
 }
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -71,8 +86,9 @@ if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
     TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
 fi
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser/dependencies"
+    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
 fi
+SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
     OFFLINE_DEPS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/offline-deps"
 fi
@@ -447,6 +463,10 @@ if not candidates:
         "  - Run the archive restore surface check before restoring any saved or "
         "manual Zig archive so route drift fails fast before toolchain staging starts."
     )
+    print(
+        "  - The saved-archives-root override accepts either repo_archives/browser "
+        "or repo_archives/browser/dependencies and is normalized before discovery runs."
+    )
     if preferred_saved_archive is not None:
         print(
             "  - Use the preferred archive restore commands above before falling "
@@ -497,6 +517,10 @@ if matching_readiness_command is not None:
         "  - Run the archive restore surface check before restaging a saved Zig "
         "archive so route drift fails fast before toolchain staging starts."
     )
+    print(
+        "  - The saved-archives-root override accepts either repo_archives/browser "
+        "or repo_archives/browser/dependencies and is normalized before discovery runs."
+    )
     if preferred_saved_archive is not None:
         print(
             "  - Keep the preferred saved-archive restore commands above as the "
@@ -533,6 +557,10 @@ else:
     print(
         "  - Run the archive restore surface check before restoring a saved or "
         "manual Zig archive so route drift fails fast before toolchain staging starts."
+    )
+    print(
+        "  - The saved-archives-root override accepts either repo_archives/browser "
+        "or repo_archives/browser/dependencies and is normalized before discovery runs."
     )
     if preferred_saved_archive is not None:
         print(
