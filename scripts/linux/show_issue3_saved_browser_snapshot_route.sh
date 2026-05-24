@@ -132,18 +132,22 @@ ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/che
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG} --check-only"
 RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG}"
 SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface --check-only"
 SYNC_RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface"
 SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${DESTINATION}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${DESTINATION}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SYNC_LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SYNC_RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
@@ -167,11 +171,13 @@ print(json.dumps({
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "restore": ${RESTORE_COMMAND@Q},
         "saved_memory_preflight": ${SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
+        "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "linux_build_route": ${LINUX_BUILD_ROUTE_COMMAND@Q},
         "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q},
         "sync_surface_check": ${SYNC_SURFACE_CHECK_COMMAND@Q},
         "sync_restore": ${SYNC_RESTORE_COMMAND@Q},
         "sync_saved_memory_preflight": ${SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
+        "sync_saved_archive_integrity": ${SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "sync_linux_build_route": ${SYNC_LINUX_BUILD_ROUTE_COMMAND@Q},
         "sync_runtime_route": ${SYNC_RUNTIME_ROUTE_COMMAND@Q}
     },
@@ -180,6 +186,7 @@ print(json.dumps({
         "Run surface_check next so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.",
         "Use restore only when the route really needs a disposable checkout for Linux or WSL helper validation.",
         "Run saved_memory_preflight against the restored checkout before trusting broader build-readiness or runtime helper output.",
+        "Run saved_archive_integrity after the saved-memory preflight when the route needs to prove the restored checkout still points back to the exact saved repo and dependency bundles before broader staging begins.",
         "Keep helper_root pointed at the live branch-local helper surface when the restore should remain a clean historical snapshot.",
         "Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.",
         "Prefer the sync_* commands when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface.",
@@ -227,6 +234,8 @@ Suggested route
       ${SYNC_RESTORE_COMMAND}
     Synced saved-Memory preflight:
       ${SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND}
+    Synced saved-archive integrity preflight:
+      ${SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND}
     Synced Linux or WSL build-readiness route:
       ${SYNC_LINUX_BUILD_ROUTE_COMMAND}
     Synced direct runtime re-entry route:
@@ -234,6 +243,9 @@ Suggested route
 
   Saved-Memory preflight against the restored checkout:
     ${SAVED_MEMORY_PREFLIGHT_COMMAND}
+
+  Saved-archive integrity preflight against the restored checkout:
+    ${SAVED_ARCHIVE_INTEGRITY_COMMAND}
 
   Linux or WSL build-readiness route from the restored checkout:
     ${LINUX_BUILD_ROUTE_COMMAND}
@@ -250,6 +262,7 @@ Working rules
   - Keep the live branch-local helper surface only when the restore should stay as a clean historical snapshot.
   - Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.
   - Run the saved-Memory preflight against the restored checkout before trusting broader build-readiness or runtime helper output.
+  - Run the saved-archive integrity preflight after the saved-Memory preflight when the route needs to prove the repo snapshot and dependency bundles still match the expected exact saved artifacts.
   - Use the Linux or WSL build-readiness route when the next blocked step is still toolchain or offline dependency staging.
   - Reopen the direct Page.zig plus win32_backend.zig runtime lane only after the restored checkout exists and the branch-compatible validation gate is no longer the blocker.
 EOF
