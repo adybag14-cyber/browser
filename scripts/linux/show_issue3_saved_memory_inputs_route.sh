@@ -172,6 +172,7 @@ print(json.dumps({
         "Use quick_saved_input_preflight only for a fast branch decision when archive integrity is not the question.",
         "Use restored_checkout_saved_input_preflight when a reusable checkout already exists and the route should confirm both saved inputs and the restored helper surface together.",
         "Point helper_root at the live branch-local helper surface when repo_root is a restored checkout that should reuse newer route helpers.",
+        "Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the run is still blocked in the Linux or WSL re-entry lane so issue #11 remains the practical progress-update target.",
         "Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots threaded into the nested Linux build-readiness route so restored follow-up runs do not fall back to guessed sibling paths.",
         "Use saved_browser_snapshot_route when the saved inputs are green but there is still no restored checkout.",
         "Use linux_build_readiness_route when the next blocker is still Zig-line selection, Rust restore, or offline dependency staging.",
@@ -199,6 +200,7 @@ Skip archive integrity:  $([[ "${SKIP_ARCHIVE_INTEGRITY_CHECK}" -eq 1 ]] && echo
 Read first
 ==========
   docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
+  docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
@@ -233,6 +235,7 @@ Working rules
   - Use the quick presence-only command for branch selection only; it is not honest archive validation.
   - Use the restored-checkout preflight when a reusable checkout already exists and the route should confirm that surface before broader helper output is trusted.
   - Point --helper-root at the live branch-local helper surface when repo_root is a restored checkout that should still reuse newer helper notes and scripts.
+  - Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the run is still blocked in the Linux or WSL re-entry lane and needs a safe issue #11 progress-update handoff before wider follow-up work.
   - Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots aligned when handing off to the Linux or WSL build-readiness route.
   - Use the restore route when the saved archive exists but there is still no reusable checkout for Linux or WSL follow-up.
   - Use the Linux or WSL build-readiness route after the saved-Memory preflight passes and the next blocker is still Rust, Zig, offline dependency staging, or prebuilt V8 readiness.
