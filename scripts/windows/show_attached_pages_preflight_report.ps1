@@ -2,6 +2,7 @@
 param(
     [Parameter(ParameterSetName = "InputPath")]
     [string[]]$InputPath,
+    [switch]$UseWorkspaceAgentFiles,
     [string]$PreferredInitialPage,
     [string]$RepoRoot,
     [string]$PythonExe = "python",
@@ -16,10 +17,32 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
 
+function Resolve-WorkspaceAgentFilesPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    $cursor = Get-Item -LiteralPath $RepoRoot -ErrorAction Stop
+    while ($null -ne $cursor) {
+        $candidate = Join-Path $cursor.FullName "agent_files"
+        if (Test-Path -LiteralPath $candidate -PathType Container) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+        $cursor = $cursor.Parent
+    }
+
+    throw "workspace agent_files folder not found from repo root: $RepoRoot"
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
     Resolve-LightpandaRepoRoot $PSScriptRoot
+}
+
+if ($UseWorkspaceAgentFiles -and $PSCmdlet.ParameterSetName -eq "InputPath") {
+    throw "Choose either -InputPath or -UseWorkspaceAgentFiles. The attached-pages preflight wrapper only accepts one explicit input source per invocation."
 }
 
 $reportPath = Join-Path $resolvedRepoRoot "tmp-browser-smoke/attached-pages/attached_pages_preflight_report.py"
@@ -31,7 +54,10 @@ $resolvedPython = (Get-Command $PythonExe -ErrorAction Stop).Source
 
 $reportArgs = @($reportPath, "--repo-root", $resolvedRepoRoot)
 
-if ($PSCmdlet.ParameterSetName -eq "InputPath") {
+if ($UseWorkspaceAgentFiles) {
+    $workspaceAgentFilesPath = Resolve-WorkspaceAgentFilesPath -RepoRoot $resolvedRepoRoot
+    $reportArgs += @("--input", $workspaceAgentFilesPath)
+} elseif ($PSCmdlet.ParameterSetName -eq "InputPath") {
     foreach ($path in $InputPath) {
         if ([string]::IsNullOrWhiteSpace($path)) {
             continue
