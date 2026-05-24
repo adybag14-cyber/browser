@@ -78,8 +78,11 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedBrowserExe)) {
 $runtimeContractCheckerPath = Join-Path $resolvedRepoRoot "tmp-browser-smoke\google-investigation-next\check_issue3_enter_submit_runtime_contract.py"
 $pageSourcePath = Join-Path $resolvedRepoRoot "src\browser\Page.zig"
 $win32SourcePath = Join-Path $resolvedRepoRoot "src\display\win32_backend.zig"
+$archiveIntegrityScriptPath = Join-Path $resolvedRepoRoot "scripts\check_issue3_saved_archive_integrity.py"
 $linuxBuildReadinessScriptPath = Join-Path $resolvedRepoRoot "scripts\check_linux_build_readiness.py"
 $savedMemoryInputsScriptPath = Join-Path $resolvedRepoRoot "scripts\check_issue3_saved_memory_inputs.py"
+$savedArchiveIntegritySurfaceScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\check_issue3_saved_archive_integrity_route_surface.sh"
+$savedArchiveIntegrityRouteScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\show_issue3_saved_archive_integrity_route.sh"
 $linuxRuntimeSurfaceScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\check_issue3_enter_submit_runtime_revalidation_surface.sh"
 $linuxRuntimeRouteScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\show_issue3_enter_submit_runtime_revalidation_route.sh"
 $savedBrowserSnapshotSurfaceScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\check_issue3_saved_browser_snapshot_route_surface.sh"
@@ -103,8 +106,20 @@ $runtimeContractCheckCommand = "python " +
 $runtimeContractSelfTestCommand = "python " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $runtimeContractCheckerPath) +
     " --self-test"
+$savedArchiveIntegrityCommand = "python " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $archiveIntegrityScriptPath) +
+    " --repo-root " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
 $savedMemoryPreflightCommand = "python " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $savedMemoryInputsScriptPath) +
+    " --repo-root " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
+$savedArchiveIntegritySurfaceCommand = "bash " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $savedArchiveIntegritySurfaceScriptPath) +
+    " --repo-root " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
+$savedArchiveIntegrityRouteCommand = "bash " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $savedArchiveIntegrityRouteScriptPath) +
     " --repo-root " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
 $linuxRuntimeSurfaceCommand = "bash " +
@@ -136,8 +151,10 @@ $linuxBuildReadinessFullCommand = "python " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot)
 if (-not [string]::IsNullOrWhiteSpace($resolvedFallbackZigArchive)) {
     $escapedFallbackZigArchive = ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedFallbackZigArchive
-    $savedBrowserSnapshotRouteCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
+    $savedArchiveIntegrityCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
     $savedMemoryPreflightCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
+    $savedArchiveIntegrityRouteCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
+    $savedBrowserSnapshotRouteCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
     $linuxRuntimeRouteCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
     $linuxBuildReadinessSkipZigCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
     $linuxBuildReadinessFullCommand += " --fallback-zig-archive " + $escapedFallbackZigArchive
@@ -145,7 +162,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedFallbackZigArchive)) {
 
 $route = [ordered]@{
     issue = "Google issue #3 Enter-submit runtime revalidation"
-    purpose = "Keep the runtime re-entry gates note, the saved-browser-snapshot restore route, the source-based runtime contract checker, the saved-memory preflight, the Linux re-entry helpers, the shared Enter-submit ladder, the focused file-level regression commands, the reduced Google title probe, the runtime-specific revalidation note, and the live Google fallback on one Windows-first helper surface."
+    purpose = "Keep the runtime re-entry gates note, the saved-browser-snapshot restore route, the saved-archive-integrity route, the source-based runtime contract checker, the saved-memory preflight, the Linux re-entry helpers, the shared Enter-submit ladder, the focused file-level regression commands, the reduced Google title probe, the runtime-specific revalidation note, and the live Google fallback on one Windows-first helper surface."
     repo_root = $resolvedRepoRoot
     browser_exe = $resolvedBrowserExe
     fallback_zig_archive = if ([string]::IsNullOrWhiteSpace($resolvedFallbackZigArchive)) {
@@ -157,6 +174,7 @@ $route = [ordered]@{
         "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
         "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+        "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
         "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
     )
     target_files = @(
@@ -167,6 +185,9 @@ $route = [ordered]@{
         "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
         "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
         "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
+        "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh",
+        "scripts/linux/show_issue3_saved_archive_integrity_route.sh",
+        "scripts/check_issue3_saved_archive_integrity.py",
         "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
         "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
         "scripts/check_issue3_saved_memory_inputs.py",
@@ -177,6 +198,7 @@ $route = [ordered]@{
         "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
         "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md",
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+        "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
         "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
         "docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md",
         "docs/WINDOWS_FULL_USE.md",
@@ -186,6 +208,9 @@ $route = [ordered]@{
         surface_check = Format-RepoRootCommand -ScriptPath "scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"
         saved_browser_snapshot_surface = $savedBrowserSnapshotSurfaceCommand
         saved_browser_snapshot_route = $savedBrowserSnapshotRouteCommand
+        saved_archive_integrity_surface = $savedArchiveIntegritySurfaceCommand
+        saved_archive_integrity_route = $savedArchiveIntegrityRouteCommand
+        saved_archive_integrity = $savedArchiveIntegrityCommand
         contract_check = $runtimeContractCheckCommand
         contract_self_test = $runtimeContractSelfTestCommand
         saved_memory_preflight = $savedMemoryPreflightCommand
@@ -214,6 +239,7 @@ $route = [ordered]@{
         "Read docs/ISSUE3_RUNTIME_REENTRY_GATES.md before docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md whenever the next run may reopen Page.zig or win32_backend.zig.",
         "Run surface_check first when branch state may have moved and you want the gate note, helper, and probe files checked before replay.",
         "If no reusable checkout exists yet, run saved_browser_snapshot_surface and then saved_browser_snapshot_route before trusting Linux or WSL follow-up helpers against a restored checkout.",
+        "Run saved_archive_integrity_surface, saved_archive_integrity_route, and then saved_archive_integrity before saved_memory_preflight when the route still depends on the saved repo snapshot or dependency bundles.",
         "Run contract_check before build or replay when you need a thin, source-based yes-or-no answer about whether the direct Page.zig and win32_backend.zig bridge markers are present on the current branch.",
         "Run contract_self_test when you want to prove the checker itself still distinguishes vulnerable and guarded samples before pointing it at a real checkout.",
         "Run saved_memory_preflight before Linux or WSL build-readiness commands when the route depends on the saved Memory repo snapshot, dependency archives, and optional fallback Zig bundle.",
@@ -226,8 +252,8 @@ $route = [ordered]@{
         "Use shared_enter_google when the keypress-before-submit ordering is the main question but click-first focus is not required yet.",
         "Use shared_enter_google_click when reproducing the click-first path that most closely matches the real homepage boundary from issue #3.",
         "Use reduced_google_probe before live Google whenever the runtime patch touched Page.zig or win32_backend.zig and you want trace-ready output on the reduced fixture first.",
-        "If the focused Zig tests fail in untouched branch files before the new assertions run, fall back to contract_check, the saved-browser-snapshot route, saved_memory_preflight, the Linux re-entry helpers, the shared Enter-order ladder, and the reduced Google probe so the runtime boundary can still be narrowed honestly.",
-        "Only jump to reduced_google_fixture or live_google after the source contract check, restored-checkout route, saved-memory preflight, Linux or WSL gating, shared Enter-order ladder, and reduced Google probe agree on the same event ordering."
+        "If the focused Zig tests fail in untouched branch files before the new assertions run, fall back to contract_check, the saved-browser-snapshot route, the saved-archive-integrity route, saved_archive_integrity, saved_memory_preflight, the Linux re-entry helpers, the shared Enter-order ladder, and the reduced Google probe so the runtime boundary can still be narrowed honestly.",
+        "Only jump to reduced_google_fixture or live_google after the source contract check, restored-checkout route, saved-archive integrity route, saved-memory preflight, Linux or WSL gating, shared Enter-order ladder, and reduced Google probe agree on the same event ordering."
     )
 }
 
@@ -259,6 +285,9 @@ Write-Host "============"
 Write-Host ("  Surface check:                  {0}" -f $route.commands.surface_check)
 Write-Host ("  Saved snapshot surface:         {0}" -f $route.commands.saved_browser_snapshot_surface)
 Write-Host ("  Saved snapshot route:           {0}" -f $route.commands.saved_browser_snapshot_route)
+Write-Host ("  Saved archive surface:          {0}" -f $route.commands.saved_archive_integrity_surface)
+Write-Host ("  Saved archive route:            {0}" -f $route.commands.saved_archive_integrity_route)
+Write-Host ("  Saved archive verification:     {0}" -f $route.commands.saved_archive_integrity)
 Write-Host ("  Source contract check:          {0}" -f $route.commands.contract_check)
 Write-Host ("  Checker self-test:              {0}" -f $route.commands.contract_self_test)
 Write-Host ("  Saved-memory preflight:         {0}" -f $route.commands.saved_memory_preflight)
