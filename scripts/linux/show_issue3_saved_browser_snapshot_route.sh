@@ -131,12 +131,17 @@ fi
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG} --check-only"
 RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG}"
+RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+if [[ "${SYNC_HELPER_SURFACE}" -eq 1 ]]; then
+    RESTORED_CHECKOUT_CHECK_COMMAND+=" --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
+fi
 SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface --check-only"
 SYNC_RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}") --sync-helper-surface"
+SYNC_RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${DESTINATION}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
 SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${DESTINATION}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 SYNC_LINUX_BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${DESTINATION}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -170,12 +175,14 @@ print(json.dumps({
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "restore": ${RESTORE_COMMAND@Q},
+        "restored_checkout_check": ${RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "saved_memory_preflight": ${SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
         "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "linux_build_route": ${LINUX_BUILD_ROUTE_COMMAND@Q},
         "runtime_route": ${RUNTIME_ROUTE_COMMAND@Q},
         "sync_surface_check": ${SYNC_SURFACE_CHECK_COMMAND@Q},
         "sync_restore": ${SYNC_RESTORE_COMMAND@Q},
+        "sync_restored_checkout_check": ${SYNC_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "sync_saved_memory_preflight": ${SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
         "sync_saved_archive_integrity": ${SYNC_SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "sync_linux_build_route": ${SYNC_LINUX_BUILD_ROUTE_COMMAND@Q},
@@ -185,7 +192,8 @@ print(json.dumps({
         "Run route_surface first so missing branch-local docs or helper drift fails fast before the restore helper is trusted.",
         "Run surface_check next so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.",
         "Use restore only when the route really needs a disposable checkout for Linux or WSL helper validation.",
-        "Run saved_memory_preflight against the restored checkout before trusting broader build-readiness or runtime helper output.",
+        "Run restored_checkout_check immediately after restore so missing build.zig.zon, missing helper-surface files, or helper drift fail before the archive-focused preflights.",
+        "Run saved_memory_preflight against the restored checkout after the restored-checkout check and before trusting broader build-readiness or runtime helper output.",
         "Run saved_archive_integrity after the saved-memory preflight when the route needs to prove the restored checkout still points back to the exact saved repo and dependency bundles before broader staging begins.",
         "Keep helper_root pointed at the live branch-local helper surface when the restore should remain a clean historical snapshot.",
         "Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.",
@@ -232,6 +240,8 @@ Suggested route
       ${SYNC_SURFACE_CHECK_COMMAND}
     Synced restore command:
       ${SYNC_RESTORE_COMMAND}
+    Synced restored-checkout readiness check:
+      ${SYNC_RESTORED_CHECKOUT_CHECK_COMMAND}
     Synced saved-Memory preflight:
       ${SYNC_SAVED_MEMORY_PREFLIGHT_COMMAND}
     Synced saved-archive integrity preflight:
@@ -240,6 +250,9 @@ Suggested route
       ${SYNC_LINUX_BUILD_ROUTE_COMMAND}
     Synced direct runtime re-entry route:
       ${SYNC_RUNTIME_ROUTE_COMMAND}
+
+  Restored-checkout readiness check:
+    ${RESTORED_CHECKOUT_CHECK_COMMAND}
 
   Saved-Memory preflight against the restored checkout:
     ${SAVED_MEMORY_PREFLIGHT_COMMAND}
@@ -258,10 +271,11 @@ Working rules
   - Run the route surface check first so missing docs or helper drift fails fast before the restore helper is trusted.
   - Run the restore helper surface check next so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.
   - Use the restore step when the route needs a disposable checkout for helper validation without relying on live GitHub file publication.
+  - Run the restored-checkout readiness check right after restore so missing build.zig.zon, helper-surface omissions, or sync drift fail before the archive-focused preflights.
   - Prefer the recommended synced restore when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
   - Keep the live branch-local helper surface only when the restore should stay as a clean historical snapshot.
   - Use --sync-helper-surface when the restored checkout should also carry the current issue #3 helper docs and scripts.
-  - Run the saved-Memory preflight against the restored checkout before trusting broader build-readiness or runtime helper output.
+  - Run the saved-Memory preflight against the restored checkout after the restored-checkout readiness check and before trusting broader build-readiness or runtime helper output.
   - Run the saved-archive integrity preflight after the saved-Memory preflight when the route needs to prove the repo snapshot and dependency bundles still match the expected exact saved artifacts.
   - Use the Linux or WSL build-readiness route when the next blocked step is still toolchain or offline dependency staging.
   - Reopen the direct Page.zig plus win32_backend.zig runtime lane only after the restored checkout exists and the branch-compatible validation gate is no longer the blocker.
