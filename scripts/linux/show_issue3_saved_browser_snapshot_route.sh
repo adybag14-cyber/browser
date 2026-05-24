@@ -39,11 +39,31 @@ print(json.dumps(sys.argv[1]))
 PY
 }
 
+resolve_workspace_companion_path() {
+    local root="$1"
+    local name="$2"
+    local child_path="${root}/${name}"
+    local sibling_path="$(cd "${root}/.." && pwd)/${name}"
+
+    if [[ -e "${child_path}" ]]; then
+        printf '%s\n' "${child_path}"
+        return
+    fi
+
+    if [[ "$(basename "${root}")" == "workspace" ]]; then
+        printf '%s\n' "${child_path}"
+        return
+    fi
+
+    printf '%s\n' "${sibling_path}"
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_DESTINATION_NAME="browser-memory-snapshot"
 DEFAULT_ARCHIVE_NAME="01-browser-fork-headed-mode-foundation.zip"
+DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME="zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
 HELPER_ROOT=""
 MEMORY_ROOT=""
@@ -114,16 +134,17 @@ if [[ -z "${HELPER_ROOT}" ]]; then
 fi
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
+    MEMORY_ROOT="$(resolve_workspace_companion_path "${REPO_ROOT}" "memory")"
 fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${MEMORY_ROOT}/repo_archives/browser/${DEFAULT_ARCHIVE_NAME}"
 fi
 if [[ -z "${DESTINATION}" ]]; then
-    DESTINATION="$(cd "${REPO_ROOT}/.." && pwd)/${DEFAULT_DESTINATION_NAME}"
+    DESTINATION="$(resolve_workspace_companion_path "${REPO_ROOT}" "${DEFAULT_DESTINATION_NAME}")"
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${HELPER_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    DEFAULT_AGENT_FILES_ROOT="$(resolve_workspace_companion_path "${HELPER_ROOT}" "agent_files")"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="${DEFAULT_AGENT_FILES_ROOT}/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
