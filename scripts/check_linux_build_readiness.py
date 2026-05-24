@@ -14,6 +14,7 @@ This helper is intentionally lightweight:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import pathlib
 import re
@@ -416,6 +417,64 @@ def format_shell_command(command: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in command)
 
 
+def serialize_readiness_value(value: object) -> object:
+    if isinstance(value, pathlib.Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): serialize_readiness_value(inner_value) for key, inner_value in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [serialize_readiness_value(item) for item in value]
+    return value
+
+
+def build_readiness_report(
+    *,
+    repo_root: pathlib.Path,
+    minimum_zig: str,
+    zig_version: str | None,
+    rust_versions: dict[str, str],
+    path_deps: list[tuple[str, pathlib.Path]],
+    discovered_zig_candidates: list[dict[str, pathlib.Path | str | None]],
+    matching_zig_candidates: list[pathlib.Path],
+    toolchains_root: pathlib.Path,
+    offline_deps_root: pathlib.Path | None,
+    staged_offline_dirs: list[tuple[str, pathlib.Path]],
+    prebuilt_archives: list[pathlib.Path],
+    saved_archives_root: pathlib.Path | None,
+    discovered_saved_archives: dict[str, pathlib.Path],
+    suggested_prepare_command: list[str] | None,
+    fallback_zig_archive: pathlib.Path | None,
+    fallback_zig_version: str | None,
+    fallback_zig_status: str | None,
+    url_deps: list[str],
+    failures: list[str],
+    suggested_next_step: str | None,
+) -> dict[str, object]:
+    return {
+        "status": "failed" if failures else "passed",
+        "repo_root": repo_root,
+        "minimum_zig": minimum_zig,
+        "installed_zig": zig_version,
+        "rust_versions": rust_versions,
+        "path_dependencies": [{"name": name, "path": dep_path} for name, dep_path in path_deps],
+        "toolchains_root": toolchains_root,
+        "zig_candidates": discovered_zig_candidates,
+        "matching_zig_candidates": matching_zig_candidates,
+        "offline_deps_root": offline_deps_root,
+        "offline_dependency_dirs": [{"name": name, "path": dep_path} for name, dep_path in staged_offline_dirs],
+        "prebuilt_v8_archives": prebuilt_archives,
+        "saved_archives_root": saved_archives_root,
+        "saved_archives": discovered_saved_archives,
+        "suggested_prepare_command": suggested_prepare_command,
+        "fallback_zig_archive": fallback_zig_archive,
+        "fallback_zig_version": fallback_zig_version,
+        "fallback_zig_status": fallback_zig_status,
+        "url_dependencies": url_deps,
+        "failures": failures,
+        "suggested_next_step": suggested_next_step,
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Check Zig toolchain, Rust tools, and dependency staging for Linux/WSL validation."
@@ -492,6 +551,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--self-test",
         action="store_true",
         help="Run the helper's focused unit tests and exit",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the readiness report as JSON instead of the human-readable summary",
     )
     return parser
 
@@ -759,6 +823,74 @@ class ReadinessHelperTests(unittest.TestCase):
             "/tmp/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
         )
 
+    def test_json_output_reports_pass_for_minimal_ready_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = pathlib.Path(tmpdir)
+            repo_root = workspace_root / "browser"
+            repo_root.mkdir()
+            (repo_root / "build.zig.zon").write_text(
+                """ .{
+    .name = .browser,
+    .version = "0.0.0",
+    .minimum_zig_version = "0.15.2",
+    .dependencies = .{
+        .v8 = .{
+            .path = "../zig-v8-fork",
+        },
+        .@"boringssl-zig" = .{
+            .path = "../boringssl-zig",
+        },
+    },
+    .paths = .{""},
+}
+""",
+                encoding="utf-8",
+            )
+
+            v8_root = workspace_root / "zig-v8-fork"
+            (v8_root / "src").mkdir(parents=True)
+            for path in (
+                v8_root / "build.zig",
+                v8_root / "build.zig.zon",
+                v8_root / "src" / "v8.zig",
+            ):
+                path.write_text("", encoding="utf-8")
+
+            boringssl_root = workspace_root / "boringssl-zig"
+            (boringssl_root / "generated").mkdir(parents=True)
+            for path in (
+                boringssl_root / "build.zig",
+                boringssl_root / "README.md",
+            ):
+                path.write_text("", encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    __file__,
+                    "--repo-root",
+                    str(repo_root),
+                    "--skip-zig-check",
+                    "--skip-rust-check",
+                    "--json",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            report = json.loads(completed.stdout)
+
+            self.assertEqual(report["status"], "passed")
+            self.assertEqual(report["minimum_zig"], "0.15.2")
+            self.assertEqual(report["repo_root"], str(repo_root.resolve()))
+            self.assertEqual(report["failures"], [])
+            self.assertEqual(len(report["path_dependencies"]), 2)
+            self.assertEqual(report["installed_zig"], None)
+            self.assertEqual(report["rust_versions"], {})
+            self.assertEqual(report["toolchains_root"], str((workspace_root / "toolchains").resolve()))
+            self.assertEqual(report["zig_candidates"], [])
+            self.assertEqual(report["url_dependencies"], [])
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -870,6 +1002,41 @@ def main() -> int:
                 f"which does not match the branch's expected {expected_parts[0]}.{expected_parts[1]}.x line"
             )
 
+    next_step = None
+    if failures:
+        next_step = (
+            "run the saved-archive restore command above, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain."
+            if suggested_prepare_command is not None
+            else "stage sibling dependencies plus ../offline-deps with scripts/linux/prepare_offline_build_inputs.sh, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain."
+        )
+
+    readiness_report = build_readiness_report(
+        repo_root=repo_root,
+        minimum_zig=minimum_zig,
+        zig_version=zig_version,
+        rust_versions=rust_versions,
+        path_deps=path_deps,
+        discovered_zig_candidates=zig_candidate_reports,
+        matching_zig_candidates=matching_zig_candidates,
+        toolchains_root=toolchains_root,
+        offline_deps_root=offline_deps_root,
+        staged_offline_dirs=staged_offline_dirs,
+        prebuilt_archives=prebuilt_archives,
+        saved_archives_root=saved_archives_root,
+        discovered_saved_archives=discovered_saved_archives,
+        suggested_prepare_command=suggested_prepare_command,
+        fallback_zig_archive=fallback_zig_archive,
+        fallback_zig_version=fallback_zig_version,
+        fallback_zig_status=fallback_zig_status,
+        url_deps=url_deps,
+        failures=failures,
+        suggested_next_step=next_step,
+    )
+
+    if args.json:
+        print(json.dumps(serialize_readiness_value(readiness_report), indent=2))
+        return 1 if failures else 0
+
     print(f"Repo root: {repo_root}")
     print(f"Minimum Zig from build.zig.zon: {minimum_zig}")
     if zig_version is not None:
@@ -942,11 +1109,6 @@ def main() -> int:
         print("\nReadiness check failed:", file=sys.stderr)
         for failure in failures:
             print(f"  - {failure}", file=sys.stderr)
-        next_step = (
-            "run the saved-archive restore command above, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain."
-            if suggested_prepare_command is not None
-            else "stage sibling dependencies plus ../offline-deps with scripts/linux/prepare_offline_build_inputs.sh, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain."
-        )
         print(f"\nSuggested next step: {next_step}", file=sys.stderr)
         return 1
 
