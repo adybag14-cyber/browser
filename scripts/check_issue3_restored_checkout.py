@@ -201,6 +201,30 @@ def check_helper_surface(
     return results
 
 
+def diagnose_result(
+    *,
+    missing_required: list[dict[str, object]],
+    missing_helper_surface: list[dict[str, object]],
+    drifted_helper_surface: list[dict[str, object]],
+    expect_helper_surface: bool,
+) -> str:
+    if not missing_required and not missing_helper_surface and not drifted_helper_surface:
+        return "ready"
+    if missing_required:
+        if expect_helper_surface and missing_helper_surface and not drifted_helper_surface:
+            return "missing-required-and-stale-helper-surface"
+        return "missing-required-paths"
+    if expect_helper_surface and missing_helper_surface and not drifted_helper_surface:
+        return "stale-helper-surface"
+    if drifted_helper_surface and not missing_helper_surface:
+        return "helper-surface-drift"
+    if missing_helper_surface and drifted_helper_surface:
+        return "partial-helper-surface-and-drift"
+    if missing_helper_surface:
+        return "missing-helper-surface"
+    return "mixed"
+
+
 def collect_results(
     *,
     repo_root: Path,
@@ -225,15 +249,25 @@ def collect_results(
         for entry in helper_surface
         if entry["exists"] and entry.get("matches_helper_root") is False
     ]
+    diagnosis = diagnose_result(
+        missing_required=missing_required,
+        missing_helper_surface=missing_helper_surface,
+        drifted_helper_surface=drifted_helper_surface,
+        expect_helper_surface=expect_helper_surface,
+    )
 
     ok = not missing_required and not missing_helper_surface and not drifted_helper_surface
     return {
         "ok": ok,
+        "diagnosis": diagnosis,
         "repo_root": str(repo_root),
         "helper_root": str(helper_root) if helper_root is not None else None,
         "expect_helper_surface": expect_helper_surface,
         "required_paths": required_paths,
         "helper_surface": helper_surface,
+        "missing_required_paths": [entry["path"] for entry in missing_required],
+        "missing_helper_surface_paths": [entry["path"] for entry in missing_helper_surface],
+        "drifted_helper_surface_paths": [entry["path"] for entry in drifted_helper_surface],
     }
 
 
@@ -265,7 +299,22 @@ def emit_text(result: dict[str, object]) -> None:
         return
 
     print("\nRestored checkout check failed.", file=sys.stderr)
-    if result["expect_helper_surface"]:
+    print(f"Diagnosis: {result['diagnosis']}", file=sys.stderr)
+    if result["diagnosis"] == "stale-helper-surface":
+        print(
+            "Suggested next step: this restored checkout looks like the historical saved snapshot without the synced issue #3 helper surface. From a live helper checkout, rerun restore_saved_browser_snapshot.sh with --sync-only if this destination already exists, or rerun the restore with --sync-helper-surface for a fresh self-contained checkout.",
+            file=sys.stderr,
+        )
+        print(
+            "Alternative: keep using the live helper root for follow-up commands if the restored checkout should stay as a clean historical snapshot.",
+            file=sys.stderr,
+        )
+    elif result["diagnosis"] == "helper-surface-drift":
+        print(
+            "Suggested next step: refresh the restored helper surface from the live helper checkout with restore_saved_browser_snapshot.sh --sync-only, then rerun this helper with --helper-root.",
+            file=sys.stderr,
+        )
+    elif result["expect_helper_surface"]:
         print(
             "Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface or keep using the live helper root for follow-up commands.",
             file=sys.stderr,
@@ -294,6 +343,7 @@ class RestoredCheckoutTests(unittest.TestCase):
             )
 
             self.assertTrue(result["ok"])
+            self.assertEqual(result["diagnosis"], "ready")
 
     def test_expect_helper_surface_requires_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -312,6 +362,7 @@ class RestoredCheckoutTests(unittest.TestCase):
 
             self.assertFalse(result["ok"])
             self.assertFalse(result["helper_surface"][0]["exists"])
+            self.assertEqual(result["diagnosis"], "stale-helper-surface")
 
     def test_helper_root_drift_is_reported(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -341,6 +392,7 @@ class RestoredCheckoutTests(unittest.TestCase):
 
             self.assertFalse(result["ok"])
             self.assertFalse(result["helper_surface"][0]["matches_helper_root"])
+            self.assertEqual(result["diagnosis"], "helper-surface-drift")
 
     def test_archive_integrity_surface_is_required_for_synced_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -428,6 +480,19 @@ class RestoredCheckoutTests(unittest.TestCase):
                 if not entry["exists"]
             }
             self.assertIn("scripts/windows/start_attached_pages_catalog.ps1", missing)
+
+    def test_missing_required_paths_gets_its_own_diagnosis(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=False,
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["diagnosis"], "missing-required-paths")
 
 
 def main() -> int:
