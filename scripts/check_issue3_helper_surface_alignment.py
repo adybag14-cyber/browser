@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
-"""Check that the issue #3 helper-surface file lists stay aligned.
+"""Check whether the issue #3 helper-surface inventories still agree.
 
-This helper compares the helper-surface path lists used by the restored-checkout
-checker, the saved-Memory preflight, and the saved-browser-snapshot restore
-helper. It lets future runs fail fast when one surface gains or loses a file
-without the other recovery helpers being updated to match.
+This helper compares the helper-surface path inventories embedded in:
+- scripts/linux/restore_saved_browser_snapshot.sh
+- scripts/check_issue3_saved_memory_inputs.py
+- scripts/check_issue3_restored_checkout.py
+
+It is intended as a small regression guard for the saved-snapshot restore route.
 """
 
 from __future__ import annotations
@@ -21,37 +23,26 @@ import textwrap
 import unittest
 
 
-PYTHON_SOURCES: tuple[tuple[str, str, str], ...] = (
-    (
-        "scripts/check_issue3_restored_checkout.py",
-        "HELPER_SURFACE_PATHS",
-        "restored checkout helper surface",
-    ),
-    (
-        "scripts/check_issue3_saved_memory_inputs.py",
-        "REQUIRED_RESTORED_HELPER_FILES",
-        "saved-Memory restored helper surface",
-    ),
-)
+RESTORE_SCRIPT_RELATIVE_PATH = "scripts/linux/restore_saved_browser_snapshot.sh"
+SAVED_MEMORY_INPUTS_RELATIVE_PATH = "scripts/check_issue3_saved_memory_inputs.py"
+RESTORED_CHECKOUT_RELATIVE_PATH = "scripts/check_issue3_restored_checkout.py"
 
-SHELL_SOURCE: tuple[str, str, str] = (
-    "scripts/linux/restore_saved_browser_snapshot.sh",
-    "HELPER_SURFACE_PATHS",
-    "saved-browser restore helper surface",
-)
+RESTORE_ARRAY_NAME = "HELPER_SURFACE_PATHS"
+SAVED_MEMORY_TUPLE_NAME = "REQUIRED_RESTORED_HELPER_FILES"
+RESTORED_CHECKOUT_TUPLE_NAME = "HELPER_SURFACE_PATHS"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Check that the issue #3 restored-checkout, saved-Memory, and "
-            "restore-helper surfaces list the same helper files."
+            "Check whether the issue #3 saved-snapshot helper-surface "
+            "inventories still match across the restore and follow-up helpers."
         )
     )
     parser.add_argument(
         "--repo-root",
         default=".",
-        help="Path to the browser repo root (default: current directory)",
+        help="Path to the browser checkout root (default: current directory)",
     )
     parser.add_argument(
         "--json",
@@ -66,216 +57,364 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def parse_python_path_list(path: Path, variable_name: str) -> list[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            targets = node.targets
-        elif isinstance(node, ast.AnnAssign):
-            targets = [node.target]
-        else:
-            continue
-        if not any(isinstance(target, ast.Name) and target.id == variable_name for target in targets):
-            continue
-        literal = ast.literal_eval(node.value)
-        paths: list[str] = []
-        for entry in literal:
-            if not isinstance(entry, tuple) or not entry:
-                raise ValueError(f"{path}: {variable_name} contains an unexpected entry: {entry!r}")
-            relative_path = entry[0]
-            if not isinstance(relative_path, str):
-                raise ValueError(f"{path}: {variable_name} entry is missing a string path: {entry!r}")
-            paths.append(relative_path)
-        return paths
-    raise ValueError(f"{path}: could not find {variable_name}")
-
-
-def parse_shell_path_list(path: Path, variable_name: str) -> list[str]:
-    content = path.read_text(encoding="utf-8")
-    pattern = re.compile(
-        rf"declare -a {re.escape(variable_name)}=\(\n(?P<body>.*?)\n\)",
-        re.DOTALL,
+def parse_restore_helper_surface_paths(script_path: Path) -> list[str]:
+    text = script_path.read_text(encoding="utf-8")
+    match = re.search(
+        r"declare -a\s+HELPER_SURFACE_PATHS=\(\n(?P<body>.*?)\n\)",
+        text,
+        flags=re.DOTALL,
     )
-    match = pattern.search(content)
     if match is None:
-        raise ValueError(f"{path}: could not find {variable_name}")
-    body = match.group("body")
+        raise ValueError(
+            f"Could not find {RESTORE_ARRAY_NAME} in {script_path}"
+        )
+
     paths: list[str] = []
-    for raw_line in body.splitlines():
-        line = raw_line.strip()
-        if not line:
+    for raw_line in match.group("body").splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
             continue
-        if not (line.startswith('"') and line.endswith('"')):
-            raise ValueError(f"{path}: unexpected array entry format: {raw_line!r}")
-        paths.append(line[1:-1])
+        if not (stripped.startswith('"') and stripped.endswith('"')):
+            continue
+        paths.append(stripped[1:-1])
     return paths
 
 
-def unique_paths(paths: list[str]) -> list[str]:
-    return sorted(dict.fromkeys(paths))
+def parse_python_tuple_paths(script_path: Path, variable_name: str) -> list[str]:
+    module = ast.parse(script_path.read_text(encoding="utf-8"), filename=str(script_path))
+    for node in module.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == variable_name:
+                return extract_paths_from_tuple(node.value, script_path, variable_name)
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == variable_name:
+            return extract_paths_from_tuple(node.value, script_path, variable_name)
+    raise ValueError(f"Could not find {variable_name} in {script_path}")
+
+
+def extract_paths_from_tuple(value: ast.AST | None, script_path: Path, variable_name: str) -> list[str]:
+    if value is None or not isinstance(value, (ast.Tuple, ast.List)):
+        raise ValueError(f"{variable_name} in {script_path} is not a tuple/list literal")
+    paths: list[str] = []
+    for element in value.elts:
+        if not isinstance(element, (ast.Tuple, ast.List)) or not element.elts:
+            raise ValueError(f"{variable_name} in {script_path} contains a non-pair entry")
+        first = element.elts[0]
+        if not isinstance(first, ast.Constant) or not isinstance(first.value, str):
+            raise ValueError(f"{variable_name} in {script_path} contains a non-string path")
+        paths.append(first.value)
+    return paths
+
+
+def duplicate_paths(paths: list[str]) -> list[str]:
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for path in paths:
+        if path in seen and path not in duplicates:
+            duplicates.append(path)
+        seen.add(path)
+    return duplicates
+
+
+def diff_paths(source_paths: list[str], expected_paths: list[str]) -> dict[str, list[str]]:
+    source_set = set(source_paths)
+    expected_set = set(expected_paths)
+    return {
+        "missing": sorted(expected_set - source_set),
+        "extra": sorted(source_set - expected_set),
+    }
 
 
 def collect_results(repo_root: Path) -> dict[str, object]:
-    sources: dict[str, list[str]] = {}
-    source_labels: dict[str, str] = {}
+    repo_root = repo_root.resolve()
+    restore_script_path = repo_root / RESTORE_SCRIPT_RELATIVE_PATH
+    saved_memory_inputs_path = repo_root / SAVED_MEMORY_INPUTS_RELATIVE_PATH
+    restored_checkout_path = repo_root / RESTORED_CHECKOUT_RELATIVE_PATH
 
-    for relative_path, variable_name, label in PYTHON_SOURCES:
-        paths = parse_python_path_list(repo_root / relative_path, variable_name)
-        sources[relative_path] = unique_paths(paths)
-        source_labels[relative_path] = label
+    files = {
+        "restore_script": str(restore_script_path),
+        "saved_memory_inputs": str(saved_memory_inputs_path),
+        "restored_checkout": str(restored_checkout_path),
+    }
+    missing_files = [
+        path for path in files.values() if not Path(path).is_file()
+    ]
+    if missing_files:
+        return {
+            "ok": False,
+            "repo_root": str(repo_root),
+            "missing_files": missing_files,
+            "files": files,
+            "inventories": {},
+            "alignment": {},
+        }
 
-    shell_relative_path, shell_variable_name, shell_label = SHELL_SOURCE
-    shell_paths = parse_shell_path_list(repo_root / shell_relative_path, shell_variable_name)
-    sources[shell_relative_path] = unique_paths(shell_paths)
-    source_labels[shell_relative_path] = shell_label
+    restore_paths = parse_restore_helper_surface_paths(restore_script_path)
+    saved_memory_paths = parse_python_tuple_paths(
+        saved_memory_inputs_path, SAVED_MEMORY_TUPLE_NAME
+    )
+    restored_checkout_paths = parse_python_tuple_paths(
+        restored_checkout_path, RESTORED_CHECKOUT_TUPLE_NAME
+    )
 
-    expected_union = sorted({path for paths in sources.values() for path in paths})
-    comparisons: list[dict[str, object]] = []
-    ok = True
+    inventories = {
+        "restore_script": {
+            "count": len(restore_paths),
+            "duplicates": duplicate_paths(restore_paths),
+            "paths": restore_paths,
+        },
+        "saved_memory_inputs": {
+            "count": len(saved_memory_paths),
+            "duplicates": duplicate_paths(saved_memory_paths),
+            "paths": saved_memory_paths,
+        },
+        "restored_checkout": {
+            "count": len(restored_checkout_paths),
+            "duplicates": duplicate_paths(restored_checkout_paths),
+            "paths": restored_checkout_paths,
+        },
+    }
 
-    for relative_path, paths in sources.items():
-        missing = sorted(set(expected_union) - set(paths))
-        extra = sorted(set(paths) - set(expected_union))
-        source_ok = not missing and not extra
-        ok = ok and source_ok
-        comparisons.append(
-            {
-                "source": relative_path,
-                "label": source_labels[relative_path],
-                "count": len(paths),
-                "missing_paths": missing,
-                "extra_paths": extra,
-                "ok": source_ok,
-            }
-        )
+    alignment = {
+        "restore_vs_saved_memory_inputs": diff_paths(restore_paths, saved_memory_paths),
+        "restore_vs_restored_checkout": diff_paths(restore_paths, restored_checkout_paths),
+        "saved_memory_inputs_vs_restored_checkout": diff_paths(saved_memory_paths, restored_checkout_paths),
+    }
 
-    pairwise_mismatches: list[dict[str, object]] = []
-    source_items = list(sources.items())
-    for index, (left_path, left_paths) in enumerate(source_items):
-        for right_path, right_paths in source_items[index + 1 :]:
-            left_only = sorted(set(left_paths) - set(right_paths))
-            right_only = sorted(set(right_paths) - set(left_paths))
-            pair_ok = not left_only and not right_only
-            ok = ok and pair_ok
-            pairwise_mismatches.append(
-                {
-                    "left_source": left_path,
-                    "right_source": right_path,
-                    "left_only": left_only,
-                    "right_only": right_only,
-                    "ok": pair_ok,
-                }
-            )
+    ok = (
+        not inventories["restore_script"]["duplicates"]
+        and not inventories["saved_memory_inputs"]["duplicates"]
+        and not inventories["restored_checkout"]["duplicates"]
+        and not alignment["restore_vs_saved_memory_inputs"]["missing"]
+        and not alignment["restore_vs_saved_memory_inputs"]["extra"]
+        and not alignment["restore_vs_restored_checkout"]["missing"]
+        and not alignment["restore_vs_restored_checkout"]["extra"]
+        and not alignment["saved_memory_inputs_vs_restored_checkout"]["missing"]
+        and not alignment["saved_memory_inputs_vs_restored_checkout"]["extra"]
+    )
 
     return {
         "ok": ok,
         "repo_root": str(repo_root),
-        "expected_union": expected_union,
-        "comparisons": comparisons,
-        "pairwise_mismatches": pairwise_mismatches,
+        "missing_files": [],
+        "files": files,
+        "inventories": inventories,
+        "alignment": alignment,
     }
 
 
 def emit_text(result: dict[str, object]) -> None:
     print(f"Repo root: {result['repo_root']}")
-    print(f"Expected helper-surface paths: {len(result['expected_union'])}")
-    print("Source parity:")
-    for entry in result["comparisons"]:
-        status = "PASS" if entry["ok"] else "FAIL"
-        print(f"  [{status}] {entry['source']} ({entry['label']})")
-        print(f"         path count: {entry['count']}")
-        if entry["missing_paths"]:
-            print("         missing: " + ", ".join(entry["missing_paths"]))
-        if entry["extra_paths"]:
-            print("         extra: " + ", ".join(entry["extra_paths"]))
-    if result["ok"]:
-        print("\nIssue #3 helper-surface alignment check passed.")
+    if result["missing_files"]:
+        print("Status: FAIL")
+        for path in result["missing_files"]:
+            print(f"  missing source file: {path}")
         return
-    print("\nIssue #3 helper-surface alignment check failed.", file=sys.stderr)
-    print(
-        "Suggested next step: update the drifted helper surface so the restored-checkout, "
-        "saved-Memory, and restore-helper routes stay in sync.",
-        file=sys.stderr,
-    )
+
+    inventories = result["inventories"]
+    alignment = result["alignment"]
+
+    print(f"Restore script paths: {inventories['restore_script']['count']}")
+    print(f"Saved-memory helper paths: {inventories['saved_memory_inputs']['count']}")
+    print(f"Restored-checkout helper paths: {inventories['restored_checkout']['count']}")
+
+    for inventory_name, inventory in inventories.items():
+        duplicates = inventory["duplicates"]
+        status = "PASS" if not duplicates else "FAIL"
+        print(f"{inventory_name}: [{status}] duplicates={len(duplicates)}")
+        for duplicate in duplicates:
+            print(f"  duplicate path: {duplicate}")
+
+    for comparison_name, comparison in alignment.items():
+        status = "PASS" if not comparison["missing"] and not comparison["extra"] else "FAIL"
+        print(f"{comparison_name}: [{status}]")
+        for missing_path in comparison["missing"]:
+            print(f"  missing: {missing_path}")
+        for extra_path in comparison["extra"]:
+            print(f"  extra: {extra_path}")
+
+    print("\nHelper-surface alignment check passed." if result["ok"] else "\nHelper-surface alignment check failed.")
 
 
 class HelperSurfaceAlignmentTests(unittest.TestCase):
-    def write_repo(self, root: Path, *, saved_memory_paths: list[str]) -> Path:
-        repo_root = root / "browser"
-        (repo_root / "scripts/linux").mkdir(parents=True)
-        (repo_root / "scripts").mkdir(exist_ok=True)
+    def write_fixture(self, root: Path, relative_path: str, content: str) -> None:
+        target = root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(textwrap.dedent(content).lstrip(), encoding="utf-8")
 
-        restored_content = textwrap.dedent(
-            """
-            HELPER_SURFACE_PATHS = (
-                ("docs/A.md", "A"),
-                ("docs/B.md", "B"),
-            )
-            """
-        ).strip() + "\n"
-        saved_memory_lines = "\n".join(
-            f'        ("{path}", "label"),' for path in saved_memory_paths
-        )
-        saved_memory_content = textwrap.dedent(
-            f"""
-            REQUIRED_RESTORED_HELPER_FILES = (
-            {saved_memory_lines}
-            )
-            """
-        ).strip() + "\n"
-        restore_content = textwrap.dedent(
-            """
-            declare -a HELPER_SURFACE_PATHS=(
-                "docs/A.md"
-                "docs/B.md"
-            )
-            """
-        ).strip() + "\n"
-
-        (repo_root / "scripts/check_issue3_restored_checkout.py").write_text(
-            restored_content,
-            encoding="utf-8",
-        )
-        (repo_root / "scripts/check_issue3_saved_memory_inputs.py").write_text(
-            saved_memory_content,
-            encoding="utf-8",
-        )
-        (repo_root / "scripts/linux/restore_saved_browser_snapshot.sh").write_text(
-            restore_content,
-            encoding="utf-8",
-        )
-        return repo_root
-
-    def test_collect_results_passes_when_surfaces_match(self) -> None:
+    def test_collect_results_passes_when_inventories_match(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = self.write_repo(Path(tmpdir), saved_memory_paths=["docs/A.md", "docs/B.md"])
-            result = collect_results(repo_root)
+            root = Path(tmpdir)
+            self.write_fixture(
+                root,
+                RESTORE_SCRIPT_RELATIVE_PATH,
+                """
+                declare -a HELPER_SURFACE_PATHS=(
+                    "docs/a.md"
+                    "scripts/b.py"
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
+                """
+                REQUIRED_RESTORED_HELPER_FILES = (
+                    ("docs/a.md", "a"),
+                    ("scripts/b.py", "b"),
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                RESTORED_CHECKOUT_RELATIVE_PATH,
+                """
+                HELPER_SURFACE_PATHS = (
+                    ("docs/a.md", "a"),
+                    ("scripts/b.py", "b"),
+                )
+                """,
+            )
+
+            result = collect_results(root)
             self.assertTrue(result["ok"])
 
-    def test_collect_results_fails_when_saved_memory_lags(self) -> None:
+    def test_collect_results_reports_missing_restore_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = self.write_repo(Path(tmpdir), saved_memory_paths=["docs/A.md"])
-            result = collect_results(repo_root)
+            root = Path(tmpdir)
+            self.write_fixture(
+                root,
+                RESTORE_SCRIPT_RELATIVE_PATH,
+                """
+                declare -a HELPER_SURFACE_PATHS=(
+                    "docs/a.md"
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
+                """
+                REQUIRED_RESTORED_HELPER_FILES = (
+                    ("docs/a.md", "a"),
+                    ("scripts/b.py", "b"),
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                RESTORED_CHECKOUT_RELATIVE_PATH,
+                """
+                HELPER_SURFACE_PATHS = (
+                    ("docs/a.md", "a"),
+                    ("scripts/b.py", "b"),
+                )
+                """,
+            )
+
+            result = collect_results(root)
             self.assertFalse(result["ok"])
-            comparisons = {entry["source"]: entry for entry in result["comparisons"]}
             self.assertEqual(
-                comparisons["scripts/check_issue3_saved_memory_inputs.py"]["missing_paths"],
-                ["docs/B.md"],
+                result["alignment"]["restore_vs_saved_memory_inputs"]["missing"],
+                ["scripts/b.py"],
+            )
+
+    def test_collect_results_reports_duplicate_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            self.write_fixture(
+                root,
+                RESTORE_SCRIPT_RELATIVE_PATH,
+                """
+                declare -a HELPER_SURFACE_PATHS=(
+                    "docs/a.md"
+                    "docs/a.md"
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
+                """
+                REQUIRED_RESTORED_HELPER_FILES = (
+                    ("docs/a.md", "a"),
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                RESTORED_CHECKOUT_RELATIVE_PATH,
+                """
+                HELPER_SURFACE_PATHS = (
+                    ("docs/a.md", "a"),
+                )
+                """,
+            )
+
+            result = collect_results(root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(
+                result["inventories"]["restore_script"]["duplicates"],
+                ["docs/a.md"],
+            )
+
+    def test_collect_results_reports_attached_page_sync_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            self.write_fixture(
+                root,
+                RESTORE_SCRIPT_RELATIVE_PATH,
+                """
+                declare -a HELPER_SURFACE_PATHS=(
+                    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
+                    "scripts/check_issue3_saved_memory_inputs.py"
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
+                """
+                REQUIRED_RESTORED_HELPER_FILES = (
+                    ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime"),
+                    ("scripts/check_issue3_saved_memory_inputs.py", "preflight"),
+                    ("tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py", "catalog"),
+                )
+                """,
+            )
+            self.write_fixture(
+                root,
+                RESTORED_CHECKOUT_RELATIVE_PATH,
+                """
+                HELPER_SURFACE_PATHS = (
+                    ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime"),
+                    ("scripts/check_issue3_saved_memory_inputs.py", "preflight"),
+                    ("tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py", "catalog"),
+                )
+                """,
+            )
+
+            result = collect_results(root)
+            self.assertFalse(result["ok"])
+            self.assertEqual(
+                result["alignment"]["restore_vs_saved_memory_inputs"]["missing"],
+                ["tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py"],
             )
 
 
 def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
+    args = build_parser().parse_args()
     if args.self_test:
-        suite = unittest.defaultTestLoader.loadTestsFromTestCase(HelperSurfaceAlignmentTests)
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(
+            HelperSurfaceAlignmentTests
+        )
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
 
-    repo_root = Path(args.repo_root).resolve()
-    result = collect_results(repo_root)
+    result = collect_results(Path(args.repo_root))
     if args.json:
-        print(json.dumps(result, indent=2))
+        print(json.dumps({"profile": "issue3-helper-surface-alignment", **result}, indent=2))
     else:
         emit_text(result)
     return 0 if result["ok"] else 1
