@@ -9,9 +9,9 @@ Usage:
     [--repo-root /path/to/browser-repo] \
     [--json]
 
-Verify that the branch-local Linux-to-Windows handoff helper surface for issue
-#3 still has its required docs, helpers, and command snippets in place before a
-run jumps from saved-snapshot recovery back onto the final headed Win32 replay
+Verify that the branch-local Linux-or-WSL-to-Windows handoff surface for the
+blocked issue #3 runtime lane still has its required docs, helpers, probes, and
+command snippets in place before a run reopens the narrower Windows-only replay
 ladder.
 EOF
 }
@@ -47,49 +47,28 @@ done
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
-    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md|file|Runtime revalidation note that should stay read-first before the Windows handoff reopens."
-    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md|file|Click-focus trace replay note that should stay visible before the reduced Google fixture or live Google reruns."
-    "docs/WINDOWS_FULL_USE.md|file|Windows route catalog that should keep the neighboring Google and attached-page replay ladders visible."
-    "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh|file|Fail-fast Linux surface checker for the issue #3 Windows runtime handoff route."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|file|Compact Linux-or-WSL-to-Windows handoff route printer for the final headed runtime ladder."
-    "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1|file|Fail-fast Windows runtime surface checker that should run before the broader Windows route helper."
-    "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1|file|Broader Windows runtime route helper that should stay one rung below the handoff helper."
-    "tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1|file|Reduced Google headed probe used before the direct fixture or live Google replay."
-    "src/browser/tests/page/google_home_title_probe.html|file|Reduced Google fixture used for the lower-risk headed Win32 replay step."
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should stay visible before the narrower Windows-only replay ladder reopens from Linux or WSL staging."
+    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md|file|Runtime revalidation note that still defines the Page.zig plus win32_backend.zig target boundary behind this handoff."
+    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md|file|Reduced Google click-focus trace note that should stay nearby before the handoff widens back to live Google."
+    "docs/WINDOWS_FULL_USE.md|file|Windows-first runbook that should stay nearby when the handoff widens back out beyond the reduced probe."
+    "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh|file|Fail-fast surface checker for the Linux-or-WSL-to-Windows issue #3 runtime handoff."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|file|Compact route printer for reopening the Windows-only replay ladder after Linux or WSL gating is already green."
+    "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1|file|Fail-fast Windows runtime surface checker that should still lead the narrower replay ladder."
+    "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1|file|Broader Windows runtime route printer that should still follow the reduced handoff surface."
+    "tmp-browser-smoke/google-investigation-next/chrome-google-home-title-probe.ps1|file|Reduced Google title probe that should remain the quickest trace-ready Windows yes-or-no check after the handoff."
+    "src/browser/tests/page/google_home_title_probe.html|file|Reduced Google fixture that should remain the next narrower replay target before live Google."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md|The handoff helper keeps the runtime revalidation note in its read-first list."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md|The handoff helper keeps the click-focus trace replay note in its read-first list."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|docs/WINDOWS_FULL_USE.md|The handoff helper keeps the broader Windows route catalog in its read-first list."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|check_google_issue3_enter_submit_runtime_revalidation_surface.ps1|The handoff helper still starts with the fail-fast Windows runtime surface check."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|show_google_issue3_enter_submit_runtime_revalidation.ps1|The handoff helper still points back to the broader Windows runtime route."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|chrome-google-home-title-probe.ps1|The handoff helper still keeps the reduced Google probe visible before the direct fixture and live Google."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|google_home_title_probe.html?google-home-probe=1|The handoff helper still prints the reduced Google fixture replay step."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|https://www.google.com/|The handoff helper still keeps live Google as the final replay rung."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|runtime-input-backend-<pid>.log|The handoff helper still points at the runtime trace log pattern."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|wndproc-input-<pid>.log|The handoff helper still points at the wndproc trace log pattern."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"windows_runtime_surface\"|The handoff helper still exposes the fail-fast Windows surface command in JSON output."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"windows_runtime_route\"|The handoff helper still exposes the broader Windows route command in JSON output."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"windows_build\"|The handoff helper still exposes the Windows build command in JSON output."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"reduced_google_probe\"|The handoff helper still exposes the reduced Google probe command in JSON output."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"reduced_google_fixture\"|The handoff helper still exposes the reduced Google fixture command in JSON output."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"live_google\"|The handoff helper still exposes the live Google command in JSON output."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|Use this handoff only after the Linux or WSL saved-snapshot, offline-inputs, Rust, and Zig-line gates are already green.|The handoff helper keeps the saved-snapshot and toolchain gate note visible."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|Run the Windows runtime surface check first|The handoff helper keeps the fail-fast ordering note visible."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|Use the reduced Google probe before the direct fixture or live Google|The handoff helper keeps the reduced-before-live replay rule visible."
-    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|Treat live Google as the last step in this handoff|The handoff helper keeps the final live-Google guardrail visible."
-    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md|enter-submit-probe.ps1 -GoogleEnterOrder -ClickFocus|The click-focus replay note still keeps the click-first shared Enter-order probe visible."
-    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md|show_headed_validation_suites.ps1 -ChangeArea attached-html-target-bundle|The click-focus replay note still keeps the attached-pages bundle ladder visible."
-    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md|runtime-input-backend-<pid>.log|The click-focus replay note still keeps the runtime trace pattern visible."
-    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md|wndproc-input-<pid>.log|The click-focus replay note still keeps the wndproc trace pattern visible."
-    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md|chrome-google-home-title-probe.ps1|The runtime revalidation note still keeps the reduced Google probe visible."
-    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md|google_home_title_probe.html?google-home-probe=1|The runtime revalidation note still keeps the reduced Google fixture visible."
-    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md|runtime-input-backend-*.log|The runtime revalidation note still keeps the runtime trace glob visible."
-    "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md|wndproc-input-*.log|The runtime revalidation note still keeps the wndproc trace glob visible."
-    "docs/WINDOWS_FULL_USE.md|google-form-controls-enter-order|The Windows route catalog still keeps the Google form-controls replay ladder visible."
-    "docs/WINDOWS_FULL_USE.md|google-shared-enter-order|The Windows route catalog still keeps the shared Enter-order replay ladder visible."
-    "docs/WINDOWS_FULL_USE.md|attached-html-target-bundle|The Windows route catalog still keeps the attached-pages bundle ladder visible."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|docs/ISSUE3_RUNTIME_REENTRY_GATES.md|The handoff route printer keeps the runtime gate note in its read-first set."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|check_issue3_windows_runtime_handoff_route_surface.sh|The handoff route printer points back to the dedicated handoff surface checker."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"handoff_surface\"|The handoff route printer exposes the fail-fast checker in JSON output."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|Linux or WSL handoff surface check:|The handoff route printer prints the fail-fast checker before the narrower Windows-only replay ladder."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|Run handoff_surface first|The handoff route printer explains that the checker runs before the broader Windows replay helpers."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"windows_runtime_surface\"|The handoff route printer keeps the Windows runtime surface checker visible after the Linux or WSL handoff checker."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"windows_runtime_route\"|The handoff route printer keeps the broader Windows runtime route visible after the Linux or WSL handoff checker."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|\"reduced_google_probe\"|The handoff route printer keeps the reduced Google probe visible before the reduced fixture or live Google."
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh|Treat live Google as the last step|The handoff route printer keeps the live-Google-last rule visible."
 )
 
 json_escape() {
@@ -135,7 +114,7 @@ done
 
 if [[ "${JSON}" -eq 1 ]]; then
     printf '{\n'
-    printf '  "profile": %s,\n' "$(json_escape "issue3-windows-runtime-handoff-route-surface")"
+    printf '  "profile": %s,\n' "$(json_escape "issue3-windows-runtime-handoff-surface")"
     printf '  "repo_root": %s,\n' "$(json_escape "${REPO_ROOT}")"
     printf '  "reference_count": %d,\n' "${#reference_rows[@]}"
     printf '  "content_check_count": %d,\n' "${#content_rows[@]}"
