@@ -60,6 +60,10 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
         "scripts/check_issue3_saved_archive_integrity.py",
         "saved-archive integrity helper",
     ),
+    (
+        "scripts/check_issue3_restored_checkout.py",
+        "restored-checkout readiness helper",
+    ),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness helper"),
     (
         "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
@@ -694,6 +698,10 @@ class SavedMemoryInputsTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/check_issue3_saved_archive_integrity.py",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_restored_checkout.py",
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
