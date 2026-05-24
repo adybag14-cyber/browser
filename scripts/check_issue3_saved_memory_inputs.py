@@ -11,6 +11,7 @@ optional attached fallback Zig bundle.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -140,6 +141,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the browser checkout root (default: current directory)",
     )
     parser.add_argument(
+        "--helper-root",
+        default=None,
+        help=(
+            "Path to the live helper checkout that should stay in sync with the "
+            "restored checkout helper surface (default: repo root)"
+        ),
+    )
+    parser.add_argument(
         "--memory-root",
         default=None,
         help="Path to the workspace memory root (default: ../memory beside the repo workspace)",
@@ -182,6 +191,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def resolve_default_memory_root(repo_root: Path) -> Path:
     return (repo_root.parent / "memory").resolve()
+
+
+def resolve_default_helper_root(repo_root: Path) -> Path:
+    return repo_root.resolve()
 
 
 def resolve_default_agent_files_root(repo_root: Path) -> Path:
@@ -291,9 +304,88 @@ def collect_restored_checkout_result(restored_checkout_root: Path) -> dict[str, 
     }
 
 
+def file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def collect_helper_surface_sync_result(helper_root: Path, restored_checkout_root: Path) -> dict[str, object]:
+    if not helper_root.is_dir():
+        return {
+            "status": "helper-root-missing",
+            "helper_root": str(helper_root),
+            "restored_checkout_root": str(restored_checkout_root),
+            "checked_files": [],
+            "drifted_files": [],
+            "missing_in_helper_root": [],
+            "missing_in_restored_checkout": [],
+            "ok": False,
+        }
+
+    if not restored_checkout_root.is_dir():
+        return {
+            "status": "restored-checkout-missing",
+            "helper_root": str(helper_root),
+            "restored_checkout_root": str(restored_checkout_root),
+            "checked_files": [],
+            "drifted_files": [],
+            "missing_in_helper_root": [],
+            "missing_in_restored_checkout": [],
+            "ok": True,
+        }
+
+    checked_files: list[dict[str, object]] = []
+    drifted_files: list[str] = []
+    missing_in_helper_root: list[str] = []
+    missing_in_restored_checkout: list[str] = []
+
+    for relative_path, label in REQUIRED_RESTORED_HELPER_FILES:
+        helper_path = helper_root / relative_path
+        restored_path = restored_checkout_root / relative_path
+        helper_exists = helper_path.is_file()
+        restored_exists = restored_path.is_file()
+        same_content = False
+        if helper_exists and restored_exists:
+            same_content = file_digest(helper_path) == file_digest(restored_path)
+        if not helper_exists:
+            missing_in_helper_root.append(relative_path)
+        if not restored_exists:
+            missing_in_restored_checkout.append(relative_path)
+        if helper_exists and restored_exists and not same_content:
+            drifted_files.append(relative_path)
+        checked_files.append(
+            {
+                "label": label,
+                "relative_path": relative_path,
+                "helper_path": str(helper_path),
+                "restored_path": str(restored_path),
+                "helper_exists": helper_exists,
+                "restored_exists": restored_exists,
+                "same_content": same_content if helper_exists and restored_exists else None,
+            }
+        )
+
+    ok = not drifted_files and not missing_in_helper_root and not missing_in_restored_checkout
+    status = "synced" if ok else "out-of-sync"
+    return {
+        "status": status,
+        "helper_root": str(helper_root),
+        "restored_checkout_root": str(restored_checkout_root),
+        "checked_files": checked_files,
+        "drifted_files": drifted_files,
+        "missing_in_helper_root": missing_in_helper_root,
+        "missing_in_restored_checkout": missing_in_restored_checkout,
+        "ok": ok,
+    }
+
+
 def collect_results(
     *,
     repo_root: Path,
+    helper_root: Path,
     memory_root: Path,
     agent_files_root: Path,
     restored_checkout_root: Path,
@@ -325,14 +417,17 @@ def collect_results(
         for entry in required_files
         if entry.get("exists") and "archive_readable" in entry and not entry["archive_readable"]
     ]
-    ok = not missing_required and not unreadable_required
+    helper_surface_sync = collect_helper_surface_sync_result(helper_root, restored_checkout_root)
+    ok = not missing_required and not unreadable_required and helper_surface_sync["ok"]
 
     return {
         "ok": ok,
         "repo_root": str(repo_root),
+        "helper_root": str(helper_root),
         "memory_root": str(memory_root),
         "agent_files_root": str(agent_files_root),
         "restored_checkout": collect_restored_checkout_result(restored_checkout_root),
+        "helper_surface_sync": helper_surface_sync,
         "archive_integrity_checked": check_archive_integrity,
         "required_files": required_files,
         "optional_files": optional_files,
@@ -342,6 +437,7 @@ def collect_results(
 
 def emit_text(result: dict[str, object]) -> None:
     print(f"Repo root: {result['repo_root']}")
+    print(f"Helper root: {result['helper_root']}")
     print(f"Memory root: {result['memory_root']}")
     print(f"Agent files root: {result['agent_files_root']}")
     restored_checkout = result["restored_checkout"]
@@ -368,6 +464,34 @@ def emit_text(result: dict[str, object]) -> None:
             print(f"         missing helper files: {joined}")
     else:
         print("         status: missing; restore the saved browser snapshot route before Linux or WSL replay")
+    helper_surface_sync = result["helper_surface_sync"]
+    helper_sync_status = {
+        "synced": "PASS",
+        "out-of-sync": "FAIL",
+        "restored-checkout-missing": "WARN",
+        "helper-root-missing": "FAIL",
+    }[helper_surface_sync["status"]]
+    print(
+        f"Helper surface sync: [{helper_sync_status}] "
+        f"{helper_surface_sync['helper_root']} -> {helper_surface_sync['restored_checkout_root']}"
+    )
+    if helper_surface_sync["status"] == "out-of-sync":
+        if helper_surface_sync["drifted_files"]:
+            print(
+                "         drifted files: "
+                + ", ".join(helper_surface_sync["drifted_files"])
+            )
+        if helper_surface_sync["missing_in_restored_checkout"]:
+            print(
+                "         missing in restored checkout: "
+                + ", ".join(helper_surface_sync["missing_in_restored_checkout"])
+            )
+        if helper_surface_sync["missing_in_helper_root"]:
+            print(
+                "         missing in helper root: "
+                + ", ".join(helper_surface_sync["missing_in_helper_root"])
+            )
+        print("         suggested next step: re-run the saved-browser restore with --sync-helper-surface before Linux or WSL follow-up work")
     print("Required Memory inputs:")
     for entry in result["required_files"]:
         status = "PASS" if entry["exists"] else "FAIL"
@@ -444,6 +568,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
 
             result = collect_results(
                 repo_root=repo_root,
+                helper_root=restored_checkout_root,
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
                 restored_checkout_root=restored_checkout_root,
@@ -457,6 +582,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
             self.assertEqual(result["restored_checkout"]["status"], "ready")
             self.assertTrue(result["restored_checkout"]["has_helper_surface"])
             self.assertEqual(result["restored_checkout"]["missing_helper_surface_files"], [])
+            self.assertEqual(result["helper_surface_sync"]["status"], "synced")
 
     def test_collect_results_fails_when_required_archive_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -473,6 +599,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
 
             result = collect_results(
                 repo_root=repo_root,
+                helper_root=repo_root,
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
                 restored_checkout_root=resolve_default_restored_checkout_root(repo_root),
@@ -512,6 +639,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
 
             result = collect_results(
                 repo_root=repo_root,
+                helper_root=repo_root,
                 memory_root=memory_root,
                 agent_files_root=agent_files_root,
                 restored_checkout_root=resolve_default_restored_checkout_root(repo_root),
@@ -585,11 +713,59 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 result["missing_helper_surface_files"],
             )
 
+    def test_helper_surface_sync_detects_drift_and_missing_restored_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            helper_root = root / "browser"
+            restored_checkout_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            helper_root.mkdir()
+            restored_checkout_root.mkdir()
+
+            for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES:
+                helper_target = helper_root / relative_path
+                helper_target.parent.mkdir(parents=True, exist_ok=True)
+                helper_target.write_text("live", encoding="utf-8")
+
+                if relative_path == "scripts/check_issue3_saved_memory_inputs.py":
+                    continue
+
+                restored_target = restored_checkout_root / relative_path
+                restored_target.parent.mkdir(parents=True, exist_ok=True)
+                restored_target.write_text(
+                    "restored drift" if relative_path == "docs/ISSUE3_RUNTIME_REENTRY_GATES.md" else "live",
+                    encoding="utf-8",
+                )
+
+            result = collect_helper_surface_sync_result(helper_root, restored_checkout_root)
+
+            self.assertEqual(result["status"], "out-of-sync")
+            self.assertIn(
+                "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+                result["drifted_files"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_saved_memory_inputs.py",
+                result["missing_in_restored_checkout"],
+            )
+
+    def test_helper_surface_sync_skips_missing_restored_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            helper_root = Path(tmpdir) / "browser"
+            helper_root.mkdir()
+
+            result = collect_helper_surface_sync_result(
+                helper_root, Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
+            )
+
+            self.assertEqual(result["status"], "restored-checkout-missing")
+            self.assertTrue(result["ok"])
+
     def test_default_roots_follow_workspace_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser"
             repo_root.mkdir()
             (repo_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            self.assertEqual(resolve_default_helper_root(repo_root), repo_root)
             self.assertEqual(resolve_default_memory_root(repo_root), Path(tmpdir) / "memory")
             self.assertEqual(resolve_default_agent_files_root(repo_root), Path(tmpdir) / "agent_files")
             self.assertEqual(
@@ -614,6 +790,7 @@ def main() -> int:
         return 0 if result.wasSuccessful() else 1
 
     repo_root = Path(args.repo_root).resolve()
+    helper_root = Path(args.helper_root).resolve() if args.helper_root else resolve_default_helper_root(repo_root)
     memory_root = Path(args.memory_root).resolve() if args.memory_root else resolve_default_memory_root(repo_root)
     agent_files_root = (
         Path(args.agent_files_root).resolve() if args.agent_files_root else resolve_default_agent_files_root(repo_root)
@@ -627,6 +804,7 @@ def main() -> int:
 
     result = collect_results(
         repo_root=repo_root,
+        helper_root=helper_root,
         memory_root=memory_root,
         agent_files_root=agent_files_root,
         restored_checkout_root=restored_checkout_root,
