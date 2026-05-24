@@ -14,6 +14,8 @@ Companion helpers:
 - `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
 - `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/check_issue3_saved_archive_integrity.py`
+- `scripts/check_issue3_saved_browser_snapshot_archive_surface.py`
+- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
@@ -37,9 +39,10 @@ From the browser repo root:
 bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
 ```
 
-This verifies that the route note, route printer, SHA-256 helper, saved-Memory
-preflight, and the restore or follow-up helpers are still present on the
-branch-local helper surface before the run trusts the archive-integrity route.
+This verifies that the route note, route printer, SHA-256 helper, saved-snapshot
+archive-surface helper, saved-Memory preflight, and the restore or follow-up
+helpers are still present on the branch-local helper surface before the run
+trusts the archive-integrity route.
 
 ## Print The Route
 
@@ -79,6 +82,19 @@ The helper verifies:
 - `repo_archives/browser/dependencies/04-zig-browser-depo.tar.zip`
 - the fallback Zig archive when it is explicitly required
 
+## Check The Saved Snapshot Helper Surface
+
+After checksum verification, check whether the saved snapshot zip already
+contains the current issue `#3` restore and runtime helper surface:
+
+```bash
+python ./scripts/check_issue3_saved_browser_snapshot_archive_surface.py --repo-root .
+```
+
+When this helper reports missing paths, prefer the restore route that copies the
+live helper surface into the restored checkout instead of trusting a plain
+restore from the older archive contents.
+
 ## Recommended Order
 
 Keep the early recovery checks in this order:
@@ -87,6 +103,7 @@ Keep the early recovery checks in this order:
 bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
 bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
 python ./scripts/check_issue3_saved_archive_integrity.py --repo-root .
+python ./scripts/check_issue3_saved_browser_snapshot_archive_surface.py --repo-root .
 python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
 bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
 ```
@@ -104,9 +121,11 @@ route the run actually needs:
   are part of the plan.
 - Treat checksum mismatch as an environment problem first, not as proof that the
   headed runtime patch regressed.
-- Run the saved-Memory presence preflight after the checksum route, not instead
-  of it.
+- Run the saved-snapshot archive-surface helper after the checksum route so a
+  readable but stale snapshot fails fast before restore or replay trusts it.
+- Run the saved-Memory presence preflight after the checksum and snapshot-surface
+  route checks, not instead of them.
 - Do not reopen Linux or WSL build-readiness or direct runtime validation on
-  top of mismatched saved archives.
+  top of mismatched saved archives or stale restore-helper surfaces.
 - Prefer this route when the current run needs a small, publishable recovery
   step without touching the blocked large runtime files.
