@@ -4,10 +4,11 @@ Use this note when the blocked issue `#3` Linux or WSL recovery path still
 needs the saved offline build inputs staged before the broader build-readiness
 helper or any focused Zig command can be trusted.
 
-This route keeps the saved-Memory preflight, the offline-input surface check,
-the raw `prepare_offline_build_inputs.sh` commands, and the immediate
-post-staging follow-up checks on one branch-local surface so future reruns do
-not have to rebuild the archive wiring by hand.
+This route keeps the saved-Memory preflight, the saved-archive integrity
+preflight, the offline-input surface check, the raw
+`prepare_offline_build_inputs.sh` commands, and the immediate post-staging
+follow-up checks on one branch-local surface so future reruns do not have to
+rebuild the archive wiring by hand.
 
 Companion helpers:
 
@@ -15,9 +16,11 @@ Companion helpers:
 - `scripts/linux/show_issue3_offline_build_inputs_route.sh`
 - `scripts/linux/prepare_offline_build_inputs.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_linux_build_readiness.py`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
+- `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 
@@ -71,13 +74,15 @@ The helper prints:
    `scripts/linux/check_issue3_offline_build_inputs_route_surface.sh`
 2. the saved-Memory preflight command for
    `scripts/check_issue3_saved_memory_inputs.py`
-3. the exact `prepare_offline_build_inputs.sh --check-only` command for the
+3. the saved-archive integrity preflight command for
+   `scripts/check_issue3_saved_archive_integrity.py`
+4. the exact `prepare_offline_build_inputs.sh --check-only` command for the
    saved browser dependency, BoringSSL, and optional html5ever archives
-4. the real restore command that stages `../zig-v8-fork`, `../boringssl-zig`,
+5. the real restore command that stages `../zig-v8-fork`, `../boringssl-zig`,
    and `../offline-deps`
-5. the saved Rust toolchain route and Zig toolchain recovery route that should
+6. the saved Rust toolchain route and Zig toolchain recovery route that should
    follow once the offline inputs are staged
-6. the post-staging `check_linux_build_readiness.py` rerun that confirms the
+7. the post-staging `check_linux_build_readiness.py` rerun that confirms the
    saved archives and offline dependency layout before focused Zig work resumes
 
 ## Working Rules
@@ -87,10 +92,14 @@ The helper prints:
 - Run `python scripts/check_issue3_saved_memory_inputs.py --repo-root .` before
   the restore commands when the route depends on the saved repo snapshot and
   dependency bundles in Memory.
+- Run `python scripts/check_issue3_saved_archive_integrity.py --repo-root .`
+  after the saved-Memory preflight when the route needs to trust the exact
+  saved repo snapshot and dependency bundles before offline staging starts.
 - Keep the raw restore command on this helper surface instead of rebuilding the
   archive arguments by hand.
 - Treat this route as the offline dependency staging step that sits between the
-  saved-Memory preflight and the saved Rust or Zig-line recovery routes.
+  saved-Memory preflight, the saved-archive integrity check, and the saved Rust
+  or Zig-line recovery routes.
 - Do not treat missing `../offline-deps` or sibling dependency folders as a
   source regression before this route has been replayed.
 - Do not treat fallback Zig `0.17` failures in untouched branch files as issue
