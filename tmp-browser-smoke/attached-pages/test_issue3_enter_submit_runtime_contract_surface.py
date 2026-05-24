@@ -37,7 +37,9 @@ FIXTURE_FILES = {
     - `src/browser/tests/page/google_home_title_probe.html`
     - `Page.zig` still needs a way to defer native text-input Enter submit until keypress-time DOM behavior has had a chance to run.
     - `win32_backend.zig` still needs to suppress only the matching later `text_input` bytes that correspond to a just-handled printable keydown.
+    - `test "Page reduced Google fixture accepts focused keyboard text and Enter submit"`
     - `test "Page reduced Google fixture defers native Enter submit until keypress"`
+    - `test "win32 dispatchInput suppresses later text_input after printable keydown across batches"`
     - `test "win32 dispatchInput allows later real text when stale suppression bytes do not match"`
     - `test "win32 dispatchInput suppresses matching text after stale entries drop out of order"`
     """,
@@ -101,11 +103,13 @@ FIXTURE_FILES = {
         "fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool {",
     )
     PAGE_TEST_MARKERS = (
+        'test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {',
         'test "Page reduced Google fixture defers native Enter submit until keypress" {',
         "page.beginDeferredNativeTextInputEnterSubmit();",
         "try page.applyDeferredNativeTextInputEnterSubmit();",
     )
     WIN32_TEST_MARKERS = (
+        'test "win32 dispatchInput suppresses later text_input after printable keydown across batches" {',
         'test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {',
         'test "win32 dispatchInput suppresses matching text after stale entries drop out of order" {',
     )
@@ -143,6 +147,7 @@ FIXTURE_FILES = {
     if (focused.asNode() != input.asNode()) {}
     if (self._defer_native_text_input_enter_submit) {}
     self._pending_native_enter_submit = input;
+    test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {}
     test "Page reduced Google fixture defers native Enter submit until keypress" {}
     """,
     "src/display/win32_backend.zig": """
@@ -158,6 +163,7 @@ FIXTURE_FILES = {
     self.pending_text_input_suppressions.clearRetainingCapacity();
     fn queuePendingTextInputSuppression(self: *Win32Backend, bytes: []const u8) void {}
     fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool { return false; }
+    test "win32 dispatchInput suppresses later text_input after printable keydown across batches" {}
     test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {}
     test "win32 dispatchInput suppresses matching text after stale entries drop out of order" {}
     """,
@@ -233,7 +239,9 @@ class Issue3EnterSubmitRuntimeContractSurfaceTest(unittest.TestCase):
             "google_home_title_probe.html",
             "Page.zig` still needs a way to defer native text-input Enter submit until keypress-time DOM behavior has had a chance to run.",
             "win32_backend.zig` still needs to suppress only the matching later `text_input` bytes that correspond to a just-handled printable keydown.",
+            'test "Page reduced Google fixture accepts focused keyboard text and Enter submit"',
             'test "Page reduced Google fixture defers native Enter submit until keypress"',
+            'test "win32 dispatchInput suppresses later text_input after printable keydown across batches"',
             'test "win32 dispatchInput allows later real text when stale suppression bytes do not match"',
             'test "win32 dispatchInput suppresses matching text after stale entries drop out of order"',
         ):
@@ -290,7 +298,9 @@ class Issue3EnterSubmitRuntimeContractSurfaceTest(unittest.TestCase):
             "if (defer_enter_submit and allow_text_input) {",
             "try page.applyDeferredNativeTextInputEnterSubmit();",
             "fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool {",
+            'test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {',
             'test "Page reduced Google fixture defers native Enter submit until keypress" {',
+            'test "win32 dispatchInput suppresses later text_input after printable keydown across batches" {',
             'test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {',
             'test "win32 dispatchInput suppresses matching text after stale entries drop out of order" {',
             "def evaluate_sources(page_source: str, win32_source: str) -> dict[str, object]:",
@@ -312,6 +322,7 @@ class Issue3EnterSubmitRuntimeContractSurfaceTest(unittest.TestCase):
             "const focused = self.document.getFocusedElement() orelse return;",
             "if (focused.asNode() != input.asNode())",
             "self._pending_native_enter_submit = input;",
+            'test "Page reduced Google fixture accepts focused keyboard text and Enter submit"',
             'test "Page reduced Google fixture defers native Enter submit until keypress"',
         ):
             self.assertIn(fragment, self.page_source)
@@ -324,6 +335,7 @@ class Issue3EnterSubmitRuntimeContractSurfaceTest(unittest.TestCase):
             "try page.applyDeferredNativeTextInputEnterSubmit();",
             "self.pending_text_input_suppressions.clearRetainingCapacity();",
             "fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool {",
+            'test "win32 dispatchInput suppresses later text_input after printable keydown across batches"',
             'test "win32 dispatchInput allows later real text when stale suppression bytes do not match"',
             'test "win32 dispatchInput suppresses matching text after stale entries drop out of order"',
         ):
