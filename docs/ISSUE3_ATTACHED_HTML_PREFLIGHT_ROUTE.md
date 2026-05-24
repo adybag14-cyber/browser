@@ -117,9 +117,9 @@ python ./tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py \
 The current builder-attached compatibility bundle for this route is the same
 three saved pages already present beside the workspace helper surface:
 
-- `Control your online safety and privacy - Google Safety Centre (09_05_2026 21:23:40).html`
-- `Job Application for [Expression of Interest] Research Manager, Interpretability at Anthropic (09_05_2026 21:25:29).html`
-- `Presidential Unsealing and Reporting System for UAP Encounters _ U.S. Department of War.html`
+- the Google Safety Centre export
+- the Anthropic application export
+- the U.S. Department of War UAP export
 
 When the replay should keep one Google-shaped page first inside that bundle,
 pass `--preferred-initial-page` to the Linux route helper or directly to the
