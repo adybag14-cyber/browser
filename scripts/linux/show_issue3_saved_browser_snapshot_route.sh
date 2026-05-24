@@ -112,7 +112,7 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${HELPER_ROOT}" ]]; then
     HELPER_ROOT="${REPO_ROOT}"
 fi
-HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
+HELPER_ROOT="$(cd "${HELPER_ROOT}")" && pwd)
 if [[ -z "${MEMORY_ROOT}" ]]; then
     MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
 fi
@@ -188,6 +188,13 @@ print(json.dumps({
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "sync_helper_surface": ${SYNC_HELPER_SURFACE},
     "sync_only": ${SYNC_ONLY},
+    "read_first": [
+        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+        "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
+        "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+        "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
+    ],
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
@@ -242,6 +249,8 @@ Sync only:             $([[ "${SYNC_ONLY}" -eq 1 ]] && echo enabled || echo disa
 Read first
 ==========
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
+  docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
+  docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
 
