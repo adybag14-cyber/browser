@@ -43,6 +43,30 @@ FIXTURE_FILES = {
     - `test "win32 dispatchInput allows later real text when stale suppression bytes do not match"`
     - `test "win32 dispatchInput suppresses matching text after stale entries drop out of order"`
     """,
+    "docs/ISSUE3_LINUX_REENTRY_DECISION_TREE.md": """
+    # Issue #3 Linux Re-entry Decision Tree
+
+    - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
+    - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+    - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
+    - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
+    - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+    - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+    - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
+    - `scripts/linux/show_issue3_offline_build_inputs_route.sh`
+    - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
+    - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
+    - `python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .`
+    - `python ./scripts/check_issue3_saved_archive_integrity.py --repo-root .`
+    - `bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh`
+    - `bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+    - `bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
+    - `bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh`
+    - `bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
+    - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
+    - `powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_enter_submit_runtime_revalidation.ps1`
+    - Do not treat Zig `0.17` failures in untouched branch files as issue `#3` runtime evidence.
+    """,
     "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1": r"""
     $runtimeContractCheckerPath = Join-Path $resolvedRepoRoot "tmp-browser-smoke\google-investigation-next\check_issue3_enter_submit_runtime_contract.py"
     $pageSourcePath = Join-Path $resolvedRepoRoot "src\browser\Page.zig"
@@ -76,6 +100,27 @@ FIXTURE_FILES = {
     src/browser/Page.zig
     src/display/win32_backend.zig
     """,
+    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh": r"""
+    DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0"
+    DEFAULT_ARCHIVE_TOOLCHAIN_NAME="rust-1.79.0-x86_64-unknown-linux-gnu"
+    DEFAULT_ARCHIVE_NAME="01-${DEFAULT_ARCHIVE_TOOLCHAIN_NAME}.tar.xz"
+    SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
+    CHECK_ONLY_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --check-only"
+    RESTORE_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}")"
+    PATH_COMMAND="export PATH=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin"):$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin"):\$PATH"
+    CARGO_COMMAND="export CARGO=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin/cargo")"
+    RUSTC_COMMAND="export RUSTC=$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin/rustc")"
+    PREFLIGHT_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_linux_build_readiness.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --skip-zig-check"
+    "toolchain_parent": ${TOOLCHAIN_PARENT@Q},
+    "toolchain_root": ${TOOLCHAIN_ROOT@Q},
+    "archive_path": ${ARCHIVE_PATH@Q},
+    Run the surface check command first so missing route docs or helper drift fails before the saved archive itself is blamed.
+    Run the check_only command next when the saved archive location or target toolchain directory may have drifted.
+    Use the restore command to keep the saved Rust 1.79.0 extraction path on one branch-local surface.
+    Reuse the PATH, CARGO, and RUSTC exports before rerunning Linux or WSL build-readiness checks.
+    By default this route now restores into ../toolchains/rust-1.79.0 so it matches the broader Linux build-readiness helper.
+    The default restore location now matches the broader Linux build-readiness route: ../toolchains/rust-1.79.0.
+    """,
     "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py": """
     PAGE_REQUIRED_MARKERS = (
         "_defer_native_text_input_enter_submit: bool = false",
@@ -91,7 +136,7 @@ FIXTURE_FILES = {
     WIN32_REQUIRED_MARKERS = (
         "pending_text_input_suppressions: std.ArrayListUnmanaged(TextInputEvent) = .{},",
         "self.pending_text_input_suppressions.deinit(self.allocator);",
-        "const defer_enter_submit = std.mem.eql(u8, key, \\"Enter\\");",
+        "const defer_enter_submit = std.mem.eql(u8, key, \"Enter\");",
         "page.beginDeferredNativeTextInputEnterSubmit();",
         "page.endDeferredNativeTextInputEnterSubmit();",
         "queuePendingTextInputSuppression(self, key);",
@@ -194,11 +239,17 @@ class Issue3EnterSubmitRuntimeContractSurfaceTest(unittest.TestCase):
         cls.revalidation_note = read_text(
             cls.repo_root / "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md"
         )
+        cls.linux_reentry_tree = read_text(
+            cls.repo_root / "docs/ISSUE3_LINUX_REENTRY_DECISION_TREE.md"
+        )
         cls.windows_helper = read_text(
             cls.repo_root / "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1"
         )
         cls.linux_route = read_text(
             cls.repo_root / "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"
+        )
+        cls.saved_rust_route = read_text(
+            cls.repo_root / "scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
         )
         cls.contract_checker = read_text(
             cls.repo_root
@@ -247,6 +298,28 @@ class Issue3EnterSubmitRuntimeContractSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.revalidation_note)
 
+    def test_linux_reentry_tree_keeps_the_stepwise_restore_order_visible(self) -> None:
+        for fragment in (
+            "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+            "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+            "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+            "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+            "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
+            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+            "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+            "python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .",
+            "python ./scripts/check_issue3_saved_archive_integrity.py --repo-root .",
+            "bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh",
+            "bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+            "bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+            "bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh",
+            "bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_enter_submit_runtime_revalidation.ps1",
+            "Do not treat Zig `0.17` failures in untouched branch files as issue `#3` runtime evidence.",
+        ):
+            self.assertIn(fragment, self.linux_reentry_tree)
+
     def test_windows_helper_keeps_contract_checks_linux_fallback_and_focused_commands(self) -> None:
         for fragment in (
             "check_issue3_enter_submit_runtime_contract.py",
@@ -280,6 +353,24 @@ class Issue3EnterSubmitRuntimeContractSurfaceTest(unittest.TestCase):
             "src/display/win32_backend.zig",
         ):
             self.assertIn(fragment, self.linux_route)
+
+    def test_saved_rust_route_keeps_browser_root_anchored_restore_commands_visible(self) -> None:
+        for fragment in (
+            'DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0"',
+            'DEFAULT_ARCHIVE_NAME="01-${DEFAULT_ARCHIVE_TOOLCHAIN_NAME}.tar.xz"',
+            'SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${BROWSER_ROOT}")"',
+            'CHECK_ONLY_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --check-only"',
+            'RESTORE_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}")"',
+            'PREFLIGHT_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_linux_build_readiness.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --skip-zig-check"',
+            '"toolchain_parent": ${TOOLCHAIN_PARENT@Q},',
+            '"toolchain_root": ${TOOLCHAIN_ROOT@Q},',
+            '"archive_path": ${ARCHIVE_PATH@Q},',
+            "Run the surface check command first so missing route docs or helper drift fails before the saved archive itself is blamed.",
+            "Run the check_only command next when the saved archive location or target toolchain directory may have drifted.",
+            "By default this route now restores into ../toolchains/rust-1.79.0 so it matches the broader Linux build-readiness helper.",
+            "The default restore location now matches the broader Linux build-readiness route: ../toolchains/rust-1.79.0.",
+        ):
+            self.assertIn(fragment, self.saved_rust_route)
 
     def test_contract_checker_keeps_runtime_markers_self_test_and_cli_surface(self) -> None:
         for fragment in (
