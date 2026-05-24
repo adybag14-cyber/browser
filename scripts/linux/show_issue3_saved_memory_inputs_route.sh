@@ -118,6 +118,7 @@ DEPENDENCIES_ROOT="${MEMORY_ROOT}/repo_archives/browser/dependencies"
 SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
 RUST_TOOLCHAIN_DIR="${HELPER_WORKSPACE_ROOT}/toolchains/rust-1.79.0"
 OFFLINE_DEPS_ROOT="${HELPER_WORKSPACE_ROOT}/offline-deps"
+PROGRESS_TRACKER_ROUTE_PATH="${HELPER_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SAVED_INPUT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
@@ -155,6 +156,7 @@ print(json.dumps({
     "repo_snapshot_path": ${REPO_SNAPSHOT_PATH@Q},
     "blocker_intelligence_path": ${BLOCKER_INTELLIGENCE_PATH@Q},
     "dependencies_root": ${DEPENDENCIES_ROOT@Q},
+    "progress_tracker_route_path": ${PROGRESS_TRACKER_ROUTE_PATH@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "skip_archive_integrity_check": ${SKIP_ARCHIVE_INTEGRITY_CHECK},
     "commands": {
@@ -194,6 +196,7 @@ Restored checkout root:  ${RESTORED_CHECKOUT_ROOT}
 Saved repo snapshot:     ${REPO_SNAPSHOT_PATH}
 Blocker intelligence:    ${BLOCKER_INTELLIGENCE_PATH}
 Dependencies root:       ${DEPENDENCIES_ROOT}
+Progress tracker route:  ${PROGRESS_TRACKER_ROUTE_PATH}
 Fallback Zig archive:    ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
 Skip archive integrity:  $([[ "${SKIP_ARCHIVE_INTEGRITY_CHECK}" -eq 1 ]] && echo enabled || echo disabled)
 
