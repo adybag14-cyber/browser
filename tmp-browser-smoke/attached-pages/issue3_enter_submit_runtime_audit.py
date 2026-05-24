@@ -167,6 +167,19 @@ EXPECTATIONS = (
         ),
     },
     {
+        "label": "page_enter_keypress_regression_seeds_query_before_enter",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            '    _ = try page.triggerKeyboardKeyDownNoTextWithCodeAndRepeat("n", "KeyN", .{}, false);\n'
+            '    _ = try page.triggerKeyboardKeyPressWithCode("n", "KeyN", .{}, false);\n'
+            '    try page.insertText("n");\n'
+        ),
+        "why": (
+            "The reduced Google regression should seed the query value through "
+            "the same keydown, keypress, and text-insert ladder before Enter is tested."
+        ),
+    },
+    {
         "label": "page_enter_keypress_regression_brackets_deferred_submit",
         "path": "src/browser/Page.zig",
         "snippet": (
@@ -183,7 +196,7 @@ EXPECTATIONS = (
         "path": "src/browser/Page.zig",
         "snippet": (
             "    const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;\n"
-            "    try testing.expect(std.mem.startsWith(u8, keydown_title, \"KEYDOWN:n|\"));\n"
+            '    try testing.expect(std.mem.startsWith(u8, keydown_title, "KEYDOWN:n|"));\n'
         ),
         "why": (
             "The reduced Google regression should prove the keydown-only title is "
@@ -194,7 +207,7 @@ EXPECTATIONS = (
         "label": "page_enter_keypress_regression_applies_submit_after_enter_keypress",
         "path": "src/browser/Page.zig",
         "snippet": (
-            "    _ = try page.triggerKeyboardKeyPressWithCode(\"Enter\", \"Enter\", .{}, false);\n"
+            '    _ = try page.triggerKeyboardKeyPressWithCode("Enter", "Enter", .{}, false);\n'
             "    try page.applyDeferredNativeTextInputEnterSubmit();\n"
         ),
         "why": (
@@ -329,6 +342,22 @@ EXPECTATIONS = (
         ),
     },
     {
+        "label": "win32_matching_suppression_regression_checks_queue_depth",
+        "path": "src/display/win32_backend.zig",
+        "snippet": (
+            "    try std.testing.expectEqual(@as(usize, 1), backend.pending_text_input_suppressions.items.len);\n"
+            "\n"
+            "    queueTextFromUtf16Unit(&backend, 'a');\n"
+            "    try std.testing.expect(try backend.dispatchInput(page));\n"
+            '    try testing.expectString("a", input.getValue());\n'
+            "    try std.testing.expectEqual(@as(usize, 0), backend.pending_text_input_suppressions.items.len);\n"
+        ),
+        "why": (
+            "The matching stale-text regression should prove the queue drains "
+            "from one pending entry back to zero after the expected WM_CHAR arrives."
+        ),
+    },
+    {
         "label": "win32_mismatched_stale_text_regression_present",
         "path": "src/display/win32_backend.zig",
         "snippet": 'test "win32 dispatchInput allows later real text when stale suppression bytes do not match" {',
@@ -338,12 +367,43 @@ EXPECTATIONS = (
         ),
     },
     {
+        "label": "win32_mismatched_stale_text_regression_keeps_real_input",
+        "path": "src/display/win32_backend.zig",
+        "snippet": (
+            "    queueTextFromUtf16Unit(&backend, 'x');\n"
+            "    try std.testing.expect(try backend.dispatchInput(page));\n"
+            '    try testing.expectString("ax", input.getValue());\n'
+            "    try std.testing.expectEqual(@as(usize, 0), backend.pending_text_input_suppressions.items.len);\n"
+        ),
+        "why": (
+            "The mismatched stale-text regression should prove a later real byte "
+            "lands in the input and drains the stale queue instead of being dropped."
+        ),
+    },
+    {
         "label": "win32_out_of_order_stale_text_regression_present",
         "path": "src/display/win32_backend.zig",
         "snippet": 'test "win32 dispatchInput suppresses matching text after stale entries drop out of order" {',
         "why": (
             "Regression coverage should prove matching stale text can still be "
             "suppressed after queue order shifts."
+        ),
+    },
+    {
+        "label": "win32_out_of_order_stale_text_regression_checks_queue_recovery",
+        "path": "src/display/win32_backend.zig",
+        "snippet": (
+            '    try testing.expectString("ab", input.getValue());\n'
+            "    try std.testing.expectEqual(@as(usize, 2), backend.pending_text_input_suppressions.items.len);\n"
+            "\n"
+            "    queueTextFromUtf16Unit(&backend, 'b');\n"
+            "    try std.testing.expect(try backend.dispatchInput(page));\n"
+            '    try testing.expectString("ab", input.getValue());\n'
+            "    try std.testing.expectEqual(@as(usize, 0), backend.pending_text_input_suppressions.items.len);\n"
+        ),
+        "why": (
+            "The out-of-order stale-text regression should prove the queue can "
+            "recover from two pending entries back to zero when the matching byte arrives later."
         ),
     },
 )
@@ -460,7 +520,7 @@ def run_self_test() -> tuple[bool, list[str]]:
 def main() -> int:
     args = parse_args()
 
-    if args.self_test:
+    if args.self-test:
         ok, details = run_self_test()
         print(f"SELF_TEST={'pass' if ok else 'fail'}")
         if ok:
