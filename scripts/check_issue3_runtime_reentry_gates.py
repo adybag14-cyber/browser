@@ -38,6 +38,10 @@ HELPER_SURFACE = (
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
     "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+    "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
+    "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+    "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+    "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
     "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md",
     "scripts/check_issue3_saved_memory_inputs.py",
     "scripts/check_issue3_saved_archive_integrity.py",
@@ -50,6 +54,16 @@ HELPER_SURFACE = (
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
     "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+    "scripts/linux/check_issue3_offline_build_inputs_route_surface.sh",
+    "scripts/linux/show_issue3_offline_build_inputs_route.sh",
+    "scripts/linux/prepare_offline_build_inputs.sh",
+    "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+    "scripts/linux/restore_saved_rust_toolchain.sh",
+    "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+    "scripts/linux/restore_issue3_fallback_zig_toolchain.sh",
+    "scripts/linux/restore_zig_toolchain_archive.sh",
     "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
     "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
     "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
@@ -425,6 +439,50 @@ class RuntimeReentryGateTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
+                result["helper_surface_missing"],
+            )
+
+    def test_publication_gate_requires_offline_build_and_saved_rust_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            (repo_root / "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md").unlink()
+            (repo_root / "scripts/linux/show_issue3_saved_rust_toolchain_route.sh").unlink()
+            (repo_root / "scripts/linux/prepare_offline_build_inputs.sh").unlink()
+            result = check_publication_gate(repo_root, root / "missing-checkout")
+            self.assertFalse(result["passed"])
+            self.assertIn(
+                "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/linux/prepare_offline_build_inputs.sh",
+                result["helper_surface_missing"],
+            )
+
+    def test_publication_gate_requires_zig_recovery_route_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            (repo_root / "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md").unlink()
+            (repo_root / "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh").unlink()
+            (repo_root / "scripts/linux/restore_zig_toolchain_archive.sh").unlink()
+            result = check_publication_gate(repo_root, root / "missing-checkout")
+            self.assertFalse(result["passed"])
+            self.assertIn(
+                "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/linux/restore_zig_toolchain_archive.sh",
                 result["helper_surface_missing"],
             )
 
