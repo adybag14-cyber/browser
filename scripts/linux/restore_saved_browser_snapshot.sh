@@ -252,6 +252,7 @@ fi
 
 FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
+FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK="${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
 FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_RUNTIME_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
 RESTORE_FALLBACK_FLAG=""
