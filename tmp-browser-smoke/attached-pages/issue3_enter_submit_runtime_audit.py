@@ -167,6 +167,42 @@ EXPECTATIONS = (
         ),
     },
     {
+        "label": "page_enter_keypress_regression_brackets_deferred_submit",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "    page.beginDeferredNativeTextInputEnterSubmit();\n"
+            "    defer page.endDeferredNativeTextInputEnterSubmit();\n"
+        ),
+        "why": (
+            "The reduced Google regression should bracket the Enter path with the "
+            "same deferred-submit helpers that the headed Win32 runtime depends on."
+        ),
+    },
+    {
+        "label": "page_enter_keypress_regression_checks_keydown_before_submit",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "    const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;\n"
+            "    try testing.expect(std.mem.startsWith(u8, keydown_title, \"KEYDOWN:n|\"));\n"
+        ),
+        "why": (
+            "The reduced Google regression should prove the keydown-only title is "
+            "still visible before the deferred submit is applied."
+        ),
+    },
+    {
+        "label": "page_enter_keypress_regression_applies_submit_after_enter_keypress",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "    _ = try page.triggerKeyboardKeyPressWithCode(\"Enter\", \"Enter\", .{}, false);\n"
+            "    try page.applyDeferredNativeTextInputEnterSubmit();\n"
+        ),
+        "why": (
+            "The reduced Google regression should apply the queued submit only "
+            "after the Enter keypress-compatible path completes."
+        ),
+    },
+    {
         "label": "win32_suppression_queue_present",
         "path": "src/display/win32_backend.zig",
         "snippet": "pending_text_input_suppressions: std.ArrayListUnmanaged(TextInputEvent) = .{},",
@@ -246,6 +282,15 @@ EXPECTATIONS = (
         "why": (
             "The Win32 backend should clear queued stale-text suppressions when "
             "input state resets so old WM_CHAR matches do not bleed into later sessions."
+        ),
+    },
+    {
+        "label": "win32_enter_deferral_detects_enter_key",
+        "path": "src/display/win32_backend.zig",
+        "snippet": '                    const defer_enter_submit = std.mem.eql(u8, key, "Enter");\n',
+        "why": (
+            "The Win32 backend should only enable the deferred-submit bracket for "
+            "Enter, not for unrelated printable key paths."
         ),
     },
     {
