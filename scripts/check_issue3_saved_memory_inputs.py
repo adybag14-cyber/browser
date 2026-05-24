@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tarfile
@@ -169,7 +170,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Path to the live helper checkout that should stay in sync with the "
-            "restored checkout helper surface (default: repo root)"
+            "restored checkout helper surface (default: repo root, or the "
+            "current working tree when checking a restored snapshot from a "
+            "live helper checkout)"
         ),
     )
     parser.add_argument(
@@ -217,8 +220,24 @@ def resolve_default_memory_root(repo_root: Path) -> Path:
     return (repo_root.parent / "memory").resolve()
 
 
+def path_has_live_helper_surface(path: Path) -> bool:
+    return (
+        path.is_dir()
+        and (path / REQUIRED_REPO_ROOT_FILE).is_file()
+        and all((path / relative_path).is_file() for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES)
+    )
+
+
 def resolve_default_helper_root(repo_root: Path) -> Path:
-    return repo_root.resolve()
+    repo_root = repo_root.resolve()
+    cwd = Path.cwd().resolve()
+    if (
+        repo_root.name == DEFAULT_RESTORED_CHECKOUT_NAME
+        and cwd != repo_root
+        and path_has_live_helper_surface(cwd)
+    ):
+        return cwd
+    return repo_root
 
 
 def resolve_default_agent_files_root(repo_root: Path) -> Path:
@@ -911,6 +930,50 @@ class SavedMemoryInputsTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "restored-checkout-missing")
             self.assertTrue(result["ok"])
+
+    def test_default_helper_root_prefers_live_helper_cwd_for_restored_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            live_root = root / "browser"
+            restored_checkout_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            live_root.mkdir()
+            restored_checkout_root.mkdir()
+            (live_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (restored_checkout_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            for relative_path, _label in REQUIRED_RESTORED_HELPER_FILES:
+                target = live_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("live", encoding="utf-8")
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(live_root)
+                self.assertEqual(
+                    resolve_default_helper_root(restored_checkout_root),
+                    live_root.resolve(),
+                )
+            finally:
+                os.chdir(original_cwd)
+
+    def test_default_helper_root_stays_on_repo_root_without_live_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            live_root = root / "browser"
+            restored_checkout_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            live_root.mkdir()
+            restored_checkout_root.mkdir()
+            (live_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (restored_checkout_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(live_root)
+                self.assertEqual(
+                    resolve_default_helper_root(restored_checkout_root),
+                    restored_checkout_root.resolve(),
+                )
+            finally:
+                os.chdir(original_cwd)
 
     def test_default_roots_follow_workspace_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
