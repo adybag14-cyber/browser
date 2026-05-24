@@ -56,6 +56,24 @@ function Format-RepoRootCommand {
     return "powershell -NoProfile -ExecutionPolicy Bypass -Command ``"`$env:LIGHTPANDA_REPO_ROOT = $escapedRepoRoot; $command``""
 }
 
+function Resolve-FirstExistingLeafPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$CandidatePaths
+    )
+
+    foreach ($candidatePath in $CandidatePaths) {
+        if ([string]::IsNullOrWhiteSpace($candidatePath)) {
+            continue
+        }
+        if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
+            return $candidatePath
+        }
+    }
+
+    return ""
+}
+
 $resolvedRepoRoot = if ($RepoRoot) {
     (Resolve-Path -LiteralPath $RepoRoot).Path
 } else {
@@ -90,13 +108,14 @@ $savedBrowserSnapshotSurfaceScriptPath = Join-Path $resolvedRepoRoot "scripts\li
 $savedBrowserSnapshotRouteScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\show_issue3_saved_browser_snapshot_route.sh"
 $restoredCheckoutRouteSurfaceScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\check_issue3_restored_checkout_reentry_route_surface.sh"
 $restoredCheckoutRouteScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\show_issue3_restored_checkout_reentry_route.sh"
+$windowsRuntimeHandoffRouteScriptPath = Join-Path $resolvedRepoRoot "scripts\linux\show_issue3_windows_runtime_handoff_route.sh"
 $restoredCheckoutRoot = Join-Path (Split-Path -Parent $resolvedRepoRoot) "browser-memory-snapshot"
-$fallbackZigArchivePath = Join-Path (Split-Path -Parent $resolvedRepoRoot) "agent_files\zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
-$resolvedFallbackZigArchive = if (Test-Path -LiteralPath $fallbackZigArchivePath -PathType Leaf) {
-    $fallbackZigArchivePath
-} else {
-    ""
-}
+$repoRootFallbackZigArchivePath = Join-Path $resolvedRepoRoot "agent_files\zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+$siblingFallbackZigArchivePath = Join-Path (Split-Path -Parent $resolvedRepoRoot) "agent_files\zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+$resolvedFallbackZigArchive = Resolve-FirstExistingLeafPath @(
+    $repoRootFallbackZigArchivePath,
+    $siblingFallbackZigArchivePath
+)
 
 $buildCommand = "zig build -Dtarget=x86_64-windows-msvc --summary all"
 $focusedPageTestsCommand = "zig test src/browser/Page.zig"
@@ -167,6 +186,12 @@ $restoredCheckoutRouteCommand = "bash " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot) +
     " --restored-checkout-root " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $restoredCheckoutRoot)
+$windowsRuntimeHandoffRouteCommand = "bash " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $windowsRuntimeHandoffRouteScriptPath) +
+    " --repo-root " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepoRoot) +
+    " --browser-exe " +
+    (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedBrowserExe)
 $linuxBuildReadinessSkipZigCommand = "python " +
     (ConvertTo-PowerShellSingleQuotedLiteral -Value $linuxBuildReadinessScriptPath) +
     " --repo-root " +
@@ -191,11 +216,11 @@ $savedBrowserSnapshotSyncedRouteCommand = $savedBrowserSnapshotRouteCommand + " 
 
 $route = [ordered]@{
     issue = "Google issue #3 Enter-submit runtime revalidation"
-    purpose = "Keep the runtime re-entry gates note, the saved-browser-snapshot restore route, the restored-checkout route, the saved-archive-integrity route, the source-based runtime contract checker, the saved-memory preflight, the Linux re-entry helpers, the shared Enter-submit ladder, the focused file-level regression commands, the reduced Google title probe, the runtime-specific revalidation note, and the live Google fallback on one Windows-first helper surface."
+    purpose = "Keep the runtime re-entry gates note, the saved-browser-snapshot restore route, the restored-checkout route, the Linux-to-Windows handoff route, the saved-archive-integrity route, the source-based runtime contract checker, the saved-memory preflight, the Linux re-entry helpers, the shared Enter-submit ladder, the focused file-level regression commands, the reduced Google title probe, the runtime-specific revalidation note, and the live Google fallback on one Windows-first helper surface."
     repo_root = $resolvedRepoRoot
     browser_exe = $resolvedBrowserExe
     fallback_zig_archive = if ([string]::IsNullOrWhiteSpace($resolvedFallbackZigArchive)) {
-        "not found beside the repo workspace"
+        "not found under repo-root or sibling agent_files"
     } else {
         $resolvedFallbackZigArchive
     }
@@ -218,6 +243,7 @@ $route = [ordered]@{
         "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh",
         "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
         "scripts/check_issue3_restored_checkout.py",
+        "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
         "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh",
         "scripts/linux/show_issue3_saved_archive_integrity_route.sh",
         "scripts/check_issue3_saved_archive_integrity.py",
@@ -247,6 +273,7 @@ $route = [ordered]@{
         restored_checkout_route = $restoredCheckoutRouteCommand
         restored_checkout_readiness = $restoredCheckoutReadinessCommand
         restored_checkout_synced_readiness = $restoredCheckoutSyncedReadinessCommand
+        windows_runtime_handoff = $windowsRuntimeHandoffRouteCommand
         saved_archive_integrity_surface = $savedArchiveIntegritySurfaceCommand
         saved_archive_integrity_route = $savedArchiveIntegrityRouteCommand
         saved_archive_integrity = $savedArchiveIntegrityCommand
@@ -282,6 +309,7 @@ $route = [ordered]@{
         "Run restored_checkout_surface and then restored_checkout_route when the reusable checkout now exists but the next run still needs a compact, restored-checkout-first follow-up path.",
         "Run restored_checkout_readiness immediately after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.",
         "Run restored_checkout_synced_readiness when the restored checkout was rebuilt with a synced helper surface and should be compared against the live helper root for drift.",
+        "Run windows_runtime_handoff after Linux or WSL staging has already cleared both gates and the next operator needs the narrower Windows-only replay ladder back on one compact surface.",
         "Run saved_archive_integrity_surface, saved_archive_integrity_route, and then saved_archive_integrity before saved_memory_preflight when the route still depends on the saved repo snapshot or dependency bundles.",
         "Run contract_check before build or replay when you need a thin, source-based yes-or-no answer about whether the direct Page.zig and win32_backend.zig bridge markers are present on the current branch.",
         "Run contract_self_test when you want to prove the checker itself still distinguishes vulnerable and guarded samples before pointing it at a real checkout.",
@@ -295,7 +323,7 @@ $route = [ordered]@{
         "Use shared_enter_google when the keypress-before-submit ordering is the main question but click-first focus is not required yet.",
         "Use shared_enter_google_click when reproducing the click-first path that most closely matches the real homepage boundary from issue #3.",
         "Use reduced_google_probe before live Google whenever the runtime patch touched Page.zig or win32_backend.zig and you want trace-ready output on the reduced fixture first.",
-        "If the focused Zig tests fail in untouched branch files before the new assertions run, fall back to contract_check, the saved-browser-snapshot route, the restored-checkout route, the saved-archive-integrity route, saved_archive_integrity, saved_memory_preflight, the Linux re-entry helpers, the shared Enter-order ladder, and the reduced Google probe so the runtime boundary can still be narrowed honestly.",
+        "If the focused Zig tests fail in untouched branch files before the new assertions run, fall back to contract_check, the saved-browser-snapshot route, the restored-checkout route, the Windows runtime handoff route, the saved-archive-integrity route, saved_archive_integrity, saved_memory_preflight, the Linux re-entry helpers, the shared Enter-order ladder, and the reduced Google probe so the runtime boundary can still be narrowed honestly.",
         "Only jump to reduced_google_fixture or live_google after the source contract check, restored-checkout route, saved-archive integrity route, saved-memory preflight, Linux or WSL gating, shared Enter-order ladder, and reduced Google probe agree on the same event ordering."
     )
 }
@@ -333,6 +361,7 @@ Write-Host ("  Restored-checkout surface:                  {0}" -f $route.comman
 Write-Host ("  Restored-checkout route:                    {0}" -f $route.commands.restored_checkout_route)
 Write-Host ("  Restored-checkout readiness:                {0}" -f $route.commands.restored_checkout_readiness)
 Write-Host ("  Restored-checkout synced-helper-surface readiness: {0}" -f $route.commands.restored_checkout_synced_readiness)
+Write-Host ("  Linux to Windows handoff route:             {0}" -f $route.commands.windows_runtime_handoff)
 Write-Host ("  Saved archive surface:                      {0}" -f $route.commands.saved_archive_integrity_surface)
 Write-Host ("  Saved archive route:                        {0}" -f $route.commands.saved_archive_integrity_route)
 Write-Host ("  Saved archive verification:                 {0}" -f $route.commands.saved_archive_integrity)
