@@ -14,16 +14,20 @@ Read this together with:
 
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
-- `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
+- `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
+- `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_linux_build_readiness.py`
 
 ## When To Use It
@@ -132,28 +136,38 @@ bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh --sync-helper-s
 python scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
 
-9. When the run is using Linux or WSL staging, start with the direct runtime
-   Linux or WSL surface and then print the compact re-entry route so the source
-   contract check, build-readiness route, and Windows follow-up commands stay on
-   one branch-local surface:
+9. If the run still depends on the saved Memory repo snapshot or dependency
+   bundles after the presence preflight, verify the saved-archive route surface
+   and checksum path before trusting Linux or WSL follow-up work:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
+python scripts/check_issue3_saved_archive_integrity.py --repo-root .
+```
+
+10. When the run is using Linux or WSL staging, start with the direct runtime
+    Linux or WSL surface and then print the compact re-entry route so the source
+    contract check, build-readiness route, and Windows follow-up commands stay on
+    one branch-local surface:
 
 ```bash
 bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
 ```
 
-10. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+11. Re-check Linux or WSL build readiness before trusting file-level Zig output:
 
 ```bash
 python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
-11. Only after a matching Zig line is actually staged, rerun the readiness helper
+12. Only after a matching Zig line is actually staged, rerun the readiness helper
     without the Zig skip and then validate the toolchain with the normal project
     build flow before using focused file-level `zig test` as evidence.
-12. Only after those gates are green, reopen the direct code patch and the
+13. Only after those gates are green, reopen the direct code patch and the
     focused regression tests.
-13. After the focused tests are green, move back to the reduced Google probe and
+14. After the focused tests are green, move back to the reduced Google probe and
     then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
@@ -191,10 +205,11 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
-- keep using the saved-memory preflight, the Linux or WSL direct runtime surface
-  check, the compact direct runtime route, the build-readiness surface, the
-  saved-archive Linux route, and the readiness helper as the fast preflight set
-  before widening back out to larger replay plans
+- keep using the saved-memory preflight, the saved-archive integrity route, the
+  Linux or WSL direct runtime surface check, the compact direct runtime route,
+  the build-readiness surface, the saved-archive Linux route, and the readiness
+  helper as the fast preflight set before widening back out to larger replay
+  plans
 
 ## Working Rule
 
