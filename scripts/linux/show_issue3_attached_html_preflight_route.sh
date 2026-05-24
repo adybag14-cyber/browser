@@ -129,36 +129,80 @@ launch_command="$(format_shell_command "${launch_parts[@]}")"
 strict_launch_command="$(format_shell_command "${strict_launch_parts[@]}")"
 
 if [[ "${JSON}" -eq 1 ]]; then
-    python3 - <<PY
+    python3 - \
+        "${REPO_ROOT}" \
+        "${GUIDE_DOC}" \
+        "${FLOW_DOC}" \
+        "${RUNBOOK_DOC}" \
+        "${BIND}" \
+        "${PORT}" \
+        "${PREFERRED_INITIAL_PAGE}" \
+        "${ALLOW_MISSING_SIDECARS}" \
+        "${ALLOW_MISSING_ASSETS}" \
+        "${surface_check_command}" \
+        "${preflight_command}" \
+        "${sidecar_audit_command}" \
+        "${asset_audit_command}" \
+        "${manifest_command}" \
+        "${strict_manifest_command}" \
+        "${launch_command}" \
+        "${strict_launch_command}" \
+        -- \
+        "${INPUT_PATHS[@]}" <<'PY'
 import json
+import sys
+
+args = sys.argv[1:]
+separator = args.index("--")
+fixed = args[:separator]
+input_paths = args[separator + 1 :]
+(
+    repo_root,
+    guide_doc,
+    flow_doc,
+    runbook_doc,
+    bind,
+    port,
+    preferred_initial_page,
+    allow_missing_sidecars,
+    allow_missing_assets,
+    surface_check_command,
+    preflight_command,
+    sidecar_audit_command,
+    asset_audit_command,
+    manifest_command,
+    strict_manifest_command,
+    launch_command,
+    strict_launch_command,
+) = fixed
 print(json.dumps({
     "issue": "Issue #3 attached-html preflight route",
-    "repo_root": ${REPO_ROOT@Q},
-    "guide_doc": ${GUIDE_DOC@Q},
-    "google_flow_doc": ${FLOW_DOC@Q},
-    "windows_runbook_doc": ${RUNBOOK_DOC@Q},
-    "bind": ${BIND@Q},
-    "port": ${PORT},
-    "input_paths": ${INPUT_PATHS[@]+[]},
-    "preferred_initial_page": ${PREFERRED_INITIAL_PAGE@Q},
-    "allow_missing_sidecars": ${ALLOW_MISSING_SIDECARS} == 1,
-    "allow_missing_assets": ${ALLOW_MISSING_ASSETS} == 1,
+    "repo_root": repo_root,
+    "guide_doc": guide_doc,
+    "google_flow_doc": flow_doc,
+    "windows_runbook_doc": runbook_doc,
+    "bind": bind,
+    "port": int(port),
+    "input_paths": input_paths,
+    "preferred_initial_page": preferred_initial_page,
+    "allow_missing_sidecars": allow_missing_sidecars == "1",
+    "allow_missing_assets": allow_missing_assets == "1",
     "commands": {
-        "surface_check": ${surface_check_command@Q},
-        "preflight_report": ${preflight_command@Q},
-        "sidecar_audit": ${sidecar_audit_command@Q},
-        "asset_audit": ${asset_audit_command@Q},
-        "manifest": ${manifest_command@Q},
-        "strict_manifest": ${strict_manifest_command@Q},
-        "launch_catalog": ${launch_command@Q},
-        "strict_launch_catalog": ${strict_launch_command@Q}
+        "surface_check": surface_check_command,
+        "preflight_report": preflight_command,
+        "sidecar_audit": sidecar_audit_command,
+        "asset_audit": asset_audit_command,
+        "manifest": manifest_command,
+        "strict_manifest": strict_manifest_command,
+        "launch_catalog": launch_command,
+        "strict_launch_catalog": strict_launch_command,
     },
     "notes": [
         "Run the surface check first so missing branch-local docs or attached-pages helpers fail fast before the bundle is blamed.",
         "Run the preflight report first when the route should truthfully summarize whether the current agent_files or user_files bundle is ready for localhost replay.",
         "Run the sidecar audit before the broader asset audit so missing sibling _files directories are caught before deeper asset drift is diagnosed.",
-        "Use the strict manifest or strict launch commands only after the sidecar and asset audits already reflect the exact pinned inputs you want to trust."
-    ]
+        "Use the strict manifest or strict launch commands only after the sidecar and asset audits already reflect the exact pinned inputs you want to trust.",
+    ],
 }, indent=2))
 PY
     exit 0
