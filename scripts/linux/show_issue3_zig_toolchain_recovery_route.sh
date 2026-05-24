@@ -136,6 +136,10 @@ def format_command(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
+route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_recovery_route_surface.sh"
+readiness_script = repo_root / "scripts" / "check_linux_build_readiness.py"
+fallback_restore_script = repo_root / "scripts" / "linux" / "restore_issue3_fallback_zig_toolchain.sh"
+
 patterns = ("zig*/zig", "zig*/bin/zig", "*/zig", "*/bin/zig", "zig")
 candidates: list[dict[str, str]] = []
 seen: set[pathlib.Path] = set()
@@ -175,14 +179,14 @@ matching_candidate = next(
 surface_check_command = format_command(
     [
         "bash",
-        "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+        str(route_surface_script),
         "--repo-root",
         str(repo_root),
     ]
 )
 discovery_parts = [
     "python",
-    "scripts/check_linux_build_readiness.py",
+    str(readiness_script),
     "--repo-root",
     str(repo_root),
     "--skip-zig-check",
@@ -200,7 +204,7 @@ matching_readiness_command = None
 if matching_candidate is not None:
     matching_parts = [
         "python",
-        "scripts/check_linux_build_readiness.py",
+        str(readiness_script),
         "--repo-root",
         str(repo_root),
         "--zig",
@@ -225,7 +229,7 @@ if fallback_zig_archive:
     fallback_restore_check_command = format_command(
         [
             "bash",
-            "scripts/linux/restore_issue3_fallback_zig_toolchain.sh",
+            str(fallback_restore_script),
             "--browser-root",
             str(repo_root),
             "--toolchains-root",
@@ -238,7 +242,7 @@ if fallback_zig_archive:
     fallback_restore_command = format_command(
         [
             "bash",
-            "scripts/linux/restore_issue3_fallback_zig_toolchain.sh",
+            str(fallback_restore_script),
             "--browser-root",
             str(repo_root),
             "--toolchains-root",
