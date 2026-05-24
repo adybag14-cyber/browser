@@ -26,9 +26,9 @@ new or existing restored checkout.
 Defaults:
   browser root  parent of this script
   helper root   same as browser root
-  memory root   <browser-root>/../memory
+  memory root   nearest ancestor workspace memory dir, else <browser-root>/../memory
   archive       <memory-root>/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip
-  destination   <browser-root>/../browser-memory-snapshot
+  destination   nearest ancestor workspace browser-memory-snapshot path, else <browser-root>/../browser-memory-snapshot
 
 Use --check-only to confirm the saved archive is present and to print the exact
 restore and follow-up commands without mutating the filesystem.
@@ -55,6 +55,36 @@ import sys
 
 print(json.dumps(sys.argv[1]))
 PY
+}
+
+find_workspace_anchor() {
+    local root="$1"
+    local current="$1"
+
+    while true; do
+        if [[ -d "${current}/memory" || -d "${current}/agent_files" || "$(basename "${current}")" == "workspace" ]]; then
+            printf '%s\n' "${current}"
+            return
+        fi
+
+        local parent
+        parent="$(dirname "${current}")"
+        if [[ "${parent}" == "${current}" ]]; then
+            break
+        fi
+        current="${parent}"
+    done
+
+    printf '%s\n' "$(cd "${root}/.." && pwd)"
+}
+
+resolve_workspace_companion_path() {
+    local root="$1"
+    local name="$2"
+    local anchor
+
+    anchor="$(find_workspace_anchor "${root}")"
+    printf '%s\n' "${anchor}/${name}"
 }
 
 sync_helper_surface() {
@@ -201,16 +231,17 @@ if [[ -z "${HELPER_ROOT}" ]]; then
 fi
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/memory"
+    MEMORY_ROOT="$(resolve_workspace_companion_path "${BROWSER_ROOT}" "memory")"
 fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${MEMORY_ROOT}/repo_archives/browser/${DEFAULT_ARCHIVE_NAME}"
 fi
 if [[ -z "${DESTINATION}" ]]; then
-    DESTINATION="$(cd "${BROWSER_ROOT}/.." && pwd)/${DEFAULT_DESTINATION_NAME}"
+    DESTINATION="$(resolve_workspace_companion_path "${BROWSER_ROOT}" "${DEFAULT_DESTINATION_NAME}")"
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${HELPER_ROOT}/.." && pwd)/agent_files/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}"
+    DEFAULT_AGENT_FILES_ROOT="$(resolve_workspace_companion_path "${HELPER_ROOT}" "agent_files")"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="${DEFAULT_AGENT_FILES_ROOT}/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
