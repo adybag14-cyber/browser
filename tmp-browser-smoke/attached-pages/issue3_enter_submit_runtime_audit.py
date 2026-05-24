@@ -46,6 +46,20 @@ EXPECTATIONS = (
         "why": "The page runtime needs an explicit begin helper for deferred native Enter submit.",
     },
     {
+        "label": "page_begin_deferred_submit_clears_pending_input",
+        "path": "src/browser/Page.zig",
+        "snippet": (
+            "pub fn beginDeferredNativeTextInputEnterSubmit(self: *Page) void {\n"
+            "    self._defer_native_text_input_enter_submit = true;\n"
+            "    self._pending_native_enter_submit = null;\n"
+            "}\n"
+        ),
+        "why": (
+            "The begin helper should clear any stale queued submit before a new "
+            "native Enter dispatch starts."
+        ),
+    },
+    {
         "label": "page_end_deferred_submit_helper_present",
         "path": "src/browser/Page.zig",
         "snippet": (
@@ -107,6 +121,15 @@ EXPECTATIONS = (
         ),
     },
     {
+        "label": "page_apply_deferred_submit_calls_submit_form",
+        "path": "src/browser/Page.zig",
+        "snippet": "    try self.submitForm(input.asElement(), input.getForm(self), .{});\n",
+        "why": (
+            "The delayed apply helper must still end in the real submitForm call "
+            "after the focus guard passes."
+        ),
+    },
+    {
         "label": "page_enter_submit_queues_pending_input",
         "path": "src/browser/Page.zig",
         "snippet": (
@@ -159,6 +182,24 @@ EXPECTATIONS = (
         "why": (
             "The Win32 backend should release queued stale-text suppression "
             "storage during teardown so old queue state does not linger."
+        ),
+    },
+    {
+        "label": "win32_text_input_event_builder_present",
+        "path": "src/display/win32_backend.zig",
+        "snippet": "fn makeTextInputEvent(bytes: []const u8) ?Win32Backend.TextInputEvent {",
+        "why": (
+            "The Win32 backend should normalize byte slices into stable queued "
+            "TextInputEvent values before suppression matching runs."
+        ),
+    },
+    {
+        "label": "win32_text_input_match_helper_present",
+        "path": "src/display/win32_backend.zig",
+        "snippet": "fn textInputEventMatches(expected: Win32Backend.TextInputEvent, actual: []const u8) bool {",
+        "why": (
+            "The Win32 backend should compare queued stale text and later WM_CHAR "
+            "bytes with an explicit helper so matching stays byte-accurate."
         ),
     },
     {
@@ -217,12 +258,16 @@ EXPECTATIONS = (
         ),
     },
     {
-        "label": "win32_enter_deferral_ends_after_dispatch",
+        "label": "win32_enter_deferral_end_is_deferred_guard",
         "path": "src/display/win32_backend.zig",
-        "snippet": "                        page.endDeferredNativeTextInputEnterSubmit();",
+        "snippet": (
+            "                    defer if (defer_enter_submit) {\n"
+            "                        page.endDeferredNativeTextInputEnterSubmit();\n"
+            "                    };\n"
+        ),
         "why": (
-            "The Win32 backend should always end the page-side Enter deferral "
-            "after the dispatch sequence, even when later steps return early."
+            "The Win32 backend should end the page-side Enter deferral with a "
+            "defer guard so cleanup still happens on early returns."
         ),
     },
     {
@@ -352,7 +397,7 @@ def run_self_test() -> tuple[bool, list[str]]:
         if not pass_result["ok"]:
             details.append("full synthetic fixture unexpectedly failed")
 
-        missing_label = "page_apply_deferred_submit_clears_pending_input_before_focus_recheck"
+        missing_label = "win32_text_input_match_helper_present"
         render_repo(repo_root, missing_label=missing_label)
         fail_result = audit(repo_root)
         if fail_result["ok"]:
