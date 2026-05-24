@@ -38,6 +38,7 @@ HELPER_SURFACE = (
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
     "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+    "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md",
     "scripts/check_issue3_saved_memory_inputs.py",
     "scripts/check_issue3_saved_archive_integrity.py",
     "scripts/check_linux_build_readiness.py",
@@ -49,6 +50,7 @@ HELPER_SURFACE = (
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
     "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
     "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
     "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
     "tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py",
@@ -423,6 +425,23 @@ class RuntimeReentryGateTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
+                result["helper_surface_missing"],
+            )
+
+    def test_publication_gate_requires_windows_runtime_handoff_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = self.create_repo(root)
+            (repo_root / "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md").unlink()
+            (repo_root / "scripts/linux/show_issue3_windows_runtime_handoff_route.sh").unlink()
+            result = check_publication_gate(repo_root, root / "missing-checkout")
+            self.assertFalse(result["passed"])
+            self.assertIn(
+                "docs/ISSUE3_GOOGLE_CLICKFOCUS_TRACE_REPLAY.md",
+                result["helper_surface_missing"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
                 result["helper_surface_missing"],
             )
 
