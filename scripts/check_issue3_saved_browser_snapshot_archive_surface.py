@@ -43,32 +43,156 @@ REQUIRED_PATHS = [
         "Linux or WSL build-readiness note that current follow-up runs expect after restore.",
     ),
     (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "Zig toolchain recovery note that should stay available before a fallback Zig replay is trusted.",
+    ),
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
+        "Saved Zig archive restore note that should stay available when a matching Zig bundle is ready to stage.",
+    ),
+    (
+        "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
+        "Offline build-inputs note that should stay available before sibling dependency staging is trusted.",
+    ),
+    (
+        "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+        "Saved Rust toolchain route that should stay available before host Rust is trusted.",
+    ),
+    (
+        "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md",
+        "Google-shaped attached-page validation note that should stay available when replay widens back out from the runtime path.",
+    ),
+    (
         "scripts/check_issue3_saved_memory_inputs.py",
         "Saved-Memory preflight that checks the repo archive, blocker file, and dependency bundles.",
+    ),
+    (
+        "scripts/check_issue3_saved_archive_integrity.py",
+        "Saved-archive integrity helper that verifies the exact repo and dependency bundle fingerprints.",
     ),
     (
         "scripts/check_issue3_restored_checkout.py",
         "Restored-checkout readiness helper that should stay available after restore.",
     ),
     (
+        "scripts/check_linux_build_readiness.py",
+        "Linux build-readiness helper that should stay available after restore.",
+    ),
+    (
+        "scripts/windows/HeadedValidationHelpers.ps1",
+        "Shared Windows headed validation helper surface.",
+    ),
+    (
+        "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
+        "Windows runtime re-entry surface checker that should stay available when the restored helper surface is current.",
+    ),
+    (
         "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1",
         "Windows runtime re-entry helper that should stay available when the restored helper surface is current.",
+    ),
+    (
+        "scripts/windows/check_google_issue3_windows_replay_attached_html_quickstart_validation_surface.ps1",
+        "Windows attached-page replay surface checker that should stay available when replay widens back out from the runtime route.",
+    ),
+    (
+        "scripts/windows/show_google_issue3_windows_replay_attached_html_quickstart.ps1",
+        "Windows attached-page replay route printer that should stay available when replay widens back out from the runtime route.",
+    ),
+    (
+        "scripts/windows/start_attached_pages_catalog.ps1",
+        "Windows attached-pages catalog launcher that should stay available when attached replay is reopened.",
+    ),
+    (
+        "tmp-browser-smoke/attached-pages/README.md",
+        "Attached-pages launcher runbook that should stay available when the restored checkout becomes its own follow-up root.",
+    ),
+    (
+        "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py",
+        "Attached-pages catalog launcher that should stay available when the restored checkout becomes its own follow-up root.",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh",
+        "Saved-archive-integrity surface checker that should stay available before restore or runtime follow-up trust the saved snapshot.",
     ),
     (
         "scripts/linux/show_issue3_saved_archive_integrity_route.sh",
         "Compact route printer for the saved-archive-integrity path.",
     ),
     (
-        "scripts/linux/restore_saved_browser_snapshot.sh",
-        "Restore helper that supports --check-only and --sync-helper-surface.",
+        "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
+        "Saved snapshot restore surface checker that should stay available before the archive is extracted again.",
     ),
     (
         "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
         "Compact route printer for the saved-browser-snapshot restore path.",
     ),
     (
+        "scripts/linux/restore_saved_browser_snapshot.sh",
+        "Restore helper that supports --check-only and --sync-helper-surface.",
+    ),
+    (
+        "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh",
+        "Restored-checkout re-entry surface checker that should stay available after restore succeeds.",
+    ),
+    (
+        "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
+        "Restored-checkout re-entry route printer that should stay available after restore succeeds.",
+    ),
+    (
+        "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
+        "Linux build-readiness surface checker that should stay available after restore.",
+    ),
+    (
+        "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+        "Linux build-readiness route printer that should stay available after restore.",
+    ),
+    (
+        "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh",
+        "Runtime revalidation surface checker that should stay available before the narrowed runtime lane is reopened.",
+    ),
+    (
         "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
         "Companion direct runtime re-entry route printer after restore.",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+        "Zig toolchain recovery surface checker that should stay available before fallback Zig is trusted.",
+    ),
+    (
+        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        "Zig toolchain recovery route printer that should stay available before fallback Zig is trusted.",
+    ),
+    (
+        "scripts/linux/restore_issue3_fallback_zig_toolchain.sh",
+        "Fallback Zig restore helper that should stay available when only the attached Zig bundle exists.",
+    ),
+    (
+        "scripts/linux/restore_zig_toolchain_archive.sh",
+        "Saved Zig archive restore helper that should stay available when a matching Zig bundle is staged.",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+        "Saved Rust toolchain surface checker that should stay available before the saved Rust archive is reused.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+        "Saved Rust toolchain route printer that should stay available before the saved Rust archive is reused.",
+    ),
+    (
+        "scripts/linux/restore_saved_rust_toolchain.sh",
+        "Saved Rust toolchain restore helper that should stay available before host Rust is trusted.",
+    ),
+    (
+        "scripts/linux/check_issue3_offline_build_inputs_route_surface.sh",
+        "Offline build-inputs surface checker that should stay available before sibling dependency staging is trusted.",
+    ),
+    (
+        "scripts/linux/show_issue3_offline_build_inputs_route.sh",
+        "Offline build-inputs route printer that should stay available before sibling dependency staging is trusted.",
+    ),
+    (
+        "scripts/linux/prepare_offline_build_inputs.sh",
+        "Offline build-inputs restore helper that should stay available before sibling dependency staging is trusted.",
     ),
 ]
 
@@ -119,11 +243,15 @@ def resolve_archive_path(args: argparse.Namespace) -> tuple[str, str]:
             os.path.join(repo_root, "memory"),
             os.path.join("/workspace", "memory"),
         ]
-        memory_root = next((path for path in candidates if os.path.isdir(path)), candidates[0])
+        memory_root = next(
+            (path for path in candidates if os.path.isdir(path)), candidates[0]
+        )
     archive_path = (
         os.path.abspath(args.archive)
         if args.archive
-        else os.path.join(memory_root, "repo_archives", "browser", DEFAULT_ARCHIVE_NAME)
+        else os.path.join(
+            memory_root, "repo_archives", "browser", DEFAULT_ARCHIVE_NAME
+        )
     )
     return memory_root, archive_path
 
@@ -151,7 +279,9 @@ def build_statuses(names: set[str], top_level_folder: str) -> list[PathStatus]:
 
 def human_output(archive_path: str, top_level_folder: str, statuses: list[PathStatus]) -> str:
     missing = [status for status in statuses if not status.present]
-    recommended_restore_mode = "--sync-helper-surface" if missing else "plain restore is safe"
+    recommended_restore_mode = (
+        "--sync-helper-surface" if missing else "plain restore is safe"
+    )
     lines = [
         "Issue #3 saved browser snapshot archive surface",
         "",
