@@ -62,6 +62,7 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             "page_enter_submit_queues_pending_input",
             "page_printable_input_respects_suppression_depth",
             "page_enter_keypress_regression_present",
+            "page_enter_keypress_regression_seeds_query_before_enter",
             "page_enter_keypress_regression_brackets_deferred_submit",
             "page_enter_keypress_regression_checks_keydown_before_submit",
             "page_enter_keypress_regression_applies_submit_after_enter_keypress",
@@ -85,8 +86,11 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
             "win32_enter_deferral_begins_before_keypress",
             "win32_enter_deferral_end_is_deferred_guard",
             "win32_enter_deferral_applies_after_keypress",
+            "win32_matching_suppression_regression_checks_queue_depth",
             "win32_mismatched_stale_text_regression_present",
+            "win32_mismatched_stale_text_regression_keeps_real_input",
             "win32_out_of_order_stale_text_regression_present",
+            "win32_out_of_order_stale_text_regression_checks_queue_recovery",
         ]
         for label in labels:
             with self.subTest(label=label):
@@ -96,6 +100,7 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         covered_labels = {expectation["label"] for expectation in EXPECTATIONS}
         self.assertIn("page_begin_deferred_submit_clears_pending_input", covered_labels)
         self.assertIn("page_apply_deferred_submit_calls_submit_form", covered_labels)
+        self.assertIn("page_enter_keypress_regression_seeds_query_before_enter", covered_labels)
         self.assertIn("page_enter_keypress_regression_checks_keydown_before_submit", covered_labels)
         self.assertIn("page_enter_keypress_regression_applies_submit_after_enter_keypress", covered_labels)
 
@@ -105,6 +110,9 @@ class Issue3EnterSubmitRuntimeAuditTests(unittest.TestCase):
         self.assertIn("win32_text_input_match_helper_present", covered_labels)
         self.assertIn("win32_enter_deferral_detects_enter_key", covered_labels)
         self.assertIn("win32_enter_deferral_end_is_deferred_guard", covered_labels)
+        self.assertIn("win32_matching_suppression_regression_checks_queue_depth", covered_labels)
+        self.assertIn("win32_mismatched_stale_text_regression_keeps_real_input", covered_labels)
+        self.assertIn("win32_out_of_order_stale_text_regression_checks_queue_recovery", covered_labels)
 
     def test_render_file_can_drop_new_targeted_label(self) -> None:
         rendered = render_file(
