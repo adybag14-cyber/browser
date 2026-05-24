@@ -9,6 +9,7 @@ Usage:
     [--repo-root /path/to/browser-repo] \
     [--saved-archives-root /path/to/memory/repo_archives/browser] \
     [--rust-toolchain-dir /path/to/toolchains/rust-1.79.0] \
+    [--offline-deps-root /path/to/offline-deps] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
@@ -32,6 +33,7 @@ DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
 SAVED_ARCHIVES_ROOT=""
 RUST_TOOLCHAIN_DIR=""
+OFFLINE_DEPS_ROOT=""
 FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
@@ -47,6 +49,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --rust-toolchain-dir)
             RUST_TOOLCHAIN_DIR="$2"
+            shift 2
+            ;;
+        --offline-deps-root)
+            OFFLINE_DEPS_ROOT="$2"
             shift 2
             ;;
         --fallback-zig-archive)
@@ -75,6 +81,9 @@ if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
 fi
 if [[ -z "${RUST_TOOLCHAIN_DIR}" ]]; then
     RUST_TOOLCHAIN_DIR="$(cd "${REPO_ROOT}/.." && pwd)/toolchains/rust-1.79.0"
+fi
+if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+    OFFLINE_DEPS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/offline-deps"
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
@@ -106,7 +115,7 @@ TOOLCHAIN_ROUTE_COMMAND="bash $(format_shell_arg "${ZIG_TOOLCHAIN_ROUTE_SCRIPT}"
 ZIG_ARCHIVE_RESTORE_CHECK_COMMAND="bash $(format_shell_arg "${ZIG_ARCHIVE_RESTORE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --archive /path/to/zig-0.15.2.tar.xz --check-only"
 SAVED_RUST_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_SURFACE_SCRIPT_PATH}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ROUTE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
-OFFLINE_ROUTE_COMMAND="bash $(format_shell_arg "${OFFLINE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
+OFFLINE_ROUTE_COMMAND="bash $(format_shell_arg "${OFFLINE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 RUST_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
 HTML5EVER_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/02-litefetch-html5ever-linux-x86_64-deps-20260509-230736.zip"
 HTML5EVER_ARCHIVE_ARGUMENT=""
@@ -120,11 +129,11 @@ BROWSER_DEPS_ARCHIVE="${SAVED_ARCHIVES_ROOT}/dependencies/04-zig-browser-depo.ta
 SAVED_MEMORY_INPUTS_COMMAND="python $(format_shell_arg "${SAVED_MEMORY_INPUTS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${SAVED_ARCHIVE_INTEGRITY_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PREFLIGHT_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies")"
-PREPARE_COMMAND="bash $(format_shell_arg "${PREPARE_OFFLINE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}")${HTML5EVER_ARCHIVE_ARGUMENT} --check-only"
+PREPARE_COMMAND="bash $(format_shell_arg "${PREPARE_OFFLINE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}")${HTML5EVER_ARCHIVE_ARGUMENT} --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --check-only"
 RUST_RESTORE_COMMAND="bash $(format_shell_arg "${RESTORE_SAVED_RUST_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 RUST_RESTORE_CHECK_COMMAND="bash $(format_shell_arg "${RESTORE_SAVED_RUST_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --check-only"
 RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/bin"):$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/rustc/bin"):\$PATH"
-FULL_READINESS_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --expect-offline-deps --require-prebuilt-v8"
+FULL_READINESS_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}/dependencies") --expect-offline-deps --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --require-prebuilt-v8"
 WINDOWS_RUNTIME_SURFACE_COMMAND="powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"
 WINDOWS_RUNTIME_ROUTE_COMMAND="powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_enter_submit_runtime_revalidation.ps1"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
@@ -148,6 +157,7 @@ print(json.dumps({
     "repo_root": ${REPO_ROOT@Q},
     "saved_archives_root": ${SAVED_ARCHIVES_ROOT@Q},
     "rust_toolchain_dir": ${RUST_TOOLCHAIN_DIR@Q},
+    "offline_deps_root": ${OFFLINE_DEPS_ROOT@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "read_first": [
         "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
@@ -194,6 +204,7 @@ print(json.dumps({
         "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the offline_build_inputs_route command when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.",
+        "Keep a caller-provided offline_deps_root threaded through the offline-inputs route and the final readiness rerun so both commands point at the same staged dependency layout.",
         "The saved html5ever bundle is optional on this route and is only added to the offline restore surface check when it is actually present under the saved archives root.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
         "Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, run windows_runtime_surface and then windows_runtime_route before wider replay or direct runtime edits.",
@@ -211,6 +222,7 @@ Google issue #3 Enter-submit runtime build-readiness route
 Repo root:           ${REPO_ROOT}
 Saved archive root:  ${SAVED_ARCHIVES_ROOT}
 Rust toolchain dir:  ${RUST_TOOLCHAIN_DIR}
+Offline deps root:   ${OFFLINE_DEPS_ROOT}
 Fallback Zig archive:${FALLBACK_ZIG_ARCHIVE:- not found beside the repo workspace}
 
 Read first
@@ -302,11 +314,12 @@ Working rules
   - Run the saved Memory input preflight before the broader saved-archive preflight when the route depends on the saved repo snapshot and dependency bundles.
   - Run the saved archive integrity route surface check and then the saved archive integrity route when the route needs the dedicated checksum helper chain surfaced before offline staging starts.
   - Run the saved archive integrity preflight after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.
-  - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.
+  - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged Zig candidates need a quick 0.15.x decision.
   - Run the Zig archive restore route when a real 0.15.x archive exists but has not been staged under ../toolchains yet.
   - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
   - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the offline build-inputs route when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.
+  - Keep a caller-provided offline-deps root aligned across the offline build-inputs route and the final readiness rerun so both commands point at the same staged dependency layout.
   - The saved html5ever bundle is optional on this route and is only threaded into the offline restore surface check when it is actually present.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
   - Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, run the Windows runtime surface handoff and then the Windows runtime route handoff before wider replay or direct runtime edits.
