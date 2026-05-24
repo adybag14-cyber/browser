@@ -112,7 +112,7 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${HELPER_ROOT}" ]]; then
     HELPER_ROOT="${REPO_ROOT}"
 fi
-HELPER_ROOT="$(cd "${HELPER_ROOT}")" && pwd)
+HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
     MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
 fi
