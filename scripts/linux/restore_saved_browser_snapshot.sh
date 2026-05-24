@@ -81,14 +81,18 @@ declare -a HELPER_SURFACE_PATHS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
     "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md"
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md"
+    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md"
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
     "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md"
+    "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md"
     "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md"
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
     "scripts/check_issue3_saved_memory_inputs.py"
     "scripts/check_issue3_saved_archive_integrity.py"
     "scripts/check_issue3_restored_checkout.py"
     "scripts/check_linux_build_readiness.py"
+    "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh"
+    "scripts/linux/show_issue3_saved_archive_integrity_route.sh"
     "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh"
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
     "scripts/linux/restore_saved_browser_snapshot.sh"
@@ -98,6 +102,8 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"
     "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh"
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
+    "scripts/linux/restore_issue3_fallback_zig_toolchain.sh"
+    "scripts/linux/restore_zig_toolchain_archive.sh"
     "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh"
     "scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
     "scripts/linux/restore_saved_rust_toolchain.sh"
@@ -200,26 +206,12 @@ if [[ ! -d "${HELPER_ROOT}" ]]; then
     echo "Helper root does not exist: ${HELPER_ROOT}" >&2
     exit 1
 fi
-if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py" ]]; then
-    echo "Helper root is missing scripts/check_issue3_saved_memory_inputs.py: ${HELPER_ROOT}" >&2
-    exit 1
-fi
-if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py" ]]; then
-    echo "Helper root is missing scripts/check_issue3_saved_archive_integrity.py: ${HELPER_ROOT}" >&2
-    exit 1
-fi
-if [[ ! -f "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py" ]]; then
-    echo "Helper root is missing scripts/check_issue3_restored_checkout.py: ${HELPER_ROOT}" >&2
-    exit 1
-fi
-if [[ ! -f "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh" ]]; then
-    echo "Helper root is missing scripts/linux/show_issue3_linux_build_readiness_route.sh: ${HELPER_ROOT}" >&2
-    exit 1
-fi
-if [[ ! -f "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh" ]]; then
-    echo "Helper root is missing scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh: ${HELPER_ROOT}" >&2
-    exit 1
-fi
+for relative_path in "${HELPER_SURFACE_PATHS[@]}"; do
+    if [[ ! -f "${HELPER_ROOT}/${relative_path}" ]]; then
+        echo "Helper root is missing ${relative_path}: ${HELPER_ROOT}" >&2
+        exit 1
+    fi
+done
 if [[ ! -d "${MEMORY_ROOT}" ]]; then
     echo "Memory root does not exist: ${MEMORY_ROOT}" >&2
     exit 1
