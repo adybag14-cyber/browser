@@ -92,6 +92,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ ! -d "${BROWSER_ROOT}" ]]; then
+    echo "Browser root does not exist: ${BROWSER_ROOT}" >&2
+    exit 1
+fi
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
     TOOLCHAINS_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/toolchains"
@@ -103,10 +107,6 @@ if [[ -z "${ARCHIVE_PATH}" ]]; then
     fi
 fi
 
-if [[ ! -d "${BROWSER_ROOT}" ]]; then
-    echo "Browser root does not exist: ${BROWSER_ROOT}" >&2
-    exit 1
-fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     echo "No Zig archive was provided and the default fallback archive was not found beside the repo workspace." >&2
     exit 1
@@ -163,8 +163,16 @@ if [[ -z "${DESTINATION}" ]]; then
 fi
 
 DESTINATION_PARENT_RAW="$(dirname "${DESTINATION}")"
-mkdir -p "${DESTINATION_PARENT_RAW}"
-DESTINATION_PARENT="$(cd "${DESTINATION_PARENT_RAW}" && pwd)"
+DESTINATION_PARENT="$(python3 - "${DESTINATION_PARENT_RAW}" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+)"
+if [[ "${CHECK_ONLY}" != "true" ]]; then
+    mkdir -p "${DESTINATION_PARENT}"
+fi
 FOLLOW_UP_DISCOVERY_SCRIPT="${BROWSER_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
 FOLLOW_UP_BUILD_READINESS_SCRIPT="${BROWSER_ROOT}/scripts/check_linux_build_readiness.py"
 FOLLOW_UP_DISCOVERY="bash '${FOLLOW_UP_DISCOVERY_SCRIPT}' --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}'"
