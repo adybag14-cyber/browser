@@ -112,11 +112,11 @@ if match is None:
     raise SystemExit("Could not find minimum_zig_version in build.zig.zon")
 minimum_zig = match.group(1)
 
-semver_re = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
+semver_re = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
 
 def parse_semver(text: str) -> tuple[int, int, int]:
-    match = semver_re.match(text)
+    match = semver_re.search(text)
     if match is None:
         raise ValueError(text)
     return tuple(int(part) for part in match.groups())
@@ -139,6 +139,7 @@ def format_command(parts: list[str]) -> str:
 route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_recovery_route_surface.sh"
 readiness_script = repo_root / "scripts" / "check_linux_build_readiness.py"
 fallback_restore_script = repo_root / "scripts" / "linux" / "restore_issue3_fallback_zig_toolchain.sh"
+archive_restore_script = repo_root / "scripts" / "linux" / "restore_zig_toolchain_archive.sh"
 
 patterns = ("zig*/zig", "zig*/bin/zig", "*/zig", "*/bin/zig", "zig")
 candidates: list[dict[str, str]] = []
@@ -171,10 +172,62 @@ if toolchains_root.is_dir():
                 }
             )
 
+
+def archive_top_level(path: pathlib.Path) -> str:
+    name = path.name
+    for suffix in (".tar.gz", ".tar.xz", ".tgz", ".zip", ".tar"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return path.stem
+
+
+archive_patterns = ("zig*.tar", "zig*.tar.gz", "zig*.tgz", "zig*.tar.xz", "zig*.zip")
+saved_archives: list[dict[str, str]] = []
+seen_archives: set[pathlib.Path] = set()
+if saved_archives_root.is_dir():
+    for pattern in archive_patterns:
+        for path in sorted(saved_archives_root.glob(pattern)):
+            resolved = path.resolve()
+            if resolved in seen_archives or not resolved.is_file():
+                continue
+            seen_archives.add(resolved)
+            top_level = archive_top_level(resolved)
+            version = ""
+            status = "unknown-version"
+            try:
+                version_match = semver_re.search(top_level) or semver_re.search(resolved.name)
+                if version_match is not None:
+                    version = version_match.group(0)
+                    status = classify(version)
+            except ValueError:
+                version = ""
+                status = "unknown-version"
+            saved_archives.append(
+                {
+                    "path": str(resolved),
+                    "top_level": top_level,
+                    "version": version,
+                    "status": status,
+                }
+            )
+
 matching_candidate = next(
     (candidate for candidate in candidates if candidate["status"] == "matches-expected-line"),
     None,
 )
+preferred_saved_archive = next(
+    (
+        archive
+        for archive in saved_archives
+        if archive["status"] == "matches-expected-line" and archive["version"] == minimum_zig
+    ),
+    None,
+)
+if preferred_saved_archive is None:
+    preferred_saved_archive = next(
+        (archive for archive in saved_archives if archive["status"] == "matches-expected-line"),
+        None,
+    )
 
 surface_check_command = format_command(
     [
@@ -223,6 +276,35 @@ if matching_candidate is not None:
         matching_parts.extend(("--fallback-zig-archive", fallback_zig_archive))
     matching_readiness_command = format_command(matching_parts)
 
+matching_archive_restore_check_command = None
+matching_archive_restore_command = None
+if preferred_saved_archive is not None:
+    matching_archive_restore_check_command = format_command(
+        [
+            "bash",
+            str(archive_restore_script),
+            "--browser-root",
+            str(repo_root),
+            "--toolchains-root",
+            str(toolchains_root),
+            "--archive",
+            preferred_saved_archive["path"],
+            "--check-only",
+        ]
+    )
+    matching_archive_restore_command = format_command(
+        [
+            "bash",
+            str(archive_restore_script),
+            "--browser-root",
+            str(repo_root),
+            "--toolchains-root",
+            str(toolchains_root),
+            "--archive",
+            preferred_saved_archive["path"],
+        ]
+    )
+
 fallback_restore_check_command = None
 fallback_restore_command = None
 if fallback_zig_archive:
@@ -262,14 +344,21 @@ result = {
     "fallback_zig_archive": fallback_zig_archive,
     "matching_candidate": matching_candidate["path"] if matching_candidate else "",
     "matching_candidate_version": matching_candidate["version"] if matching_candidate else "",
+    "preferred_saved_archive": preferred_saved_archive["path"] if preferred_saved_archive else "",
+    "preferred_saved_archive_version": preferred_saved_archive["version"] if preferred_saved_archive else "",
     "commands": {
         "surface_check": surface_check_command,
         "discovery": discovery_command,
     },
     "candidates": candidates,
+    "saved_archives": saved_archives,
 }
 if matching_readiness_command is not None:
     result["commands"]["matching_readiness"] = matching_readiness_command
+if matching_archive_restore_check_command is not None:
+    result["commands"]["matching_archive_restore_check"] = matching_archive_restore_check_command
+if matching_archive_restore_command is not None:
+    result["commands"]["matching_archive_restore"] = matching_archive_restore_command
 if fallback_restore_check_command is not None:
     result["commands"]["fallback_restore_check"] = fallback_restore_check_command
 if fallback_restore_command is not None:
@@ -306,6 +395,23 @@ print("Candidate discovery")
 print("===================")
 print(f"  {discovery_command}")
 
+if saved_archives:
+    print()
+    print("Saved Zig archives")
+    print("==================")
+    for archive in saved_archives:
+        version = archive["version"] or "unknown-version"
+        print(
+            f"  - {archive['path']} "
+            f"[top-level={archive['top_level']}; {version}; {archive['status']}]"
+        )
+    if matching_archive_restore_check_command is not None and matching_archive_restore_command is not None:
+        print()
+        print("Preferred archive restore")
+        print("=========================")
+        print(f"  {matching_archive_restore_check_command}")
+        print(f"  {matching_archive_restore_command}")
+
 if fallback_restore_check_command is not None and fallback_restore_command is not None:
     print()
     print("Fallback archive staging")
@@ -323,6 +429,11 @@ if not candidates:
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
     )
+    if preferred_saved_archive is not None:
+        print(
+            "  - Use the preferred archive restore commands above before falling "
+            "back to the attached Zig 0.17 bundle."
+        )
     print(
         f"  - Stage a Zig {minimum_zig.rsplit('.', 1)[0]}.x toolchain under "
         f"{toolchains_root} before reopening focused Linux or WSL validation."
@@ -364,6 +475,11 @@ if matching_readiness_command is not None:
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
     )
+    if preferred_saved_archive is not None:
+        print(
+            "  - Keep the preferred saved-archive restore commands above as the "
+            "shortest way to restage a matching Zig line if toolchains/ gets reset."
+        )
     print(
         f"  - Prefer {matching_candidate['path']} because it matches the branch's "
         f"{minimum_zig.rsplit('.', 1)[0]}.x Zig line."
@@ -392,6 +508,11 @@ else:
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
     )
+    if preferred_saved_archive is not None:
+        print(
+            "  - Restore the preferred saved Zig archive above before relying on "
+            "the fallback archive staging route."
+        )
     print(
         f"  - Ignore candidates above that are older than {minimum_zig} or that "
         "live on a different major/minor Zig line."
