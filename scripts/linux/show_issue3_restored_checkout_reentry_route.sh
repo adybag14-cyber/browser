@@ -106,12 +106,10 @@ fi
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SAVED_SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --destination $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND} --sync-helper-surface"
-PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND}"
 RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
 PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND="${RESTORED_CHECKOUT_CHECK_COMMAND}"
 if [[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]]; then
-    PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}"
     PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND="${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND}"
 fi
 SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
@@ -122,11 +120,15 @@ RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/sho
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
-    PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND+=""
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+fi
+
+PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND}"
+if [[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]]; then
+    PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}"
 fi
 
 if [[ "${JSON}" -eq 1 ]]; then
