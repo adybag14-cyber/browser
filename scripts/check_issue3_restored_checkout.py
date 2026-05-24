@@ -34,6 +34,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved snapshot restore note"),
     ("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry note"),
     ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity note"),
+    (
+        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
+        "saved snapshot archive-surface note",
+    ),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
@@ -45,6 +49,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
+    (
+        "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
+        "saved snapshot archive-surface helper",
+    ),
     ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
     ("scripts/windows/HeadedValidationHelpers.ps1", "Windows headed validation helper"),
