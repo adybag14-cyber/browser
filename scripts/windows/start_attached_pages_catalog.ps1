@@ -2,6 +2,7 @@
 param(
     [Parameter(ParameterSetName = "InputPath")]
     [string[]]$InputPath,
+    [switch]$UseWorkspaceAgentFiles,
     [string]$PreferredInitialPage,
     [string]$RepoRoot,
     [string]$PythonExe = "python",
@@ -24,6 +25,24 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "HeadedValidationHelpers.ps1")
+
+function Resolve-WorkspaceAgentFilesPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    $cursor = Get-Item -LiteralPath $RepoRoot -ErrorAction Stop
+    while ($null -ne $cursor) {
+        $candidate = Join-Path $cursor.FullName "agent_files"
+        if (Test-Path -LiteralPath $candidate -PathType Container) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+        $cursor = $cursor.Parent
+    }
+
+    throw "workspace agent_files folder not found from repo root: $RepoRoot"
+}
 
 function Test-HtmlExportPath {
     param(
@@ -156,6 +175,10 @@ $resolvedRepoRoot = if ($RepoRoot) {
     Resolve-LightpandaRepoRoot $PSScriptRoot
 }
 
+if ($UseWorkspaceAgentFiles -and $PSCmdlet.ParameterSetName -eq "InputPath") {
+    throw "Choose either -InputPath or -UseWorkspaceAgentFiles. The attached-pages catalog wrapper only accepts one explicit input source per invocation."
+}
+
 $launcherPath = Join-Path $resolvedRepoRoot "tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py"
 if (-not (Test-Path -LiteralPath $launcherPath -PathType Leaf)) {
     throw "attached pages catalog launcher not found: $launcherPath"
@@ -165,7 +188,10 @@ $resolvedPython = (Get-Command $PythonExe -ErrorAction Stop).Source
 
 $launcherArgs = @($launcherPath, "--repo-root", $resolvedRepoRoot)
 
-if ($PSCmdlet.ParameterSetName -eq "InputPath") {
+if ($UseWorkspaceAgentFiles) {
+    $workspaceAgentFilesPath = Resolve-WorkspaceAgentFilesPath -RepoRoot $resolvedRepoRoot
+    $launcherArgs += @("--input", $workspaceAgentFilesPath)
+} elseif ($PSCmdlet.ParameterSetName -eq "InputPath") {
     $orderedInputs = Resolve-OrderedAttachedHtmlInputs -RawInputPath $InputPath -PreferredPage $PreferredInitialPage
     foreach ($path in $orderedInputs) {
         $launcherArgs += @("--input", $path)
