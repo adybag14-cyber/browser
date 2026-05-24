@@ -94,6 +94,14 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
         "saved-browser-snapshot route helper",
     ),
     (
+        "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh",
+        "restored-checkout re-entry route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
+        "restored-checkout re-entry route helper",
+    ),
+    (
         "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh",
         "saved-archive integrity route surface checker",
     ),
