@@ -15,6 +15,7 @@ Read this together with:
 - `docs/HEADED_MODE_PRODUCTION_EXECUTION_GUIDE.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
@@ -26,6 +27,7 @@ Read this together with:
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `tmp-browser-smoke/google-investigation-next/check_issue3_enter_submit_runtime_contract.py`
+- `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_linux_build_readiness.py`
@@ -129,16 +131,28 @@ bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
 bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh --sync-helper-surface
 ```
 
-8. If the run depends on the saved Memory repo and dependency bundles, run the
+8. If the restore route is creating or reusing `../browser-memory-snapshot`, run
+   the restored-checkout helper before the saved-memory preflight or
+   archive-integrity helpers:
+
+```bash
+python scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py \
+  --repo-root ../browser-memory-snapshot \
+  --helper-root . \
+  --expect-helper-surface
+```
+
+9. If the run depends on the saved Memory repo and dependency bundles, run the
    saved-input preflight before the Linux or WSL build-readiness helpers:
 
 ```bash
 python scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
 
-9. If the run still depends on the saved Memory repo snapshot or dependency
-   bundles after the presence preflight, verify the saved-archive route surface
-   and checksum path before trusting Linux or WSL follow-up work:
+10. If the run still depends on the saved Memory repo snapshot or dependency
+    bundles after the presence preflight, verify the saved-archive route surface
+    and checksum path before trusting Linux or WSL follow-up work:
 
 ```bash
 bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
@@ -146,7 +160,7 @@ bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
 python scripts/check_issue3_saved_archive_integrity.py --repo-root .
 ```
 
-10. When the run is using Linux or WSL staging, start with the direct runtime
+11. When the run is using Linux or WSL staging, start with the direct runtime
     Linux or WSL surface and then print the compact re-entry route so the source
     contract check, build-readiness route, and Windows follow-up commands stay on
     one branch-local surface:
@@ -156,18 +170,18 @@ bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
 ```
 
-11. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+12. Re-check Linux or WSL build readiness before trusting file-level Zig output:
 
 ```bash
 python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
-12. Only after a matching Zig line is actually staged, rerun the readiness helper
+13. Only after a matching Zig line is actually staged, rerun the readiness helper
     without the Zig skip and then validate the toolchain with the normal project
     build flow before using focused file-level `zig test` as evidence.
-13. Only after those gates are green, reopen the direct code patch and the
+14. Only after those gates are green, reopen the direct code patch and the
     focused regression tests.
-14. After the focused tests are green, move back to the reduced Google probe and
+15. After the focused tests are green, move back to the reduced Google probe and
     then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
@@ -196,6 +210,9 @@ If the publication gate is still closed:
   re-entry surface so the exact runtime route does not need to be rebuilt by hand
 - use `show_issue3_saved_browser_snapshot_route.sh` first when the missing piece
   is still the disposable checkout for the next Linux or WSL validation pass
+- keep the restored-checkout helper visible between the saved snapshot restore
+  and the saved-memory preflight so the next Linux or WSL follow-up does not
+  trust an incomplete checkout
 - prefer `show_issue3_saved_browser_snapshot_route.sh --sync-helper-surface`
   when the restored checkout should become its own follow-up root because the
   saved archive can lag the current branch-local helper surface
@@ -222,8 +239,10 @@ The direct issue `#3` runtime patch is worth doing only when the run can both:
 Until then, preserve the narrowed runtime target, use the dedicated runtime
 helper to reopen the same branch-local route quickly, use the Linux build-
 readiness route when the saved archives must be restaged, use the saved-browser-
-snapshot route when the next run still lacks a reusable checkout, prefer the
-synced helper-surface restore when the restored checkout should become its own
-follow-up root because the saved archive can lag the current branch-local
-helper surface, and spend scheduled cycles on smaller slices that improve the
-next real re-entry instead of repeating the same blocked attempt.
+snapshot route when the next run still lacks a reusable checkout, use the
+restored-checkout route when the saved snapshot already exists but the follow-up
+root still needs a quick readiness answer, prefer the synced helper-surface
+restore when the restored checkout should become its own follow-up root because
+ the saved archive can lag the current branch-local helper surface, and spend
+scheduled cycles on smaller slices that improve the next real re-entry instead
+of repeating the same blocked attempt.
