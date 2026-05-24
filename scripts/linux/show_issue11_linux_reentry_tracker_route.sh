@@ -86,6 +86,7 @@ SAVED_MEMORY_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linu
 SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SAVED_ARCHIVE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SNAPSHOT_AUDIT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_snapshot_archive.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${REPO_ROOT}")"
 SNAPSHOT_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --destination $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 RESTORED_CHECKOUT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${REPO_ROOT}") --expect-helper-surface"
@@ -121,6 +122,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    "saved_memory_route": %s,\n' "$(json_escape "${SAVED_MEMORY_ROUTE_COMMAND}")"
     printf '    "saved_archive_surface": %s,\n' "$(json_escape "${SAVED_ARCHIVE_SURFACE_COMMAND}")"
     printf '    "saved_archive_route": %s,\n' "$(json_escape "${SAVED_ARCHIVE_ROUTE_COMMAND}")"
+    printf '    "saved_snapshot_archive_audit": %s,\n' "$(json_escape "${SNAPSHOT_AUDIT_COMMAND}")"
     printf '    "saved_browser_snapshot_surface": %s,\n' "$(json_escape "${SNAPSHOT_SURFACE_COMMAND}")"
     printf '    "saved_browser_snapshot_route": %s,\n' "$(json_escape "${SNAPSHOT_ROUTE_COMMAND}")"
     printf '    "restored_checkout_check": %s,\n' "$(json_escape "${RESTORED_CHECKOUT_COMMAND}")"
@@ -138,6 +140,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  "notes": [\n'
     printf '    %s,\n' "$(json_escape "Run the saved_memory_surface and saved_memory_route commands first so path and presence drift fail before deeper route replay.")"
     printf '    %s,\n' "$(json_escape "Run the saved_archive_surface and saved_archive_route commands before restore or toolchain work when the lane depends on the saved repo and dependency bundles.")"
+    printf '    %s,\n' "$(json_escape "Run the saved_snapshot_archive_audit command after the saved-archive route so stale helper-surface drift is caught before restore commands are trusted.")"
     printf '    %s,\n' "$(json_escape "If no reusable checkout exists yet, run the saved_browser_snapshot_surface and saved_browser_snapshot_route commands before toolchain recovery or offline staging.")"
     printf '    %s,\n' "$(json_escape "If a reusable checkout already exists, run restored_checkout_check before wider helper replay so stale helper surfaces are caught early.")"
     printf '    %s,\n' "$(json_escape "Reopen the saved Rust, Zig recovery, and offline-input routes before the broader Linux build-readiness route.")"
@@ -159,6 +162,7 @@ Read first
   docs/ISSUE11_LINUX_REENTRY_TRACKER_ROUTE.md
   docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
+  scripts/check_issue3_saved_snapshot_archive.py
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
   docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
   docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
@@ -176,6 +180,9 @@ Suggested route
   Saved-archive integrity route:
     ${SAVED_ARCHIVE_SURFACE_COMMAND}
     ${SAVED_ARCHIVE_ROUTE_COMMAND}
+
+  Saved-snapshot archive audit:
+    ${SNAPSHOT_AUDIT_COMMAND}
 
   Saved-browser-snapshot route when no reusable checkout exists yet:
     ${SNAPSHOT_SURFACE_COMMAND}
@@ -207,7 +214,8 @@ Suggested route
 Working rules
 =============
   - Run the saved-Memory route before the saved-archive integrity route so missing path drift fails before checksum work.
-  - Run the saved-archive integrity route before restore, toolchain, or offline-input staging when the lane depends on the saved repo and dependency bundles.
+  - Run the saved-archive integrity route before the saved-snapshot archive audit when the lane depends on the saved repo and dependency bundles.
+  - Run the saved-snapshot archive audit before restore, toolchain, or offline-input staging so stale helper-surface drift is caught early.
   - Use the saved-browser-snapshot route when there is still no reusable checkout beside the workspace.
   - Use the restored-checkout check before wider helper replay when a reusable checkout already exists.
   - Reopen the saved Rust, Zig recovery, and offline-input routes before the broader Linux build-readiness route.
