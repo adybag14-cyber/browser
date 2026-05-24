@@ -35,7 +35,8 @@ restore and follow-up commands without mutating the filesystem.
 Use --sync-helper-surface when the restored checkout should also carry the
 current issue #3 helper docs and route scripts from the live helper root.
 Use --sync-only to refresh that helper surface inside an existing restored
-checkout without re-extracting the saved repo archive.
+checkout without re-extracting the saved repo archive; this path only needs the
+existing restored checkout plus the live helper root.
 EOF
 }
 
@@ -271,12 +272,17 @@ if [[ ! -d "${MEMORY_ROOT}" ]]; then
     echo "Memory root does not exist: ${MEMORY_ROOT}" >&2
     exit 1
 fi
-if [[ ! -f "${ARCHIVE_PATH}" ]]; then
-    echo "Saved browser snapshot archive does not exist: ${ARCHIVE_PATH}" >&2
-    exit 1
-fi
 
-TOP_LEVEL_ENTRY="$(python3 - "${ARCHIVE_PATH}" <<'PY'
+TOP_LEVEL_ENTRY="not checked for sync-only refresh"
+ARCHIVE_REQUIRED=false
+if [[ "${SYNC_ONLY}" != "true" ]]; then
+    ARCHIVE_REQUIRED=true
+    if [[ ! -f "${ARCHIVE_PATH}" ]]; then
+        echo "Saved browser snapshot archive does not exist: ${ARCHIVE_PATH}" >&2
+        exit 1
+    fi
+
+    TOP_LEVEL_ENTRY="$(python3 - "${ARCHIVE_PATH}" <<'PY'
 import pathlib
 import sys
 import zipfile
@@ -292,6 +298,7 @@ if not top_level:
 print(top_level)
 PY
 )"
+fi
 
 FOLLOW_UP_HELPER_ROOT="${HELPER_ROOT}"
 if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
@@ -333,6 +340,7 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "destination": %s,\n' "$(json_escape "${DESTINATION}")"
     printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
     printf '  "archive_top_level": %s,\n' "$(json_escape "${TOP_LEVEL_ENTRY}")"
+    printf '  "archive_required": %s,\n' "$([[ "${ARCHIVE_REQUIRED}" == "true" ]] && echo true || echo false)"
     printf '  "follow_up_restored_checkout_check": %s,\n' "$(json_escape "${FOLLOW_UP_RESTORED_CHECK}")"
     printf '  "follow_up_memory_check": %s,\n' "$(json_escape "${FOLLOW_UP_MEMORY_CHECK}")"
     printf '  "follow_up_archive_integrity_check": %s,\n' "$(json_escape "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}")"
@@ -358,6 +366,7 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the helper root}"
     echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
     echo "Destination:           ${DESTINATION}"
+    echo "Archive required:      $([[ "${ARCHIVE_REQUIRED}" == "true" ]] && echo yes || echo no)"
     echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
     echo "Sync-only refresh:     $([[ "${SYNC_ONLY}" == "true" ]] && echo enabled || echo disabled)"
     if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
@@ -422,6 +431,7 @@ if [[ "${SYNC_ONLY}" == "true" ]]; then
     echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
     echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo helper root}"
     echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
+    echo "Archive required:      no"
     echo "Helper surface sync:   enabled"
     echo "Sync-only refresh:     enabled"
     echo "Helper surface files:  ${#HELPER_SURFACE_PATHS[@]}"
@@ -472,6 +482,7 @@ echo "Live helper root:      ${HELPER_ROOT}"
 echo "Follow-up helper root: ${FOLLOW_UP_HELPER_ROOT}"
 echo "Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo helper root}"
 echo "Archive top level:     ${TOP_LEVEL_ENTRY}"
+echo "Archive required:      yes"
 echo "Helper surface sync:   $([[ "${SYNC_HELPER_SURFACE}" == "true" ]] && echo enabled || echo disabled)"
 echo "Sync-only refresh:     disabled"
 if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
