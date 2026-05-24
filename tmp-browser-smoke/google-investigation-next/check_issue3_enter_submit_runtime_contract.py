@@ -18,11 +18,22 @@ from pathlib import Path
 PAGE_REQUIRED_MARKERS = (
     "_defer_native_text_input_enter_submit: bool = false",
     "_pending_native_enter_submit: ?*Element.Html.Input = null",
-    "pub fn beginDeferredNativeTextInputEnterSubmit(self: *Page) void {",
-    "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {",
+    (
+        "pub fn beginDeferredNativeTextInputEnterSubmit(self: *Page) void {\n"
+        "    self._defer_native_text_input_enter_submit = true;\n"
+        "    self._pending_native_enter_submit = null;\n"
+        "}\n"
+    ),
+    (
+        "pub fn endDeferredNativeTextInputEnterSubmit(self: *Page) void {\n"
+        "    self._defer_native_text_input_enter_submit = false;\n"
+        "    self._pending_native_enter_submit = null;\n"
+        "}\n"
+    ),
     "pub fn applyDeferredNativeTextInputEnterSubmit(self: *Page) !void {",
     "const focused = self.document.getFocusedElement() orelse return;",
     "if (focused.asNode() != input.asNode()) {",
+    "try self.submitForm(input.asElement(), input.getForm(self), .{});",
     "if (self._defer_native_text_input_enter_submit) {",
     "self._pending_native_enter_submit = input;",
 )
@@ -32,12 +43,18 @@ WIN32_REQUIRED_MARKERS = (
     "self.pending_text_input_suppressions.deinit(self.allocator);",
     'const defer_enter_submit = std.mem.eql(u8, key, "Enter");',
     "page.beginDeferredNativeTextInputEnterSubmit();",
-    "page.endDeferredNativeTextInputEnterSubmit();",
+    (
+        "defer if (defer_enter_submit) {\n"
+        "                        page.endDeferredNativeTextInputEnterSubmit();\n"
+        "                    };"
+    ),
     "queuePendingTextInputSuppression(self, key);",
     "if (defer_enter_submit and allow_text_input) {",
     "try page.applyDeferredNativeTextInputEnterSubmit();",
     "if (shouldSuppressPendingTextInput(self, text_input.bytes[0..text_input.len])) {",
     "self.pending_text_input_suppressions.clearRetainingCapacity();",
+    "fn makeTextInputEvent(bytes: []const u8) ?Win32Backend.TextInputEvent {",
+    "fn textInputEventMatches(expected: Win32Backend.TextInputEvent, actual: []const u8) bool {",
     "fn queuePendingTextInputSuppression(self: *Win32Backend, bytes: []const u8) void {",
     "fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool {",
 )
@@ -46,6 +63,9 @@ PAGE_TEST_MARKERS = (
     'test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {',
     'test "Page reduced Google fixture defers native Enter submit until keypress" {',
     "page.beginDeferredNativeTextInputEnterSubmit();",
+    "const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;",
+    'try testing.expect(std.mem.startsWith(u8, keydown_title, "KEYDOWN:n|"));',
+    '_ = try page.triggerKeyboardKeyPressWithCode("Enter", "Enter", .{}, false);',
     "try page.applyDeferredNativeTextInputEnterSubmit();",
 )
 
@@ -198,6 +218,9 @@ fn submitCurrentInput(self: *Page, input: *Element.Html.Input) !void {
 test "Page reduced Google fixture accepts focused keyboard text and Enter submit" {}
 test "Page reduced Google fixture defers native Enter submit until keypress" {
     page.beginDeferredNativeTextInputEnterSubmit();
+    const keydown_title = (try page.getTitle()) orelse return error.TestTitleMissing;
+    try testing.expect(std.mem.startsWith(u8, keydown_title, "KEYDOWN:n|"));
+    _ = try page.triggerKeyboardKeyPressWithCode("Enter", "Enter", .{}, false);
     try page.applyDeferredNativeTextInputEnterSubmit();
 }
 """
@@ -220,7 +243,9 @@ self.pending_text_input_suppressions.clearRetainingCapacity();
 
 const defer_enter_submit = std.mem.eql(u8, key, "Enter");
 page.beginDeferredNativeTextInputEnterSubmit();
-page.endDeferredNativeTextInputEnterSubmit();
+defer if (defer_enter_submit) {
+                        page.endDeferredNativeTextInputEnterSubmit();
+                    };
 queuePendingTextInputSuppression(self, key);
 if (defer_enter_submit and allow_text_input) {
     try page.applyDeferredNativeTextInputEnterSubmit();
@@ -229,6 +254,8 @@ if (shouldSuppressPendingTextInput(self, text_input.bytes[0..text_input.len])) {
     continue;
 }
 
+fn makeTextInputEvent(bytes: []const u8) ?Win32Backend.TextInputEvent { return null; }
+fn textInputEventMatches(expected: Win32Backend.TextInputEvent, actual: []const u8) bool { return false; }
 fn queuePendingTextInputSuppression(self: *Win32Backend, bytes: []const u8) void {}
 fn shouldSuppressPendingTextInput(self: *Win32Backend, bytes: []const u8) bool { return false; }
 
