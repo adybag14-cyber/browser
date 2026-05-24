@@ -102,7 +102,7 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     fi
 fi
 
-MINIMUM_ZIG="$ (
+MINIMUM_ZIG="$(
     python3 - "${REPO_ROOT}/build.zig.zon" <<'PY'
 from __future__ import annotations
 
