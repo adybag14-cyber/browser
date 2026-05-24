@@ -98,7 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def resolve_default_restored_checkout_root(repo_root: Path) -> Path:
-    return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
+    if (repo_root / "build.zig.zon").is_file():
+        return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
+    return (repo_root / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
 
 
 def collect_results(*, repo_root: Path, restored_checkout_root: Path) -> dict[str, object]:
@@ -228,6 +230,23 @@ class RestoredCheckoutHelperSurfaceTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "missing")
             self.assertFalse(result["restored_checkout_exists"])
+
+    def test_default_root_resolution_handles_repo_and_workspace_layouts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+            (repo_root / "build.zig.zon").write_text("{}", encoding="utf-8")
+            self.assertEqual(
+                resolve_default_restored_checkout_root(repo_root),
+                Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME,
+            )
+
+            workspace_root = Path(tmpdir) / "workspace"
+            workspace_root.mkdir()
+            self.assertEqual(
+                resolve_default_restored_checkout_root(workspace_root),
+                workspace_root / DEFAULT_RESTORED_CHECKOUT_NAME,
+            )
 
 
 def main() -> int:
