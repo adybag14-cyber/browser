@@ -8,7 +8,7 @@ Usage:
   bash show_issue3_restored_checkout_reentry_route.sh \
     [--repo-root /path/to/browser-repo] \
     [--helper-root /path/to/live/browser-repo] \
-    [--restored-root /path/to/browser-memory-snapshot] \
+    [--restored-checkout-root /path/to/browser-memory-snapshot] \
     [--memory-root /path/to/workspace/memory] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--expect-helper-surface] \
@@ -16,6 +16,9 @@ Usage:
 
 Print the restored-checkout re-entry route for the blocked issue #3 Linux or
 WSL path after the saved browser snapshot has been restored.
+
+`--restored-root` remains accepted as a compatibility alias for
+`--restored-checkout-root`.
 EOF
 }
 
@@ -50,7 +53,7 @@ while [[ $# -gt 0 ]]; do
             HELPER_ROOT="$2"
             shift 2
             ;;
-        --restored-root)
+        --restored-root|--restored-checkout-root)
             RESTORED_CHECKOUT_ROOT="$2"
             shift 2
             ;;
@@ -102,10 +105,13 @@ fi
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SAVED_SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --destination $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND} --sync-helper-surface"
+PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND}"
 RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
 PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND="${RESTORED_CHECKOUT_CHECK_COMMAND}"
 if [[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]]; then
+    PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}"
     PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND="${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND}"
 fi
 SAVED_MEMORY_PREFLIGHT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
@@ -115,6 +121,8 @@ RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/sho
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND+=""
     SAVED_MEMORY_PREFLIGHT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_ARCHIVE_INTEGRITY_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     LINUX_BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -136,6 +144,8 @@ print(json.dumps({
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "saved_snapshot_route": ${SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
+        "synced_saved_snapshot_route": ${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
+        "preferred_saved_snapshot_route": ${PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
         "restored_checkout_check": ${RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "synced_restored_checkout_check": ${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "preferred_restored_checkout_check": ${PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
@@ -146,7 +156,8 @@ print(json.dumps({
     },
     "notes": [
         "Run route_surface first so missing route docs or helper drift fails before the restored checkout is trusted.",
-        "Use saved_snapshot_route when the reusable checkout is still missing or needs to be refreshed from Memory.",
+        "Use preferred_saved_snapshot_route when the reusable checkout is still missing or needs to be refreshed from Memory.",
+        "When expect_helper_surface is set, preferred_saved_snapshot_route switches to the synced restore path so the next helper-surface comparison does not immediately fail.",
         "Run restored_checkout_check immediately after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.",
         "Run synced_restored_checkout_check when the restored checkout was rebuilt with --sync-helper-surface and should be compared against the live helper root for drift.",
         "Run saved_memory_preflight against the restored checkout after the restored-checkout check.",
@@ -180,8 +191,14 @@ Suggested route
   Route surface check:
     ${ROUTE_SURFACE_COMMAND}
 
+  Preferred saved-browser-snapshot restore route:
+    ${PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND}
+
   Saved-browser-snapshot restore route:
     ${SAVED_SNAPSHOT_ROUTE_COMMAND}
+
+  Synced saved-browser-snapshot restore route:
+    ${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}
 
   Preferred restored-checkout check:
     ${PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND}
@@ -207,7 +224,8 @@ Suggested route
 Working rules
 =============
   - Run the route surface check first so missing docs or helper drift fails fast before the restored checkout is trusted.
-  - Use the saved-browser-snapshot restore route when the reusable checkout is still missing or needs to be refreshed from Memory.
+  - Use the preferred saved-browser-snapshot restore route when the reusable checkout is still missing or needs to be refreshed from Memory.
+  - When --expect-helper-surface is set, prefer the synced saved-browser-snapshot restore route so the restored checkout actually carries the helper surface that the next comparison expects.
   - Run the restored-checkout readiness check right after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.
   - Use the synced helper-surface restored-checkout check when the restored checkout was rebuilt with --sync-helper-surface.
   - Run the saved-Memory preflight against the restored checkout after the restored-checkout readiness check and before trusting broader helper output.
