@@ -13,6 +13,7 @@ Companion helpers:
 - `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
 - `scripts/linux/restore_saved_browser_snapshot.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
 - `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
@@ -101,6 +102,11 @@ bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_r
 Prefer this self-contained route when the saved archive can lag the current
 branch-local helper surface and the follow-up commands should live inside the
 restored checkout instead of depending on a separate live helper root.
+
+Use `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md` when the restore itself is
+already working and the next question is whether the restored checkout is ready
+to trust before the saved-Memory preflight, saved-archive integrity check, Linux
+or WSL build-readiness route, or direct runtime re-entry route.
 
 ## Immediate Follow-up
 
