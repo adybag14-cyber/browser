@@ -79,6 +79,7 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|show_issue3_linux_build_readiness_route.sh|The route printer still exposes the Linux or WSL build-readiness follow-up."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|show_issue3_enter_submit_runtime_revalidation_route.sh|The route printer still exposes the direct runtime follow-up."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|restored_checkout_saved_input_preflight|The route printer JSON output still exposes the restored-checkout preflight command."
+    "scripts/linux/show_issue3_saved_memory_inputs_route.sh|progress_tracker_route_path|The route printer JSON output exposes the tracker route path explicitly."
     "scripts/check_issue3_saved_memory_inputs.py|repo_archives/browser/01-browser-fork-headed-mode-foundation.zip|The saved-input preflight still checks for the saved repo snapshot."
     "scripts/check_issue3_saved_memory_inputs.py|repo_archives/browser/blocker_intelligence.yaml|The saved-input preflight still checks for blocker intelligence."
     "scripts/check_issue3_saved_memory_inputs.py|Saved Memory input check passed.|The saved-input preflight still reports a clear pass surface."
