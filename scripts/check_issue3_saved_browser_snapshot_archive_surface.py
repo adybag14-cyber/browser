@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 import unittest
 import zipfile
@@ -15,7 +16,9 @@ from dataclasses import asdict, dataclass
 
 
 DEFAULT_ARCHIVE_NAME = "01-browser-fork-headed-mode-foundation.zip"
-REQUIRED_PATHS = [
+RESTORE_HELPER_PATH = "scripts/linux/restore_saved_browser_snapshot.sh"
+HELPER_SURFACE_LINE_RE = re.compile(r'^\s*"([^"]+)"\s*$')
+KNOWN_REQUIRED_PATHS = [
     (
         "build.zig.zon",
         "Snapshot manifest expected in a reusable restored checkout.",
@@ -284,11 +287,68 @@ def infer_top_level_folder(names: set[str]) -> str:
     return ""
 
 
-def build_statuses(names: set[str], top_level_folder: str) -> list[PathStatus]:
+def extract_helper_surface_paths(script_text: str) -> list[str]:
+    marker = "declare -a HELPER_SURFACE_PATHS=("
+    in_block = False
+    paths: list[str] = []
+
+    for line in script_text.splitlines():
+        stripped = line.strip()
+        if not in_block:
+            if stripped == marker:
+                in_block = True
+            continue
+
+        if stripped == ")":
+            break
+
+        match = HELPER_SURFACE_LINE_RE.match(line)
+        if match is not None:
+            paths.append(match.group(1))
+
+    if not in_block:
+        raise ValueError(
+            f"Could not find HELPER_SURFACE_PATHS in {RESTORE_HELPER_PATH}"
+        )
+    if not paths:
+        raise ValueError(
+            f"HELPER_SURFACE_PATHS in {RESTORE_HELPER_PATH} is empty"
+        )
+    return paths
+
+
+def load_required_paths(repo_root: Path) -> list[tuple[str, str]]:
+    required_paths = list(KNOWN_REQUIRED_PATHS)
+    known_purposes = {path: purpose for path, purpose in KNOWN_REQUIRED_PATHS}
+    restore_helper = repo_root / RESTORE_HELPER_PATH
+    helper_paths = extract_helper_surface_paths(
+        restore_helper.read_text(encoding="utf-8")
+    )
+
+    for helper_path in helper_paths:
+        if helper_path in known_purposes:
+            continue
+        required_paths.append(
+            (
+                helper_path,
+                "Current helper-surface path mirrored from "
+                f"{RESTORE_HELPER_PATH} so a stale snapshot cannot silently omit "
+                "a live follow-up helper.",
+            )
+        )
+
+    return required_paths
+
+
+def build_statuses(
+    names: set[str],
+    top_level_folder: str,
+    required_paths: list[tuple[str, str]],
+) -> list[PathStatus]:
     prefix = f"{top_level_folder}/" if top_level_folder else ""
     return [
         PathStatus(path=path, present=f"{prefix}{path}" in names, purpose=purpose)
-        for path, purpose in REQUIRED_PATHS
+        for path, purpose in required_paths
     ]
 
 
@@ -300,15 +360,20 @@ def load_archive_names(archive_path: str) -> set[str]:
         return set(archive.namelist())
 
 
-def build_payload(archive_path: str, names: set[str]) -> dict[str, object]:
+def build_payload(
+    archive_path: str,
+    names: set[str],
+    required_paths: list[tuple[str, str]],
+) -> dict[str, object]:
     top_level_folder = infer_top_level_folder(names)
-    statuses = build_statuses(names, top_level_folder)
+    statuses = build_statuses(names, top_level_folder, required_paths)
     missing_paths = [status.path for status in statuses if not status.present]
     return {
         "issue": "issue3-saved-browser-snapshot-archive-surface",
         "archive_path": archive_path,
         "archive_top_level_root": top_level_folder,
         "helper_surface_complete": not missing_paths,
+        "required_path_count": len(required_paths),
         "recommended_restore_mode": (
             "sync-helper-surface" if missing_paths else "plain"
         ),
@@ -339,7 +404,7 @@ def human_output(archive_path: str, top_level_folder: str, statuses: list[PathSt
         [
             "",
             "Working rules:",
-            "  - Prefer a plain restore only when the saved archive already contains the current restore and runtime helper surface.",
+            "  - Prefer a plain restore only when the helper reports that the archive already contains the current restore and runtime helper surface.",
             "  - Use --sync-helper-surface when any helper path above is missing from the archive.",
             "  - Keep the live helper root for the next follow-up commands when the archive helper surface is stale.",
             "  - Treat this helper as a quick trust check for the saved snapshot archive, not as proof that build or runtime validation is already green.",
@@ -374,12 +439,46 @@ class SavedBrowserSnapshotArchiveSurfaceTests(unittest.TestCase):
             "browser-fork-headed-mode-foundation",
         )
 
+    def test_extract_helper_surface_paths_parses_shell_array(self) -> None:
+        script_text = """
+        declare -a HELPER_SURFACE_PATHS=(
+            \"docs/ISSUE3_RUNTIME_REENTRY_GATES.md\"
+            \"scripts/check_issue3_saved_memory_inputs.py\"
+        )
+        """
+
+        self.assertEqual(
+            extract_helper_surface_paths(script_text),
+            [
+                "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+                "scripts/check_issue3_saved_memory_inputs.py",
+            ],
+        )
+
     def test_build_payload_marks_missing_paths_and_sync_restore(self) -> None:
         names = {
             "browser-fork-headed-mode-foundation/build.zig.zon",
             "browser-fork-headed-mode-foundation/docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
         }
-        payload = build_payload("/tmp/archive.zip", names)
+        required_paths = [
+            (
+                "build.zig.zon",
+                "Snapshot manifest expected in a reusable restored checkout.",
+            ),
+            (
+                "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+                "Runtime re-entry gate note.",
+            ),
+            (
+                "scripts/check_issue3_saved_memory_inputs.py",
+                "Saved-Memory preflight helper.",
+            ),
+            (
+                "scripts/check_issue3_workspace_context.py",
+                "Workspace-context helper.",
+            ),
+        ]
+        payload = build_payload("/tmp/archive.zip", names, required_paths)
 
         self.assertFalse(payload["helper_surface_complete"])
         self.assertEqual(payload["recommended_restore_mode"], "sync-helper-surface")
@@ -387,15 +486,57 @@ class SavedBrowserSnapshotArchiveSurfaceTests(unittest.TestCase):
             "scripts/check_issue3_saved_memory_inputs.py",
             payload["missing_paths"],
         )
+        self.assertIn(
+            "scripts/check_issue3_workspace_context.py",
+            payload["missing_paths"],
+        )
 
     def test_build_payload_marks_plain_restore_when_surface_is_complete(self) -> None:
         top_level = "browser-fork-headed-mode-foundation"
-        names = {f"{top_level}/{path}" for path, _purpose in REQUIRED_PATHS}
-        payload = build_payload("/tmp/archive.zip", names)
+        required_paths = [
+            (
+                "build.zig.zon",
+                "Snapshot manifest expected in a reusable restored checkout.",
+            ),
+            (
+                "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+                "Runtime re-entry gate note.",
+            ),
+        ]
+        names = {f"{top_level}/{path}" for path, _purpose in required_paths}
+        payload = build_payload("/tmp/archive.zip", names, required_paths)
 
         self.assertTrue(payload["helper_surface_complete"])
         self.assertEqual(payload["recommended_restore_mode"], "plain")
         self.assertEqual(payload["missing_paths"], [])
+
+    def test_load_required_paths_includes_restore_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            restore_helper = repo_root / RESTORE_HELPER_PATH
+            restore_helper.parent.mkdir(parents=True, exist_ok=True)
+            restore_helper.write_text(
+                """
+                declare -a HELPER_SURFACE_PATHS=(
+                    \"docs/ISSUE3_RUNTIME_REENTRY_GATES.md\"
+                    \"scripts/check_issue3_workspace_context.py\"
+                )
+                """,
+                encoding="utf-8",
+            )
+
+            required_paths = load_required_paths(repo_root)
+            required_path_set = {path for path, _purpose in required_paths}
+
+            self.assertIn("build.zig.zon", required_path_set)
+            self.assertIn(
+                "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+                required_path_set,
+            )
+            self.assertIn(
+                "scripts/check_issue3_workspace_context.py",
+                required_path_set,
+            )
 
     def test_resolve_archive_path_prefers_existing_memory_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -441,6 +582,7 @@ def main() -> int:
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
 
+    repo_root = Path(args.repo_root).resolve()
     _, archive_path = resolve_archive_path(args)
     if not os.path.isfile(archive_path):
         print(f"Snapshot archive not found: {archive_path}", file=os.sys.stderr)
@@ -448,15 +590,14 @@ def main() -> int:
 
     try:
         names = load_archive_names(archive_path)
-    except (ValueError, zipfile.BadZipFile) as exc:
+        required_paths = load_required_paths(repo_root)
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
         print(str(exc), file=os.sys.stderr)
         return 1
 
-    payload = build_payload(archive_path, names)
+    payload = build_payload(archive_path, names, required_paths)
     top_level_folder = payload["archive_top_level_root"]
-    statuses = [
-        PathStatus(**entry) for entry in payload["required_paths"]
-    ]
+    statuses = [PathStatus(**entry) for entry in payload["required_paths"]]
 
     if args.json:
         print(json.dumps(payload, indent=2))
