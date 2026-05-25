@@ -20,11 +20,19 @@ FIXTURE_FILES = {
     - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
     - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
     - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
+    - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+    - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
     - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
+    - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
+    - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
+    - `scripts/check_issue3_saved_zig_archive_candidates.py`
+    - `scripts/linux/check_issue3_zig_toolchain_match.sh`
+    - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
     - `scripts/check_linux_build_readiness.py`
     - `show_issue3_saved_memory_inputs_route.sh`
     - `show_issue3_linux_build_readiness_route.sh`
     - `show_issue3_zig_toolchain_recovery_route.sh`
+    - `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
     Goal:
     Achieved:
     """,
@@ -45,25 +53,46 @@ FIXTURE_FILES = {
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
     docs/ISSUE3_RUNTIME_REENTRY_GATES.md
     docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
+    docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md
+    docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md
     docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
     docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
     scripts/linux/check_issue3_progress_tracker_route_surface.sh
     scripts/linux/show_issue3_progress_tracker_route.sh
+    scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
+    scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
+    scripts/linux/check_issue3_zig_toolchain_match.sh
+    scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh
     scripts/check_issue3_saved_memory_inputs.py
     scripts/check_issue3_saved_archive_integrity.py
+    scripts/check_issue3_saved_zig_archive_candidates.py
     scripts/check_linux_build_readiness.py
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_progress_tracker_route_surface.sh
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_progress_tracker_route.sh
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|issue `#11`
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Goal:
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Achieved:
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_linux_build_readiness_route.sh
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_zig_toolchain_recovery_route.sh
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_memory_inputs_route.sh
-    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_linux_build_readiness.py
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_zig_archive_candidates_route_surface.sh
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_zig_archive_candidates_route.sh
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_zig_archive_candidates.py
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_zig_toolchain_match.sh
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_zig_toolchain_archive_restore_route_surface.sh
     docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
     docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
     scripts/linux/show_issue3_progress_tracker_route.sh|issue #11 progress-tracker route
+    scripts/linux/show_issue3_progress_tracker_route.sh|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
+    scripts/linux/show_issue3_progress_tracker_route.sh|fallback_zig_archive
+    scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_saved_zig_archive_candidates_route_surface.sh
+    scripts/linux/show_issue3_progress_tracker_route.sh|saved_zig_archive_route_surface
+    scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_zig_archive_candidates_route.sh
+    scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_zig_toolchain_match.sh
+    scripts/linux/show_issue3_progress_tracker_route.sh|zig_toolchain_matching_line_gate
+    scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_zig_toolchain_archive_restore_route_surface.sh
+    scripts/linux/show_issue3_progress_tracker_route.sh|zig_archive_restore_surface
     scripts/linux/show_issue3_progress_tracker_route.sh|Goal:
     scripts/linux/show_issue3_progress_tracker_route.sh|Achieved:
     scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_memory_inputs_route.sh
@@ -74,8 +103,19 @@ FIXTURE_FILES = {
     scripts/linux/show_issue3_progress_tracker_route.sh|completion_comment_template
     """,
     "scripts/linux/show_issue3_progress_tracker_route.sh": """
+    Usage:
+      bash scripts/linux/show_issue3_progress_tracker_route.sh \
+        [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
+        [--json]
     Google issue #3 issue #11 progress-tracker route
-    Issue URL:   https://github.com/adybag14-cyber/browser/issues/11
+    fallback_zig_archive
+    check_issue3_saved_zig_archive_candidates_route_surface.sh
+    saved_zig_archive_route_surface
+    show_issue3_saved_zig_archive_candidates_route.sh
+    check_issue3_zig_toolchain_match.sh
+    zig_toolchain_matching_line_gate
+    check_issue3_zig_toolchain_archive_restore_route_surface.sh
+    zig_archive_restore_surface
     issue_url
     start_comment_template
     completion_comment_template
@@ -91,8 +131,8 @@ FIXTURE_FILES = {
     show_issue3_zig_toolchain_recovery_route.sh
     Route surface check:
     Saved-Memory follow-up route:
-    Linux or WSL build-readiness route:
-    Zig toolchain recovery route:
+    Issue #11 progress-tracker route:
+    Broader Zig recovery route:
     """,
 }
 
@@ -133,7 +173,7 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             cls.repo_root / "scripts/linux/show_issue3_progress_tracker_route.sh"
         )
 
-    def test_progress_note_keeps_issue11_handoff_and_followups_visible(self) -> None:
+    def test_progress_note_keeps_issue11_handoff_and_saved_zig_followups_visible(self) -> None:
         for fragment in (
             "issue `#11`",
             "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
@@ -141,17 +181,25 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
             "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+            "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+            "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
             "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+            "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+            "scripts/check_issue3_saved_zig_archive_candidates.py",
+            "scripts/linux/check_issue3_zig_toolchain_match.sh",
+            "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
             "scripts/check_linux_build_readiness.py",
             "show_issue3_saved_memory_inputs_route.sh",
             "show_issue3_linux_build_readiness_route.sh",
             "show_issue3_zig_toolchain_recovery_route.sh",
+            "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
             "Goal:",
             "Achieved:",
         ):
             self.assertIn(fragment, self.progress_note)
 
-    def test_saved_memory_and_build_readiness_notes_keep_progress_route_visible(self) -> None:
+    def test_neighbor_notes_keep_progress_tracker_visible(self) -> None:
         for fragment in (
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
             "issue `#11`",
@@ -165,45 +213,59 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.build_readiness_note)
 
-    def test_surface_checker_keeps_route_contract_visible(self) -> None:
+    def test_surface_checker_keeps_saved_zig_and_fallback_contract_visible(self) -> None:
         for fragment in (
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
             "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
             "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+            "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+            "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
             "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
             "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
             "scripts/linux/show_issue3_progress_tracker_route.sh",
+            "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+            "scripts/linux/check_issue3_zig_toolchain_match.sh",
+            "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
             "scripts/check_issue3_saved_memory_inputs.py",
             "scripts/check_issue3_saved_archive_integrity.py",
+            "scripts/check_issue3_saved_zig_archive_candidates.py",
             "scripts/check_linux_build_readiness.py",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_progress_tracker_route_surface.sh",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_progress_tracker_route.sh",
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|issue `#11`",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Goal:",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Achieved:",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_linux_build_readiness_route.sh",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_zig_toolchain_recovery_route.sh",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_memory_inputs_route.sh",
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_linux_build_readiness.py",
-            "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
-            "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
-            "scripts/linux/show_issue3_progress_tracker_route.sh|issue #11 progress-tracker route",
-            "scripts/linux/show_issue3_progress_tracker_route.sh|Goal:",
-            "scripts/linux/show_issue3_progress_tracker_route.sh|Achieved:",
-            "scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_memory_inputs_route.sh",
-            "scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_linux_build_readiness_route.sh",
-            "scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_zig_toolchain_recovery_route.sh",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_zig_archive_candidates_route_surface.sh",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_zig_archive_candidates_route.sh",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_zig_archive_candidates.py",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_zig_toolchain_match.sh",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|fallback_zig_archive",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_saved_zig_archive_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|saved_zig_archive_route_surface",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_zig_archive_candidates_route.sh",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_zig_toolchain_match.sh",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|zig_toolchain_matching_line_gate",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|zig_archive_restore_surface",
             "scripts/linux/show_issue3_progress_tracker_route.sh|issue_url",
             "scripts/linux/show_issue3_progress_tracker_route.sh|start_comment_template",
             "scripts/linux/show_issue3_progress_tracker_route.sh|completion_comment_template",
         ):
             self.assertIn(fragment, self.surface_script)
 
-    def test_route_printer_keeps_templates_and_followups_together(self) -> None:
+    def test_route_printer_keeps_saved_zig_followups_and_templates_together(self) -> None:
         for fragment in (
+            "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
             "Google issue #3 issue #11 progress-tracker route",
-            "https://github.com/adybag14-cyber/browser/issues/11",
+            "fallback_zig_archive",
+            "check_issue3_saved_zig_archive_candidates_route_surface.sh",
+            "saved_zig_archive_route_surface",
+            "show_issue3_saved_zig_archive_candidates_route.sh",
+            "check_issue3_zig_toolchain_match.sh",
+            "zig_toolchain_matching_line_gate",
+            "check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+            "zig_archive_restore_surface",
             "issue_url",
             "start_comment_template",
             "completion_comment_template",
@@ -219,18 +281,18 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             "show_issue3_zig_toolchain_recovery_route.sh",
             "Route surface check:",
             "Saved-Memory follow-up route:",
-            "Linux or WSL build-readiness route:",
-            "Zig toolchain recovery route:",
+            "Issue #11 progress-tracker route:",
+            "Broader Zig recovery route:",
         ):
             self.assertIn(fragment, self.route_script)
 
         surface_index = self.route_script.index("Route surface check:")
         saved_memory_index = self.route_script.index("Saved-Memory follow-up route:")
-        build_index = self.route_script.index("Linux or WSL build-readiness route:")
-        zig_index = self.route_script.index("Zig toolchain recovery route:")
+        issue11_index = self.route_script.index("Issue #11 progress-tracker route:")
+        zig_index = self.route_script.index("Broader Zig recovery route:")
         self.assertLess(surface_index, saved_memory_index)
-        self.assertLess(saved_memory_index, build_index)
-        self.assertLess(build_index, zig_index)
+        self.assertLess(saved_memory_index, issue11_index)
+        self.assertLess(issue11_index, zig_index)
 
 
 if __name__ == "__main__":
