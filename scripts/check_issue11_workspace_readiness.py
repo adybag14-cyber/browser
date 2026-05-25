@@ -4,8 +4,8 @@
 
 This helper exists for the Linux/WSL re-entry lane where a restored checkout or
 nested repo path can see the right shared `memory`, `toolchains`, `agent_files`,
-and `offline-deps` roots, but the next honest `check_linux_build_readiness.py`
-command is still awkward to rebuild by hand.
+and `offline-deps` roots, but the next honest helper command is still awkward
+to rebuild by hand.
 """
 
 from __future__ import annotations
@@ -105,6 +105,34 @@ def infer_fallback_zig_archive(repo_root: Path, explicit_archive: Path | None) -
     return fallback_archive, fallback_archive.is_file()
 
 
+def build_command(*parts: str) -> list[str]:
+    return list(parts)
+
+
+def choose_next_step(
+    *,
+    build_zig_zon_exists: bool,
+    saved_archives_root_found: bool,
+    fallback_zig_archive_found: bool,
+) -> str:
+    if not build_zig_zon_exists:
+        return "Point --repo-root at a real browser checkout before trusting any Linux or WSL readiness helper output."
+    if saved_archives_root_found:
+        return (
+            "Run the saved-Zig route surface check and route printer first, then use the surfaced archive-selection "
+            "command before the broader Linux or WSL readiness rerun."
+        )
+    if fallback_zig_archive_found:
+        return (
+            "Run the saved-archive preflight first, then reopen the saved-Zig route with the surfaced fallback "
+            "archive path so the next run can confirm whether a real 0.15.x archive is available."
+        )
+    return (
+        "Run the saved-archive preflight first, then surface the saved-Zig route with an explicit "
+        "--fallback-zig-archive path before trusting the broader Linux or WSL readiness command."
+    )
+
+
 def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str, object]:
     build_zig_zon = repo_root / "build.zig.zon"
     toolchains_root, toolchains_found = infer_named_root(repo_root, "toolchains")
@@ -114,7 +142,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
     saved_archives_root, saved_archives_found = infer_saved_archives_root(repo_root)
     fallback_zig_archive, fallback_found = infer_fallback_zig_archive(repo_root, explicit_archive)
 
-    preflight_command = [
+    preflight_command = build_command(
         "python",
         "scripts/check_linux_build_readiness.py",
         "--repo-root",
@@ -128,8 +156,8 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "--expect-saved-archives",
         "--skip-zig-check",
         "--skip-rust-check",
-    ]
-    full_readiness_command = [
+    )
+    full_readiness_command = build_command(
         "python",
         "scripts/check_linux_build_readiness.py",
         "--repo-root",
@@ -143,23 +171,51 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "--expect-saved-archives",
         "--expect-offline-deps",
         "--require-prebuilt-v8",
-    ]
-    workspace_context_command = [
+    )
+    workspace_context_command = build_command(
         "python",
         "scripts/check_issue3_workspace_context.py",
         "--repo-root",
         str(repo_root),
-    ]
+    )
+    saved_zig_route_surface_command = build_command(
+        "bash",
+        "./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+    )
+    saved_zig_route_command = build_command(
+        "bash",
+        "./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+    )
 
     if fallback_zig_archive is not None:
         preflight_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
         full_readiness_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
         workspace_context_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        saved_zig_route_surface_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        saved_zig_route_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
 
     status = "passed" if build_zig_zon.is_file() else "failed"
     failures: list[str] = []
     if not build_zig_zon.is_file():
         failures.append(f"build.zig.zon not found under {repo_root}")
+
+    next_step = choose_next_step(
+        build_zig_zon_exists=build_zig_zon.is_file(),
+        saved_archives_root_found=saved_archives_found,
+        fallback_zig_archive_found=fallback_found,
+    )
 
     return {
         "status": status,
@@ -179,7 +235,10 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "fallback_zig_archive_found": fallback_found,
         "suggested_workspace_context_command": workspace_context_command,
         "suggested_preflight_command": preflight_command,
+        "suggested_saved_zig_route_surface_command": saved_zig_route_surface_command,
+        "suggested_saved_zig_route_command": saved_zig_route_command,
         "suggested_full_readiness_command": full_readiness_command,
+        "suggested_next_step": next_step,
         "failures": failures,
     }
 
@@ -215,8 +274,13 @@ def emit_text(context: dict[str, object]) -> None:
     print("  " + " ".join(context["suggested_workspace_context_command"]))
     print("Suggested saved-archive preflight command:")
     print("  " + " ".join(context["suggested_preflight_command"]))
+    print("Suggested saved-Zig route surface command:")
+    print("  " + " ".join(context["suggested_saved_zig_route_surface_command"]))
+    print("Suggested saved-Zig route command:")
+    print("  " + " ".join(context["suggested_saved_zig_route_command"]))
     print("Suggested full readiness command:")
     print("  " + " ".join(context["suggested_full_readiness_command"]))
+    print(f"Suggested next step: {context['suggested_next_step']}")
     if context["failures"]:
         print("\nWorkspace-aware readiness helper failed:", file=sys.stderr)
         for failure in context["failures"]:
@@ -229,7 +293,7 @@ class WorkspaceReadinessTests(unittest.TestCase):
             base = Path(tmpdir)
             repo_root = base / "restored" / "browser-fork-headed-mode-foundation"
             repo_root.mkdir(parents=True)
-            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
             (base / "toolchains").mkdir()
             (base / "memory" / "repo_archives" / "browser" / "dependencies").mkdir(parents=True)
             (base / "agent_files").mkdir()
@@ -253,12 +317,21 @@ class WorkspaceReadinessTests(unittest.TestCase):
             self.assertIn("--expect-saved-archives", context["suggested_preflight_command"])
             self.assertIn("--expect-offline-deps", context["suggested_full_readiness_command"])
             self.assertIn("--require-prebuilt-v8", context["suggested_full_readiness_command"])
+            self.assertIn(
+                "check_issue3_saved_zig_archive_candidates_route_surface.sh",
+                context["suggested_saved_zig_route_surface_command"][1],
+            )
+            self.assertIn(
+                "show_issue3_saved_zig_archive_candidates_route.sh",
+                context["suggested_saved_zig_route_command"][1],
+            )
+            self.assertIn("saved-Zig route", context["suggested_next_step"])
 
     def test_defaults_when_shared_roots_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser"
             repo_root.mkdir()
-            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
 
             context = collect_context(repo_root, None)
 
@@ -269,13 +342,14 @@ class WorkspaceReadinessTests(unittest.TestCase):
             self.assertFalse(context["agent_files_root_found"])
             self.assertFalse(context["offline_deps_root_found"])
             self.assertFalse(context["fallback_zig_archive_found"])
+            self.assertIn("explicit --fallback-zig-archive path", context["suggested_next_step"])
 
     def test_explicit_fallback_archive_is_threaded_into_commands(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             base = Path(tmpdir)
             repo_root = base / "browser"
             repo_root.mkdir()
-            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
             explicit_archive = base / "custom-zig.tar.xz"
             explicit_archive.write_text("zig", encoding="utf-8")
 
@@ -285,6 +359,8 @@ class WorkspaceReadinessTests(unittest.TestCase):
             self.assertIn(str(explicit_archive.resolve()), context["suggested_workspace_context_command"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_preflight_command"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_full_readiness_command"])
+            self.assertIn(str(explicit_archive.resolve()), context["suggested_saved_zig_route_surface_command"])
+            self.assertIn(str(explicit_archive.resolve()), context["suggested_saved_zig_route_command"])
 
     def test_missing_build_manifest_fails_cleanly(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -295,6 +371,7 @@ class WorkspaceReadinessTests(unittest.TestCase):
 
             self.assertEqual(context["status"], "failed")
             self.assertEqual(context["failures"], [f"build.zig.zon not found under {repo_root.resolve()}"])
+            self.assertIn("Point --repo-root", context["suggested_next_step"])
 
 
 def main() -> int:
