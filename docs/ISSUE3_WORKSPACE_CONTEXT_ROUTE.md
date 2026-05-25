@@ -22,9 +22,12 @@ than `/workspace/browser`.
 - `scripts/check_issue3_workspace_context.py`
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `scripts/check_issue3_saved_rust_archive_candidates.py`
+- `scripts/check_issue3_staged_rust_toolchain_candidates.py`
 
 ## Run The Surface Check First
 
@@ -84,10 +87,13 @@ The helper prints:
 9. a ready-to-rerun `scripts/check_linux_build_readiness.py` command that uses
    the resolved roots
 10. a ready-to-rerun issue `#11` progress-tracker route command
-11. a ready-to-rerun saved browser-snapshot route command
-12. a ready-to-rerun Zig recovery route command
-13. a ready-to-rerun Zig matching-line gate command
-14. a ready-to-rerun saved Zig archive candidates command
+11. a ready-to-rerun saved Rust route command
+12. a ready-to-rerun saved Rust archive candidates command
+13. a ready-to-rerun staged Rust toolchain candidates command
+14. a ready-to-rerun saved browser-snapshot route command
+15. a ready-to-rerun Zig recovery route command
+16. a ready-to-rerun Zig matching-line gate command
+17. a ready-to-rerun saved Zig archive candidates command
 
 ## Working Rules
 
@@ -102,6 +108,9 @@ The helper prints:
 - Use the printed issue `#11` progress-tracker route command when the next rerun
   still needs a lower-volume status lane before reopening the direct runtime
   patch.
+- Use the printed saved Rust route and candidate commands when the next rerun
+  still needs to restore or reuse Rust before the broader Linux build-readiness
+  route is trusted.
 - Use the printed saved browser-snapshot, Zig recovery, and saved Zig archive
   candidates route commands when the next rerun still needs more than the raw
   readiness command.
