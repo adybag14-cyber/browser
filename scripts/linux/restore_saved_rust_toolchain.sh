@@ -22,11 +22,12 @@ extracting it.
 
 Defaults:
   browser root       parent of this script
-  dependencies root  <browser-root>/../memory/repo_archives/browser/dependencies
+  dependencies root  nearest ancestor memory/repo_archives/browser/dependencies,
+                     or <browser-root>/../memory/repo_archives/browser/dependencies
   archive            <dependencies-root>/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz
-  toolchain root     <browser-root>/../toolchains/rust-1.79.0
-  toolchain parent   <browser-root>/../toolchains
-  offline deps root  <browser-root>/../offline-deps
+  toolchain parent   nearest ancestor toolchains, or <browser-root>/../toolchains
+  toolchain root     <toolchain-parent>/rust-1.79.0
+  offline deps root  nearest ancestor offline-deps, or <browser-root>/../offline-deps
 
 The archive extracts to:
   <toolchain-root>
@@ -43,6 +44,38 @@ import sys
 
 print(json.dumps(sys.argv[1]))
 PY
+}
+
+resolve_path() {
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+}
+
+locate_first_existing() {
+    python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+start = pathlib.Path(sys.argv[1]).resolve()
+relative = pathlib.Path(sys.argv[2])
+for ancestor in (start, *start.parents):
+    candidate = ancestor / relative
+    if candidate.exists():
+        print(candidate.resolve())
+        break
+PY
+}
+
+normalize_dependencies_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    resolve_path "${raw_root}"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -119,51 +152,51 @@ fi
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 if [[ -z "${DEPENDENCIES_ROOT}" ]]; then
-    DEPENDENCIES_ROOT="${WORKSPACE_ROOT}/memory/repo_archives/browser/dependencies"
+    DISCOVERED_DEPENDENCIES_ROOT="$(locate_first_existing "${BROWSER_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -n "${DISCOVERED_DEPENDENCIES_ROOT}" ]]; then
+        DEPENDENCIES_ROOT="${DISCOVERED_DEPENDENCIES_ROOT}"
+    else
+        DEPENDENCIES_ROOT="${WORKSPACE_ROOT}/memory/repo_archives/browser"
+    fi
 fi
 if [[ -z "${TOOLCHAIN_PARENT}" ]]; then
-    TOOLCHAIN_PARENT="${WORKSPACE_ROOT}/toolchains"
+    DISCOVERED_TOOLCHAIN_PARENT="$(locate_first_existing "${BROWSER_ROOT}" "toolchains" || true)"
+    if [[ -n "${DISCOVERED_TOOLCHAIN_PARENT}" ]]; then
+        TOOLCHAIN_PARENT="${DISCOVERED_TOOLCHAIN_PARENT}"
+    else
+        TOOLCHAIN_PARENT="${WORKSPACE_ROOT}/toolchains"
+    fi
 fi
 if [[ -z "${TOOLCHAIN_ROOT}" ]]; then
     TOOLCHAIN_ROOT="${TOOLCHAIN_PARENT}/${DEFAULT_TOOLCHAIN_DIR_NAME}"
 fi
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
-    OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
+    DISCOVERED_OFFLINE_DEPS_ROOT="$(locate_first_existing "${BROWSER_ROOT}" "offline-deps" || true)"
+    if [[ -n "${DISCOVERED_OFFLINE_DEPS_ROOT}" ]]; then
+        OFFLINE_DEPS_ROOT="${DISCOVERED_OFFLINE_DEPS_ROOT}"
+    else
+        OFFLINE_DEPS_ROOT="${WORKSPACE_ROOT}/offline-deps"
+    fi
 fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${DEPENDENCIES_ROOT}/${DEFAULT_ARCHIVE_NAME}"
 fi
 
+DEPENDENCIES_ROOT="$(normalize_dependencies_root "${DEPENDENCIES_ROOT}")"
 if [[ ! -d "${DEPENDENCIES_ROOT}" ]]; then
     echo "Dependencies root does not exist: ${DEPENDENCIES_ROOT}" >&2
     exit 1
 fi
+
+TOOLCHAIN_PARENT="$(resolve_path "${TOOLCHAIN_PARENT}")"
+TOOLCHAIN_ROOT="$(resolve_path "${TOOLCHAIN_ROOT}")"
+OFFLINE_DEPS_ROOT="$(resolve_path "${OFFLINE_DEPS_ROOT}")"
+ARCHIVE_PATH="$(resolve_path "${ARCHIVE_PATH}")"
 if [[ ! -f "${ARCHIVE_PATH}" ]]; then
     echo "Rust toolchain archive does not exist: ${ARCHIVE_PATH}" >&2
     exit 1
 fi
 
-TOOLCHAIN_PARENT="$(python3 - "${TOOLCHAIN_PARENT}" <<'PY'
-import pathlib
-import sys
-
-print(pathlib.Path(sys.argv[1]).resolve())
-PY
-)"
-TOOLCHAIN_ROOT="$(python3 - "${TOOLCHAIN_ROOT}" <<'PY'
-import pathlib
-import sys
-
-print(pathlib.Path(sys.argv[1]).resolve())
-PY
-)"
-OFFLINE_DEPS_ROOT="$(python3 - "${OFFLINE_DEPS_ROOT}" <<'PY'
-import pathlib
-import sys
-
-print(pathlib.Path(sys.argv[1]).resolve())
-PY
-)"
 if [[ "${CHECK_ONLY}" != "true" ]]; then
     mkdir -p "${TOOLCHAIN_PARENT}"
 fi
