@@ -57,12 +57,17 @@ bash ./scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh \
   --toolchains-root /path/to/toolchains \
   --archive /path/to/zig-0.15.2.tar.xz \
   --saved-archives-root /path/to/memory/repo_archives/browser/dependencies \
-  --offline-deps-root /path/to/offline-deps
+  --offline-deps-root /path/to/offline-deps \
+  --fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
 ```
 
 Use `--json` when another helper wants the exact surface-check, saved-archive
 candidate discovery, restore, recovery, or readiness commands as structured
 output.
+
+Use `--fallback-zig-archive` when the run still needs to keep the attached
+`0.17` archive visible as a surfaced stopgap input while the route restores or
+discovers a real `0.15.x` Zig candidate.
 
 ## Surface Saved Archive Candidates When The Exact Archive Path Is Not Known Yet
 
