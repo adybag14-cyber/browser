@@ -76,7 +76,7 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
     esac
-done
+ done
 
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
@@ -94,6 +94,7 @@ if [[ -z "${ARCHIVE_PATH}" ]]; then
 fi
 
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
+SAVED_ARCHIVE_CANDIDATES_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_issue3_saved_rust_archive_candidates.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --saved-archives-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAIN_PARENT}")"
 CHECK_ONLY_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --check-only"
 RESTORE_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}")"
 PATH_COMMAND="export PATH=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin"):$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin"):\$PATH"
@@ -114,6 +115,7 @@ print(json.dumps({
     "archive_path": ${ARCHIVE_PATH@Q},
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
+        "saved_archive_candidates": ${SAVED_ARCHIVE_CANDIDATES_COMMAND@Q},
         "check_only": ${CHECK_ONLY_COMMAND@Q},
         "restore": ${RESTORE_COMMAND@Q},
         "path": ${PATH_COMMAND@Q},
@@ -123,6 +125,7 @@ print(json.dumps({
     },
     "notes": [
         "Run the surface_check command first so missing route docs or helper drift fails before the saved archive itself is blamed.",
+        "Run the saved_archive_candidates command next when the run needs the preferred saved Rust archive and restore commands surfaced before manual shell work.",
         "Run the check_only command next when the saved archive location or target toolchain directory may have drifted.",
         "Use the restore command to keep the saved Rust 1.79.0 extraction path on one branch-local surface.",
         "Reuse the PATH, CARGO, and RUSTC exports before rerunning Linux or WSL build-readiness checks.",
@@ -152,6 +155,9 @@ Suggested route
   Surface check:
     ${SURFACE_CHECK_COMMAND}
 
+  Saved archive candidate discovery:
+    ${SAVED_ARCHIVE_CANDIDATES_COMMAND}
+
   Saved Rust restore surface check:
     ${CHECK_ONLY_COMMAND}
 
@@ -169,6 +175,7 @@ Suggested route
 Working rules
 =============
   - Run the surface check first so missing route docs or helper drift fails before the saved archive itself is blamed.
+  - Run the saved archive candidate helper before hand-picking the restore archive or rebuilding restore commands by hand.
   - Run the restore helper surface check next when the archive or destination path may have drifted.
   - Use the restore command instead of rebuilding the tar extraction path by hand.
   - Reuse the exported PATH, CARGO, and RUSTC values before rerunning Linux or WSL build-readiness helpers.
